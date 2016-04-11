@@ -28,6 +28,7 @@ idlemessages = ["Galarzazzzzza is a nab, i know, i know, oh oh oh",
 "Any allegations made about Nezune and corpses are nothing but slander!",
 "All hail Michu, our cat overlord.",
 "Beware of nomads, they are known to kill unsuspecting druids!"]
+
 #main channel where the bot chats for luls
 #this is so we can keep track of idletime for this server only
 #and do timed shit in here
@@ -337,11 +338,5 @@ def choose(*choices : str):
     """Chooses between multiple choices."""
     yield from bot.say(random.choice(choices))
 
-
-@bot.command()
-@asyncio.coroutine
-def joined(member : discord.Member):
-    """Says when a member joined."""
-    yield from bot.say('{0.name} joined in {0.joined_at}'.format(member))
 
 bot.run(username, password)

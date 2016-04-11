@@ -186,7 +186,7 @@ class Tibia():
     @commands.group(pass_context=True)
     @asyncio.coroutine
     def guild(self,ctx,*guildname : str):
-        """Who is online in a guild"""
+        """Checks who is online in a guild"""
         guildname = " ".join(guildname).title()
         onlinelist = checkGuildOnline(guildname)
         if onlinelist == 'NE':
@@ -228,7 +228,8 @@ class Tibia():
                     city = 'Green Djinn'
                 elif(item['npc'] == 'Nah\'Bob' or item['npc'] == 'Haroun'):
                     city = 'Blue Djinn'
-                #TODO: Replace Yasir's "varies" with today's city
+                #TODO: Replace Rashid's "varies" with today's city
+                #TODO: If Yasir's is the top seller, also display the alternate seller
                 yield from self.bot.say('**'+item['name']+'** can be sold to **'
                 +item['npc']+'** ('+city+') for **'+('{0:,}'.format(item['value']))+'** gold coins.')
             else:
