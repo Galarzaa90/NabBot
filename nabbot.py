@@ -11,6 +11,7 @@ import datetime
 from datetime import timedelta
 import sqlite3
 import os
+import platform
 
 from login import *
 from tibia import *
@@ -167,19 +168,30 @@ def on_message(self, message):
             yield from stalk(message.channel,message.content[len(command)+2:].strip().split(","))
         if command == "restart" and message.channel.is_private and message.author.id in admin_ids:
             yield from restart(message.channel)
+        if command == "shutdown" and message.channel.is_private and message.author.id in admin_ids:
+            yield from shutdown(message.channel)
     
-    #do the default call to process_commands, if u wanna use super for this go ahead, idgaf
+    #do the default call to process_commands
     yield from self.process_commands(message)
 
 #replacing default on_message from commands.Bot class
 commands.Bot.on_message = on_message
 ########
 
-########restart
+######## Restart command
 def restart(channel):
     yield from bot.send_message(channel,'Restarting...')
     print("Restarting...")
-    os.system("restart.py")
+    if(platform.system == "Linux"):
+        os.system("restart.py")
+    else:
+        os.system("python3 restart.py")
+    quit()
+########
+
+######## Shutdown command
+def shutdown(channel):
+    yield from bot.send_message(channel,'Shutdown...')
     quit()
 ########
 
