@@ -90,7 +90,7 @@ def goof():
     global isgoof
     #after 30 secs of silence the bot will say some random shit
     #it wont say anything if it hasnt seen any msgs since it goof'd
-    if lastmessage != None and isgoof == False and mainchannel_idletime > timedelta(seconds=30):# and (not lastmessage.author.id == bot.user.id): #<< dont need this anymore
+    if lastmessage != None and isgoof == False and mainchannel_idletime > timedelta(seconds=300):# and (not lastmessage.author.id == bot.user.id): #<< dont need this anymore
         channel = getChannelByServerAndName(mainserver,mainchannel)
         yield from bot.send_message(channel,random.choice(idlemessages))
         #this im kinda worried about, it seems to work but i'm not sure if it CANT fuck up
