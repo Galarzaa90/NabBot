@@ -8,7 +8,7 @@ import math
 import random
 import sqlite3
 
-def checkGuildOnline(guildname):
+def getGuildOnline(guildname):
     ##Fetch webpage
     page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1')
     content = page.read()
@@ -41,7 +41,7 @@ def checkGuildOnline(guildname):
     
     return 'NO'
 
-def checkChar(name):
+def getPlayer(name):
     char = {'guild' : ''}
     #Fetch website
     page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(name))
@@ -138,7 +138,7 @@ class Tibia():
     def check(self,ctx,*name : str):
         """Tells you information about a character"""
         name = " ".join(name)
-        char = checkChar(name)
+        char = getPlayer(name)
         if char:
             yield from self.bot.say('**'+char['name']+'** is a level '+str(char['level'])+
             ' __'+char['vocation']+'__. '+char['pronoun']+' resides in __'+
@@ -159,7 +159,7 @@ class Tibia():
         #If it's not numeric, then it must be a char's name
         except ValueError:
             name = " ".join(param)
-            char = checkChar(name)
+            char = getPlayer(name)
             if char:
                 level = int(char['level']);
                 name = char['name'];
@@ -188,7 +188,7 @@ class Tibia():
     def guild(self,ctx,*guildname : str):
         """Checks who is online in a guild"""
         guildname = " ".join(guildname).title()
-        onlinelist = checkGuildOnline(guildname)
+        onlinelist = getGuildOnline(guildname)
         if onlinelist == 'NE':
             yield from self.bot.say('The guild '+urllib.parse.unquote_plus(guildname)+' doesn\'t exist.')
         elif onlinelist == 'NO':
