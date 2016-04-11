@@ -10,7 +10,10 @@ import time
 import datetime
 from datetime import timedelta
 import sqlite3
-from login import username, password
+import os
+
+from login import *
+from tibia import *
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix='/', description=description)
@@ -29,30 +32,26 @@ idlemessages = ["Galarzazzzzza is a nab, i know, i know, oh oh oh",
 "All hail Michu, our cat overlord.",
 "Beware of nomads, they are known to kill unsuspecting druids!"]
 
+#admin id's for hax commands
+admin_ids = ["162060569803751424","162070610556616705"]
 #main channel where the bot chats for luls
 #this is so we can keep track of idletime for this server only
 #and do timed shit in here
 mainserver = "Nab Bot"
 mainchannel = "general"
 mainchannel_idletime = timedelta(seconds=0)
-
-userlist = []
+goof_idletime = timedelta(seconds=300)
 ########
 
 @bot.event
 @asyncio.coroutine
 def on_ready():
-    global idlemessages
     bot.load_extension("tibia")
     print('Logged in as')
     print(bot.user.name)
     print(bot.user.id)
     print('------')
-    #load the userList
-    userList("load")
     #call think() when everything's ready
-    #galarzaaisanab = '<@{0.id}>'.format(getUserByName("Galarzaa"))
-    #idlemessages = [""+galarzaaisanab+" is a nab, i know, i know, oh oh oh"]
     yield from think()
 
 
@@ -90,7 +89,7 @@ def goof():
     global isgoof
     #after 30 secs of silence the bot will say some random shit
     #it wont say anything if it hasnt seen any msgs since it goof'd
-    if lastmessage != None and isgoof == False and mainchannel_idletime > timedelta(seconds=300):# and (not lastmessage.author.id == bot.user.id): #<< dont need this anymore
+    if lastmessage != None and isgoof == False and mainchannel_idletime > goof_idletime:# and (not lastmessage.author.id == bot.user.id): #<< dont need this anymore
         channel = getChannelByServerAndName(mainserver,mainchannel)
         yield from bot.send_message(channel,random.choice(idlemessages))
         #this im kinda worried about, it seems to work but i'm not sure if it CANT fuck up
@@ -164,9 +163,10 @@ def on_message(self, message):
         else:
             command = message.content[1:]
         #i want this to work only on pm
-        if command == "stalk" and message.channel.is_private:
-            print(message.content[len(command)+2:].strip())
+        if command == "stalk" and message.channel.is_private and message.author.id in admin_ids:
             yield from stalk(message.channel,message.content[len(command)+2:].strip().split(","))
+        if command == "restart" and message.channel.is_private and message.author.id in admin_ids:
+            yield from restart(message.channel)
     
     #do the default call to process_commands, if u wanna use super for this go ahead, idgaf
     yield from self.process_commands(message)
@@ -175,6 +175,13 @@ def on_message(self, message):
 commands.Bot.on_message = on_message
 ########
 
+########restart
+def restart(channel):
+    yield from bot.send_message(channel,'Restarting...')
+    print("Restarting...")
+    os.system("restart.py")
+    quit()
+########
 
 ########hidden stalk function! we will use this to make links between people and give them importance weights etc
 @asyncio.coroutine
@@ -306,17 +313,6 @@ def stalk(channel,args : str):
             yield from bot.send_message(channel,'User **@'+stalkeename.title()+'** not found in server **'+mainserver+'**.')
     else:
         yield from bot.send_message(channel,'Valid arguments for /stalk are **add**, **remove**, **weight**, **addchar**, **removechar**.')
-########
-
-########handle userList
-def userList(operation,stalkee=""):
-    #stalkeesdb = sqlite3.connect('userList.db')
-    if operation == "load":
-        print("load")
-        #stalkeesdb.execute("SELECT title, userId FROM Users WHERE name LIKE ?",(name,))
-        #result = c.fetchall()
-    elif operation == "append" and stalkee != "":
-        userlist.append(stalkee)
 ########
 
 @bot.command()
