@@ -182,11 +182,12 @@ commands.Bot.on_message = on_message
 ######## Restart command
 def restart(channel):
     yield from bot.send_message(channel,'Restarting...')
+    print("Closing NabBot")
     if(platform.system() == "Linux"):
         os.system("python3 restart.py")
     else:
         os.system("python restart.py")
-    print("Closing NabBot")
+    
     quit()
 ########
 
