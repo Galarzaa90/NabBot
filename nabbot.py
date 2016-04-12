@@ -88,8 +88,8 @@ def goof():
     global mainchannel_idletime
     global lastmessage
     global isgoof
-    #after 30 secs of silence the bot will say some random shit
-    #it wont say anything if it hasnt seen any msgs since it goof'd
+    #After some time (goof_idletime) of silence, the bot will send a random message.
+    #It won't say anything if the last message was by the bot.
     if lastmessage != None and isgoof == False and mainchannel_idletime > goof_idletime:# and (not lastmessage.author.id == bot.user.id): #<< dont need this anymore
         channel = getChannelByServerAndName(mainserver,mainchannel)
         yield from bot.send_message(channel,random.choice(idlemessages))
@@ -163,13 +163,14 @@ def on_message(self, message):
             command = message.content[1:commandEnd]
         else:
             command = message.content[1:]
-        #i want this to work only on pm
-        if command == "stalk" and message.channel.is_private and message.author.id in admin_ids:
-            yield from stalk(message.channel,message.content[len(command)+2:].strip().split(","))
-        if command == "restart" and message.channel.is_private and message.author.id in admin_ids:
-            yield from restart(message.channel)
-        if command == "shutdown" and message.channel.is_private and message.author.id in admin_ids:
-            yield from shutdown(message.channel)
+        #This commands only work via PM by Admins
+        if message.channel.is_private and message.author.id in admin_ids:
+            if command == "stalk":
+                yield from stalk(message.channel,message.content[len(command)+2:].strip().split(","))
+            if command == "restart":
+                yield from restart(message.channel)
+            if command == "shutdown":
+                yield from shutdown(message.channel)
     
     #do the default call to process_commands
     yield from self.process_commands(message)
@@ -181,17 +182,18 @@ commands.Bot.on_message = on_message
 ######## Restart command
 def restart(channel):
     yield from bot.send_message(channel,'Restarting...')
-    print("Restarting...")
     if(platform.system() == "Linux"):
         os.system("python3 restart.py")
     else:
         os.system("python restart.py")
+    print("Closing NabBot")
     quit()
 ########
 
 ######## Shutdown command
 def shutdown(channel):
     yield from bot.send_message(channel,'Shutdown...')
+    print("Closing NabBot")
     quit()
 ########
 
