@@ -182,7 +182,7 @@ commands.Bot.on_message = on_message
 def restart(channel):
     yield from bot.send_message(channel,'Restarting...')
     print("Restarting...")
-    if(platform.system == "Linux"):
+    if(platform.system() == "Linux"):
         os.system("python3 restart.py")
     else:
         os.system("python restart.py")
