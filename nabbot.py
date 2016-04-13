@@ -124,8 +124,8 @@ def getServerByName(server_name : str):
 
 ########this gets an user by its name (it only checks our main server to avoid issues with duplicate usernames)
 def getUserByName(userName):
-    global mainserver
-    server = getServerByName(mainserver)
+    global search_server
+    server = getServerByName(search_server)
     for user in server.members:
         if user.name.lower() == userName.lower():
             return user
@@ -135,8 +135,8 @@ def getUserByName(userName):
 
 ########this gets an user by its id
 def getUserById(userId):
-    global mainserver
-    server = getServerByName(mainserver)
+    global search_server
+    server = getServerByName(search_server)
     for user in server.members:
         if user.id == userId:
             return user
