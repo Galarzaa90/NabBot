@@ -1,27 +1,18 @@
 import sqlite3
+import sys
 
-# get a database connection object
-my_test_dbconn = sqlite3.connect('users.db')
-my_test_db = my_test_dbconn.cursor()
+#Get a database connection object
+conn = sqlite3.connect('users.db')
+c = conn.cursor()
 
-
-# code to create the database table
-_create_sql = """\
-DROP TABLE IF EXISTS discordUsers;
-DROP TABLE IF EXISTS tibiaChars;
-CREATE TABLE discordUsers (
-   id INTEGER NOT NULL DEFAULT 0,
-   weight INTEGER NOT NULL DEFAULT 5,
-   UNIQUE(value)
-   
-CREATE TABLE tibiaChars (
-   discordUser INTEGER NOT NULL DEFAULT 0,
-   charName TEXT NOT NULL DEFAULT '',
-   UNIQUE(value)
-);"""
-
-# create the table, dropping any previous table of same name
-my_test_db.execute("CREATE TABLE discordUsers(id INT, weight INT)")
-my_test_db.execute("CREATE TABLE tibiaChars(discordUser INT, charName TEXT)")
-my_test_dbconn.commit()
-my_test_dbconn.close()
+#If this is run with 'force' as a parameter, it drops all the tables and then creates them again
+if('force' in sys.argv):
+    c.execute("DROP TABLE IF EXISTS discordUsers")
+    c.execute("DROP TABLE IF EXISTS tibiaChars")
+    
+#Create the table if they don't exist already
+c.execute("CREATE TABLE IF NOT EXISTS discordUsers(id INT, weight INT)")
+c.execute("CREATE TABLE IF NOT EXISTS tibiaChars(discordUser INT, charName TEXT)")
+    
+conn.commit()
+conn.close()
