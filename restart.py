@@ -1,9 +1,9 @@
-import asyncio
+import time
 import os
 import platform
 
 print("Restarting in 5 seconds...")
-asyncio.sleep(5)
+time.sleep(3)
 print("Restarting...")
 
 if(platform.system() == "Linux"):
