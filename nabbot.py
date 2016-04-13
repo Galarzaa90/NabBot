@@ -44,6 +44,11 @@ mainchannel_idletime = timedelta(seconds=0)
 goof_idletime = timedelta(seconds=300)
 ########
 
+### Channels to look for users ###
+## I don't want to change the other variable cause I don't want goof messages on the main channel yet
+search_server = "Redd Alliance"
+search_channel = "general-chat"
+
 @bot.event
 @asyncio.coroutine
 def on_ready():
