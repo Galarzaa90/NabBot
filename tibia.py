@@ -9,7 +9,7 @@ import random
 import sqlite3
 
 def getGuildOnline(guildname):
-    ##Fetch webpage
+    #Fetch webpage
     page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1')
     content = page.read()
     #Check if guild exists (in a really lazy way)
@@ -46,7 +46,7 @@ def getPlayer(name):
     #Fetch website
     page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(name))
     content = page.read()
-    #Checking if character exists
+    #Check if guild exists (in a really lazy way)
     try:
         content.decode().index("Vocation:")
     except Exception:
@@ -56,7 +56,7 @@ def getPlayer(name):
     endIndex = content.decode().index("<B>Search Character</B>")
     content = content[startIndex:endIndex]
 
-   
+    #TODO: Is there a way to reduce this part?
     #Name
     m = re.search(r'Name:</td><td>([^<]+)\s',content.decode())
     if m:
@@ -133,7 +133,7 @@ class Tibia():
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.group(pass_context=True)
+    @commands.command(pass_context=True,aliases=['player','checkplayer','char'])
     @asyncio.coroutine
     def check(self,ctx,*name : str):
         """Tells you information about a character"""
@@ -147,7 +147,7 @@ class Tibia():
         else:
             yield from self.bot.say('That character doesn\'t exist.')
 
-    @commands.group(pass_context=True)
+    @commands.command(pass_context=True,aliases=['expshare','party'])
     @asyncio.coroutine
     def share(self,ctx,*param : str):
         """Shows the sharing range for that level or character"""
@@ -183,7 +183,7 @@ class Tibia():
             
         
 
-    @commands.group(pass_context=True)
+    @commands.command(pass_context=True,aliases=['guildcheck'])
     @asyncio.coroutine
     def guild(self,ctx,*guildname : str):
         """Checks who is online in a guild"""
@@ -213,7 +213,7 @@ class Tibia():
                 
             yield from self.bot.say(result)
             
-    @commands.group(pass_context=True)
+    @commands.command(pass_context=True,aliases=['checkprice','item'])
     @asyncio.coroutine
     def itemprice(self,ctx,*itemname : str):
         """Checks an item's NPC price"""
