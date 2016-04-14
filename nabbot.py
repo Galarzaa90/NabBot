@@ -1,11 +1,10 @@
 import discord
-import math
+import logging
 from discord.ext import commands
 import random
 import asyncio
 import urllib.request
 import urllib
-import re
 import time
 import datetime
 from datetime import timedelta
@@ -18,7 +17,6 @@ from tibia import *
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix='/', description=description)
-
 client = discord.Client()
 
 ########some global variables to give u cancer
@@ -46,8 +44,8 @@ goof_idletime = timedelta(seconds=300)
 
 ### Channels to look for users ###
 ## I don't want to change the other variable cause I don't want goof messages on the main channel yet
-search_server = "Redd Alliance"
-search_channel = "general-chat"
+search_server = "nezunee"
+search_channel = "general"
 
 @bot.event
 @asyncio.coroutine
@@ -355,4 +353,12 @@ def choose(*choices : str):
     yield from bot.say(random.choice(choices))
 
 
-bot.run(username, password)
+if __name__ == "__main__":
+    #Start logging
+    logger = logging.getLogger('discord')
+    logger.setLevel(logging.DEBUG)
+    handler = logging.FileHandler(filename='nabbot.log', encoding='utf-8', mode='a')
+    handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+    logger.addHandler(handler)
+    
+    bot.run(username, password)
