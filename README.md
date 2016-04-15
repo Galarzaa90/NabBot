@@ -28,4 +28,4 @@ python nabbot.py
 * **/itemprice** *itemname*: Returns the highest NPC value of an item and the who buys it
 
 
-<img src="https://cloud.githubusercontent.com/assets/12865379/14549417/86905512-0274-11e6-87f0-ccbab911c820.png">
+<img align="center" src="https://cloud.githubusercontent.com/assets/12865379/14549417/86905512-0274-11e6-87f0-ccbab911c820.png" alt="An example of the /check command">
