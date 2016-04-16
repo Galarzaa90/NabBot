@@ -54,7 +54,7 @@ levelmessages = ["Congratulations to **{0}** on reaching level {1}!",
 
 ### Channels to look for users ###
 ## I don't want to change the other variable cause I don't want goof messages on the main channel yet
-search_server = "Redd Alliance"
+search_server = "nezunee"
 search_channel = "general-chat"
 
 
@@ -289,6 +289,24 @@ def stalk(ctx,*args: str):
                     yield from bot.say('Removed **@'+target.name+'** from userList.')
                 else:
                     yield from bot.say('User **@'+target.name+'** not found in users db.')
+                    
+            ####/stalk weight, -userName-, -newWeight-
+            elif operation == "weight":
+                userdb.execute("SELECT id, weight FROM discordUsers WHERE id LIKE ?",(int(target.id),))
+                result = userdb.fetchone()
+                if(result is not None):
+                    #Nezune: hahaha this if is fucking cancer but oh well it works
+                    if len(args) < 3 or not args[2].isdigit() or (args[2].isdigit() and (int(args[2]) > 5 or int(args[2]) < 1)):
+                        yield from bot.say('Usage for **weight** is **/stalk weight, -userName-, -newWeight-**.\r\n'+
+                    'Valid weights are 1 through 5.')
+                    else:
+                        newWeight = int(args[2])
+                        userdb.execute("UPDATE discordUsers SET weight = ? WHERE id = ?",(newWeight,int(target.id),))
+                        yield from bot.say('**@'+target.name+'**\'s weight has been set to **'+str(newWeight)+'**.')
+                else:
+                    yield from bot.say('User **@'+target.name+'** not found in users db.\r\n'+
+                'Use **/stalk add, -userName-** to add this user.')
+            ####
             
             ##/stalk addchar,-username,-char-
             elif operation == "addchar":
