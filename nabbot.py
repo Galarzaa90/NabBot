@@ -293,115 +293,119 @@ def whois(ctx,*name : str):
 def stalk(ctx,*args: str):
     if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
         return
+        
     args = " ".join(args).strip().split(",")
-    if(len(args) >= 2):
-        operation = args[0].strip()
-        name = args[1].strip()
-        target = getUserByName(name)
-        #Check if target exists
-        if target is not None:
-            userdbconn = sqlite3.connect('users.db')
-            userdb = userdbconn.cursor()
-            
-            ##/stalk add,-username-
-            if operation == "add":
-                userdb.execute("SELECT id FROM discordUsers WHERE id LIKE ?",(int(target.id),))
-                result = userdb.fetchone()
-                #If user is not in database
-                if(result is None):
-                    userdb.execute("INSERT INTO discordUsers VALUES(?,?)",(int(target.id),5,))
-                    yield from bot.say('Added **@'+target.name+'** to userList, his discord userID is **'+target.id+'**.\r\n'+
-                'His importance weight has been set to the default **5**, please use **/stalk weight, -userName-, -weight-** to set it.\r\n'+
-                'Use **/stalk addchar, -userName-, -char-** to add Tibia characters to this user.')
-                else:
-                    yield from bot.say('User **@'+target.name+'** is already in users db.')
-            ##/stalk remove,-username-
-            elif operation == "remove":
-                userdb.execute("SELECT id FROM discordUsers WHERE id LIKE ?",(int(target.id),))
-                result = userdb.fetchone()
-                if(result is not None):
-                    userdb.execute("DELETE FROM discordUsers WHERE id = ?",(int(target.id),))
-                    yield from bot.say('Removed **@'+target.name+'** from userList.')
-                else:
-                    yield from bot.say('User **@'+target.name+'** not found in users db.')
-                    
-            ####/stalk weight, -userName-, -newWeight-
-            elif operation == "weight":
-                userdb.execute("SELECT id, weight FROM discordUsers WHERE id LIKE ?",(int(target.id),))
-                result = userdb.fetchone()
-                if(result is not None):
-                    #Nezune: hahaha this if is fucking cancer but oh well it works
-                    if len(args) < 3 or not args[2].isdigit() or (args[2].isdigit() and (int(args[2]) > 5 or int(args[2]) < 1)):
-                        yield from bot.say('Usage for **weight** is **/stalk weight, -userName-, -newWeight-**.\r\n'+
-                    'Valid weights are 1 through 5.')
-                    else:
-                        newWeight = int(args[2])
-                        userdb.execute("UPDATE discordUsers SET weight = ? WHERE id = ?",(newWeight,int(target.id),))
-                        yield from bot.say('**@'+target.name+'**\'s weight has been set to **'+str(newWeight)+'**.')
-                else:
-                    yield from bot.say('User **@'+target.name+'** not found in users db.\r\n'+
-                'Use **/stalk add, -userName-** to add this user.')
-            ####
-            
-            ##/stalk addchar,-username,-char-
-            elif operation == "addchar":
-                userdb.execute("SELECT id, weight FROM discordUsers WHERE id LIKE ?",(int(target.id),))
-                result = userdb.fetchone()
-                if(result is not None):
-                    if len(args) < 3:
-                        yield from bot.say('Usage for **addchar** is **/stalk addchar, -userName-, -char-**.')
-                    else:
-                        charName = str(args[2]).title()
-                        userdb.execute("SELECT discordUser, charName FROM tibiaChars WHERE charName LIKE ?",(charName,))
-                        result = userdb.fetchone()
-                        if(result is None):
-                            userdb.execute("INSERT INTO tibiaChars VALUES(?,?,?)",(int(target.id),charName,-1,))
-                            yield from bot.say('**'+charName+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
-                        'Use **/stalk removechar, -userName-, -char-** to remove Tibia chars from an user.')
-                        else:
-                            charOwner = getUserById(str(result[0]))
-                            if charOwner is not None:
-                                yield from bot.say('Tibia character **'+charName+'** is already assigned to user **@'+charOwner.name+'**.')
-                            else:
-                                #the old char owner doesnt exist any more for some reason, so just assign it to this new user
-                                userdb.execute("UPDATE tibiaChars SET discordUser = ? WHERE charName = ?",(int(target.id),charName,))
-                                yield from bot.say('**'+charName+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
-                            'Use **/stalk removechar, -userName-, -char-** to remove Tibia chars from an user.')
-                else:
-                    yield from bot.say('User **@'+target.name+'** not found in users db.\r\n'+
-                    'Use **/stalk add, -userName-** to add this user.')
-                    
-            ##/stalk removechar,-username-,-char-
-            elif operation == "removechar":
-                userdb.execute("SELECT id, weight FROM discordUsers WHERE id LIKE ?",(int(target.id),))
-                result = userdb.fetchone()
-                if(result is not None):
-                    if len(args) < 3:
-                        yield from bot.say('Usage for **removechar** is **/stalk removechar, -userName-, -char-**.')
-                    else:
-                        charName = str(args[2]).title()
-                        userdb.execute("SELECT discordUser, charName FROM tibiaChars WHERE discordUser LIKE ? AND charName LIKE ?",(int(target.id),charName,))
-                        result = userdb.fetchone()
-                        if(result is not None):
-                            userdb.execute("DELETE FROM tibiaChars WHERE discordUser LIKE ? AND charName LIKE ?",(int(target.id),charName,))
-                            yield from bot.say('**'+charName+'** has been removed from **@'+target.name+'**\'s Tibia character list.')
-                        else:
-                            yield from bot.say('**'+charName+'** is not in **@'+target.name+'**\'s Tibia character list.')
-                else:
-                    yield from bot.say('User **@'+target.name+'** not found in users db.\r\n'+
-                'Use **/stalk add, -userName-** to add this user.')
-                
-            ####unknown operation
-            else:
-                yield from bot.say('Unknown operation for /stalk: **'+operation+'**')
-            ####
-            
-            userdbconn.commit()
-            userdbconn.close()
-        else:
-            yield from bot.say('User **@'+name.title()+'** not found in server **'+mainserver+'**.')
-    else:
+    if(len(args) < 2):
         yield from bot.say('Valid arguments for /stalk are **add**, **remove**, **weight**, **addchar**, **removechar**.')
+        return
+       
+    operation = args[0].strip()
+    name = args[1].strip()
+    target = getUserByName(name)
+       
+    #If the user is not on the server
+    if target is None:
+        yield from bot.say('User **@'+name.title()+'** not found in server **'+mainserver+'**.')
+        return
+        
+    userdbconn = sqlite3.connect('users.db')
+    userdb = userdbconn.cursor()
+    
+    ##/stalk add,-username-
+    if operation == "add":
+        userdb.execute("SELECT id FROM discordUsers WHERE id LIKE ?",(int(target.id),))
+        result = userdb.fetchone()
+        #If user is not in database
+        if(result is None):
+            userdb.execute("INSERT INTO discordUsers VALUES(?,?)",(int(target.id),5,))
+            yield from bot.say('Added **@'+target.name+'** to userList, his discord userID is **'+target.id+'**.\r\n'+
+        'His importance weight has been set to the default **5**, please use **/stalk weight, -userName-, -weight-** to set it.\r\n'+
+        'Use **/stalk addchar, -userName-, -char-** to add Tibia characters to this user.')
+        else:
+            yield from bot.say('User **@'+target.name+'** is already in users db.')
+    ##/stalk remove,-username-
+    elif operation == "remove":
+        userdb.execute("SELECT id FROM discordUsers WHERE id LIKE ?",(int(target.id),))
+        result = userdb.fetchone()
+        if(result is not None):
+            userdb.execute("DELETE FROM discordUsers WHERE id = ?",(int(target.id),))
+            yield from bot.say('Removed **@'+target.name+'** from userList.')
+        else:
+            yield from bot.say('User **@'+target.name+'** not found in users db.')
+            
+    ####/stalk weight, -userName-, -newWeight-
+    elif operation == "weight":
+        userdb.execute("SELECT id, weight FROM discordUsers WHERE id LIKE ?",(int(target.id),))
+        result = userdb.fetchone()
+        if(result is not None):
+            #Nezune: hahaha this if is fucking cancer but oh well it works
+            if len(args) < 3 or not args[2].isdigit() or (args[2].isdigit() and (int(args[2]) > 5 or int(args[2]) < 1)):
+                yield from bot.say('Usage for **weight** is **/stalk weight, -userName-, -newWeight-**.\r\n'+
+            'Valid weights are 1 through 5.')
+            else:
+                newWeight = int(args[2])
+                userdb.execute("UPDATE discordUsers SET weight = ? WHERE id = ?",(newWeight,int(target.id),))
+                yield from bot.say('**@'+target.name+'**\'s weight has been set to **'+str(newWeight)+'**.')
+        else:
+            yield from bot.say('User **@'+target.name+'** not found in users db.\r\n'+
+        'Use **/stalk add, -userName-** to add this user.')
+    ####
+    
+    ##/stalk addchar,-username,-char-
+    elif operation == "addchar":
+        userdb.execute("SELECT id, weight FROM discordUsers WHERE id LIKE ?",(int(target.id),))
+        result = userdb.fetchone()
+        if(result is not None):
+            if len(args) < 3:
+                yield from bot.say('Usage for **addchar** is **/stalk addchar, -userName-, -char-**.')
+            else:
+                charName = str(args[2]).title()
+                userdb.execute("SELECT discordUser, charName FROM tibiaChars WHERE charName LIKE ?",(charName,))
+                result = userdb.fetchone()
+                if(result is None):
+                    userdb.execute("INSERT INTO tibiaChars VALUES(?,?,?)",(int(target.id),charName,-1,))
+                    yield from bot.say('**'+charName+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
+                'Use **/stalk removechar, -userName-, -char-** to remove Tibia chars from an user.')
+                else:
+                    charOwner = getUserById(str(result[0]))
+                    if charOwner is not None:
+                        yield from bot.say('Tibia character **'+charName+'** is already assigned to user **@'+charOwner.name+'**.')
+                    else:
+                        #the old char owner doesnt exist any more for some reason, so just assign it to this new user
+                        userdb.execute("UPDATE tibiaChars SET discordUser = ? WHERE charName = ?",(int(target.id),charName,))
+                        yield from bot.say('**'+charName+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
+                    'Use **/stalk removechar, -userName-, -char-** to remove Tibia chars from an user.')
+        else:
+            yield from bot.say('User **@'+target.name+'** not found in users db.\r\n'+
+            'Use **/stalk add, -userName-** to add this user.')
+            
+    ##/stalk removechar,-username-,-char-
+    elif operation == "removechar":
+        userdb.execute("SELECT id, weight FROM discordUsers WHERE id LIKE ?",(int(target.id),))
+        result = userdb.fetchone()
+        if(result is not None):
+            if len(args) < 3:
+                yield from bot.say('Usage for **removechar** is **/stalk removechar, -userName-, -char-**.')
+            else:
+                charName = str(args[2]).title()
+                userdb.execute("SELECT discordUser, charName FROM tibiaChars WHERE discordUser LIKE ? AND charName LIKE ?",(int(target.id),charName,))
+                result = userdb.fetchone()
+                if(result is not None):
+                    userdb.execute("DELETE FROM tibiaChars WHERE discordUser LIKE ? AND charName LIKE ?",(int(target.id),charName,))
+                    yield from bot.say('**'+charName+'** has been removed from **@'+target.name+'**\'s Tibia character list.')
+                else:
+                    yield from bot.say('**'+charName+'** is not in **@'+target.name+'**\'s Tibia character list.')
+        else:
+            yield from bot.say('User **@'+target.name+'** not found in users db.\r\n'+
+        'Use **/stalk add, -userName-** to add this user.')
+        
+    ####unknown operation
+    else:
+        yield from bot.say('Unknown operation for /stalk: **'+operation+'**')
+    ####
+    
+    userdbconn.commit()
+    userdbconn.close()
         
         
 ######## Restart command
