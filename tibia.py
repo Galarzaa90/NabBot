@@ -7,6 +7,7 @@ import re
 import math
 import random
 import sqlite3
+from nabbot import admin_ids
 
 def getGuildOnline(guildname):
     #Fetch webpage
@@ -143,7 +144,7 @@ class Tibia():
             yield from self.bot.say('**'+char['name']+'** is a level '+str(char['level'])+
             ' __'+char['vocation']+'__. '+char['pronoun']+' resides in __'+
             char['residence']+'__, in the world __'+ char['world']+'__.\n'+
-            ((char['pronoun']+' is a '+char['rank']+' of the **'+char['guild']+'**.') if (char['guild']) else ''))
+            ((char['pronoun']+' is '+char['rank']+' of the **'+char['guild']+'**.') if (char['guild']) else ''))
         else:
             yield from self.bot.say('That character doesn\'t exist.')
 
@@ -213,6 +214,7 @@ class Tibia():
                 
             yield from self.bot.say(result)
             
+            
     @commands.command(pass_context=True,aliases=['checkprice','item'])
     @asyncio.coroutine
     def itemprice(self,ctx,*itemname : str):
@@ -236,6 +238,7 @@ class Tibia():
                 yield from self.bot.say('**'+item['name']+'** can\'t be sold to NPCs.')
         else:
             yield from self.bot.say("I couldn't find an item with that name.")
+            
 
 def setup(bot):
     bot.add_cog(Tibia(bot))
