@@ -251,7 +251,37 @@ def roll(dice : str):
 def choose(*choices : str):
     """Chooses between multiple choices."""
     yield from bot.say(random.choice(choices))
-
+    
+@bot.command(pass_context=True)
+@asyncio.coroutine
+def whois(ctx,*name : str):
+    """Tells you the characters of a user"""
+    name = " ".join(name).strip()
+    target = getUserByName(name)
+    if (target is None):
+        yield from bot.say("I don't see anyone with that name.")
+        return
+    if(target.id == bot.user.id):
+        yield from bot.say("*Beep boop beep boop*. I'm just a bot!")
+        return
+        
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute("SELECT charName FROM tibiaChars WHERE discordUser = ? ORDER BY lastLevel DESC",(target.id,))
+    chars = []
+    for row in c:
+        chars.append(row[0])
+    c.close()
+    if(len(chars) <= 0):
+        yield from bot.say("I don't know who that is...")
+        return
+        
+    #TODO: Fix possesive if user ends with s
+    yield from bot.say("**{0}**'s character{1}: {2}.".format(target.name,"s are" if len(chars) > 1 else " is", ", ".join(chars)))
+    
+    
+##### Admin only commands #### 
+   
 ######## Stalk command
 @bot.command(pass_context=True,hidden=True)
 @asyncio.coroutine
