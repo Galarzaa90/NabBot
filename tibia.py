@@ -7,7 +7,6 @@ import re
 import math
 import random
 import sqlite3
-from nabbot import admin_ids
 
 def getGuildOnline(guildname):
     #Fetch webpage
