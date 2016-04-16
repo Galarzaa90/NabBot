@@ -54,7 +54,7 @@ levelmessages = ["Congratulations to **{0}** on reaching level {1}!",
 
 ### Channels to look for users ###
 ## I don't want to change the other variable cause I don't want goof messages on the main channel yet
-search_server = "nezunee"
+search_server = "Redd Alliance"
 search_channel = "general-chat"
 
 
