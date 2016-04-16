@@ -185,12 +185,15 @@ def getServerByName(server_name : str):
     for server in bot.servers:
         if server.name == server_name:
             return server
+    return None
 ########
 
 ########this gets an user by its name (it only checks our main server to avoid issues with duplicate usernames)
 def getUserByName(userName):
     global search_server
     server = getServerByName(search_server)
+    if server is None:
+        return None
     for user in server.members:
         if user.name.lower() == userName.lower():
             return user
@@ -202,6 +205,8 @@ def getUserByName(userName):
 def getUserById(userId):
     global search_server
     server = getServerByName(search_server)
+    if server is None:
+        return None
     for user in server.members:
         if user.id == userId:
             return user
