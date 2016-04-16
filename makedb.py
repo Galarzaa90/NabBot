@@ -12,7 +12,7 @@ if('force' in sys.argv):
     
 #Create the table if they don't exist already
 c.execute("CREATE TABLE IF NOT EXISTS discordUsers(id INT, weight INT)")
-c.execute("CREATE TABLE IF NOT EXISTS tibiaChars(discordUser INT, charName TEXT)")
+c.execute("CREATE TABLE IF NOT EXISTS tibiaChars(discordUser INT, charName TEXT, lastLevel INT)")
     
 conn.commit()
 conn.close()

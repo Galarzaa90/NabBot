@@ -23,7 +23,7 @@ client = discord.Client()
 #lastmessage stuff
 lastmessage = None
 lastmessagetime = datetime.datetime.now()
-#a boolean to know if a goofing msg was the last thing we saw
+###a boolean to know if a goofing msg was the last thing we saw
 isgoof = False
 idlemessages = ["Galarzazzzzza is a nab, i know, i know, oh oh oh",
 "Did you know 9 out of 10 giant spiders prefer nabchow?",
@@ -31,15 +31,25 @@ idlemessages = ["Galarzazzzzza is a nab, i know, i know, oh oh oh",
 "All hail Michu, our cat overlord.",
 "Beware of nomads, they are known to kill unsuspecting druids!"]
 
-#admin id's for hax commands
+###admin id's for hax commands
 admin_ids = ["162060569803751424","162070610556616705"]
-#main channel where the bot chats for luls
-#this is so we can keep track of idletime for this server only
-#and do timed shit in here
+###main channel where the bot chats for luls
+##this is so we can keep track of idletime for this server only
+##and do timed shit in here
 mainserver = "Nab Bot"
 mainchannel = "general"
 mainchannel_idletime = timedelta(seconds=0)
 goof_idletime = timedelta(seconds=300)
+###the list of servers to check for with getOnline
+tibiaservers = ["Fidera"]
+###message list for announceLevel
+levelmessages = ["Congratulations to **{0}** on reaching level {1}!",
+"**{0}** is level {1} now, congrats!",
+"**{0}** has reached level {1}, die and lose it, noob!",
+"Well, look at **{0}** with his new fancy level {1}.",
+"{1}, **{0}** is level {1}, watch out world...",
+"**{0}** is level {1} now. Noice.",
+"**{0}** has finally made it to level {1}, yay!"]
 ########
 
 ### Channels to look for users ###
@@ -55,10 +65,10 @@ def on_ready():
     print(bot.user.name)
     print(bot.user.id)
     print('------')
-    #call think() when everything's ready
-    yield from think()
-
-
+    #start up think() when everything's ready
+    asyncio.ensure_future(think())
+    #start up getOnline()
+    asyncio.ensure_future(getOnline())
 ########a think function!
 @asyncio.coroutine
 def think():
@@ -70,12 +80,66 @@ def think():
         #example function goof() will say some random shit after 30 secs of idle time
         yield from goof()
         
-        #do any magic we want here
-        #(this is a good spot to have a function that periodically crawls online lists and checks for levelups etc)
+        ##do any magic we want here
+        #anything that needs to use a sleep() should probably be moved to its own coroutine though.
         
         
         #sleep for a bit and then loop back
         yield from asyncio.sleep(5)
+########
+
+########getOnline
+@asyncio.coroutine
+def getOnline():
+    #the first run flag is here to avoid congratulating a bunch of people when the bots been offline for a while
+    firstRun = True
+    while 1:
+        for server in tibiaservers:
+            userdbconn = sqlite3.connect('users.db')
+            userdb = userdbconn.cursor()
+            
+            page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=worlds&world='+server)
+            content = page.read()
+            
+            startIndex = content.decode().index('Vocation&#160;&#160;')
+            endIndex = content.decode().index('Search Character')
+            content = content[startIndex:endIndex]
+            
+            
+            regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td>'
+            pattern = re.compile(regex_members,re.MULTILINE+re.S)
+
+            m = re.findall(pattern,content.decode())
+            online_list = [];
+            #Check if list is empty
+            if m:
+                #Building dictionary list from online players
+                for (name, level) in m:
+                    name = urllib.parse.unquote_plus(name)
+                    online_list.append({'name' : name.title(), 'level' : int(level)})
+                
+                for character in online_list:
+                    userdb.execute("SELECT charName, lastLevel FROM tibiaChars WHERE charName LIKE ?",(character['name'],))
+                    result = userdb.fetchone()
+                    if(result is not None):
+                        if result[1] != character['level']:
+                            userdb.execute("UPDATE tibiaChars SET lastLevel = ? WHERE charName = ?",(character['level'],character['name'],))
+                            if not firstRun and result[1] != -1:
+                                yield from announceLevel(result[0],character['level'])
+            userdbconn.commit()
+            userdbconn.close()
+            #wait 5 seconds in between server searches, we could probably reduce this to 2 seconds or something, i just didnt wanna spam
+            yield from asyncio.sleep(5)
+        firstRun = False
+########
+
+########announceLevel
+@asyncio.coroutine
+def announceLevel(charName,charLevel):
+    global mainserver
+    global mainchannel
+    channel = getChannelByServerAndName(mainserver,mainchannel)
+    yield from bot.send_message(channel,random.choice(levelmessages).format(charName,str(charLevel)))
 ########
 
 ########update idle time, dunno if u wanna use a function for this, just seemed less ugly
@@ -96,9 +160,11 @@ def goof():
     if lastmessage != None and isgoof == False and mainchannel_idletime > goof_idletime:# and (not lastmessage.author.id == bot.user.id): #<< dont need this anymore
         channel = getChannelByServerAndName(mainserver,mainchannel)
         yield from bot.send_message(channel,random.choice(idlemessages))
-        #this im kinda worried about, it seems to work but i'm not sure if it CANT fuck up
+        ##this im kinda worried about, it seems to work but i'm not sure if it CANT fuck up
         #afaik, it shouldnt always be seeing its own msg instantly and if yield from means "dont wait for this to be done" then sometimes the isgoof should be set to true and then immediatly set back to false?
         #worked in all my tests though, so we'll see. worse case scenario it sometimes doesnt realize and goofs twice in a row
+        ##in fact heres an ugly workaround: wait a few seconds before setting isgoof!
+        yield from asyncio.sleep(2)
         isgoof = True
 
 ########i cant use bot.say in think() because theres no context here for the bot to know what channel its supposed to respond to!
@@ -269,7 +335,7 @@ def stalk(channel,args : str):
                         userdb.execute("SELECT discordUser, charName FROM tibiaChars WHERE charName LIKE ?",(charName,))
                         result = userdb.fetchone()
                         if(result is None):
-                            userdb.execute("INSERT INTO tibiaChars VALUES(?,?)",(int(stalkee.id),charName,))
+                            userdb.execute("INSERT INTO tibiaChars VALUES(?,?,?)",(int(stalkee.id),charName,-1,))
                             yield from bot.send_message(channel,'**'+charName+'** has been added to **@'+stalkee.name+'**\'s Tibia character list.\r\n'+
                         'Use **/stalk removechar, -userName-, -char-** to remove Tibia chars from an user.')
                         else:
