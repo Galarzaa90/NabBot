@@ -37,7 +37,7 @@ admin_ids = ["162060569803751424","162070610556616705"]
 ##this is so we can keep track of idletime for this server only
 ##and do timed shit in here
 mainserver = "Nab Bot"
-mainchannel = "general"
+mainchannel = "general-chat"
 mainchannel_idletime = timedelta(seconds=0)
 goof_idletime = timedelta(seconds=300)
 ###the list of servers to check for with getOnline
@@ -126,7 +126,7 @@ def getDeaths():
                 except Exception:
                     continue
                 startIndex = content.decode().index("<b>Character Deaths</b>")
-                endIndex = content.decode().index("<b>Account Information</b>")
+                endIndex = content.decode().index("<B>Search Character</B>")
                 content = content[startIndex:endIndex]
 
                 regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
