@@ -150,12 +150,16 @@ class Tibia():
         name = " ".join(name)
         char = getPlayer(name)
         if char:
-            yield from self.bot.say('**'+char['name']+'** is a level '+str(char['level'])+
-            ' __'+char['vocation']+'__. '+char['pronoun']+' resides in __'+
-            char['residence']+'__, in the world __'+ char['world']+'__.\n'+
-            ((char['pronoun']+' is '+char['rank']+' of the **'+char['guild']+'**.') if (char['guild']) else ''))
+            replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}"
+            guildF = "\n{0} is __{1}__ of the **{2}**."
+            if(char['guild']):
+                guild = guildF.format(char['pronoun'],char['rank'],char['guild'])
+            else:
+                guild = ""
+            reply = replyF.format(char['pronoun'],char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild)
+            yield from self.bot.say(reply)
         else:
-            yield from self.bot.say('That character doesn\'t exist.')
+            yield from self.bot.say("That character doesn't exist.")
 
     @commands.command(pass_context=True,aliases=['expshare','party'])
     @asyncio.coroutine
@@ -241,8 +245,9 @@ class Tibia():
                     city = 'Blue Djinn'
                 #TODO: Replace Rashid's "varies" with today's city
                 #TODO: If Yasir's is the top seller, also display the alternate seller
-                yield from self.bot.say('**'+item['name']+'** can be sold to **'
-                +item['npc']+'** ('+city+') for **'+('{0:,}'.format(item['value']))+'** gold coins.')
+                replyF = "**{0}** can be sold to **{1}** ({2}) for {3:,} gold coins."
+                reply = replyF.format(item['name'],item['npc'],city,item['value'])
+                yield from self.bot.say(reply)
             else:
                 yield from self.bot.say('**'+item['name']+'** can\'t be sold to NPCs.')
         else:
