@@ -36,7 +36,7 @@ admin_ids = ["162060569803751424","162070610556616705"]
 ###main channel where the bot chats for luls
 ##this is so we can keep track of idletime for this server only
 ##and do timed shit in here
-mainserver = "Nab Bot"
+mainserver = "Redd Alliance"
 mainchannel = "general-chat"
 mainchannel_idletime = timedelta(seconds=0)
 goof_idletime = timedelta(seconds=300)
@@ -91,7 +91,7 @@ def think():
         updateChannelIdleTime()
         
         #example function goof() will say some random shit after 30 secs of idle time
-        yield from goof()
+        #yield from goof()
         
         ##do any magic we want here
         #anything that needs to use a sleep() should probably be moved to its own coroutine though.
@@ -528,6 +528,7 @@ def restart(ctx):
         return
     yield from bot.say('Restarting...')
     print("Closing NabBot")
+    bot.logout()
     if(platform.system() == "Linux"):
         os.system("python3 restart.py")
     else:
