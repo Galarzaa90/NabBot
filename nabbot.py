@@ -50,6 +50,18 @@ levelmessages = ["Congratulations to **{0}** on reaching level {1}!",
 "{1}, **{0}** is level {1}, watch out world...",
 "**{0}** is level {1} now. Noice.",
 "**{0}** has finally made it to level {1}, yay!"]
+###message list for announceDeath (charName=0,deathTime=1,deathLevel=2,deathKiller=3,he/she=4,his/her=5,charName in full caps=6)
+##deaths by monster
+deathmessages_monster = ["RIP **{0}** ({2}), you lived like you died, inside {3}",
+"**{0}** ({2}) was just eaten by {3}. Yum.",
+"Silly **{0}** ({2}), I warned you not to play with {3}!",
+"{3} killed {0} at level {2}, shame "+str(chr(0x0001f514))+" shame "+str(chr(0x0001f514))+" shame "+str(chr(0x0001f514)),
+"**{0}** ({2}) is no more! {4} has ceased to be! {4}'s expired and gone to meet {5} maker! {4}'s a stiff! Bereft of life, {4} rests in peace! If {4} hadn't respawned {4}'d be pushing up the daisies! {5} metabolic processes are now history! {4}'s off the server! {4}'s kicked the bucket, {4}'s shuffled off {5} mortal coil, kissed {3}'s butt, run down the curtain and joined the bleeding choir invisible!! THIS IS AN EX-**{6}**",
+"RIP **{0}** ({2}), we hardly knew you! (That {3} got to know you pretty well though "+str(chr(0x0001f609))+")"]
+##deaths by player
+deathmessages_player = ["**{0}** ({2}) got rekt! **{3}** ish pekay!",
+"HALP **{3}** is going around killing innocent **{0}** ({2})!",
+"Next time stay away from **{3}**, **{0}** ({2})"]
 ########
 
 ### Channels to look for users ###
@@ -66,10 +78,10 @@ def on_ready():
     print(bot.user.name)
     print(bot.user.id)
     print('------')
-    #start up think() when everything's ready
-    asyncio.ensure_future(think())
-    #start up getOnline()
-    asyncio.ensure_future(getOnline())
+    #start up async tasks
+    asyncio.async(think())
+    asyncio.async(getDeaths())
+    asyncio.async(getOnline())
 ########a think function!
 @asyncio.coroutine
 def think():
@@ -89,6 +101,96 @@ def think():
         yield from asyncio.sleep(5)
 ########
 
+########getDeaths
+@asyncio.coroutine
+def getDeaths():
+    #the first run flag is here to avoid trolling a bunch of people when the bots been offline for a while
+    firstRun = True
+    while 1:
+        userdbconn = sqlite3.connect('users.db')
+        userdb = userdbconn.cursor()
+        userdb.execute("SELECT charName, lastDeathTime FROM tibiaChars")
+        result = userdb.fetchall()
+        if(result is not None and len(result) > 0):
+            for character in result:
+                content = ""
+                while content == "":
+                    try:
+                        page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(character[0]))
+                        content = page.read()
+                    except Exception:
+                        yield from asyncio.sleep(2)
+
+                try:
+                    content.decode().index("<b>Character Deaths</b>")
+                except Exception:
+                    continue
+                startIndex = content.decode().index("<b>Character Deaths</b>")
+                endIndex = content.decode().index("<b>Account Information</b>")
+                content = content[startIndex:endIndex]
+
+                regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
+                pattern = re.compile(regex_deaths,re.MULTILINE+re.S)
+                m = re.search(pattern,content.decode())
+                if m:
+                    deathTime = ""
+                    deathLevel = ""
+                    deathKiller = ""
+                    deathByPlayer = False
+                    regex_deathtime = r'(\w+).+?;(\d+).+?;(\d+).+?;(\d+):(\d+):(\d+)'
+                    pattern = re.compile(regex_deathtime,re.MULTILINE+re.S)
+                    m_deathtime = re.search(pattern,m.group(1))
+                    
+                    if m_deathtime:
+                        deathTime = "{0} {1} {2} {3}:{4}:{5}".format(m_deathtime.group(1),m_deathtime.group(2),m_deathtime.group(3),m_deathtime.group(4),m_deathtime.group(5),m_deathtime.group(6))
+                     
+                    if m.group(2).find("Died") != -1:
+                        regex_deathinfo_monster = r'Level (\d+) by ([^.]+)'
+                        pattern = re.compile(regex_deathinfo_monster,re.MULTILINE+re.S)
+                        m_deathinfo_monster = re.search(pattern,m.group(2))
+                        if m_deathinfo_monster:
+                            deathLevel = m_deathinfo_monster.group(1)
+                            deathKiller = m_deathinfo_monster.group(2)
+                    else:
+                        regex_deathinfo_player = r'Level (\d+) by .+?name=([^"]+)'
+                        pattern = re.compile(regex_deathinfo_player,re.MULTILINE+re.S)
+                        m_deathinfo_player = re.search(pattern,m.group(2))
+                        if m_deathinfo_player:
+                            deathLevel = m_deathinfo_player.group(1)
+                            deathKiller = m_deathinfo_player.group(2).replace('+',' ')
+                            deathByPlayer = True
+                    
+                    if character[1] != deathTime:
+                        userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName = ?",(deathTime,character[0],))
+                        if not firstRun:
+                            yield from announceDeath(character[0],deathTime,deathLevel,deathKiller,deathByPlayer)
+                        userdbconn.commit()
+                yield from asyncio.sleep(2)
+        userdbconn.close()
+        firstRun = False
+########
+
+########announceDeath
+@asyncio.coroutine
+def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
+    global mainserver
+    global mainchannel
+    channel = getChannelByServerAndName(mainserver,mainchannel)
+    char = getPlayer(charName)
+    pronoun1 = "he"
+    pronoun2 = "his"
+    if char and char['pronoun'] == "she":
+        pronoun1 = "she"
+        pronoun1 = "her"
+        
+    message = ""
+    if deathByPlayer:
+        message = random.choice(deathmessages_player).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2,charName.upper())
+    else:
+        message = random.choice(deathmessages_monster).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2,charName.upper())
+    yield from bot.send_message(channel,message[:1].upper()+message[1:])
+########
+
 ########getOnline
 @asyncio.coroutine
 def getOnline():
@@ -99,8 +201,18 @@ def getOnline():
             userdbconn = sqlite3.connect('users.db')
             userdb = userdbconn.cursor()
             
-            page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=worlds&world='+server)
-            content = page.read()
+            content = ""
+            while content == "":
+                try:
+                    page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=worlds&world='+server)
+                    content = page.read()
+                except Exception:
+                    yield from asyncio.sleep(2)
+            
+            try:
+                content.decode().index("Vocation&#160;&#160;")
+            except Exception:
+                continue
             
             startIndex = content.decode().index('Vocation&#160;&#160;')
             endIndex = content.decode().index('Search Character')
@@ -363,7 +475,7 @@ def stalk(ctx,*args: str):
                 userdb.execute("SELECT discordUser, charName FROM tibiaChars WHERE charName LIKE ?",(charName,))
                 result = userdb.fetchone()
                 if(result is None):
-                    userdb.execute("INSERT INTO tibiaChars VALUES(?,?,?)",(int(target.id),charName,-1,))
+                    userdb.execute("INSERT INTO tibiaChars VALUES(?,?,?,?)",(int(target.id),charName,-1,None,))
                     yield from bot.say('**'+charName+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
                 'Use **/stalk removechar, -userName-, -char-** to remove Tibia chars from an user.')
                 else:

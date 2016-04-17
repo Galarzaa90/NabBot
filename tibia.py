@@ -10,8 +10,13 @@ import sqlite3
 
 def getGuildOnline(guildname):
     #Fetch webpage
-    page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1')
-    content = page.read()
+    content = ""
+    while content == "":
+        try:
+            page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1')
+            content = page.read()
+        except Exception:
+            pass
     #Check if guild exists (in a really lazy way)
     try:
         content.decode().index("Information")
@@ -44,8 +49,13 @@ def getGuildOnline(guildname):
 def getPlayer(name):
     char = {'guild' : ''}
     #Fetch website
-    page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(name))
-    content = page.read()
+    content = ""
+    while content == "":
+        try:
+            page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(name))
+            content = page.read()
+        except Exception:
+            pass
     #Check if guild exists (in a really lazy way)
     try:
         content.decode().index("Vocation:")
