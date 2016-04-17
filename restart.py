@@ -2,7 +2,7 @@ import time
 import os
 import platform
 
-print("Restarting in 5 seconds...")
+print("Restarting in 3 seconds...")
 time.sleep(3)
 print("Restarting...")
 
