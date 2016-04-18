@@ -9,6 +9,101 @@ import random
 import sqlite3
 from datetime import date
 
+
+def getPlayerDeaths(player):
+    deathList = []
+    content = ""
+    retry = 0
+    while content == "" and retry < 5:
+        try:
+            page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(player))
+            content = page.read()
+        except Exception:
+            retry=retry+1
+    
+    if content == "":
+        print("Error in getPlayerDeaths("+player+") opening url "+'https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(player))
+        return deathList
+
+    try:
+        content.decode().index("<b>Character Deaths</b>")
+    except Exception:
+        return deathList
+    startIndex = content.decode().index("<b>Character Deaths</b>")
+    endIndex = content.decode().index("<B>Search Character</B>")
+    content = content[startIndex:endIndex]
+
+    regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
+    pattern = re.compile(regex_deaths,re.MULTILINE+re.S)
+    m = re.search(pattern,content.decode())
+    if m:
+        deathTime = ""
+        deathLevel = ""
+        deathKiller = ""
+        deathByPlayer = False
+        regex_deathtime = r'(\w+).+?;(\d+).+?;(\d+).+?;(\d+):(\d+):(\d+)'
+        pattern = re.compile(regex_deathtime,re.MULTILINE+re.S)
+        m_deathtime = re.search(pattern,m.group(1))
+        
+        if m_deathtime:
+            deathTime = "{0} {1} {2} {3}:{4}:{5}".format(m_deathtime.group(1),m_deathtime.group(2),m_deathtime.group(3),m_deathtime.group(4),m_deathtime.group(5),m_deathtime.group(6))
+         
+        if m.group(2).find("Died") != -1:
+            regex_deathinfo_monster = r'Level (\d+) by ([^.]+)'
+            pattern = re.compile(regex_deathinfo_monster,re.MULTILINE+re.S)
+            m_deathinfo_monster = re.search(pattern,m.group(2))
+            if m_deathinfo_monster:
+                deathLevel = m_deathinfo_monster.group(1)
+                deathKiller = m_deathinfo_monster.group(2)
+        else:
+            regex_deathinfo_player = r'Level (\d+) by .+?name=([^"]+)'
+            pattern = re.compile(regex_deathinfo_player,re.MULTILINE+re.S)
+            m_deathinfo_player = re.search(pattern,m.group(2))
+            if m_deathinfo_player:
+                deathLevel = m_deathinfo_player.group(1)
+                deathKiller = urllib.parse.unquote_plus(m_deathinfo_player.group(2))
+                deathByPlayer = True
+
+        deathList.append({'time': deathTime, 'level' : deathLevel, 'killer' : deathKiller, 'byPlayer' : deathByPlayer})
+    return deathList
+
+def getServerOnline(server):
+    onlineList = []
+    content = ""
+    retry = 0
+    while content == "" and retry < 5:
+        try:
+            page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=worlds&world='+server)
+            content = page.read()
+        except Exception:
+            retry=retry+1
+    
+    if content == "":
+        print("Error in getServerOnline("+server+") opening url "+'https://secure.tibia.com/community/?subtopic=worlds&world='+server)
+        return onlineList
+    
+    try:
+        content.decode().index("Vocation&#160;&#160;")
+    except Exception:
+        return onlineList
+    
+    startIndex = content.decode().index('Vocation&#160;&#160;')
+    endIndex = content.decode().index('Search Character')
+    content = content[startIndex:endIndex]
+    
+    
+    regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td>'
+    pattern = re.compile(regex_members,re.MULTILINE+re.S)
+
+    m = re.findall(pattern,content.decode())
+    #Check if list is empty
+    if m:
+        #Building dictionary list from online players
+        for (name, level) in m:
+            name = urllib.parse.unquote_plus(name)
+            onlineList.append({'name' : name.title(), 'level' : int(level)})
+    return onlineList
+
 def getGuildOnline(guildname):
     #Fetch webpage
     content = ""
@@ -151,6 +246,10 @@ class Tibia():
         name = " ".join(name)
         char = getPlayer(name)
         if char:
+
+
+
+
             replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}"
             guildF = "\n{0} is __{1}__ of the **{2}**."
             if(char['guild']):
@@ -244,10 +343,13 @@ class Tibia():
                     city = 'Green Djinn'
                 elif(item['npc'] == 'Nah\'Bob' or item['npc'] == 'Haroun'):
                     city = 'Blue Djinn'
+
                 #Show the city where rashid is today
                 elif(item['npc'] == 'Rashid'):
                     city = ["Svargrond", "Liberty Bay", "Port Hope", "Ankrahmun", "Darashia", "Edron", "Carlin"][date.today().weekday()]
                 #TODO: If Yasir's is the top seller, also display the alternate seller
+
+
                 replyF = "**{0}** can be sold to **{1}** ({2}) for {3:,} gold coins."
                 reply = replyF.format(item['name'],item['npc'],city,item['value'])
                 yield from self.bot.say(reply)

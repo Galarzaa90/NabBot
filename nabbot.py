@@ -13,62 +13,12 @@ import os
 import platform
 
 from login import *
+from config import *
 from tibia import *
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix='/', description=description)
 client = discord.Client()
-
-########some global variables to give u cancer
-#lastmessage stuff
-lastmessage = None
-lastmessagetime = datetime.datetime.now()
-###a boolean to know if a goofing msg was the last thing we saw
-isgoof = False
-idlemessages = ["Galarzazzzzza is a nab, i know, i know, oh oh oh",
-"Did you know 9 out of 10 giant spiders prefer nabchow?",
-"Any allegations made about Nezune and corpses are nothing but slander!",
-"All hail Michu, our cat overlord.",
-"Beware of nomads, they are known to kill unsuspecting druids!"]
-
-###admin id's for hax commands
-admin_ids = ["162060569803751424","162070610556616705"]
-###main channel where the bot chats for luls
-##this is so we can keep track of idletime for this server only
-##and do timed shit in here
-mainserver = "Redd Alliance"
-mainchannel = "general-chat"
-mainchannel_idletime = timedelta(seconds=0)
-goof_idletime = timedelta(seconds=300)
-###the list of servers to check for with getOnline
-tibiaservers = ["Fidera"]
-###message list for announceLevel
-levelmessages = ["Congratulations to **{0}** on reaching level {1}!",
-"**{0}** is level {1} now, congrats!",
-"**{0}** has reached level {1}, die and lose it, noob!",
-"Well, look at **{0}** with his new fancy level {1}.",
-"{1}, **{0}** is level {1}, watch out world...",
-"**{0}** is level {1} now. Noice.",
-"**{0}** has finally made it to level {1}, yay!"]
-###message list for announceDeath (charName=0,deathTime=1,deathLevel=2,deathKiller=3,he/she=4,his/her=5,charName in full caps=6)
-##deaths by monster
-deathmessages_monster = ["RIP **{0}** ({2}), you lived like you died, inside {3}",
-"**{0}** ({2}) was just eaten by {3}. Yum.",
-"Silly **{0}** ({2}), I warned you not to play with {3}!",
-"{3} killed {0} at level {2}, shame "+str(chr(0x0001f514))+" shame "+str(chr(0x0001f514))+" shame "+str(chr(0x0001f514)),
-"**{0}** ({2}) is no more! {4} has ceased to be! {4}'s expired and gone to meet {5} maker! {4}'s a stiff! Bereft of life, {4} rests in peace! If {4} hadn't respawned {4}'d be pushing up the daisies! {5} metabolic processes are now history! {4}'s off the server! {4}'s kicked the bucket, {4}'s shuffled off {5} mortal coil, kissed {3}'s butt, run down the curtain and joined the bleeding choir invisible!! THIS IS AN EX-**{6}**",
-"RIP **{0}** ({2}), we hardly knew you! (That {3} got to know you pretty well though "+str(chr(0x0001f609))+")"]
-##deaths by player
-deathmessages_player = ["**{0}** ({2}) got rekt! **{3}** ish pekay!",
-"HALP **{3}** is going around killing innocent **{0}** ({2})!",
-"Next time stay away from **{3}**, **{0}** ({2})"]
-########
-
-### Channels to look for users ###
-## I don't want to change the other variable cause I don't want goof messages on the main channel yet
-search_server = "Redd Alliance"
-search_channel = "general-chat"
-
 
 @bot.event
 @asyncio.coroutine
@@ -78,103 +28,136 @@ def on_ready():
     print(bot.user.name)
     print(bot.user.id)
     print('------')
-    #start up async tasks
-    asyncio.async(think())
-    asyncio.async(getDeaths())
-    asyncio.async(getOnline())
+    #start up think()
+    yield from think()
+    #######################################
+    ###anything below this is dead code!###
+    #######################################
+
 ########a think function!
 @asyncio.coroutine
 def think():
-    #i could do something like, check if the bots alive instead of just a "while true" but i dont see the point.
+    #i could do something like, check if the bot's alive instead of just a "while true" but i dont see the point.
+    lastServerOnlineCheck = datetime.datetime.now()
+    lastPlayerDeathCheck = datetime.datetime.now()
+    ####this is the global online list
+    #dont look at it too closely or you'll go blind!
+    #characters are added as servername_charactername and the list is updated periodically using getServerOnline()
+    globalOnlineList = []
     while 1:
         #update idle time
         updateChannelIdleTime()
         
-        #example function goof() will say some random shit after 30 secs of idle time
-        #yield from goof()
+        #After some time (goof_delay) of silence, the bot will send a random message.
+        #It won't say anything if the last message was by the bot.
+        if lastmessage != None and isgoof == False and mainchannel_idletime > goof_delay:
+            yield from goof()
         
         ##do any magic we want here
-        #anything that needs to use a sleep() should probably be moved to its own coroutine though.
         
+        #periodically check server online lists
+        if datetime.datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
+            ##pop last server in qeue, reinsert it at the beggining
+            currentServer = tibiaservers.pop()
+            tibiaservers.insert(0, currentServer)
+            
+            #get online list for this server
+            currentServerOnline = getServerOnline(currentServer)
+            
+            if len(currentServerOnline) > 0:
+                #open connection to users.db
+                userdbconn = sqlite3.connect('users.db')
+                userdb = userdbconn.cursor()
+                
+                ##remove chars that are no longer online from the globalOnlineList
+                offlineList = []
+                for char in globalOnlineList:
+                    if char.split("_",1)[0] == currentServer:
+                        offline = True
+                        for serverChar in currentServerOnline:
+                            if serverChar['name'] == char.split("_",1)[1]:
+                                offline = False
+                                break
+                        if offline:
+                            offlineList.append(char)
+                for nowOfflineChar in offlineList:
+                    globalOnlineList.remove(nowOfflineChar)
+
+                #add new online chars and announce level differences
+                for serverChar in currentServerOnline:
+                    userdb.execute("SELECT charName, lastLevel FROM tibiaChars WHERE charName LIKE ?",(serverChar['name'],))
+                    result = userdb.fetchone()
+                    if result:
+                        #if its a stalked character
+                        lastLevel = result[1]
+                        if not (currentServer+"_"+serverChar['name']) in globalOnlineList:
+                            ##if the character wasnt in the globalOnlineList we add them
+                            #(we insert them at the beggining of the list to avoid messing with the death checks order)
+                            globalOnlineList.insert(0,(currentServer+"_"+serverChar['name']))
+                            ##since this is the first time we see them online we flag their last death time
+                            #to avoid backlogged death announces
+                            userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName = ?",('',serverChar['name'],))
+                            
+                        ##else we check for levelup
+                        elif lastLevel < serverChar['level']:
+                            ##announce the level up
+                            yield from announceLevel(serverChar['name'],serverChar['level'])
+
+                        #finally we update their last level in the db
+                        userdb.execute("UPDATE tibiaChars SET lastLevel = ? WHERE charName = ?",(serverChar['level'],serverChar['name'],))
+                
+                #close users.db connection
+                userdbconn.commit()
+                userdbconn.close()
+            
+            #update last server check time
+            lastServerOnlineCheck = datetime.datetime.now()
+        
+        #periodically check for deaths
+        if datetime.datetime.now() - lastPlayerDeathCheck > playerdeath_delay and len(globalOnlineList) > 0:
+            ##pop last char in qeue, reinsert it at the beggining
+            currentChar = globalOnlineList.pop()
+            globalOnlineList.insert(0, currentChar)
+            
+            #get rid of server name
+            currentChar = currentChar.split("_",1)[1]
+            #get death list for this char
+            currentCharDeaths = getPlayerDeaths(currentChar)
+            
+            if len(currentCharDeaths) > 0:
+                #open connection to users.db
+                userdbconn = sqlite3.connect('users.db')
+                userdb = userdbconn.cursor()
+                
+                userdb.execute("SELECT charName, lastDeathTime FROM tibiaChars WHERE charName LIKE ?",(currentChar,))
+                result = userdb.fetchone()
+                if result:
+                    lastDeath = currentCharDeaths[0]
+                    dbLastDeathTime = result[1]
+                    ##if the db lastDeathTime is an empty string it means this is the first time we're seeing them online
+                    #so we just update it without announcing deaths
+                    if dbLastDeathTime == '':
+                        userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName = ?",(lastDeath['time'],currentChar,))
+                    #else if the last death's time doesn't match the one in the db
+                    elif dbLastDeathTime != lastDeath['time']:
+                        #update the lastDeathTime for this char in the db
+                        userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName = ?",(lastDeath['time'],currentChar,))
+                        #and announce the death
+                        yield from announceDeath(currentChar,lastDeath['time'],lastDeath['level'],lastDeath['killer'],lastDeath['byPlayer'])
+                
+                #close users.db connection
+                userdbconn.commit()
+                userdbconn.close()
+            #update last death check time
+            lastPlayerDeathCheck = datetime.datetime.now()
         
         #sleep for a bit and then loop back
-        yield from asyncio.sleep(5)
-########
-
-########getDeaths
-@asyncio.coroutine
-def getDeaths():
-    #the first run flag is here to avoid trolling a bunch of people when the bots been offline for a while
-    firstRun = True
-    while 1:
-        userdbconn = sqlite3.connect('users.db')
-        userdb = userdbconn.cursor()
-        userdb.execute("SELECT charName, lastDeathTime FROM tibiaChars")
-        result = userdb.fetchall()
-        if(result is not None and len(result) > 0):
-            for character in result:
-                content = ""
-                while content == "":
-                    try:
-                        page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(character[0]))
-                        content = page.read()
-                    except Exception:
-                        yield from asyncio.sleep(2)
-
-                try:
-                    content.decode().index("<b>Character Deaths</b>")
-                except Exception:
-                    continue
-                startIndex = content.decode().index("<b>Character Deaths</b>")
-                endIndex = content.decode().index("<B>Search Character</B>")
-                content = content[startIndex:endIndex]
-
-                regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
-                pattern = re.compile(regex_deaths,re.MULTILINE+re.S)
-                m = re.search(pattern,content.decode())
-                if m:
-                    deathTime = ""
-                    deathLevel = ""
-                    deathKiller = ""
-                    deathByPlayer = False
-                    regex_deathtime = r'(\w+).+?;(\d+).+?;(\d+).+?;(\d+):(\d+):(\d+)'
-                    pattern = re.compile(regex_deathtime,re.MULTILINE+re.S)
-                    m_deathtime = re.search(pattern,m.group(1))
-                    
-                    if m_deathtime:
-                        deathTime = "{0} {1} {2} {3}:{4}:{5}".format(m_deathtime.group(1),m_deathtime.group(2),m_deathtime.group(3),m_deathtime.group(4),m_deathtime.group(5),m_deathtime.group(6))
-                     
-                    if m.group(2).find("Died") != -1:
-                        regex_deathinfo_monster = r'Level (\d+) by ([^.]+)'
-                        pattern = re.compile(regex_deathinfo_monster,re.MULTILINE+re.S)
-                        m_deathinfo_monster = re.search(pattern,m.group(2))
-                        if m_deathinfo_monster:
-                            deathLevel = m_deathinfo_monster.group(1)
-                            deathKiller = m_deathinfo_monster.group(2)
-                    else:
-                        regex_deathinfo_player = r'Level (\d+) by .+?name=([^"]+)'
-                        pattern = re.compile(regex_deathinfo_player,re.MULTILINE+re.S)
-                        m_deathinfo_player = re.search(pattern,m.group(2))
-                        if m_deathinfo_player:
-                            deathLevel = m_deathinfo_player.group(1)
-                            deathKiller = m_deathinfo_player.group(2).replace('+',' ')
-                            deathByPlayer = True
-                    
-                    if character[1] != deathTime:
-                        userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName = ?",(deathTime,character[0],))
-                        if not firstRun:
-                            yield from announceDeath(character[0],deathTime,deathLevel,deathKiller,deathByPlayer)
-                        userdbconn.commit()
-                yield from asyncio.sleep(2)
-        userdbconn.close()
-        firstRun = False
+        yield from asyncio.sleep(1)
 ########
 
 ########announceDeath
 @asyncio.coroutine
 def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
-    global mainserver
-    global mainchannel
     channel = getChannelByServerAndName(mainserver,mainchannel)
     char = getPlayer(charName)
     pronoun1 = "he"
@@ -185,72 +168,24 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
         
     message = ""
     if deathByPlayer:
-        message = random.choice(deathmessages_player).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2,charName.upper())
+        message = random.choice(deathmessages_player).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2)
     else:
-        message = random.choice(deathmessages_monster).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2,charName.upper())
+        message = random.choice(deathmessages_monster).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2)
+    upper = r'\\(.+?)/'
+    upper = re.compile(upper,re.MULTILINE+re.S)
+    lower = r'/(.+?)\\'
+    lower = re.compile(lower,re.MULTILINE+re.S)
+    title = r'/(.+?)/'
+    title = re.compile(title,re.MULTILINE+re.S)
+    message = re.sub(upper,lambda m: m.group(1).upper(), message)
+    message = re.sub(lower,lambda m: m.group(1).lower(), message)
+    message = re.sub(title,lambda m: m.group(1).title(), message)
     yield from bot.send_message(channel,message[:1].upper()+message[1:])
-########
-
-########getOnline
-@asyncio.coroutine
-def getOnline():
-    #the first run flag is here to avoid congratulating a bunch of people when the bots been offline for a while
-    firstRun = True
-    while 1:
-        for server in tibiaservers:
-            userdbconn = sqlite3.connect('users.db')
-            userdb = userdbconn.cursor()
-            
-            content = ""
-            while content == "":
-                try:
-                    page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=worlds&world='+server)
-                    content = page.read()
-                except Exception:
-                    yield from asyncio.sleep(2)
-            
-            try:
-                content.decode().index("Vocation&#160;&#160;")
-            except Exception:
-                continue
-            
-            startIndex = content.decode().index('Vocation&#160;&#160;')
-            endIndex = content.decode().index('Search Character')
-            content = content[startIndex:endIndex]
-            
-            
-            regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td>'
-            pattern = re.compile(regex_members,re.MULTILINE+re.S)
-
-            m = re.findall(pattern,content.decode())
-            online_list = [];
-            #Check if list is empty
-            if m:
-                #Building dictionary list from online players
-                for (name, level) in m:
-                    name = urllib.parse.unquote_plus(name)
-                    online_list.append({'name' : name.title(), 'level' : int(level)})
-                
-                for character in online_list:
-                    userdb.execute("SELECT charName, lastLevel FROM tibiaChars WHERE charName LIKE ?",(character['name'],))
-                    result = userdb.fetchone()
-                    if(result is not None):
-                        if result[1] != character['level']:
-                            userdb.execute("UPDATE tibiaChars SET lastLevel = ? WHERE charName = ?",(character['level'],character['name'],))
-                            if not firstRun and result[1] != -1:
-                                yield from announceLevel(result[0],character['level'])
-            userdbconn.commit()
-            userdbconn.close()
-            #wait 5 seconds in between server searches, we could probably reduce this to 2 seconds or something, i just didnt wanna spam
-            yield from asyncio.sleep(5)
-        firstRun = False
 ########
 
 ########announceLevel
 @asyncio.coroutine
 def announceLevel(charName,charLevel):
-    global mainserver
-    global mainchannel
     channel = getChannelByServerAndName(mainserver,mainchannel)
     yield from bot.send_message(channel,random.choice(levelmessages).format(charName,str(charLevel)))
 ########
@@ -263,22 +198,17 @@ def updateChannelIdleTime():
 
 @asyncio.coroutine
 def goof():
-    global mainserver
-    global mainchannel
-    global mainchannel_idletime
-    global lastmessage
     global isgoof
-    #After some time (goof_idletime) of silence, the bot will send a random message.
-    #It won't say anything if the last message was by the bot.
-    if lastmessage != None and isgoof == False and mainchannel_idletime > goof_idletime:# and (not lastmessage.author.id == bot.user.id): #<< dont need this anymore
-        channel = getChannelByServerAndName(mainserver,mainchannel)
-        yield from bot.send_message(channel,random.choice(idlemessages))
-        ##this im kinda worried about, it seems to work but i'm not sure if it CANT fuck up
-        #afaik, it shouldnt always be seeing its own msg instantly and if yield from means "dont wait for this to be done" then sometimes the isgoof should be set to true and then immediatly set back to false?
-        #worked in all my tests though, so we'll see. worse case scenario it sometimes doesnt realize and goofs twice in a row
-        ##in fact heres an ugly workaround: wait a few seconds before setting isgoof!
-        yield from asyncio.sleep(2)
-        isgoof = True
+    channel = getChannelByServerAndName(mainserver,mainchannel)
+    yield from bot.send_message(channel,random.choice(idlemessages))
+    ##this im kinda worried about, it seems to work but i'm not sure if it CANT fuck up
+    #afaik, it shouldnt always be seeing its own msg instantly and if yield from means "dont wait for this to be done" then sometimes the isgoof should be set to true and then immediatly set back to false?
+    #worked in all my tests though, so we'll see. worse case scenario it sometimes doesnt realize and goofs twice in a row
+    
+    ##in fact heres an ugly workaround: wait a few seconds before setting isgoof!
+    #this holds back the whole think() function too but w/e :D
+    yield from asyncio.sleep(2)
+    isgoof = True
 
 ########i cant use bot.say in think() because theres no context here for the bot to know what channel its supposed to respond to!
 ########so i made these two (now three!) funcs (the second is just if u dont wanna bother with specifying server name, but if ure in two channels with the same name itll pick one basically at random!)
@@ -331,15 +261,13 @@ def getUserById(userId):
 def on_message(self, message):
     global lastmessage
     global lastmessagetime
-    global mainserver
-    global mainchannel
     global isgoof
     #update last message
     if not message.channel.is_private:
-        if not lastmessage == message and message.channel.name == mainchannel and message.channel.server.name == mainserver:
+        if lastmessage is not None and not lastmessage == message and message.channel.name == mainchannel and message.channel.server.name == mainserver and (not lastmessage.author.id == bot.user.id):
             lastmessage = message
             lastmessagetime = datetime.datetime.now()
-            #always sets isgoof to false, if the message came from us, and we were goofing, it will be set to true right after anyway
+            #if the message didnt come from the bot, set isgoof to false
             isgoof = False
     
     #do the default call to process_commands
