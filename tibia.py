@@ -7,6 +7,7 @@ import re
 import math
 import random
 import sqlite3
+from datetime import date
 
 def getGuildOnline(guildname):
     #Fetch webpage
@@ -243,7 +244,9 @@ class Tibia():
                     city = 'Green Djinn'
                 elif(item['npc'] == 'Nah\'Bob' or item['npc'] == 'Haroun'):
                     city = 'Blue Djinn'
-                #TODO: Replace Rashid's "varies" with today's city
+                #Show the city where rashid is today
+                elif(item['npc'] == 'Rashid'):
+                    city = ["Svargrond", "Liberty Bay", "Port Hope", "Ankrahmun", "Darashia", "Edron", "Carlin"][date.today().weekday()]
                 #TODO: If Yasir's is the top seller, also display the alternate seller
                 replyF = "**{0}** can be sold to **{1}** ({2}) for {3:,} gold coins."
                 reply = replyF.format(item['name'],item['npc'],city,item['value'])
