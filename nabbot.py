@@ -6,8 +6,7 @@ import asyncio
 import urllib.request
 import urllib
 import time
-import datetime
-from datetime import timedelta
+from datetime import *
 import sqlite3
 import os
 import platform
@@ -38,8 +37,8 @@ def on_ready():
 @asyncio.coroutine
 def think():
     #i could do something like, check if the bot's alive instead of just a "while true" but i dont see the point.
-    lastServerOnlineCheck = datetime.datetime.now()
-    lastPlayerDeathCheck = datetime.datetime.now()
+    lastServerOnlineCheck = datetime.now()
+    lastPlayerDeathCheck = datetime.now()
     ####this is the global online list
     #dont look at it too closely or you'll go blind!
     #characters are added as servername_charactername and the list is updated periodically using getServerOnline()
@@ -50,13 +49,13 @@ def think():
         
         #After some time (goof_delay) of silence, the bot will send a random message.
         #It won't say anything if the last message was by the bot.
-        if lastmessage != None and isgoof == False and mainchannel_idletime > goof_delay:
-            yield from goof()
+        #if lastmessage != None and isgoof == False and mainchannel_idletime > goof_delay:
+            #yield from goof()
         
         ##do any magic we want here
         
         #periodically check server online lists
-        if datetime.datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
+        if datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
             ##pop last server in qeue, reinsert it at the beggining
             currentServer = tibiaservers.pop()
             tibiaservers.insert(0, currentServer)
@@ -111,10 +110,10 @@ def think():
                 userdbconn.close()
             
             #update last server check time
-            lastServerOnlineCheck = datetime.datetime.now()
+            lastServerOnlineCheck = datetime.now()
         
         #periodically check for deaths
-        if datetime.datetime.now() - lastPlayerDeathCheck > playerdeath_delay and len(globalOnlineList) > 0:
+        if datetime.now() - lastPlayerDeathCheck > playerdeath_delay and len(globalOnlineList) > 0:
             ##pop last char in qeue, reinsert it at the beggining
             currentChar = globalOnlineList.pop()
             globalOnlineList.insert(0, currentChar)
@@ -122,7 +121,8 @@ def think():
             #get rid of server name
             currentChar = currentChar.split("_",1)[1]
             #get death list for this char
-            currentCharDeaths = getPlayerDeaths(currentChar)
+            #we only need the last death
+            currentCharDeaths = getPlayerDeaths(currentChar,True)
             
             if len(currentCharDeaths) > 0:
                 #open connection to users.db
@@ -149,7 +149,7 @@ def think():
                 userdbconn.commit()
                 userdbconn.close()
             #update last death check time
-            lastPlayerDeathCheck = datetime.datetime.now()
+            lastPlayerDeathCheck = datetime.now()
         
         #sleep for a bit and then loop back
         yield from asyncio.sleep(1)
@@ -193,7 +193,7 @@ def announceLevel(charName,charLevel):
 ########update idle time, dunno if u wanna use a function for this, just seemed less ugly
 def updateChannelIdleTime():
     global mainchannel_idletime
-    mainchannel_idletime = datetime.datetime.now() - lastmessagetime
+    mainchannel_idletime = datetime.now() - lastmessagetime
 ########
 
 @asyncio.coroutine
@@ -266,7 +266,7 @@ def on_message(self, message):
     if not message.channel.is_private:
         if lastmessage is not None and not lastmessage == message and message.channel.name == mainchannel and message.channel.server.name == mainserver and (not lastmessage.author.id == bot.user.id):
             lastmessage = message
-            lastmessagetime = datetime.datetime.now()
+            lastmessagetime = datetime.now()
             #if the message didnt come from the bot, set isgoof to false
             isgoof = False
     
