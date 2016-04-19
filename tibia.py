@@ -423,7 +423,7 @@ class Tibia():
         for death in deaths:
             diff = getTimeDiff(datetime.now() - getLocalTime(death['time']))
             died = "Killed" if death['byPlayer'] else "Died"
-            reply += "\n{0} at level **{1}** by {2} - *{3}*".format(died,death['level'],death['killer'],diff)
+            reply += "\n\t{0} at level **{1}** by {2} - *{3}*".format(died,death['level'],death['killer'],diff)
             
         yield from self.bot.say(reply)
         
