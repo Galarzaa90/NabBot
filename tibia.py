@@ -418,6 +418,7 @@ class Tibia():
             return
         if(len(deaths) == 0):
             yield from self.bot.say(name.title()+" hasn't died recently.")
+            return
         
         reply = name.title()+" recent deaths:"
         for death in deaths:
