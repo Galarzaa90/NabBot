@@ -36,27 +36,27 @@ serveronline_delay = timedelta(seconds=10)
 playerdeath_delay = timedelta(seconds=5)
 
 ###message list for announceLevel
-levelmessages = ["Congratulations to **{0}** on reaching level {1}!",
-"**{0}** is level {1} now, congrats!",
-"**{0}** has reached level {1}, die and lose it, noob!",
-"Well, look at **{0}** with his new fancy level {1}.",
-"{1}, **{0}** is level {1}, watch out world...",
-"**{0}** is level {1} now. Noice.",
-"**{0}** has finally made it to level {1}, yay!"]
+levelmessages = [[100,"Congratulations to **{0}** on reaching level {1}!"],
+[100,"**{0}** is level {1} now, congrats!"],
+[80,"**{0}** has reached level {1}, die and lose it, noob!"],
+[100,"Well, look at **{0}** with his new fancy level {1}."],
+[80,"**{0}** is level {1}, watch out world..."],
+[100,"**{0}** is level {1} now. Noice."],
+[100,"**{0}** has finally made it to level {1}, yay!"]]
 
 ###message list for announceDeath (charName=0,deathTime=1,deathLevel=2,deathKiller=3,he/she=4,his/her=5)
 ##additionally, words surrounded by \WORD/ are uppercased, /word\ are lowercased and /Word/ are title cased
 ##deaths by monster
-deathmessages_monster = ["RIP **{0}** ({2}), you lived like you died, inside {3}",
-"**{0}** ({2}) was just eaten by {3}. Yum.",
-"Silly **{0}** ({2}), I warned you not to play with {3}!",
-"{3} killed **{0}** at level {2}, shame "+str(chr(0x0001f514))+" shame "+str(chr(0x0001f514))+" shame "+str(chr(0x0001f514)),
-"**{0}** ({2}) is no more! /{4}/ has ceased to be! /{4}/'s expired and gone to meet {5} maker! /{4}/'s a stiff! Bereft of life, {4} rests in peace! If {4} hadn't respawned {4}'d be pushing up the daisies! /{5}/ metabolic processes are now history! /{4}/'s off the server! /{4}/'s kicked the bucket, {4}'s shuffled off {5} mortal coil, kissed {3}'s butt, run down the curtain and joined the bleeding choir invisible!! THIS IS AN EX-**\{0}/**",
-"RIP **{0}** ({2}), we hardly knew you! (That {3} got to know you pretty well though "+str(chr(0x0001f609))+")"]
+deathmessages_monster = [[100,"RIP **{0}** ({2}), you lived like you died, inside {3}"],
+[100,"**{0}** ({2}) was just eaten by {3}. Yum."],
+[100,"Silly **{0}** ({2}), I warned you not to play with {3}!"],
+[100,"{3} killed **{0}** at level {2}, shame "+str(chr(0x0001f514))+" shame "+str(chr(0x0001f514))+" shame "+str(chr(0x0001f514))],
+[50,"**{0}** ({2}) is no more! /{4}/ has ceased to be! /{4}/'s expired and gone to meet {5} maker! /{4}/'s a stiff! Bereft of life, {4} rests in peace! If {4} hadn't respawned {4}'d be pushing up the daisies! /{5}/ metabolic processes are now history! /{4}/'s off the server! /{4}/'s kicked the bucket, {4}'s shuffled off {5} mortal coil, kissed {3}'s butt, run down the curtain and joined the bleeding choir invisible!! THIS IS AN EX-**\{0}/**"],
+[100,"RIP **{0}** ({2}), we hardly knew you! (That {3} got to know you pretty well though "+str(chr(0x0001f609))+")"]]
 ##deaths by player
-deathmessages_player = ["**{0}** ({2}) got rekt! **{3}** ish pekay!",
-"HALP **{3}** is going around killing innocent **{0}** ({2})!",
-"Next time stay away from **{3}**, **{0}** ({2})"]
+deathmessages_player = [[100,"**{0}** ({2}) got rekt! **{3}** ish pekay!"],
+[100,"HALP **{3}** is going around killing innocent **{0}** ({2})!"],
+[100,"Next time stay away from **{3}**, **{0}** ({2})"]]
 ########
 
 ### Channels to look for users ###

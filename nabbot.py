@@ -6,6 +6,7 @@ import asyncio
 import urllib.request
 import urllib
 import time
+
 from datetime import *
 import sqlite3
 import os
@@ -44,6 +45,7 @@ def think():
     #characters are added as servername_charactername and the list is updated periodically using getServerOnline()
     globalOnlineList = []
     while 1:
+        print("Think loop start")
         #update idle time
         updateChannelIdleTime()
         
@@ -58,6 +60,7 @@ def think():
         if datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
             ##pop last server in qeue, reinsert it at the beggining
             currentServer = tibiaservers.pop()
+            print("Updating online list: "+currentServer)
             tibiaservers.insert(0, currentServer)
             
             #get online list for this server
@@ -100,6 +103,7 @@ def think():
                         ##else we check for levelup
                         elif lastLevel < serverChar['level']:
                             ##announce the level up
+                            print("Announcing level up: "+serverChar['name'])
                             yield from announceLevel(serverChar['name'],serverChar['level'])
 
                         #finally we update their last level in the db
@@ -116,6 +120,7 @@ def think():
         if datetime.now() - lastPlayerDeathCheck > playerdeath_delay and len(globalOnlineList) > 0:
             ##pop last char in qeue, reinsert it at the beggining
             currentChar = globalOnlineList.pop()
+            print("Checking for deaths: "+currentChar)
             globalOnlineList.insert(0, currentChar)
             
             #get rid of server name
@@ -143,6 +148,7 @@ def think():
                         #update the lastDeathTime for this char in the db
                         userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName = ?",(lastDeath['time'],currentChar,))
                         #and announce the death
+                        print("Announcing death: "+currentChar)
                         yield from announceDeath(currentChar,lastDeath['time'],lastDeath['level'],lastDeath['killer'],lastDeath['byPlayer'])
                 
                 #close users.db connection
@@ -152,6 +158,7 @@ def think():
             lastPlayerDeathCheck = datetime.now()
         
         #sleep for a bit and then loop back
+        print("Think loop end")
         yield from asyncio.sleep(1)
 ########
 
@@ -168,9 +175,24 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
         
     message = ""
     if deathByPlayer:
-        message = random.choice(deathmessages_player).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2)
+        message = weighedChoice(deathmessages_player).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2)
     else:
-        message = random.choice(deathmessages_monster).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2)
+        message = weighedChoice(deathmessages_monster).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2)
+    message = formatMessage(message)
+    yield from bot.send_message(channel,message[:1].upper()+message[1:])
+########
+
+########announceLevel
+@asyncio.coroutine
+def announceLevel(charName,charLevel):
+    channel = getChannelByServerAndName(mainserver,mainchannel)
+    message = weighedChoice(levelmessages).format(charName,str(charLevel))
+    message = formatMessage(message)
+    yield from bot.send_message(channel,message)
+########
+
+########formatMessage
+def formatMessage(message):
     upper = r'\\(.+?)/'
     upper = re.compile(upper,re.MULTILINE+re.S)
     lower = r'/(.+?)\\'
@@ -180,14 +202,25 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
     message = re.sub(upper,lambda m: m.group(1).upper(), message)
     message = re.sub(lower,lambda m: m.group(1).lower(), message)
     message = re.sub(title,lambda m: m.group(1).title(), message)
-    yield from bot.send_message(channel,message[:1].upper()+message[1:])
 ########
 
-########announceLevel
-@asyncio.coroutine
-def announceLevel(charName,charLevel):
-    channel = getChannelByServerAndName(mainserver,mainchannel)
-    yield from bot.send_message(channel,random.choice(levelmessages).format(charName,str(charLevel)))
+########weighedChoice
+def weighedChoice(messages):
+    #find the max range by adding up the weigh of every message in the list
+    range = 0
+    for message in messages:
+        range = range+message[0]
+    #choose a random number
+    rangechoice = random.randint(0, range)
+    #iterate until we find the matching message
+    rangepos = 0
+    for message in messages:
+        if rangechoice >= rangepos and rangechoice < rangepos+message[0]:
+            return message[1]
+        rangepos = rangepos+message[0]
+    #this shouldnt ever happen...
+    print("Error in weighedChoice!")
+    return messages[0][1]
 ########
 
 ########update idle time, dunno if u wanna use a function for this, just seemed less ugly
@@ -486,3 +519,9 @@ if __name__ == "__main__":
     logger.addHandler(handler)
     
     bot.run(username, password)
+    print("Emergency restart!")
+    if(platform.system() == "Linux"):
+        os.system("python3 restart.py")
+    else:
+        os.system("python restart.py")
+    quit()

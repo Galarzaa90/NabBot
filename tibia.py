@@ -44,6 +44,7 @@ def getPlayerDeaths(player, singleDeath = False):
     regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
     pattern = re.compile(regex_deaths,re.MULTILINE+re.S)
     matches = re.findall(pattern,content.decode())
+
     for m in matches:
         deathTime = ""
         deathLevel = ""
@@ -117,12 +118,17 @@ def getServerOnline(server):
 def getGuildOnline(guildname):
     #Fetch webpage
     content = ""
-    while content == "":
+    retry = 0
+    while content == "" and retry < 5:
         try:
             page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1')
             content = page.read()
         except Exception:
-            pass
+            retry=retry+1
+
+    if content == "":
+        print("Error in getGuildOnline("+guildname+") opening url "+'https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1')
+        return 'NO'
     #Check if guild exists (in a really lazy way)
     try:
         content.decode().index("Information")
@@ -156,12 +162,17 @@ def getPlayer(name):
     char = {'guild' : ''}
     #Fetch website
     content = ""
-    while content == "":
+    retry = 0
+    while content == "" and retry < 5:
         try:
             page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(name))
             content = page.read()
         except Exception:
-            pass
+            retry=retry+1
+
+    if content == "":
+        print("Error in getPlayer("+name+") opening url "+'https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(name))
+        return
     #Check if player exists (in a really lazy way)
     try:
         content.decode().index("Vocation:")
