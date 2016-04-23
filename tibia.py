@@ -11,6 +11,13 @@ from datetime import *
 import time
 from calendar import timegm
 
+import sys
+import builtins
+def print(output):
+    builtins.print(output)
+    outputfile = open('console.txt', 'a')
+    outputfile.write(output+"\r\n")
+    outputfile.close()
 
 def getPlayerDeaths(player, singleDeath = False):
     deathList = []
@@ -159,6 +166,7 @@ def getGuildOnline(guildname):
     return 'NO'
 
 def getPlayer(name):
+    print("ayyyyy get le player")
     char = {'guild' : ''}
     #Fetch website
     content = ""

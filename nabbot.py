@@ -16,6 +16,7 @@ from login import *
 from config import *
 from tibia import *
 
+
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix='/', description=description)
 client = discord.Client()
@@ -34,6 +35,7 @@ def on_ready():
     ###anything below this is dead code!###
     #######################################
 
+    
 ########a think function!
 @asyncio.coroutine
 def think():
@@ -48,7 +50,6 @@ def think():
         print("Think loop start")
         #update idle time
         updateChannelIdleTime()
-        
         #After some time (goof_delay) of silence, the bot will send a random message.
         #It won't say anything if the last message was by the bot.
         #if lastmessage != None and isgoof == False and mainchannel_idletime > goof_delay:
@@ -202,6 +203,7 @@ def formatMessage(message):
     message = re.sub(upper,lambda m: m.group(1).upper(), message)
     message = re.sub(lower,lambda m: m.group(1).lower(), message)
     message = re.sub(title,lambda m: m.group(1).title(), message)
+    return message
 ########
 
 ########weighedChoice
