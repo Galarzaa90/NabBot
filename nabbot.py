@@ -162,29 +162,58 @@ def think():
 ########announceDeath
 @asyncio.coroutine
 def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
-    channel = getChannelByServerAndName(mainserver,mainchannel)
+    if deathLevel < announceTreshold:
+        #Don't announce for low level players
+        return
+    
     char = getPlayer(charName)
-    pronoun1 = "he"
-    pronoun2 = "his"
-    if char and char['pronoun'] == "she":
-        pronoun1 = "she"
-        pronoun1 = "her"
-        
-    message = ""
-    if deathByPlayer:
-        message = weighedChoice(deathmessages_player).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2)
-    else:
-        message = weighedChoice(deathmessages_monster).format(charName,deathTime,deathLevel,deathKiller,pronoun1,pronoun2)
+    #Failsafe in case getPlayer fails to retrieve player data
+    if not char:
+        print("Error in announceDeath, failed to getPlayer("+charName+")")
+        return
+    
+    if not(char['world'] in tibiaservers):
+        #Don't announce for players in non-tracked worlds
+        return
+    #Choose correct pronouns
+    pronoun = ["he","his"] if char['pronoun'] == "he" else ["she","her"]
+
+    channel = getChannelByServerAndName(mainserver,mainchannel)
+
+    #Select a message
+    message = weighedChoice(deathmessages_player) if deathByPlayer else weighedChoice(deathmessages_monster)
+    #Format message with player data
+    message = message.format(charName,deathTime,deathLevel,deathKiller,pronoun[0],pronoun[1])
+    #Format extra stylization
     message = formatMessage(message)
+    
     yield from bot.send_message(channel,message[:1].upper()+message[1:])
 ########
 
 ########announceLevel
 @asyncio.coroutine
 def announceLevel(charName,charLevel):
+    if charLevel < announceTreshold:
+        #Don't announce for low level players
+        return
+    
+    char = getPlayer(charName)
+    #Failsafe in case getPlayer fails to retrieve player data
+    if not char:
+        print("Error in announceLevel, failed to getPlayer("+charName+")")
+        return
+    #Choose correct pronouns
+    pronoun = ["he","his"] if char['pronoun'] == "he" else ["she","her"]
+        
     channel = getChannelByServerAndName(mainserver,mainchannel)
-    message = weighedChoice(levelmessages).format(charName,str(charLevel))
+    
+    #Select a message
+    message = weighedChoice(levelmessages)
+    #Format message with player data
+    message = message.format(charName,str(charLevel),pronoun[0],pronoun[1])
+    #Format extra stylization
     message = formatMessage(message)
+    
     yield from bot.send_message(channel,message)
 ########
 

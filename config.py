@@ -26,9 +26,12 @@ idlemessages = ["Galarzazzzzza is a nab, i know, i know, oh oh oh",
 ###admin id's for hax commands
 admin_ids = ["162060569803751424","162070610556616705"]
 
-
-###the list of servers to check for with getServerOnline
+#the list of servers to check for with getServerOnline
 tibiaservers = ["Fidera","Secura"]
+
+#level treshold for announces (level < announceLevel)
+announceTreshold = 30
+
 #delay inbetween server checks
 serveronline_delay = timedelta(seconds=10)
 
