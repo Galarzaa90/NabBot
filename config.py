@@ -35,14 +35,16 @@ serveronline_delay = timedelta(seconds=10)
 #delay inbetween player death checks
 playerdeath_delay = timedelta(seconds=5)
 
-###message list for announceLevel
+###message list for announceLevel (charName=0,newLevel=1,he/she=2,his/her=3)
 levelmessages = [[100,"Congratulations to **{0}** on reaching level {1}!"],
 [100,"**{0}** is level {1} now, congrats!"],
 [80,"**{0}** has reached level {1}, die and lose it, noob!"],
-[100,"Well, look at **{0}** with his new fancy level {1}."],
+[100,"Well, look at **{0}** with {3} new fancy level {1}."],
 [80,"**{0}** is level {1}, watch out world..."],
 [100,"**{0}** is level {1} now. Noice."],
-[100,"**{0}** has finally made it to level {1}, yay!"]]
+[100,"**{0}** has finally made it to level {1}, yay!"]
+[80,"**{0}** reached level {1}! What a time to be alive..."+str(chr(0x1f644))]
+[70,"**{0}** got level {1}! So stronk now!"]
 
 ###message list for announceDeath (charName=0,deathTime=1,deathLevel=2,deathKiller=3,he/she=4,his/her=5)
 ##additionally, words surrounded by \WORD/ are uppercased, /word\ are lowercased and /Word/ are title cased
