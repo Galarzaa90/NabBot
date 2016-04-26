@@ -162,7 +162,7 @@ def think():
 ########announceDeath
 @asyncio.coroutine
 def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
-    if deathLevel < announceTreshold:
+    if int(deathLevel) < announceTreshold:
         #Don't announce for low level players
         return
     
@@ -193,7 +193,7 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
 ########announceLevel
 @asyncio.coroutine
 def announceLevel(charName,charLevel):
-    if charLevel < announceTreshold:
+    if int(charLevel) < announceTreshold:
         #Don't announce for low level players
         return
     
@@ -210,7 +210,7 @@ def announceLevel(charName,charLevel):
     #Select a message
     message = weighedChoice(levelmessages)
     #Format message with player data
-    message = message.format(charName,str(charLevel),pronoun[0],pronoun[1])
+    message = message.format(charName,charLevel,pronoun[0],pronoun[1])
     #Format extra stylization
     message = formatMessage(message)
     
@@ -394,13 +394,16 @@ def stalk(ctx,*args: str):
     if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
         return
         
-    args = " ".join(args).strip().split(",")
+    args = " ".join(args).split(",")
+    args[:] = [arg.strip() for arg in args]
+
+    
     if(len(args) < 2):
         yield from bot.say('Valid arguments for /stalk are **add**, **remove**, **weight**, **addchar**, **removechar**.')
         return
        
-    operation = args[0].strip()
-    name = args[1].strip()
+    operation = args[0]
+    name = args[1]
     target = getUserByName(name)
        
     #If the user is not on the server
