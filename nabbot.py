@@ -47,7 +47,6 @@ def think():
     #characters are added as servername_charactername and the list is updated periodically using getServerOnline()
     globalOnlineList = []
     while 1:
-        print("Think loop start")
         #update idle time
         updateChannelIdleTime()
         #After some time (goof_delay) of silence, the bot will send a random message.
@@ -61,7 +60,6 @@ def think():
         if datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
             ##pop last server in qeue, reinsert it at the beggining
             currentServer = tibiaservers.pop()
-            print("Updating online list: "+currentServer)
             tibiaservers.insert(0, currentServer)
             
             #get online list for this server
@@ -121,7 +119,6 @@ def think():
         if datetime.now() - lastPlayerDeathCheck > playerdeath_delay and len(globalOnlineList) > 0:
             ##pop last char in qeue, reinsert it at the beggining
             currentChar = globalOnlineList.pop()
-            print("Checking for deaths: "+currentChar)
             globalOnlineList.insert(0, currentChar)
             
             #get rid of server name
@@ -159,7 +156,6 @@ def think():
             lastPlayerDeathCheck = datetime.now()
         
         #sleep for a bit and then loop back
-        print("Think loop end")
         yield from asyncio.sleep(1)
 ########
 

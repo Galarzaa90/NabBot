@@ -31,7 +31,7 @@ def getPlayerDeaths(player, singleDeath = False):
             retry=retry+1
             
     if content == "":
-        print("Error in getPlayerDeaths("+player+") opening url "+'https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(player))
+        print("Error in getPlayerDeaths("+player+")")
         return deathList
         
     #Check if player exists (in a really lazy way)
@@ -97,7 +97,7 @@ def getServerOnline(server):
             retry=retry+1
     
     if content == "":
-        print("Error in getServerOnline("+server+") opening url "+'https://secure.tibia.com/community/?subtopic=worlds&world='+server)
+        print("Error in getServerOnline("+server+")")
         return onlineList
     
     try:
@@ -134,7 +134,7 @@ def getGuildOnline(guildname):
             retry=retry+1
 
     if content == "":
-        print("Error in getGuildOnline("+guildname+") opening url "+'https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1')
+        print("Error in getGuildOnline("+guildname+")")
         return 'NO'
     #Check if guild exists (in a really lazy way)
     try:
@@ -179,7 +179,7 @@ def getPlayer(name):
             retry=retry+1
 
     if content == "":
-        print("Error in getPlayer("+name+") opening url "+'https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(name))
+        print("Error in getPlayer("+name+")")
         return
     #Check if player exists (in a really lazy way)
     try:
@@ -315,10 +315,6 @@ class Tibia():
         name = " ".join(name)
         char = getPlayer(name)
         if char:
-
-
-
-
             replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}"
             guildF = "\n{0} is __{1}__ of the **{2}**."
             if(char['guild']):
@@ -417,8 +413,6 @@ class Tibia():
                 elif(item['npc'] == 'Rashid'):
                     city = ["Svargrond", "Liberty Bay", "Port Hope", "Ankrahmun", "Darashia", "Edron", "Carlin"][date.today().weekday()]
                 #TODO: If Yasir's is the top seller, also display the alternate seller
-
-
                 replyF = "**{0}** can be sold to **{1}** ({2}) for {3:,} gold coins."
                 reply = replyF.format(item['name'],item['npc'],city,item['value'])
                 yield from self.bot.say(reply)
