@@ -328,6 +328,38 @@ def getTimeDiff(time):
         return "{0} minutes ago".format(minutes)
     else:
         return "moments ago"
+        
+def getStats(level, vocation):
+    try:
+        level = int(level)
+    except ValueError:
+        return None
+    vocation = vocation.lower()
+    if vocation in ["knight","k","elite knight","kina","kinight","ek","eliteknight"]:
+        hp = 5*(3*level - 2*8 + 29)
+        mp = 5*level + 50
+        cap = 5*(5*level - 5*8 + 94)
+        vocation = "knight"
+    elif vocation in ["paladin","royal paladin","rp","pally","royal pally","r p"]:
+        hp = 5*(2*level - 8 + 29)
+        mp = 5*(3*level - 2*8) + 50
+        cap = 10*(2*level - 8 + 39)
+        vocation = "paladin"
+    elif vocation in ["mage","druid","elder druid","elder","ed","d","sorc","sorcerer","master sorcerer","ms","s"]:
+        hp = 5*(level+29)
+        mp = 5*(6*level - 5*8) + 50
+        cap = 10*(level + 39)
+        vocation = "mage"
+    else:
+        vocation = "no vocation"
+    if level < 8 or vocation == "no vocation":
+        hp = 5*(level+29)
+        mp = 5*level + 50        
+        cap = 10*(level + 39)
+    if level < 0:
+        return None
+
+    return {"vocation" : vocation, "hp" : hp, "mp" : mp, "cap" : cap}
     
 ####################### Commands #######################
 
@@ -441,6 +473,7 @@ class Tibia():
     @commands.command()
     @asyncio.coroutine
     def deaths(self,*name : str):
+        """Shows a player's recent deaths"""
         name = " ".join(name).strip()
         deaths = getPlayerDeaths(name)
         if(deaths is None):
@@ -457,6 +490,33 @@ class Tibia():
             reply += "\n\t{0} at level **{1}** by {2} - *{3}*".format(died,death['level'],death['killer'],diff)
             
         yield from self.bot.say(reply)
+        
+    @commands.command()
+    @asyncio.coroutine
+    def stats(self,*params: str):
+        """Calculates the stats for a certain level and vocation"""
+        paramsError = "You're doing it wrong! Do it like this: ``/stats level,vocation`` or ``/stats vocation,level``"
+        params = " ".join(params).split(",")
+        if(len(params) != 2):
+            yield from self.bot.say(paramsError)
+            return
+        try:
+            level = int(params[0])
+            vocation = params[1]
+        except ValueError:
+            try:
+                level = int(params[1])
+                vocation = params[0]
+            except ValueError:
+                yield from self.bot.say(paramsError)
+                return
+        stats = getStats(level,vocation)
+        if(stats is not None):
+            if(stats["vocation"] == "no vocation"):
+                stats["vocation"] = "with no vocation"
+            yield from self.bot.say("A level **{0}** {1} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level,stats["vocation"],stats["hp"],stats["mp"],stats["cap"]))
+        else:
+            yield from self.bot.say("Are you sure that is correct?")
         
 
 def setup(bot):
