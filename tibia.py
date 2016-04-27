@@ -246,21 +246,30 @@ def getItem(name):
     if(result is not None):
         #Turning result tuple into dictionary
         item = dict(zip(['name','value'],result))
-        #If value is greater than 0, we search npcs that buy it
-        if(item['value'] and item['value'] > 0):
-            c.execute("SELECT Items.title, value, NPCs.title, city"+
-            " FROM Items, SellItems, NPCs WHERE Items.name LIKE ?"+
-            " AND SellItems.itemid = Items.id AND NPCs.id = vendorid"+
-            " ORDER BY value DESC LIMIT 1",(name,))
-            result = c.fetchone()
-            #This shouldn't be neccesary...
-            #Note: Items that are not sellable to NPCs take the value from the buyprice
-            #So if the item's value is greater than 0, it might still have no npc key
-            if(result is not None):
-                item = dict(zip(['name','value','npc','city'],result))
-        #Only used for the cases where the value doesn't exist, fuck that noise
-        if(not item['value']):
-            item['value'] = 0
+        #Checking NPCs that buy the item
+        c.execute("SELECT NPCs.title, city FROM Items, SellItems, NPCs WHERE Items.name LIKE ? AND SELLItems.itemid = Items.id AND NPCs.id = vendorid AND vendor_value = value",(name,))
+        npcs = []
+        for row in c:
+            name = row[0]
+            city = row[1].title()
+            #Replacing cities for special npcs
+            if(name == 'Alesar' or name == 'Yaman'):
+                city = 'Green Djinn\'s Fortress'
+            elif(name == 'Nah\'Bob' or name == 'Haroun'):
+                city = 'Blue Djinn\'s Fortress'
+            elif(name == 'Rashid'):
+                city = [
+                    "Svargrond",
+                    "Liberty Bay",
+                    "Port Hope",
+                    "Ankrahmun",
+                    "Darashia",
+                    "Edron",
+                    "Carlin"][date.today().weekday()]
+            elif(name == 'Yasir'):
+                city = 'his boat'
+            npcs.append({"name" : name, "city": city})
+        item['npcs'] = npcs
         return item
     return
     
@@ -291,14 +300,17 @@ def getTimeDiff(time):
     if not isinstance(time, timedelta):
         return None
     hours = time.seconds//3600
+    minutes = (time.seconds//60)%60
     if time.days > 1:
         return "{0} days ago".format(time.days)
     if time.days == 1:
-        return "{0} day ago".format(time.days)
+        return "1 day ago"
     if hours > 1:
         return "{0} hours ago".format(hours)
     if hours == 1:
-        return "1 hour ago".format(hours)
+        return "1 hour ago"
+    if minutes > 20:
+        return "{0} minutes ago".format(minutes)
     else:
         return "moments ago"
     
@@ -396,25 +408,15 @@ class Tibia():
     @commands.command(aliases=['checkprice','item'])
     @asyncio.coroutine
     def itemprice(self,*itemname : str):
-        """Checks an item's NPC price"""
+        """Checks an item's highest NPC price"""
         itemname = " ".join(itemname).strip()
         item = getItem(itemname)
         if(item is not None):   
-            #Check if item is sellable to NPC
-            if('npc' in item):
-                city = item['city'].title()
-                #If it's a djinn, show the race instead of city
-                if(item['npc'] == 'Alesar' or item['npc'] == 'Yaman'):
-                    city = 'Green Djinn'
-                elif(item['npc'] == 'Nah\'Bob' or item['npc'] == 'Haroun'):
-                    city = 'Blue Djinn'
-
-                #Show the city where rashid is today
-                elif(item['npc'] == 'Rashid'):
-                    city = ["Svargrond", "Liberty Bay", "Port Hope", "Ankrahmun", "Darashia", "Edron", "Carlin"][date.today().weekday()]
-                #TODO: If Yasir's is the top seller, also display the alternate seller
-                replyF = "**{0}** can be sold to **{1}** ({2}) for {3:,} gold coins."
-                reply = replyF.format(item['name'],item['npc'],city,item['value'])
+            #Check if item has npcs that buy the item
+            if('npcs' in item and len(item['npcs']) > 0):
+                reply = "**{0}** can be sold for {1:,} gold coins to:".format(item['name'],item['value'])
+                for npc in item['npcs']:
+                    reply += "\n\t**{0}** in *{1}*".format(npc['name'],npc['city'])
                 yield from self.bot.say(reply)
             else:
                 yield from self.bot.say('**'+item['name']+'** can\'t be sold to NPCs.')
