@@ -176,7 +176,7 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
         #Don't announce for players in non-tracked worlds
         return
     #Choose correct pronouns
-    pronoun = ["he","his"] if char['pronoun'] == "he" else ["she","her"]
+    pronoun = ["he","his"] if char['pronoun'] == "He" else ["she","her"]
 
     channel = getChannelByServerAndName(mainserver,mainchannel)
 
@@ -203,7 +203,7 @@ def announceLevel(charName,charLevel):
         print("Error in announceLevel, failed to getPlayer("+charName+")")
         return
     #Choose correct pronouns
-    pronoun = ["he","his"] if char['pronoun'] == "he" else ["she","her"]
+    pronoun = ["he","his"] if char['pronoun'] == "He" else ["she","her"]
         
     channel = getChannelByServerAndName(mainserver,mainchannel)
     
