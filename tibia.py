@@ -10,14 +10,7 @@ import sqlite3
 from datetime import *
 import time
 from calendar import timegm
-
-import sys
-import builtins
-def print(output):
-    builtins.print(output)
-    outputfile = open('console.txt', 'a')
-    outputfile.write(output+"\r\n")
-    outputfile.close()
+from utils import *
 
 def getPlayerDeaths(player, singleDeath = False):
     deathList = []
@@ -166,7 +159,6 @@ def getGuildOnline(guildname):
     return 'NO'
 
 def getPlayer(name):
-    print("ayyyyy get le player")
     char = {'guild' : ''}
     #Fetch website
     content = ""
@@ -234,6 +226,27 @@ def getPlayer(name):
         if m:
             char['guild'] = urllib.parse.unquote_plus(m.group(1))
         
+    #Other chars
+    ##note that an empty char list means the character is hidden
+    ##otherwise you'd have at least the same char in the list
+    char['chars'] = []
+    try:
+        #See if there is a character list
+        startIndex = content.decode().index("<B>Characters</B>")
+        content = content[startIndex:]
+        
+        #Find characters
+        regex_chars = r'<TD WIDTH=10%><NOBR>([^<]+)[^?]+.+?VALUE=\"([^\"]+)'
+        pattern = re.compile(regex_chars,re.MULTILINE+re.S)
+        m = re.findall(pattern,content.decode())
+        
+        if m:
+            for (world,name) in m:
+                name = urllib.parse.unquote_plus(name)
+                char['chars'].append({'name' : name, 'world' : world})
+    except Exception:
+        pass
+    
     return char
 
 def getItem(name):
@@ -270,7 +283,9 @@ def getItem(name):
                 city = 'his boat'
             npcs.append({"name" : name, "city": city})
         item['npcs'] = npcs
+        c.close()
         return item
+    c.close()
     return
     
 def getLocalTime(tibiaTime):
