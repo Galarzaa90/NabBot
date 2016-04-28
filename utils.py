@@ -1,7 +1,21 @@
-from config import *
-import builtins
-from datetime import *
+import discord
+import logging
+from discord.ext import commands
+import re
+import math
+import random
+import asyncio
+import urllib.request
+import urllib
+import sqlite3
+import os
+import platform
 import time
+from datetime import datetime,timedelta,date
+from calendar import timegm
+import builtins
+
+from config import *
 bot = ""
 def utilsGetBot(_bot):
     global bot
@@ -12,7 +26,7 @@ def utilsGetBot(_bot):
 def print(output):
     builtins.print(output)
     outputfile = open('console.txt', 'a')
-    outputfile.write(output+"\r\n")
+    outputfile.write(str(output)+"\r\n")
     outputfile.close()
 ########
 

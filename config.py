@@ -1,6 +1,4 @@
-import time
-import datetime
-from datetime import timedelta
+from utils import *
 ########some global variables to give u cancer
 ###main channel where the bot chats for luls
 ##this is so we can keep track of idletime for this server only
@@ -10,7 +8,7 @@ mainchannel = "general-chat"
 mainchannel_idletime = timedelta(seconds=0)
 ###lastmessage stuff
 lastmessage = None
-lastmessagetime = datetime.datetime.now()
+lastmessagetime = datetime.now()
 ###goof() globals
 #a boolean to know if a goofing msg was the last thing we saw
 isgoof = False
@@ -23,7 +21,7 @@ idlemessages = ["Galarzazzzzza is a nab, i know, i know, oh oh oh",
 "All hail Michu, our cat overlord.",
 "Beware of nomads, they are known to kill unsuspecting druids!"]
 
-###admin id's for hax commands
+#admin id's for hax commands
 admin_ids = ["162060569803751424","162070610556616705"]
 
 #the list of servers to check for with getServerOnline

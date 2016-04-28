@@ -1,17 +1,5 @@
-import discord
-from discord.ext import commands
-import asyncio
-import urllib.request
-import urllib
-import re
-import math
-import random
-import sqlite3
-from datetime import *
-import time
-from calendar import timegm
-from utils import *
 
+from utils import *
 def getPlayerDeaths(player, singleDeath = False):
     deathList = []
     content = ""
@@ -328,7 +316,7 @@ def getTimeDiff(time):
         return "{0} minutes ago".format(minutes)
     else:
         return "moments ago"
-        
+    
 def getStats(level, vocation):
     try:
         level = int(level)

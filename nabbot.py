@@ -1,22 +1,7 @@
-import discord
-import logging
-from discord.ext import commands
-import random
-import asyncio
-import urllib.request
-import urllib
-import time
-
-from datetime import *
-import sqlite3
-import os
-import platform
-
+from utils import *
 from login import *
 from config import *
 from tibia import *
-from utils import *
-
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix='/', description=description)
@@ -311,7 +296,7 @@ def whois(ctx,*name : str):
     
     
 ##### Admin only commands #### 
-   
+
 ######## Stalk command
 @bot.command(pass_context=True,hidden=True)
 @asyncio.coroutine
@@ -551,7 +536,45 @@ def stalk(ctx,*args: str):
     userdbconn.commit()
     userdbconn.close()
 ########
-        
+
+######## Heynab command
+@bot.command(pass_context=True,hidden=True)
+@asyncio.coroutine
+def heynab(ctx,*args: str):
+    args = " ".join(args).strip().split(" ")
+    
+    userdbconn = sqlite3.connect('users.db')
+    userdb = userdbconn.cursor()
+    
+    userName = ""
+    while len(args) >= 2:
+        #iterate until we find an user that matches or we run out of arguments
+        userName = (userName+" "+args[0]).title().strip()
+        print("trying: "+userName)
+        args.remove(args[0])
+        user = getUserByName(userName)
+        #If the userName is not on the server
+        if user is None:
+            #check if its a stalked tibiaChar instead
+            userdb.execute("SELECT discordUser FROM tibiaChars WHERE charName LIKE ?",(userName,))
+            result = userdb.fetchone()
+            if(result is not None):
+                user = getUserById(result[0])
+                if user is not None:
+                    print("found user id "+str(user.id)+" ("+user.name+") from tibia char "+userName)
+                else:
+                    print("found user id "+str(result[0])+" from tibia char "+userName)
+                print("message: "+(" ".join(args)))
+                return
+        else:
+            #found a discord user
+            print("found user id "+str(user.id)+" from discord user "+user.name)
+            print("message: "+(" ".join(args)))
+            return
+
+    print("nobody found!")
+########
+
 ######## Restart command
 @bot.command(pass_context=True,hidden=True)
 @asyncio.coroutine
