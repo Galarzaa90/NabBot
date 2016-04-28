@@ -1,4 +1,5 @@
 from utils import *
+
 ########some global variables to give u cancer
 ###main channel where the bot chats for luls
 ##this is so we can keep track of idletime for this server only
@@ -23,6 +24,9 @@ idlemessages = ["Galarzazzzzza is a nab, i know, i know, oh oh oh",
 
 #admin id's for hax commands
 admin_ids = ["162060569803751424","162070610556616705"]
+
+###Main Tibia Server
+tibia_server = "Fidera"
 
 #the list of servers to check for with getServerOnline
 tibiaservers = ["Fidera","Secura"]

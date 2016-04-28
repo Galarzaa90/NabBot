@@ -272,7 +272,13 @@ def choose(*choices : str):
 def whois(ctx,*name : str):
     """Tells you the characters of a user"""
     name = " ".join(name).strip()
-    target = getUserByName(name)
+    #If @username is used
+    if "<@" in name:
+        id = name[2:-1]
+        target = getUserById(id)
+    #Username
+    else:
+        target = getUserByName(name)
     if (target is None):
         yield from bot.say("I don't see anyone with that name.")
         return
@@ -282,10 +288,15 @@ def whois(ctx,*name : str):
         
     conn = sqlite3.connect('users.db')
     c = conn.cursor()
-    c.execute("SELECT charName FROM tibiaChars WHERE discordUser = ? ORDER BY lastLevel DESC",(target.id,))
+    c.execute("SELECT charName, lastLevel FROM tibiaChars WHERE discordUser = ? ORDER BY lastLevel DESC",(target.id,))
     chars = []
     for row in c:
-        chars.append(row[0])
+        name = row[0]
+        try:
+            level = int(row[1])
+        except ValueError:
+            level = -1
+        chars.append(name+((" (Lvl: "+str(level)+")") if level > 0 else ""))
     c.close()
     if(len(chars) <= 0):
         yield from bot.say("I don't know who that is...")
@@ -358,7 +369,7 @@ def stalk(ctx,*args: str):
         result = userdb.fetchone()
         if(result is not None):
             #Nezune: hahaha this if is fucking cancer but oh well it works
-            ##^^^^^I like how u tagged this comment as "shit nezune says" just in case it made you look bad
+            ##Nezune: ^^^^^I like how u tagged this comment as "shit nezune says" just in case it made you look bad
             if len(args) < 3 or not args[2].isdigit() or (args[2].isdigit() and (int(args[2]) > 5 or int(args[2]) < 1)):
                 yield from bot.say('Usage for **weight** is **/stalk weight, -discordUser-, -newWeight-**.\r\n'+
             'Valid weights are 1 through 5.')
@@ -427,7 +438,6 @@ def stalk(ctx,*args: str):
                         yield from bot.say('Tibia character **'+charName+'** was renamed to **'+char['name']+'**. The new name will be used.')
                     #Update the charName either way, for case consistency
                     charName = char['name']
-                    print(str(len(char['chars'])))
                     if len(char['chars']) == 1:
                         yield from bot.say('No other chars found in **'+charlistChar['name']+'**\'s character list.')
                     elif len(char['chars']) == 0:
@@ -437,6 +447,9 @@ def stalk(ctx,*args: str):
                         userdb.execute("SELECT discordUser, charName FROM tibiaChars WHERE charName LIKE ?",(charlistChar['name'],))
                         result = userdb.fetchone()
                         if(result is None):
+                            if (charlistChar['world'] != tibia_server):
+                                yield from bot.say('Skipped **'+charlistChar['name']+'**, character not in '+tibia_server+'.')
+                                continue
                             userdb.execute("INSERT INTO tibiaChars VALUES(?,?,?,?)",(int(target.id),charlistChar['name'],-1,None,))
                             yield from bot.say('**'+charlistChar['name']+'** has been added to **@'+target.name+'**\'s Tibia character list.')
                         else:
@@ -486,11 +499,9 @@ def stalk(ctx,*args: str):
                 userdb.execute("SELECT charName FROM tibiaChars WHERE discordUser LIKE ?",(discordUserId,))
                 results2 = userdb.fetchall()
                 if(results2 is not None and len(results2) > 0):
-                    print(str(discordUserId))
                     #Iterate over chars linked to this discord user
                     for result in results2:
                         charName = result[0]
-                        print(charName)
                         if discordUser is None:
                             #If the discord user doesn't exist in our server any more we delete all tibia chars associated with it
                             userdb.execute("DELETE FROM tibiaChars WHERE discordUser LIKE ?",(discordUserId,))
@@ -519,7 +530,6 @@ def stalk(ctx,*args: str):
                         userdb.execute("DELETE FROM discordUsers WHERE id LIKE ?",(discordUserId,))
                         yield from bot.say('Removed unknown discord user from discordUsers. (No longer in server) (Id: **'+str(discordUserId)+'**)')
                 elif discordUser is not None:
-                    print("none")
                     #This discord user has no chars assigned so we remove it
                     userdb.execute("DELETE FROM discordUsers WHERE id LIKE ?",(discordUserId,))
                     yield from bot.say('Removed discord user **'+discordUser.name+'** from discordUsers. (No chars asigned) (Id: **'+str(discordUserId)+'**)')

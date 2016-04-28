@@ -1,5 +1,5 @@
-
 from utils import *
+
 def getPlayerDeaths(player, singleDeath = False):
     deathList = []
     content = ""
@@ -312,7 +312,7 @@ def getTimeDiff(time):
         return "{0} hours ago".format(hours)
     if hours == 1:
         return "1 hour ago"
-    if minutes > 20:
+    if minutes > 15:
         return "{0} minutes ago".format(minutes)
     else:
         return "moments ago"
