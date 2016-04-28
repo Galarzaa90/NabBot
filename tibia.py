@@ -498,6 +498,9 @@ class Tibia():
             except ValueError:
                 yield from self.bot.say(paramsError)
                 return
+        if(level > 2000):
+            yield from self.bot.say("Why do you care? You will __**never**__ reach this level "+str(chr(0x1f644)))
+            return
         stats = getStats(level,vocation)
         if(stats is not None):
             if(stats["vocation"] == "no vocation"):
