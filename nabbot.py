@@ -86,7 +86,7 @@ def think():
                             globalOnlineList.insert(0,(currentServer+"_"+serverChar['name']))
                             ##since this is the first time we see them online we flag their last death time
                             #to avoid backlogged death announces
-                            userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName = ?",('',serverChar['name'],))
+                            userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName LIKE ?",('',serverChar['name'],))
                             
                         ##else we check for levelup
                         elif lastLevel < serverChar['level']:
@@ -95,7 +95,7 @@ def think():
                             yield from announceLevel(serverChar['name'],serverChar['level'])
 
                         #finally we update their last level in the db
-                        userdb.execute("UPDATE tibiaChars SET lastLevel = ? WHERE charName = ?",(serverChar['level'],serverChar['name'],))
+                        userdb.execute("UPDATE tibiaChars SET lastLevel = ? WHERE charName LIKE ?",(serverChar['level'],serverChar['name'],))
                 
                 #close users.db connection
                 userdbconn.commit()
@@ -129,11 +129,11 @@ def think():
                     ##if the db lastDeathTime is an empty string it means this is the first time we're seeing them online
                     #so we just update it without announcing deaths
                     if dbLastDeathTime == '':
-                        userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName = ?",(lastDeath['time'],currentChar,))
+                        userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName LIKE ?",(lastDeath['time'],currentChar,))
                     #else if the last death's time doesn't match the one in the db
                     elif dbLastDeathTime != lastDeath['time']:
                         #update the lastDeathTime for this char in the db
-                        userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName = ?",(lastDeath['time'],currentChar,))
+                        userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName LIKE ?",(lastDeath['time'],currentChar,))
                         #and announce the death
                         print("Announcing death: "+currentChar)
                         yield from announceDeath(currentChar,lastDeath['time'],lastDeath['level'],lastDeath['killer'],lastDeath['byPlayer'])
@@ -288,7 +288,7 @@ def whois(ctx,*name : str):
         
     conn = sqlite3.connect('users.db')
     c = conn.cursor()
-    c.execute("SELECT charName, lastLevel FROM tibiaChars WHERE discordUser = ? ORDER BY lastLevel DESC",(target.id,))
+    c.execute("SELECT charName, lastLevel FROM tibiaChars WHERE discordUser LIKE ? ORDER BY lastLevel DESC",(target.id,))
     chars = []
     for row in c:
         name = row[0]
@@ -358,7 +358,7 @@ def stalk(ctx,*args: str):
                     charName = result[0]
                     yield from bot.say('Removed **'+charName+'** from tibiaChars.')
             userdb.execute("DELETE FROM tibiaChars WHERE discordUser LIKE ?",(int(target.id),))
-            userdb.execute("DELETE FROM discordUsers WHERE id = ?",(int(target.id),))
+            userdb.execute("DELETE FROM discordUsers WHERE id LIKE ?",(int(target.id),))
             yield from bot.say('Removed **@'+target.name+'** from discordUsers.')
         else:
             yield from bot.say('User **@'+target.name+'** not found in users db.')
@@ -375,7 +375,7 @@ def stalk(ctx,*args: str):
             'Valid weights are 1 through 5.')
             else:
                 newWeight = int(args[2])
-                userdb.execute("UPDATE discordUsers SET weight = ? WHERE id = ?",(newWeight,int(target.id),))
+                userdb.execute("UPDATE discordUsers SET weight = ? WHERE id LIKE ?",(newWeight,int(target.id),))
                 yield from bot.say('**@'+target.name+'**\'s weight has been set to **'+str(newWeight)+'**.')
         else:
             yield from bot.say('User **@'+target.name+'** not found in users db.\r\n'+
@@ -413,7 +413,7 @@ def stalk(ctx,*args: str):
                             yield from bot.say('Tibia character **'+charName+'** is already assigned to user **@'+charOwner.name+'**.')
                         else:
                             #the old char owner doesnt exist any more for some reason, so just assign it to this new user
-                            userdb.execute("UPDATE tibiaChars SET discordUser = ? WHERE charName = ?",(int(target.id),charName,))
+                            userdb.execute("UPDATE tibiaChars SET discordUser = ? WHERE charName LIKE ?",(int(target.id),charName,))
                             yield from bot.say('**'+charName+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
                         '**Warning:** this character was previously assigned to a missing discordUser, a database purge is recommended!')
                 else:
@@ -458,7 +458,7 @@ def stalk(ctx,*args: str):
                                 yield from bot.say('Tibia character **'+charlistChar['name']+'** is already assigned to user **@'+charOwner.name+'**.')
                             else:
                                 #the old char owner doesnt exist any more for some reason, so just assign it to this new user
-                                userdb.execute("UPDATE tibiaChars SET discordUser = ? WHERE charName = ?",(int(target.id),charlistChar['name'],))
+                                userdb.execute("UPDATE tibiaChars SET discordUser = ? WHERE charName LIKE ?",(int(target.id),charlistChar['name'],))
                                 yield from bot.say('**'+charlistChar['name']+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
                             '**Warning:** this character was previously assigned to a missing discordUser, a database purge is recommended!')
                 else:
@@ -512,7 +512,7 @@ def stalk(ctx,*args: str):
                                 #If the char exists check if it was renamed
                                 if char['name'].lower() != charName.lower():
                                     #Update to the new char name
-                                    userdb.execute("UPDATE tibiaChars SET charName = ? WHERE charName = ?",(char['name'],charName,))
+                                    userdb.execute("UPDATE tibiaChars SET charName = ? WHERE charName LIKE ?",(char['name'],charName,))
                                     yield from bot.say('Tibia character **'+charName+'** was renamed to **'+char['name']+'**.')
                             else:
                                 userdb.execute("DELETE FROM tibiaChars WHERE discordUser LIKE ?",(discordUserId,))
