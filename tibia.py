@@ -100,7 +100,7 @@ def getServerOnline(server):
         #Building dictionary list from online players
         for (name, level) in m:
             name = urllib.parse.unquote_plus(name)
-            onlineList.append({'name' : name.title(), 'level' : int(level)})
+            onlineList.append({'name' : name, 'level' : int(level)})
     return onlineList
 
 def getGuildOnline(guildname):
@@ -321,7 +321,12 @@ def getStats(level, vocation):
     try:
         level = int(level)
     except ValueError:
-        return None
+        return "bad level"
+    if level <= 0:
+        return "low level"
+    elif level > 2000:
+        return "high level"
+
     vocation = vocation.lower()
     if vocation in ["knight","k","elite knight","kina","kinight","ek","eliteknight"]:
         hp = 5*(3*level - 2*8 + 29)
@@ -338,14 +343,15 @@ def getStats(level, vocation):
         mp = 5*(6*level - 5*8) + 50
         cap = 10*(level + 39)
         vocation = "mage"
-    else:
+    elif vocation in ["no vocation","no voc","novoc","nv","n v","none","no","n","noob","noobie","rook","rookie"]:
         vocation = "no vocation"
+    else:
+        return "bad vocation"
+
     if level < 8 or vocation == "no vocation":
         hp = 5*(level+29)
-        mp = 5*level + 50        
+        mp = 5*level + 50
         cap = 10*(level + 39)
-    if level < 0:
-        return None
 
     return {"vocation" : vocation, "hp" : hp, "mp" : mp, "cap" : cap}
     
@@ -482,30 +488,53 @@ class Tibia():
     @commands.command()
     @asyncio.coroutine
     def stats(self,*params: str):
-        """Calculates the stats for a certain level and vocation"""
-        paramsError = "You're doing it wrong! Do it like this: ``/stats level,vocation`` or ``/stats vocation,level``"
+        """Calculates the stats for a certain level and vocation, or a certain player"""
+        paramsError = "You're doing it wrong! Do it like this: ``/stats player`` or ``/stats level,vocation`` or ``/stats vocation,level``"
         params = " ".join(params).split(",")
-        if(len(params) != 2):
-            yield from self.bot.say(paramsError)
-            return
-        try:
-            level = int(params[0])
-            vocation = params[1]
-        except ValueError:
-            try:
-                level = int(params[1])
-                vocation = params[0]
-            except ValueError:
+        char = None
+        if(len(params) == 1):
+            _digits = re.compile('\d')
+            if _digits.search(params[0]) is not None:
                 yield from self.bot.say(paramsError)
                 return
-        if(level > 2000):
-            yield from self.bot.say("Why do you care? You will __**never**__ reach this level "+str(chr(0x1f644)))
+            else:
+                char = getPlayer(params[0])
+                if char:
+                    level = int(char['level'])
+                    vocation = char['vocation']
+                else:
+                    yield from self.bot.say("Player **{0}** doesn't exist!".format(params[0]))
+                    return
+        elif(len(params) == 2):
+            try:
+                level = int(params[0])
+                vocation = params[1]
+            except ValueError:
+                try:
+                    level = int(params[1])
+                    vocation = params[0]
+                except ValueError:
+                    yield from self.bot.say(paramsError)
+                    return
+        else:
+            yield from self.bot.say(paramsError)
             return
         stats = getStats(level,vocation)
-        if(stats is not None):
+        if(stats == "low level"):
+            yield from self.bot.say("Not even *you* can go down so low!")
+        elif(stats == "high level"):
+            yield from self.bot.say("Why do you care? You will __**never**__ reach this level "+str(chr(0x1f644)))
+        elif(stats == "bad vocation"):
+            yield from self.bot.say("I don't know what vocation that is...")
+        elif(stats == "bad level"):
+            yield from self.bot.say("Level needs to be a number!")
+        elif isinstance(stats, dict):
             if(stats["vocation"] == "no vocation"):
                 stats["vocation"] = "with no vocation"
-            yield from self.bot.say("A level **{0}** {1} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level,stats["vocation"],stats["hp"],stats["mp"],stats["cap"]))
+            if char:
+                yield from self.bot.say("**{5}** is a level **{0}** {1}, {6} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level,stats["vocation"],stats["hp"],stats["mp"],stats["cap"],char['name'],char['pronoun'].lower()))
+            else:
+                yield from self.bot.say("A level **{0}** {1} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level,stats["vocation"],stats["hp"],stats["mp"],stats["cap"]))
         else:
             yield from self.bot.say("Are you sure that is correct?")
         
