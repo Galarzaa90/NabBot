@@ -305,7 +305,37 @@ def whois(ctx,*name : str):
     #TODO: Fix possesive if user ends with s
     yield from bot.say("**{0}**'s character{1}: {2}.".format(target.name,"s are" if len(chars) > 1 else " is", ", ".join(chars)))
     
-    
+@bot.command(pass_context=True)
+@asyncio.coroutine
+def online(ctx):
+    """Tells you which users are online on Tibia"""
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute("SELECT charName, discordUser FROM tibiaChars ORDER BY charName ASC")
+    discordChars = []
+    for row in c:
+        char = {"name" : row[0], "id" : row[1]}
+        discordChars.append(char)
+    c.close()
+    onlineChars = getServerOnline(tibia_server)
+    discordOnlineChars = []
+    # This loop could be optimized since both lists are ordered alphabetically
+    # removing elements higher on the list since they won't have a match further down
+    for char in onlineChars:
+        for discordChar in discordChars:
+            if(discordChar['name'] == char['name']):
+               discordOnlineChars.append(discordChar)
+               discordChars.remove(discordChar)
+               break
+        if len(discordChars) == 0:
+            break
+    if len(onlineChars) == 0:
+        yield from bot.say("There is no one online from Discord.")
+    else:
+        reply = "The following discord users are online:"
+        for char in discordOnlineChars:
+            reply += "\n\t{0} (**@{1}**)".format(char['name'],getUserById(char['id']).name)
+        yield from bot.say(reply)
 ##### Admin only commands #### 
 
 ######## Stalk command
