@@ -4,7 +4,7 @@ from utils import *
 ###main channel where the bot chats for luls
 ##this is so we can keep track of idletime for this server only
 ##and do timed shit in here
-mainserver = "Redd Alliance"
+mainserver = "Redd Alliance/Bald Dwarfs"
 mainchannel = "general-chat"
 mainchannel_idletime = timedelta(seconds=0)
 ###lastmessage stuff
