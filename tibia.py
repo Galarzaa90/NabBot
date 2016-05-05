@@ -7,7 +7,7 @@ def getPlayerDeaths(player, singleDeath = False):
     while content == "" and retry < 5:
         try:
             page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(player))
-            content = page.read()
+            content = page.read().decode('ISO-8859-1')
         except Exception:
             retry=retry+1
             
@@ -17,21 +17,21 @@ def getPlayerDeaths(player, singleDeath = False):
         
     #Check if player exists (in a really lazy way)
     try:
-        content.decode().index("Vocation:")
+        content.index("Vocation:")
     except Exception:
         return None
 
     try:
-        content.decode().index("<b>Character Deaths</b>")
+        content.index("<b>Character Deaths</b>")
     except Exception:
         return deathList
-    startIndex = content.decode().index("<b>Character Deaths</b>")
-    endIndex = content.decode().index("<B>Search Character</B>")
+    startIndex = content.index("<b>Character Deaths</b>")
+    endIndex = content.index("<B>Search Character</B>")
     content = content[startIndex:endIndex]
 
     regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
     pattern = re.compile(regex_deaths,re.MULTILINE+re.S)
-    matches = re.findall(pattern,content.decode())
+    matches = re.findall(pattern,content)
 
     for m in matches:
         deathTime = ""
@@ -73,7 +73,7 @@ def getServerOnline(server):
     while content == "" and retry < 5:
         try:
             page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=worlds&world='+server)
-            content = page.read()
+            content = page.read().decode('ISO-8859-1')
         except Exception:
             retry=retry+1
     
@@ -82,19 +82,19 @@ def getServerOnline(server):
         return onlineList
     
     try:
-        content.decode().index("Vocation&#160;&#160;")
+        content.index("Vocation&#160;&#160;")
     except Exception:
         return onlineList
     
-    startIndex = content.decode().index('Vocation&#160;&#160;')
-    endIndex = content.decode().index('Search Character')
+    startIndex = content.index('Vocation&#160;&#160;')
+    endIndex = content.index('Search Character')
     content = content[startIndex:endIndex]
     
     
     regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td>'
     pattern = re.compile(regex_members,re.MULTILINE+re.S)
 
-    m = re.findall(pattern,content.decode())
+    m = re.findall(pattern,content)
     #Check if list is empty
     if m:
         #Building dictionary list from online players
@@ -110,7 +110,7 @@ def getGuildOnline(guildname):
     while content == "" and retry < 5:
         try:
             page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1')
-            content = page.read()
+            content = page.read().decode('ISO-8859-1')
         except Exception:
             retry=retry+1
 
@@ -119,19 +119,19 @@ def getGuildOnline(guildname):
         return 'NO'
     #Check if guild exists (in a really lazy way)
     try:
-        content.decode().index("Information")
+        content.index("Information")
     except Exception:
         return 'NE'
     #Trimming content string to reduce load
-    startIndex = content.decode().index("<td>Status</td>")
-    endIndex = content.decode().index("name=\"Show All\"")
+    startIndex = content.index("<td>Status</td>")
+    endIndex = content.index("name=\"Show All\"")
     content = content[startIndex:endIndex]
 
     #Regex pattern to fetch information
     regex_members = r'<TD>(.+?)</TD>\s</td><TD><A HREF="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)">.+?</A> *\(*(.*?)\)*</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>'
     pattern = re.compile(regex_members,re.MULTILINE+re.S)
 
-    m = re.findall(pattern,content.decode())
+    m = re.findall(pattern,content)
     member_list = [];
     #Check if list is empty
     if m:
@@ -154,7 +154,7 @@ def getPlayer(name):
     while content == "" and retry < 5:
         try:
             page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(name))
-            content = page.read()
+            content = page.read().decode('ISO-8859-1')
         except Exception:
             retry=retry+1
 
@@ -163,47 +163,47 @@ def getPlayer(name):
         return
     #Check if player exists (in a really lazy way)
     try:
-        content.decode().index("Vocation:")
+        content.index("Vocation:")
     except Exception:
         return
     #Trimming content to reduce load
-    startIndex = content.decode().index("BoxContent")
-    endIndex = content.decode().index("<B>Search Character</B>")
+    startIndex = content.index("BoxContent")
+    endIndex = content.index("<B>Search Character</B>")
     content = content[startIndex:endIndex]
 
     #TODO: Is there a way to reduce this part?
     #Name
-    m = re.search(r'Name:</td><td>([^<,]+)',content.decode())
+    m = re.search(r'Name:</td><td>([^<,]+)',content)
     if m:
         char['name'] = m.group(1).strip()
         
     #Deleted
-    m = re.search(r', will be deleted at ([^<]+)',content.decode())
+    m = re.search(r', will be deleted at ([^<]+)',content)
     if m:
         char['deleted'] = True
 
     #Vocation
-    m = re.search(r'Vocation:</td><td>([^<]+)',content.decode())
+    m = re.search(r'Vocation:</td><td>([^<]+)',content)
     if m:
         char['vocation'] = m.group(1)
 
     #Level
-    m = re.search(r'Level:</td><td>(\d+)',content.decode())
+    m = re.search(r'Level:</td><td>(\d+)',content)
     if m:
         char['level'] = int(m.group(1))
 
     #World
-    m = re.search(r'World:</td><td>([^<]+)',content.decode())
+    m = re.search(r'World:</td><td>([^<]+)',content)
     if m:
         char['world'] = m.group(1)
 
     #Residence (City)        
-    m = re.search(r'Residence:</td><td>([^<]+)',content.decode())
+    m = re.search(r'Residence:</td><td>([^<]+)',content)
     if m:
         char['residence'] = m.group(1)
 
     #Sex, only stores pronoun
-    m = re.search(r'Sex:</td><td>([^<]+)',content.decode())
+    m = re.search(r'Sex:</td><td>([^<]+)',content)
     if m:
         if m.group(1) == 'male':
             char['pronoun'] = 'He'
@@ -211,11 +211,11 @@ def getPlayer(name):
             char['pronoun'] = 'She'
             
     #Guild rank
-    m = re.search(r'membership:</td><td>([^<]+)\sof the',content.decode())
+    m = re.search(r'membership:</td><td>([^<]+)\sof the',content)
     if m:
         char['rank'] = m.group(1)
         #Guild membership
-        m = re.search(r'GuildName=.*?([^"]+).+',content.decode())
+        m = re.search(r'GuildName=.*?([^"]+).+',content)
         if m:
             char['guild'] = urllib.parse.unquote_plus(m.group(1))
         
@@ -225,13 +225,13 @@ def getPlayer(name):
     char['chars'] = []
     try:
         #See if there is a character list
-        startIndex = content.decode().index("<B>Characters</B>")
+        startIndex = content.index("<B>Characters</B>")
         content = content[startIndex:]
         
         #Find characters
         regex_chars = r'<TD WIDTH=10%><NOBR>([^<]+)[^?]+.+?VALUE=\"([^\"]+)'
         pattern = re.compile(regex_chars,re.MULTILINE+re.S)
-        m = re.findall(pattern,content.decode())
+        m = re.findall(pattern,content)
         
         if m:
             for (world,name) in m:
