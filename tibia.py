@@ -173,9 +173,14 @@ def getPlayer(name):
 
     #TODO: Is there a way to reduce this part?
     #Name
-    m = re.search(r'Name:</td><td>([^<]+)\s',content.decode())
+    m = re.search(r'Name:</td><td>([^<,]+)',content.decode())
     if m:
         char['name'] = m.group(1).strip()
+        
+    #Deleted
+    m = re.search(r', will be deleted at ([^<]+)',content.decode())
+    if m:
+        char['deleted'] = True
 
     #Vocation
     m = re.search(r'Vocation:</td><td>([^<]+)',content.decode())
