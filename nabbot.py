@@ -31,10 +31,7 @@ def think():
     #i could do something like, check if the bot's alive instead of just a "while true" but i dont see the point.
     lastServerOnlineCheck = datetime.now()
     lastPlayerDeathCheck = datetime.now()
-    ####this is the global online list
-    #dont look at it too closely or you'll go blind!
-    #characters are added as servername_charactername and the list is updated periodically using getServerOnline()
-    globalOnlineList = []
+    global globalOnlineList
     while 1:
         #update idle time
         updateChannelIdleTime()
@@ -86,10 +83,10 @@ def think():
                             globalOnlineList.insert(0,(currentServer+"_"+serverChar['name']))
                             ##since this is the first time we see them online we flag their last death time
                             #to avoid backlogged death announces
-                            userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName LIKE ?",('',serverChar['name'],))
+                            userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName LIKE ?",(None,serverChar['name'],))
                             
                         ##else we check for levelup
-                        elif lastLevel < serverChar['level']:
+                        elif lastLevel < serverChar['level'] and lastLevel != -1:
                             ##announce the level up
                             print("Announcing level up: "+serverChar['name'])
                             yield from announceLevel(serverChar['name'],serverChar['level'])
@@ -126,9 +123,9 @@ def think():
                 if result:
                     lastDeath = currentCharDeaths[0]
                     dbLastDeathTime = result[1]
-                    ##if the db lastDeathTime is an empty string it means this is the first time we're seeing them online
+                    ##if the db lastDeathTime is None it means this is the first time we're seeing them online
                     #so we just update it without announcing deaths
-                    if dbLastDeathTime == '':
+                    if dbLastDeathTime is None:
                         userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName LIKE ?",(lastDeath['time'],currentChar,))
                     #else if the last death's time doesn't match the one in the db
                     elif dbLastDeathTime != lastDeath['time']:
@@ -168,11 +165,19 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
     pronoun = ["he","his"] if char['pronoun'] == "He" else ["she","her"]
 
     channel = getChannelByServerAndName(mainserver,mainchannel)
-
+    #Find killer article (a/an)
+    deathKillerArticle = ""
+    if not deathByPlayer:
+        deathKillerArticle = deathKiller.split(" ",1)
+        if deathKillerArticle[0] in ["a","an"] and len(deathKillerArticle) > 1:
+            deathKiller = deathKillerArticle[1]
+            deathKillerArticle = deathKillerArticle[0]+" "
+        else:
+            deathKillerArticle = ""
     #Select a message
     message = weighedChoice(deathmessages_player) if deathByPlayer else weighedChoice(deathmessages_monster)
     #Format message with player data
-    message = message.format(charName,deathTime,deathLevel,deathKiller,pronoun[0],pronoun[1])
+    message = message.format(charName,deathTime,deathLevel,deathKiller,deathKillerArticle,pronoun[0],pronoun[1])
     #Format extra stylization
     message = formatMessage(message)
     
@@ -309,27 +314,27 @@ def whois(ctx,*name : str):
 @asyncio.coroutine
 def online(ctx):
     """Tells you which users are online on Tibia"""
-    conn = sqlite3.connect('users.db')
-    c = conn.cursor()
-    c.execute("SELECT charName, discordUser FROM tibiaChars ORDER BY charName ASC")
-    discordChars = []
-    for row in c:
-        char = {"name" : row[0], "id" : row[1]}
-        discordChars.append(char)
-    c.close()
-    onlineChars = getServerOnline(tibia_server)
+    userdbconn = sqlite3.connect('users.db')
+    userdb = userdbconn.cursor()
     discordOnlineChars = []
-    # This loop could be optimized since both lists are ordered alphabetically
-    # removing elements higher on the list since they won't have a match further down
-    for char in onlineChars:
-        for discordChar in discordChars:
-            if(discordChar['name'] == char['name']):
-               discordOnlineChars.append(discordChar)
-               discordChars.remove(discordChar)
-               break
-        if len(discordChars) == 0:
-            break
-    if len(onlineChars) == 0:
+    ##if you want to use realtime online lists (instead of the one updated every 10-20 seconds...)
+    #just do:
+    ####>onlineList = []
+    ####>for server in tibiaservers: 
+    ####>   onlineList = onlineList+getServerOnline(server)
+    #i dunno if its a good idea though cause anyone could spam /online...
+    #and it wouldn't make much a difference, since the tibia.com online lists take around 1-2 minutes to update anyway
+    for char in globalOnlineList:
+    ####>for char in onlineList:
+        char = char.split("_",1)[1]
+        ####>char = char['name']
+        userdb.execute("SELECT charName, discordUser FROM tibiaChars WHERE charName LIKE ?",(char,))
+        result = userdb.fetchone()
+        if result:
+            #this will always be true unless a char is removed from tibiaChars inbetween globalOnlineList updates
+            discordOnlineChars.append({"name" : result[0], "id" : result[1]})
+
+    if len(discordOnlineChars) == 0:
         yield from bot.say("There is no one online from Discord.")
     else:
         reply = "The following discord users are online:"
@@ -477,8 +482,8 @@ def stalk(ctx,*args: str):
                         userdb.execute("SELECT discordUser, charName FROM tibiaChars WHERE charName LIKE ?",(charlistChar['name'],))
                         result = userdb.fetchone()
                         if(result is None):
-                            if (charlistChar['world'] != tibia_server):
-                                yield from bot.say('Skipped **'+charlistChar['name']+'**, character not in '+tibia_server+'.')
+                            if (not charlistChar['world'] in tibiaservers):
+                                yield from bot.say('Skipped **'+charlistChar['name']+'**, character not in tibiaservers list.')
                                 continue
                             userdb.execute("INSERT INTO tibiaChars VALUES(?,?,?,?)",(int(target.id),charlistChar['name'],-1,None,))
                             yield from bot.say('**'+charlistChar['name']+'** has been added to **@'+target.name+'**\'s Tibia character list.')

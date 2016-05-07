@@ -39,9 +39,12 @@ def formatMessage(message):
     lower = re.compile(lower,re.MULTILINE+re.S)
     title = r'/(.+?)/'
     title = re.compile(title,re.MULTILINE+re.S)
+    skipproper = r'\^(.+?)\^(.+?)([a-zA-Z])'
+    skipproper = re.compile(skipproper,re.MULTILINE+re.S)
     message = re.sub(upper,lambda m: m.group(1).upper(), message)
     message = re.sub(lower,lambda m: m.group(1).lower(), message)
     message = re.sub(title,lambda m: m.group(1).title(), message)
+    message = re.sub(skipproper,lambda m: m.group(2)+m.group(3) if m.group(3).istitle() else m.group(1)+m.group(2)+m.group(3) , message)
     return message
 ########
 
