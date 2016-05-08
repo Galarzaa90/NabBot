@@ -657,7 +657,13 @@ if __name__ == "__main__":
     handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
     logger.addHandler(handler)
     
-    bot.run(username, password)
+    try:
+      token
+    except NameError:
+      bot.run(username, password)
+    else:
+      bot.run(token)
+    
     print("Emergency restart!")
     if(platform.system() == "Linux"):
         os.system("python3 restart.py")
