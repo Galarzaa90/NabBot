@@ -13,6 +13,7 @@ import platform
 import time
 from datetime import datetime,timedelta,date
 from calendar import timegm
+import sys
 import builtins
 
 from config import *
@@ -117,12 +118,9 @@ def getUserByName(userName):
 ##this gets a discord user by its id
 ###the user must be present in the main discord channel
 def getUserById(userId):
-    server = getServerByName(search_server)
-    if server is None:
-        return None
-    for user in server.members:
-        if user.id == str(userId):
-            return user
-    
+    for server in bot.servers:
+        for user in server.members:
+            if user.id == str(userId):
+                return user
     return None
 ########

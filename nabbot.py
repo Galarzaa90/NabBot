@@ -31,6 +31,11 @@ def on_ready():
     #expose bot to ultis.py
     ##its either this or importing discord and commands in utils.py...
     utilsGetBot(bot)
+    #Notify reset author
+    if len(sys.argv) > 1:
+        user = getUserById(sys.argv[1])
+        if user is not None:
+            yield from bot.send_message(user,"Restart complete")
     #start up think()
     yield from think()
     #######################################
@@ -654,9 +659,9 @@ def restart(ctx):
     print("Closing NabBot")
     bot.logout()
     if(platform.system() == "Linux"):
-        os.system("python3 restart.py")
+        os.system("python3 restart.py {0}".format(ctx.message.author.id))
     else:
-        os.system("python restart.py")
+        os.system("python restart.py {0}".format(ctx.message.author.id))
     
     quit()
 ########
@@ -680,7 +685,7 @@ if __name__ == "__main__":
       bot.run(username, password)
     else:
       bot.run(token)
-    
+
     print("Emergency restart!")
     if(platform.system() == "Linux"):
         os.system("python3 restart.py")
