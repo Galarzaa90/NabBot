@@ -21,11 +21,19 @@ python nabbot.py
 ```
 
 ##Current features
+* Charaacter database to keep track of the member's characters-
+* Level up and deaths are announced by the bot.
 
-* **/check** *playername*: Returns information about a character.
-* **/guild** *guildname*: Returns a list of the online players of a guild
-* **/share** *level*/*playername*: Returns the level ranger for party experience share for the specified level or player.
-* **/itemprice** *itemname*: Returns the highest NPC value of an item and the who buys it
+
+### Commands
+* **/check** *charname*: Shows information about a character.
+* **/guild** *guildname*: Shows a list of the online players of a guild.
+* **/share** *level*/*playername*: Returns the level range for party experience share for the specified level or character.
+* **/itemprice** *itemname*: Returns a list of NPCs that buy the item
+* **/deaths** *charname*: Shows a list of the character's recent deaths
+* **/stats** *level*/*vocation* or **/stats** *playername*: Shows the total health, mana and capacity for the character or level and vocation specified
+* **/online**: Shows a list of the current server's discord users that are online on tibia. It shows their in-game character and discord user.
+* **/whois** *discorduser*: Shows the list of Tibia character registered to that discord user.
 
 
 <img align="center" src="https://cloud.githubusercontent.com/assets/12865379/14549417/86905512-0274-11e6-87f0-ccbab911c820.png" alt="An example of the /check command">
