@@ -7,6 +7,19 @@ description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix='/', description=description)
 client = discord.Client()
 
+#Start logging
+##discord.py log
+discord_log = logging.getLogger('discord')
+discord_log.setLevel(logging.INFO)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='a')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+discord_log.addHandler(handler)
+##NabBot log
+log = logging.getLogger(__name__ )
+log.setLevel(logging.INFO)
+log.addHandler(logging.FileHandler(filename='nabbot.log', encoding='utf-8', mode='a'));
+
+
 @bot.event
 @asyncio.coroutine
 def on_ready():
@@ -23,8 +36,17 @@ def on_ready():
     #######################################
     ###anything below this is dead code!###
     #######################################
-
     
+@bot.event
+@asyncio.coroutine
+def on_command(command, ctx):
+    if ctx.message.channel.is_private:
+        destination = 'PM'
+    else:
+        destination = '#{0.channel.name} ({0.server.name})'.format(ctx.message)
+
+    log.info('{0.timestamp}: {0.author.name} in {1}: {0.content}'.format(ctx.message, destination))
+
 ########a think function!
 @asyncio.coroutine
 def think():
@@ -113,7 +135,7 @@ def think():
             #we only need the last death
             currentCharDeaths = getPlayerDeaths(currentChar,True)
             
-            if len(currentCharDeaths) > 0:
+            if (type(currentCharDeaths) is list) and len(currentCharDeaths) > 0:
                 #open connection to users.db
                 userdbconn = sqlite3.connect('users.db')
                 userdb = userdbconn.cursor()
@@ -154,7 +176,7 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
     
     char = getPlayer(charName)
     #Failsafe in case getPlayer fails to retrieve player data
-    if not char:
+    if type(char) is not list:
         print("Error in announceDeath, failed to getPlayer("+charName+")")
         return
     
@@ -193,7 +215,7 @@ def announceLevel(charName,charLevel):
     
     char = getPlayer(charName)
     #Failsafe in case getPlayer fails to retrieve player data
-    if not char:
+    if type(char) is not list:
         print("Error in announceLevel, failed to getPlayer("+charName+")")
         return
     #Choose correct pronouns
@@ -339,7 +361,9 @@ def online(ctx):
     else:
         reply = "The following discord users are online:"
         for char in discordOnlineChars:
-            reply += "\n\t{0} (**@{1}**)".format(char['name'],getUserById(char['id']).name)
+            discordUser = getUserById(char['id'])
+            discordName = discordUser.name if (discordUser is not None) else "unknown"
+            reply += "\n\t{0} (**@{1}**)".format(char['name'],discordName)
         yield from bot.say(reply)
 ##### Admin only commands #### 
 
@@ -426,7 +450,7 @@ def stalk(ctx,*args: str):
             else:
                 charName = str(args[2])
                 char = getPlayer(charName)
-                if char:
+                if type(char) is list:
                     #Check if the char was renamed
                     if char['name'].lower() != charName.lower():
                         yield from bot.say('Tibia character **'+charName+'** was renamed to **'+char['name']+'**. The new name will be used.')
@@ -467,7 +491,7 @@ def stalk(ctx,*args: str):
             else:
                 charName = str(args[2]).title()
                 char = getPlayer(charName)
-                if char:
+                if type(char) is list:
                     #Check if the char was renamed
                     if char['name'].lower() != charName.lower():
                         yield from bot.say('Tibia character **'+charName+'** was renamed to **'+char['name']+'**. The new name will be used.')
@@ -543,7 +567,7 @@ def stalk(ctx,*args: str):
                             yield from bot.say('Removed **'+charName+'** from tibiaChars. (Discord user **'+str(discordUserId)+'** no longer in server)')
                         else:
                             char = getPlayer(charName)
-                            if char:
+                            if type(char) is list:
                                 #If the char exists check if it was renamed
                                 if char['name'].lower() != charName.lower():
                                     #Update to the new char name
@@ -649,14 +673,7 @@ def shutdown(ctx):
 ########
 
 
-if __name__ == "__main__":
-    #Start logging
-    logger = logging.getLogger('discord')
-    logger.setLevel(logging.INFO)
-    handler = logging.FileHandler(filename='nabbot.log', encoding='utf-8', mode='a')
-    handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-    logger.addHandler(handler)
-    
+if __name__ == "__main__":    
     try:
       token
     except NameError:

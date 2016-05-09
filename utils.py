@@ -17,6 +17,12 @@ import builtins
 
 from config import *
 bot = ""
+
+#Global constants
+ERROR_NETWORK = 0
+ERROR_DOESNTEXIST = 1
+
+
 def utilsGetBot(_bot):
     global bot
     bot = _bot

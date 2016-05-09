@@ -9,17 +9,17 @@ def getPlayerDeaths(player, singleDeath = False):
             page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(player))
             content = page.read().decode('ISO-8859-1')
         except Exception:
-            retry=retry+1
+            retry+=1
             
     if content == "":
         print("Error in getPlayerDeaths("+player+")")
-        return deathList
+        return ERROR_NETWORK
         
     #Check if player exists (in a really lazy way)
     try:
         content.index("Vocation:")
     except Exception:
-        return None
+        return ERROR_DOESNTEXIST
 
     try:
         content.index("<b>Character Deaths</b>")
@@ -75,7 +75,7 @@ def getServerOnline(server):
             page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=worlds&world='+server)
             content = page.read().decode('ISO-8859-1')
         except Exception:
-            retry=retry+1
+            retry+=1
     
     if content == "":
         print("Error in getServerOnline("+server+")")
@@ -112,16 +112,16 @@ def getGuildOnline(guildname):
             page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1')
             content = page.read().decode('ISO-8859-1')
         except Exception:
-            retry=retry+1
+            retry+=1
 
     if content == "":
         print("Error in getGuildOnline("+guildname+")")
-        return 'NO'
+        return ERROR_NETWORK
     #Check if guild exists (in a really lazy way)
     try:
         content.index("Information")
     except Exception:
-        return 'NE'
+        return ERROR_DOESNTEXIST
     #Trimming content string to reduce load
     startIndex = content.index("<td>Status</td>")
     endIndex = content.index("name=\"Show All\"")
@@ -141,13 +141,10 @@ def getGuildOnline(guildname):
             name = urllib.parse.unquote_plus(name)
             joined = joined.replace('&#160;','-')
             member_list.append({'rank' : rank, 'name' : name, 'title' : title,
-            'vocation' : vocation, 'level' : level, 'joined' : joined})
-        return member_list
-    
-    return 'NO'
+            'vocation' : vocation, 'level' : level, 'joined' : joined})    
+    return member_list
 
 def getPlayer(name):
-    char = {'guild' : ''}
     #Fetch website
     content = ""
     retry = 0
@@ -156,20 +153,23 @@ def getPlayer(name):
             page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(name))
             content = page.read().decode('ISO-8859-1')
         except Exception:
-            retry=retry+1
+            retry+=1
 
     if content == "":
         print("Error in getPlayer("+name+")")
-        return
+        return ERROR_NETWORK
     #Check if player exists (in a really lazy way)
     try:
         content.index("Vocation:")
     except Exception:
-        return
+        return ERROR_DOESNTEXIST
+        
     #Trimming content to reduce load
     startIndex = content.index("BoxContent")
     endIndex = content.index("<B>Search Character</B>")
     content = content[startIndex:endIndex]
+    
+    char = {'guild' : ''}
 
     #TODO: Is there a way to reduce this part?
     #Name
@@ -338,7 +338,7 @@ def getStats(level, vocation):
         mp = 5*level + 50
         cap = 5*(5*level - 5*8 + 94)
         vocation = "knight"
-    elif vocation in ["paladin","royal paladin","rp","pally","royal pally","r p"]:
+    elif vocation in ["paladin","royal paladin","rp","pally","royal pally","p"]:
         hp = 5*(2*level - 8 + 29)
         mp = 5*(3*level - 2*8) + 50
         cap = 10*(2*level - 8 + 39)
@@ -363,6 +363,7 @@ def getStats(level, vocation):
 ####################### Commands #######################
 
 class Tibia():
+    """Tibia related commands"""
     def __init__(self, bot):
         self.bot = bot
 
@@ -372,17 +373,21 @@ class Tibia():
         """Tells you information about a character"""
         name = " ".join(name)
         char = getPlayer(name)
-        if char:
-            replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}"
-            guildF = "\n{0} is __{1}__ of the **{2}**."
-            if(char['guild']):
-                guild = guildF.format(char['pronoun'],char['rank'],char['guild'])
-            else:
-                guild = ""
-            reply = replyF.format(char['pronoun'],char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild)
-            yield from self.bot.say(reply)
-        else:
+        if(char == ERROR_NETWORK):
+            yield from self.bot.say("I... can you repeat that?")
+            return
+        if(char == ERROR_DOESNTEXIST):
             yield from self.bot.say("That character doesn't exist.")
+            return
+            
+        replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}"
+        guildF = "\n{0} is __{1}__ of the **{2}**."
+        if(char['guild']):
+            guild = guildF.format(char['pronoun'],char['rank'],char['guild'])
+        else:
+            guild = ""
+        reply = replyF.format(char['pronoun'],char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild)
+        yield from self.bot.say(reply)
 
     @commands.command(pass_context=True,aliases=['expshare','party'])
     @asyncio.coroutine
@@ -397,7 +402,7 @@ class Tibia():
         except ValueError:
             name = " ".join(param)
             char = getPlayer(name)
-            if char:
+            if type(char) is list:
                 level = int(char['level']);
                 name = char['name'];
             else:
@@ -426,29 +431,33 @@ class Tibia():
         """Checks who is online in a guild"""
         guildname = " ".join(guildname).title()
         onlinelist = getGuildOnline(guildname)
-        if onlinelist == 'NE':
-            yield from self.bot.say('The guild '+urllib.parse.unquote_plus(guildname)+' doesn\'t exist.')
-        elif onlinelist == 'NO':
-            yield from self.bot.say('Nobody is online on '+urllib.parse.unquote_plus(guildname)+'.')
-        else:
-            result = ('There '+
-            ('are' if (len(onlinelist) > 1) else 'is')+' '+str(len(onlinelist))+' player'+
-            ('s' if (len(onlinelist) > 1) else '')+' online in **'+guildname+'**:')
-            for member in onlinelist:
-                result += '\n'  
-                if(member['rank'] != ''):
-                    result += '__'+member['rank']+'__\n'
-                result += '\t'+member['name']
-                result += (' (*'+member['title']+'*)' if (member['title'] != '') else '')
-                result += ' -- '+member['level']+' '
-                vocAbb = {'None' : 'N', 'Druid' : 'D', 'Sorcerer' : 'S', 'Paladin' : 'P', 'Knight' : 'K',
-                'Elder Druid' : 'ED', 'Master Sorcerer' : 'MS', 'Royal Paladin' : 'RP', 'Elite Knight' : 'EK'}
-                try:
-                    result += vocAbb[member['vocation']]
-                except KeyError:
-                    result += 'N'            
-                
-            yield from self.bot.say(result)
+        if onlinelist == ERROR_DOESNTEXIST:
+            yield from self.bot.say("The guild "+urllib.parse.unquote_plus(guildname)+" doesn't exist.")
+            return
+        if onlinelist == ERROR_NETWORK:
+            yield from self.bot.say("Can you repeat that?")
+        if len(onlinelist) < 1:
+            yield from self.bot.say("Nobody is online on "+urllib.parse.unquote_plus(guildname)+".")
+            return
+        
+        result = ('There '
+                    + ('are' if (len(onlinelist) > 1) else 'is')+' '+str(len(onlinelist))+' player'
+                    + ('s' if (len(onlinelist) > 1) else '')+' online in **'+guildname+'**:')
+        for member in onlinelist:
+            result += '\n'  
+            if(member['rank'] != ''):
+                result += '__'+member['rank']+'__\n'
+            result += '\t'+member['name']
+            result += (' (*'+member['title']+'*)' if (member['title'] != '') else '')
+            result += ' -- '+member['level']+' '
+            vocAbb = {'None' : 'N', 'Druid' : 'D', 'Sorcerer' : 'S', 'Paladin' : 'P', 'Knight' : 'K',
+            'Elder Druid' : 'ED', 'Master Sorcerer' : 'MS', 'Royal Paladin' : 'RP', 'Elite Knight' : 'EK'}
+            try:
+                result += vocAbb[member['vocation']]
+            except KeyError:
+                result += 'N'            
+            
+        yield from self.bot.say(result)
             
             
     @commands.command(aliases=['checkprice','item'])
@@ -475,8 +484,11 @@ class Tibia():
         """Shows a player's recent deaths"""
         name = " ".join(name).strip()
         deaths = getPlayerDeaths(name)
-        if(deaths is None):
+        if(deaths == ERROR_DOESNTEXIST):
             yield from self.bot.say("That character doesn't exists!")
+            return
+        if(deaths == ERROR_NETWORK):
+            yield from self.bot.say("Sorry, try it again, I'll do it right this time.")
             return
         if(len(deaths) == 0):
             yield from self.bot.say(name.title()+" hasn't died recently.")
@@ -504,12 +516,14 @@ class Tibia():
                 return
             else:
                 char = getPlayer(params[0])
-                if char:
-                    level = int(char['level'])
-                    vocation = char['vocation']
-                else:
+                if char == ERROR_NETWORK:
+                    yield from self.bot.say("Sorry, can you try it again?")
+                    return
+                if char == ERROR_DOESNTEXIST:
                     yield from self.bot.say("Player **{0}** doesn't exist!".format(params[0]))
                     return
+                level = int(char['level'])
+                vocation = char['vocation']
         elif(len(params) == 2):
             try:
                 level = int(params[0])
