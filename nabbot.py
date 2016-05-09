@@ -135,7 +135,7 @@ def think():
             #we only need the last death
             currentCharDeaths = getPlayerDeaths(currentChar,True)
             
-            if (type(currentCharDeaths) is list) and len(currentCharDeaths) > 0:
+            if (type(currentCharDeaths) is dict) and len(currentCharDeaths) > 0:
                 #open connection to users.db
                 userdbconn = sqlite3.connect('users.db')
                 userdb = userdbconn.cursor()
@@ -176,7 +176,7 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
     
     char = getPlayer(charName)
     #Failsafe in case getPlayer fails to retrieve player data
-    if type(char) is not list:
+    if type(char) is not dict:
         print("Error in announceDeath, failed to getPlayer("+charName+")")
         return
     
@@ -215,7 +215,7 @@ def announceLevel(charName,charLevel):
     
     char = getPlayer(charName)
     #Failsafe in case getPlayer fails to retrieve player data
-    if type(char) is not list:
+    if type(char) is not dict:
         print("Error in announceLevel, failed to getPlayer("+charName+")")
         return
     #Choose correct pronouns
@@ -450,7 +450,7 @@ def stalk(ctx,*args: str):
             else:
                 charName = str(args[2])
                 char = getPlayer(charName)
-                if type(char) is list:
+                if type(char) is dict:
                     #Check if the char was renamed
                     if char['name'].lower() != charName.lower():
                         yield from bot.say('Tibia character **'+charName+'** was renamed to **'+char['name']+'**. The new name will be used.')
@@ -491,7 +491,7 @@ def stalk(ctx,*args: str):
             else:
                 charName = str(args[2]).title()
                 char = getPlayer(charName)
-                if type(char) is list:
+                if type(char) is dict:
                     #Check if the char was renamed
                     if char['name'].lower() != charName.lower():
                         yield from bot.say('Tibia character **'+charName+'** was renamed to **'+char['name']+'**. The new name will be used.')
@@ -567,7 +567,7 @@ def stalk(ctx,*args: str):
                             yield from bot.say('Removed **'+charName+'** from tibiaChars. (Discord user **'+str(discordUserId)+'** no longer in server)')
                         else:
                             char = getPlayer(charName)
-                            if type(char) is list:
+                            if type(char) is dict:
                                 #If the char exists check if it was renamed
                                 if char['name'].lower() != charName.lower():
                                     #Update to the new char name

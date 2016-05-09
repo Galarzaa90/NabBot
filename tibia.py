@@ -402,7 +402,7 @@ class Tibia():
         except ValueError:
             name = " ".join(param)
             char = getPlayer(name)
-            if type(char) is list:
+            if type(char) is dict:
                 level = int(char['level']);
                 name = char['name'];
             else:
