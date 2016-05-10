@@ -140,7 +140,7 @@ def think():
             #we only need the last death
             currentCharDeaths = getPlayerDeaths(currentChar,True)
             
-            if (type(currentCharDeaths) is dict) and len(currentCharDeaths) > 0:
+            if (type(currentCharDeaths) is list) and len(currentCharDeaths) > 0:
                 #open connection to users.db
                 userdbconn = sqlite3.connect('users.db')
                 userdb = userdbconn.cursor()
