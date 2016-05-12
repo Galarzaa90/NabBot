@@ -12,7 +12,7 @@ def getPlayerDeaths(player, singleDeath = False):
             retry+=1
             
     if content == "":
-        print("Error in getPlayerDeaths("+player+")")
+        log.error("Error in getPlayerDeaths("+player+")")
         return ERROR_NETWORK
         
     #Check if player exists (in a really lazy way)
@@ -78,7 +78,7 @@ def getServerOnline(server):
             retry+=1
     
     if content == "":
-        print("Error in getServerOnline("+server+")")
+        log.error("Error in getServerOnline("+server+")")
         return onlineList
     
     try:
@@ -115,7 +115,7 @@ def getGuildOnline(guildname):
             retry+=1
 
     if content == "":
-        print("Error in getGuildOnline("+guildname+")")
+        log.error("Error in getGuildOnline("+guildname+")")
         return ERROR_NETWORK
     #Check if guild exists (in a really lazy way)
     try:
@@ -156,7 +156,7 @@ def getPlayer(name):
             retry+=1
 
     if content == "":
-        print("Error in getPlayer("+name+")")
+        log.error("Error in getPlayer("+name+")")
         return ERROR_NETWORK
     #Check if player exists (in a really lazy way)
     try:

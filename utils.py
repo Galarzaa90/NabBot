@@ -14,7 +14,6 @@ import time
 from datetime import datetime,timedelta,date
 from calendar import timegm
 import sys
-import builtins
 
 from config import *
 bot = ""
@@ -27,15 +26,6 @@ ERROR_DOESNTEXIST = 1
 def utilsGetBot(_bot):
     global bot
     bot = _bot
-
-########print
-##custom print function replacement for logging
-def print(output):
-    builtins.print(output)
-    outputfile = open('console.txt', 'a')
-    outputfile.write(str(output)+"\r\n")
-    outputfile.close()
-########
 
 ########formatMessage
 ##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/
@@ -116,7 +106,6 @@ def getUserByName(userName):
 
 ########getUserById
 ##this gets a discord user by its id
-###the user must be present in the main discord channel
 def getUserById(userId):
     for server in bot.servers:
         for user in server.members:

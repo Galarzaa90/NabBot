@@ -8,17 +8,27 @@ bot = commands.Bot(command_prefix='/', description=description)
 client = discord.Client()
 
 #Start logging
+#Create logs folder
+os.makedirs('logs/',exist_ok=True)
 ##discord.py log
 discord_log = logging.getLogger('discord')
 discord_log.setLevel(logging.INFO)
-handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='a')
+handler = logging.FileHandler(filename='logs/discord.log', encoding='utf-8', mode='a')
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 discord_log.addHandler(handler)
 ##NabBot log
 log = logging.getLogger(__name__ )
-log.setLevel(logging.INFO)
-log.addHandler(logging.FileHandler(filename='nabbot.log', encoding='utf-8', mode='a'));
-
+log.setLevel(logging.DEBUG)
+###Save log to file (info level)
+fileHandler = logging.FileHandler(filename='logs/nabbot.log', encoding='utf-8', mode='a') 
+fileHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
+fileHandler.setLevel(logging.INFO)
+log.addHandler(fileHandler)
+###Print output to console too (debug level)
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
+consoleHandler.setLevel(logging.DEBUG)
+log.addHandler(consoleHandler)
 
 @bot.event
 @asyncio.coroutine
@@ -28,6 +38,7 @@ def on_ready():
     print(bot.user.name)
     print(bot.user.id)
     print('------')
+    log.info('Bot is online and ready')
     #expose bot to ultis.py
     ##its either this or importing discord and commands in utils.py...
     utilsGetBot(bot)
@@ -50,7 +61,7 @@ def on_command(command, ctx):
     else:
         destination = '#{0.channel.name} ({0.server.name})'.format(ctx.message)
 
-    log.info('{0.timestamp}: {0.author.name} in {1}: {0.content}'.format(ctx.message, destination))
+    log.info('Command by {0.author.name} in {1}: {0.content}'.format(ctx.message, destination))
 
 ########a think function!
 @asyncio.coroutine
@@ -115,7 +126,7 @@ def think():
                         ##else we check for levelup
                         elif lastLevel < serverChar['level'] and lastLevel != -1:
                             ##announce the level up
-                            print("Announcing level up: "+serverChar['name'])
+                            log.info("Announcing level up: "+serverChar['name'])
                             yield from announceLevel(serverChar['name'],serverChar['level'])
 
                         #finally we update their last level in the db
@@ -159,7 +170,7 @@ def think():
                         #update the lastDeathTime for this char in the db
                         userdb.execute("UPDATE tibiaChars SET lastDeathTime = ? WHERE charName LIKE ?",(lastDeath['time'],currentChar,))
                         #and announce the death
-                        print("Announcing death: "+currentChar)
+                        log.info("Announcing death: "+currentChar)
                         yield from announceDeath(currentChar,lastDeath['time'],lastDeath['level'],lastDeath['killer'],lastDeath['byPlayer'])
                 
                 #close users.db connection
@@ -182,7 +193,7 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
     char = getPlayer(charName)
     #Failsafe in case getPlayer fails to retrieve player data
     if type(char) is not dict:
-        print("Error in announceDeath, failed to getPlayer("+charName+")")
+        log.warning("Error in announceDeath, failed to getPlayer("+charName+")")
         return
     
     if not(char['world'] in tibiaservers):
@@ -221,7 +232,7 @@ def announceLevel(charName,charLevel):
     char = getPlayer(charName)
     #Failsafe in case getPlayer fails to retrieve player data
     if type(char) is not dict:
-        print("Error in announceLevel, failed to getPlayer("+charName+")")
+        log.error("Error in announceLevel, failed to getPlayer("+charName+")")
         return
     #Choose correct pronouns
     pronoun = ["he","his"] if char['pronoun'] == "He" else ["she","her"]
@@ -656,8 +667,8 @@ def restart(ctx):
     if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
         return
     yield from bot.say('Restarting...')
-    print("Closing NabBot")
     bot.logout()
+    log.warning("Closing NabBot")
     if(platform.system() == "Linux"):
         os.system("python3 restart.py {0}".format(ctx.message.author.id))
     else:
@@ -673,7 +684,8 @@ def shutdown(ctx):
     if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
         return
     yield from bot.say('Shutdown...')
-    print("Closing NabBot")
+    bot.logout()
+    log.warning("Closing NabBot")
     quit()
 ########
 
@@ -686,7 +698,7 @@ if __name__ == "__main__":
     else:
       bot.run(token)
 
-    print("Emergency restart!")
+    log.warning("Emergency restart!")
     if(platform.system() == "Linux"):
         os.system("python3 restart.py")
     else:
