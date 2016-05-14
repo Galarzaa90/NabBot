@@ -80,3 +80,7 @@ deathmessages_player = [[100,"**{0}** ({2}) got rekt! **{3}** ish pekay!"],
 ## I don't want to change the other variable cause I don't want goof messages on the main channel yet
 search_server = "Redd Alliance/Bald Dwarfs"
 search_channel = "general-chat"
+
+##Databases filenames
+USERDB = "users.db"
+TIBIADB = "Database.db"

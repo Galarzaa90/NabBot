@@ -244,7 +244,7 @@ def getPlayer(name):
 
 def getItem(name):
     #Reading item database
-    c = sqlite3.connect('Database.db').cursor()
+    c = sqlite3.connect(TIBIADB).cursor()
     #Search query
     c.execute("SELECT title, vendor_value FROM Items WHERE name LIKE ?",(name,))
     result = c.fetchone()

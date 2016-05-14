@@ -105,7 +105,7 @@ def think():
             
             if len(currentServerOnline) > 0:
                 #open connection to users.db
-                userdbconn = sqlite3.connect('users.db')
+                userdbconn = sqlite3.connect(USERDB)
                 userdb = userdbconn.cursor()
                 
                 ##remove chars that are no longer online from the globalOnlineList
@@ -167,7 +167,7 @@ def think():
             
             if (type(currentCharDeaths) is list) and len(currentCharDeaths) > 0:
                 #open connection to users.db
-                userdbconn = sqlite3.connect('users.db')
+                userdbconn = sqlite3.connect(USERDB)
                 userdb = userdbconn.cursor()
                 
                 userdb.execute("SELECT charName, lastDeathTime FROM tibiaChars WHERE charName LIKE ?",(currentChar,))
@@ -308,7 +308,11 @@ commands.Bot.on_message = on_message
 @bot.command()
 @asyncio.coroutine
 def roll(dice : str):
-    """Rolls a dice in NdN format."""
+    """Rolls a dice in TdN format.
+    
+    Rolls a N-sides dice T times.
+    Example:
+    /roll 3d6 - Rolls a 6 sided dice 3 times"""
     try:
         rolls, limit = map(int, dice.split('d'))
     except Exception:
@@ -327,37 +331,47 @@ def choose(*choices : str):
 @bot.command(pass_context=True)
 @asyncio.coroutine
 def whois(ctx,*name : str):
-    """Tells you the characters of a user
+    """Tells you the characters of a user or the owner of a character
     
     Note that the bot has no way to know the characters of a member that just joined.
     The bot has to be taught about the character's of an user."""
     name = " ".join(name).strip()
-    target = getUserByName(name)
-    if (target is None):
-        yield from bot.say("I don't see anyone with that name.")
-        return
-    if(target.id == bot.user.id):
-        yield from bot.say("*Beep boop beep boop*. I'm just a bot!")
-        return
-        
-    conn = sqlite3.connect('users.db')
+    user = getUserByName(name)
+    conn = sqlite3.connect(USERDB)
     c = conn.cursor()
-    c.execute("SELECT charName, lastLevel FROM tibiaChars WHERE discordUser LIKE ? ORDER BY lastLevel DESC",(target.id,))
-    chars = []
-    for row in c:
-        name = row[0]
-        try:
-            level = int(row[1])
-        except ValueError:
-            level = -1
-        chars.append(name+((" (Lvl: "+str(level)+")") if level > 0 else ""))
-    c.close()
-    if(len(chars) <= 0):
-        yield from bot.say("I don't know who that is...")
-        return
-        
-    #TODO: Fix possesive if user ends with s
-    yield from bot.say("**{0}**'s character{1}: {2}.".format(target.name,"s are" if len(chars) > 1 else " is", ", ".join(chars)))
+    try:
+        c.execute("SELECT charName, discordUser FROM tibiaChars WHERE charName LIKE ?",(name,))
+        result = c.fetchone()
+        if (user is None):
+            #If it's not a discord user, it might be a tibia character
+            if (result is not None):
+                user = getUserById(result[1])
+                #Check if the user exists just in case
+                if(user is not None):
+                    yield from bot.say("{0} is a character of **@{1.name}**.".format(result[0],user))
+                    return
+            yield from bot.say("I don't see anyone with that name.")
+            return
+        if(user.id == bot.user.id):
+            yield from bot.say("*Beep boop beep boop*. I'm just a bot!")
+            return
+         
+        c.execute("SELECT charName, lastLevel FROM tibiaChars WHERE discordUser LIKE ? ORDER BY lastLevel DESC",(user.id,))
+        chars = []
+        for row in c:
+            name = row[0]
+            try:
+                level = int(row[1])
+            except ValueError:
+                level = -1
+            chars.append(name+((" (Lvl: "+str(level)+")") if level > 0 else ""))
+        if(len(chars) <= 0):
+            yield from bot.say("I don't know who that is...")
+            return            
+        #TODO: Fix possesive if user ends with s
+        yield from bot.say("**{0}**'s character{1}: {2}.".format(user.name,"s are" if len(chars) > 1 else " is", ", ".join(chars)))
+    finally:
+        c.close()
     
 @bot.command(pass_context=True)
 @asyncio.coroutine
@@ -366,28 +380,30 @@ def online(ctx):
     
     This list gets updated based on Tibia.com online list, so it takes a couple minutes
     to be updated."""
-    conn = sqlite3.connect('users.db')
-    c = conn.cursor()
     discordOnlineChars = []
-    for char in globalOnlineList:
-    ####>for char in onlineList:
-        char = char.split("_",1)[1]
-        ####>char = char['name']
-        c.execute("SELECT charName, discordUser FROM tibiaChars WHERE charName LIKE ?",(char,))
-        result = c.fetchone()
-        if result:
-            #this will always be true unless a char is removed from tibiaChars inbetween globalOnlineList updates
-            discordOnlineChars.append({"name" : result[0], "id" : result[1]})
-    c.close()
-    if len(discordOnlineChars) == 0:
-        yield from bot.say("There is no one online from Discord.")
-    else:
-        reply = "The following discord users are online:"
-        for char in discordOnlineChars:
-            discordUser = getUserById(char['id'])
-            discordName = discordUser.name if (discordUser is not None) else "unknown"
-            reply += "\n\t{0} (**@{1}**)".format(char['name'],discordName)
-        yield from bot.say(reply)
+    conn = sqlite3.connect(USERDB)
+    c = conn.cursor()
+    try:
+        for char in globalOnlineList:
+        ####>for char in onlineList:
+            char = char.split("_",1)[1]
+            ####>char = char['name']
+            c.execute("SELECT charName, discordUser FROM tibiaChars WHERE charName LIKE ?",(char,))
+            result = c.fetchone()
+            if result:
+                #this will always be true unless a char is removed from tibiaChars inbetween globalOnlineList updates
+                discordOnlineChars.append({"name" : result[0], "id" : result[1]})
+        if len(discordOnlineChars) == 0:
+            yield from bot.say("There is no one online from Discord.")
+        else:
+            reply = "The following discord users are online:"
+            for char in discordOnlineChars:
+                discordUser = getUserById(char['id'])
+                discordName = discordUser.name if (discordUser is not None) else "unknown"
+                reply += "\n\t{0} (**@{1}**)".format(char['name'],discordName)
+            yield from bot.say(reply)
+    finally:
+        c.close()
 ##### Admin only commands #### 
 
 ######## Stalk command
@@ -413,7 +429,7 @@ def stalk(ctx,*args: str):
         yield from bot.say('User **@'+name.title()+'** not found in server **'+mainserver+'**.')
         return
         
-    userdbconn = sqlite3.connect('users.db')
+    userdbconn = sqlite3.connect(USERDB)
     userdb = userdbconn.cursor()
     
     ##/stalk add,-username-
@@ -635,7 +651,7 @@ def stalk(ctx,*args: str):
 def heynab(ctx,*args: str):
     args = " ".join(args).strip().split(" ")
     
-    userdbconn = sqlite3.connect('users.db')
+    userdbconn = sqlite3.connect(USERDB)
     userdb = userdbconn.cursor()
     
     userName = ""
