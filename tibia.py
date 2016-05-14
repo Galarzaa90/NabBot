@@ -248,37 +248,38 @@ def getItem(name):
     #Search query
     c.execute("SELECT title, vendor_value FROM Items WHERE name LIKE ?",(name,))
     result = c.fetchone()
-    #Checking if item exists
-    if(result is not None):
-        #Turning result tuple into dictionary
-        item = dict(zip(['name','value'],result))
-        #Checking NPCs that buy the item
-        c.execute("SELECT NPCs.title, city FROM Items, SellItems, NPCs WHERE Items.name LIKE ? AND SELLItems.itemid = Items.id AND NPCs.id = vendorid AND vendor_value = value",(name,))
-        npcs = []
-        for row in c:
-            name = row[0]
-            city = row[1].title()
-            #Replacing cities for special npcs
-            if(name == 'Alesar' or name == 'Yaman'):
-                city = 'Green Djinn\'s Fortress'
-            elif(name == 'Nah\'Bob' or name == 'Haroun'):
-                city = 'Blue Djinn\'s Fortress'
-            elif(name == 'Rashid'):
-                city = [
-                    "Svargrond",
-                    "Liberty Bay",
-                    "Port Hope",
-                    "Ankrahmun",
-                    "Darashia",
-                    "Edron",
-                    "Carlin"][date.today().weekday()]
-            elif(name == 'Yasir'):
-                city = 'his boat'
-            npcs.append({"name" : name, "city": city})
-        item['npcs'] = npcs
+    try:
+        #Checking if item exists
+        if(result is not None):
+            #Turning result tuple into dictionary
+            item = dict(zip(['name','value'],result))
+            #Checking NPCs that buy the item
+            c.execute("SELECT NPCs.title, city FROM Items, SellItems, NPCs WHERE Items.name LIKE ? AND SELLItems.itemid = Items.id AND NPCs.id = vendorid AND vendor_value = value",(name,))
+            npcs = []
+            for row in c:
+                name = row[0]
+                city = row[1].title()
+                #Replacing cities for special npcs
+                if(name == 'Alesar' or name == 'Yaman'):
+                    city = 'Green Djinn\'s Fortress'
+                elif(name == 'Nah\'Bob' or name == 'Haroun'):
+                    city = 'Blue Djinn\'s Fortress'
+                elif(name == 'Rashid'):
+                    city = [
+                        "Svargrond",
+                        "Liberty Bay",
+                        "Port Hope",
+                        "Ankrahmun",
+                        "Darashia",
+                        "Edron",
+                        "Carlin"][date.today().weekday()]
+                elif(name == 'Yasir'):
+                    city = 'his boat'
+                npcs.append({"name" : name, "city": city})
+            item['npcs'] = npcs
+            return item
+    finally:
         c.close()
-        return item
-    c.close()
     return
     
 def getLocalTime(tibiaTime):
