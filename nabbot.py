@@ -4,7 +4,7 @@ from config import *
 from tibia import *
 
 description = '''Mission: Destroy all humans.'''
-bot = commands.Bot(command_prefix='/', description=description)
+bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True)
 client = discord.Client()
 
 #Start logging
@@ -53,6 +53,7 @@ def on_ready():
     ###anything below this is dead code!###
     #######################################
     
+    
 @bot.event
 @asyncio.coroutine
 def on_command(command, ctx):
@@ -62,6 +63,19 @@ def on_command(command, ctx):
         destination = '#{0.channel.name} ({0.server.name})'.format(ctx.message)
 
     log.info('Command by {0.author.name} in {1}: {0.content}'.format(ctx.message, destination))
+    
+@bot.event
+@asyncio.coroutine
+def on_member_join(member):
+    message = "Welcome {0.mention}! Please tell us about yourself, who is your Tibia character?"
+    log.info("New member joined: {0.name} (ID: {0.id})".format(member))
+    yield from bot.send_message(member.server,message.format(member))
+    
+@bot.event
+@asyncio.coroutine
+def on_message_delete(message):
+    log.info("{0.author.name} has deleted the message:\n{0.content}".format(message))
+    yield from bot.send_message(message.channel, fmt.format(message))
 
 ########a think function!
 @asyncio.coroutine
@@ -313,15 +327,12 @@ def choose(*choices : str):
 @bot.command(pass_context=True)
 @asyncio.coroutine
 def whois(ctx,*name : str):
-    """Tells you the characters of a user"""
+    """Tells you the characters of a user
+    
+    Note that the bot has no way to know the characters of a member that just joined.
+    The bot has to be taught about the character's of an user."""
     name = " ".join(name).strip()
-    #If @username is used
-    if "<@" in name:
-        id = name[2:-1]
-        target = getUserById(id)
-    #Username
-    else:
-        target = getUserByName(name)
+    target = getUserByName(name)
     if (target is None):
         yield from bot.say("I don't see anyone with that name.")
         return
@@ -351,27 +362,23 @@ def whois(ctx,*name : str):
 @bot.command(pass_context=True)
 @asyncio.coroutine
 def online(ctx):
-    """Tells you which users are online on Tibia"""
-    userdbconn = sqlite3.connect('users.db')
-    userdb = userdbconn.cursor()
+    """Tells you which users are online on Tibia
+    
+    This list gets updated based on Tibia.com online list, so it takes a couple minutes
+    to be updated."""
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
     discordOnlineChars = []
-    ##if you want to use realtime online lists (instead of the one updated every 10-20 seconds...)
-    #just do:
-    ####>onlineList = []
-    ####>for server in tibiaservers: 
-    ####>   onlineList = onlineList+getServerOnline(server)
-    #i dunno if its a good idea though cause anyone could spam /online...
-    #and it wouldn't make much a difference, since the tibia.com online lists take around 1-2 minutes to update anyway
     for char in globalOnlineList:
     ####>for char in onlineList:
         char = char.split("_",1)[1]
         ####>char = char['name']
-        userdb.execute("SELECT charName, discordUser FROM tibiaChars WHERE charName LIKE ?",(char,))
-        result = userdb.fetchone()
+        c.execute("SELECT charName, discordUser FROM tibiaChars WHERE charName LIKE ?",(char,))
+        result = c.fetchone()
         if result:
             #this will always be true unless a char is removed from tibiaChars inbetween globalOnlineList updates
             discordOnlineChars.append({"name" : result[0], "id" : result[1]})
-
+    c.close()
     if len(discordOnlineChars) == 0:
         yield from bot.say("There is no one online from Discord.")
     else:
