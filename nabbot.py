@@ -101,7 +101,7 @@ def think():
 
                 #add new online chars and announce level differences
                 for serverChar in currentServerOnline:
-                    userdb.execute("SELECT name, last_level FROM chars WHERE name LIKE ?",(serverChar['name'],))
+                    userdb.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",(serverChar['name'],))
                     result = userdb.fetchone()
                     if result:
                         #if its a stalked character
@@ -118,8 +118,9 @@ def think():
                         elif lastLevel < serverChar['level'] and lastLevel != -1:
                             ##announce the level up
                             log.info("Announcing level up: "+serverChar['name'])
+                            #Saving level up date in database
+                            userdb.execute("INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",(result[2],serverChar['level'],time.time(),))
                             yield from announceLevel(serverChar['name'],serverChar['level'])
-
                         #finally we update their last level in the db
                         userdb.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",(serverChar['level'],serverChar['name'],))
                 
