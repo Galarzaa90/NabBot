@@ -557,6 +557,24 @@ class Tibia():
                 yield from self.bot.say("A level **{0}** {1} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level,stats["vocation"],stats["hp"],stats["mp"],stats["cap"]))
         else:
             yield from self.bot.say("Are you sure that is correct?")
+            
+    @commands.command(aliases=['bless'])
+    @asyncio.coroutine
+    def blessings(self,level : int):
+        """Calculates the price of blessings at a specific level"""
+        if (level < 1):
+            yield from self.bot.say("Very funny...")
+            return
+        price = 200 * (level - 20)
+        if level <= 30: price = 2000
+        if level >= 120: price = 20000
+        inquisition = ""
+        if(level >= 100):
+            inquisition = "\nBlessing of the Inquisition costs **{0:,}** gold coins.".format(int(price*5*1.1))
+        yield from self.bot.say(
+                "At that level, you will pay **{0:,}** gold coins per blessing for a total of **{1:,}** gold coins.{2}"
+                .format(price,price*5,inquisition))
+    
         
 
 def setup(bot):
