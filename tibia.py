@@ -503,6 +503,42 @@ class Tibia():
             
         yield from self.bot.say(reply)
         
+    @commands.command(aliases=['levelups'])
+    @asyncio.coroutine
+    def levels(self,*name : str):
+        """Shows a player's recent level ups
+        
+        This only works for characters registered in the bots database, which are the characters owned
+        by the users of this discord server."""
+        name = " ".join(name)
+        conn = sqlite3.connect(USERDB)
+        c = conn.cursor()
+        try:
+            #Checking if character exists in db and get id while we're at it
+            c.execute("SELECT id, name FROM chars WHERE name LIKE ?",(name,))
+            result = c.fetchone()
+            if(result is None):
+                yield from self.bot.say("I don't have a character with that name registered.")
+                return
+            #Getting correct capitalization
+            name = result[1]
+            id = result[0]
+            #Limit to 15 entries, could also be limited by time
+            c.execute("SELECT level, date FROM char_levelups WHERE char_id = ? ORDER BY date DESC LIMIT 15",(id,))
+            result = c.fetchall()
+            #Checking number of level ups
+            if len(result) < 1:
+                yield from self.bot.say("**{0}** hasn't leveled up recently".format(name))
+                return
+            now = time.time()
+            reply = "**{0}** latest level ups:".format(name)
+            for levelup in result:
+                timediff = timedelta(seconds=now-levelup[1])
+                reply += "\n\tLevel **{0}** - *{1}*".format(levelup[0],getTimeDiff(timediff))
+            yield from self.bot.say(reply)
+        finally:
+            c.close()
+        
     @commands.command()
     @asyncio.coroutine
     def stats(self,*params: str):
