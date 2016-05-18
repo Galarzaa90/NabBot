@@ -223,7 +223,7 @@ def announceLevel(charName,charLevel):
         log.error("Error in announceLevel, failed to getPlayer("+charName+")")
         return
     #Choose correct pronouns
-    pronoun = ["he","his"] if char['gender'] == "He" else ["she","her"]
+    pronoun = ["he","his"] if char['gender'] == "male" else ["she","her"]
         
     channel = getChannelByServerAndName(mainserver,mainchannel)
     
