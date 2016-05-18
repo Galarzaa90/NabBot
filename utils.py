@@ -45,6 +45,10 @@ consoleHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(mess
 consoleHandler.setLevel(logging.DEBUG)
 log.addHandler(consoleHandler)
 
+#Database global connections
+userDatabase = sqlite3.connect(USERDB)
+tibiaDatabase = sqlite3.connect(TIBIADB)
+
 
 def utilsGetBot(_bot):
     global bot
@@ -117,7 +121,7 @@ def getServerByName(server_name : str):
 ###the user must be present in the main discord channel
 ###currently, duplicate usernames will return the first user found(!)
 def getUserByName(userName):
-    server = getServerByName(search_server)
+    server = getServerByName(mainserver)
     if server is None:
         return None
     for user in server.members:

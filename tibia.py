@@ -244,7 +244,7 @@ def getPlayer(name):
 
 def getItem(name):
     #Reading item database
-    c = sqlite3.connect(TIBIADB).cursor()
+    c = tibiaDatabase.cursor()
     #Search query
     c.execute("SELECT title, vendor_value FROM Items WHERE name LIKE ?",(name,))
     result = c.fetchone()
@@ -511,8 +511,7 @@ class Tibia():
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
         name = " ".join(name)
-        conn = sqlite3.connect(USERDB)
-        c = conn.cursor()
+        c = userDatabase.cursor()
         try:
             #Checking if character exists in db and get id while we're at it
             c.execute("SELECT id, name FROM chars WHERE name LIKE ?",(name,))

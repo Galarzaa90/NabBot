@@ -51,8 +51,7 @@ def on_member_join(member):
 @bot.event
 @asyncio.coroutine
 def on_message_delete(message):
-    log.info("{0.author.name} has deleted the message:\n{0.content}".format(message))
-    yield from bot.send_message(message.channel, fmt.format(message))
+    log.info("{0.author.name} has deleted the message: '{0.content}'".format(message))
 
 ########a think function!
 @asyncio.coroutine
@@ -82,8 +81,7 @@ def think():
             
             if len(currentServerOnline) > 0:
                 #open connection to users.db
-                userdbconn = sqlite3.connect(USERDB)
-                userdb = userdbconn.cursor()
+                c = userDatabase.cursor()
                 
                 ##remove chars that are no longer online from the globalOnlineList
                 offlineList = []
@@ -101,8 +99,8 @@ def think():
 
                 #add new online chars and announce level differences
                 for serverChar in currentServerOnline:
-                    userdb.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",(serverChar['name'],))
-                    result = userdb.fetchone()
+                    c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",(serverChar['name'],))
+                    result = c.fetchone()
                     if result:
                         #if its a stalked character
                         lastLevel = result[1]
@@ -112,21 +110,21 @@ def think():
                             globalOnlineList.insert(0,(currentServer+"_"+serverChar['name']))
                             ##since this is the first time we see them online we flag their last death time
                             #to avoid backlogged death announces
-                            userdb.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(None,serverChar['name'],))
+                            c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(None,serverChar['name'],))
                             
                         ##else we check for levelup
                         elif lastLevel < serverChar['level'] and lastLevel != -1:
                             ##announce the level up
                             log.info("Announcing level up: "+serverChar['name'])
                             #Saving level up date in database
-                            userdb.execute("INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",(result[2],serverChar['level'],time.time(),))
+                            c.execute("INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",(result[2],serverChar['level'],time.time(),))
                             yield from announceLevel(serverChar['name'],serverChar['level'])
                         #finally we update their last level in the db
-                        userdb.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",(serverChar['level'],serverChar['name'],))
+                        c.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",(serverChar['level'],serverChar['name'],))
                 
-                #close users.db connection
-                userdbconn.commit()
-                userdbconn.close()
+                #Close cursor and commit changes
+                userDatabase.commit()
+                c.close()
             
             #update last server check time
             lastServerOnlineCheck = datetime.now()
@@ -143,31 +141,29 @@ def think():
             #we only need the last death
             currentCharDeaths = getPlayerDeaths(currentChar,True)
             
-            if (type(currentCharDeaths) is list) and len(currentCharDeaths) > 0:
-                #open connection to users.db
-                userdbconn = sqlite3.connect(USERDB)
-                userdb = userdbconn.cursor()
+            if (type(currentCharDeaths) is list) and len(currentCharDeaths) > 0:               
+                c = userDatabase.cursor()
                 
-                userdb.execute("SELECT name, last_death_time FROM chars WHERE name LIKE ?",(currentChar,))
-                result = userdb.fetchone()
+                c.execute("SELECT name, last_death_time FROM chars WHERE name LIKE ?",(currentChar,))
+                result = c.fetchone()
                 if result:
                     lastDeath = currentCharDeaths[0]
                     dbLastDeathTime = result[1]
                     ##if the db lastDeathTime is None it means this is the first time we're seeing them online
                     #so we just update it without announcing deaths
                     if dbLastDeathTime is None:
-                        userdb.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(lastDeath['time'],currentChar,))
+                        c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(lastDeath['time'],currentChar,))
                     #else if the last death's time doesn't match the one in the db
                     elif dbLastDeathTime != lastDeath['time']:
                         #update the lastDeathTime for this char in the db
-                        userdb.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(lastDeath['time'],currentChar,))
+                        c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(lastDeath['time'],currentChar,))
                         #and announce the death
                         log.info("Announcing death: "+currentChar)
                         yield from announceDeath(currentChar,lastDeath['time'],lastDeath['level'],lastDeath['killer'],lastDeath['byPlayer'])
                 
-                #close users.db connection
-                userdbconn.commit()
-                userdbconn.close()
+                #Close cursor and commit changes
+                userDatabase.commit()
+                c.close()
             #update last death check time
             lastPlayerDeathCheck = datetime.now()
         
@@ -315,8 +311,7 @@ def whois(ctx,*name : str):
     The bot has to be taught about the character's of an user."""
     name = " ".join(name).strip()
     user = getUserByName(name)
-    conn = sqlite3.connect(USERDB)
-    c = conn.cursor()
+    c = userDatabase.cursor()
     try:
         #Checking if the param used is the name of a character in the database
         c.execute("SELECT name, user_id FROM chars WHERE name LIKE ?",(name,))
@@ -360,8 +355,7 @@ def online(ctx):
     This list gets updated based on Tibia.com online list, so it takes a couple minutes
     to be updated."""
     discordOnlineChars = []
-    conn = sqlite3.connect(USERDB)
-    c = conn.cursor()
+    c = userDatabase.cursor()
     try:
         for char in globalOnlineList:
             char = char.split("_",1)[1]
@@ -406,16 +400,15 @@ def stalk(ctx,*args: str):
         yield from bot.say('User **@'+name.title()+'** not found in server **'+mainserver+'**.')
         return
         
-    userdbconn = sqlite3.connect(USERDB)
-    userdb = userdbconn.cursor()
+    c = userDatabase.cursor()
     
     ##/stalk add,-username-
     if operation == "add":
-        userdb.execute("SELECT id FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = userdb.fetchone()
+        c.execute("SELECT id FROM discord_users WHERE id LIKE ?",(int(target.id),))
+        result = c.fetchone()
         #If user is not in database
         if(result is None):
-            userdb.execute("INSERT INTO discord_users (id) VALUES(?)",(int(target.id),))
+            c.execute("INSERT INTO discord_users (id) VALUES(?)",(int(target.id),))
             yield from bot.say('Added **@'+target.name+'** to discord_users, his discord userID is **'+target.id+'**.\r\n'+
         'His importance weight has been set to the default **5**, please use **/stalk weight, -userName-, -weight-** to set it.\r\n'+
         'Use **/stalk addchar, -userName-, -charName-** to add Tibia characters to this user.')
@@ -423,25 +416,25 @@ def stalk(ctx,*args: str):
             yield from bot.say('User **@'+target.name+'** is already in the database.')
     ##/stalk remove,-username-
     elif operation == "remove":
-        userdb.execute("SELECT id FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = userdb.fetchone()
+        c.execute("SELECT id FROM discord_users WHERE id LIKE ?",(int(target.id),))
+        result = c.fetchone()
         if(result is not None):
-            userdb.execute("SELECT name FROM chars WHERE user_id LIKE ?",(int(target.id),))
-            results2 = userdb.fetchall()
+            c.execute("SELECT name FROM chars WHERE user_id LIKE ?",(int(target.id),))
+            results2 = c.fetchall()
             if(results2 is not None):
                 for result in results2:
                     charName = result[0]
                     yield from bot.say('Removed **'+charName+'** from chars.')
-            userdb.execute("DELETE FROM chars WHERE user_id LIKE ?",(int(target.id),))
-            userdb.execute("DELETE FROM discord_users WHERE id LIKE ?",(int(target.id),))
+            c.execute("DELETE FROM chars WHERE user_id LIKE ?",(int(target.id),))
+            c.execute("DELETE FROM discord_users WHERE id LIKE ?",(int(target.id),))
             yield from bot.say('Removed **@'+target.name+'** from discord_users.')
         else:
             yield from bot.say('User **@'+target.name+'** not found in database.')
             
     ##/stalk weight, -discordUser-, -newWeight-
     elif operation == "weight":
-        userdb.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = userdb.fetchone()
+        c.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
+        result = c.fetchone()
         if(result is not None):
             #Nezune: hahaha this if is fucking cancer but oh well it works
             ##Nezune: ^^^^^I like how u tagged this comment as "shit nezune says" just in case it made you look bad
@@ -450,7 +443,7 @@ def stalk(ctx,*args: str):
             'Valid weights are 1 through 5.')
             else:
                 newWeight = int(args[2])
-                userdb.execute("UPDATE discord_users SET weight = ? WHERE id LIKE ?",(newWeight,int(target.id),))
+                c.execute("UPDATE discord_users SET weight = ? WHERE id LIKE ?",(newWeight,int(target.id),))
                 yield from bot.say('**@'+target.name+'**\'s weight has been set to **'+str(newWeight)+'**.')
         else:
             yield from bot.say('User **@'+target.name+'** not found in database.\r\n'+
@@ -458,8 +451,8 @@ def stalk(ctx,*args: str):
     ##
     ##/stalk addchar,-discordUser,-charName-
     elif operation == "addchar":
-        userdb.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = userdb.fetchone()
+        c.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
+        result = c.fetchone()
         if(result is not None):
             if len(args) < 3:
                 yield from bot.say('Usage for **addchar** is **/stalk addchar, -discordUser-, -charName-**.')
@@ -472,14 +465,14 @@ def stalk(ctx,*args: str):
                         yield from bot.say('Tibia character **'+charName+'** was renamed to **'+char['name']+'**. The new name will be used.')
                     #Update the charName either way, for case consistency
                     charName = char['name']
-                    userdb.execute("SELECT user_id, name FROM chars WHERE name LIKE ?",(charName,))
-                    result = userdb.fetchone()
+                    c.execute("SELECT user_id, name FROM chars WHERE name LIKE ?",(charName,))
+                    result = c.fetchone()
                     if(result is None):
                         #IMPORTANT, the char['level'] isn't used to avoid congratulating newly added players
                         ##if they're currently online and have leveled up since their last login
                         ##this is because getPlayer uses the character page level which isn't updated until logout
                         ##tibiaChar's lastLevel is set to -1 instead
-                        userdb.execute("INSERT INTO chars (user_id,name) VALUES(?,?)",(int(target.id),charName,))
+                        c.execute("INSERT INTO chars (user_id,name) VALUES(?,?)",(int(target.id),charName,))
                         yield from bot.say('**'+charName+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
                     'Use **/stalk removechar, -discordUser-, -charName-** to remove Tibia chars from an user.')
                     else:
@@ -488,7 +481,7 @@ def stalk(ctx,*args: str):
                             yield from bot.say('Tibia character **'+charName+'** is already assigned to user **@'+charOwner.name+'**.')
                         else:
                             #the old char owner doesnt exist any more for some reason, so just assign it to this new user
-                            userdb.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?",(int(target.id),charName,))
+                            c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?",(int(target.id),charName,))
                             yield from bot.say('**'+charName+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
                         '**Warning:** this character was previously assigned to a missing discordUser, a database purge is recommended!')
                 else:
@@ -499,8 +492,8 @@ def stalk(ctx,*args: str):
     ##
     ##/stalk addacc,-discordUser,-accCharName-
     elif operation == "addacc":
-        userdb.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = userdb.fetchone()
+        c.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
+        result = c.fetchone()
         if(result is not None):
             if len(args) < 3:
                 yield from bot.say('Usage for **addacc** is **/stalk addacc, -discordUser-, -accCharName-**.')
@@ -519,13 +512,13 @@ def stalk(ctx,*args: str):
                         char['chars'].append({'name' : char['name'], 'world' : char['world']})
                         yield from bot.say('Tibia character **'+charName+'** is hidden.')
                     for charlistChar in char['chars']:
-                        userdb.execute("SELECT user_id, name FROM chars WHERE name LIKE ?",(charlistChar['name'],))
-                        result = userdb.fetchone()
+                        c.execute("SELECT user_id, name FROM chars WHERE name LIKE ?",(charlistChar['name'],))
+                        result = c.fetchone()
                         if(result is None):
                             if (not charlistChar['world'] in tibiaservers):
                                 yield from bot.say('Skipped **'+charlistChar['name']+'**, character not in tibiaservers list.')
                                 continue
-                            userdb.execute("INSERT INTO chars (user_id,name) VALUES(?,?)",(int(target.id),charlistChar['name'],))
+                            c.execute("INSERT INTO chars (user_id,name) VALUES(?,?)",(int(target.id),charlistChar['name'],))
                             yield from bot.say('**'+charlistChar['name']+'** has been added to **@'+target.name+'**\'s Tibia character list.')
                         else:
                             charOwner = getUserById(result[0])
@@ -533,7 +526,7 @@ def stalk(ctx,*args: str):
                                 yield from bot.say('Tibia character **'+charlistChar['name']+'** is already assigned to user **@'+charOwner.name+'**.')
                             else:
                                 #the old char owner doesnt exist any more for some reason, so just assign it to this new user
-                                userdb.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?",(int(target.id),charlistChar['name'],))
+                                c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?",(int(target.id),charlistChar['name'],))
                                 yield from bot.say('**'+charlistChar['name']+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
                             '**Warning:** this character was previously assigned to a missing discordUser, a database purge is recommended!')
                 else:
@@ -544,17 +537,17 @@ def stalk(ctx,*args: str):
     ##
     ##/stalk removechar,-discordUser-,-charName-
     elif operation == "removechar":
-        userdb.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = userdb.fetchone()
+        c.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
+        result = c.fetchone()
         if(result is not None):
             if len(args) < 3:
                 yield from bot.say('Usage for **removechar** is **/stalk removechar, -discordUser-, -charName-**.')
             else:
                 charName = str(args[2]).title()
-                userdb.execute("SELECT user_id, name FROM chars WHERE user_id LIKE ? AND name LIKE ?",(int(target.id),charName,))
-                result = userdb.fetchone()
+                c.execute("SELECT user_id, name FROM chars WHERE user_id LIKE ? AND name LIKE ?",(int(target.id),charName,))
+                result = c.fetchone()
                 if(result is not None):
-                    userdb.execute("DELETE FROM chars WHERE user_id LIKE ? AND name LIKE ?",(int(target.id),charName,))
+                    c.execute("DELETE FROM chars WHERE user_id LIKE ? AND name LIKE ?",(int(target.id),charName,))
                     yield from bot.say('**'+charName+'** has been removed from **@'+target.name+'**\'s Tibia character list.')
                 else:
                     yield from bot.say('**'+charName+'** is not in **@'+target.name+'**\'s Tibia character list.')
@@ -564,22 +557,22 @@ def stalk(ctx,*args: str):
     ##
     ##/stalk purge
     elif operation == "purge":
-        userdb.execute("SELECT id FROM discord_users")
-        results = userdb.fetchall()
+        c.execute("SELECT id FROM discord_users")
+        results = c.fetchall()
         if(results is not None):
             #Iterate over users in discordUsers
             for result in results:
                 discordUser = getUserById(result[0])
                 discordUserId = result[0]
-                userdb.execute("SELECT name FROM chars WHERE user_id LIKE ?",(discordUserId,))
-                results2 = userdb.fetchall()
+                c.execute("SELECT name FROM chars WHERE user_id LIKE ?",(discordUserId,))
+                results2 = c.fetchall()
                 if(results2 is not None and len(results2) > 0):
                     #Iterate over chars linked to this discord user
                     for result in results2:
                         charName = result[0]
                         if discordUser is None:
                             #If the discord user doesn't exist in our server anymore we delete all tibia chars associated with it
-                            userdb.execute("DELETE FROM chars WHERE user_id LIKE ?",(discordUserId,))
+                            c.execute("DELETE FROM chars WHERE user_id LIKE ?",(discordUserId,))
                             yield from bot.say('Removed **'+charName+'** from chars. (Discord user **'+str(discordUserId)+'** no longer in server)')
                         else:
                             char = getPlayer(charName)
@@ -587,30 +580,30 @@ def stalk(ctx,*args: str):
                                 #If the char exists check if it was renamed
                                 if char['name'].lower() != charName.lower():
                                     #Update to the new char name
-                                    userdb.execute("UPDATE chars SET name = ? WHERE name LIKE ?",(char['name'],charName,))
+                                    c.execute("UPDATE chars SET name = ? WHERE name LIKE ?",(char['name'],charName,))
                                     yield from bot.say('Tibia character **'+charName+'** was renamed to **'+char['name']+'**.')
                             else:
-                                userdb.execute("DELETE FROM chars WHERE user_id LIKE ?",(discordUserId,))
+                                c.execute("DELETE FROM chars WHERE user_id LIKE ?",(discordUserId,))
                                 yield from bot.say('Removed **'+charName+'** from tibiaChars. (Character no longer exists)')
                     if discordUser is not None:
                         #Check again to see if any chars remain
-                        userdb.execute("SELECT name FROM chars WHERE user_id LIKE ?",(discordUserId,))
-                        results3 = userdb.fetchall()
+                        c.execute("SELECT name FROM chars WHERE user_id LIKE ?",(discordUserId,))
+                        results3 = c.fetchall()
                         if(results3 is None and len(results3) > 0):
                             #All chars were removed so we remove the discord user too
-                            userdb.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
+                            c.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
                             yield from bot.say('Removed discord user **'+discordUser.name+'** from discord_users. (No chars remaining) (Id: **'+str(discordUserId)+'**)')
                     else:
                         #This discord user no longer exists in our server
-                        userdb.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
+                        c.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
                         yield from bot.say('Removed unknown discord user from discord_users. (No longer in server) (Id: **'+str(discordUserId)+'**)')
                 elif discordUser is not None:
                     #This discord user has no chars assigned so we remove it
-                    userdb.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
+                    c.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
                     yield from bot.say('Removed discord user **'+discordUser.name+'** from discord_users. (No chars asigned) (Id: **'+str(discordUserId)+'**)')
                 else:
                     #This discord user no longer exists in our server
-                    userdb.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
+                    c.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
                     yield from bot.say('Removed unknown discord user from discord_users. (No longer in server) (Id: **'+str(discordUserId)+'**)')
     ##
     ####unknown operation
@@ -618,8 +611,8 @@ def stalk(ctx,*args: str):
         yield from bot.say('Unknown operation for /stalk: **'+operation+'**')
     ####
     
-    userdbconn.commit()
-    userdbconn.close()
+    userDatabase.commit()
+    c.close()
 ########
 
 ######## Heynab command
@@ -628,8 +621,7 @@ def stalk(ctx,*args: str):
 def heynab(ctx,*args: str):
     args = " ".join(args).strip().split(" ")
     
-    userdbconn = sqlite3.connect(USERDB)
-    userdb = userdbconn.cursor()
+    c = userDatabase.cursor()
     
     userName = ""
     while len(args) >= 2:
@@ -641,8 +633,8 @@ def heynab(ctx,*args: str):
         #If the userName is not on the server
         if user is None:
             #check if its a stalked tibiaChar instead
-            userdb.execute("SELECT user_id FROM chars WHERE name LIKE ?",(userName,))
-            result = userdb.fetchone()
+            c.execute("SELECT user_id FROM chars WHERE name LIKE ?",(userName,))
+            result = c.fetchone()
             if(result is not None):
                 user = getUserById(result[0])
                 if user is not None:
