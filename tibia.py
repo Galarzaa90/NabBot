@@ -206,9 +206,9 @@ def getPlayer(name):
     m = re.search(r'Sex:</td><td>([^<]+)',content)
     if m:
         if m.group(1) == 'male':
-            char['pronoun'] = 'He'
+            char['gender'] = 'male'
         else:
-            char['pronoun'] = 'She'
+            char['gender'] = 'female'
             
     #Guild rank
     m = re.search(r'membership:</td><td>([^<]+)\sof the',content)
@@ -380,14 +380,16 @@ class Tibia():
         if(char == ERROR_DOESNTEXIST):
             yield from self.bot.say("That character doesn't exist.")
             return
-            
+        pronoun = "He"
+        if(char['gender'] == "female"):
+            pronoun = "She"
         replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}"
         guildF = "\n{0} is __{1}__ of the **{2}**."
         if(char['guild']):
-            guild = guildF.format(char['pronoun'],char['rank'],char['guild'])
+            guild = guildF.format(pronoun,char['rank'],char['guild'])
         else:
             guild = ""
-        reply = replyF.format(char['pronoun'],char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild)
+        reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild)
         yield from self.bot.say(reply)
 
     @commands.command(pass_context=True,aliases=['expshare','party'])
@@ -587,7 +589,7 @@ class Tibia():
             if(stats["vocation"] == "no vocation"):
                 stats["vocation"] = "with no vocation"
             if char:
-                yield from self.bot.say("**{5}** is a level **{0}** {1}, {6} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level,stats["vocation"],stats["hp"],stats["mp"],stats["cap"],char['name'],char['pronoun'].lower()))
+                yield from self.bot.say("**{5}** is a level **{0}** {1}, {6} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level,stats["vocation"],stats["hp"],stats["mp"],stats["cap"],char['name'],char['name']))
             else:
                 yield from self.bot.say("A level **{0}** {1} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level,stats["vocation"],stats["hp"],stats["mp"],stats["cap"]))
         else:
