@@ -68,7 +68,7 @@ def getLogin():
             token = login
         else:
             input("What you entered isn't a token or an e-mail. Restart NabBot to retry.")
-            exit(1)
+            quit()
         f = open("login.py","w+")
         f.write("#Token always has priority, if token is defined it will always attempt to login using a token\n")
         f.write("#Comment the token line or set it empty to use email login\n")
@@ -76,12 +76,31 @@ def getLogin():
         f.close()
         print("Login data has been saved correctly. You can change this later by editing login.py")
         input("Press any key to start NabBot now...")
-        exit(0)
+        quit()
     return __import__("login")
 
 def utilsGetBot(_bot):
     global bot
     bot = _bot
+    
+#Emoji code
+##Constants to define emoji codes to use in strings
+EMOJI_COOKIE = str(chr(0x1F36A))
+EMOJI_CAKE = str(chr(0x1F370))
+EMOJI_MUSICNOTES = str(chr(0x1F3B6))
+EMOJI_ROBOT = str(chr(0x1F916))
+EMOJI_SKULL = str(chr(0x1F480))
+EMOJI_WINK = str(chr(0x1F609))
+EMOJI_BELL = str(chr(0x1F514))
+EMOJI_EYEROLL = str(chr(0x1F644))
+EMOJI_BICEPS = str(chr(0x1F4AA))
+EMOJI_NECKLACE = str(chr(0x1F4FF))
+EMOJI_WINEGLASS = str(chr(0x1F377))
+EMOJI_FIRE = str(chr(0x1F525))
+EMOJI_SNOWFLAKE = str(chr(0x2744))
+EMOJI_BLOSSOM = str(chr(0x1F33C))
+EMOJI_DAGGER = str(chr(0x1F5E1))
+EMOJI_BULLSEYE = str(chr(0x1F3AF))
 
 ########formatMessage
 ##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/
