@@ -49,6 +49,35 @@ log.addHandler(consoleHandler)
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 
+def getLogin():
+    if not os.path.isfile("login.py"):
+        print("This seems to be the first time NabBot is ran (or login.py is missing)")
+        print("To run your own instance of NabBot you need to create a new bot account to get a bot token")
+        print("https://discordapp.com/developers/applications/me")
+        print("Alternatively, you can use a regular discord account for your bot, althought this is not recommended")
+        print("Insert a bot token OR an e-mail address for a regular account to be used as a bot")
+        login = input(">>")
+        email = "";
+        password = ""
+        token = ""
+        if "@" in login:
+            email = login
+            password = input("Enter password: >>")
+        elif len(login) >= 50:
+            token = login
+        else:
+            input("What you entered isn't a token or an e-mail. Restart NabBot to retry.")
+            exit(1)
+        f = open("login.py","w+")
+        f.write("#Token always has priority, if token is defined it will always attempt to login using a token\n")
+        f.write("#Comment the token line or set it empty to use email login\n")
+        f.write("token = '{0}'\nemail = '{1}'\npassword = '{2}'\n".format(token,email,password))
+        f.close()
+        print("Login data has been saved correctly. You can change this later by editing login.py")
+        input("Press any key to start NabBot now...")
+        exit(0)
+    return __import__("login")
+
 
 def utilsGetBot(_bot):
     global bot

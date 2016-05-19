@@ -1,11 +1,9 @@
 from utils import *
-from login import *
 from config import *
 from tibia import *
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True)
-client = discord.Client()
 
 @bot.event
 @asyncio.coroutine
@@ -682,13 +680,35 @@ def shutdown(ctx):
 ########
 
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
+    login = getLogin()
     try:
-      token
+        token = login.token
     except NameError:
-      bot.run(username, password)
-    else:
-      bot.run(token)
+        token = ""
+    
+    try:
+        email = login.email
+        password = login.password
+    except NameError:
+        email = ""
+        password = ""
+    try:
+        if(token):
+            bot.run(token)
+        elif(email and password):
+            bot.run(login.email,login.password)
+        else:
+            print("No login data found. Edit or delete login.py and restart.")
+            input("\nPress any key to continue...")
+            quit()
+    except discord.errors.LoginFailure:
+        print("Incorrect login data. Edit or delete login.py and restart.")
+        input("\nPress any key to continue...")
+        quit()
+    finally:
+        bot.session.close()
+
 
     log.warning("Emergency restart!")
     if(platform.system() == "Linux"):
@@ -696,3 +716,4 @@ if __name__ == "__main__":
     else:
         os.system("python restart.py")
     quit()
+    
