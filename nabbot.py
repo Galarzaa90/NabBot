@@ -65,7 +65,7 @@ def think():
         #It won't say anything if the last message was by the bot.
         #if lastmessage != None and isgoof == False and mainchannel_idletime > goof_delay:
             #yield from goof()
-        
+
         ##do any magic we want here
         
         #periodically check server online lists
@@ -210,8 +210,8 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
 
 ########announceLevel
 @asyncio.coroutine
-def announceLevel(charName,charLevel):
-    if int(charLevel) < announceTreshold:
+def announceLevel(charName,newLevel):
+    if int(newLevel) < announceTreshold:
         #Don't announce for low level players
         return
     
@@ -226,9 +226,9 @@ def announceLevel(charName,charLevel):
     channel = getChannelByServerAndName(mainserver,mainchannel)
     
     #Select a message
-    message = weighedChoice(levelmessages)
+    message = weighedChoice(levelmessages,char['vocation'],int(newLevel))
     #Format message with player data
-    message = message.format(charName,charLevel,pronoun[0],pronoun[1])
+    message = message.format(charName,newLevel,pronoun[0],pronoun[1])
     #Format extra stylization
     message = formatMessage(message)
     
@@ -374,6 +374,15 @@ def online(ctx):
     finally:
         c.close()
 ##### Admin only commands #### 
+
+######## Makesay command
+@bot.command(pass_context=True,hidden=True)
+@asyncio.coroutine
+def makesay(ctx,*args: str):
+    if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
+        return
+    channel = getChannelByServerAndName(mainserver,mainchannel)
+    yield from bot.send_message(channel," ".join(args))
 
 ######## Stalk command
 @bot.command(pass_context=True,hidden=True)

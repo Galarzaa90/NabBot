@@ -49,6 +49,7 @@ log.addHandler(consoleHandler)
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 
+
 def getLogin():
     if not os.path.isfile("login.py"):
         print("This seems to be the first time NabBot is ran (or login.py is missing)")
@@ -78,7 +79,6 @@ def getLogin():
         exit(0)
     return __import__("login")
 
-
 def utilsGetBot(_bot):
     global bot
     bot = _bot
@@ -104,22 +104,33 @@ def formatMessage(message):
 ########weighedChoice
 ##makes weighed choices from message lists where [0] is a value representing the relative odds of picking a message
 ###and [1] is the message string
-def weighedChoice(messages):
-    #find the max range by adding up the weigh of every message in the list
+def weighedChoice(messages,condition1=False,condition2=False):
+    ##find the max range by adding up the weigh of every message in the list
+    #and purge out messages that dont fulfil the conditions
     range = 0
+    _messages = []
     for message in messages:
-        range = range+message[0]
+        if len(message) == 4:
+            if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]):
+                range = range+message[0]
+                _messages.append(message)
+        elif len(message) == 3:
+            if (not message[2] or condition1 in message[2]):
+                _messages.append(message)
+        else:
+            range = range+message[0]
+            _messages.append(message)
     #choose a random number
     rangechoice = random.randint(0, range)
     #iterate until we find the matching message
     rangepos = 0
-    for message in messages:
+    for message in _messages:
         if rangechoice >= rangepos and rangechoice < rangepos+message[0]:
             return message[1]
         rangepos = rangepos+message[0]
     #this shouldnt ever happen...
     print("Error in weighedChoice!")
-    return messages[0][1]
+    return _messages[0][1]
 ########
 
 ########getChannelByServerAndName
