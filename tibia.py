@@ -508,13 +508,30 @@ class Tibia():
     @commands.command(aliases=['levelups'])
     @asyncio.coroutine
     def levels(self,*name : str):
-        """Shows a player's recent level ups
+        """Shows a player's recent level ups or global leveups if no player is specified
         
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
         name = " ".join(name)
-        c = userDatabase.cursor()
+        c = userDatabase.cursor()            
         try:
+            if(not name):
+                c.execute("SELECT level, date, name, user_id FROM char_levelups, chars WHERE char_id = id ORDER BY date DESC LIMIT 15")
+                result = c.fetchall()
+                if len(result) < 1:
+                    yield from self.bot.say("No one has leveled up recently")
+                    return
+                now = time.time()
+                reply = "Latest level ups:"
+                for levelup in result:
+                    timediff = timedelta(seconds=now-levelup[1])
+                    user = getUserById(levelup[3])
+                    username = "unkown"
+                    if(user):
+                        username = user.name
+                    reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1}*".format(levelup[0],getTimeDiff(timediff),levelup[2],username)
+                yield from self.bot.say(reply)
+                return
             #Checking if character exists in db and get id while we're at it
             c.execute("SELECT id, name FROM chars WHERE name LIKE ?",(name,))
             result = c.fetchone()

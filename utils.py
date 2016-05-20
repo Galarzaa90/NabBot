@@ -15,6 +15,25 @@ from datetime import datetime,timedelta,date
 from calendar import timegm
 import sys
 
+#Emoji code
+##Constants to define emoji codes to use in strings
+EMOJI_COOKIE = str(chr(0x1F36A))
+EMOJI_CAKE = str(chr(0x1F370))
+EMOJI_MUSICNOTES = str(chr(0x1F3B6))
+EMOJI_ROBOT = str(chr(0x1F916))
+EMOJI_SKULL = str(chr(0x1F480))
+EMOJI_WINK = str(chr(0x1F609))
+EMOJI_BELL = str(chr(0x1F514))
+EMOJI_EYEROLL = str(chr(0x1F644))
+EMOJI_BICEPS = str(chr(0x1F4AA))
+EMOJI_NECKLACE = str(chr(0x1F4FF))
+EMOJI_WINEGLASS = str(chr(0x1F377))
+EMOJI_FIRE = str(chr(0x1F525))
+EMOJI_SNOWFLAKE = str(chr(0x2744))
+EMOJI_BLOSSOM = str(chr(0x1F33C))
+EMOJI_DAGGER = str(chr(0x1F5E1))
+EMOJI_BULLSEYE = str(chr(0x1F3AF))
+
 from config import *
 bot = ""
 
@@ -83,24 +102,6 @@ def utilsGetBot(_bot):
     global bot
     bot = _bot
     
-#Emoji code
-##Constants to define emoji codes to use in strings
-EMOJI_COOKIE = str(chr(0x1F36A))
-EMOJI_CAKE = str(chr(0x1F370))
-EMOJI_MUSICNOTES = str(chr(0x1F3B6))
-EMOJI_ROBOT = str(chr(0x1F916))
-EMOJI_SKULL = str(chr(0x1F480))
-EMOJI_WINK = str(chr(0x1F609))
-EMOJI_BELL = str(chr(0x1F514))
-EMOJI_EYEROLL = str(chr(0x1F644))
-EMOJI_BICEPS = str(chr(0x1F4AA))
-EMOJI_NECKLACE = str(chr(0x1F4FF))
-EMOJI_WINEGLASS = str(chr(0x1F377))
-EMOJI_FIRE = str(chr(0x1F525))
-EMOJI_SNOWFLAKE = str(chr(0x2744))
-EMOJI_BLOSSOM = str(chr(0x1F33C))
-EMOJI_DAGGER = str(chr(0x1F5E1))
-EMOJI_BULLSEYE = str(chr(0x1F3AF))
 
 ########formatMessage
 ##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/
