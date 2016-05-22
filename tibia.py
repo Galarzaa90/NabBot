@@ -103,7 +103,33 @@ def getServerOnline(server):
             onlineList.append({'name' : name, 'level' : int(level)})
     return onlineList
 
-def getGuildOnline(guildname):
+def getGuildOnline(guildname,titlecase=True):
+    #Fix casing using guildstats.eu if needed
+    if not titlecase:
+        content = ""
+        retry = 0
+        while content == "" and retry < 5:
+            try:
+                page = urllib.request.urlopen('http://guildstats.eu/guild?guild='+urllib.parse.quote(guildname))
+                content = page.read().decode('ISO-8859-1')
+            except Exception:
+                retry+=1
+        if content == "":
+            log.error("Error in getGuildOnline("+guildname+"), while fixing casing with guildstats.eu")
+            return ERROR_NETWORK
+        #Check if guild exists (in a really lazy way)
+        try:
+            content.index("General info")
+        except Exception:
+            return ERROR_DOESNTEXIST
+        startIndex = content.index("General info")
+        endIndex = content.index("Recruitment")
+        content = content[startIndex:endIndex]
+        m = re.search(r'<a href="set=(.+?)"',content)
+        if m:
+            guildname = urllib.parse.unquote_plus(m.group(1))
+    else:
+        guildname = guildname.title()
     #Fetch webpage
     content = ""
     retry = 0
@@ -121,7 +147,10 @@ def getGuildOnline(guildname):
     try:
         content.index("Information")
     except Exception:
-        return ERROR_DOESNTEXIST
+        if titlecase:
+            return getGuildOnline(guildname,False)
+        else:
+            return ERROR_DOESNTEXIST
     #Trimming content string to reduce load
     startIndex = content.index("<td>Status</td>")
     endIndex = content.index("name=\"Show All\"")
@@ -142,7 +171,7 @@ def getGuildOnline(guildname):
             joined = joined.replace('&#160;','-')
             member_list.append({'rank' : rank, 'name' : name, 'title' : title,
             'vocation' : vocation, 'level' : level, 'joined' : joined})    
-    return member_list
+    return member_list,guildname
 
 def getPlayer(name):
     #Fetch website
@@ -432,8 +461,8 @@ class Tibia():
     @asyncio.coroutine
     def guild(self,ctx,*guildname : str):
         """Checks who is online in a guild"""
-        guildname = " ".join(guildname).title()
-        onlinelist = getGuildOnline(guildname)
+        guildname = " ".join(guildname)
+        onlinelist,guildname = getGuildOnline(guildname)
         if onlinelist == ERROR_DOESNTEXIST:
             yield from self.bot.say("The guild "+urllib.parse.unquote_plus(guildname)+" doesn't exist.")
             return
