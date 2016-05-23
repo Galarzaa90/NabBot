@@ -59,15 +59,6 @@ def think():
     lastPlayerDeathCheck = datetime.now()
     global globalOnlineList
     while 1:
-        #update idle time
-        updateChannelIdleTime()
-        #After some time (goof_delay) of silence, the bot will send a random message.
-        #It won't say anything if the last message was by the bot.
-        #if lastmessage != None and isgoof == False and mainchannel_idletime > goof_delay:
-            #yield from goof()
-
-        ##do any magic we want here
-
         #periodically check server online lists
         if datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
             ##pop last server in qeue, reinsert it at the beggining
@@ -235,48 +226,7 @@ def announceLevel(charName,newLevel):
     yield from bot.send_message(channel,message)
 ########
 
-########update idle time, dunno if u wanna use a function for this, just seemed less ugly
-def updateChannelIdleTime():
-    global mainchannel_idletime
-    mainchannel_idletime = datetime.now() - lastmessagetime
-########
-
-@asyncio.coroutine
-def goof():
-    global isgoof
-    channel = getChannelByServerAndName(mainserver,mainchannel)
-    yield from bot.send_message(channel,random.choice(idlemessages))
-    ##this im kinda worried about, it seems to work but i'm not sure if it CANT fuck up
-    #afaik, it shouldnt always be seeing its own msg instantly and if yield from means "dont wait for this to be done" then sometimes the isgoof should be set to true and then immediatly set back to false?
-    #worked in all my tests though, so we'll see. worse case scenario it sometimes doesnt realize and goofs twice in a row
-
-    ##in fact heres an ugly workaround: wait a few seconds before setting isgoof!
-    #this holds back the whole think() function too but w/e :D
-    yield from asyncio.sleep(2)
-    isgoof = True
-
-########custom on_message to handle hidden commands and lastmessage info
-@asyncio.coroutine
-def on_message(self, message):
-    global lastmessage
-    global lastmessagetime
-    global isgoof
-    #update last message
-    if not message.channel.is_private:
-        if lastmessage is not None and not lastmessage == message and message.channel.name == mainchannel and message.channel.server.name == mainserver and (not lastmessage.author.id == bot.user.id):
-            lastmessage = message
-            lastmessagetime = datetime.now()
-            #if the message didnt come from the bot, set isgoof to false
-            isgoof = False
-
-    #do the default call to process_commands
-    yield from self.process_commands(message)
-
-#replacing default on_message from commands.Bot class
-commands.Bot.on_message = on_message
-########
-
-
+###### Bot commands
 @bot.command()
 @asyncio.coroutine
 def roll(dice : str):
@@ -833,42 +783,6 @@ def stalk_error(error,ctx):
         /stalk removechar char
         /stalk purge```""")
 
-######## Heynab command
-@bot.command(pass_context=True,hidden=True)
-@asyncio.coroutine
-def heynab(ctx,*args: str):
-    args = " ".join(args).strip().split(" ")
-
-    c = userDatabase.cursor()
-
-    userName = ""
-    while len(args) >= 2:
-        #iterate until we find an user that matches or we run out of arguments
-        userName = (userName+" "+args[0]).title().strip()
-        print("trying: "+userName)
-        args.remove(args[0])
-        user = getUserByName(userName)
-        #If the userName is not on the server
-        if user is None:
-            #check if its a stalked tibiaChar instead
-            c.execute("SELECT user_id FROM chars WHERE name LIKE ?",(userName,))
-            result = c.fetchone()
-            if(result is not None):
-                user = getUserById(result[0])
-                if user is not None:
-                    print("found user id "+str(user.id)+" ("+user.name+") from tibia char "+userName)
-                else:
-                    print("found user id "+str(result[0])+" from tibia char "+userName)
-                print("message: "+(" ".join(args)))
-                return
-        else:
-            #found a discord user
-            print("found user id "+str(user.id)+" from discord user "+user.name)
-            print("message: "+(" ".join(args)))
-            return
-
-    print("nobody found!")
-########
 
 ######## Restart command
 @bot.command(pass_context=True,hidden=True)

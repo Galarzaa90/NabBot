@@ -1,35 +1,14 @@
 from utils import *
 
-########some global variables to give u cancer
-###main channel where the bot chats for luls
-##this is so we can keep track of idletime for this server only
-##and do timed shit in here
+##This is the name of the server where the bot will work
+###This bot doesn't support multiple servers yet
 mainserver = "Redd Alliance/Bald Dwarfs"
 mainchannel = "general-chat"
-mainchannel_idletime = timedelta(seconds=0)
-###lastmessage stuff
-lastmessage = None
-lastmessagetime = datetime.now()
-###goof() globals
-#a boolean to know if a goofing msg was the last thing we saw
-isgoof = False
-#delay inbetween goofing
-goof_delay = timedelta(seconds=300)
-#list of idle messages for the goof() command
-idlemessages = ["Galarzazzzzza is a nab, i know, i know, oh oh oh",
-"Did you know 9 out of 10 giant spiders prefer nabchow?",
-"Any allegations made about Nezune and corpses are nothing but slander!",
-"All hail Michu, our cat overlord.",
-"Beware of nomads, they are known to kill unsuspecting druids!"]
 
-#admin id's for hax commands
+#Discord id for the users that can use admin commands
 admin_ids = ["162060569803751424","162070610556616705"]
 
-###Main Tibia Server
-#tibia_server = "Fidera"
-#^^^^just use the servers list!!!
-
-#the list of servers to check for with getServerOnline
+#The list of servers to check for with getServerOnline
 tibiaservers = ["Fidera","Secura"]
 
 ###this is the global online list

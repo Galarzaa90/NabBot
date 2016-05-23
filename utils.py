@@ -54,7 +54,7 @@ discord_log.addHandler(handler)
 log = logging.getLogger(__name__ )
 log.setLevel(logging.DEBUG)
 ###Save log to file (info level)
-fileHandler = logging.FileHandler(filename='logs/nabbot.log', encoding='utf-8', mode='a') 
+fileHandler = logging.FileHandler(filename='logs/nabbot.log', encoding='utf-8', mode='a')
 fileHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
 fileHandler.setLevel(logging.INFO)
 log.addHandler(fileHandler)
@@ -101,7 +101,7 @@ def getLogin():
 def utilsGetBot(_bot):
     global bot
     bot = _bot
-    
+
 
 ########formatMessage
 ##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/
@@ -167,7 +167,7 @@ def getChannelByServerAndName(server_name : str, channel_name : str):
 ##alias for getChannelByServerAndName("",channel_name)
 def getChannelByName(channel_name : str):
     return getChannelByServerAndName("",channel_name)
-    
+
 ########getServerByName
 def getServerByName(server_name : str):
     for server in bot.servers:
@@ -187,7 +187,7 @@ def getUserByName(userName):
     for user in server.members:
         if user.name.lower() == userName.lower():
             return user
-    
+
     return None
 ########
 
