@@ -1,13 +1,16 @@
 from utils import *
 
+@asyncio.coroutine
 def getPlayerDeaths(player, singleDeath = False):
+    url = "https://secure.tibia.com/community/?subtopic=characters&name="+urllib.parse.quote(player)
+    content = ""
     deathList = []
     content = ""
     retry = 0
     while content == "" and retry < 5:
         try:
-            page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(player))
-            content = page.read().decode('ISO-8859-1')
+            page = yield from aiohttp.get(url)
+            content = yield from page.text(encoding='ISO-8859-1')
         except Exception:
             retry+=1
 
@@ -66,14 +69,16 @@ def getPlayerDeaths(player, singleDeath = False):
             break
     return deathList
 
+@asyncio.coroutine
 def getServerOnline(server):
+    url = 'https://secure.tibia.com/community/?subtopic=worlds&world='+server
     onlineList = []
     content = ""
     retry = 0
     while content == "" and retry < 5:
         try:
-            page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=worlds&world='+server)
-            content = page.read().decode('ISO-8859-1')
+            page = yield from aiohttp.get(url)
+            content = yield from page.text(encoding='ISO-8859-1')
         except Exception:
             retry+=1
 
@@ -103,15 +108,19 @@ def getServerOnline(server):
             onlineList.append({'name' : name, 'level' : int(level)})
     return onlineList
 
+@asyncio.coroutine
 def getGuildOnline(guildname,titlecase=True):
+    gstats_url = 'http://guildstats.eu/guild?guild='+urllib.parse.quote(guildname)
+    tibia_url = 'https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1'
     #Fix casing using guildstats.eu if needed
+    ##Sorry guildstats.eu :D
     if not titlecase:
         content = ""
         retry = 0
         while content == "" and retry < 5:
             try:
-                page = urllib.request.urlopen('http://guildstats.eu/guild?guild='+urllib.parse.quote(guildname))
-                content = page.read().decode('ISO-8859-1')
+                page = yield from aiohttp.get(gstats_url)
+                content = yield from page.text(encoding='ISO-8859-1')
             except Exception:
                 retry+=1
         if content == "":
@@ -135,8 +144,8 @@ def getGuildOnline(guildname,titlecase=True):
     retry = 0
     while content == "" and retry < 5:
         try:
-            page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1')
-            content = page.read().decode('ISO-8859-1')
+            page = yield from aiohttp.get(tibia_url)
+            content = yield from page.text(encoding='ISO-8859-1')
         except Exception:
             retry+=1
 
@@ -148,7 +157,8 @@ def getGuildOnline(guildname,titlecase=True):
         content.index("Information")
     except Exception:
         if titlecase:
-            return getGuildOnline(guildname,False)
+            ret = yield from getGuildOnline(guildname,False)
+            return ret
         else:
             return ERROR_DOESNTEXIST
     #Trimming content string to reduce load
@@ -173,14 +183,16 @@ def getGuildOnline(guildname,titlecase=True):
             'vocation' : vocation, 'level' : level, 'joined' : joined})
     return member_list,guildname
 
+@asyncio.coroutine
 def getPlayer(name):
     #Fetch website
+    url = "https://secure.tibia.com/community/?subtopic=characters&name="+urllib.parse.quote(name)
     content = ""
     retry = 0
     while content == "" and retry < 5:
         try:
-            page = urllib.request.urlopen('https://secure.tibia.com/community/?subtopic=characters&name='+urllib.parse.quote(name))
-            content = page.read().decode('ISO-8859-1')
+            page = yield from aiohttp.get(url)
+            content = yield from page.text(encoding='ISO-8859-1')
         except Exception:
             retry+=1
 
@@ -402,7 +414,7 @@ class Tibia():
     def check(self,ctx,*name : str):
         """Tells you information about a character"""
         name = " ".join(name)
-        char = getPlayer(name)
+        char = yield from getPlayer(name)
         if(char == ERROR_NETWORK):
             yield from self.bot.say("I... can you repeat that?")
             return
@@ -433,7 +445,7 @@ class Tibia():
         #If it's not numeric, then it must be a char's name
         except ValueError:
             name = " ".join(param)
-            char = getPlayer(name)
+            char = yield from getPlayer(name)
             if type(char) is dict:
                 level = int(char['level']);
                 name = char['name'];
@@ -462,7 +474,7 @@ class Tibia():
     def guild(self,ctx,*guildname : str):
         """Checks who is online in a guild"""
         guildname = " ".join(guildname)
-        onlinelist,guildname = getGuildOnline(guildname)
+        onlinelist,guildname = yield from getGuildOnline(guildname)
         if onlinelist == ERROR_DOESNTEXIST:
             yield from self.bot.say("The guild "+urllib.parse.unquote_plus(guildname)+" doesn't exist.")
             return
@@ -515,7 +527,7 @@ class Tibia():
     def deaths(self,*name : str):
         """Shows a player's recent deaths"""
         name = " ".join(name).strip()
-        deaths = getPlayerDeaths(name)
+        deaths = yield from getPlayerDeaths(name)
         if(deaths == ERROR_DOESNTEXIST):
             yield from self.bot.say("That character doesn't exists!")
             return
@@ -599,7 +611,7 @@ class Tibia():
                 yield from self.bot.say(paramsError)
                 return
             else:
-                char = getPlayer(params[0])
+                char = yield from getPlayer(params[0])
                 if char == ERROR_NETWORK:
                     yield from self.bot.say("Sorry, can you try it again?")
                     return
@@ -635,7 +647,8 @@ class Tibia():
             if(stats["vocation"] == "no vocation"):
                 stats["vocation"] = "with no vocation"
             if char:
-                yield from self.bot.say("**{5}** is a level **{0}** {1}, {6} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level,stats["vocation"],stats["hp"],stats["mp"],stats["cap"],char['name'],char['name']))
+                pronoun = "he" if char['gender'] == "male" else "she"
+                yield from self.bot.say("**{5}** is a level **{0}** {1}, {6} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level,char["vocation"].lower(),stats["hp"],stats["mp"],stats["cap"],char['name'],pronoun))
             else:
                 yield from self.bot.say("A level **{0}** {1} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level,stats["vocation"],stats["hp"],stats["mp"],stats["cap"]))
         else:

@@ -14,6 +14,7 @@ import time
 from datetime import datetime,timedelta,date
 from calendar import timegm
 import sys
+import aiohttp
 
 #Emoji code
 ##Constants to define emoji codes to use in strings

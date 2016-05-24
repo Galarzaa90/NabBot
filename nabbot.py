@@ -66,7 +66,7 @@ def think():
             tibiaservers.insert(0, currentServer)
 
             #get online list for this server
-            currentServerOnline = getServerOnline(currentServer)
+            currentServerOnline = yield from getServerOnline(currentServer)
 
             if len(currentServerOnline) > 0:
                 #open connection to users.db
@@ -128,7 +128,7 @@ def think():
             currentChar = currentChar.split("_",1)[1]
             #get death list for this char
             #we only need the last death
-            currentCharDeaths = getPlayerDeaths(currentChar,True)
+            currentCharDeaths = yield from getPlayerDeaths(currentChar,True)
 
             if (type(currentCharDeaths) is list) and len(currentCharDeaths) > 0:
                 c = userDatabase.cursor()
@@ -167,7 +167,7 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
         #Don't announce for low level players
         return
 
-    char = getPlayer(charName)
+    char = yield from getPlayer(charName)
     #Failsafe in case getPlayer fails to retrieve player data
     if type(char) is not dict:
         log.warning("Error in announceDeath, failed to getPlayer("+charName+")")
@@ -206,7 +206,7 @@ def announceLevel(charName,newLevel):
         #Don't announce for low level players
         return
 
-    char = getPlayer(charName)
+    char = yield from getPlayer(charName)
     #Failsafe in case getPlayer fails to retrieve player data
     if type(char) is not dict:
         log.error("Error in announceLevel, failed to getPlayer("+charName+")")
@@ -415,7 +415,7 @@ def stalk(ctx,*args: str):
                 yield from bot.say('Usage for **addchar** is **/stalk addchar, -discordUser-, -charName-**.')
             else:
                 charName = str(args[2])
-                char = getPlayer(charName)
+                char = yield from getPlayer(charName)
                 if type(char) is dict:
                     #Check if the char was renamed
                     if char['name'].lower() != charName.lower():
@@ -456,7 +456,7 @@ def stalk(ctx,*args: str):
                 yield from bot.say('Usage for **addacc** is **/stalk addacc, -discordUser-, -accCharName-**.')
             else:
                 charName = str(args[2]).title()
-                char = getPlayer(charName)
+                char = yield from getPlayer(charName)
                 if type(char) is dict:
                     #Check if the char was renamed
                     if char['name'].lower() != charName.lower():
@@ -532,7 +532,7 @@ def stalk(ctx,*args: str):
                             c.execute("DELETE FROM chars WHERE user_id LIKE ?",(discordUserId,))
                             yield from bot.say('Removed **'+charName+'** from chars. (Discord user **'+str(discordUserId)+'** no longer in server)')
                         else:
-                            char = getPlayer(charName)
+                            char = yield from getPlayer(charName)
                             if type(char) is dict:
                                 #If the char exists check if it was renamed
                                 if char['name'].lower() != charName.lower():
@@ -602,7 +602,7 @@ def stalk2(ctx, subcommand, *args : str):
                yield from bot.say("The correct syntax is: /stalk {0} username,character".format(subcommand))
                return
             user = getUserByName(params[0])
-            char = getPlayer(params[1])
+            char = yield from getPlayer(params[1])
             if(user is None):
                 yield from bot.say("I don't see any user named **{0}**".format(params[0]))
                 return
@@ -740,7 +740,7 @@ def stalk2(ctx, subcommand, *args : str):
             rename_chars = list()
             for row in result:
                 name = row[0]
-                char = getPlayer(name)
+                char = yield from getPlayer(name)
                 if char == ERROR_NETWORK:
                     yield from bot.say("Couldn't fetch **{0}**, skipping...".format(name))
                     continue
@@ -767,8 +767,11 @@ def stalk2(ctx, subcommand, *args : str):
             if len(result) >= 1:
                 c.execute("DELETE FROM discord_users WHERE id NOT IN (SELECT user_id FROM chars)")
                 yield from bot.say("{0} user(s) with no characters were removed.".format(c.rowcount))
-            return
+            c.execute("DELETE FROM char_levelups WHERE char_id NOT IN (SELECT id FROM chars)")
+            if c.rowcount > 0:
+                yield from bot.say("{0} level up registries from removed characters were deleted.".format(c.rowcount))
             yield from bot.say("Purge done.")
+            return
     finally:
         c.close()
         userDatabase.commit()
