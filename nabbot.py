@@ -754,13 +754,13 @@ def stalk2(ctx, subcommand, *args : str):
                     rename_chars.append((char['name'],name,))
                     yield from bot.say("**{0}** was renamed to **{1}**, updating...".format(name,char['name']))
                     continue
-                #No need to check if user exists cause those were removed already
-                if len(delete_chars) > 0:
-                    c.executemany("DELETE FROM chars WHERE name LIKE ?",delete_chars)
-                    yield from bot.say("{0} char(s) were removed.".format(c.rowcount))
-                if len(rename_chars) > 0:
-                    c.executemany("UPDATE chars SET name = ? WHERE name LIKE ?",rename_chars)
-                    yield from bot.say("{0} char(s) were renamed.".format(c.rowcount))
+            #No need to check if user exists cause those were removed already
+            if len(delete_chars) > 0:
+                c.executemany("DELETE FROM chars WHERE name LIKE ?",delete_chars)
+                yield from bot.say("{0} char(s) were removed.".format(c.rowcount))
+            if len(rename_chars) > 0:
+                c.executemany("UPDATE chars SET name = ? WHERE name LIKE ?",rename_chars)
+                yield from bot.say("{0} char(s) were renamed.".format(c.rowcount))
             #Remove users with no chars
             c.execute("SELECT id FROM discord_users WHERE id NOT IN (SELECT user_id FROM chars)")
             result = c.fetchall()
