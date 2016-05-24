@@ -42,8 +42,10 @@ def on_command(command, ctx):
 @bot.event
 @asyncio.coroutine
 def on_member_join(member):
-    message = "Welcome {0.mention}! Please tell us about yourself, who is your Tibia character?"
+    message = "Welcome {0.mention}! Please tell us about yourself, who is your Tibia character?\r\nSay /im *charactername* and I'll begin tracking it for you!"
     log.info("New member joined: {0.name} (ID: {0.id})".format(member))
+    ##Starting a private message with new members allows us to keep track of them even after they leave our visible servers.
+    yield from bot.start_private_message(member)
     yield from bot.send_message(member.server,message.format(member))
 
 @bot.event
@@ -252,6 +254,92 @@ def choose(*choices : str):
 
 @bot.command(pass_context=True)
 @asyncio.coroutine
+def im(ctx,*charname : str):
+    """Lets you add your first tibia character(s) for the bot to track.
+
+    If you need to add any more characters or made a mistake, please message an admin."""
+    
+    ##This is equivalent to someone using /stalk addacc on themselves.
+    #To avoid abuse it will only work on users who have joined recently and have no characters added to their account.
+
+    #This command can't work on private messages, since we need a member instead of an user to be able to check the joining date.
+    if ctx.message.channel.is_private:
+        return
+
+    charname = " ".join(charname).strip()
+    user = ctx.message.author
+    try:
+        c = userDatabase.cursor()
+        admins_message = " or ".join("**"+getUserById(admin).mention+"**" for admin in admin_ids)
+        servers_message = ", ".join(["**"+server+"**" for server in tibiaservers])
+        notallowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help adding characters to your account please message "+admins_message+".").format(user)
+        
+        ##Check if the user has joined recently
+        if datetime.now() - user.joined_at > timewindow_im_joining:
+            yield from bot.say(notallowed_message)
+            return
+        ##Check that this user doesn't exist or has no chars added to it yet.
+        c.execute("SELECT id from discord_users WHERE id = ?",(user.id,))
+        result = c.fetchone()
+        if(result is not None):
+            c.execute("SELECT name,user_id FROM chars WHERE user_id LIKE ?",(user.id,))
+            result = c.fetchone();
+            if(result is not None):
+                yield from bot.say(notallowed_message)
+                return
+        else:
+            #Add the user if it doesn't exist
+            c.execute("INSERT INTO discord_users(id) VALUES (?)",(user.id,))
+        
+        char = yield from getPlayer(charname)
+        if(type(char) is not dict):
+            if char == ERROR_NETWORK:
+                yield from bot.say("I couldn't fetch the character, please try again.")
+            elif char == ERROR_DOESNTEXIST:
+                yield from bot.say("That character doesn't exists.")
+            return
+        chars = char['chars']
+        #If the char is hidden,we still add the searched character
+        if(len(chars) == 0):
+            chars = [char]
+            print(char['world'])
+        skipped = []
+        updated = []
+        added = []
+        for char in chars:
+            if(char['world'] not in tibiaservers):
+                skipped.append(char)
+                continue
+            c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?",(char['name'],))
+            result = c.fetchone();
+            if(result is not None):
+                if getUserById(result[1]) is None:
+                    updated.append({'name' : char['name'], 'world' : char['world'], 'prevowner' : result[1]})
+                    continue
+                else:
+                    yield from bot.say("I'm sorry but a character in that account was already claimed by **@{0}**.".format(getUserById(result[1]).name)+"\r\n"+
+                        "Have you made a mistake? Message "+admins_message+" if you need any help!")
+                    return
+            added.append(char)
+        if len(skipped) == len(chars):
+            yield from bot.say("I'm sorry, I couldn't find any characters in that account from the worlds I track ("+servers_message+")\r\n"+
+                        "Have you made a mistake? Message "+admins_message+" if you need any help!")
+            return
+        for char in updated:
+            c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?",(user.id,char['name']))
+            log.info("Character {0} was reasigned to {1.name} (ID: {1.id}) from /im. (Previous owner (ID: {2}) was not found)".format(char['name'],user,char['prevowner']))
+        for char in added:
+            c.execute("INSERT INTO chars (name,user_id) VALUES (?,?)",(char['name'],user.id))
+            log.info("Character {0} was asigned to {1.name} (ID: {1.id}) from /im.".format(char['name'],user))
+
+        yield from bot.say(("Thanks {0.mention}! I have added the following character(s) to your account: "+", ".join("**"+char['name']+"**" for char in added)+", ".join("**"+char['name']+"**" for char in updated)+".\r\nFrom now on I will track level advances and deaths for you, if you need to add any more characters please message "+admins_message+".").format(user))
+        return
+    finally:
+        c.close()
+        userDatabase.commit()
+
+@bot.command(pass_context=True)
+@asyncio.coroutine
 def whois(ctx,*name : str):
     """Tells you the characters of a user or the owner of a character
 
@@ -270,7 +358,9 @@ def whois(ctx,*name : str):
                 user = getUserById(result[1])
                 #Check if the user exists just in case
                 if(user is not None):
-                    yield from bot.say("{0} is a character of **@{1.name}**.".format(result[0],user))
+                    yield from bot.say("**{0}** is a character of **@{1.name}**.".format(result[0],user))
+                    result = yield from check(result[0])
+                    yield from bot.say(result)
                     return
             #It wasn't a discord user nor a tibia character
             yield from bot.say("I don't see anyone with that name.")
@@ -572,7 +662,7 @@ def stalk(ctx,*args: str):
     c.close()
 
 
-@bot.command(pass_context=True)
+@bot.command(pass_context=True,hidden=True)
 @asyncio.coroutine
 def stalk2(ctx, subcommand, *args : str):
     if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
@@ -640,7 +730,7 @@ def stalk2(ctx, subcommand, *args : str):
             if(subcommand == "addacc"):
                 chars = char['chars']
                 #If the char is hidden,we still add the searched character
-                if(chars == 0):
+                if(len(chars) == 0):
                     yield from bot.say("Character is hidden.")
                     chars = [char]
                 for char in chars:

@@ -313,7 +313,7 @@ def getItem(name):
                         "Ankrahmun",
                         "Darashia",
                         "Edron",
-                        "Carlin"][date.today().weekday()]
+                        "Carlin"][(datetime.now()+timezone_offset).weekday()]
                 elif(name == 'Yasir'):
                     city = 'his boat'
                 npcs.append({"name" : name, "city": city})
@@ -402,6 +402,24 @@ def getStats(level, vocation):
 
     return {"vocation" : vocation, "hp" : hp, "mp" : mp, "cap" : cap}
 
+@asyncio.coroutine
+def check(name):
+    char = yield from getPlayer(name)
+    if(char == ERROR_NETWORK):
+        return "I... can you repeat that?"
+    if(char == ERROR_DOESNTEXIST):
+        return "That character doesn't exist."
+    pronoun = "He"
+    if(char['gender'] == "female"):
+        pronoun = "She"
+    replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}"
+    guildF = "\n{0} is __{1}__ of the **{2}**."
+    if(char['guild']):
+        guild = guildF.format(pronoun,char['rank'],char['guild'])
+    else:
+        guild = ""
+    reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild)
+    return reply
 ####################### Commands #######################
 
 class Tibia():
@@ -412,26 +430,9 @@ class Tibia():
     @commands.command(pass_context=True,aliases=['player','checkplayer','char'])
     @asyncio.coroutine
     def check(self,ctx,*name : str):
-        """Tells you information about a character"""
-        name = " ".join(name)
-        char = yield from getPlayer(name)
-        if(char == ERROR_NETWORK):
-            yield from self.bot.say("I... can you repeat that?")
-            return
-        if(char == ERROR_DOESNTEXIST):
-            yield from self.bot.say("That character doesn't exist.")
-            return
-        pronoun = "He"
-        if(char['gender'] == "female"):
-            pronoun = "She"
-        replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}"
-        guildF = "\n{0} is __{1}__ of the **{2}**."
-        if(char['guild']):
-            guild = guildF.format(pronoun,char['rank'],char['guild'])
-        else:
-            guild = ""
-        reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild)
-        yield from self.bot.say(reply)
+        """Tells you information about a character or user"""
+        result = yield from check(" ".join(name))
+        yield from self.bot.say(result)
 
     @commands.command(pass_context=True,aliases=['expshare','party'])
     @asyncio.coroutine
