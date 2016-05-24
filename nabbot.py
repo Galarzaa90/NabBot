@@ -739,7 +739,7 @@ def stalk2(ctx, subcommand, *args : str):
             delete_chars = list()
             rename_chars = list()
             for row in result:
-                name = result[0]
+                name = row[0]
                 char = getPlayer(name)
                 if char == ERROR_NETWORK:
                     yield from bot.say("Couldn't fetch **{0}**, skipping...".format(name))
