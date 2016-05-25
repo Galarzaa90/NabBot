@@ -11,10 +11,6 @@ admin_ids = ["162060569803751424","162070610556616705"]
 #The list of servers to check for with getServerOnline
 tibiaservers = ["Fidera","Secura"]
 
-##offset of your timezone vs CET, currently being used for calculating rashid's location (/item in tibia.py)
-#TODO: detect local timezone and adjust automatically
-timezone_offset = -timedelta(hours=9)
-
 ##Time since joining until the bot will ignore /im from an user. (See: /im in nabbot.py)
 #Note that an user can simply rejoin the server to reset his join date, but that will trigger a log message.
 timewindow_im_joining = timedelta(days=3)

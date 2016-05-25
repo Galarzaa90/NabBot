@@ -202,3 +202,22 @@ def getUserById(userId):
         user = discord.utils.find(lambda m: m.user.id == str(userId), bot.private_channels)
     return user
 ########
+
+#Returns your local time zone
+def getLocalTimezone():
+    #Getting local time and GMT
+    t = time.localtime()
+    u = time.gmtime(time.mktime(t))
+    #UTC Offset
+    return ((timegm(t) - timegm(u))/60/60)
+    
+##Returns Germany's timezone, considering their daylight saving time dates
+def getTibiaTimeZone():
+    #Find date in Germany
+    gt = datetime.utcnow()+timedelta(hours=1)
+    germany_date = date(gt.year,gt.month,gt.day)
+    dst_start = date(gt.year,3,(31 - (int(((5 * gt.year) / 4) + 4) % int(7))))
+    dst_end = date(gt.year,10,(31 - (int(((5 * gt.year) / 4) + 1) % int(7))))
+    if dst_start < germany_date < dst_end:
+        return 2
+    return 1

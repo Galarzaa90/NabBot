@@ -306,6 +306,9 @@ def getItem(name):
                 elif(name == 'Nah\'Bob' or name == 'Haroun'):
                     city = 'Blue Djinn\'s Fortress'
                 elif(name == 'Rashid'):
+                    offset = getTibiaTimeZone() - getLocalTimezone()
+                    #Server save is at 10am, so in tibia a new day starts at that hour
+                    tibia_time = datetime.now()+timedelta(hours=offset-10)
                     city = [
                         "Svargrond",
                         "Liberty Bay",
@@ -313,7 +316,7 @@ def getItem(name):
                         "Ankrahmun",
                         "Darashia",
                         "Edron",
-                        "Carlin"][(datetime.now()+timezone_offset).weekday()]
+                        "Carlin"][tibia_time.weekday()]
                 elif(name == 'Yasir'):
                     city = 'his boat'
                 npcs.append({"name" : name, "city": city})
@@ -323,6 +326,7 @@ def getItem(name):
         c.close()
     return
 
+#Gets a time object from a time string from tibia.cmo
 def getLocalTime(tibiaTime):
     #Getting local time and GMT
     t = time.localtime()
