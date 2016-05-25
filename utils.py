@@ -69,6 +69,68 @@ log.addHandler(consoleHandler)
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 
+DB_LASTVERSION = 1
+
+def initDatabase():
+    #Database file is automatically created with connect, now we have to check if it has tables
+    print("Checking database version...")
+    db_version = 0
+    try:
+        c = userDatabase.cursor()
+        c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
+        result = c.fetchone()
+        #Database is empty
+        if(result is None or result[0] == 0):
+            c.execute("""CREATE TABLE discord_users (
+                    id	INTEGER NOT NULL,
+                    weight	INTEGER DEFAULT 5,
+                    PRIMARY KEY(id)
+                    )""")
+            c.execute("""CREATE TABLE chars (
+                    id	INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id	INTEGER,
+                    name	TEXT,
+                    last_level	INTEGER DEFAULT -1,
+                    last_death_time	TEXT
+                    )""")
+            c.execute("""CREATE TABLE char_levelups (
+                    char_id	INTEGER,
+                    level	INTEGER,
+                    date	INTEGER
+                    )""")      
+        c.execute("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND name LIKE 'db_info'")
+        result = c.fetchone();
+        #If there's no version value, version 1 is assumed
+        if(result is None):
+            c.execute("""CREATE TABLE db_info (
+                    key	TEXT,
+                    value	TEXT
+                    )""")
+            c.execute("INSERT INTO db_info(key,value) VALUES('version','1')")
+            db_version = 1
+            print("No version found, version 1 assumed")
+        else:
+            c.execute("SELECT value FROM db_info WHERE key LIKE 'version'")
+            db_version = int(c.fetchone()[0])
+            print("Version {0}".format(db_version))
+        if db_version == DB_LASTVERSION:
+            print("Database is up to date.")
+            return
+        #Future code to patch database changes
+        """
+            if db_version == 1:
+                #Apply changes
+                db_version +=1
+            if db_version = 2:
+                #Apply changes
+                db_version +=1
+            ...
+            print("Updated database to version {0}".format(db_version))
+            c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'",(db_version,))
+        """
+    finally:
+        userDatabase.commit()
+
 
 def getLogin():
     if not os.path.isfile("login.py"):
