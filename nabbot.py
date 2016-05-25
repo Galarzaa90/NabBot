@@ -910,6 +910,8 @@ def shutdown(ctx):
 
 
 if __name__ == "__main__":
+    initDatabase()
+    
     login = getLogin()
     try:
         token = login.token
