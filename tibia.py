@@ -592,7 +592,7 @@ class Tibia():
             result = c.fetchall()
             #Checking number of level ups
             if len(result) < 1:
-                yield from self.bot.say("**{0}** hasn't leveled up recently".format(name))
+                yield from self.bot.say("I haven't seen **{0}** level up.".format(name))
                 return
             now = time.time()
             reply = "**{0}** latest level ups:".format(name)

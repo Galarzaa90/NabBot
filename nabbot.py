@@ -742,9 +742,9 @@ def stalk2(ctx, subcommand, *args : str):
                     if(result is not None):
                         if(result[1] != user.id):
                             username = "unknown" if getUserById(result[1]) is None else getUserById(result[1]).name
-                            yield from bot.say("This character is already registered to **@{0}**".format(username))
+                            yield from bot.say("**{0}** is already registered to **@{1}**".format(char['name'],username))
                             continue
-                        yield from bot.say("This character is already registered to this user.")
+                        yield from bot.say("**{0}** is already registered to this user.".format(char['name']))
                         continue
                     c.execute("INSERT INTO chars (name,user_id) VALUES (?,?)",(char['name'],user.id))
                     yield from bot.say("**{0}** was registered succesfully to this user.".format(char['name']))
