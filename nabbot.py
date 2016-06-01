@@ -52,6 +52,8 @@ def on_member_join(member):
 @asyncio.coroutine
 def on_message_delete(message):
     log.info("{0.author.name} has deleted the message: '{0.content}'".format(message))
+    for attachment in message.attachments:
+        log.info(attachment)
 
 ########a think function!
 @asyncio.coroutine
