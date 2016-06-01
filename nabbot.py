@@ -55,6 +55,16 @@ def on_message_delete(message):
     for attachment in message.attachments:
         log.info(attachment)
 
+@bot.event
+@asyncio.coroutine
+def on_message_edit(older_message,message):
+    log.info("{0.author.name} has edited the message: '{0.content}'".format(older_message))
+    for attachment in older_message.attachments:
+        log.info(attachment)
+    log.info("New message: '{0.content}'".format(message))
+    for attachment in message.attachments:
+        log.info(attachment)
+
 ########a think function!
 @asyncio.coroutine
 def think():
