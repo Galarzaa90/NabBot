@@ -34,6 +34,7 @@ EMOJI_SNOWFLAKE = str(chr(0x2744))
 EMOJI_BLOSSOM = str(chr(0x1F33C))
 EMOJI_DAGGER = str(chr(0x1F5E1))
 EMOJI_BULLSEYE = str(chr(0x1F3AF))
+EMOJI_WHIRLYEYES = str(chr(0x1F632))
 
 from config import *
 bot = ""
@@ -69,7 +70,7 @@ log.addHandler(consoleHandler)
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 
-DB_LASTVERSION = 1
+DB_LASTVERSION = 2
 
 def initDatabase():
     #Database file is automatically created with connect, now we have to check if it has tables
@@ -117,20 +118,24 @@ def initDatabase():
             print("Database is up to date.")
             return
         #Future code to patch database changes
-        """
-            if db_version == 1:
-                #Apply changes
-                db_version +=1
-            if db_version = 2:
-                #Apply changes
-                db_version +=1
-            ...
-            print("Updated database to version {0}".format(db_version))
-            c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'",(db_version,))
-        """
+        if db_version == 1:
+            #Apply changes
+            c.execute("ALTER TABLE chars ADD vocation TEXT")
+            c.execute("UPDATE chars SET last_level = 0 WHERE last_level = -1")
+            db_version +=1
+        print("Updated database to version {0}".format(db_version))
+        c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'",(db_version,))
+        
     finally:
         userDatabase.commit()
 
+def vocAbb(vocation):
+    abbrev = {'None' : 'N', 'Druid' : 'D', 'Sorcerer' : 'S', 'Paladin' : 'P', 'Knight' : 'K',
+    'Elder Druid' : 'ED', 'Master Sorcerer' : 'MS', 'Royal Paladin' : 'RP', 'Elite Knight' : 'EK'}
+    try:
+        return abbrev[vocation]
+    except KeyError:
+        return 'N'
 
 def getLogin():
     if not os.path.isfile("login.py"):

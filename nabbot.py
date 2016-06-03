@@ -116,7 +116,7 @@ def think():
                             c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(None,serverChar['name'],))
 
                         ##else we check for levelup
-                        elif lastLevel < serverChar['level'] and lastLevel != -1:
+                        elif lastLevel < serverChar['level'] and lastLevel > 0:
                             ##announce the level up
                             log.info("Announcing level up: "+serverChar['name'])
                             #Saving level up date in database
@@ -332,6 +332,7 @@ def im(ctx,*charname : str):
                     yield from bot.say("I'm sorry but a character in that account was already claimed by **@{0}**.".format(getUserById(result[1]).name)+"\r\n"+
                         "Have you made a mistake? Message "+admins_message+" if you need any help!")
                     return
+            char = yield from getPlayer(char['name'])
             added.append(char)
         if len(skipped) == len(chars):
             yield from bot.say("I'm sorry, I couldn't find any characters in that account from the worlds I track ("+servers_message+")\r\n"+
@@ -341,7 +342,7 @@ def im(ctx,*charname : str):
             c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?",(user.id,char['name']))
             log.info("Character {0} was reasigned to {1.name} (ID: {1.id}) from /im. (Previous owner (ID: {2}) was not found)".format(char['name'],user,char['prevowner']))
         for char in added:
-            c.execute("INSERT INTO chars (name,user_id) VALUES (?,?)",(char['name'],user.id))
+            c.execute("INSERT INTO chars (name,last_level,vocation,user_id) VALUES (?,?,?,?)",(char['name'],char['level']*-1,char['vocation'],user.id))
             log.info("Character {0} was asigned to {1.name} (ID: {1.id}) from /im.".format(char['name'],user))
 
         yield from bot.say(("Thanks {0.mention}! I have added the following character(s) to your account: "+", ".join("**"+char['name']+"**" for char in added)+", ".join("**"+char['name']+"**" for char in updated)+".\r\nFrom now on I will track level advances and deaths for you, if you need to add any more characters please message "+admins_message+".").format(user))
@@ -350,52 +351,6 @@ def im(ctx,*charname : str):
         c.close()
         userDatabase.commit()
 
-@bot.command(pass_context=True)
-@asyncio.coroutine
-def whois(ctx,*name : str):
-    """Tells you the characters of a user or the owner of a character
-
-    Note that the bot has no way to know the characters of a member that just joined.
-    The bot has to be taught about the character's of an user."""
-    name = " ".join(name).strip()
-    user = getUserByName(name)
-    c = userDatabase.cursor()
-    try:
-        #Checking if the param used is the name of a character in the database
-        c.execute("SELECT name, user_id FROM chars WHERE name LIKE ?",(name,))
-        result = c.fetchone()
-        if (user is None):
-            #If it's not a discord user, it might be a tibia character
-            if (result is not None):
-                user = getUserById(result[1])
-                #Check if the user exists just in case
-                if(user is not None):
-                    yield from bot.say("**{0}** is a character of **@{1.name}**.".format(result[0],user))
-                    result = yield from check(result[0])
-                    yield from bot.say(result)
-                    return
-            #It wasn't a discord user nor a tibia character
-            yield from bot.say("I don't see anyone with that name.")
-            return
-        if(user.id == bot.user.id):
-            yield from bot.say("*Beep boop beep boop*. I'm just a bot!")
-            return
-        c.execute("SELECT name, last_level FROM chars WHERE user_id = ? ORDER BY last_level DESC",(user.id,))
-        chars = []
-        for row in c:
-            name = row[0]
-            try:
-                level = int(row[1])
-            except ValueError:
-                level = -1
-            chars.append(name+((" (Lvl: "+str(level)+")") if level > 0 else ""))
-        if(len(chars) <= 0):
-            yield from bot.say("I don't know who that is...")
-            return
-        #TODO: Fix possesive if user ends with s
-        yield from bot.say("**{0}**'s character{1}: {2}.".format(user.name,"s are" if len(chars) > 1 else " is", ", ".join(chars)))
-    finally:
-        c.close()
 
 @bot.command(pass_context=True)
 @asyncio.coroutine
@@ -409,19 +364,21 @@ def online(ctx):
     try:
         for char in globalOnlineList:
             char = char.split("_",1)[1]
-            c.execute("SELECT name, user_id FROM chars WHERE name LIKE ?",(char,))
+            c.execute("SELECT name, user_id, vocation, last_level FROM chars WHERE name LIKE ?",(char,))
             result = c.fetchone()
             if result:
                 #this will always be true unless a char is removed from chars inbetween globalOnlineList updates
-                discordOnlineChars.append({"name" : result[0], "id" : result[1]})
+                discordOnlineChars.append({"name" : result[0], "id" : result[1], "vocation" : result[2], "level" : result[3]})
         if len(discordOnlineChars) == 0:
             yield from bot.say("There is no one online from Discord.")
         else:
             reply = "The following discord users are online:"
             for char in discordOnlineChars:
                 user = getUserById(char['id'])
+
+                char['vocation'] = vocAbb(char['vocation'])
                 discordName = user.name if (user is not None) else "unknown"
-                reply += "\n\t{0} (**@{1}**)".format(char['name'],discordName)
+                reply += "\n\t{0} (Lvl {1} {2}, **@{3}**)".format(char['name'],abs(char['level']),char['vocation'],discordName)
             yield from bot.say(reply)
     finally:
         c.close()
@@ -435,244 +392,6 @@ def makesay(ctx,*args: str):
         return
     channel = getChannelByServerAndName(mainserver,mainchannel)
     yield from bot.send_message(channel," ".join(args))
-
-######## Stalk command
-@bot.command(pass_context=True,hidden=True)
-@asyncio.coroutine
-def stalk(ctx,*args: str):
-    if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
-        return
-
-    args = " ".join(args).split(",")
-    args[:] = [arg.strip() for arg in args]
-
-    if(len(args) < 2 and not args[0] == "purge"):
-        yield from bot.say('Valid arguments for /stalk are **add**, **remove**, **weight**, **addchar**, **addacc**, **removechar**, **purge**.')
-        return
-
-    operation = args[0]
-    name = None if operation == "purge" else args[1]
-    target = None if operation == "purge" else getUserByName(name)
-
-    #If the user is not on the server
-    if target is None and not operation == "purge":
-        yield from bot.say('User **@'+name.title()+'** not found in server **'+mainserver+'**.')
-        return
-
-    c = userDatabase.cursor()
-
-    ##/stalk add,-username-
-    if operation == "add":
-        c.execute("SELECT id FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = c.fetchone()
-        #If user is not in database
-        if(result is None):
-            c.execute("INSERT INTO discord_users (id) VALUES(?)",(int(target.id),))
-            yield from bot.say('Added **@'+target.name+'** to discord_users, his discord userID is **'+target.id+'**.\r\n'+
-        'His importance weight has been set to the default **5**, please use **/stalk weight, -userName-, -weight-** to set it.\r\n'+
-        'Use **/stalk addchar, -userName-, -charName-** to add Tibia characters to this user.')
-        else:
-            yield from bot.say('User **@'+target.name+'** is already in the database.')
-    ##/stalk remove,-username-
-    elif operation == "remove":
-        c.execute("SELECT id FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = c.fetchone()
-        if(result is not None):
-            c.execute("SELECT name FROM chars WHERE user_id LIKE ?",(int(target.id),))
-            results2 = c.fetchall()
-            if(results2 is not None):
-                for result in results2:
-                    charName = result[0]
-                    yield from bot.say('Removed **'+charName+'** from chars.')
-            c.execute("DELETE FROM chars WHERE user_id LIKE ?",(int(target.id),))
-            c.execute("DELETE FROM discord_users WHERE id LIKE ?",(int(target.id),))
-            yield from bot.say('Removed **@'+target.name+'** from discord_users.')
-        else:
-            yield from bot.say('User **@'+target.name+'** not found in database.')
-
-    ##/stalk weight, -discordUser-, -newWeight-
-    elif operation == "weight":
-        c.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = c.fetchone()
-        if(result is not None):
-            #Nezune: hahaha this if is fucking cancer but oh well it works
-            ##Nezune: ^^^^^I like how u tagged this comment as "shit nezune says" just in case it made you look bad
-            if len(args) < 3 or not args[2].isdigit() or (args[2].isdigit() and (int(args[2]) > 5 or int(args[2]) < 1)):
-                yield from bot.say('Usage for **weight** is **/stalk weight, -discordUser-, -newWeight-**.\r\n'+
-            'Valid weights are 1 through 5.')
-            else:
-                newWeight = int(args[2])
-                c.execute("UPDATE discord_users SET weight = ? WHERE id LIKE ?",(newWeight,int(target.id),))
-                yield from bot.say('**@'+target.name+'**\'s weight has been set to **'+str(newWeight)+'**.')
-        else:
-            yield from bot.say('User **@'+target.name+'** not found in database.\r\n'+
-        'Use **/stalk add, -discordUser-** to add this user.')
-    ##
-    ##/stalk addchar,-discordUser,-charName-
-    elif operation == "addchar":
-        c.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = c.fetchone()
-        if(result is not None):
-            if len(args) < 3:
-                yield from bot.say('Usage for **addchar** is **/stalk addchar, -discordUser-, -charName-**.')
-            else:
-                charName = str(args[2])
-                char = yield from getPlayer(charName)
-                if type(char) is dict:
-                    #Check if the char was renamed
-                    if char['name'].lower() != charName.lower():
-                        yield from bot.say('Tibia character **'+charName+'** was renamed to **'+char['name']+'**. The new name will be used.')
-                    #Update the charName either way, for case consistency
-                    charName = char['name']
-                    c.execute("SELECT user_id, name FROM chars WHERE name LIKE ?",(charName,))
-                    result = c.fetchone()
-                    if(result is None):
-                        #IMPORTANT, the char['level'] isn't used to avoid congratulating newly added players
-                        ##if they're currently online and have leveled up since their last login
-                        ##this is because getPlayer uses the character page level which isn't updated until logout
-                        ##tibiaChar's lastLevel is set to -1 instead
-                        c.execute("INSERT INTO chars (user_id,name) VALUES(?,?)",(int(target.id),charName,))
-                        yield from bot.say('**'+charName+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
-                    'Use **/stalk removechar, -discordUser-, -charName-** to remove Tibia chars from an user.')
-                    else:
-                        charOwner = getUserById(result[0])
-                        if charOwner is not None:
-                            yield from bot.say('Tibia character **'+charName+'** is already assigned to user **@'+charOwner.name+'**.')
-                        else:
-                            #the old char owner doesnt exist any more for some reason, so just assign it to this new user
-                            c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?",(int(target.id),charName,))
-                            yield from bot.say('**'+charName+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
-                        '**Warning:** this character was previously assigned to a missing discordUser, a database purge is recommended!')
-                else:
-                    yield from bot.say('Tibia character **'+charName+'** doesn\'t exist.')
-        else:
-            yield from bot.say('User **@'+target.name+'** not found in database.\r\n'+
-            'Use **/stalk add, -discordUser-** to add this user.')
-    ##
-    ##/stalk addacc,-discordUser,-accCharName-
-    elif operation == "addacc":
-        c.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = c.fetchone()
-        if(result is not None):
-            if len(args) < 3:
-                yield from bot.say('Usage for **addacc** is **/stalk addacc, -discordUser-, -accCharName-**.')
-            else:
-                charName = str(args[2]).title()
-                char = yield from getPlayer(charName)
-                if type(char) is dict:
-                    #Check if the char was renamed
-                    if char['name'].lower() != charName.lower():
-                        yield from bot.say('Tibia character **'+charName+'** was renamed to **'+char['name']+'**. The new name will be used.')
-                    #Update the charName either way, for case consistency
-                    charName = char['name']
-                    if len(char['chars']) == 1:
-                        yield from bot.say('No other chars found in **'+charlistChar['name']+'**\'s character list.')
-                    elif len(char['chars']) == 0:
-                        char['chars'].append({'name' : char['name'], 'world' : char['world']})
-                        yield from bot.say('Tibia character **'+charName+'** is hidden.')
-                    for charlistChar in char['chars']:
-                        c.execute("SELECT user_id, name FROM chars WHERE name LIKE ?",(charlistChar['name'],))
-                        result = c.fetchone()
-                        if(result is None):
-                            if (not charlistChar['world'] in tibiaservers):
-                                yield from bot.say('Skipped **'+charlistChar['name']+'**, character not in tibiaservers list.')
-                                continue
-                            c.execute("INSERT INTO chars (user_id,name) VALUES(?,?)",(int(target.id),charlistChar['name'],))
-                            yield from bot.say('**'+charlistChar['name']+'** has been added to **@'+target.name+'**\'s Tibia character list.')
-                        else:
-                            charOwner = getUserById(result[0])
-                            if charOwner is not None:
-                                yield from bot.say('Tibia character **'+charlistChar['name']+'** is already assigned to user **@'+charOwner.name+'**.')
-                            else:
-                                #the old char owner doesnt exist any more for some reason, so just assign it to this new user
-                                c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?",(int(target.id),charlistChar['name'],))
-                                yield from bot.say('**'+charlistChar['name']+'** has been added to **@'+target.name+'**\'s Tibia character list.\r\n'+
-                            '**Warning:** this character was previously assigned to a missing discordUser, a database purge is recommended!')
-                else:
-                    yield from bot.say('Tibia character **'+charName+'** doesn\'t exist.')
-        else:
-            yield from bot.say('User **@'+target.name+'** not found in users db.\r\n'+
-            'Use **/stalk add, -discordUser-** to add this user.')
-    ##
-    ##/stalk removechar,-discordUser-,-charName-
-    elif operation == "removechar":
-        c.execute("SELECT id, weight FROM discord_users WHERE id LIKE ?",(int(target.id),))
-        result = c.fetchone()
-        if(result is not None):
-            if len(args) < 3:
-                yield from bot.say('Usage for **removechar** is **/stalk removechar, -discordUser-, -charName-**.')
-            else:
-                charName = str(args[2]).title()
-                c.execute("SELECT user_id, name FROM chars WHERE user_id LIKE ? AND name LIKE ?",(int(target.id),charName,))
-                result = c.fetchone()
-                if(result is not None):
-                    c.execute("DELETE FROM chars WHERE user_id LIKE ? AND name LIKE ?",(int(target.id),charName,))
-                    yield from bot.say('**'+charName+'** has been removed from **@'+target.name+'**\'s Tibia character list.')
-                else:
-                    yield from bot.say('**'+charName+'** is not in **@'+target.name+'**\'s Tibia character list.')
-        else:
-            yield from bot.say('User **@'+target.name+'** not found in database.\r\n'+
-        'Use **/stalk add, -discordUser-** to add this user.')
-    ##
-    ##/stalk purge
-    elif operation == "purge":
-        c.execute("SELECT id FROM discord_users")
-        results = c.fetchall()
-        if(results is not None):
-            #Iterate over users in discordUsers
-            for result in results:
-                discordUser = getUserById(result[0])
-                discordUserId = result[0]
-                c.execute("SELECT name FROM chars WHERE user_id LIKE ?",(discordUserId,))
-                results2 = c.fetchall()
-                if(results2 is not None and len(results2) > 0):
-                    #Iterate over chars linked to this discord user
-                    for result in results2:
-                        charName = result[0]
-                        if discordUser is None:
-                            #If the discord user doesn't exist in our server anymore we delete all tibia chars associated with it
-                            c.execute("DELETE FROM chars WHERE user_id LIKE ?",(discordUserId,))
-                            yield from bot.say('Removed **'+charName+'** from chars. (Discord user **'+str(discordUserId)+'** no longer in server)')
-                        else:
-                            char = yield from getPlayer(charName)
-                            if type(char) is dict:
-                                #If the char exists check if it was renamed
-                                if char['name'].lower() != charName.lower():
-                                    #Update to the new char name
-                                    c.execute("UPDATE chars SET name = ? WHERE name LIKE ?",(char['name'],charName,))
-                                    yield from bot.say('Tibia character **'+charName+'** was renamed to **'+char['name']+'**.')
-                            else:
-                                c.execute("DELETE FROM chars WHERE user_id LIKE ?",(discordUserId,))
-                                yield from bot.say('Removed **'+charName+'** from tibiaChars. (Character no longer exists)')
-                    if discordUser is not None:
-                        #Check again to see if any chars remain
-                        c.execute("SELECT name FROM chars WHERE user_id LIKE ?",(discordUserId,))
-                        results3 = c.fetchall()
-                        if(results3 is None and len(results3) > 0):
-                            #All chars were removed so we remove the discord user too
-                            c.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
-                            yield from bot.say('Removed discord user **'+discordUser.name+'** from discord_users. (No chars remaining) (Id: **'+str(discordUserId)+'**)')
-                    else:
-                        #This discord user no longer exists in our server
-                        c.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
-                        yield from bot.say('Removed unknown discord user from discord_users. (No longer in server) (Id: **'+str(discordUserId)+'**)')
-                elif discordUser is not None:
-                    #This discord user has no chars assigned so we remove it
-                    c.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
-                    yield from bot.say('Removed discord user **'+discordUser.name+'** from discord_users. (No chars asigned) (Id: **'+str(discordUserId)+'**)')
-                else:
-                    #This discord user no longer exists in our server
-                    c.execute("DELETE FROM discord_users WHERE id LIKE ?",(discordUserId,))
-                    yield from bot.say('Removed unknown discord user from discord_users. (No longer in server) (Id: **'+str(discordUserId)+'**)')
-    ##
-    ####unknown operation
-    else:
-        yield from bot.say('Unknown operation for /stalk: **'+operation+'**')
-    ####
-
-    userDatabase.commit()
-    c.close()
-
 
 @bot.command(pass_context=True,hidden=True)
 @asyncio.coroutine
@@ -730,7 +449,7 @@ def stalk2(ctx, subcommand, *args : str):
                     #Registered to current user
                     yield from bot.say("This character is already registered to this user.")
                     return
-                c.execute("INSERT INTO chars (name,user_id) VALUES (?,?)",(char['name'],user.id))
+                c.execute("INSERT INTO chars (name,last_level,vocation,user_id) VALUES (?,?,?,?)",(char['name'],char['level']*-1,char['vocation'],user.id))
                 c.execute("SELECT id from discord_users WHERE id = ?",(user.id,))
                 result = c.fetchone()
                 if(result is None):
@@ -749,6 +468,7 @@ def stalk2(ctx, subcommand, *args : str):
                     if(char['world'] not in tibiaservers):
                         yield from bot.say("**{0}** skipped, character not in server list.".format(char['name']))
                         continue
+                    char = yield from getPlayer(char['name'])
                     c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?",(char['name'],))
                     result = c.fetchone();
                     if(result is not None):
@@ -758,7 +478,7 @@ def stalk2(ctx, subcommand, *args : str):
                             continue
                         yield from bot.say("**{0}** is already registered to this user.".format(char['name']))
                         continue
-                    c.execute("INSERT INTO chars (name,user_id) VALUES (?,?)",(char['name'],user.id))
+                    c.execute("INSERT INTO chars (name,last_level,vocation,user_id) VALUES (?,?,?,?)",(char['name'],char['level']*-1,char['vocation'],user.id))
                     yield from bot.say("**{0}** was registered succesfully to this user.".format(char['name']))
                 c.execute("SELECT id from discord_users WHERE id = ?",(user.id,))
                 result = c.fetchone()
@@ -834,14 +554,14 @@ def stalk2(ctx, subcommand, *args : str):
                 yield from bot.say(reply)
                 c.execute("DELETE FROM chars WHERE user_id NOT IN (SELECT id FROM discord_users)")
             #Removing deleted chars
-            c.execute("SELECT name FROM chars")
+            c.execute("SELECT name,last_level,vocation FROM chars")
             result = c.fetchall()
             if(result is None):
                 return
             delete_chars = list()
             rename_chars = list()
-            for row in result:
-                name = row[0]
+            #revoc_chars = list()
+            for name,last_level,vocation in result:
                 char = yield from getPlayer(name)
                 if char == ERROR_NETWORK:
                     yield from bot.say("Couldn't fetch **{0}**, skipping...".format(name))
@@ -855,11 +575,17 @@ def stalk2(ctx, subcommand, *args : str):
                 if char['name'] != name:
                     rename_chars.append((char['name'],name,))
                     yield from bot.say("**{0}** was renamed to **{1}**, updating...".format(name,char['name']))
-                    continue
+                ##Char vocation changed
+                #if char['vocation'] != vocation:
+                #    revoc_chars.append((char['vocation'],name,))
+                #    yield from bot.say("**{0}**'s vocation was set to **{1}** from **{2}**, updating...".format(name,char['vocation'],vocation))
             #No need to check if user exists cause those were removed already
             if len(delete_chars) > 0:
                 c.executemany("DELETE FROM chars WHERE name LIKE ?",delete_chars)
                 yield from bot.say("{0} char(s) were removed.".format(c.rowcount))
+            #if len(revoc_chars) > 0:
+            #    c.executemany("UPDATE chars SET vocation = ? WHERE name LIKE ?",revoc_chars)
+            #    yield from bot.say("{0} char(s)' vocations were updated.".format(c.rowcount))
             if len(rename_chars) > 0:
                 c.executemany("UPDATE chars SET name = ? WHERE name LIKE ?",rename_chars)
                 yield from bot.say("{0} char(s) were renamed.".format(c.rowcount))

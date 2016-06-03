@@ -260,6 +260,19 @@ def getPlayer(name):
         if m:
             char['guild'] = urllib.parse.unquote_plus(m.group(1))
 
+
+    #update name and vocation in chars database if necessary
+    c = userDatabase.cursor()
+    c.execute("SELECT vocation FROM chars WHERE name LIKE ?",(name,))
+    result = c.fetchone()
+    if result:
+        if result[0] != char['vocation']:
+            c.execute("UPDATE chars SET vocation = ? WHERE name LIKE ?",(char['vocation'],name,))
+            log.info("{0}'s vocation was set to {1} from {2} during getPlayer()".format(char['name'],char['vocation'],result[0]))
+        #if name != char['name']:
+        #    c.execute("UPDATE chars SET name = ? WHERE name LIKE ?",(char['name'],name,))
+        #    yield from bot.say("**{0}** was renamed to **{1}**, updating...".format(name,char['name']))
+
     #Other chars
     ##note that an empty char list means the character is hidden
     ##otherwise you'd have at least the same char in the list
@@ -280,7 +293,6 @@ def getPlayer(name):
                 char['chars'].append({'name' : name, 'world' : world})
     except Exception:
         pass
-
     return char
 
 def getItem(name):
@@ -406,13 +418,9 @@ def getStats(level, vocation):
 
     return {"vocation" : vocation, "hp" : hp, "mp" : mp, "cap" : cap}
 
-@asyncio.coroutine
-def check(name):
-    char = yield from getPlayer(name)
-    if(char == ERROR_NETWORK):
-        return "I... can you repeat that?"
-    if(char == ERROR_DOESNTEXIST):
-        return "That character doesn't exist."
+def getCharString(char):
+    if(char == ERROR_NETWORK or char == ERROR_DOESNTEXIST):
+        return char
     pronoun = "He"
     if(char['gender'] == "female"):
         pronoun = "She"
@@ -431,12 +439,85 @@ class Tibia():
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(pass_context=True,aliases=['player','checkplayer','char'])
+    @commands.command(pass_context=True,aliases=['check','player','checkplayer','char'])
     @asyncio.coroutine
-    def check(self,ctx,*name : str):
-        """Tells you information about a character or user"""
-        result = yield from check(" ".join(name))
-        yield from self.bot.say(result)
+    def whois(self,ctx,*name : str):
+        """Tells you the characters of a user or the owner of a character and/or information of a tibia character
+
+        Note that the bot has no way to know the characters of a member that just joined.
+        The bot has to be taught about the character's of an user."""
+        name = " ".join(name).strip()
+        user = getUserByName(name)
+        c = userDatabase.cursor()
+        try:
+            #Checking if the param used is the name of a character in the database
+            c.execute("SELECT name, user_id FROM chars WHERE name LIKE ?",(name,))
+            char = yield from getPlayer(name)
+            charString = getCharString(char)
+            result = c.fetchone()
+            if (user is None):
+                #If it's not a discord user, it might be a known tibia character
+                if (result is not None):
+                    user = getUserById(result[1])
+                    #Check if the user exists just in case
+                    if(user is not None):
+                        if char == ERROR_NETWORK:
+                            charString = "I couldn't fetch that character's info, though. Maybe try again?"
+                        if char == ERROR_DOESNTEXIST:
+                            charString = "But the character no longer exists."
+                        charString = "**{0}** is a character of **@{1.name}**.\n".format(result[0],user)+charString
+                        yield from self.bot.say(charString)
+                        return
+                #It wasn't a discord user nor a known tibia character
+                if char == ERROR_NETWORK:
+                    charString = "I... can you repeat that?"
+                if char == ERROR_DOESNTEXIST:
+                    charString = "I don't see any user or character with that name."
+                yield from self.bot.say(charString)
+                return
+            if(user.id == self.bot.user.id):
+                yield from self.bot.say("*Beep boop beep boop*. I'm just a bot!")
+                return
+            c.execute("SELECT name, last_level, vocation FROM chars WHERE user_id = ? ORDER BY abs(last_level) DESC",(user.id,))
+            chars = []
+            for name, level, vocation in c:
+                try:
+                    level = int(level)
+                except ValueError:
+                    level = 0
+
+                vocation = vocAbb(vocation)
+                chars.append("{0} (Lvl {1} {2})".format(name,abs(level) if level != 0 else "",vocation))
+            if(len(chars) <= 0):
+                yield from self.bot.say("I don't know who **@{0.name}** is...".format(user))
+                if char == ERROR_NETWORK:
+                    yield from self.bot.say("I also failed to do a character search for some reason "+EMOJI_WHIRLYEYES)
+                    return
+                if char == ERROR_DOESNTEXIST:
+                    yield from self.bot.say("And I don't see any character with that name.")
+                    return
+                    
+                c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?",(name,))
+                result = c.fetchone();
+                if(result is not None):
+                    user2 = getUserById(result[1])
+                    if(user2 is not None):
+                        charString = "But **{0}** is a character of **@{1.name}**.\n".format(char['name'],user2)+charString
+                        yield from self.bot.say(charString)
+                        return
+                yield from self.bot.say(charString)
+                return
+            #TODO: Fix possesive if user ends with s
+            yield from self.bot.say("@**{0.name}**'s character{1}: {2}.".format(user,"s are" if len(chars) > 1 else " is", ", ".join(chars)))
+            if char == ERROR_NETWORK:
+                yield from self.bot.say("But I failed to do a character search for some reason "+EMOJI_WHIRLYEYES)
+                return
+            if char == ERROR_DOESNTEXIST:
+                return
+            yield from self.bot.say("The character "+charString)
+            return
+        finally:
+            c.close()
 
     @commands.command(pass_context=True,aliases=['expshare','party'])
     @asyncio.coroutine
@@ -499,12 +580,7 @@ class Tibia():
             result += '\t'+member['name']
             result += (' (*'+member['title']+'*)' if (member['title'] != '') else '')
             result += ' -- '+member['level']+' '
-            vocAbb = {'None' : 'N', 'Druid' : 'D', 'Sorcerer' : 'S', 'Paladin' : 'P', 'Knight' : 'K',
-            'Elder Druid' : 'ED', 'Master Sorcerer' : 'MS', 'Royal Paladin' : 'RP', 'Elite Knight' : 'EK'}
-            try:
-                result += vocAbb[member['vocation']]
-            except KeyError:
-                result += 'N'
+            result += vocAbb(member['vocation'])
 
         yield from self.bot.say(result)
 
