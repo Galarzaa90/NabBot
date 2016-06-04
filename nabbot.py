@@ -395,7 +395,7 @@ def makesay(ctx,*args: str):
 
 @bot.command(pass_context=True,hidden=True)
 @asyncio.coroutine
-def stalk2(ctx, subcommand, *args : str):
+def stalk(ctx, subcommand, *args : str):
     if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
         return
     params = (" ".join(args)).split(",")
