@@ -604,7 +604,7 @@ def stalk(ctx, subcommand, *args : str):
         c.close()
         userDatabase.commit()
 
-@stalk2.error
+@stalk.error
 @asyncio.coroutine
 def stalk_error(error,ctx):
     if type(error) is commands.MissingRequiredArgument:
