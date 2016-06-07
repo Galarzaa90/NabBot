@@ -627,7 +627,7 @@ class Tibia():
 
         yield from self.bot.say(reply)
 
-    @commands.command(aliases=['levelups'])
+    @commands.command(aliases=['levelups','lvl','level','lvls'])
     @asyncio.coroutine
     def levels(self,*name : str):
         """Shows a player's recent level ups or global leveups if no player is specified
