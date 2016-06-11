@@ -35,6 +35,7 @@ EMOJI_BLOSSOM = str(chr(0x1F33C))
 EMOJI_DAGGER = str(chr(0x1F5E1))
 EMOJI_BULLSEYE = str(chr(0x1F3AF))
 EMOJI_WHIRLYEYES = str(chr(0x1F632))
+EMOJI_SILHOUETTE = str(chr(0x1F464))
 
 from config import *
 bot = ""

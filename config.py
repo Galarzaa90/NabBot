@@ -69,6 +69,7 @@ levelmessages = [[100,"Congratulations to **{0}** on reaching level {1}!"],
 #Level specific
 [2000,"**{0}** is level {1}! UMPs so good "+EMOJI_WINEGLASS,["Druid","Elder Druid","Sorcerer","Master Sorcerer"],[130]],
 [2000,"**{0}** is now level {1}. Don't forget to buy a Gearwheel Chain!"+EMOJI_NECKLACE,False,[75]],
+[3000,"**{0}** is level {1}! You can become a ninja now!"+EMOJI_SILHOUETTE,["Paladin","Royal Paladin"],[80]],
 [2000,"Level {1}, **{0}**? You're finally important enough for me to notice!",False,[announceTreshold]],
 [3000,"**{0}** is level {1}!!!!\r\n"+
     "Sweet, sweet triple digits!",False,[100]],
@@ -85,14 +86,19 @@ deathmessages_monster = [[100,"RIP **{0}** ({2}), you died the way you lived- in
 [100,"**{0}** ({2}) was just eaten by {4}**{3}**. Yum."],
 [100,"Silly **{0}** ({2}), I warned you not to play with {4}**{3}**!"],
 [100,"{4}**{3}** killed **{0}** at level {2}. Shame "+EMOJI_BELL+" shame "+EMOJI_BELL+" shame "+EMOJI_BELL],
-[50,"**{0}** ({2}) is no more! /{5}/ has ceased to be! /{5}/'s expired and gone to meet {6} maker! /{5}/'s a stiff! Bereft of life, {5} rests in peace! If {5} hadn't respawned {5}'d be pushing up the daisies! /{6}/ metabolic processes are now history! /{5}/'s off the server! /{5}/'s kicked the bucket, {5}'s shuffled off {6} mortal coil, kissed {4}**{3}**'s butt, run down the curtain and joined the bleeding choir invisible!! THIS IS AN EX-**\{0}/**."],
+[30,"**{0}** ({2}) is no more! /{5}/ has ceased to be! /{5}/'s expired and gone to meet {6} maker! /{5}/'s a stiff! Bereft of life, {5} rests in peace! If {5} hadn't respawned {5}'d be pushing up the daisies! /{6}/ metabolic processes are now history! /{5}/'s off the server! /{5}/'s kicked the bucket, {5}'s shuffled off {6} mortal coil, kissed {4}**{3}**'s butt, run down the curtain and joined the bleeding choir invisible!! THIS IS AN EX-**\{0}/**."],
 [100,"RIP **{0}** ({2}), we hardly knew you! (^That ^**{3}** got to know you pretty well though "+EMOJI_WINK+")"],
 [80,"A priest, {4}**{3}** and **{0}** ({2}) walk into a bar. "+EMOJI_SKULL+"ONLY ONE WALKS OUT."+EMOJI_SKULL],
-[90,"RIP **{0}** ({2}), you were strong. ^The ^**{3}** was stronger."]]
+[90,"RIP **{0}** ({2}), you were strong. ^The ^**{3}** was stronger."],
+[80,"Oh, there goes **{0}** ({2}), killed by {4}**{3}**. So young, so full of life. /{5}/ will be miss... oh nevermind, {5} respawned already."],
+[60,"Oh look! **{0}** ({2}) died by {4}**{3}**! What a surprise..."+EMOJI_EYEROLL],
+[100,"**{0}** ({2}) was killed by {4}**{3}**, but we all saw that coming."],
+[70,"That's what you get **{0}** ({2}), for messing with ^that ^**{3}**!"]]
 #deaths by player
 deathmessages_player = [[100,"**{0}** ({2}) got rekt! **{3}** ish pekay!"],
 [100,"HALP **{3}** is going around killing innocent **{0}** ({2})!"],
 [100,"Next time stay away from **{3}**, **{0}** ({2})."]]
+
 ########
 
 
