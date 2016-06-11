@@ -47,11 +47,16 @@ def on_member_join(member):
     ##Starting a private message with new members allows us to keep track of them even after they leave our visible servers.
     yield from bot.start_private_message(member)
     yield from bot.send_message(member.server,message.format(member))
+    
+@bot.event
+@asyncio.coroutine
+def on_member_remove(member):
+    log.info("A member left discord: {0.name} (ID: {0.id})".format(member))
 
 @bot.event
 @asyncio.coroutine
 def on_message_delete(message):
-    log.info("{0.author.name} has deleted the message: '{0.content}'".format(message))
+    log.info("A message by {0.author.name} was deleted. Message: '{0.content}'".format(message))
     for attachment in message.attachments:
         log.info(attachment)
 
@@ -117,10 +122,9 @@ def think():
 
                         ##else we check for levelup
                         elif lastLevel < serverChar['level'] and lastLevel > 0:
-                            ##announce the level up
-                            log.info("Announcing level up: "+serverChar['name'])
                             #Saving level up date in database
                             c.execute("INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",(result[2],serverChar['level'],time.time(),))
+                            ##announce the level up
                             yield from announceLevel(serverChar['name'],serverChar['level'])
                         #finally we update their last level in the db
                         c.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",(serverChar['level'],serverChar['name'],))
@@ -161,7 +165,6 @@ def think():
                         #update the lastDeathTime for this char in the db
                         c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(lastDeath['time'],currentChar,))
                         #and announce the death
-                        log.info("Announcing death: "+currentChar)
                         yield from announceDeath(currentChar,lastDeath['time'],lastDeath['level'],lastDeath['killer'],lastDeath['byPlayer'])
 
                 #Close cursor and commit changes
@@ -180,7 +183,8 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
     if int(deathLevel) < announceTreshold:
         #Don't announce for low level players
         return
-
+        
+    log.info("Announcing death: {0}({1}) | {2}".format(charName,deathLevel,deathKiller))
     char = yield from getPlayer(charName)
     #Failsafe in case getPlayer fails to retrieve player data
     if type(char) is not dict:
@@ -219,7 +223,7 @@ def announceLevel(charName,newLevel):
     if int(newLevel) < announceTreshold:
         #Don't announce for low level players
         return
-
+    log.info("Announcing level up: {0} ({1})".format(charName,newLevel))
     char = yield from getPlayer(charName)
     #Failsafe in case getPlayer fails to retrieve player data
     if type(char) is not dict:
@@ -264,7 +268,7 @@ def choose(*choices : str):
     """Chooses between multiple choices."""
     yield from bot.say(random.choice(choices))
 
-@bot.command(pass_context=True)
+@bot.command(pass_context=True,aliases=["i'm","iam"],no_pm=True)
 @asyncio.coroutine
 def im(ctx,*charname : str):
     """Lets you add your first tibia character(s) for the bot to track.
@@ -273,16 +277,13 @@ def im(ctx,*charname : str):
     
     ##This is equivalent to someone using /stalk addacc on themselves.
     #To avoid abuse it will only work on users who have joined recently and have no characters added to their account.
-
     #This command can't work on private messages, since we need a member instead of an user to be able to check the joining date.
-    if ctx.message.channel.is_private:
-        return
 
     charname = " ".join(charname).strip()
     user = ctx.message.author
     try:
         c = userDatabase.cursor()
-        admins_message = " or ".join("**"+getUserById(admin).mention+"**" for admin in admin_ids)
+        admins_message = " or ".join("**@"+getUserById(admin).name+"**" for admin in admin_ids)
         servers_message = ", ".join(["**"+server+"**" for server in tibiaservers])
         notallowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help adding characters to your account please message "+admins_message+".").format(user)
         
