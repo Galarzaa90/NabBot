@@ -36,8 +36,8 @@ def on_command(command, ctx):
         destination = 'PM'
     else:
         destination = '#{0.channel.name} ({0.server.name})'.format(ctx.message)
-    ctx.message.content = decode_emoji(ctx.message.content)
-    log.info('Command by {0.author.name} in {1}: {0.content}'.format(ctx.message, destination))
+    message_decoded = decode_emoji(ctx.message.content)
+    log.info('Command by {0} in {1}: {2}'.format(ctx.message.author.name, destination,message_decoded))
 
 @bot.event
 @asyncio.coroutine
@@ -56,21 +56,21 @@ def on_member_remove(member):
 @bot.event
 @asyncio.coroutine
 def on_message_delete(message):
-    message.content = decode_emoji(message.content)
-    log.info("A message by {0.author.name} was deleted. Message: '{0.content}'".format(message))
+    message_decoded = decode_emoji(message.content)
+    log.info("A message by {0} was deleted. Message: '{1}'".format(message.author.name,message_decoded))
     for attachment in message.attachments:
         log.info(attachment)
 
 @bot.event
 @asyncio.coroutine
 def on_message_edit(older_message,message):
-    older_message.content = decode_emoji(older_message.content)
-    log.info("{0.author.name} has edited the message: '{0.content}'".format(older_message))
+    older_message_decoded = decode_emoji(older_message.content)
+    log.info("{0} has edited the message: '{1}'".format(older_message.author.name,older_message_decoded))
     for attachment in older_message.attachments:
         log.info(attachment)
 
-    message.content = decode_emoji(message.content)
-    log.info("New message: '{0.content}'".format(message))
+    message_decoded = decode_emoji(message.content)
+    log.info("New message: '{0}'".format(message_decoded))
     for attachment in message.attachments:
         log.info(attachment)
 
