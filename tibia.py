@@ -676,12 +676,13 @@ class Tibia():
         itemname = " ".join(itemname).strip()
         item = getItem(itemname)
         if(item is not None):
-            #Check if item has npcs that buy the item
-            yield from self.bot.say(getItemString(item))
-            
-            if len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3:
-                if ctx.message.author is not None:
-                    yield from self.bot.send_message(ctx.message.author,getItemString(item,False))
+            if ctx.message.channel.is_private:
+                yield from self.bot.say(getItemString(item,False))
+            else:
+                yield from self.bot.say(getItemString(item))
+                if len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3:
+                    if ctx.message.author is not None:
+                        yield from self.bot.send_message(ctx.message.author,getItemString(item,False))
         else:
             yield from self.bot.say("I couldn't find an item with that name.")
 
