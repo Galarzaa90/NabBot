@@ -38,38 +38,38 @@ levelmessages = [[100,"Congratulations to **{0}** on reaching level {1}!"],
 [80,"**{0}** is level {1}, watch out world..."],
 [100,"**{0}** is level {1} now. Noice."],
 [100,"**{0}** has finally made it to level {1}, yay!"],
-[80,"**{0}** reached level {1}! What a time to be alive..."+EMOJI_EYEROLL],
-[70,"**{0}** got level {1}! So stronk now!"+EMOJI_BICEPS],
-[30,"**{0}** is level {1}"+EMOJI_CAKE+"\r\n"+
-    "I'm making a note here:"+EMOJI_MUSICNOTES+"\r\n"+
-    "Huge success!"+EMOJI_MUSICNOTES+"\r\n"+
-    "It's hard to overstate my"+EMOJI_MUSICNOTES+"\r\n"+
-    "Satisfaction"+EMOJI_ROBOT],
-[100,"**{0}**, you reached level {1}? Here, have a cookie "+EMOJI_COOKIE],
+[80,"**{0}** reached level {1}! What a time to be alive..."+EMOJI[":_eyeroll:"]],
+[70,"**{0}** got level {1}! So stronk now!"+EMOJI[":muscle:"]],
+[30,"**{0}** is level {1}"+EMOJI[":cake:"]+"\r\n"+
+    "I'm making a note here:"+EMOJI[":notes:"]+"\r\n"+
+    "Huge success!"+EMOJI[":notes:"]+"\r\n"+
+    "It's hard to overstate my"+EMOJI[":notes:"]+"\r\n"+
+    "Satisfaction"+EMOJI[":_robot:"]],
+[100,"**{0}**, you reached level {1}? Here, have a cookie "+EMOJI[":cookie:"]],
 [80,"**{0}** got level {1}. I guess this justifies all those creatures {2} murdered."],
 [90,"**{0}** is level {1}. Better than {2} was. Better, stronger, faster."],
 [70,"Congrats **{0}** on getting level {1}! Maybe you can solo rats now?"],
 [70,"**{0}** is level {1} now! And we all thought {2}'d never achieve anything in life."],
 #EK Only
 [50,"**{0}** has reached level {1}. Thats 9 more mana potions you can carry now!",["Knight","Elite Knight"],range(100,999)],
-[200,"**{0}** is level {1}. Stick them with the pointy end! "+EMOJI_DAGGER,["Knight","Elite Knight"],range(100,999)],
+[200,"**{0}** is level {1}. Stick them with the pointy end! "+EMOJI[":_dagger:"],["Knight","Elite Knight"],range(100,999)],
 [200,"**{0}** is a fat level {1} meatwall now. BLOCK FOR ME SENPAI.",["Knight","Elite Knight"],range(100,999)],
 #RP Only
 [50,"**{0}** has reached level {1}. But he still misses arrows...",["Paladin","Royal Paladin"],range(100,999)],
 [150,"Congrats on level {1}, **{0}**. You can stop running around now.",["Paladin","Royal Paladin"],range(100,999)],
-[150,"**{0}** is level {1}. Bullseye!"+EMOJI_BULLSEYE,["Paladin","Royal Paladin"],range(100,999)],
+[150,"**{0}** is level {1}. Bullseye!"+EMOJI[":dart:"],["Paladin","Royal Paladin"],range(100,999)],
 #MS Only
 [50,"Level {1},**{0}**? Nice. Don't you wish you were a druid though?",["Sorcerer","Master Sorcerer"],range(100,999)],
 [150,"**{0}** is level {1}. Watch out for {3} SDs!",["Sorcerer","Master Sorcerer"],range(100,999)],
-[150,"**{0}** is level {1}. "+EMOJI_FIRE+EMOJI_FIRE+"BURN THEM ALL"+EMOJI_FIRE+EMOJI_FIRE+EMOJI_FIRE,["Sorcerer","Master Sorcerer"],range(100,999)],
+[150,"**{0}** is level {1}. "+EMOJI[":fire:"]+EMOJI[":fire:"]+"BURN THEM ALL"+EMOJI[":fire:"]+EMOJI[":fire:"]+EMOJI[":fire:"],["Sorcerer","Master Sorcerer"],range(100,999)],
 #ED Only
-[50,"**{0}** has reached level {1}. Flower power!"+EMOJI_BLOSSOM,["Druid","Elder Druid"],range(100,999)],
+[50,"**{0}** has reached level {1}. Flower power!"+EMOJI[":blossom:"],["Druid","Elder Druid"],range(100,999)],
 [150,"Congrats on level {1}, **{0}**. Sio plz.",["Druid","Elder Druid"],range(100,999)],
-[150,"**{0}** is level {1}. "+EMOJI_FIRE+EMOJI_FIRE+"BURN THEM ALL... Or... Give them frostbite...?"+EMOJI_SNOWFLAKE+EMOJI_SNOWFLAKE+EMOJI_SNOWFLAKE,["Druid","Elder Druid"],range(100,999)],
+[150,"**{0}** is level {1}. "+EMOJI[":fire:"]+EMOJI[":fire:"]+"BURN THEM ALL... Or... Give them frostbite...?"+EMOJI[":_snowflake:"]+EMOJI[":_snowflake:"]+EMOJI[":_snowflake:"],["Druid","Elder Druid"],range(100,999)],
 #Level specific
-[2000,"**{0}** is level {1}! UMPs so good "+EMOJI_WINEGLASS,["Druid","Elder Druid","Sorcerer","Master Sorcerer"],[130]],
-[2000,"**{0}** is now level {1}. Don't forget to buy a Gearwheel Chain!"+EMOJI_NECKLACE,False,[75]],
-[3000,"**{0}** is level {1}! You can become a ninja now!"+EMOJI_SILHOUETTE,["Paladin","Royal Paladin"],[80]],
+[2000,"**{0}** is level {1}! UMPs so good "+EMOJI[":wine_glass:"],["Druid","Elder Druid","Sorcerer","Master Sorcerer"],[130]],
+[2000,"**{0}** is now level {1}. Don't forget to buy a Gearwheel Chain!"+EMOJI[":_necklace:"],False,[75]],
+[3000,"**{0}** is level {1}! You can become a ninja now!"+EMOJI[":bust_in_silhouette:"],["Paladin","Royal Paladin"],[80]],
 [2000,"Level {1}, **{0}**? You're finally important enough for me to notice!",False,[announceTreshold]],
 [3000,"**{0}** is level {1}!!!!\r\n"+
     "Sweet, sweet triple digits!",False,[100]],
@@ -85,13 +85,13 @@ levelmessages = [[100,"Congratulations to **{0}** on reaching level {1}!"],
 deathmessages_monster = [[100,"RIP **{0}** ({2}), you died the way you lived- inside {4}**{3}**."],
 [100,"**{0}** ({2}) was just eaten by {4}**{3}**. Yum."],
 [100,"Silly **{0}** ({2}), I warned you not to play with {4}**{3}**!"],
-[100,"{4}**{3}** killed **{0}** at level {2}. Shame "+EMOJI_BELL+" shame "+EMOJI_BELL+" shame "+EMOJI_BELL],
+[100,"{4}**{3}** killed **{0}** at level {2}. Shame "+EMOJI[":bell:"]+" shame "+EMOJI[":bell:"]+" shame "+EMOJI[":bell:"]],
 [30,"**{0}** ({2}) is no more! /{5}/ has ceased to be! /{5}/'s expired and gone to meet {6} maker! /{5}/'s a stiff! Bereft of life, {5} rests in peace! If {5} hadn't respawned {5}'d be pushing up the daisies! /{6}/ metabolic processes are now history! /{5}/'s off the server! /{5}/'s kicked the bucket, {5}'s shuffled off {6} mortal coil, kissed {4}**{3}**'s butt, run down the curtain and joined the bleeding choir invisible!! THIS IS AN EX-**\{0}/**."],
-[100,"RIP **{0}** ({2}), we hardly knew you! (^That ^**{3}** got to know you pretty well though "+EMOJI_WINK+")"],
-[80,"A priest, {4}**{3}** and **{0}** ({2}) walk into a bar. "+EMOJI_SKULL+"ONLY ONE WALKS OUT."+EMOJI_SKULL],
+[100,"RIP **{0}** ({2}), we hardly knew you! (^That ^**{3}** got to know you pretty well though "+EMOJI[":wink:"]+")"],
+[80,"A priest, {4}**{3}** and **{0}** ({2}) walk into a bar. "+EMOJI[":skull:"]+"ONLY ONE WALKS OUT."+EMOJI[":skull:"]],
 [90,"RIP **{0}** ({2}), you were strong. ^The ^**{3}** was stronger."],
 [80,"Oh, there goes **{0}** ({2}), killed by {4}**{3}**. So young, so full of life. /{5}/ will be miss... oh nevermind, {5} respawned already."],
-[60,"Oh look! **{0}** ({2}) died by {4}**{3}**! What a surprise..."+EMOJI_EYEROLL],
+[60,"Oh look! **{0}** ({2}) died by {4}**{3}**! What a surprise..."+EMOJI[":_eyeroll:"]],
 [100,"**{0}** ({2}) was killed by {4}**{3}**, but we all saw that coming."],
 [70,"That's what you get **{0}** ({2}), for messing with ^that ^**{3}**!"]]
 #deaths by player

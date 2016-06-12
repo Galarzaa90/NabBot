@@ -36,7 +36,7 @@ def on_command(command, ctx):
         destination = 'PM'
     else:
         destination = '#{0.channel.name} ({0.server.name})'.format(ctx.message)
-
+    ctx.message.content = decode_emoji(ctx.message.content)
     log.info('Command by {0.author.name} in {1}: {0.content}'.format(ctx.message, destination))
 
 @bot.event
@@ -56,6 +56,7 @@ def on_member_remove(member):
 @bot.event
 @asyncio.coroutine
 def on_message_delete(message):
+    message.content = decode_emoji(message.content)
     log.info("A message by {0.author.name} was deleted. Message: '{0.content}'".format(message))
     for attachment in message.attachments:
         log.info(attachment)
@@ -63,9 +64,12 @@ def on_message_delete(message):
 @bot.event
 @asyncio.coroutine
 def on_message_edit(older_message,message):
+    older_message.content = decode_emoji(older_message.content)
     log.info("{0.author.name} has edited the message: '{0.content}'".format(older_message))
     for attachment in older_message.attachments:
         log.info(attachment)
+
+    message.content = decode_emoji(message.content)
     log.info("New message: '{0.content}'".format(message))
     for attachment in message.attachments:
         log.info(attachment)

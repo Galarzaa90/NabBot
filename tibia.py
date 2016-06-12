@@ -295,23 +295,33 @@ def getPlayer(name):
         pass
     return char
 
-def getItem(name):
+def getItem(itemname):
     #Reading item database
     c = tibiaDatabase.cursor()
+    
     #Search query
-    c.execute("SELECT title, vendor_value FROM Items WHERE name LIKE ?",(name,))
+    c.execute("SELECT title, look_text FROM Items WHERE name LIKE ?",(itemname,))
     result = c.fetchone()
     try:
         #Checking if item exists
         if(result is not None):
             #Turning result tuple into dictionary
-            item = dict(zip(['name','value'],result))
+            item = dict(zip(['name','look_text'],result))
+            
             #Checking NPCs that buy the item
-            c.execute("SELECT NPCs.title, city FROM Items, SellItems, NPCs WHERE Items.name LIKE ? AND SELLItems.itemid = Items.id AND NPCs.id = vendorid AND vendor_value = value",(name,))
+            c.execute("SELECT NPCs.title, city, value"+
+            " FROM Items, SellItems, NPCs WHERE Items.name LIKE ?"+
+            " AND SellItems.itemid = Items.id AND NPCs.id = vendorid"+
+            " ORDER BY value DESC",(itemname,))
             npcs = []
+            value_sell = None
             for row in c:
                 name = row[0]
                 city = row[1].title()
+                if value_sell is None:
+                    value_sell = row[2]
+                elif row[2] != value_sell:
+                    break
                 #Replacing cities for special npcs
                 if(name == 'Alesar' or name == 'Yaman'):
                     city = 'Green Djinn\'s Fortress'
@@ -332,7 +342,48 @@ def getItem(name):
                 elif(name == 'Yasir'):
                     city = 'his boat'
                 npcs.append({"name" : name, "city": city})
-            item['npcs'] = npcs
+            item['npcs_sold'] = npcs
+            item['value_sell'] = value_sell
+            
+            #Checking NPCs that sell the item
+            c.execute("SELECT NPCs.title, city, value"+
+            " FROM Items, BuyItems, NPCs WHERE Items.name LIKE ?"+
+            " AND BuyItems.itemid = Items.id AND NPCs.id = vendorid"+
+            " ORDER BY value ASC",(itemname,))
+            npcs = []
+            value_buy = None
+            for row in c:
+                name = row[0]
+                city = row[1].title()
+                if value_buy is None:
+                    value_buy = row[2]
+                elif row[2] != value_buy:
+                    break
+                #Replacing cities for special npcs
+                if(name == 'Alesar' or name == 'Yaman'):
+                    city = 'Green Djinn\'s Fortress'
+                elif(name == 'Nah\'Bob' or name == 'Haroun'):
+                    city = 'Blue Djinn\'s Fortress'
+                elif(name == 'Rashid'):
+                    offset = getTibiaTimeZone() - getLocalTimezone()
+                    #Server save is at 10am, so in tibia a new day starts at that hour
+                    tibia_time = datetime.now()+timedelta(hours=offset-10)
+                    city = [
+                        "Svargrond",
+                        "Liberty Bay",
+                        "Port Hope",
+                        "Ankrahmun",
+                        "Darashia",
+                        "Edron",
+                        "Carlin"][tibia_time.weekday()]
+                elif(name == 'Yasir'):
+                    city = 'his boat'
+                npcs.append({"name" : name, "city": city})
+            item['npcs_bought'] = npcs
+            item['value_buy'] = value_buy
+            
+            
+            
             return item
     finally:
         c.close()
@@ -432,6 +483,39 @@ def getCharString(char):
         guild = ""
     reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild)
     return reply
+
+def getItemString(item,short=True):
+    reply = ""
+    if('look_text' in item):
+        reply = item['look_text']
+    
+    if('npcs_bought' in item and len(item['npcs_bought']) > 0):
+        reply += "\n\n**{0}** can be bought for {1:,} gold coins from:".format(item['name'],item['value_buy'])
+        count = 0
+        for npc in item['npcs_bought']:
+            if count < 3 or not short:
+                reply += "\n\t**{0}** in *{1}*".format(npc['name'],npc['city'])
+            count+=1
+        if count >= 3 and short:
+            reply += "\n\t*And **{0}** others.*".format(count-3)
+    else:
+        reply += '\n\n**'+item['name']+'** can\'t be bought from NPCs.'
+    
+    if('npcs_sold' in item and len(item['npcs_sold']) > 0):
+        reply += "\n\n**{0}** can be sold for {1:,} gold coins to:".format(item['name'],item['value_sell'])
+        count = 0
+        for npc in item['npcs_sold']:
+            if count < 3 or not short:
+                reply += "\n\t**{0}** in *{1}*".format(npc['name'],npc['city'])
+            count+=1
+        if count >= 3 and short:
+            reply += "\n\t*And **{0}** others.*".format(count-3)
+    else:
+        reply += '\n\n**'+item['name']+'** can\'t be sold to NPCs.'
+        
+    if (len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3) and short:
+        reply += '\n\n*The list of NPCs was too long, so I PM\'d you an extended version.*'
+    return reply
 ####################### Commands #######################
 
 class Tibia():
@@ -491,7 +575,7 @@ class Tibia():
             if(len(chars) <= 0):
                 yield from self.bot.say("I don't know who **@{0.name}** is...".format(user))
                 if char == ERROR_NETWORK:
-                    yield from self.bot.say("I also failed to do a character search for some reason "+EMOJI_WHIRLYEYES)
+                    yield from self.bot.say("I also failed to do a character search for some reason "+EMOJI[":astonished:"])
                     return
                 if char == ERROR_DOESNTEXIST:
                     yield from self.bot.say("And I don't see any character with that name.")
@@ -510,7 +594,7 @@ class Tibia():
             #TODO: Fix possesive if user ends with s
             yield from self.bot.say("@**{0.name}**'s character{1}: {2}.".format(user,"s are" if len(chars) > 1 else " is", ", ".join(chars)))
             if char == ERROR_NETWORK:
-                yield from self.bot.say("But I failed to do a character search for some reason "+EMOJI_WHIRLYEYES)
+                yield from self.bot.say("But I failed to do a character search for some reason "+EMOJI[":astonished:"])
                 return
             if char == ERROR_DOESNTEXIST:
                 return
@@ -585,21 +669,19 @@ class Tibia():
         yield from self.bot.say(result)
 
 
-    @commands.command(aliases=['checkprice','item'])
+    @commands.command(pass_context=True,aliases=['checkprice','item'])
     @asyncio.coroutine
-    def itemprice(self,*itemname : str):
+    def itemprice(self,ctx,*itemname : str):
         """Checks an item's highest NPC price"""
         itemname = " ".join(itemname).strip()
         item = getItem(itemname)
         if(item is not None):
             #Check if item has npcs that buy the item
-            if('npcs' in item and len(item['npcs']) > 0):
-                reply = "**{0}** can be sold for {1:,} gold coins to:".format(item['name'],item['value'])
-                for npc in item['npcs']:
-                    reply += "\n\t**{0}** in *{1}*".format(npc['name'],npc['city'])
-                yield from self.bot.say(reply)
-            else:
-                yield from self.bot.say('**'+item['name']+'** can\'t be sold to NPCs.')
+            yield from self.bot.say(getItemString(item))
+            
+            if len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3:
+                if ctx.message.author is not None:
+                    yield from self.bot.send_message(ctx.message.author,getItemString(item,False))
         else:
             yield from self.bot.say("I couldn't find an item with that name.")
 
