@@ -1099,7 +1099,9 @@ def getUserByName(userName):
     if user is None:
         user = discord.utils.find(lambda m: m.name.lower() == userName.lower(), bot.get_all_members())
     if user is None:
-        user = discord.utils.find(lambda m: m.user.name.lower() == userName.lower(), bot.private_channels).user
+        private = discord.utils.find(lambda m: m.user.name.lower() == userName.lower(), bot.private_channels)
+        if private is not None:
+            user = private.user
     return user
 ########
 
@@ -1108,7 +1110,9 @@ def getUserByName(userName):
 def getUserById(userId):
     user = discord.utils.find(lambda m: m.id == str(userId), bot.get_all_members())
     if user is None:
-        user = discord.utils.find(lambda m: m.user.id == str(userId), bot.private_channels).user
+        private = discord.utils.find(lambda m: m.user.id == str(userId), bot.private_channels).user
+        if private is not None:
+            user = private.user
     return user
 ########
 
