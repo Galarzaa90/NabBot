@@ -523,9 +523,9 @@ class Tibia():
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(pass_context=True,aliases=['check','player','checkplayer','char','character'])
+    @commands.command(aliases=['check','player','checkplayer','char','character'])
     @asyncio.coroutine
-    def whois(self,ctx,*name : str):
+    def whois(self,*name : str):
         """Tells you the characters of a user or the owner of a character and/or information of a tibia character
         
         Note that the bot has no way to know the characters of a member that just joined.
@@ -603,9 +603,9 @@ class Tibia():
         finally:
             c.close()
 
-    @commands.command(pass_context=True,aliases=['expshare','party'])
+    @commands.command(aliases=['expshare','party'])
     @asyncio.coroutine
-    def share(self,ctx,*param : str):
+    def share(self,*param : str):
         """Shows the sharing range for that level or character"""
         level = 0
         name = ''
@@ -639,9 +639,9 @@ class Tibia():
 
 
 
-    @commands.command(pass_context=True,aliases=['guildcheck'])
+    @commands.command(aliases=['guildcheck'])
     @asyncio.coroutine
-    def guild(self,ctx,*guildname : str):
+    def guild(self,*guildname : str):
         """Checks who is online in a guild"""
         guildname = " ".join(guildname)
         onlinelist,guildname = yield from getGuildOnline(guildname)

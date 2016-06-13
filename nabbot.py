@@ -357,9 +357,9 @@ def im(ctx,*charname : str):
         userDatabase.commit()
 
 
-@bot.command(pass_context=True)
+@bot.command()
 @asyncio.coroutine
-def online(ctx):
+def online():
     """Tells you which users are online on Tibia
 
     This list gets updated based on Tibia.com online list, so it takes a couple minutes
@@ -387,6 +387,34 @@ def online(ctx):
             yield from bot.say(reply)
     finally:
         c.close()
+                
+@bot.command()
+@asyncio.coroutine
+def about():
+    """Shows information about the bot"""
+    user_count = 0
+    char_count = 0
+    try:
+        c = userDatabase.cursor()
+        c.execute("SELECT COUNT(*) FROM discord_users")
+        result = c.fetchone()
+        if result is not None:
+            user_count = result[0]
+        c.execute("SELECT COUNT(*) FROM chars")
+        result = c.fetchone()
+        if result is not None:
+            char_count = result[0]
+    finally:
+        c.close()
+    reply = "**About me:**\n"
+    reply += "- Authors: @Galarzaa#8515, @Nezune#2269\n"
+    reply += "- Platform: Python "+EMOJI[":snake:"]+"\n"
+    reply += "- Created: March 30th 2016\n"
+    reply += "- Uptime: "+getUptime()+"\n"
+    reply += "- Tracked users: "+str(user_count)+"\n"
+    reply += "- Tracked chars: "+str(char_count)
+    yield from bot.say(reply)
+        
 ##### Admin only commands ####
 
 ######## Makesay command
@@ -682,7 +710,7 @@ if __name__ == "__main__":
         quit()
     finally:
         bot.session.close()
-
+    
 
     log.warning("Emergency restart!")
     if(platform.system() == "Linux"):
