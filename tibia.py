@@ -298,7 +298,7 @@ def getPlayer(name):
 def getItem(itemname):
     #Reading item database
     c = tibiaDatabase.cursor()
-    
+
     #Search query
     c.execute("SELECT title, look_text FROM Items WHERE name LIKE ?",(itemname,))
     result = c.fetchone()
@@ -307,7 +307,7 @@ def getItem(itemname):
         if(result is not None):
             #Turning result tuple into dictionary
             item = dict(zip(['name','look_text'],result))
-            
+
             #Checking NPCs that buy the item
             c.execute("SELECT NPCs.title, city, value"+
             " FROM Items, SellItems, NPCs WHERE Items.name LIKE ?"+
@@ -344,7 +344,7 @@ def getItem(itemname):
                 npcs.append({"name" : name, "city": city})
             item['npcs_sold'] = npcs
             item['value_sell'] = value_sell
-            
+
             #Checking NPCs that sell the item
             c.execute("SELECT NPCs.title, city, value"+
             " FROM Items, BuyItems, NPCs WHERE Items.name LIKE ?"+
@@ -381,9 +381,9 @@ def getItem(itemname):
                 npcs.append({"name" : name, "city": city})
             item['npcs_bought'] = npcs
             item['value_buy'] = value_buy
-            
-            
-            
+
+
+
             return item
     finally:
         c.close()
@@ -488,7 +488,7 @@ def getItemString(item,short=True):
     reply = ""
     if('look_text' in item):
         reply = item['look_text']
-    
+
     if('npcs_bought' in item and len(item['npcs_bought']) > 0):
         reply += "\n\n**{0}** can be bought for {1:,} gold coins from:".format(item['name'],item['value_buy'])
         count = 0
@@ -500,7 +500,7 @@ def getItemString(item,short=True):
             reply += "\n\t*And **{0}** others.*".format(count-3)
     else:
         reply += '\n\n**'+item['name']+'** can\'t be bought from NPCs.'
-    
+
     if('npcs_sold' in item and len(item['npcs_sold']) > 0):
         reply += "\n\n**{0}** can be sold for {1:,} gold coins to:".format(item['name'],item['value_sell'])
         count = 0
@@ -512,10 +512,50 @@ def getItemString(item,short=True):
             reply += "\n\t*And **{0}** others.*".format(count-3)
     else:
         reply += '\n\n**'+item['name']+'** can\'t be sold to NPCs.'
-        
+
     if (len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3) and short:
         reply += '\n\n*The list of NPCs was too long, so I PM\'d you an extended version.*'
     return reply
+
+def getSpell(name):
+    c = tibiaDatabase.cursor()
+    try:
+        c.execute("""SELECT id, name, words, levelrequired, promotion, premium, goldcost, manacost,
+                  knight, paladin, sorcerer, druid FROM Spells WHERE words LIKE ? OR name LIKE ?""",(name+"%",name,))
+        result = c.fetchone()
+        if(result is None):
+            return None
+        id = result[0]
+        spell = {"name" : result[1],
+                 "words" : result[2],
+                 "level" : result[3],
+                 "promotion" : True if result[4] == 1 else False,
+                 "premium" : True if result[5] == 1 else False,
+                 "price" : result[6],
+                 "mana" : result[7],
+                 "knight" : True if result[8] == 1 else False,
+                 "paladin" : True if result[9] == 1 else False,
+                 "sorcerer" : True if result[10] == 1 else False,
+                 "druid" : True if result[11] == 1 else False,
+                 "npcs" : list()}
+        c.execute("""SELECT NPCs.title, NPCs.city, SpellNPCs.knight, SpellNPCs.paladin,
+                  SpellNPCs.sorcerer, SpellNPCs.druid FROM NPCs, SpellNPCs WHERE
+                  SpellNPCs.spellid = ? AND SpellNPCs.npcid = NPCs.id""",(id,))
+        result = c.fetchall()
+        #This should always be true
+        if(result is not None):
+            for (name,city,knight, paladin, sorcerer, druid) in result:
+                seller = {"name" : name,
+                          "city" : city.title(),
+                          "knight" : True if knight == 1 else False,
+                          "paladin" : True if paladin == 1 else False,
+                          "sorcerer" : True if sorcerer == 1 else False,
+                          "druid" : True if druid == 1 else False}
+                spell["npcs"].append(seller)
+        return spell
+
+    finally:
+        c.close()
 ####################### Commands #######################
 
 class Tibia():
@@ -527,7 +567,7 @@ class Tibia():
     @asyncio.coroutine
     def whois(self,*name : str):
         """Tells you the characters of a user or the owner of a character and/or information of a tibia character
-        
+
         Note that the bot has no way to know the characters of a member that just joined.
         The bot has to be taught about the character's of an user."""
         name = " ".join(name).strip()
@@ -580,7 +620,7 @@ class Tibia():
                 if char == ERROR_DOESNTEXIST:
                     yield from self.bot.say("And I don't see any character with that name.")
                     return
-                    
+
                 c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?",(name,))
                 result = c.fetchone();
                 if(result is not None):
@@ -835,7 +875,46 @@ class Tibia():
                 "At that level, you will pay **{0:,}** gold coins per blessing for a total of **{1:,}** gold coins.{2}"
                 .format(price,price*5,inquisition))
 
-
+    @commands.command()
+    @asyncio.coroutine
+    def spell(self,*name : str):
+        """Tells you information about a certain spell."""
+        name = " ".join(name)
+        spell = getSpell(name)
+        if spell is None:
+            yield from self.bot.say("I don't know any spell with that name or words.")
+            return
+        mana = spell["mana"]
+        if mana < 0:
+            mana = "variable"
+        words = spell["words"]
+        if "exani hur" in words:
+            words = "exani hur up/down"
+        vocs = list()
+        if(spell['knight']): vocs.append("knights")
+        if(spell['paladin']): vocs.append("paladins")
+        if(spell['druid']): vocs.append("druids")
+        if(spell['sorcerer']): vocs.append("sorcerers")
+        voc = ", ".join(vocs)
+        reply = "**{0}** (*{1}*) is a {2}spell for level **{3}** and up. It uses **{4}** mana."
+        reply = reply.format(spell["name"],words,"premium " if spell["premium"] else "",
+                            spell["level"],mana)
+        reply += " It can be used by {0}".format(voc)
+        if(spell["price"] == 0):
+            reply += "\nIt can be obtained for free."
+        else:
+            reply += "\nIt can be bought for {0:,} gold coins.".format(spell["price"])
+        #Todo: Show which NPCs sell the spell
+        """if(len(spell['npcs']) > 0):
+            for npc in spell['npcs']:
+                vocs = list()
+                if(npc['knight']): vocs.append("knights")
+                if(npc['paladin']): vocs.append("paladins")
+                if(npc['druid']): vocs.append("druids")
+                if(npc['sorcerer']): vocs.append("sorcerers")
+                voc = ", ".join(vocs)
+                print("{0} ({1}) - {2}".format(npc['name'],npc['city'],voc))"""
+        yield from self.bot.say(reply)
 
 def setup(bot):
     bot.add_cog(Tibia(bot))
