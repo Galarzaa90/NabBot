@@ -1151,3 +1151,12 @@ def getUptime():
         fmt = '{h} hours, {m} minutes, and {s} seconds'
 
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
+
+#Joins elements in a list with a separator between all elements and a different separator for the last element.
+def joinList(list,separator,endseparator):
+    size = len(list)
+    if size == 0:
+        return ""
+    if size == 1:
+        return list[0]
+    return separator.join(list[:size-1])+endseparator+str(list[size-1])

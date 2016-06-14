@@ -632,7 +632,7 @@ class Tibia():
                 yield from self.bot.say(charString)
                 return
             #TODO: Fix possesive if user ends with s
-            yield from self.bot.say("@**{0.name}**'s character{1}: {2}.".format(user,"s are" if len(chars) > 1 else " is", ", ".join(chars)))
+            yield from self.bot.say("@**{0.name}**'s character{1}: {2}.".format(user,"s are" if len(chars) > 1 else " is", joinList(chars,", "," and ")))
             if char == ERROR_NETWORK:
                 yield from self.bot.say("But I failed to do a character search for some reason "+EMOJI[":astonished:"])
                 return
@@ -895,11 +895,11 @@ class Tibia():
         if(spell['paladin']): vocs.append("paladins")
         if(spell['druid']): vocs.append("druids")
         if(spell['sorcerer']): vocs.append("sorcerers")
-        voc = ", ".join(vocs)
+        voc = joinList(vocs,", "," and ")
         reply = "**{0}** (*{1}*) is a {2}spell for level **{3}** and up. It uses **{4}** mana."
         reply = reply.format(spell["name"],words,"premium " if spell["premium"] else "",
                             spell["level"],mana)
-        reply += " It can be used by {0}".format(voc)
+        reply += " It can be used by {0}.".format(voc)
         if(spell["price"] == 0):
             reply += "\nIt can be obtained for free."
         else:
