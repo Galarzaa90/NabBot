@@ -1135,12 +1135,14 @@ def getTibiaTimeZone():
         return 2
     return 1
     
-#Start time is saved when this module is loaded, not when the bot actually logs in, so it is a couple
-#seconds off.
+
 start_time = datetime.utcnow()
 def getUptime():
+    """Returns a string with the time the bot has been running for.
+    
+    Start time is saved when this module is loaded, not when the bot actually logs in,
+    so it is a couple seconds off."""
     now = datetime.utcnow()
-    print(now)
     delta = now - start_time
     hours, remainder = divmod(int(delta.total_seconds()), 3600)
     minutes, seconds = divmod(remainder, 60)
@@ -1152,11 +1154,38 @@ def getUptime():
 
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
-#Joins elements in a list with a separator between all elements and a different separator for the last element.
+
 def joinList(list,separator,endseparator):
+    """Joins elements in a list with a separator between all elements and a different separator for the last element."""
     size = len(list)
     if size == 0:
         return ""
     if size == 1:
         return list[0]
     return separator.join(list[:size-1])+endseparator+str(list[size-1])
+    
+def getAboutContent():
+    """Used to get the content of the /about command, to be used in /im Nab Bot too"""
+    user_count = 0
+    char_count = 0
+    try:
+        c = userDatabase.cursor()
+        c.execute("SELECT COUNT(*) FROM discord_users")
+        result = c.fetchone()
+        if result is not None:
+            user_count = result[0]
+        c.execute("SELECT COUNT(*) FROM chars")
+        result = c.fetchone()
+        if result is not None:
+            char_count = result[0]
+    finally:
+        c.close()
+        
+    reply = "*Beep boop beep boop*. I'm just a bot!\n"
+    reply += "\t- Authors: @Galarzaa#8515, @Nezune#2269\n"
+    reply += "\t- Platform: Python "+EMOJI[":snake:"]+"\n"
+    reply += "\t- Created: March 30th 2016\n"
+    reply += "\t- Uptime: "+getUptime()+"\n"
+    reply += "\t- Tracked users: "+str(user_count)+"\n"
+    reply += "\t- Tracked chars: "+str(char_count)
+    return reply

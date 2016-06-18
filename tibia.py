@@ -600,7 +600,7 @@ class Tibia():
                 yield from self.bot.say(charString)
                 return
             if(user.id == self.bot.user.id):
-                yield from self.bot.say("*Beep boop beep boop*. I'm just a bot!")
+                yield from self.bot.say(getAboutContent())
                 return
             c.execute("SELECT name, last_level, vocation FROM chars WHERE user_id = ? ORDER BY abs(last_level) DESC",(user.id,))
             chars = []
