@@ -287,8 +287,8 @@ def im(ctx,*charname : str):
     user = ctx.message.author
     try:
         c = userDatabase.cursor()
-        admins_message = " or ".join("**@"+getUserById(admin).name+"**" for admin in admin_ids)
-        servers_message = ", ".join(["**"+server+"**" for server in tibiaservers])
+        admins_message = joinList(["**@"+getUserById(admin).name+"**" for admin in admin_ids],", "," or ")
+        servers_message = joinList(["**"+server+"**" for server in tibiaservers],", "," or ")
         notallowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help adding characters to your account please message "+admins_message+".").format(user)
         
         ##Check if the user has joined recently
