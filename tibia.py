@@ -761,7 +761,7 @@ class Tibia():
         c = userDatabase.cursor()
         try:
             if(not name):
-                c.execute("SELECT level, date, name, user_id FROM char_levelups, chars WHERE char_id = id ORDER BY date DESC LIMIT 15")
+                c.execute("SELECT level, date, name, user_id FROM char_levelups, chars WHERE char_id = id AND level >= ? ORDER BY date DESC LIMIT 15",(announceTreshold,))
                 result = c.fetchall()
                 if len(result) < 1:
                     yield from self.bot.say("No one has leveled up recently")
