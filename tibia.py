@@ -413,24 +413,6 @@ def getLocalTime(tibiaTime):
     #Add/substract hours to get the real time
     return t + timedelta(hours=(local_utc_offset - utc_offset))
 
-def getTimeDiff(time):
-    if not isinstance(time, timedelta):
-        return None
-    hours = time.seconds//3600
-    minutes = (time.seconds//60)%60
-    if time.days > 1:
-        return "{0} days ago".format(time.days)
-    if time.days == 1:
-        return "1 day ago"
-    if hours > 1:
-        return "{0} hours ago".format(hours)
-    if hours == 1:
-        return "1 hour ago"
-    if minutes > 15:
-        return "{0} minutes ago".format(minutes)
-    else:
-        return "moments ago"
-
 def getStats(level, vocation):
     try:
         level = int(level)
@@ -915,6 +897,26 @@ class Tibia():
                 voc = ", ".join(vocs)
                 print("{0} ({1}) - {2}".format(npc['name'],npc['city'],voc))"""
         yield from self.bot.say(reply)
+
+    @commands.command(aliases=['serversave'])
+    @asyncio.coroutine
+    def time(self):
+        """Displays tibia server's time and time until server save"""
+        offset = getTibiaTimeZone() - getLocalTimezone()
+        tibia_time = datetime.now()+timedelta(hours=offset)
+        server_save = tibia_time
+        if(tibia_time.hour >= 10):
+            server_save+= timedelta(days=1)
+        server_save = server_save.replace(hour=10,minute=0,second=0,microsecond=0)
+        time_until_ss = server_save - tibia_time
+        hours, remainder = divmod(int(time_until_ss.total_seconds()), 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        timestr = tibia_time.strftime("%H:%M")
+        server_save_str = '{h} hours and {m} minutes.'.format(h=hours, m=minutes)
+
+        yield from self.bot.say("It's currently **{0}** in Tibia's servers.\nServer save is in {1}".format(timestr,server_save_str))
+
 
 def setup(bot):
     bot.add_cog(Tibia(bot))

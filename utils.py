@@ -897,7 +897,7 @@ discord_log.addHandler(handler)
 log = logging.getLogger(__name__ )
 log.setLevel(logging.DEBUG)
 ###Save log to file (info level)
-fileHandler = logging.FileHandler(filename='logs/nabbot.log', encoding='utf-8', mode='a') 
+fileHandler = logging.FileHandler(filename='logs/nabbot.log', encoding='utf-8', mode='a')
 fileHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
 fileHandler.setLevel(logging.INFO)
 log.addHandler(fileHandler)
@@ -939,7 +939,7 @@ def initDatabase():
                     char_id	INTEGER,
                     level	INTEGER,
                     date	INTEGER
-                    )""")      
+                    )""")
         c.execute("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND name LIKE 'db_info'")
         result = c.fetchone();
         #If there's no version value, version 1 is assumed
@@ -966,7 +966,7 @@ def initDatabase():
             db_version +=1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'",(db_version,))
-        
+
     finally:
         userDatabase.commit()
 
@@ -1011,7 +1011,7 @@ def getLogin():
 def utilsGetBot(_bot):
     global bot
     bot = _bot
-    
+
 
 ########formatMessage
 ##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/
@@ -1080,7 +1080,7 @@ def getChannelByName(channel_name : str):
     if channel is None:
         return getChannelByServerAndName("",channel_name)
     return channel
-    
+
 ########getServerByName
 def getServerByName(server_name : str):
     server = discord.utils.find(lambda m: m.name == server_name, bot.servers)
@@ -1116,6 +1116,24 @@ def getUserById(userId):
     return user
 ########
 
+def getTimeDiff(time):
+    if not isinstance(time, timedelta):
+        return None
+    hours = time.seconds//3600
+    minutes = (time.seconds//60)%60
+    if time.days > 1:
+        return "{0} days ago".format(time.days)
+    if time.days == 1:
+        return "1 day ago"
+    if hours > 1:
+        return "{0} hours ago".format(hours)
+    if hours == 1:
+        return "1 hour ago"
+    if minutes > 5:
+        return "{0} minutes ago".format(minutes)
+    else:
+        return "moments ago"
+
 #Returns your local time zone
 def getLocalTimezone():
     #Getting local time and GMT
@@ -1123,7 +1141,7 @@ def getLocalTimezone():
     u = time.gmtime(time.mktime(t))
     #UTC Offset
     return ((timegm(t) - timegm(u))/60/60)
-    
+
 ##Returns Germany's timezone, considering their daylight saving time dates
 def getTibiaTimeZone():
     #Find date in Germany
@@ -1134,12 +1152,11 @@ def getTibiaTimeZone():
     if dst_start < germany_date < dst_end:
         return 2
     return 1
-    
 
 start_time = datetime.utcnow()
 def getUptime():
     """Returns a string with the time the bot has been running for.
-    
+
     Start time is saved when this module is loaded, not when the bot actually logs in,
     so it is a couple seconds off."""
     now = datetime.utcnow()
@@ -1163,7 +1180,7 @@ def joinList(list,separator,endseparator):
     if size == 1:
         return list[0]
     return separator.join(list[:size-1])+endseparator+str(list[size-1])
-    
+
 def getAboutContent():
     """Used to get the content of the /about command, to be used in /im Nab Bot too"""
     user_count = 0
@@ -1180,7 +1197,7 @@ def getAboutContent():
             char_count = result[0]
     finally:
         c.close()
-        
+
     reply = "*Beep boop beep boop*. I'm just a bot!\n"
     reply += "\t- Authors: @Galarzaa#8515, @Nezune#2269\n"
     reply += "\t- Platform: Python "+EMOJI[":snake:"]+"\n"
