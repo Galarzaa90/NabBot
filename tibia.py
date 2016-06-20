@@ -294,6 +294,18 @@ def getPlayer(name):
     except Exception:
         pass
     return char
+    
+def getRashidCity():
+    offset = getTibiaTimeZone() - getLocalTimezone()
+    #Server save is at 10am, so in tibia a new day starts at that hour
+    tibia_time = datetime.now()+timedelta(hours=offset-10)
+    return ["Svargrond",
+            "Liberty Bay",
+            "Port Hope",
+            "Ankrahmun",
+            "Darashia",
+            "Edron",
+            "Carlin"][tibia_time.weekday()]
 
 def getItem(itemname):
     #Reading item database
@@ -328,17 +340,7 @@ def getItem(itemname):
                 elif(name == 'Nah\'Bob' or name == 'Haroun'):
                     city = 'Blue Djinn\'s Fortress'
                 elif(name == 'Rashid'):
-                    offset = getTibiaTimeZone() - getLocalTimezone()
-                    #Server save is at 10am, so in tibia a new day starts at that hour
-                    tibia_time = datetime.now()+timedelta(hours=offset-10)
-                    city = [
-                        "Svargrond",
-                        "Liberty Bay",
-                        "Port Hope",
-                        "Ankrahmun",
-                        "Darashia",
-                        "Edron",
-                        "Carlin"][tibia_time.weekday()]
+                    city = getRashidCity()
                 elif(name == 'Yasir'):
                     city = 'his boat'
                 npcs.append({"name" : name, "city": city})
@@ -915,7 +917,7 @@ class Tibia():
         timestr = tibia_time.strftime("%H:%M")
         server_save_str = '{h} hours and {m} minutes.'.format(h=hours, m=minutes)
 
-        yield from self.bot.say("It's currently **{0}** in Tibia's servers.\nServer save is in {1}".format(timestr,server_save_str))
+        yield from self.bot.say("It's currently **{0}** in Tibia's servers.\nServer save is in {1}.\nRashid is in **{2}** today".format(timestr,server_save_str,getRashidCity()))
 
 
 def setup(bot):
