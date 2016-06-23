@@ -82,10 +82,6 @@ def think():
     lastPlayerDeathCheck = datetime.now()
     global globalOnlineList
     while 1:
-        yield from announceDeath("Nezune","bs",123,"wine",False)
-        yield from announceDeath("Pepyto","bs",123,"a banana",False)
-        yield from announceDeath("Galarzaa Fidera","bs",123,"a taco",False)
-        yield from announceDeath("Fahgnoli","bs",123,"an hero",False)
         #periodically check server online lists
         if datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
             ##pop last server in qeue, reinsert it at the beggining
