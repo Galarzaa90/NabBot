@@ -82,6 +82,10 @@ def think():
     lastPlayerDeathCheck = datetime.now()
     global globalOnlineList
     while 1:
+        yield from announceDeath("Nezune","bs",123,"wine",False)
+        yield from announceDeath("Pepyto","bs",123,"a banana",False)
+        yield from announceDeath("Galarzaa Fidera","bs",123,"a taco",False)
+        yield from announceDeath("Fahgnoli","bs",123,"an hero",False)
         #periodically check server online lists
         if datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
             ##pop last server in qeue, reinsert it at the beggining
@@ -199,7 +203,7 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
         #Don't announce for players in non-tracked worlds
         return
     #Choose correct pronouns
-    pronoun = ["he","his"] if char['gender'] == "male" else ["she","her"]
+    pronoun = ["he","his","him"] if char['gender'] == "male" else ["she","her","her"]
 
     channel = getChannelByServerAndName(mainserver,mainchannel)
     #Find killer article (a/an)
@@ -212,12 +216,14 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
         else:
             deathKillerArticle = ""
     #Select a message
-    message = weighedChoice(deathmessages_player) if deathByPlayer else weighedChoice(deathmessages_monster)
-    #Format message with player data
-    message = message.format(charName,deathTime,deathLevel,deathKiller,deathKillerArticle,pronoun[0],pronoun[1])
+    message = weighedChoice(deathmessages_player,char['vocation'],int(deathLevel)) if deathByPlayer else weighedChoice(deathmessages_monster,char['vocation'],int(deathLevel),deathKiller)
+    #Format message with death information
+    deathInfo = {'charName' : charName, 'deathTime' : deathTime, 'deathLevel' : deathLevel, 'deathKiller' : deathKiller, 'deathKillerArticle' : deathKillerArticle, 'pronoun1' : pronoun[0], 'pronoun2' : pronoun[1], 'pronoun3' : pronoun[2]}
+    message = message.format(**deathInfo)
     #Format extra stylization
     message = formatMessage(message)
-
+    
+    print(deathKiller)
     yield from bot.send_message(channel,message[:1].upper()+message[1:])
 ########
 
@@ -234,14 +240,15 @@ def announceLevel(charName,newLevel):
         log.error("Error in announceLevel, failed to getPlayer("+charName+")")
         return
     #Choose correct pronouns
-    pronoun = ["he","his"] if char['gender'] == "male" else ["she","her"]
-
+    pronoun = ["he","his","him"] if char['gender'] == "male" else ["she","her","her"]
+    
     channel = getChannelByServerAndName(mainserver,mainchannel)
 
     #Select a message
     message = weighedChoice(levelmessages,char['vocation'],int(newLevel))
-    #Format message with player data
-    message = message.format(charName,newLevel,pronoun[0],pronoun[1])
+    #Format message with level information
+    levelInfo = {'charName' : charName, 'newLevel' : newLevel, 'pronoun1' : pronoun[0], 'pronoun2' : pronoun[1], 'pronoun3' : pronoun[2]}
+    message = message.format(**levelInfo)
     #Format extra stylization
     message = formatMessage(message)
 

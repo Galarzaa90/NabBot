@@ -1034,18 +1034,27 @@ def formatMessage(message):
 ########weighedChoice
 ##makes weighed choices from message lists where [0] is a value representing the relative odds of picking a message
 ###and [1] is the message string
-def weighedChoice(messages,condition1=False,condition2=False):
+def weighedChoice(messages,condition1=False,condition2=False,condition3=False,condition4=False):
     ##find the max range by adding up the weigh of every message in the list
     #and purge out messages that dont fulfil the conditions
     range = 0
     _messages = []
     for message in messages:
-        if len(message) == 4:
+        if len(message) == 6:
+            if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]) and (not message[4] or condition3 in message[4]) and (not message[5] or condition4 in message[5]):
+                range = range+message[0]
+                _messages.append(message)
+        elif len(message) == 5:
+            if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]) and (not message[4] or condition3 in message[4]):
+                range = range+message[0]
+                _messages.append(message)
+        elif len(message) == 4:
             if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]):
                 range = range+message[0]
                 _messages.append(message)
         elif len(message) == 3:
             if (not message[2] or condition1 in message[2]):
+                range = range+message[0]
                 _messages.append(message)
         else:
             range = range+message[0]
