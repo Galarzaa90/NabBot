@@ -219,7 +219,6 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
     #Format extra stylization
     message = formatMessage(message)
     
-    print(deathKiller)
     yield from bot.send_message(channel,message[:1].upper()+message[1:])
 ########
 
@@ -385,8 +384,10 @@ def online():
                 user = getUserById(char['id'])
 
                 char['vocation'] = vocAbb(char['vocation'])
-                discordName = user.name if (user is not None) else "unknown"
-                reply += "\n\t{0} (Lvl {1} {2}, **@{3}**)".format(char['name'],abs(char['level']),char['vocation'],discordName)
+                #discordName = user.name if (user is not None) else "unknown"
+                if user is not None:
+                    discordName = user.name
+                    reply += "\n\t{0} (Lvl {1} {2}, **@{3}**)".format(char['name'],abs(char['level']),char['vocation'],discordName)
             yield from bot.say(reply)
     finally:
         c.close()
