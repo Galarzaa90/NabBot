@@ -1,41 +1,64 @@
 from utils import *
 
 @asyncio.coroutine
-def getPlayerDeaths(player, singleDeath = False):
-    url = "https://secure.tibia.com/community/?subtopic=characters&name="+urllib.parse.quote(player)
+def getPlayerDeaths(name, singleDeath = False, tries = 5):
+    print("getPlayerDeaths")
+    print(tries)
+    url = "https://secure.tibia.com/community/?subtopic=characters&name="+urllib.parse.quote(name)
     content = ""
     deathList = []
-    content = ""
-    retry = 0
-    while content == "" and retry < 5:
-        try:
-            page = yield from aiohttp.get(url)
-            content = yield from page.text(encoding='ISO-8859-1')
-        except Exception:
-            retry+=1
+    
+    #Fetch website
+    try:
+        page = yield from aiohttp.get(url)
+        content = yield from page.text(encoding='ISO-8859-1')
+    except Exception:
+        if(tries == 0):
+            log.error("getPlayerDeaths: Couldn't fetch {0}, network error.".format(name))
+            return ERROR_NETWORK
+        else:
+            log.info("getPlayerDeaths: Couldn't fetch {0}, {1} tries left.".format(name,tries))
+            tries -= 1
+            ret = yield from getPlayerDeaths(name,singleDeath,tries)
+            return ret
 
     if content == "":
-        log.error("Error in getPlayerDeaths("+player+")")
+        log.error("getPlayerDeaths: Couldn't fetch {0}, network error.".format(name))
         return ERROR_NETWORK
-
-    #Check if player exists (in a really lazy way)
+        
+    #Trimming content to reduce load
     try:
-        content.index("Vocation:")
-    except Exception:
+        startIndex = content.index("BoxContent")
+        endIndex = content.index("<B>Search Character</B>")
+        content = content[startIndex:endIndex]
+    except ValueError:
+        print("value error")
+        #Website fetch was incomplete, due to a network error
+        if(tries == 0):
+            log.error("getPlayerDeaths: Couldn't fetch {0}, network error.".format(name))
+            return ERROR_NETWORK
+        else:
+            log.info("getPlayerDeaths: Couldn't fetch {0}, {1} tries left.".format(name,tries))
+            tries -= 1
+            ret = yield from getPlayerDeaths(name,singleDeath,tries)
+            return ret
+            
+    #Check if doesn't player exists
+    if "<B>Could not find character</B></TD>" in content:
         return ERROR_DOESNTEXIST
-
-    try:
-        content.index("<b>Character Deaths</b>")
-    except Exception:
+        
+    #Check if player has recent deaths, return empty list if not
+    if "<b>Character Deaths</b>" not in content:
         return deathList
+        
+    #Trimming content again once we've checked char exists and has deaths
     startIndex = content.index("<b>Character Deaths</b>")
-    endIndex = content.index("<B>Search Character</B>")
-    content = content[startIndex:endIndex]
+    content = content[startIndex:]
 
     regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
     pattern = re.compile(regex_deaths,re.MULTILINE+re.S)
     matches = re.findall(pattern,content)
-
+    
     for m in matches:
         deathTime = ""
         deathLevel = ""
@@ -70,11 +93,26 @@ def getPlayerDeaths(player, singleDeath = False):
     return deathList
 
 @asyncio.coroutine
-def getServerOnline(server):
+def getServerOnline(server,tries = 5):
     url = 'https://secure.tibia.com/community/?subtopic=worlds&world='+server
     onlineList = []
     content = ""
-    retry = 0
+    
+    #Fetch website
+    try:
+        page = yield from aiohttp.get(url)
+        content = yield from page.text(encoding='ISO-8859-1')
+    except Exception:
+        if(tries == 0):
+            log.error("getServerOnline: Couldn't fetch {0}, network error.".format(server))
+            #This should return ERROR_NETWORK, but requires error handling where this function is used
+            return onlineList
+        else:
+            log.info("getServerOnline: Couldn't fetch {0}, {1} tries left.".format(server,tries))
+            tries -= 1
+            ret = yield from getServerOnline(server,tries)
+            return ret
+            
     while content == "" and retry < 5:
         try:
             page = yield from aiohttp.get(url)
@@ -82,18 +120,22 @@ def getServerOnline(server):
         except Exception:
             retry+=1
 
-    if content == "":
-        log.error("Error in getServerOnline("+server+")")
-        return onlineList
-
+    #Trimming content to reduce load
     try:
-        content.index("Vocation&#160;&#160;")
-    except Exception:
-        return onlineList
-
-    startIndex = content.index('Vocation&#160;&#160;')
-    endIndex = content.index('Search Character')
-    content = content[startIndex:endIndex]
+        startIndex = content.index('Vocation&#160;&#160;')
+        endIndex = content.index('Search Character')
+        content = content[startIndex:endIndex]
+    except ValueError:
+        #Website fetch was incomplete due to a network error
+        if(tries == 0):
+            log.error("getServerOnline: Couldn't fetch {0}, network error.".format(server))
+            #This should return ERROR_NETWORK, but requires error handling where this function is used
+            return onlineList
+        else:
+            log.info("getServerOnline: Couldn't fetch {0}, {1} tries left.".format(server,tries))
+            tries -= 1
+            ret = yield from getServerOnline(server,tries)
+            return ret
 
 
     regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td>'
@@ -184,34 +226,45 @@ def getGuildOnline(guildname,titlecase=True):
     return member_list,guildname
 
 @asyncio.coroutine
-def getPlayer(name):
-    #Fetch website
+def getPlayer(name, tries = 5):
     url = "https://secure.tibia.com/community/?subtopic=characters&name="+urllib.parse.quote(name)
     content = ""
-    retry = 0
-    while content == "" and retry < 5:
-        try:
-            page = yield from aiohttp.get(url)
-            content = yield from page.text(encoding='ISO-8859-1')
-        except Exception:
-            retry+=1
-
-    if content == "":
-        log.error("Error in getPlayer("+name+")")
-        return ERROR_NETWORK
-    #Check if player exists (in a really lazy way)
+    char = dict()
+    
+    #Fetch website
     try:
-        content.index("Vocation:")
+        page = yield from aiohttp.get(url)
+        content = yield from page.text(encoding='ISO-8859-1')
     except Exception:
-        return ERROR_DOESNTEXIST
+        if(tries == 0):
+            log.error("getPlayer: Couldn't fetch {0}, network error.".format(name))
+            return ERROR_NETWORK
+        else:
+            log.info("getPlayer: Couldn't fetch {0}, {1} tries left.".format(name,tries))
+            tries -= 1
+            ret = yield from getPlayer(name,tries)
+            return ret
 
     #Trimming content to reduce load
-    startIndex = content.index("BoxContent")
-    endIndex = content.index("<B>Search Character</B>")
-    content = content[startIndex:endIndex]
+    try:
+        startIndex = content.index("BoxContent")
+        endIndex = content.index("<B>Search Character</B>")
+        content = content[startIndex:endIndex]
+    except ValueError:
+        #Website fetch was incomplete, due to a network error
+        if(tries == 0):
+            log.error("getPlayer: Couldn't fetch {0}, network error.".format(name))
+            return ERROR_NETWORK
+        else:
+            log.info("getPlayer: Couldn't fetch {0}, {1} tries left.".format(name,tries))
+            tries -= 1
+            ret = yield from getPlayer(name,tries)
+            return ret
+    #Check if doesn't player exists
+    if "<B>Could not find character</B></TD>" in content:
+        return ERROR_DOESNTEXIST        
 
-    char = {'guild' : ''}
-
+    
     #TODO: Is there a way to reduce this part?
     #Name
     m = re.search(r'Name:</td><td>([^<,]+)',content)
@@ -242,6 +295,11 @@ def getPlayer(name):
     m = re.search(r'Residence:</td><td>([^<]+)',content)
     if m:
         char['residence'] = m.group(1)
+        
+    #Residence (City)
+    m = re.search(r'Married to:</td><td>?.+name=([^"]+)',content)
+    if m:
+        char['married'] = urllib.parse.unquote_plus(m.group(1))
 
     #Sex, only stores pronoun
     m = re.search(r'Sex:</td><td>([^<]+)',content)
@@ -459,13 +517,16 @@ def getCharString(char):
     pronoun = "He"
     if(char['gender'] == "female"):
         pronoun = "She"
-    replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}"
+    replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}"
     guildF = "\n{0} is __{1}__ of the **{2}**."
-    if(char['guild']):
+    marriedF = "\n{0} is married to **{1}**."
+    guild = ""
+    married = ""
+    if(char.get('guild',None)):
         guild = guildF.format(pronoun,char['rank'],char['guild'])
-    else:
-        guild = ""
-    reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild)
+    if(char.get('married',None)):
+        married = marriedF.format(pronoun,char['married'])
+    reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild,married)
     return reply
 
 def getItemString(item,short=True):
