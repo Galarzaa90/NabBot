@@ -2,8 +2,6 @@ from utils import *
 
 @asyncio.coroutine
 def getPlayerDeaths(name, singleDeath = False, tries = 5):
-    print("getPlayerDeaths")
-    print(tries)
     url = "https://secure.tibia.com/community/?subtopic=characters&name="+urllib.parse.quote(name)
     content = ""
     deathList = []
