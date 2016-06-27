@@ -137,14 +137,12 @@ def getServerOnline(server,tries = 5):
 
     regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td>'
     pattern = re.compile(regex_members,re.MULTILINE+re.S)
-    print(server)
     m = re.findall(pattern,content)
     #Check if list is empty
     if m:
         #Building dictionary list from online players
         for (name, level) in m:
             name = urllib.parse.unquote_plus(name)
-            print(name)
             onlineList.append({'name' : name, 'level' : int(level)})
     return onlineList
 
