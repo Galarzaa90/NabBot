@@ -26,11 +26,10 @@ def getPlayerDeaths(name, singleDeath = False, tries = 5):
         
     #Trimming content to reduce load
     try:
-        startIndex = content.index("BoxContent")
+        startIndex = content.index('<div class="BoxContent"')
         endIndex = content.index("<B>Search Character</B>")
         content = content[startIndex:endIndex]
     except ValueError:
-        print("value error")
         #Website fetch was incomplete, due to a network error
         if(tries == 0):
             log.error("getPlayerDeaths: Couldn't fetch {0}, network error.".format(name))
@@ -120,8 +119,8 @@ def getServerOnline(server,tries = 5):
 
     #Trimming content to reduce load
     try:
-        startIndex = content.index('Vocation&#160;&#160;')
-        endIndex = content.index('Search Character')
+        startIndex = content.index('<div class="BoxContent"')
+        endIndex = content.index('<div id="ThemeboxesColumn" >')
         content = content[startIndex:endIndex]
     except ValueError:
         #Website fetch was incomplete due to a network error
@@ -138,39 +137,64 @@ def getServerOnline(server,tries = 5):
 
     regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td>'
     pattern = re.compile(regex_members,re.MULTILINE+re.S)
-
+    print(server)
     m = re.findall(pattern,content)
     #Check if list is empty
     if m:
         #Building dictionary list from online players
         for (name, level) in m:
             name = urllib.parse.unquote_plus(name)
+            print(name)
             onlineList.append({'name' : name, 'level' : int(level)})
     return onlineList
 
 @asyncio.coroutine
-def getGuildOnline(guildname,titlecase=True):
+def getGuildOnline(guildname,titlecase=True,tries=5):
     gstats_url = 'http://guildstats.eu/guild?guild='+urllib.parse.quote(guildname)
-    tibia_url = 'https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1'
     #Fix casing using guildstats.eu if needed
     ##Sorry guildstats.eu :D
     if not titlecase:
-        content = ""
-        retry = 0
-        while content == "" and retry < 5:
-            try:
-                page = yield from aiohttp.get(gstats_url)
-                content = yield from page.text(encoding='ISO-8859-1')
-            except Exception:
-                retry+=1
-        if content == "":
-            log.error("Error in getGuildOnline("+guildname+"), while fixing casing with guildstats.eu")
-            return ERROR_NETWORK
-        #Check if guild exists (in a really lazy way)
+        #Fetch website
+        try:
+            page = yield from aiohttp.get(gstats_url)
+            content = yield from page.text(encoding='ISO-8859-1')
+        except Exception:
+            if(tries == 0):
+                log.error("getGuildOnline: Couldn't fetch {0} from guildstats.eu, network error.".format(guildname))
+                return ERROR_NETWORK,guildname
+            else:
+                log.info("getGuildOnline: Couldn't fetch {0} from guildstats.eu, {1} tries left.".format(guildname,tries))
+                tries -= 1
+                ret = yield from getGuildOnline(guildname,titlecase,tries)
+                return ret
+
+        #Make sure we got a healthy fetch
+        try:
+            content.index('<div class="footer">')
+        except ValueError:
+            #Website fetch was incomplete, due to a network error
+            if(tries == 0):
+                log.error("getGuildOnline: Couldn't fetch {0} from guildstats.eu, network error.".format(guildname))
+                return ERROR_NETWORK,guildname
+            else:
+                log.info("getGuildOnline: Couldn't fetch {0} from guildstats.eu, {1} tries left.".format(guildname,tries))
+                tries -= 1
+                ret = yield from getGuildOnline(guildname,titlecase,tries)
+                return ret
+
+        #Check if the guild doesn't exist
+        if "<div>Sorry!" in content:
+            return ERROR_DOESNTEXIST,guildname
+        
+        
+        #Failsafe in case guildstats.eu changes their websites format
         try:
             content.index("General info")
+            content.index("Recruitment")
         except Exception:
-            return ERROR_DOESNTEXIST
+            log.error("getGuildOnline: -IMPORTANT- guildstats.eu seems to have changed their websites format.")
+            return ERROR_NETWORK,guildname
+
         startIndex = content.index("General info")
         endIndex = content.index("Recruitment")
         content = content[startIndex:endIndex]
@@ -179,39 +203,54 @@ def getGuildOnline(guildname,titlecase=True):
             guildname = urllib.parse.unquote_plus(m.group(1))
     else:
         guildname = guildname.title()
-    #Fetch webpage
-    content = ""
-    retry = 0
-    while content == "" and retry < 5:
-        try:
-            page = yield from aiohttp.get(tibia_url)
-            content = yield from page.text(encoding='ISO-8859-1')
-        except Exception:
-            retry+=1
 
-    if content == "":
-        log.error("Error in getGuildOnline("+guildname+")")
-        return ERROR_NETWORK
-    #Check if guild exists (in a really lazy way)
+    tibia_url = 'https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName='+urllib.parse.quote(guildname)+'&onlyshowonline=1'
+    #Fetch website
     try:
-        content.index("Information")
+        page = yield from aiohttp.get(tibia_url)
+        content = yield from page.text(encoding='ISO-8859-1')
     except Exception:
+        if(tries == 0):
+            log.error("getGuildOnline: Couldn't fetch {0}, network error.".format(guildname))
+            return ERROR_NETWORK,guildname
+        else:
+            log.info("getGuildOnline: Couldn't fetch {0}, {1} tries left.".format(guildname,tries))
+            tries -= 1
+            ret = yield from getGuildOnline(guildname,titlecase,tries)
+            return ret
+
+    #Trimming content to reduce load and making sure we got a healthy fetch
+    try:
+        startIndex = content.index('<div class="BoxContent"')
+        endIndex = content.index('<div id="ThemeboxesColumn" >')
+        content = content[startIndex:endIndex]
+    except ValueError:
+        #Website fetch was incomplete, due to a network error
+        if(tries == 0):
+            log.error("getGuildOnline: Couldn't fetch {0}, network error.".format(guildname))
+            return ERROR_NETWORK,guildname
+        else:
+            log.info("getGuildOnline: Couldn't fetch {0}, {1} tries left.".format(guildname,tries))
+            tries -= 1
+            ret = yield from getGuildOnline(guildname,titlecase,tries)
+            return ret
+
+    #Check if the guild doesn't exist
+    ##Note: for some reason, when the bot fetches an unexistant guild it gets an error saying "An internal error has occurred. Please try again later!"
+    ##instead of the "A guild by that name was not found." error, thats why we're just searching for the "Error" title.
+    if '<div class="Text" >Error</div>' in content:
         if titlecase:
             ret = yield from getGuildOnline(guildname,False)
             return ret
         else:
-            return ERROR_DOESNTEXIST
-    #Trimming content string to reduce load
-    startIndex = content.index("<td>Status</td>")
-    endIndex = content.index("name=\"Show All\"")
-    content = content[startIndex:endIndex]
+            return ERROR_DOESNTEXIST,guildname
 
     #Regex pattern to fetch information
-    regex_members = r'<TD>(.+?)</TD>\s</td><TD><A HREF="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)">.+?</A> *\(*(.*?)\)*</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>'
+    regex_members = r'<TR BGCOLOR=#[\dABCDEF]+><TD>(.+?)</TD>\s</td><TD><A HREF="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)">.+?</A> *\(*(.*?)\)*</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>'
     pattern = re.compile(regex_members,re.MULTILINE+re.S)
 
     m = re.findall(pattern,content)
-    member_list = [];
+    member_list = []
     #Check if list is empty
     if m:
         #Building dictionary list from members
@@ -245,7 +284,7 @@ def getPlayer(name, tries = 5):
 
     #Trimming content to reduce load
     try:
-        startIndex = content.index("BoxContent")
+        startIndex = content.index('<div class="BoxContent"')
         endIndex = content.index("<B>Search Character</B>")
         content = content[startIndex:endIndex]
     except ValueError:
@@ -733,6 +772,7 @@ class Tibia():
             return
         if onlinelist == ERROR_NETWORK:
             yield from self.bot.say("Can you repeat that?")
+            return
         if len(onlinelist) < 1:
             yield from self.bot.say("Nobody is online on "+urllib.parse.unquote_plus(guildname)+".")
             return
@@ -748,7 +788,6 @@ class Tibia():
             result += (' (*'+member['title']+'*)' if (member['title'] != '') else '')
             result += ' -- '+member['level']+' '
             result += vocAbb(member['vocation'])
-
         yield from self.bot.say(result)
 
 
