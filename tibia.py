@@ -812,6 +812,11 @@ class Tibia():
         """Shows a player's recent deaths"""
         name = " ".join(name).strip()
         deaths = yield from getPlayerDeaths(name)
+        if(not name):
+            return
+        if name.lower() == "nab bot":
+            yield from self.bot.say("**Nab Bot** never dies.")
+            return
         if(deaths == ERROR_DOESNTEXIST):
             yield from self.bot.say("That character doesn't exists!")
             return
@@ -1011,7 +1016,7 @@ class Tibia():
         minutes, seconds = divmod(remainder, 60)
 
         timestr = tibia_time.strftime("%H:%M")
-        server_save_str = '{h} hours and {m} minutes.'.format(h=hours, m=minutes)
+        server_save_str = '{h} hours and {m} minutes'.format(h=hours, m=minutes)
 
         yield from self.bot.say("It's currently **{0}** in Tibia's servers.\nServer save is in {1}.\nRashid is in **{2}** today".format(timestr,server_save_str,getRashidCity()))
 
