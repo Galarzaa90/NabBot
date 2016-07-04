@@ -40,8 +40,8 @@ def getPlayerDeaths(name, singleDeath = False, tries = 5):
             ret = yield from getPlayerDeaths(name,singleDeath,tries)
             return ret
             
-    #Check if doesn't player exists
-    if "<B>Could not find character</B></TD>" in content:
+    #Check if player exists
+    if "Name:</td><td>" not in content:
         return ERROR_DOESNTEXIST
         
     #Check if player has recent deaths, return empty list if not
@@ -295,8 +295,8 @@ def getPlayer(name, tries = 5):
             tries -= 1
             ret = yield from getPlayer(name,tries)
             return ret
-    #Check if doesn't player exists
-    if "<B>Could not find character</B></TD>" in content:
+    #Check if player exists
+    if "Name:</td><td>" not in content:
         return ERROR_DOESNTEXIST        
 
     
