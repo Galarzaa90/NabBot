@@ -748,7 +748,7 @@ class Tibia():
             "You probably need a couple more levels"]
             yield from self.bot.say(random.choice(replies))
             return
-        low = int(math.ceil(level*2.0/3.0))
+        low = int(math.floor(level*2.0/3.0))
         high = int(math.floor(level*3.0/2.0))
         if(name == ''):
             yield from self.bot.say('A level '+str(level)+' can share experience with levels **'+str(low)+
