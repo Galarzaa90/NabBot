@@ -116,6 +116,9 @@ def think():
                     if result:
                         #if its a stalked character
                         lastLevel = result[1]
+                        #we update their last level in the db
+                        c.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",(serverChar['level'],serverChar['name'],))
+                        
                         if not (currentServer+"_"+serverChar['name']) in globalOnlineList:
                             ##if the character wasnt in the globalOnlineList we add them
                             #(we insert them at the beggining of the list to avoid messing with the death checks order)
@@ -130,8 +133,6 @@ def think():
                             c.execute("INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",(result[2],serverChar['level'],time.time(),))
                             ##announce the level up
                             yield from announceLevel(serverChar['name'],serverChar['level'])
-                        #finally we update their last level in the db
-                        c.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",(serverChar['level'],serverChar['name'],))
 
                 #Close cursor and commit changes
                 userDatabase.commit()

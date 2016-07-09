@@ -317,9 +317,17 @@ def getPlayer(name, tries = 5):
         char['vocation'] = m.group(1)
 
     #Level
-    m = re.search(r'Level:</td><td>(\d+)',content)
-    if m:
-        char['level'] = int(m.group(1))
+    ##Use database levels if possible, since those are updated even if the char hasnt logged out
+    c = userDatabase.cursor()
+    c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",(char['name'],))
+    result = c.fetchone()
+    if result:
+        char['level'] = abs(result[1])
+    else:
+        m = re.search(r'Level:</td><td>(\d+)',content)
+        if m:
+            char['level'] = int(m.group(1))
+    c.close()
 
     #World
     m = re.search(r'World:</td><td>([^<]+)',content)
@@ -561,6 +569,7 @@ def getCharString(char):
         guild = guildF.format(pronoun,char['rank'],char['guild'])
     if(char.get('married',None)):
         married = marriedF.format(pronoun,char['married'])
+    
     reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild,married)
     return reply
 
