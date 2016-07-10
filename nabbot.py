@@ -783,6 +783,27 @@ def stalk(ctx, subcommand, *args : str):
                 yield from bot.say("{0} level up registries from removed characters were deleted.".format(c.rowcount))
             yield from bot.say("Purge done.")
             return
+        ##Check
+        if(subcommand == "check"):
+            #Fetch a list of users with chars only:
+            c.execute("SELECT user_id FROM chars GROUP BY user_id")
+            result = c.fetchall()
+            if len(result) <= 0:
+                yield from bot.say("There are no registered characters.")
+                return
+            users = [str(i[0]) for i in result]
+            members = getServerByName(mainserver).members
+            empty_members = list()
+            for member in members:
+                if member.id == bot.user.id:
+                    continue
+                if member.id not in users:
+                    empty_members.append("**@"+member.name+"**")
+            if len(empty_members) == 0:
+                yield from bot.say("There are no unregistered users or users without characters.")
+                return
+            yield from bot.say("The following users are not registered or have no chars registered to them:\n\t{0}".format("\n\t".join(empty_members)))
+            
     finally:
         c.close()
         userDatabase.commit()
@@ -797,7 +818,8 @@ def stalk_error(error,ctx):
         /stalk addacc user,char
         /stalk remove user
         /stalk removechar char
-        /stalk purge```""")
+        /stalk purge
+        /stalk check```""")
 
 
 ######## Restart command
