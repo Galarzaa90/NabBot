@@ -911,7 +911,7 @@ log.addHandler(consoleHandler)
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 
-DB_LASTVERSION = 2
+DB_LASTVERSION = 3
 
 def initDatabase():
     #Database file is automatically created with connect, now we have to check if it has tables
@@ -924,30 +924,30 @@ def initDatabase():
         #Database is empty
         if(result is None or result[0] == 0):
             c.execute("""CREATE TABLE discord_users (
-                    id	INTEGER NOT NULL,
-                    weight	INTEGER DEFAULT 5,
-                    PRIMARY KEY(id)
-                    )""")
+                      id INTEGER NOT NULL,
+                      weight INTEGER DEFAULT 5,
+                      PRIMARY KEY(id)
+                      )""")
             c.execute("""CREATE TABLE chars (
-                    id	INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id	INTEGER,
-                    name	TEXT,
-                    last_level	INTEGER DEFAULT -1,
-                    last_death_time	TEXT
-                    )""")
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      user_id INTEGER,
+                      name TEXT,
+                      last_level INTEGER DEFAULT -1,
+                      last_death_time TEXT
+                      )""")
             c.execute("""CREATE TABLE char_levelups (
-                    char_id	INTEGER,
-                    level	INTEGER,
-                    date	INTEGER
-                    )""")
+                      char_id INTEGER,
+                      level INTEGER,
+                      date INTEGER
+                      )""")
         c.execute("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND name LIKE 'db_info'")
         result = c.fetchone();
         #If there's no version value, version 1 is assumed
         if(result is None):
             c.execute("""CREATE TABLE db_info (
-                    key	TEXT,
-                    value	TEXT
-                    )""")
+                      key TEXT,
+                      value TEXT
+                      )""")
             c.execute("INSERT INTO db_info(key,value) VALUES('version','1')")
             db_version = 1
             print("No version found, version 1 assumed")
@@ -963,6 +963,16 @@ def initDatabase():
             #Apply changes
             c.execute("ALTER TABLE chars ADD vocation TEXT")
             c.execute("UPDATE chars SET last_level = 0 WHERE last_level = -1")
+            db_version +=1
+        if db_version == 2:
+            c.execute("""CREATE TABLE events (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      creator INTEGER,
+                      name TEXT,
+                      start INTEGER,
+                      duration INTEGER,
+                      active INTEGER DEFAULT 1
+                      )""")
             db_version +=1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'",(db_version,))
@@ -1131,17 +1141,17 @@ def getTimeDiff(time):
     hours = time.seconds//3600
     minutes = (time.seconds//60)%60
     if time.days > 1:
-        return "{0} days ago".format(time.days)
+        return "{0} days".format(time.days)
     if time.days == 1:
-        return "1 day ago"
+        return "1 day"
     if hours > 1:
-        return "{0} hours ago".format(hours)
+        return "{0} hours".format(hours)
     if hours == 1:
-        return "1 hour ago"
-    if minutes > 5:
-        return "{0} minutes ago".format(minutes)
+        return "1 hour"
+    if minutes > 1:
+        return "{0} minutes".format(minutes)
     else:
-        return "moments ago"
+        return "moments"
 
 #Returns your local time zone
 def getLocalTimezone():

@@ -840,7 +840,7 @@ class Tibia():
         for death in deaths:
             diff = getTimeDiff(datetime.now() - getLocalTime(death['time']))
             died = "Killed" if death['byPlayer'] else "Died"
-            reply += "\n\t{0} at level **{1}** by {2} - *{3}*".format(died,death['level'],death['killer'],diff)
+            reply += "\n\t{0} at level **{1}** by {2} - *{3} ago*".format(died,death['level'],death['killer'],diff)
 
         yield from self.bot.say(reply)
 
@@ -868,7 +868,7 @@ class Tibia():
                     username = "unkown"
                     if(user):
                         username = user.name
-                    reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1}*".format(levelup[0],getTimeDiff(timediff),levelup[2],username)
+                    reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1} ago*".format(levelup[0],getTimeDiff(timediff),levelup[2],username)
                 yield from self.bot.say(reply)
                 return
             #Checking if character exists in db and get id while we're at it
@@ -891,7 +891,7 @@ class Tibia():
             reply = "**{0}** latest level ups:".format(name)
             for levelup in result:
                 timediff = timedelta(seconds=now-levelup[1])
-                reply += "\n\tLevel **{0}** - *{1}*".format(levelup[0],getTimeDiff(timediff))
+                reply += "\n\tLevel **{0}** - *{1} ago*".format(levelup[0],getTimeDiff(timediff))
             yield from self.bot.say(reply)
         finally:
             c.close()

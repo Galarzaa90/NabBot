@@ -398,6 +398,172 @@ def online():
 def about():
     """Shows information about the bot"""
     yield from bot.say(getAboutContent())
+    
+@bot.command(pass_context=True)
+@asyncio.coroutine
+def events(ctx,*args : str):
+    """Shows a list of current active events
+    
+    The following subcommands are only available through PMs
+    To add an event, use:
+    /events add [startTime] [eventName]
+    e.g. /events add 1h20m Pits of Inferno Quest
+    
+    To edit an event, use:
+    /events editname [id] [newName]
+    /events edittime [id] [newTime]
+    e.g. /events editname 4 PoI Quest
+    e.g. /events edittime 4 5h
+    
+    To delete an event, use:
+    /events delete [id]"""
+    #Time the event will be shown in the event list
+    timeThreshold = 60*30
+    c = userDatabase.cursor()
+    try:
+        #Current time
+        date = time.time()
+        if not args:
+            reply = ""
+            #Recent events
+            c.execute("SELECT creator, start, name, id FROM events WHERE start < ? AND start < ? AND active = 1 ORDER by start ASC",(date,date-timeThreshold,))
+            results = c.fetchall()
+            if len(results) > 0:
+                reply += "Recent events:"
+                for row in results:
+                    author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                    name = row[2]
+                    id = row[3]
+                    timediff = timedelta(seconds=row[1]-date)
+                    minutes = (timediff.seconds//60)%60
+                    start = '{0} minutes'.format(minutes)                    
+                    reply += "\n\t**{0}** (by **@{1}**,*ID:{3}*) - Started {2} ago".format(name,author,start,id)
+            #Upcoming events
+            c.execute("SELECT creator, start, name, id FROM events WHERE start > ? AND active = 1 ORDER BY start ASC",(date,))
+            results = c.fetchall()
+            if len(results) > 0:
+                if(reply):
+                    reply += "\n"
+                reply += "Upcoming events:"
+                for row in results:
+                    author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                    name = row[2]
+                    id = row[3]
+                    timediff = timedelta(seconds=row[1]-date)
+                    days,hours,minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60)%60
+                    if days:
+                        start = '{0} days, {1} hours and {2} minutes'.format(days,hours,minutes)
+                    else:
+                        start = '{0} hours and {1} minutes'.format(hours,minutes)
+                    
+                    reply += "\n\t**{0}** (by **@{1}**,*ID:{3}*) - In {2}".format(name,author,start,id)
+            if reply:
+                yield from bot.say(reply)
+            else:
+                yield from bot.say("There are no upcoming events.")
+            return
+        if not ctx.message.channel.is_private:
+            return
+            
+        if args[0] == "add":
+            if len(args) < 3:
+                yield from bot.say("Invalid arguments, the format is the following:\n`/events add [startTime] [eventName]`\ne.g. `/events add 1d15h Pits of Inferno`")
+                return
+            creator = ctx.message.author.id
+            timeStr = args[1]
+            name = " ".join(args[2:])
+            
+            m = re.search(r'(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?',timeStr)
+            if(not m.group(0)):
+                yield from bot.say("Time must be in the following formats: *1d1h20m*, *6h*, *2h30m*, *30m*")
+                return
+            if(m.group(1)):
+                date += int(m.group(1))*60*60*24
+            if(m.group(2)):
+                date += int(m.group(2))*60*60
+            if(m.group(3)):
+                date += int(m.group(3))*60
+                
+            c.execute("SELECT * FROM events WHERE creator = ? AND active = 1 AND start > ?",(creator,date,))
+            result= c.fetchall()
+            if len(result) > 0 and creator not in admin_ids:
+                yield from bot.say("You can only have one running event at a time. Delete or edit your active event.")
+                return
+            c.execute("INSERT INTO events (creator,start,name) VALUES(?,?,?)",(creator,date,name,))
+            id = c.lastrowid
+            yield from bot.say("Event registered succesfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*".format(name,timeStr,id))
+            
+        if args[0] == "editname":
+            if len(args) < 3:
+                yield from bot.say("Invalid arguments, the format is the following:\n`/events editname [id] [newName]`\ne.g. `/events editname 4 PoI Quest`")
+                return
+            creator = ctx.message.author.id
+            id = int(args[1])
+            name = " ".join(args[2:])
+            c.execute("SELECT creator FROM events WHERE id = ? AND active = 1 AND start > ?",(id,date,))
+            result = c.fetchone()
+            if not result:
+                yield from bot.say("There are no active events with that ID.")
+                return
+            if result[0] != int(creator):
+                yield from bot.say("You can only edit your own events.")
+                return
+            c.execute("UPDATE events SET name = ? WHERE id = ?",(name,id,))
+            
+            yield from bot.say("Your event's name was changed succesfully.")
+            
+        if args[0] == "edittime":
+            if len(args) != 3:
+                yield from bot.say("Invalid arguments, the format is the following:\n`/events edittime [id] [newStart]`\ne.g. `/events edittime 4 5h`")
+                return
+            creator = ctx.message.author.id
+            id = int(args[1])
+            timeStr = args[2]
+            c.execute("SELECT creator FROM events WHERE id = ? AND active = 1 AND start > ?",(id,date,))
+            result = c.fetchone()
+            if not result:
+                yield from bot.say("There are no active events with that ID.")
+                return
+            if result[0] != int(creator) and creator not in admin_ids:
+                yield from bot.say("You can only edit your own events.")
+                return
+                
+            m = re.search(r'(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?',timeStr)
+            if(not m.group(0)):
+                yield from bot.say("Time must be in the following formats: *1d1h20m*, *6h*, *2h30m*, *30m*")
+                return
+            if(m.group(1)):
+                date += int(m.group(1))*60*60*24
+            if(m.group(2)):
+                date += int(m.group(2))*60*60
+            if(m.group(3)):
+                date += int(m.group(3))*60
+            
+            c.execute("UPDATE events SET start = ? WHERE id = ?",(date,id,))
+            yield from bot.say("Your event's start time was changed succesfully.")
+            
+        if args[0] == "delete":
+            if len(args) != 2:
+                yield from bot.say("Invalid arguments, the format is the following:\n`/events delete [id]`")
+                return
+            
+            creator = ctx.message.author.id
+            id = int(args[1])
+            
+            c.execute("SELECT creator FROM events WHERE id = ? AND active = 1 AND start > ?",(id,date,))
+            result = c.fetchone()
+            if not result:
+                yield from bot.say("There are no active events with that ID.")
+                return
+            if result[0] != int(creator) and creator not in admin_ids:
+                yield from bot.say("You can only delete your own events.")
+                
+            c.execute("UPDATE events SET active = 0 WHERE id = ?",(id,))
+            yield from bot.say("Your event was deleted succesfully.")
+        
+    finally:
+        userDatabase.commit()
+        c.close()
         
 ##### Admin only commands ####
 
