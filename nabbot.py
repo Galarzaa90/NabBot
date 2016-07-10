@@ -486,8 +486,8 @@ def events(ctx,*args : str):
                 
             c.execute("SELECT * FROM events WHERE creator = ? AND active = 1 AND start > ?",(creator,date,))
             result= c.fetchall()
-            if len(result) > 0 and creator not in admin_ids:
-                yield from bot.say("You can only have one running event at a time. Delete or edit your active event.")
+            if len(result) > 1 and creator not in admin_ids:
+                yield from bot.say("You can only have two running events at a time. Delete or edit your active event.")
                 return
             c.execute("INSERT INTO events (creator,start,name) VALUES(?,?,?)",(creator,date,name,))
             id = c.lastrowid
