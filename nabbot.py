@@ -426,7 +426,7 @@ def events(ctx,*args : str):
         if not args:
             reply = ""
             #Recent events
-            c.execute("SELECT creator, start, name, id FROM events WHERE start < ? AND start < ? AND active = 1 ORDER by start ASC",(date,date-timeThreshold,))
+            c.execute("SELECT creator, start, name, id FROM events WHERE start < ? AND start > ? AND active = 1 ORDER by start ASC",(date,date-timeThreshold,))
             results = c.fetchall()
             if len(results) > 0:
                 reply += "Recent events:"
