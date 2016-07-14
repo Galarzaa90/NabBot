@@ -818,14 +818,39 @@ class Tibia():
     @commands.command()
     @asyncio.coroutine
     def deaths(self,*name : str):
-        """Shows a player's recent deaths"""
+        """Shows a player's recent deaths or global deaths if no player is specified"""
         name = " ".join(name).strip()
-        deaths = yield from getPlayerDeaths(name)
         if(not name):
-            return
+            c = userDatabase.cursor()
+            try:
+                c.execute("SELECT name,id FROM chars")
+                result = c.fetchall()
+                if len(result) > 0:
+                    for name,id in result:
+                        print(name+" > "+str(id))
+                c.execute("SELECT level, date, name, user_id, byplayer, killer FROM char_deaths, chars WHERE char_id = id ORDER BY date DESC LIMIT 15")
+                result = c.fetchall()
+                if len(result) < 1:
+                    yield from self.bot.say("No one has died recently")
+                    return
+                now = time.time()
+                reply = "Latest deaths:"
+                for level, date, name, user_id, byplayer, killer in result:
+                    timediff = timedelta(seconds=now-date)
+                    died = "Killed" if byplayer else "Died"
+                    user = getUserById(user_id)
+                    username = "unkown"
+                    if(user):
+                        username = user.name
+                    reply += "\n\t{4} (**@{5}**) - {0} at level **{1}** by {2} - *{3} ago*".format(died,level,killer,getTimeDiff(timediff),name,username)
+                yield from self.bot.say(reply)
+                return
+            finally:
+                c.close()
         if name.lower() == "nab bot":
             yield from self.bot.say("**Nab Bot** never dies.")
             return
+        deaths = yield from getPlayerDeaths(name)
         if(deaths == ERROR_DOESNTEXIST):
             yield from self.bot.say("That character doesn't exists!")
             return

@@ -911,7 +911,7 @@ log.addHandler(consoleHandler)
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 
-DB_LASTVERSION = 3
+DB_LASTVERSION = 4
 
 def initDatabase():
     #Database file is automatically created with connect, now we have to check if it has tables
@@ -958,13 +958,15 @@ def initDatabase():
         if db_version == DB_LASTVERSION:
             print("Database is up to date.")
             return
-        #Future code to patch database changes
+        #Code to patch database changes
         if db_version == 1:
-            #Apply changes
+            #Added 'vocation' colum to chars table, used to display vocations when /check'ing users among other things.
+            #Changed how the last_level flagging system works a little, a character of unknown level is now flagged as level 0 instead of -1, negative levels are now used to flag of characters never seen online before.
             c.execute("ALTER TABLE chars ADD vocation TEXT")
             c.execute("UPDATE chars SET last_level = 0 WHERE last_level = -1")
             db_version +=1
         if db_version == 2:
+            #Added 'events' table
             c.execute("""CREATE TABLE events (
                       id INTEGER PRIMARY KEY AUTOINCREMENT,
                       creator INTEGER,
@@ -973,6 +975,18 @@ def initDatabase():
                       duration INTEGER,
                       active INTEGER DEFAULT 1
                       )""")
+            db_version +=1
+        if db_version == 3:
+            #Added 'char_deaths' table
+            #Added status column to events (for event announces)
+            c.execute("""CREATE TABLE char_deaths (
+                      char_id INTEGER,
+                      level INTEGER,
+                      killer TEXT,
+                      date INTEGER,
+                      byplayer BOOLEAN
+                      )""")
+            c.execute("ALTER TABLE events ADD COLUMN status DEFAULT 4")
             db_version +=1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'",(db_version,))

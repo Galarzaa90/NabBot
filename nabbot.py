@@ -20,6 +20,7 @@ def on_ready():
     #Notify reset author
     if len(sys.argv) > 1:
         user = getUserById(sys.argv[1])
+        sys.argv[1] == 0
         if user is not None:
             yield from bot.send_message(user,"Restart complete")
     #start up think()
@@ -74,6 +75,105 @@ def on_message_edit(older_message,message):
     for attachment in message.attachments:
         log.info(attachment)
 
+@asyncio.coroutine
+def announceEvents():
+    firstAnnouncement = 60*30
+    secondAnnouncement = 60*15
+    thirdAnnouncement = 60*5
+    c = userDatabase.cursor()
+    channel = getChannelByServerAndName(mainserver,mainchannel)
+    try:
+        #Current time
+        date = time.time()
+        #Find incoming events
+        ##First announcement
+        c.execute("SELECT creator, start, name, id FROM events WHERE start < ? AND start > ? AND active = 1 AND status > 3 ORDER by start ASC",(date+firstAnnouncement+60,date+firstAnnouncement,))
+        results = c.fetchall()
+        if len(results) > 0:
+            for row in results:
+                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                name = row[2]
+                id = row[3]
+                timediff = timedelta(seconds=row[1]-date)
+                days,hours,minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60)%60
+                if days:
+                    start = '{0} days, {1} hours and {2} minutes'.format(days,hours,minutes)
+                elif hours:
+                    start = '{0} hours and {1} minutes'.format(hours,minutes)
+                else:
+                    start = '{0} minutes'.format(minutes)
+                
+                message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name,author,start,id)
+                c.execute("UPDATE events SET status = 3 WHERE id = ?",(id,))
+                log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name,author,start,id))
+                yield from bot.send_message(channel,message)
+        ##Second announcement
+        c.execute("SELECT creator, start, name, id FROM events WHERE start < ? AND start > ? AND active = 1 AND status > 2 ORDER by start ASC",(date+secondAnnouncement+60,date+secondAnnouncement,))
+        results = c.fetchall()
+        if len(results) > 0:
+            for row in results:
+                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                name = row[2]
+                id = row[3]
+                timediff = timedelta(seconds=row[1]-date)
+                days,hours,minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60)%60
+                if days:
+                    start = '{0} days, {1} hours and {2} minutes'.format(days,hours,minutes)
+                elif hours:
+                    start = '{0} hours and {1} minutes'.format(hours,minutes)
+                else:
+                    start = '{0} minutes'.format(minutes)
+                
+                message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name,author,start,id)
+                c.execute("UPDATE events SET status = 2 WHERE id = ?",(id,))
+                log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name,author,start,id))
+                yield from bot.send_message(channel,message)
+        ##Third announcement
+        c.execute("SELECT creator, start, name, id FROM events WHERE start < ? AND start > ? AND active = 1 AND status > 1 ORDER by start ASC",(date+thirdAnnouncement+60,date+thirdAnnouncement,))
+        results = c.fetchall()
+        if len(results) > 0:
+            for row in results:
+                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                name = row[2]
+                id = row[3]
+                timediff = timedelta(seconds=row[1]-date)
+                days,hours,minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60)%60
+                if days:
+                    start = '{0} days, {1} hours and {2} minutes'.format(days,hours,minutes)
+                elif hours:
+                    start = '{0} hours and {1} minutes'.format(hours,minutes)
+                else:
+                    start = '{0} minutes'.format(minutes)
+                
+                message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}!".format(name,author,start,id)
+                c.execute("UPDATE events SET status = 1 WHERE id = ?",(id,))
+                log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name,author,start,id))
+                yield from bot.send_message(channel,message)
+        ##Last announcement
+        c.execute("SELECT creator, start, name, id FROM events WHERE start < ? AND start > ? AND active = 1 AND status > 0 ORDER by start ASC",(date+60,date,))
+        results = c.fetchall()
+        if len(results) > 0:
+            for row in results:
+                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                name = row[2]
+                id = row[3]
+                timediff = timedelta(seconds=row[1]-date)
+                days,hours,minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60)%60
+                if days:
+                    start = '{0} days, {1} hours and {2} minutes'.format(days,hours,minutes)
+                elif hours:
+                    start = '{0} hours and {1} minutes'.format(hours,minutes)
+                else:
+                    start = '{0} minutes'.format(minutes)
+                
+                message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting right now!".format(name,author,start,id)
+                c.execute("UPDATE events SET status = 0 WHERE id = ?",(id,))
+                log.info("Announcing event: {0} (by @{1},ID:{3}) - Starting ({2})".format(name,author,start,id))
+                yield from bot.send_message(channel,message)
+    finally:
+        userDatabase.commit()
+        c.close()
+
 ########a think function!
 @asyncio.coroutine
 def think():
@@ -82,6 +182,9 @@ def think():
     lastPlayerDeathCheck = datetime.now()
     global globalOnlineList
     while 1:
+        #announce incoming events
+        yield from announceEvents()
+        
         #periodically check server online lists
         if datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
             ##pop last server in qeue, reinsert it at the beggining
@@ -156,7 +259,7 @@ def think():
             if (type(currentCharDeaths) is list) and len(currentCharDeaths) > 0:
                 c = userDatabase.cursor()
 
-                c.execute("SELECT name, last_death_time FROM chars WHERE name LIKE ?",(currentChar,))
+                c.execute("SELECT name, last_death_time, id FROM chars WHERE name LIKE ?",(currentChar,))
                 result = c.fetchone()
                 if result:
                     lastDeath = currentCharDeaths[0]
@@ -169,6 +272,8 @@ def think():
                     elif dbLastDeathTime != lastDeath['time']:
                         #update the lastDeathTime for this char in the db
                         c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(lastDeath['time'],currentChar,))
+                        #Saving death info in database
+                        c.execute("INSERT INTO char_deaths (char_id,level,killer,byplayer,date) VALUES(?,?,?,?,?)",(result[2],int(lastDeath['level']),lastDeath['killer'],lastDeath['byPlayer'],time.time(),))
                         #and announce the death
                         yield from announceDeath(currentChar,lastDeath['time'],lastDeath['level'],lastDeath['killer'],lastDeath['byPlayer'])
 
@@ -322,7 +427,6 @@ def im(ctx,*charname : str):
         #If the char is hidden,we still add the searched character
         if(len(chars) == 0):
             chars = [char]
-            print(char['world'])
         skipped = []
         updated = []
         added = []
@@ -434,10 +538,10 @@ def events(ctx,*args : str):
                     author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
                     name = row[2]
                     id = row[3]
-                    timediff = timedelta(seconds=row[1]-date)
+                    timediff = timedelta(seconds=date-row[1])
                     minutes = (timediff.seconds//60)%60
-                    start = '{0} minutes'.format(minutes)                    
-                    reply += "\n\t**{0}** (by **@{1}**,*ID:{3}*) - Started {2} ago".format(name,author,start,id)
+                    start = 'Started {0} minutes ago'.format(minutes)                    
+                    reply += "\n\t**{0}** (by **@{1}**,*ID:{3}*) - {2}".format(name,author,start,id)
             #Upcoming events
             c.execute("SELECT creator, start, name, id FROM events WHERE start > ? AND active = 1 ORDER BY start ASC",(date,))
             results = c.fetchall()
@@ -452,11 +556,15 @@ def events(ctx,*args : str):
                     timediff = timedelta(seconds=row[1]-date)
                     days,hours,minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60)%60
                     if days:
-                        start = '{0} days, {1} hours and {2} minutes'.format(days,hours,minutes)
+                        start = 'In {0} days, {1} hours and {2} minutes'.format(days,hours,minutes)
+                    elif hours:
+                        start = 'In {0} hours and {1} minutes'.format(hours,minutes)
+                    elif minutes > 0:
+                        start = 'In {0} minutes'.format(minutes)
                     else:
-                        start = '{0} hours and {1} minutes'.format(hours,minutes)
+                        start = 'Starting now!'
                     
-                    reply += "\n\t**{0}** (by **@{1}**,*ID:{3}*) - In {2}".format(name,author,start,id)
+                    reply += "\n\t**{0}** (by **@{1}**,*ID:{3}*) - {2}".format(name,author,start,id)
             if reply:
                 yield from bot.say(reply)
             else:
@@ -510,7 +618,7 @@ def events(ctx,*args : str):
                 return
             c.execute("UPDATE events SET name = ? WHERE id = ?",(name,id,))
             
-            yield from bot.say("Your event's name was changed succesfully.")
+            yield from bot.say("Your events name was changed succesfully.")
             
         if args[0] == "edittime":
             if len(args) != 3:
@@ -540,7 +648,7 @@ def events(ctx,*args : str):
                 date += int(m.group(3))*60
             
             c.execute("UPDATE events SET start = ? WHERE id = ?",(date,id,))
-            yield from bot.say("Your event's start time was changed succesfully.")
+            yield from bot.say("Your events start time was changed succesfully.")
             
         if args[0] == "delete":
             if len(args) != 2:
@@ -779,6 +887,7 @@ def stalk(ctx, subcommand, *args : str):
                 c.execute("DELETE FROM discord_users WHERE id NOT IN (SELECT user_id FROM chars)")
                 yield from bot.say("{0} user(s) with no characters were removed.".format(c.rowcount))
             c.execute("DELETE FROM char_levelups WHERE char_id NOT IN (SELECT id FROM chars)")
+            c.execute("DELETE FROM char_deaths WHERE char_id NOT IN (SELECT id FROM chars)")
             if c.rowcount > 0:
                 yield from bot.say("{0} level up registries from removed characters were deleted.".format(c.rowcount))
             yield from bot.say("Purge done.")
