@@ -705,7 +705,7 @@ def stalk(ctx, subcommand, *args : str):
             if(c.fetchone() is not None):
                 yield from bot.say("**@{0}** is already registered.".format(user.name))
                 return
-            c.execute("INSERT INTO discord_users(id) VALUES (?)",(user.id,))
+            c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.name,))
             yield from bot.say("**@{0}** was registered succesfully.".format(user.name))
 
         ###Add char & Add account common operations
@@ -744,7 +744,7 @@ def stalk(ctx, subcommand, *args : str):
                 c.execute("SELECT id from discord_users WHERE id = ?",(user.id,))
                 result = c.fetchone()
                 if(result is None):
-                    c.execute("INSERT INTO discord_users(id) VALUES (?)",(user.id,))
+                    c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.name,))
                     yield from bot.say("**@{0}** was registered succesfully.".format(user.name))
                 yield from bot.say("**{0}** was registered succesfully to this user.".format(char['name']))
                 return
@@ -774,7 +774,7 @@ def stalk(ctx, subcommand, *args : str):
                 c.execute("SELECT id from discord_users WHERE id = ?",(user.id,))
                 result = c.fetchone()
                 if(result is None):
-                    c.execute("INSERT INTO discord_users(id) VALUES (?)",(user.id,))
+                    c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.name,))
                     yield from bot.say("**@{0}** was registered succesfully.".format(user.name))
                     return
 
@@ -912,7 +912,18 @@ def stalk(ctx, subcommand, *args : str):
                 yield from bot.say("There are no unregistered users or users without characters.")
                 return
             yield from bot.say("The following users are not registered or have no chars registered to them:\n\t{0}".format("\n\t".join(empty_members)))
-            
+        ##Checknames
+        if(subcommand == "refreshnames"):
+            c.execute("SELECT id FROM discord_users")
+            result = c.fetchall()
+            if len(result) <= 0:
+                yield from bot.say("There are no registered users.")
+                return
+            update_users = list()
+            for user in result:
+                update_users.append(("unknown" if getUserById(user[0]) is None else getUserById(user[0]).name,user[0]))
+            c.executemany("UPDATE discord_users SET name = ? WHERE id LIKE ?",update_users)
+            yield from bot.say("Usernames updated succesfully.")
     finally:
         c.close()
         userDatabase.commit()
@@ -928,7 +939,8 @@ def stalk_error(error,ctx):
         /stalk remove user
         /stalk removechar char
         /stalk purge
-        /stalk check```""")
+        /stalk check
+        /stalk refreshnames```""")
 
 
 ######## Restart command
