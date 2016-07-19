@@ -42,6 +42,17 @@ def on_command(command, ctx):
 
 @bot.event
 @asyncio.coroutine
+def on_message(message):
+    #This is a workaround to make commands case insensitive
+    split = message.content.split(" ",1)
+    if len(split) == 2:
+        message.content = split[0].lower()+" "+split[1]
+    else:
+        message.content = message.content.lower()
+    yield from bot.process_commands(message)
+
+@bot.event
+@asyncio.coroutine
 def on_member_join(member):
     message = "Welcome {0.mention}! Please tell us about yourself, who is your Tibia character?\r\nSay /im *charactername* and I'll begin tracking it for you!"
     log.info("New member joined: {0.name} (ID: {0.id})".format(member))
