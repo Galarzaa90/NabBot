@@ -1057,3 +1057,6 @@ class Tibia():
 
 def setup(bot):
     bot.add_cog(Tibia(bot))
+    
+if __name__ == "__main__":
+    input("To run NabBot, run nabbot.py")

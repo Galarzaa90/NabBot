@@ -1243,3 +1243,6 @@ def getAboutContent():
     reply += "\t- Tracked users: "+str(user_count)+"\n"
     reply += "\t- Tracked chars: "+str(char_count)
     return reply
+    
+if __name__ == "__main__":
+    input("To run NabBot, run nabbot.py")

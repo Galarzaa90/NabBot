@@ -188,7 +188,10 @@ def announceEvents():
 ########a think function!
 @asyncio.coroutine
 def think():
-    #i could do something like, check if the bot's alive instead of just a "while true" but i dont see the point.
+    #################################################
+    #             Nezune's cave                     #
+    # Do not touch anything, enter at your own risk #
+    #################################################
     lastServerOnlineCheck = datetime.now()
     lastPlayerDeathCheck = datetime.now()
     global globalOnlineList
@@ -343,7 +346,7 @@ def announceDeath(charName,deathTime,deathLevel,deathKiller,deathByPlayer):
 @asyncio.coroutine
 def announceLevel(charName,newLevel):
     if int(newLevel) < announceTreshold:
-        #Don't announce for low level players
+        #Don't announce low level players
         return
     log.info("Announcing level up: {0} ({1})".format(charName,newLevel))
     char = yield from getPlayer(charName)

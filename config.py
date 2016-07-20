@@ -126,3 +126,6 @@ deathmessages_player = [[100,"**{charName}** ({deathLevel}) got rekt! **{deathKi
 ##Databases filenames
 USERDB = "users.db"
 TIBIADB = "Database.db"
+
+if __name__ == "__main__":
+    input("To run NabBot, run nabbot.py")
