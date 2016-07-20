@@ -106,8 +106,8 @@ If a player is specified, it displays a list of that player's recent deaths. If 
 >Galarzaa Fidera recent deaths:<br>
 >    Died at level *193* by a lizard high guard - *2 days ago*<br>
 <br>
->/deaths
->Latest deaths:
+>/deaths<br>
+>Latest deaths:<br>
 >    Aeon on Fidera (**@Aeon**) - Died at level **117** by a vile grandmaster - *5 minutes ago*<br>
 >    Adollo The Sorc (**@AdolloBAXWARsago**) - Died at level **74** by a hero - *22 hours ago*<br>
 >    Joey Bandalo (**@joeybandalo**) - Died at level **161** by a hero - *1 day ago*<br>
@@ -120,7 +120,7 @@ If a player is specified, it displays a list of the player's recent level ups. I
 
 ####Example:
 >/levels Galarzaa Fidera<br>
->*Galarzaa Fidera* latest level ups:<br>
+>**Galarzaa Fidera** latest level ups:<br>
 >    Level **194** - *23 hours ago*<br>
 >    Level **193** - *6 days ago*<br>
 >    Level **192** - *8 days ago*<br>
