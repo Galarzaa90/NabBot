@@ -815,7 +815,7 @@ class Tibia():
         else:
             yield from self.bot.say("I couldn't find an item with that name.")
 
-    @commands.command()
+    @commands.command(aliases=['deathlist','death'])
     @asyncio.coroutine
     def deaths(self,*name : str):
         """Shows a player's recent deaths or global deaths if no player is specified"""
