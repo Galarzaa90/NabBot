@@ -428,7 +428,7 @@ def im(ctx,*charname : str):
                 return
         else:
             #Add the user if it doesn't exist
-            c.execute("INSERT INTO discord_users(id) VALUES (?)",(user.id,))
+            c.execute("INSERT INTO discord_users(id,name) VALUES (?)",(user.id,user.name,))
         
         char = yield from getPlayer(charname)
         if(type(char) is not dict):
