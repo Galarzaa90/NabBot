@@ -2,6 +2,7 @@ from utils import *
 
 ##This is the name of the server where the bot will work
 ###This bot doesn't support multiple servers yet
+###mainchannel is where the Bot will do announcements, but he will reply to commands everywhere
 mainserver = "Redd Alliance/Bald Dwarfs"
 mainchannel = "general-chat"
 

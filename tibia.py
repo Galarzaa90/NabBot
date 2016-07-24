@@ -869,18 +869,21 @@ class Tibia():
 
         yield from self.bot.say(reply)
 
-    @commands.command(aliases=['levelups','lvl','level','lvls'])
+    @commands.command(pass_context=True,aliases=['levelups','lvl','level','lvls'])
     @asyncio.coroutine
-    def levels(self,*name : str):
+    def levels(self,ctx,*name : str):
         """Shows a player's recent level ups or global leveups if no player is specified
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
         name = " ".join(name)
         c = userDatabase.cursor()
+        limit = 10
+        if ctx.message.channel.is_private:
+            limit = 20
         try:
             if(not name):
-                c.execute("SELECT level, date, name, user_id FROM char_levelups, chars WHERE char_id = id AND level >= ? ORDER BY date DESC LIMIT 15",(announceTreshold,))
+                c.execute("SELECT level, date, name, user_id FROM char_levelups, chars WHERE char_id = id AND level >= ? ORDER BY date DESC LIMIT ?",(announceTreshold,limit,))
                 result = c.fetchall()
                 if len(result) < 1:
                     yield from self.bot.say("No one has leveled up recently")
@@ -894,6 +897,7 @@ class Tibia():
                     if(user):
                         username = user.name
                     reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1} ago*".format(levelup[0],getTimeDiff(timediff),levelup[2],username)
+                reply += "\nSee more levels check: <http://galarzaa.no-ip.org:7005/ReddAlliance/levels.php>"
                 yield from self.bot.say(reply)
                 return
             #Checking if character exists in db and get id while we're at it
@@ -905,8 +909,7 @@ class Tibia():
             #Getting correct capitalization
             name = result[1]
             id = result[0]
-            #Limit to 15 entries, could also be limited by time
-            c.execute("SELECT level, date FROM char_levelups WHERE char_id = ? ORDER BY date DESC LIMIT 15",(id,))
+            c.execute("SELECT level, date FROM char_levelups WHERE char_id = ? ORDER BY date DESC LIMIT ?",(id,limit,))
             result = c.fetchall()
             #Checking number of level ups
             if len(result) < 1:
@@ -917,6 +920,8 @@ class Tibia():
             for levelup in result:
                 timediff = timedelta(seconds=now-levelup[1])
                 reply += "\n\tLevel **{0}** - *{1} ago*".format(levelup[0],getTimeDiff(timediff))
+                
+            reply += "\nSee more levels at: <http://galarzaa.no-ip.org:7005/ReddAlliance/characters.php?name={0}>".format(urllib.parse.quote(name))
             yield from self.bot.say(reply)
         finally:
             c.close()
