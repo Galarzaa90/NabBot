@@ -1070,31 +1070,33 @@ def weighedChoice(messages,condition1=False,condition2=False,condition3=False,co
     for message in messages:
         if len(message) == 6:
             if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]) and (not message[4] or condition3 in message[4]) and (not message[5] or condition4 in message[5]):
-                range = range+message[0]
+                range = range+(message[0] if not message[1] in lastmessages else message[0]/10)
                 _messages.append(message)
         elif len(message) == 5:
             if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]) and (not message[4] or condition3 in message[4]):
-                range = range+message[0]
+                range = range+(message[0] if not message[1] in lastmessages else message[0]/10)
                 _messages.append(message)
         elif len(message) == 4:
             if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]):
-                range = range+message[0]
+                range = range+(message[0] if not message[1] in lastmessages else message[0]/10)
                 _messages.append(message)
         elif len(message) == 3:
             if (not message[2] or condition1 in message[2]):
-                range = range+message[0]
+                range = range+(message[0] if not message[1] in lastmessages else message[0]/10)
                 _messages.append(message)
         else:
-            range = range+message[0]
+            range = range+(message[0] if not message[1] in lastmessages else message[0]/10)
             _messages.append(message)
     #choose a random number
     rangechoice = random.randint(0, range)
     #iterate until we find the matching message
     rangepos = 0
     for message in _messages:
-        if rangechoice >= rangepos and rangechoice < rangepos+message[0]:
+        if rangechoice >= rangepos and rangechoice < rangepos+(message[0] if not message[1] in lastmessages else message[0]/10):
+            currentChar = lastmessages.pop()
+            lastmessages.insert(0, message[1])
             return message[1]
-        rangepos = rangepos+message[0]
+        rangepos = rangepos+(message[0] if not message[1] in lastmessages else message[0]/10)
     #this shouldnt ever happen...
     print("Error in weighedChoice!")
     return _messages[0][1]

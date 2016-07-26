@@ -30,6 +30,7 @@ serveronline_delay = timedelta(seconds=10)
 #delay inbetween player death checks
 playerdeath_delay = timedelta(seconds=5)
 
+lastmessages = ["","","","","","","","","",""]
 ###message list for announceLevel ({charName}, {newLevel} , {pronoun1} (he/she), {pronoun2} (his/her), {pronoun3} (him/her))
 ##values are: relative chance(int), message(str), valid vocations(iterable or False to ignore), valid levels(iterable or False to ignore)
 levelmessages = [[100,"Congratulations to **{charName}** on reaching level {newLevel}!"],
@@ -56,7 +57,7 @@ levelmessages = [[100,"Congratulations to **{charName}** on reaching level {newL
 [200,"**{charName}** is level {newLevel}. Stick them with the pointy end! "+EMOJI[":_dagger:"],["Knight","Elite Knight"],range(100,999)],
 [200,"**{charName}** is a fat level {newLevel} meatwall now. BLOCK FOR ME SENPAI.",["Knight","Elite Knight"],range(100,999)],
 #RP Only
-[50,"**{charName}** has reached level {newLevel}. But he still misses arrows...",["Paladin","Royal Paladin"],range(100,999)],
+[50,"**{charName}** has reached level {newLevel}. But {pronoun1} still misses arrows...",["Paladin","Royal Paladin"],range(100,999)],
 [150,"Congrats on level {newLevel}, **{charName}**. You can stop running around now.",["Paladin","Royal Paladin"],range(100,999)],
 [150,"**{charName}** is level {newLevel}. Bullseye!"+EMOJI[":dart:"],["Paladin","Royal Paladin"],range(100,999)],
 #MS Only
@@ -109,7 +110,7 @@ deathmessages_monster = [
 [70,"To be or not to be "+EMOJI[":skull:"]+", that is the-- Well I guess **{charName}** ({deathLevel}) made his choice, or ^that ^**{deathKiller}** chose for him..."],
 [500,"**{charName}** ({deathLevel}) just died to {deathKillerArticle}**{deathKiller}**, why did nobody sio {pronoun3}!?",["Knight","Elite Knight"]],
 [500,"Poor **{charName}** ({deathLevel}) has died. Killed by {deathKillerArticle}**{deathKiller}**. I bet it was your blockers fault though, eh **{charName}**?",["Druid","Elder Druid","Sorcerer","Master Sorcerer"]],
-[500,"**{charName}** ({deathLevel}) tried running away from {deathKillerArticle}**{deathKiller}**. He didn't run fast enough...",["Paladin","Royal Paladin"]],
+[500,"**{charName}** ({deathLevel}) tried running away from {deathKillerArticle}**{deathKiller}**. /{pronoun1}/ didn't run fast enough...",["Paladin","Royal Paladin"]],
 [500,"What happened to **{charName}** ({deathLevel})!? Talk about sudden death! I guess ^that ^**{deathKiller}** was too much for {pronoun3}...",["Sorcerer","Master Sorcerer"]],
 [500,"**{charName}** ({deathLevel}) was killed by {deathKillerArticle}**{deathKiller}**. I guess {pronoun1} couldn't sio {pronoun3}self.",["Druid","Elder Druid"]],
 [20000,"**{charName}** ({deathLevel}) got killed by ***{deathKiller}***. How spooky is that! "+EMOJI[":ghost:"],False,False,["something evil"]],
