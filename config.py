@@ -6,6 +6,14 @@ from utils import *
 mainserver = "Redd Alliance/Bald Dwarfs"
 mainchannel = "general-chat"
 
+##It's possible to fetch the database contents on a website to show more entries than what the bot can display
+##If enabled, certain commands will link to the website
+siteEnabled = True
+baseUrl = "http://galarzaa.no-ip.org:7005/ReddAlliance/"
+charactersPage = "characters.php"
+deathsPage = "deaths.php"
+levelsPage = "levels.php"
+
 #Discord id for the users that can use admin commands
 admin_ids = ["162060569803751424","162070610556616705","164253469912334350"]
 

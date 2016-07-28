@@ -823,11 +823,6 @@ class Tibia():
         if(not name):
             c = userDatabase.cursor()
             try:
-                c.execute("SELECT name,id FROM chars")
-                result = c.fetchall()
-                if len(result) > 0:
-                    for name,id in result:
-                        print(name+" > "+str(id))
                 c.execute("SELECT level, date, name, user_id, byplayer, killer FROM char_deaths, chars WHERE char_id = id ORDER BY date DESC LIMIT 15")
                 result = c.fetchall()
                 if len(result) < 1:
@@ -860,12 +855,19 @@ class Tibia():
         if(len(deaths) == 0):
             yield from self.bot.say(name.title()+" hasn't died recently.")
             return
-
+        tooMany = False
+        if(len(deaths) > 15):
+            tooMany = True
+            deaths = deaths[:15]
+        
         reply = name.title()+" recent deaths:"
+        
         for death in deaths:
             diff = getTimeDiff(datetime.now() - getLocalTime(death['time']))
             died = "Killed" if death['byPlayer'] else "Died"
             reply += "\n\t{0} at level **{1}** by {2} - *{3} ago*".format(died,death['level'],death['killer'],diff)
+        if(tooMany):
+            reply += "\n*This person dies too much, I can't show you all the deaths!*"
 
         yield from self.bot.say(reply)
 
@@ -897,7 +899,8 @@ class Tibia():
                     if(user):
                         username = user.name
                     reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1} ago*".format(levelup[0],getTimeDiff(timediff),levelup[2],username)
-                reply += "\nSee more levels check: <http://galarzaa.no-ip.org:7005/ReddAlliance/levels.php>"
+                if(siteEnabled):
+                    reply += "\nSee more levels check: <{0}{1}>".format(baseUrl,levelsPage)
                 yield from self.bot.say(reply)
                 return
             #Checking if character exists in db and get id while we're at it
@@ -921,7 +924,7 @@ class Tibia():
                 timediff = timedelta(seconds=now-levelup[1])
                 reply += "\n\tLevel **{0}** - *{1} ago*".format(levelup[0],getTimeDiff(timediff))
                 
-            reply += "\nSee more levels at: <http://galarzaa.no-ip.org:7005/ReddAlliance/characters.php?name={0}>".format(urllib.parse.quote(name))
+            reply += "\nSee more levels at: <{0}{1}?name={2}>".format(baseUrl,charactersPage,urllib.parse.quote(name))
             yield from self.bot.say(reply)
         finally:
             c.close()
