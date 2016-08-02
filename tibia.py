@@ -526,7 +526,7 @@ def getStats(level, vocation):
     elif level > 2000:
         return "high level"
 
-    vocation = vocation.lower()
+    vocation = vocation.lower().lstrip().rstrip()
     if vocation in ["knight","k","elite knight","kina","kinight","ek","eliteknight"]:
         hp = 5*(3*level - 2*8 + 29)
         mp = 5*level + 50
