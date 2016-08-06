@@ -15,7 +15,6 @@ def getPlayerDeaths(name, singleDeath = False, tries = 5):
             log.error("getPlayerDeaths: Couldn't fetch {0}, network error.".format(name))
             return ERROR_NETWORK
         else:
-            log.info("getPlayerDeaths: Couldn't fetch {0}, {1} tries left.".format(name,tries))
             tries -= 1
             ret = yield from getPlayerDeaths(name,singleDeath,tries)
             return ret
@@ -35,7 +34,6 @@ def getPlayerDeaths(name, singleDeath = False, tries = 5):
             log.error("getPlayerDeaths: Couldn't fetch {0}, network error.".format(name))
             return ERROR_NETWORK
         else:
-            log.info("getPlayerDeaths: Couldn't fetch {0}, {1} tries left.".format(name,tries))
             tries -= 1
             ret = yield from getPlayerDeaths(name,singleDeath,tries)
             return ret
@@ -105,7 +103,6 @@ def getServerOnline(server,tries = 5):
             #This should return ERROR_NETWORK, but requires error handling where this function is used
             return onlineList
         else:
-            log.info("getServerOnline: Couldn't fetch {0}, {1} tries left.".format(server,tries))
             tries -= 1
             ret = yield from getServerOnline(server,tries)
             return ret
@@ -129,7 +126,6 @@ def getServerOnline(server,tries = 5):
             #This should return ERROR_NETWORK, but requires error handling where this function is used
             return onlineList
         else:
-            log.info("getServerOnline: Couldn't fetch {0}, {1} tries left.".format(server,tries))
             tries -= 1
             ret = yield from getServerOnline(server,tries)
             return ret
@@ -161,7 +157,6 @@ def getGuildOnline(guildname,titlecase=True,tries=5):
                 log.error("getGuildOnline: Couldn't fetch {0} from guildstats.eu, network error.".format(guildname))
                 return ERROR_NETWORK,guildname
             else:
-                log.info("getGuildOnline: Couldn't fetch {0} from guildstats.eu, {1} tries left.".format(guildname,tries))
                 tries -= 1
                 ret = yield from getGuildOnline(guildname,titlecase,tries)
                 return ret
@@ -175,7 +170,6 @@ def getGuildOnline(guildname,titlecase=True,tries=5):
                 log.error("getGuildOnline: Couldn't fetch {0} from guildstats.eu, network error.".format(guildname))
                 return ERROR_NETWORK,guildname
             else:
-                log.info("getGuildOnline: Couldn't fetch {0} from guildstats.eu, {1} tries left.".format(guildname,tries))
                 tries -= 1
                 ret = yield from getGuildOnline(guildname,titlecase,tries)
                 return ret
@@ -212,7 +206,6 @@ def getGuildOnline(guildname,titlecase=True,tries=5):
             log.error("getGuildOnline: Couldn't fetch {0}, network error.".format(guildname))
             return ERROR_NETWORK,guildname
         else:
-            log.info("getGuildOnline: Couldn't fetch {0}, {1} tries left.".format(guildname,tries))
             tries -= 1
             ret = yield from getGuildOnline(guildname,titlecase,tries)
             return ret
@@ -228,7 +221,6 @@ def getGuildOnline(guildname,titlecase=True,tries=5):
             log.error("getGuildOnline: Couldn't fetch {0}, network error.".format(guildname))
             return ERROR_NETWORK,guildname
         else:
-            log.info("getGuildOnline: Couldn't fetch {0}, {1} tries left.".format(guildname,tries))
             tries -= 1
             ret = yield from getGuildOnline(guildname,titlecase,tries)
             return ret
@@ -275,7 +267,6 @@ def getPlayer(name, tries = 5):
             log.error("getPlayer: Couldn't fetch {0}, network error.".format(name))
             return ERROR_NETWORK
         else:
-            log.info("getPlayer: Couldn't fetch {0}, {1} tries left.".format(name,tries))
             tries -= 1
             ret = yield from getPlayer(name,tries)
             return ret
@@ -291,7 +282,6 @@ def getPlayer(name, tries = 5):
             log.error("getPlayer: Couldn't fetch {0}, network error.".format(name))
             return ERROR_NETWORK
         else:
-            log.info("getPlayer: Couldn't fetch {0}, {1} tries left.".format(name,tries))
             tries -= 1
             ret = yield from getPlayer(name,tries)
             return ret
