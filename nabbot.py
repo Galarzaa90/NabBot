@@ -388,11 +388,12 @@ def roll(dice : str):
     result = ', '.join(str(random.randint(1, limit)) for r in range(rolls))
     yield from bot.say(result)
 
-@bot.command(description='For when you wanna settle the score some other way')
+@bot.command(pass_context=True,description='For when you wanna settle the score some other way')
 @asyncio.coroutine
-def choose(*choices : str):
+def choose(ctx,*choices : str):
     """Chooses between multiple choices."""
-    yield from bot.say(random.choice(choices))
+    user = ctx.message.author
+    yield from bot.say('Alright, **@{0}**, I choose: "{1}"'.format(user.name,random.choice(choices)))
 
 @bot.command(pass_context=True,aliases=["i'm","iam"],no_pm=True)
 @asyncio.coroutine

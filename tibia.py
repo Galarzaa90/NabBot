@@ -398,6 +398,64 @@ def getRashidCity():
             "Edron",
             "Carlin"][tibia_time.weekday()]
 
+def getItemByName(name):
+    c = tibiaDatabase.cursor()
+    c.execute("SELECT id FROM Items WHERE title LIKE ?",(name,))
+    result = c.fetchone()
+    try:
+        if(result is not None):
+            item = dict(zip(['id'],result))
+            return item
+    finally:
+        c.close()
+    return
+
+def getItemById(id):
+    c = tibiaDatabase.cursor()
+    c.execute("SELECT title FROM Items WHERE id LIKE ?",(id,))
+    result = c.fetchone()
+    try:
+        if(result is not None):
+            item = dict(zip(['name'],result))
+            return item
+    finally:
+        c.close()
+    return
+
+def getLoot(id):
+    c = tibiaDatabase.cursor()
+    c.execute("SELECT itemid FROM CreatureDrops WHERE creatureid LIKE ?",(id,))
+    result = c.fetchone()
+    try:
+        if(result is not None):
+            c.execute("SELECT itemid, percentage, min, max FROM CreatureDrops WHERE creatureid LIKE ?"+
+            " ORDER BY percentage DESC",(id,))
+            result = c.fetchall()
+            if(result is not None):
+                return result
+    finally:
+        c.close()
+    return
+
+def getMonster(name):
+    #Reading monster database
+    c = tibiaDatabase.cursor()
+    c.execute("SELECT title, id, health, experience, maxdamage, physical, holy, death, fire, energy, ice, earth, drown, lifedrain, senseinvis, abilities, armor, image FROM Creatures WHERE name LIKE ?",(name,))
+    result = c.fetchone()
+    try:
+        #Checking if monster exists
+        if(result is not None):
+            #Turning result tuple into dictionary
+            monster = dict(zip(['name','id','hp','exp','maxdmg','elem_physical','elem_holy','elem_death','elem_fire','elem_energy','elem_ice','elem_earth','elem_drown','elem_lifedrain','senseinvis','abilities','arm','image'],result))
+            if monster['hp'] is None or monster['hp'] < 1:
+                monster['hp'] = 1
+            if monster['exp'] is None or monster['exp'] < 1:
+                monster['exp'] = 1
+            return monster
+    finally:
+        c.close()
+    return
+
 def getItem(itemname):
     #Reading item database
     c = tibiaDatabase.cursor()
@@ -561,6 +619,55 @@ def getCharString(char):
         married = marriedF.format(pronoun,char['married'])
     
     reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild,married)
+    return reply
+
+def getMonsterString(monster,short=True):
+    reply = "```"
+    reply+=monster['name']
+    reply+="```"
+    reply+="```"
+    reply+="HP:"+str(monster['hp'])+"   Exp:"+str(monster['exp'])+"\r\n"
+    reply+="HP/Exp Ratio: "+"{0:.2f}".format(monster['exp']/monster['hp']).zfill(4)
+    reply+="```"
+    reply+="```"
+    loot = getLoot(monster['id'])
+    weak = []
+    resist = []
+    for index, value in monster.items():
+        if index[:5] == "elem_":
+            weak.append([index[5:].title(),monster[index]]) if (monster[index] > 100) else resist.append([index[5:].title(),monster[index]]) if (monster[index] < 100) else False
+    if len(weak) >= 1:
+        reply+='Weak to:'+"\r\n"
+        for element in sorted(weak, key=lambda elem: elem[1]):
+            reply+="	 +"+str(element[1]-100)+"%  "+element[0]+"\r\n"
+    if len(resist) >= 1:
+        reply+='Resistant to:'+"\r\n"
+        for element in sorted(resist, key=lambda elem: elem[1]):
+            reply+="	"+((" -"+str(100-element[1])+"% ") if 100-element[1] < 100 else "Immune")+" "+element[0]+"\r\n"
+    reply+="```"
+    reply+="```"
+    reply+=("Can" if monster['senseinvis'] else "Can't")+" sense invisibility"+"\r\n"
+    reply+="```"
+    if not short:
+        reply+="```"
+        reply+="\r\nLoot:\r\n"
+        if loot is not None:
+            for item in loot:
+                item = dict(zip(['itemid','percentage','min','max'],item))
+                reply+=("??.??%" if item['percentage'] is None else "Always" if item['percentage'] >= 100 else ("{0:.2f}".format(item['percentage']).zfill(5)+"%"))+"  "+getItemById(item['itemid'])['name']+(" ("+str(item['min'])+"-"+str(item['max'])+")" if item['max'] > 1 else "")+"\r\n"
+        else:
+            reply+="Doesn't drop anything"
+        reply+="```"
+        reply+="```"
+        reply+="Max damage:"+str(monster["maxdmg"]) if monster["maxdmg"] is not None else "???"+"\r\n"
+        reply+="```"
+        reply+="```"
+        if monster['abilities'] is not None:
+            reply+="Abilities:\r\n"
+            reply+=monster['abilities']
+        reply+="```"
+    else:
+        reply += '*I also PM\'d you this monster\'s full information with loot and abilities.*'
     return reply
 
 def getItemString(item,short=True):
@@ -804,6 +911,43 @@ class Tibia():
                         yield from self.bot.send_message(ctx.message.author,getItemString(item,False))
         else:
             yield from self.bot.say("I couldn't find an item with that name.")
+            
+            
+
+
+    @commands.command(pass_context=True,aliases=['mon','mob','creature'])
+    @asyncio.coroutine
+    def monster(self,ctx,*monstername : str):
+        """Gives information about a monster"""
+        monstername = " ".join(monstername).strip()
+        monster = getMonster(monstername)
+        if(monster is not None):
+            filename = monster['name']+".gif"
+            while os.path.isfile(filename):
+                filename="_"+filename
+            with open(filename, "w+b") as f:
+                f.write(bytearray(monster['image']))
+                f.close()
+
+            if ctx.message.channel.is_private:
+                with open(filename, "r+b") as f:
+                    yield from self.bot.send_file(ctx.message.channel,f)
+                    f.close()
+                yield from self.bot.say(getMonsterString(monster,False))
+            else:
+                with open(filename, "r+b") as f:
+                    yield from self.bot.send_file(ctx.message.channel,f)
+                    f.close()
+                yield from self.bot.say(getMonsterString(monster))
+                if ctx.message.author is not None:
+                    with open(filename, "r+b") as f:
+                        yield from self.bot.send_file(ctx.message.author,f)
+                        f.close()
+                    yield from self.bot.send_message(ctx.message.author,getMonsterString(monster,False))
+            os.remove(filename)
+        else:
+            yield from self.bot.say("I couldn't find an item with that name.")
+
 
     @commands.command(aliases=['deathlist','death'])
     @asyncio.coroutine
