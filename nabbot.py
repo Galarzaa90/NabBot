@@ -20,9 +20,6 @@ def on_ready():
     #populate command_list
     for command_name, command in bot.commands.items():
         command_list.append(command_name)
-    ##    for command_alias in command.aliases:
-    ##        command_list.append(command_alias)
-    print(command_list)
     #Notify reset author
     if len(sys.argv) > 1:
         user = getUserById(sys.argv[1])
