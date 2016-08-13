@@ -622,13 +622,10 @@ def getCharString(char):
     return reply
 
 def getMonsterString(monster,short=True):
-    reply = "```"
-    reply+=monster['name']
-    reply+="```"
-    reply+="```"
+    reply =monster['name']+"\r\n```"
     reply+="HP:"+str(monster['hp'])+"   Exp:"+str(monster['exp'])+"\r\n"
     reply+="HP/Exp Ratio: "+"{0:.2f}".format(monster['exp']/monster['hp']).zfill(4)
-    reply+="```"
+    reply+="\r\n```"
     reply+="```"
     loot = getLoot(monster['id'])
     weak = []
@@ -644,10 +641,10 @@ def getMonsterString(monster,short=True):
         reply+='Resistant to:'+"\r\n"
         for element in sorted(resist, key=lambda elem: elem[1]):
             reply+="	"+((" -"+str(100-element[1])+"% ") if 100-element[1] < 100 else "Immune")+" "+element[0]+"\r\n"
-    reply+="```"
+    reply+="\r\n```"
     reply+="```"
     reply+=("Can" if monster['senseinvis'] else "Can't")+" sense invisibility"+"\r\n"
-    reply+="```"
+    reply+="\r\n```"
     if not short:
         reply+="```"
         reply+="\r\nLoot:\r\n"
@@ -657,15 +654,15 @@ def getMonsterString(monster,short=True):
                 reply+=("??.??%" if item['percentage'] is None else "Always" if item['percentage'] >= 100 else ("{0:.2f}".format(item['percentage']).zfill(5)+"%"))+"  "+getItemById(item['itemid'])['name']+(" ("+str(item['min'])+"-"+str(item['max'])+")" if item['max'] > 1 else "")+"\r\n"
         else:
             reply+="Doesn't drop anything"
-        reply+="```"
+        reply+="\r\n```"
         reply+="```"
         reply+="Max damage:"+str(monster["maxdmg"]) if monster["maxdmg"] is not None else "???"+"\r\n"
-        reply+="```"
+        reply+="\r\n```"
         reply+="```"
         if monster['abilities'] is not None:
             reply+="Abilities:\r\n"
             reply+=monster['abilities']
-        reply+="```"
+        reply+="\r\n```"
     else:
         reply += '*I also PM\'d you this monster\'s full information with loot and abilities.*'
     return reply
@@ -902,7 +899,7 @@ class Tibia():
         itemname = " ".join(itemname).strip()
         item = getItem(itemname)
         if(item is not None):
-            if ctx.message.channel.is_private:
+            if ctx.message.channel.is_private or ctx.message.channel.name == askchannel:
                 yield from self.bot.say(getItemString(item,False))
             else:
                 yield from self.bot.say(getItemString(item))
@@ -920,6 +917,9 @@ class Tibia():
     def monster(self,ctx,*monstername : str):
         """Gives information about a monster"""
         monstername = " ".join(monstername).strip()
+        if monstername.lower() == "nab bot":
+            yield from self.bot.say(random.choice(["**Nab Bot** is too strong for you to hunt!","Sure, you kill *one* child and suddendly you're a monster!","I'M NOT A MONSTER"]))
+            return
         monster = getMonster(monstername)
         if(monster is not None):
             filename = monster['name']+".gif"
@@ -929,7 +929,7 @@ class Tibia():
                 f.write(bytearray(monster['image']))
                 f.close()
 
-            if ctx.message.channel.is_private:
+            if ctx.message.channel.is_private or ctx.message.channel.name == askchannel:
                 with open(filename, "r+b") as f:
                     yield from self.bot.send_file(ctx.message.channel,f)
                     f.close()
@@ -1015,7 +1015,7 @@ class Tibia():
         name = " ".join(name)
         c = userDatabase.cursor()
         limit = 10
-        if ctx.message.channel.is_private:
+        if ctx.message.channel.is_private or ctx.message.channel.name == askchannel:
             limit = 20
         try:
             if(not name):

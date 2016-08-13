@@ -16,6 +16,8 @@ from calendar import timegm
 import sys
 import aiohttp
 
+#Command list (populated automatically, used to check if a message is(n't) a command invocation)
+command_list = []
 #Emoji code
 #Emoji :shortname: list
 EMOJI = {":_hotdog:":chr(0x1F32D),

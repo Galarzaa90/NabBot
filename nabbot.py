@@ -17,6 +17,12 @@ def on_ready():
     #expose bot to ultis.py
     ##its either this or importing discord and commands in utils.py...
     utilsGetBot(bot)
+    #populate command_list
+    for command_name, command in bot.commands.items():
+        command_list.append(command_name)
+    ##    for command_alias in command.aliases:
+    ##        command_list.append(command_alias)
+    print(command_list)
     #Notify reset author
     if len(sys.argv) > 1:
         user = getUserById(sys.argv[1])
@@ -47,8 +53,14 @@ def on_message(message):
     split = message.content.split(" ",1)
     if len(split) == 2:
         message.content = split[0].lower()+" "+split[1]
+        if message.author.id != bot.user.id and (not split[0].lower()[1:] in command_list or not split[0][:1] == "/") and message.channel.name == askchannel:
+            yield from bot.delete_message(message)
+            return
     else:
         message.content = message.content.lower()
+        if message.author.id != bot.user.id and (not message.content.lower()[1:] in command_list or not message.content[:1] == "/") and message.channel.name == askchannel:
+            yield from bot.delete_message(message)
+            return
     yield from bot.process_commands(message)
 
 @bot.event
@@ -585,7 +597,7 @@ def events(ctx,*args : str):
             else:
                 yield from bot.say("There are no upcoming events.")
             return
-        if not ctx.message.channel.is_private:
+        if not ctx.message.channel.is_private and not ctx.message.channel.name == askchannel:
             return
             
         if args[0] == "add":
@@ -694,10 +706,14 @@ def events(ctx,*args : str):
 @bot.command(pass_context=True,hidden=True)
 @asyncio.coroutine
 def makesay(ctx,*args: str):
-    if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
+    if not ctx.message.author.id in admin_ids:
         return
-    channel = getChannelByServerAndName(mainserver,mainchannel)
-    yield from bot.send_message(channel," ".join(args))
+    if ctx.message.channel.is_private:
+        channel = getChannelByServerAndName(mainserver,mainchannel)
+        yield from bot.send_message(channel," ".join(args))
+    else:
+        yield from bot.delete_message(ctx.message)
+        yield from bot.send_message(ctx.message.channel," ".join(args))
 
 @bot.command(pass_context=True,hidden=True)
 @asyncio.coroutine
