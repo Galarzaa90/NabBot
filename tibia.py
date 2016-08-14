@@ -918,7 +918,7 @@ class Tibia():
         """Gives information about a monster"""
         monstername = " ".join(monstername).strip()
         if monstername.lower() == "nab bot":
-            yield from self.bot.say(random.choice(["**Nab Bot** is too strong for you to hunt!","Sure, you kill *one* child and suddendly you're a monster!","I'M NOT A MONSTER"]))
+            yield from self.bot.say(random.choice(["**Nab Bot** is too strong for you to hunt!","Sure, you kill *one* child and suddenly you're a monster!","I'M NOT A MONSTER"]))
             return
         monster = getMonster(monstername)
         if(monster is not None):
@@ -946,7 +946,7 @@ class Tibia():
                     yield from self.bot.send_message(ctx.message.author,getMonsterString(monster,False))
             os.remove(filename)
         else:
-            yield from self.bot.say("I couldn't find an item with that name.")
+            yield from self.bot.say("I couldn't find a monster with that name.")
 
 
     @commands.command(aliases=['deathlist','death'])
