@@ -1002,6 +1002,7 @@ def initDatabase():
 
 
 def vocAbb(vocation):
+    """Given a vocation name, it returns an abbreviated string """
     abbrev = {'None' : 'N', 'Druid' : 'D', 'Sorcerer' : 'S', 'Paladin' : 'P', 'Knight' : 'K',
     'Elder Druid' : 'ED', 'Master Sorcerer' : 'MS', 'Royal Paladin' : 'RP', 'Elite Knight' : 'EK'}
     try:
@@ -1010,6 +1011,7 @@ def vocAbb(vocation):
         return 'N'
 
 def getLogin():
+    """When the bot is run without a login.py file, it prompts the user for login info"""
     if not os.path.isfile("login.py"):
         print("This seems to be the first time NabBot is ran (or login.py is missing)")
         print("To run your own instance of NabBot you need to create a new bot account to get a bot token")
@@ -1042,10 +1044,8 @@ def utilsGetBot(_bot):
     global bot
     bot = _bot
 
-
-########formatMessage
-##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/
 def formatMessage(message):
+    """##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/"""
     upper = r'\\(.+?)/'
     upper = re.compile(upper,re.MULTILINE+re.S)
     lower = r'/(.+?)\\'
@@ -1065,6 +1065,8 @@ def formatMessage(message):
 ##makes weighed choices from message lists where [0] is a value representing the relative odds of picking a message
 ###and [1] is the message string
 def weighedChoice(messages,condition1=False,condition2=False,condition3=False,condition4=False):
+    """Makes weighed choices from message lists where [0] is a value representing the relative odd
+    of picking a message and [1] is the message string"""
     ##find the max range by adding up the weigh of every message in the list
     #and purge out messages that dont fulfil the conditions
     range = 0
@@ -1102,37 +1104,39 @@ def weighedChoice(messages,condition1=False,condition2=False,condition3=False,co
     #this shouldnt ever happen...
     print("Error in weighedChoice!")
     return _messages[0][1]
-########
 
-########getChannelByServerAndName
-##server_name can be left blank in which case all servers the bot is connected to will be searched
+    
 def getChannelByServerAndName(server_name : str, channel_name : str):
+    """Returns a channel within a server
+    
+    If server_name is left blank, it will search on all servers the bot can see"""
     if server_name == "":
         channel = discord.utils.find(lambda m: m.name == channel_name and not m.type == discord.ChannelType.voice, bot.get_all_channels())
     else:
         channel = discord.utils.find(lambda m: m.name == channel_name and not m.type == discord.ChannelType.voice, getServerByName(server_name).channels)
     return channel
 
-########getChannelByName
-##alias for getChannelByServerAndName("",channel_name)
-##main server is given priority, next all visible servers are searched.
+
 def getChannelByName(channel_name : str):
+    """Alias for getChannelByServerAndName
+    
+    mainserver is searched first, then all visible servers"""
     channel = getChannelByServerAndName(mainserver,channel_name)
     if channel is None:
         return getChannelByServerAndName("",channel_name)
     return channel
 
-########getServerByName
+
 def getServerByName(server_name : str):
+    """Returns a server by its name"""
     server = discord.utils.find(lambda m: m.name == server_name, bot.servers)
     return server
-########
 
-########getUserByName
-##this gets a discord user by its name
-##currently, duplicate usernames will return the first user found(!)
-##priority is given to users in the main server, next all visible channels are searched and finally private channels.
 def getUserByName(userName):
+    """Returns a discord user by its name
+    
+    If there's duplicate usernames, it will return the first user found
+    Users are searched on mainserver first, then on all visible channel and finally private channels."""
     user = None
     _mainserver = getServerByName(mainserver)
     if _mainserver is not None:
@@ -1144,20 +1148,18 @@ def getUserByName(userName):
         if private is not None:
             user = private.user
     return user
-########
 
-########getUserById
-##this gets a discord user by its id
 def getUserById(userId):
+    """Returns a discord user by its id"""
     user = discord.utils.find(lambda m: m.id == str(userId), bot.get_all_members())
     if user is None:
         private = discord.utils.find(lambda m: m.user.id == str(userId), bot.private_channels)
         if private is not None:
             user = private.user
     return user
-########
 
 def getTimeDiff(time):
+    """Returns a string showing the time difference of a timedelta"""
     if not isinstance(time, timedelta):
         return None
     hours = time.seconds//3600
@@ -1175,8 +1177,8 @@ def getTimeDiff(time):
     else:
         return "moments"
 
-#Returns your local time zone
 def getLocalTimezone():
+    """Returns the server's local time zone"""
     #Getting local time and GMT
     t = time.localtime()
     u = time.gmtime(time.mktime(t))
@@ -1185,6 +1187,7 @@ def getLocalTimezone():
 
 ##Returns Germany's timezone, considering their daylight saving time dates
 def getTibiaTimeZone():
+    """Returns Germany's timezone, considering their daylight saving time dates"""
     #Find date in Germany
     gt = datetime.utcnow()+timedelta(hours=1)
     germany_date = date(gt.year,gt.month,gt.day)

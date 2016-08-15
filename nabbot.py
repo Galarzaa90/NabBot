@@ -532,7 +532,7 @@ def about():
 def events(ctx,*args : str):
     """Shows a list of current active events
     
-    The following subcommands are only available through PMs
+    The following subcommands are only available through PMs or askchannel
     To add an event, use:
     /events add [startTime] [eventName]
     e.g. /events add 1h20m Pits of Inferno Quest

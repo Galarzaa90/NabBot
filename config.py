@@ -3,6 +3,8 @@ from utils import *
 ##This is the name of the server where the bot will work
 ###This bot doesn't support multiple servers yet
 ###mainchannel is where the Bot will do announcements, but he will reply to commands everywhere
+###askchannel is a channel where the bot replies with full length messages (like on pms)
+####Messages that are not commands are automatically deleted in askchannel
 mainserver = "Redd Alliance/Bald Dwarfs"
 mainchannel = "general-chat"
 askchannel = "ask-nabbot"
@@ -82,6 +84,7 @@ levelmessages = [[100,"Congratulations to **{charName}** on reaching level {newL
 [20000,"**{charName}** is now level {newLevel}. Don't forget to buy a Gearwheel Chain!"+EMOJI[":_necklace:"],False,[75]],
 [30000,"**{charName}** is level {newLevel}! You can become a ninja now!"+EMOJI[":bust_in_silhouette:"],["Paladin","Royal Paladin"],[80]],
 [20000,"Level {newLevel}, **{charName}**? You're finally important enough for me to notice!",False,[announceTreshold]],
+[20000,"**{charName}** is now level {newLevel}! Time to go berserk! "+EMOJI[:anger:],["Knight","Elite Knight"],[35]],
 [30000,"**{charName}** is level {newLevel}!!!!\r\n"+
     "Sweet, sweet triple digits!",False,[100]],
 [20000,"**{charName}** is level {newLevel}!!!!\r\n"+
