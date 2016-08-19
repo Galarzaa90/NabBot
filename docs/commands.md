@@ -1,6 +1,21 @@
 # General commands
-##/roll
-##/choose
+##/roll *TdN*
+
+This command simply rolls a die with N-sides T-times.
+
+####Example:
+>/roll 4d3<br>
+>2, 2, 1, 2
+
+A 3-sided die was rolled 4 times, giving those results.
+##/choose [option1 option2 ...optionN]
+
+This commands returns one of the options given selected randomly.
+
+####Example:
+>/choose Red Blue Yellow<br>
+>Alright, **@Galarzaa**, I choose: "Yellow"
+
 ##/im
 ##/online
 ##/about
