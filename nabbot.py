@@ -50,12 +50,12 @@ def on_message(message):
     split = message.content.split(" ",1)
     if len(split) == 2:
         message.content = split[0].lower()+" "+split[1]
-        if message.author.id != bot.user.id and (not split[0].lower()[1:] in command_list or not split[0][:1] == "/") and message.channel.name == askchannel:
+        if message.author.id != bot.user.id and (not split[0].lower()[1:] in command_list or not split[0][:1] == "/") and not message.channel.is_private and message.channel.name == askchannel:
             yield from bot.delete_message(message)
             return
     else:
         message.content = message.content.lower()
-        if message.author.id != bot.user.id and (not message.content.lower()[1:] in command_list or not message.content[:1] == "/") and message.channel.name == askchannel:
+        if message.author.id != bot.user.id and (not message.content.lower()[1:] in command_list or not message.content[:1] == "/") and not message.channel.is_private and message.channel.name == askchannel:
             yield from bot.delete_message(message)
             return
     yield from bot.process_commands(message)

@@ -307,17 +307,19 @@ def getPlayer(name, tries = 5):
         char['vocation'] = m.group(1)
 
     #Level
-    ##Use database levels if possible, since those are updated even if the char hasnt logged out
-    c = userDatabase.cursor()
-    c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",(char['name'],))
-    result = c.fetchone()
-    if result:
-        char['level'] = abs(result[1])
-    else:
-        m = re.search(r'Level:</td><td>(\d+)',content)
-        if m:
-            char['level'] = int(m.group(1))
-    c.close()
+    m = re.search(r'Level:</td><td>(\d+)',content)
+    if m:
+        char['level'] = int(m.group(1))
+    ##Use database levels for online characters
+    for onchar in globalOnlineList:
+        if onchar.split("_",1)[1] == char['name']:
+            c = userDatabase.cursor()
+            c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",(char['name'],))
+            result = c.fetchone()
+            if result:
+                char['level'] = abs(result[1])
+            c.close()
+            break
 
     #World
     m = re.search(r'World:</td><td>([^<]+)',content)
