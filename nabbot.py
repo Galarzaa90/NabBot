@@ -527,9 +527,9 @@ def about():
     """Shows information about the bot"""
     yield from bot.say(getAboutContent())
     
-@bot.command(pass_context=True)
+@bot.command(pass_context=True,aliases=["event","checkevents","checkevent"])
 @asyncio.coroutine
-def events(ctx,*args : str):
+devdef events(ctx,*args : str):
     """Shows a list of current active events
     
     The following subcommands are only available through PMs or askchannel
