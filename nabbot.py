@@ -529,7 +529,7 @@ def about():
     
 @bot.command(pass_context=True,aliases=["event","checkevents","checkevent"])
 @asyncio.coroutine
-devdef events(ctx,*args : str):
+def events(ctx,*args : str):
     """Shows a list of current active events
     
     The following subcommands are only available through PMs or askchannel
