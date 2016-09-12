@@ -16,8 +16,35 @@ This commands returns one of the options given selected randomly.
 >/choose Red Blue Yellow<br>
 >Alright, **@Galarzaa**, I choose: "Yellow"
 
-##/im
+##/im *playerName*
+
+This command can only be used by new members joining the bot's discord server. When a user join, Nab Bot greets the user and asks him to use the command to add the user's characters for tracking. When the user replies with the command, the bot looks up the character and his other visible characters in the selected servers and registers them.
+
+####Example:
+>Welcome @Galarzaa! Please tell us about yourself, who is your Tibia character?<br>
+Say /im charactername and I'll begin tracking it for you!<br>
+>/im Galarzaa Fidera
+>Thanks @Galarzaa! I have added the following character(s) to your account: Galarzaa Fidera, Galarzaa Redd.<br>
 ##/online
+
+Displays a list of the tibia characters registered to the bot that are currently online. It shows the character's name, level, vocation and the discord user that owns it.
+
+####Example:
+>/online<br>
+>The following discord users are online:<br>
+    Knight Simbiotico (Lvl 122 EK, @Flue)<br>
+    Galarzaa Fidera (Lvl 210 RP, @Galarzaa)<br>
+    Repimboca da Parafuzeta (Lvl 192 EK, @Bicho Doente)<br>
+    Arka Wawl (Lvl 266 RP, @Arka Wawl)<br>
+    Malakhai (Lvl 104 ED, @Stark)<br>
+    Porcius (Lvl 61 EK, @Annaeus)<br>
+    Perplexed Penguin (Lvl 237 ED, @Penguin)<br>
+    Draxito Strom (Lvl 107 MS, @Bloodshot)<br>
+    Toph Ironman (Lvl 77 MS, @Christophersen)<br>
+    Enchanter Andrew (Lvl 147 MS, @Emperor Andrew)<br>
+    Ursinnet (Lvl 278 MS, @Ursinnet)<br>
+    Donna Marocas (Lvl 126 RP, @Pepyto)<br>
+    Mordekaiser Uno (Lvl 192 ED, @Hokusho)<br>
 ##/about
 ##/makesay
 ##/stalk
