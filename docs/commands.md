@@ -198,13 +198,14 @@ Replies with the cost of blessings for that level. For players over level 100, i
 
 >/bless 90<br>
 >At that level, you will pay 14,000 gold coins per blessing for a total of 70,000 gold coins.<br>
+
 ##/spell *name/words*
 ##/time##
 
 Displays the time in CipSoft's timezone (CET/CEST), the time until server save and Rashid's current city.
 
 ####Example:
->time<br>
+>/time<br>
 >It's currently 19:16 in Tibia's servers.<br>
 >Server save is in 14 hours and 43 minutes.<br>
 >Rashid is in Port Hope today<br>
