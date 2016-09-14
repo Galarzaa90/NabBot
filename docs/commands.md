@@ -188,5 +188,23 @@ If a player is specified, it displays a list of the player's recent level ups. I
 
 ##/stats *level,vocation*
 ##/blessings *level*
+
+Replies with the cost of blessings for that level. For players over level 100, it will also display the cost of the Blessing of the Inquisition.
+
+####Example:
+>/bless 110<br>
+>At that level, you will pay **18,000** gold coins per blessing for a total of **90,000** gold coins.<br>
+>Blessing of the Inquisition costs **99,000** gold coins.<br>
+
+>/bless 90<br>
+>At that level, you will pay 14,000 gold coins per blessing for a total of 70,000 gold coins.<br>
 ##/spell *name/words*
 ##/time##
+
+Displays the time in CipSoft's timezone (CET/CEST), the time until server save and Rashid's current city.
+
+####Example:
+>time<br>
+>It's currently 19:16 in Tibia's servers.<br>
+>Server save is in 14 hours and 43 minutes.<br>
+>Rashid is in Port Hope today<br>
