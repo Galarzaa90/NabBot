@@ -46,8 +46,18 @@ Displays a list of the tibia characters registered to the bot that are currently
     Donna Marocas (Lvl 126 RP, @Pepyto)<br>
     Mordekaiser Uno (Lvl 192 ED, @Hokusho)<br>
 ##/about
-##/makesay
-##/stalk
+
+Gives some information about the bot, such as uptime, number of registered users and characters.
+
+####Example:
+>/about<br>
+>Beep boop beep boop. I'm just a bot!
+<br>    - Authors: @Galarzaa#8515, @Nezune#2269
+<br>    - Platform: Python 🐍
+<br>    - Created: March 30th 2016
+<br>    - Uptime: 3 days, 23 hours, 46 minutes, and 0 seconds
+<br>    - Tracked users: 84
+<br>    - Tracked chars: 243
 
 # Tibia commands
 ##/whois *playerName/discordUser*
