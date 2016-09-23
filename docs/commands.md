@@ -13,8 +13,6 @@ A 3-sided die was rolled 4 times, giving those results.
 
 This commands returns one of the options given selected randomly.
 
-
-
 ####Example:
 >/choose Red Blue Yellow<br>
 >Alright, **@Galarzaa**, I choose: "Yellow"
@@ -62,6 +60,7 @@ Gives some information about the bot, such as uptime, number of registered users
 <br>    - Uptime: 3 days, 23 hours, 46 minutes, and 0 seconds
 <br>    - Tracked users: 84
 <br>    - Tracked chars: 243
+
 
 # Tibia commands
 ##/whois *playerName/discordUser*
