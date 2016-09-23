@@ -864,7 +864,7 @@ class Tibia():
 
 
 
-    @commands.command(aliases=['guildcheck'])
+    @commands.command(aliases=['guildcheck','checkguild'])
     @asyncio.coroutine
     def guild(self,*guildname : str):
         """Checks who is online in a guild"""
@@ -1179,7 +1179,7 @@ class Tibia():
                 print("{0} ({1}) - {2}".format(npc['name'],npc['city'],voc))"""
         yield from self.bot.say(reply)
 
-    @commands.command(aliases=['serversave'])
+    @commands.command(aliases=['serversave','ss'])
     @asyncio.coroutine
     def time(self):
         """Displays tibia server's time and time until server save"""

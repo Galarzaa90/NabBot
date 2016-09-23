@@ -1,5 +1,6 @@
 # General commands
 ##/roll *TdN*
+*Other aliases: /dice*
 
 This command simply rolls a die with N-sides T-times.
 
@@ -12,11 +13,14 @@ A 3-sided die was rolled 4 times, giving those results.
 
 This commands returns one of the options given selected randomly.
 
+
+
 ####Example:
 >/choose Red Blue Yellow<br>
 >Alright, **@Galarzaa**, I choose: "Yellow"
 
 ##/im *playerName*
+*Other aliases: /iam, /i'm*
 
 This command can only be used by new members joining the bot's discord server. When a user join, Nab Bot greets the user and asks him to use the command to add the user's characters for tracking. When the user replies with the command, the bot looks up the character and his other visible characters in the selected servers and registers them.
 
@@ -89,7 +93,7 @@ In this case, it matched *Galarzaa Fidera* to a character, and that character is
 In this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed. However, it also matches the character *Galarzaa* which may not be necessarily related to the user.
 
 ##/guild *guildname*
-*Other aliases: /guildcheck
+*Other aliases: /guildcheck, /checkguild*
 
 Shows who's currently online in a guild.
 
@@ -121,7 +125,7 @@ Shows the party experience share for a determined level. If a name is used as pa
 >**Galarzaa Fidera** (194) can share experience with levels **129* to **291**.
 
 ##/itemprice *name*
-*Other aliases: /checkprice, /item
+*Other aliases: /checkprice, /item*
 
 Shows the in-game look text of the item and a list of NPCs that buy and/or sell the item (only the best price is considered). If the list is too long and the command is on a server chat, it will reply with a summary of the npcs and send a private message to the user with the full list. If the command is used on a private message, the bot will always give the full list. When listing Rashid, it will display the current city he's in.
 
@@ -149,7 +153,7 @@ Shows the in-game look text of the item and a list of NPCs that buy and/or sell 
 >The list of NPCs was too long, so I PM'd you an extended version.<br>
 
 ##/deaths [*player*]
-*Other aliases: /deathlist, /death
+*Other aliases: /deathlist, /death*
 
 If a player is specified, it displays a list of that player's recent deaths. If no player is specified, it will show the recent deaths of all players registered in the database.
 
@@ -166,7 +170,7 @@ If a player is specified, it displays a list of that player's recent deaths. If 
 >    Donna Marocas (**@Pepyto**) - Died at level **64** by an ice golem - *1 day ago*<br>
 
 ##/levels [*player*]
-*Other aliases: /levelups, /lvl, /level, /lvls
+*Other aliases: /levelups, /lvl, /level, /lvls*
 
 If a player is specified, it displays a list of the player's recent level ups. If no player is specified, it will show the recent level ups of all players registered in the database.
 
@@ -186,8 +190,32 @@ If a player is specified, it displays a list of the player's recent level ups. I
 >    Level **224** - Gixys (**@Gixys**) - 4 hours ago<br>
 >    Level **228** - Perplexed Penguin (**@Penguin**) - *4 hours ago*<br>
 
-##/stats *level,vocation*
+##/stats [*level,vocation*]/[*charactername*]
+
+Replies with the hitpoints, mana and capacity of a character with that level and vocation, or if a character's name was entered, it replies with it's stats.
+
+####Example
+>/stats 50,ek<br>
+>A level 50 knight has:<br>
+>    815 HP<br>
+>    300 MP<br>
+>    1,520 Capacity<br>
+	
+>/stats Galarzaa Fidera<br>
+>Galarzaa Fidera is a level 213 royal paladin, he has:<br>
+>    2,235 HP<br>
+>    3,165 MP<br>
+>    4,570 Capacity<br>
+
+>/stats mage,400<br>
+>A level 400 mage has:<br>
+    2,145 HP<br>
+    11,850 MP<br>
+    4,390 Capacity<br>
+
+
 ##/blessings *level*
+*Other aliases: /bless*
 
 Replies with the cost of blessings for that level. For players over level 100, it will also display the cost of the Blessing of the Inquisition.
 
@@ -200,7 +228,12 @@ Replies with the cost of blessings for that level. For players over level 100, i
 >At that level, you will pay 14,000 gold coins per blessing for a total of 70,000 gold coins.<br>
 
 ##/spell *name/words*
+
+Replies with information on a certain spell.
+
+
 ##/time##
+*Other aliases: /serversave, /ss*
 
 Displays the time in CipSoft's timezone (CET/CEST), the time until server save and Rashid's current city.
 

@@ -380,7 +380,7 @@ def announceLevel(charName,newLevel):
 ########
 
 ###### Bot commands
-@bot.command()
+@bot.command(aliases=["dice"])
 @asyncio.coroutine
 def roll(dice : str):
     """Rolls a dice in TdN format.
