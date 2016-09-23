@@ -18,10 +18,10 @@ deathsPage = "deaths.php"
 levelsPage = "levels.php"
 
 #Discord id for the users that can use admin commands
-admin_ids = ["162060569803751424","162070610556616705","164253469912334350"]
+admin_ids = ["162060569803751424","162070610556616705","164253469912334350","159815675194507265"]
 
 #The list of servers to check for with getServerOnline
-tibiaservers = ["Fidera","Secura"]
+tibiaservers = ["Fidera"]
 
 ##Time since joining until the bot will ignore /im from an user. (See: /im in nabbot.py)
 #Note that an user can simply rejoin the server to reset his join date, but that will trigger a log message.
@@ -36,10 +36,10 @@ globalOnlineList = []
 announceTreshold = 30
 
 #delay inbetween server checks
-serveronline_delay = timedelta(seconds=10)
+serveronline_delay = timedelta(seconds=25)
 
 #delay inbetween player death checks
-playerdeath_delay = timedelta(seconds=5)
+playerdeath_delay = timedelta(seconds=15)
 
 lastmessages = ["","","","","","","","","",""]
 ###message list for announceLevel ({charName}, {newLevel} , {pronoun1} (he/she), {pronoun2} (his/her), {pronoun3} (him/her))
@@ -121,7 +121,7 @@ deathmessages_monster = [
 [100,"Alas, poor **{charName}** ({deathLevel}), I knew {pronoun3} Horatio; a fellow of infinite jest, of most excellent fancy; {pronoun1} hath borne me on {pronoun2} back a thousand times; and now, {pronoun1} got rekt by {deathKillerArticle}**{deathKiller}**."],
 [70,"To be or not to be "+EMOJI[":skull:"]+", that is the-- Well I guess **{charName}** ({deathLevel}) made his choice, or ^that ^**{deathKiller}** chose for him..."],
 [500,"**{charName}** ({deathLevel}) just died to {deathKillerArticle}**{deathKiller}**, why did nobody sio {pronoun3}!?",["Knight","Elite Knight"]],
-[500,"Poor **{charName}** ({deathLevel}) has died. Killed by {deathKillerArticle}**{deathKiller}**. I bet it was your blockers fault though, eh **{charName}**?",["Druid","Elder Druid","Sorcerer","Master Sorcerer"]],
+[500,"Poor **{charName}** ({deathLevel}) has died. Killed by {deathKillerArticle}**{deathKiller}**. I bet it was your blocker's fault though, eh **{charName}**?",["Druid","Elder Druid","Sorcerer","Master Sorcerer"]],
 [500,"**{charName}** ({deathLevel}) tried running away from {deathKillerArticle}**{deathKiller}**. /{pronoun1}/ didn't run fast enough...",["Paladin","Royal Paladin"]],
 [500,"What happened to **{charName}** ({deathLevel})!? Talk about sudden death! I guess ^that ^**{deathKiller}** was too much for {pronoun3}...",["Sorcerer","Master Sorcerer"]],
 [500,"**{charName}** ({deathLevel}) was killed by {deathKillerArticle}**{deathKiller}**. I guess {pronoun1} couldn't sio {pronoun3}self.",["Druid","Elder Druid"]],

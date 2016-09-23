@@ -983,7 +983,7 @@ class Tibia():
             return
         deaths = yield from getPlayerDeaths(name)
         if(deaths == ERROR_DOESNTEXIST):
-            yield from self.bot.say("That character doesn't exists!")
+            yield from self.bot.say("That character doesn't exist!")
             return
         if(deaths == ERROR_NETWORK):
             yield from self.bot.say("Sorry, try it again, I'll do it right this time.")
