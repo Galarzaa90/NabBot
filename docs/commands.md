@@ -27,6 +27,7 @@ This command can only be used by new members joining the bot's discord server. W
 Say /im charactername and I'll begin tracking it for you!<br>
 >/im Galarzaa Fidera
 >Thanks @Galarzaa! I have added the following character(s) to your account: Galarzaa Fidera, Galarzaa Redd.<br>
+
 ##/online
 
 Displays a list of the tibia characters registered to the bot that are currently online. It shows the character's name, level, vocation and the discord user that owns it.
