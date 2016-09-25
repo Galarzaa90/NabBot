@@ -19,6 +19,9 @@ levelsPage = "levels.php"
 
 #Discord id for the users that can use admin commands
 admin_ids = ["162060569803751424","162070610556616705","164253469912334350","159815675194507265"]
+#Enable of disable specific timezones for /time
+displayBrasiliaTime = True
+displaySonoraTime = True
 
 #The list of servers to check for with getServerOnline
 tibiaservers = ["Fidera"]

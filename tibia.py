@@ -1193,10 +1193,22 @@ class Tibia():
         hours, remainder = divmod(int(time_until_ss.total_seconds()), 3600)
         minutes, seconds = divmod(remainder, 60)
 
-        timestr = tibia_time.strftime("%H:%M")
+        timestrtibia = tibia_time.strftime("%H:%M")
         server_save_str = '{h} hours and {m} minutes'.format(h=hours, m=minutes)
-
-        yield from self.bot.say("It's currently **{0}** in Tibia's servers.\nServer save is in {1}.\nRashid is in **{2}** today".format(timestr,server_save_str,getRashidCity()))
+        
+        reply = "It's currently **{0}** in Tibia's servers.".format(timestrtibia)
+        if displayBrasiliaTime:
+            offsetbrasilia = getBrasiliaTimeZone() - getLocalTimezone()
+            brasilia_time = datetime.now()+timedelta(hours=offsetbrasilia)
+            timestrbrasilia = brasilia_time.strftime("%H:%M")
+            reply+="\n**{0}** in Brazil (Brasilia).".format(timestrbrasilia)
+        if displaySonoraTime:
+            offsetsonora = -7 - getLocalTimezone()
+            sonora_time = datetime.now()+timedelta(hours=offsetsonora)
+            timestrsonora = sonora_time.strftime("%H:%M")
+            reply+="\n**{0}** in Mexico (Sonora).".format(timestrsonora)
+        reply +="\nServer save is in {0}.\nRashid is in **{1}** today.".format(server_save_str,getRashidCity())
+        yield from self.bot.say(reply)
 
 
 def setup(bot):
