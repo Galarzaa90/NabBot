@@ -1000,6 +1000,72 @@ def shutdown(ctx):
     quit()
 ########
 
+######## Command to list roles in a discord server
+@bot.command(pass_context=True)
+@asyncio.coroutine
+def roles(ctx):
+
+    #If you call via PM, then server=None, so you can't find the roles
+    if (ctx.message.channel.is_private):
+        log.warning("Cannot run this command via PM")
+        return
+       
+    msg = "These are the active roles for this server:\r\n"
+    
+    for role in getListRoles(ctx.message.server):
+        msg += role.name + "\r\n"
+    
+    yield from bot.say(msg)
+    return
+########def roles
+
+######## Command to list all members from an specific role in a discord server
+@bot.command(pass_context=True)
+@asyncio.coroutine
+def role(ctx, *roleName : str):
+
+    #If you call via PM, then server=None, so you can't find the roles
+    if (ctx.message.channel.is_private):
+        log.warning("Cannot run this command via PM")
+        return
+
+    roleName = " ".join(roleName).strip()
+    lowerRoleName = roleName.lower()
+    roleDict = {}
+    
+    #Need to get all roles and check all members because there's 
+    #no API call like role.getMembers
+    for role in getListRoles(ctx.message.server):
+        if (role.name.lower() == lowerRoleName):
+            roleDict[role] = []
+    
+    if (len(roleDict) > 0):
+        #Check every member and add to dict for each role he is in
+        #In this case, the dict will only have the specific role searched
+        for member in ctx.message.server.members:
+            for role in member.roles:
+                if (role in roleDict):
+                    roleDict[role].append(member.name)
+                    #getting the name directly from server to respect case
+                    roleName = role.name 
+        
+        #Create return message
+        msg = "These are the members from **" + roleName + "**:\r\n"
+        
+        for key, value in roleDict.items():
+            if (len(value) < 1):
+                msg = "There are no members for this role yet."
+            else:
+                for memberName in roleDict[key]:
+                    msg += "\t" + memberName + "\r\n"
+
+        yield from bot.say(msg)
+    else:
+        yield from bot.say("I couldn't find a role with that name.")
+        
+    return
+########def role
+
 
 if __name__ == "__main__":
     initDatabase()

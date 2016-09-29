@@ -116,6 +116,8 @@ deathmessages_monster = [
 [80,"Oh, there goes **{charName}** ({deathLevel}), killed by {deathKillerArticle}**{deathKiller}**. So young, so full of life. /{pronoun1}/ will be miss... oh nevermind, {pronoun1} respawned already."],
 [60,"Oh look! **{charName}** ({deathLevel}) died by {deathKillerArticle}**{deathKiller}**! What a surprise..."+EMOJI[":_eyeroll:"]],
 [100,"**{charName}** ({deathLevel}) was killed by {deathKillerArticle}**{deathKiller}**, but we all saw that coming."],
+[100,"**{charName}** ({deathLevel}) tried sneaking around {deathKillerArticle}**{deathKiller}**. I could hear Colonel Campbell's voice over codec: \"Snake? Snake!? SNAAAAAAAAAKE!!?\""],
+[50,"**{charName}** ({deathLevel}) died to {deathKillerArticle}**{deathKiller}**. But I bet it was because there was a flood and something broke with like 7200lb falling over the infrastructure of your city's internet, right?"],
 [70,"That's what you get **{charName}** ({deathLevel}), for messing with ^that ^**{deathKiller}**!"],
 [100,"Oh no! **{charName}** died at level {deathLevel}. Well, it's okay, just blame lag, I'm sure ^the^ **{deathKiller}** had nothing to do with it."],
 [100,"**{charName}** ({deathLevel}) + **{deathKiller}** = dedd."],

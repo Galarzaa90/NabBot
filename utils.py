@@ -1262,6 +1262,18 @@ def getAboutContent():
     reply += "\t- Tracked users: "+str(user_count)+"\n"
     reply += "\t- Tracked chars: "+str(char_count)
     return reply
+
+def getListRoles(server):
+    """Lists all role within the discord server and returns to caller."""
+    
+    roles = []
+    
+    for role in server.roles:
+        #Ignore @everyone and @NabBot
+        if role.name not in ["@everyone", "NabBot"]:
+            roles.append(role)
+      
+    return roles
     
 if __name__ == "__main__":
     input("To run NabBot, run nabbot.py")
