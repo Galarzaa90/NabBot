@@ -1031,30 +1031,33 @@ def role(ctx, *roleName : str):
 
     roleName = " ".join(roleName).strip()
     lowerRoleName = roleName.lower()
-    roleList = {}
-    
+    roleDict = {}
     
     #Need to get all roles and check all members because there's 
     #no API call like role.getMembers
     for role in getListRoles(ctx.message.server):
         if (role.name.lower() == lowerRoleName):
-            roleList[role] = []
-
-    if (len(roleList) > 0):
+            roleDict[role] = []
+    
+    if (len(roleDict) > 0):
         #Check every member and add to dict for each role he is in
         #In this case, the dict will only have the specific role searched
         for member in ctx.message.server.members:
             for role in member.roles:
-                if (role in roleList):
-                    roleList[role].append(member.name)
+                if (role in roleDict):
+                    roleDict[role].append(member.name)
                     #getting the name directly from server to respect case
                     roleName = role.name 
         
         #Create return message
         msg = "These are the members from **" + roleName + "**:\r\n"
-        for role in roleList:
-            for memberName in roleList[role]:
-                msg += "\t" + memberName + "\r\n"
+        
+        for key, value in roleDict.items():
+            if (len(value) < 1):
+                msg = "There are no members for this role yet."
+            else:
+                for memberName in roleDict[key]:
+                    msg += "\t" + memberName + "\r\n"
 
         yield from bot.say(msg)
     else:
