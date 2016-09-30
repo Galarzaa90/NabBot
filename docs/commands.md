@@ -67,6 +67,7 @@ Gives some information about the bot, such as uptime, number of registered users
 >/about  
 >Beep boop beep boop. I'm just a bot!  
     - Authors: @Galarzaa#8515, @Nezune#2269  
+    - Platform: Python 🐍  
     - Created: March 30th 2016  
     - Uptime: 3 days, 23 hours, 46 minutes, and 0 seconds  
     - Tracked users: 84  
