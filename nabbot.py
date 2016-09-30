@@ -1005,6 +1005,7 @@ def shutdown(ctx):
 @asyncio.coroutine
 def roles(ctx):
 
+    """Shows all role names within the Discord server"""
     #If you call via PM, then server=None, so you can't find the roles
     if (ctx.message.channel.is_private):
         log.warning("Cannot run this command via PM")
@@ -1024,6 +1025,7 @@ def roles(ctx):
 @asyncio.coroutine
 def role(ctx, *roleName : str):
 
+    """Shows member list within the specified role"""
     #If you call via PM, then server=None, so you can't find the roles
     if (ctx.message.channel.is_private):
         log.warning("Cannot run this command via PM")

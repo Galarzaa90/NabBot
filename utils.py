@@ -1270,7 +1270,7 @@ def getListRoles(server):
     
     for role in server.roles:
         #Ignore @everyone and @NabBot
-        if role.name not in ["@everyone", "NabBot"]:
+        if role.name not in ["@everyone", "Nab Bot"]:
             roles.append(role)
       
     return roles
