@@ -43,7 +43,7 @@ python nabbot.py
 * Character database to keep track of the member's characters;
 * Level up and deaths are announced by the bot;
 * Events can be created by users and announced by the bot;
-* Itens/Monsters database;
+* Items/Monsters database;
 
 
 ### Commands
