@@ -1,5 +1,5 @@
 #/stalk
-This is one of the most important admin commands. It's composed of various subcommands that let the admins manage the users database.
+This is one of the most important admin commands. It's composed of various subcommands that let the admins manage the users database. **This command can only be used via private message.**
 
 ##/stalk add *username*
 Registers discord user in the database.
