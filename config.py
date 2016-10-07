@@ -75,7 +75,7 @@ levelmessages = [[100,"Congratulations to **{charName}** on reaching level {newL
 [150,"Congrats on level {newLevel}, **{charName}**. You can stop running around now.",["Paladin","Royal Paladin"],range(100,999)],
 [150,"**{charName}** is level {newLevel}. Bullseye!"+EMOJI[":dart:"],["Paladin","Royal Paladin"],range(100,999)],
 #MS Only
-[50,"Level {newLevel},**{charName}**? Nice. Don't you wish you were a druid though?",["Sorcerer","Master Sorcerer"],range(100,999)],
+[50,"Level {newLevel}, **{charName}**? Nice. Don't you wish you were a druid though?",["Sorcerer","Master Sorcerer"],range(100,999)],
 [150,"**{charName}** is level {newLevel}. Watch out for {pronoun2} SDs!",["Sorcerer","Master Sorcerer"],range(100,999)],
 [150,"**{charName}** is level {newLevel}. "+EMOJI[":fire:"]+EMOJI[":fire:"]+"BURN THEM ALL"+EMOJI[":fire:"]+EMOJI[":fire:"]+EMOJI[":fire:"],["Sorcerer","Master Sorcerer"],range(100,999)],
 #ED Only
