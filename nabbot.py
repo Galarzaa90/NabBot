@@ -959,6 +959,8 @@ def stalk(ctx, subcommand, *args : str):
 @stalk.error
 @asyncio.coroutine
 def stalk_error(error,ctx):
+    if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
+        return
     if type(error) is commands.MissingRequiredArgument:
         yield from bot.say("""```Valid subcommands are:
         /stalk add user
