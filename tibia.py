@@ -352,6 +352,11 @@ def getPlayer(name, tries = 5):
         m = re.search(r'GuildName=.*?([^"]+).+',content)
         if m:
             char['guild'] = urllib.parse.unquote_plus(m.group(1))
+            
+    #Last login
+    m = re.search(r'Last login:</td><td>([^<]+)',content)
+    if m:
+        char['last_login'] = m.group(1).replace("&#160;"," ").replace(",","")
 
 
     #update name and vocation in chars database if necessary
@@ -542,7 +547,7 @@ def getItem(itemname):
         c.close()
     return
 
-#Gets a time object from a time string from tibia.cmo
+#Gets a time object from a time string from tibia.com
 def getLocalTime(tibiaTime):
     #Getting local time and GMT
     t = time.localtime()
@@ -610,7 +615,7 @@ def getCharString(char):
     pronoun = "He"
     if(char['gender'] == "female"):
         pronoun = "She"
-    replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}"
+    replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}"
     guildF = "\n{0} is __{1}__ of the **{2}**."
     marriedF = "\n{0} is married to **{1}**."
     guild = ""
@@ -619,8 +624,14 @@ def getCharString(char):
         guild = guildF.format(pronoun,char['rank'],char['guild'])
     if(char.get('married',None)):
         married = marriedF.format(pronoun,char['married'])
+    last_login = getLocalTime(char['last_login'])
+    now = datetime.now()
+    timediff = now-last_login
+    loginStr = ""
+    if(timediff.days > 7):
+        loginStr = "\n{0} hasn't logged in for **{1}**.".format(pronoun,getTimeDiff(timediff))
     
-    reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild,married)
+    reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild,married,loginStr)
     return reply
 
 def getMonsterString(monster,short=True):
