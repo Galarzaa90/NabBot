@@ -235,18 +235,19 @@ def think():
                 for nowOfflineChar in offlineList:
                     globalOnlineList.remove(nowOfflineChar)
                     #check for deaths and levelups when removing from online list
-                    nowOfflineChar = yield from getPlayer(nowOfflineChar)
-                    c.execute("SELECT last_level FROM chars WHERE name LIKE ?",(serverChar['name'],))
-                    result = c.fetchone()
-                    if result:
-                        lastLevel = result[0]
-                        c.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",(nowOfflineChar['level'],nowOfflineChar['name'],))
-                        if lastLevel < nowOfflineChar['level'] and lastLevel > 0:
-                            #Saving level up date in database
-                            c.execute("INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",(result[2],nowOfflineChar['level'],time.time(),))
-                            ##announce the level up
-                            yield from announceLevel(nowOfflineChar['name'],nowOfflineChar['level'])
-                    yield from checkDeath(nowOfflineChar['name'])
+                    nowOfflineChar = yield from getPlayer(nowOfflineChar.split("_",1)[1])
+                    if not(nowOfflineChar == ERROR_NETWORK or nowOfflineChar == ERROR_DOESNTEXIST):
+                        c.execute("SELECT last_level FROM chars WHERE name LIKE ?",(serverChar['name'],))
+                        result = c.fetchone()
+                        if result:
+                            lastLevel = result[0]
+                            c.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",(nowOfflineChar['level'],nowOfflineChar['name'],))
+                            if lastLevel < nowOfflineChar['level'] and lastLevel > 0:
+                                #Saving level up date in database
+                                c.execute("INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",(result[2],nowOfflineChar['level'],time.time(),))
+                                ##announce the level up
+                                yield from announceLevel(nowOfflineChar['name'],nowOfflineChar['level'])
+                        yield from checkDeath(nowOfflineChar['name'])
 
                 #add new online chars and announce level differences
                 for serverChar in currentServerOnline:
