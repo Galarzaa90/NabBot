@@ -234,6 +234,19 @@ def think():
                             offlineList.append(char)
                 for nowOfflineChar in offlineList:
                     globalOnlineList.remove(nowOfflineChar)
+                    #check for deaths and levelups when removing from online list
+                    nowOfflineChar = yield from getPlayer(nowOfflineChar)
+                    c.execute("SELECT last_level FROM chars WHERE name LIKE ?",(serverChar['name'],))
+                    result = c.fetchone()
+                    if result:
+                        lastLevel = result[0]
+                        c.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",(nowOfflineChar['level'],nowOfflineChar['name'],))
+                        if lastLevel < nowOfflineChar['level'] and lastLevel > 0:
+                            #Saving level up date in database
+                            c.execute("INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",(result[2],nowOfflineChar['level'],time.time(),))
+                            ##announce the level up
+                            yield from announceLevel(nowOfflineChar['name'],nowOfflineChar['level'])
+                    yield from checkDeath(nowOfflineChar['name'])
 
                 #add new online chars and announce level differences
                 for serverChar in currentServerOnline:
@@ -275,40 +288,45 @@ def think():
 
             #get rid of server name
             currentChar = currentChar.split("_",1)[1]
-            #get death list for this char
-            #we only need the last death
-            currentCharDeaths = yield from getPlayerDeaths(currentChar,True)
-
-            if (type(currentCharDeaths) is list) and len(currentCharDeaths) > 0:
-                c = userDatabase.cursor()
-
-                c.execute("SELECT name, last_death_time, id FROM chars WHERE name LIKE ?",(currentChar,))
-                result = c.fetchone()
-                if result:
-                    lastDeath = currentCharDeaths[0]
-                    dbLastDeathTime = result[1]
-                    ##if the db lastDeathTime is None it means this is the first time we're seeing them online
-                    #so we just update it without announcing deaths
-                    if dbLastDeathTime is None:
-                        c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(lastDeath['time'],currentChar,))
-                    #else if the last death's time doesn't match the one in the db
-                    elif dbLastDeathTime != lastDeath['time']:
-                        #update the lastDeathTime for this char in the db
-                        c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(lastDeath['time'],currentChar,))
-                        #Saving death info in database
-                        c.execute("INSERT INTO char_deaths (char_id,level,killer,byplayer,date) VALUES(?,?,?,?,?)",(result[2],int(lastDeath['level']),lastDeath['killer'],lastDeath['byPlayer'],time.time(),))
-                        #and announce the death
-                        yield from announceDeath(currentChar,lastDeath['time'],lastDeath['level'],lastDeath['killer'],lastDeath['byPlayer'])
-
-                #Close cursor and commit changes
-                userDatabase.commit()
-                c.close()
+            #check for new death
+            yield from checkDeath(currentChar)
+            
             #update last death check time
             lastPlayerDeathCheck = datetime.now()
 
         #sleep for a bit and then loop back
         yield from asyncio.sleep(1)
 ########
+
+def checkDeath(character):
+    #get death list for this char
+    #we only need the last death
+    characterDeaths = yield from getPlayerDeaths(character,True)
+
+    if (type(characterDeaths) is list) and len(characterDeaths) > 0:
+        c = userDatabase.cursor()
+
+        c.execute("SELECT name, last_death_time, id FROM chars WHERE name LIKE ?",(character,))
+        result = c.fetchone()
+        if result:
+            lastDeath = characterDeaths[0]
+            dbLastDeathTime = result[1]
+            ##if the db lastDeathTime is None it means this is the first time we're seeing them online
+            #so we just update it without announcing deaths
+            if dbLastDeathTime is None:
+                c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(lastDeath['time'],character,))
+            #else if the last death's time doesn't match the one in the db
+            elif dbLastDeathTime != lastDeath['time']:
+                #update the lastDeathTime for this char in the db
+                c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?",(lastDeath['time'],character,))
+                #Saving death info in database
+                c.execute("INSERT INTO char_deaths (char_id,level,killer,byplayer,date) VALUES(?,?,?,?,?)",(result[2],int(lastDeath['level']),lastDeath['killer'],lastDeath['byPlayer'],time.time(),))
+                #and announce the death
+                yield from announceDeath(character,lastDeath['time'],lastDeath['level'],lastDeath['killer'],lastDeath['byPlayer'])
+
+        #Close cursor and commit changes
+        userDatabase.commit()
+        c.close()
 
 ########announceDeath
 @asyncio.coroutine
