@@ -23,7 +23,7 @@ def on_ready():
     #Notify reset author
     if len(sys.argv) > 1:
         user = getUserById(sys.argv[1])
-        sys.argv[1] == 0
+        sys.argv[1] = 0
         if user is not None:
             yield from bot.send_message(user,"Restart complete")
     #start up think()
