@@ -3,3 +3,4 @@ users.db
 __pycache__
 console.txt
 *.log
+*.db-journal
