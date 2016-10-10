@@ -1140,11 +1140,11 @@ def getUserByName(userName):
     user = None
     _mainserver = getServerByName(mainserver)
     if _mainserver is not None:
-        user = discord.utils.find(lambda m: m.name.lower() == userName.lower(), _mainserver.members)
+        user = discord.utils.find(lambda m: m.display_name.lower() == userName.lower(), _mainserver.members)
     if user is None:
-        user = discord.utils.find(lambda m: m.name.lower() == userName.lower(), bot.get_all_members())
+        user = discord.utils.find(lambda m: m.display_name.lower() == userName.lower(), bot.get_all_members())
     if user is None:
-        private = discord.utils.find(lambda m: m.user.name.lower() == userName.lower(), bot.private_channels)
+        private = discord.utils.find(lambda m: m.user.display_name.lower() == userName.lower(), bot.private_channels)
         if private is not None:
             user = private.user
     return user

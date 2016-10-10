@@ -785,7 +785,7 @@ class Tibia():
                             charString = "I couldn't fetch that character's info, though. Maybe try again?"
                         if char == ERROR_DOESNTEXIST:
                             charString = "But the character no longer exists."
-                        charString = "**{0}** is a character of **@{1.name}**.\n".format(result[0],user)+charString
+                        charString = "**{0}** is a character of **@{1.display_name}**.\n".format(result[0],user)+charString
                         yield from self.bot.say(charString)
                         return
                 #It wasn't a discord user nor a known tibia character
@@ -809,7 +809,7 @@ class Tibia():
                 vocation = vocAbb(vocation)
                 chars.append("{0} (Lvl {1} {2})".format(name,abs(level) if level != 0 else "",vocation))
             if(len(chars) <= 0):
-                yield from self.bot.say("I don't know who **@{0.name}** is...".format(user))
+                yield from self.bot.say("I don't know who **@{0.display_name}** is...".format(user))
                 if char == ERROR_NETWORK:
                     yield from self.bot.say("I also failed to do a character search for some reason "+EMOJI[":astonished:"])
                     return
@@ -822,13 +822,13 @@ class Tibia():
                 if(result is not None):
                     user2 = getUserById(result[1])
                     if(user2 is not None):
-                        charString = "But **{0}** is a character of **@{1.name}**.\n".format(char['name'],user2)+charString
+                        charString = "But **{0}** is a character of **@{1.display_name}**.\n".format(char['name'],user2)+charString
                         yield from self.bot.say(charString)
                         return
                 yield from self.bot.say(charString)
                 return
             #TODO: Fix possesive if user ends with s
-            yield from self.bot.say("@**{0.name}**'s character{1}: {2}.".format(user,"s are" if len(chars) > 1 else " is", joinList(chars,", "," and ")))
+            yield from self.bot.say("@**{0.display_name}**'s character{1}: {2}.".format(user,"s are" if len(chars) > 1 else " is", joinList(chars,", "," and ")))
             if char == ERROR_NETWORK:
                 yield from self.bot.say("But I failed to do a character search for some reason "+EMOJI[":astonished:"])
                 return
@@ -983,7 +983,7 @@ class Tibia():
                     user = getUserById(user_id)
                     username = "unkown"
                     if(user):
-                        username = user.name
+                        username = user.display_name
                     reply += "\n\t{4} (**@{5}**) - {0} at level **{1}** by {2} - *{3} ago*".format(died,level,killer,getTimeDiff(timediff),name,username)
                 yield from self.bot.say(reply)
                 return
@@ -1044,7 +1044,7 @@ class Tibia():
                     user = getUserById(levelup[3])
                     username = "unkown"
                     if(user):
-                        username = user.name
+                        username = user.display_name
                     reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1} ago*".format(levelup[0],getTimeDiff(timediff),levelup[2],username)
                 if(siteEnabled):
                     reply += "\nSee more levels check: <{0}{1}>".format(baseUrl,levelsPage)

@@ -41,7 +41,7 @@ def on_command(command, ctx):
     else:
         destination = '#{0.channel.name} ({0.server.name})'.format(ctx.message)
     message_decoded = decode_emoji(ctx.message.content)
-    log.info('Command by {0} in {1}: {2}'.format(ctx.message.author.name, destination,message_decoded))
+    log.info('Command by {0} in {1}: {2}'.format(ctx.message.author.display_name, destination,message_decoded))
 
 @bot.event
 @asyncio.coroutine
@@ -64,7 +64,7 @@ def on_message(message):
 @asyncio.coroutine
 def on_member_join(member):
     message = "Welcome {0.mention}! Please tell us about yourself, who is your Tibia character?\r\nSay /im *charactername* and I'll begin tracking it for you!"
-    log.info("New member joined: {0.name} (ID: {0.id})".format(member))
+    log.info("New member joined: {0.display_name} (ID: {0.id})".format(member))
     ##Starting a private message with new members allows us to keep track of them even after they leave our visible servers.
     yield from bot.start_private_message(member)
     yield from bot.send_message(member.server,message.format(member))
@@ -72,13 +72,13 @@ def on_member_join(member):
 @bot.event
 @asyncio.coroutine
 def on_member_remove(member):
-    log.info("A member left discord: {0.name} (ID: {0.id})".format(member))
+    log.info("A member left discord: {0.display_name} (ID: {0.id})".format(member))
 
 @bot.event
 @asyncio.coroutine
 def on_message_delete(message):
     message_decoded = decode_emoji(message.content)
-    log.info("A message by {0} was deleted. Message: '{1}'".format(message.author.name,message_decoded))
+    log.info("A message by {0} was deleted. Message: '{1}'".format(message.author.display_name,message_decoded))
     for attachment in message.attachments:
         log.info(attachment)
 
@@ -86,7 +86,7 @@ def on_message_delete(message):
 @asyncio.coroutine
 def on_message_edit(older_message,message):
     older_message_decoded = decode_emoji(older_message.content)
-    log.info("{0} has edited the message: '{1}'".format(older_message.author.name,older_message_decoded))
+    log.info("{0} has edited the message: '{1}'".format(older_message.author.display_name,older_message_decoded))
     for attachment in older_message.attachments:
         log.info(attachment)
 
@@ -111,7 +111,7 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
                 name = row[2]
                 id = row[3]
                 timediff = timedelta(seconds=row[1]-date)
@@ -132,7 +132,7 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
                 name = row[2]
                 id = row[3]
                 timediff = timedelta(seconds=row[1]-date)
@@ -153,7 +153,7 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
                 name = row[2]
                 id = row[3]
                 timediff = timedelta(seconds=row[1]-date)
@@ -174,7 +174,7 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
                 name = row[2]
                 id = row[3]
                 timediff = timedelta(seconds=row[1]-date)
@@ -421,7 +421,7 @@ def roll(dice : str):
 def choose(ctx,*choices : str):
     """Chooses between multiple choices."""
     user = ctx.message.author
-    yield from bot.say('Alright, **@{0}**, I choose: "{1}"'.format(user.name,random.choice(choices)))
+    yield from bot.say('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name,random.choice(choices)))
 
 @bot.command(pass_context=True,aliases=["i'm","iam"],no_pm=True)
 @asyncio.coroutine
@@ -438,7 +438,7 @@ def im(ctx,*charname : str):
     user = ctx.message.author
     try:
         c = userDatabase.cursor()
-        admins_message = joinList(["**@"+getUserById(admin).name+"**" for admin in admin_ids],", "," or ")
+        admins_message = joinList(["**@"+getUserById(admin).display_name+"**" for admin in admin_ids],", "," or ")
         servers_message = joinList(["**"+server+"**" for server in tibiaservers],", "," or ")
         notallowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help adding characters to your account please message "+admins_message+".").format(user)
         
@@ -457,7 +457,7 @@ def im(ctx,*charname : str):
                 return
         else:
             #Add the user if it doesn't exist
-            c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.name,))
+            c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.display_name,))
         
         char = yield from getPlayer(charname)
         if(type(char) is not dict):
@@ -484,7 +484,7 @@ def im(ctx,*charname : str):
                     updated.append({'name' : char['name'], 'world' : char['world'], 'prevowner' : result[1]})
                     continue
                 else:
-                    yield from bot.say("I'm sorry but a character in that account was already claimed by **@{0}**.".format(getUserById(result[1]).name)+"\r\n"+
+                    yield from bot.say("I'm sorry but a character in that account was already claimed by **@{0}**.".format(getUserById(result[1]).display_name)+"\r\n"+
                         "Have you made a mistake? Message "+admins_message+" if you need any help!")
                     return
             char = yield from getPlayer(char['name'])
@@ -495,10 +495,10 @@ def im(ctx,*charname : str):
             return
         for char in updated:
             c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?",(user.id,char['name']))
-            log.info("Character {0} was reasigned to {1.name} (ID: {1.id}) from /im. (Previous owner (ID: {2}) was not found)".format(char['name'],user,char['prevowner']))
+            log.info("Character {0} was reasigned to {1.display_name} (ID: {1.id}) from /im. (Previous owner (ID: {2}) was not found)".format(char['name'],user,char['prevowner']))
         for char in added:
             c.execute("INSERT INTO chars (name,last_level,vocation,user_id) VALUES (?,?,?,?)",(char['name'],char['level']*-1,char['vocation'],user.id))
-            log.info("Character {0} was asigned to {1.name} (ID: {1.id}) from /im.".format(char['name'],user))
+            log.info("Character {0} was asigned to {1.display_name} (ID: {1.id}) from /im.".format(char['name'],user))
 
         yield from bot.say(("Thanks {0.mention}! I have added the following character(s) to your account: "+", ".join("**"+char['name']+"**" for char in added)+", ".join("**"+char['name']+"**" for char in updated)+".\r\nFrom now on I will track level advances and deaths for you, if you need to add any more characters please message "+admins_message+".").format(user))
         return
@@ -532,9 +532,9 @@ def online():
                 user = getUserById(char['id'])
 
                 char['vocation'] = vocAbb(char['vocation'])
-                #discordName = user.name if (user is not None) else "unknown"
+                #discordName = user.display_name if (user is not None) else "unknown"
                 if user is not None:
-                    discordName = user.name
+                    discordName = user.display_name
                     reply += "\n\t{0} (Lvl {1} {2}, **@{3}**)".format(char['name'],abs(char['level']),char['vocation'],discordName)
             yield from bot.say(reply)
     finally:
@@ -578,7 +578,7 @@ def events(ctx,*args : str):
             if len(results) > 0:
                 reply += "Recent events:"
                 for row in results:
-                    author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                    author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
                     name = row[2]
                     id = row[3]
                     timediff = timedelta(seconds=date-row[1])
@@ -593,7 +593,7 @@ def events(ctx,*args : str):
                     reply += "\n"
                 reply += "Upcoming events:"
                 for row in results:
-                    author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).name
+                    author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
                     name = row[2]
                     id = row[3]
                     timediff = timedelta(seconds=row[1]-date)
@@ -750,10 +750,10 @@ def stalk(ctx, subcommand, *args : str):
                 return
             c.execute("SELECT id from discord_users WHERE id LIKE ?",(user.id,))
             if(c.fetchone() is not None):
-                yield from bot.say("**@{0}** is already registered.".format(user.name))
+                yield from bot.say("**@{0}** is already registered.".format(user.display_name))
                 return
-            c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.name,))
-            yield from bot.say("**@{0}** was registered succesfully.".format(user.name))
+            c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.display_name,))
+            yield from bot.say("**@{0}** was registered succesfully.".format(user.display_name))
 
         ###Add char & Add account common operations
         if(subcommand == "addchar" or subcommand == "addacc"):
@@ -781,7 +781,7 @@ def stalk(ctx, subcommand, *args : str):
                         yield from bot.say("This character's name was changed from **{0}** to **{1}**".format(params[1],char['name']))
                     #Registered to a different user
                     if(result[1] != user.id):
-                        username = "unknown" if getUserById(result[1]) is None else getUserById(result[1]).name
+                        username = "unknown" if getUserById(result[1]) is None else getUserById(result[1]).display_name
                         yield from bot.say("This character is already registered to **@{0}**".format(username))
                         return
                     #Registered to current user
@@ -791,8 +791,8 @@ def stalk(ctx, subcommand, *args : str):
                 c.execute("SELECT id from discord_users WHERE id = ?",(user.id,))
                 result = c.fetchone()
                 if(result is None):
-                    c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.name,))
-                    yield from bot.say("**@{0}** was registered succesfully.".format(user.name))
+                    c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.display_name,))
+                    yield from bot.say("**@{0}** was registered succesfully.".format(user.display_name))
                 yield from bot.say("**{0}** was registered succesfully to this user.".format(char['name']))
                 return
             ###Add account
@@ -811,7 +811,7 @@ def stalk(ctx, subcommand, *args : str):
                     result = c.fetchone();
                     if(result is not None):
                         if(result[1] != user.id):
-                            username = "unknown" if getUserById(result[1]) is None else getUserById(result[1]).name
+                            username = "unknown" if getUserById(result[1]) is None else getUserById(result[1]).display_name
                             yield from bot.say("**{0}** is already registered to **@{1}**".format(char['name'],username))
                             continue
                         yield from bot.say("**{0}** is already registered to this user.".format(char['name']))
@@ -821,8 +821,8 @@ def stalk(ctx, subcommand, *args : str):
                 c.execute("SELECT id from discord_users WHERE id = ?",(user.id,))
                 result = c.fetchone()
                 if(result is None):
-                    c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.name,))
-                    yield from bot.say("**@{0}** was registered succesfully.".format(user.name))
+                    c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.display_name,))
+                    yield from bot.say("**@{0}** was registered succesfully.".format(user.display_name))
                     return
 
         ###Remove char
@@ -838,7 +838,7 @@ def stalk(ctx, subcommand, *args : str):
             if(result is None):
                 yield from bot.say("There's no character with that name registered.")
                 return
-            username = "unknown" if getUserById(result[1]) is None else getUserById(result[1]).name
+            username = "unknown" if getUserById(result[1]) is None else getUserById(result[1]).display_name
             c.execute("DELETE FROM chars WHERE name LIKE ?",(result[0],))
             yield from bot.say("**{0}** was removed succesfully from **@{1}**.".format(result[0],username))
             return
@@ -853,10 +853,10 @@ def stalk(ctx, subcommand, *args : str):
                 return
             c.execute("SELECT id from discord_users WHERE id = ?",(user.id,))
             if(c.fetchone() is None):
-                yield from bot.say("**@{0}** wasn't registered.".format(user.name))
+                yield from bot.say("**@{0}** wasn't registered.".format(user.display_name))
                 return
             c.execute("DELETE FROM discord_users WHERE id = ?",(user.id,))
-            yield from bot.say("**@{0}** was removed succesfully.".format(user.name))
+            yield from bot.say("**@{0}** was removed succesfully.".format(user.display_name))
             c.execute("SELECT name FROM chars WHERE user_id = ?",(user.id,))
             result = c.fetchall()
             if len(result) >= 1:
@@ -954,7 +954,7 @@ def stalk(ctx, subcommand, *args : str):
                 if member.id == bot.user.id:
                     continue
                 if member.id not in users:
-                    empty_members.append("**@"+member.name+"**")
+                    empty_members.append("**@"+member.display_name+"**")
             if len(empty_members) == 0:
                 yield from bot.say("There are no unregistered users or users without characters.")
                 return
@@ -968,7 +968,7 @@ def stalk(ctx, subcommand, *args : str):
                 return
             update_users = list()
             for user in result:
-                update_users.append(("unknown" if getUserById(user[0]) is None else getUserById(user[0]).name,user[0]))
+                update_users.append(("unknown" if getUserById(user[0]) is None else getUserById(user[0]).display_name,user[0]))
             c.executemany("UPDATE discord_users SET name = ? WHERE id LIKE ?",update_users)
             yield from bot.say("Usernames updated succesfully.")
     finally:
@@ -1068,7 +1068,7 @@ def role(ctx, *roleName : str):
         for member in ctx.message.server.members:
             for role in member.roles:
                 if (role in roleDict):
-                    roleDict[role].append(member.name)
+                    roleDict[role].append(member.display_name)
                     #getting the name directly from server to respect case
                     roleName = role.name 
         
