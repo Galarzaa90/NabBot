@@ -237,10 +237,10 @@ def think():
                     #check for deaths and levelups when removing from online list
                     nowOfflineChar = yield from getPlayer(nowOfflineChar.split("_",1)[1])
                     if not(nowOfflineChar == ERROR_NETWORK or nowOfflineChar == ERROR_DOESNTEXIST):
-                        c.execute("SELECT last_level FROM chars WHERE name LIKE ?",(serverChar['name'],))
+                        c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",(nowOfflineChar['name'],))
                         result = c.fetchone()
                         if result:
-                            lastLevel = result[0]
+                            lastLevel = result[1]
                             c.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",(nowOfflineChar['level'],nowOfflineChar['name'],))
                             if lastLevel < nowOfflineChar['level'] and lastLevel > 0:
                                 #Saving level up date in database
