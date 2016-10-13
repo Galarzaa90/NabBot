@@ -356,7 +356,11 @@ def getPlayer(name, tries = 5):
     #Last login
     m = re.search(r'Last login:</td><td>([^<]+)',content)
     if m:
-        char['last_login'] = m.group(1).replace("&#160;"," ").replace(",","")
+        lastLogin = m.group(1).replace("&#160;"," ").replace(",","")
+        if "never" in lastLogin:
+            char['last_login'] = None
+        else:
+            char['last_login'] = lastLogin
 
 
     #update name and vocation in chars database if necessary
@@ -624,12 +628,14 @@ def getCharString(char):
         guild = guildF.format(pronoun,char['rank'],char['guild'])
     if(char.get('married',None)):
         married = marriedF.format(pronoun,char['married'])
-    last_login = getLocalTime(char['last_login'])
-    now = datetime.now()
-    timediff = now-last_login
-    loginStr = ""
-    if(timediff.days > 7):
-        loginStr = "\n{0} hasn't logged in for **{1}**.".format(pronoun,getTimeDiff(timediff))
+        
+    loginStr = "\n{0} has **never** logged in.".format(pronoun)
+    if char['last_login'] is not None:
+        last_login = getLocalTime(char['last_login'])
+        now = datetime.now()
+        timediff = now-last_login
+        if(timediff.days > 7):
+            loginStr = "\n{0} hasn't logged in for **{1}**.".format(pronoun,getTimeDiff(timediff))
     
     reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild,married,loginStr)
     return reply
@@ -649,11 +655,11 @@ def getMonsterString(monster,short=True):
     if len(weak) >= 1:
         reply+='Weak to:'+"\r\n"
         for element in sorted(weak, key=lambda elem: elem[1]):
-            reply+="	 +"+str(element[1]-100)+"%  "+element[0]+"\r\n"
+            reply+="\t+"+str(element[1]-100)+"%  "+element[0]+"\r\n"
     if len(resist) >= 1:
         reply+='Resistant to:'+"\r\n"
         for element in sorted(resist, key=lambda elem: elem[1]):
-            reply+="	"+((" -"+str(100-element[1])+"% ") if 100-element[1] < 100 else "Immune")+" "+element[0]+"\r\n"
+            reply+="\t"+((" -"+str(100-element[1])+"% ") if 100-element[1] < 100 else "Immune")+" "+element[0]+"\r\n"
     reply+="\r\n```"
     reply+="```"
     reply+=("Can" if monster['senseinvis'] else "Can't")+" sense invisibility"+"\r\n"
