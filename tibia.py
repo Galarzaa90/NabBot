@@ -636,6 +636,8 @@ def getCharString(char):
         timediff = now-last_login
         if(timediff.days > 7):
             loginStr = "\n{0} hasn't logged in for **{1}**.".format(pronoun,getTimeDiff(timediff))
+        else:
+            loginStr = ""
     
     reply = replyF.format(pronoun,char['name'],char['level'],char['vocation'],char['residence'],char['world'],guild,married,loginStr)
     return reply
