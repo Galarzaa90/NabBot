@@ -873,8 +873,8 @@ EMOJI = {":_hotdog:":chr(0x1F32D),
          ":zap:":chr(0x026A1),
          ":zzz:":chr(0x1F4A4)}
 
-#Replaces unicode emojis with shortnames for logging.
 def decode_emoji(message):
+    """Replaces unicode emojis with shortnames for logging"""
     for shortname_emoji, u_emoji in EMOJI.items():
         message = message.replace(u_emoji,shortname_emoji)
     return message
@@ -916,6 +916,8 @@ tibiaDatabase = sqlite3.connect(TIBIADB)
 DB_LASTVERSION = 5
 
 def initDatabase():
+    """Initializes and/or updates the database to the current version"""
+    
     #Database file is automatically created with connect, now we have to check if it has tables
     print("Checking database version...")
     db_version = 0
@@ -1059,14 +1061,12 @@ def formatMessage(message):
     message = re.sub(title,lambda m: m.group(1).title(), message)
     message = re.sub(skipproper,lambda m: m.group(2)+m.group(3) if m.group(3).istitle() else m.group(1)+m.group(2)+m.group(3) , message)
     return message
-########
 
-########weighedChoice
-##makes weighed choices from message lists where [0] is a value representing the relative odds of picking a message
-###and [1] is the message string
+
 def weighedChoice(messages,condition1=False,condition2=False,condition3=False,condition4=False):
-    """Makes weighed choices from message lists where [0] is a value representing the relative odd
+    """Makes weighed choices from message lists where [0] is a value representing the relative odds
     of picking a message and [1] is the message string"""
+    
     ##find the max range by adding up the weigh of every message in the list
     #and purge out messages that dont fulfil the conditions
     range = 0
@@ -1238,7 +1238,9 @@ def joinList(list,separator,endseparator):
     return separator.join(list[:size-1])+endseparator+str(list[size-1])
 
 def getAboutContent():
-    """Used to get the content of the /about command, to be used in /im Nab Bot too"""
+    """Returns a formatted string with general information about the bot.
+    
+    Used in /about and /whois Nab Bot"""
     user_count = 0
     char_count = 0
     try:

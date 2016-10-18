@@ -2,6 +2,11 @@ from utils import *
 
 @asyncio.coroutine
 def getPlayerDeaths(name, singleDeath = False, tries = 5):
+    """Returns a list with the player's deaths
+    
+    Each list element is a dictionary with the following keys: time, level, killer, byPlayer.
+    If singleDeath is true, it stops looking after fetching the first death.
+    May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly"""
     url = "https://secure.tibia.com/community/?subtopic=characters&name="+urllib.parse.quote(name)
     content = ""
     deathList = []
@@ -89,6 +94,9 @@ def getPlayerDeaths(name, singleDeath = False, tries = 5):
 
 @asyncio.coroutine
 def getServerOnline(server,tries = 5):
+    """Returns a list of all the online players in current server.
+    
+    Each list element is a dictionary with the following keys: name, level"""
     url = 'https://secure.tibia.com/community/?subtopic=worlds&world='+server
     onlineList = []
     content = ""
@@ -144,6 +152,11 @@ def getServerOnline(server,tries = 5):
 
 @asyncio.coroutine
 def getGuildOnline(guildname,titlecase=True,tries=5):
+    """Returns a list with the online players of a guild
+    
+    Each list element is a dictionary with the following keys: rank, name, title, vocation, level, joined.
+    Guilds are case sensitive on tibia.com so guildstats.eu is checked for correct case.
+    May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
     gstats_url = 'http://guildstats.eu/guild?guild='+urllib.parse.quote(guildname)
     #Fix casing using guildstats.eu if needed
     ##Sorry guildstats.eu :D
@@ -254,6 +267,13 @@ def getGuildOnline(guildname,titlecase=True,tries=5):
 
 @asyncio.coroutine
 def getPlayer(name, tries = 5):
+    """Returns a dictionary with a player's info
+    
+    The dictionary contains the following keys: name, deleted, level, vocation, world, residence,
+    married, gender, guild, last,login, chars*.
+        *chars is list that contains other characters in the same account (if not hidden).
+        Each list element is dictionary with the keys: name, world.
+    May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
     url = "https://secure.tibia.com/community/?subtopic=characters&name="+urllib.parse.quote(name)
     content = ""
     char = dict()
@@ -398,6 +418,7 @@ def getPlayer(name, tries = 5):
     return char
     
 def getRashidCity():
+    """Returns the city Rashid is currently in."""
     offset = getTibiaTimeZone() - getLocalTimezone()
     #Server save is at 10am, so in tibia a new day starts at that hour
     tibia_time = datetime.now()+timedelta(hours=offset-10)
@@ -410,6 +431,7 @@ def getRashidCity():
             "Carlin"][tibia_time.weekday()]
 
 def getItemByName(name):
+    """Returns an item's id by its name"""
     c = tibiaDatabase.cursor()
     c.execute("SELECT id FROM Items WHERE title LIKE ?",(name,))
     result = c.fetchone()
@@ -422,6 +444,7 @@ def getItemByName(name):
     return
 
 def getItemById(id):
+    """Returns an item's name by its id"""
     c = tibiaDatabase.cursor()
     c.execute("SELECT title FROM Items WHERE id LIKE ?",(id,))
     result = c.fetchone()
@@ -434,6 +457,9 @@ def getItemById(id):
     return
 
 def getLoot(id):
+    """Returns a tuple of a monster's item drops.
+    
+    Each tuple element is a dictionary with the following keys: itemid, percentage, min, max"""
     c = tibiaDatabase.cursor()
     c.execute("SELECT itemid FROM CreatureDrops WHERE creatureid LIKE ?",(id,))
     result = c.fetchone()
@@ -449,6 +475,11 @@ def getLoot(id):
     return
 
 def getMonster(name):
+    """Returns a dictionary with a monster's info.
+    
+    The dictionary has the following keys: name, id, hp, exp, maxdmg, elem_physical, elem_holy, 
+    elem_death, elem_fire, elem_energy, elem_ice, elem_earth, elem_drown, elem_lifedrain, senseinvis,
+    arm, image."""
     #Reading monster database
     c = tibiaDatabase.cursor()
     c.execute("SELECT title, id, health, experience, maxdamage, physical, holy, death, fire, energy, ice, earth, drown, lifedrain, senseinvis, abilities, armor, image FROM Creatures WHERE name LIKE ?",(name,))
@@ -468,6 +499,10 @@ def getMonster(name):
     return
 
 def getItem(itemname):
+    """Returns a dictionary containing an item's info.
+    
+    The dictionary has the following keys: name, look_text, npcs_sold*, value_sell, npcs_bought*, value_buy.
+        *npcs_sold and npcs_bought are list, each element is a dictionary with the keys: name, city."""
     #Reading item database
     c = tibiaDatabase.cursor()
 
@@ -551,8 +586,8 @@ def getItem(itemname):
         c.close()
     return
 
-#Gets a time object from a time string from tibia.com
 def getLocalTime(tibiaTime):
+    """Gets a time object from a time string from tibia.com"""
     #Getting local time and GMT
     t = time.localtime()
     u = time.gmtime(time.mktime(t))
@@ -576,6 +611,9 @@ def getLocalTime(tibiaTime):
     return t + timedelta(hours=(local_utc_offset - utc_offset))
 
 def getStats(level, vocation):
+    """Returns a dictionary with the stats for a character of a certain vocation and level.
+    
+    The dictionary has the following keys: vocation, hp, mp, cap."""
     try:
         level = int(level)
     except ValueError:
@@ -614,6 +652,7 @@ def getStats(level, vocation):
     return {"vocation" : vocation, "hp" : hp, "mp" : mp, "cap" : cap}
 
 def getCharString(char):
+    """Returns a formatted string containing a character's info."""
     if(char == ERROR_NETWORK or char == ERROR_DOESNTEXIST):
         return char
     pronoun = "He"
@@ -643,6 +682,9 @@ def getCharString(char):
     return reply
 
 def getMonsterString(monster,short=True):
+    """Returns a formatted string containing a character's info.
+    
+    If short is true, it returns a shorter version."""
     reply =monster['name']+"\r\n```"
     reply+="HP:"+str(monster['hp'])+"   Exp:"+str(monster['exp'])+"\r\n"
     reply+="HP/Exp Ratio: "+"{0:.2f}".format(monster['exp']/monster['hp']).zfill(4)
@@ -689,6 +731,9 @@ def getMonsterString(monster,short=True):
     return reply
 
 def getItemString(item,short=True):
+    """Returns a formatted string with an item's info.
+    
+    If short is true, it returns a shorter version."""
     reply = ""
     if('look_text' in item):
         reply = item['look_text']
@@ -722,6 +767,7 @@ def getItemString(item,short=True):
     return reply
 
 def getSpell(name):
+    """Returns a formatted string containing a spell's info."""
     c = tibiaDatabase.cursor()
     try:
         c.execute("""SELECT id, name, words, levelrequired, promotion, premium, goldcost, manacost,
@@ -760,10 +806,11 @@ def getSpell(name):
 
     finally:
         c.close()
+        
 ####################### Commands #######################
 
 class Tibia():
-    """Tibia related commands"""
+    """Tibia related commands."""
     def __init__(self, bot):
         self.bot = bot
 
