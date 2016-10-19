@@ -4,3 +4,4 @@ __pycache__
 console.txt
 *.log
 *.db-journal
+.idea
