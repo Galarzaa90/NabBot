@@ -1,52 +1,52 @@
 from utils import *
 
-##This is the name of the server where the bot will work
-###This bot doesn't support multiple servers yet
-###mainchannel is where the Bot will do announcements, but he will reply to commands everywhere
-###askchannel is a channel where the bot replies with full length messages (like on pms)
-####Messages that are not commands are automatically deleted in askchannel
+# This is the name of the server where the bot will work
+# This bot doesn't support multiple servers yet
+# mainchannel is where the Bot will do announcements, but he will reply to commands everywhere
+# askchannel is a channel where the bot replies with full length messages (like on pms)
+#   Messages that are not commands are automatically deleted in askchannel
 mainserver = "Redd Alliance/Bald Dwarfs"
 mainchannel = "general-chat"
 askchannel = "ask-nabbot"
 
-##It's possible to fetch the database contents on a website to show more entries than what the bot can display
-##If enabled, certain commands will link to the website
+# It's possible to fetch the database contents on a website to show more entries than what the bot can display
+# If enabled, certain commands will link to the website
 siteEnabled = True
 baseUrl = "http://galarzaa.no-ip.org:7005/ReddAlliance/"
 charactersPage = "characters.php"
 deathsPage = "deaths.php"
 levelsPage = "levels.php"
 
-#Discord id for the users that can use admin commands
-admin_ids = ["162060569803751424","162070610556616705","164253469912334350","159815675194507265"]
-#Enable of disable specific timezones for /time
+# Discord id for the users that can use admin commands
+admin_ids = ["162060569803751424", "162070610556616705", "164253469912334350", "159815675194507265"]
+# Enable of disable specific timezones for /time
 displayBrasiliaTime = True
 displaySonoraTime = True
 
-#The list of servers to check for with getServerOnline
+# The list of servers to check for with getServerOnline
 tibiaservers = ["Fidera"]
 
-##Time since joining until the bot will ignore /im from an user. (See: /im in nabbot.py)
-#Note that an user can simply rejoin the server to reset his join date, but that will trigger a log message.
+# Time since joining until the bot will ignore /im from an user. (See: /im in nabbot.py)
+# Note that an user can simply rejoin the server to reset his join date, but that will trigger a log message.
 timewindow_im_joining = timedelta(days=3)
 
-###this is the global online list
-##dont look at it too closely or you'll go blind!
-##characters are added as servername_charactername and the list is updated periodically on think() using getServerOnline()
+# This is the global online list
+# don't look at it too closely or you'll go blind!
+# characters are added as servername_charactername and the list is updated periodically on think() using getServerOnline()
 globalOnlineList = []
 
-#level treshold for announces (level < announceLevel)
+# Level threshold for announces (level < announceLevel)
 announceTreshold = 30
 
-#delay inbetween server checks
+# Delay inbreed server checks
 serveronline_delay = timedelta(seconds=25)
 
-#delay inbetween player death checks
+# Delay in between player death checks
 playerdeath_delay = timedelta(seconds=15)
 
 lastmessages = ["","","","","","","","","",""]
-###message list for announceLevel ({charName}, {newLevel} , {pronoun1} (he/she), {pronoun2} (his/her), {pronoun3} (him/her))
-##values are: relative chance(int), message(str), valid vocations(iterable or False to ignore), valid levels(iterable or False to ignore)
+# Message list for announceLevel ({charName}, {newLevel} , {pronoun1} (he/she), {pronoun2} (his/her), {pronoun3} (him/her))
+# Values are: relative chance(int), message(str), valid vocations(iterable or False to ignore), valid levels(iterable or False to ignore)
 levelmessages = [[100,"Congratulations to **{charName}** on reaching level {newLevel}!"],
 [100,"**{charName}** is level {newLevel} now, congrats!"],
 [80,"**{charName}** has reached level {newLevel}, die and lose it, noob!"],
@@ -139,10 +139,8 @@ deathmessages_player = [[100,"**{charName}** ({deathLevel}) got rekt! **{deathKi
 [100,"HALP **{deathKiller}** is going around killing innocent **{charName}** ({deathLevel})!"],
 [100,"Next time stay away from **{deathKiller}**, **{charName}** ({deathLevel})."]]
 
-########
 
-
-##Databases filenames
+# Databases filenames
 USERDB = "users.db"
 TIBIADB = "Database.db"
 

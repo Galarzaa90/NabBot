@@ -11,7 +11,7 @@ if len(sys.argv) > 1:
 else:
     resetid = 0
     
-if(platform.system() == "Linux"):
+if platform.system() == "Linux":
     os.system("python3 nabbot.py {0}".format(resetid)) 
 else:
     os.system("python nabbot.py {0}".format(resetid))

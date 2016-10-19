@@ -81,7 +81,7 @@ def on_member_join(member):
 @bot.event
 @asyncio.coroutine
 def on_member_remove(member):
-    """Caleld every time a member leaves or is kicked from a server."""
+    """Called every time a member leaves or is kicked from a server."""
     log.info("A member left discord: {0.display_name} (ID: {0.id})".format(member))
 
 
@@ -331,6 +331,7 @@ def think():
         yield from asyncio.sleep(1)
 
 
+@asyncio.coroutine
 def checkDeath(character):
     """Gets death list for a character (from database)
 
@@ -591,9 +592,9 @@ def about():
     yield from bot.say(getAboutContent())
 
 
-@bot.command(pass_context=True,aliases=["event","checkevents","checkevent"])
+@bot.command(pass_context=True, aliases=["event", "checkevents", "checkevent"])
 @asyncio.coroutine
-def events(ctx,*args : str):
+def events(ctx, *args: str):
     """Shows a list of current active events
     
     The following subcommands are only available through PMs or askchannel
@@ -735,7 +736,7 @@ def events(ctx,*args : str):
             if m.group(3):
                 date += int(m.group(3))*60
 
-            c.execute("UPDATE events SET start = ? WHERE id = ?",(date,id,))
+            c.execute("UPDATE events SET start = ? WHERE id = ?", (date, id,))
             yield from bot.say("Your events start time was changed successfully.")
 
         if args[0] == "delete":
@@ -762,14 +763,14 @@ def events(ctx,*args : str):
         c.close()
 
 
-##### Admin only commands ####
+# Admin only commands #
 @bot.command(pass_context=True, hidden=True)
 @asyncio.coroutine
 def makesay(ctx, *args: str):
     if ctx.message.author.id not in admin_ids:
         return
     if ctx.message.channel.is_private:
-        channel = getChannelByServerAndName(mainserver,mainchannel)
+        channel = getChannelByServerAndName(mainserver, mainchannel)
         yield from bot.send_message(channel, " ".join(args))
     else:
         yield from bot.delete_message(ctx.message)
@@ -1048,7 +1049,7 @@ def stalk_error(error, ctx):
 
 
 # Restart command
-@bot.command(pass_context=True,hidden=True)
+@bot.command(pass_context=True, hidden=True)
 @asyncio.coroutine
 def restart(ctx):
     if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
@@ -1065,7 +1066,7 @@ def restart(ctx):
 
 
 # Shutdown command
-@bot.command(pass_context=True,hidden=True)
+@bot.command(pass_context=True, hidden=True)
 @asyncio.coroutine
 def shutdown(ctx):
     if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
@@ -1096,7 +1097,7 @@ def roles(ctx):
 
 @bot.command(pass_context=True)
 @asyncio.coroutine
-def role(ctx, *roleName: str):
+def role(ctx, *roleName:str):
     """Shows member list within the specified role"""
     # If you call via PM, then server=None, so you can't find the roles
     if ctx.message.channel.is_private:
@@ -1110,7 +1111,7 @@ def role(ctx, *roleName: str):
     # Need to get all roles and check all members because there's
     # no API call like role.getMembers
     for role in getListRoles(ctx.message.server):
-        if (role.name.lower() == lowerRoleName):
+        if role.name.lower() == lowerRoleName:
             roleDict[role] = []
 
     if len(roleDict) > 0:

@@ -16,10 +16,11 @@ from calendar import timegm
 import sys
 import aiohttp
 
-#Command list (populated automatically, used to check if a message is(n't) a command invocation)
+
+# Command list (populated automatically, used to check if a message is(n't) a command invocation)
 command_list = []
-#Emoji code
-#Emoji :shortname: list
+# Emoji code
+# Emoji :shortname: list
 EMOJI = {":_hotdog:":chr(0x1F32D),
          ":_robot:":chr(0x1F916),
          ":_necklace:":chr(0x1F4FF),
@@ -882,43 +883,44 @@ def decode_emoji(message):
 from config import *
 bot = ""
 
-#Global constants
+# Global constants
 ERROR_NETWORK = 0
 ERROR_DOESNTEXIST = 1
 
-#Start logging
-#Create logs folder
+# Start logging
+# Create logs folder
 os.makedirs('logs/',exist_ok=True)
-##discord.py log
+# discord.py log
 discord_log = logging.getLogger('discord')
 discord_log.setLevel(logging.INFO)
 handler = logging.FileHandler(filename='logs/discord.log', encoding='utf-8', mode='a')
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 discord_log.addHandler(handler)
-##NabBot log
+# NabBot log
 log = logging.getLogger(__name__ )
 log.setLevel(logging.DEBUG)
-###Save log to file (info level)
+# Save log to file (info level)
 fileHandler = logging.FileHandler(filename='logs/nabbot.log', encoding='utf-8', mode='a')
 fileHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
 fileHandler.setLevel(logging.INFO)
 log.addHandler(fileHandler)
-###Print output to console too (debug level)
+# Print output to console too (debug level)
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
 consoleHandler.setLevel(logging.DEBUG)
 log.addHandler(consoleHandler)
 
-#Database global connections
+# Database global connections
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 
 DB_LASTVERSION = 5
 
+
 def initDatabase():
     """Initializes and/or updates the database to the current version"""
     
-    #Database file is automatically created with connect, now we have to check if it has tables
+    # Database file is automatically created with connect, now we have to check if it has tables
     print("Checking database version...")
     db_version = 0
     try:
@@ -1005,12 +1007,13 @@ def initDatabase():
 
 def vocAbb(vocation):
     """Given a vocation name, it returns an abbreviated string """
-    abbrev = {'None' : 'N', 'Druid' : 'D', 'Sorcerer' : 'S', 'Paladin' : 'P', 'Knight' : 'K',
-    'Elder Druid' : 'ED', 'Master Sorcerer' : 'MS', 'Royal Paladin' : 'RP', 'Elite Knight' : 'EK'}
+    abbrev = {'None': 'N', 'Druid': 'D', 'Sorcerer': 'S', 'Paladin': 'P', 'Knight': 'K', 'Elder Druid': 'ED',
+              'Master Sorcerer': 'MS', 'Royal Paladin': 'RP', 'Elite Knight': 'EK'}
     try:
         return abbrev[vocation]
     except KeyError:
         return 'N'
+
 
 def getLogin():
     """When the bot is run without a login.py file, it prompts the user for login info"""
@@ -1018,10 +1021,10 @@ def getLogin():
         print("This seems to be the first time NabBot is ran (or login.py is missing)")
         print("To run your own instance of NabBot you need to create a new bot account to get a bot token")
         print("https://discordapp.com/developers/applications/me")
-        print("Alternatively, you can use a regular discord account for your bot, althought this is not recommended")
+        print("Alternatively, you can use a regular discord account for your bot, although this is not recommended")
         print("Insert a bot token OR an e-mail address for a regular account to be used as a bot")
         login = input(">>")
-        email = "";
+        email = ""
         password = ""
         token = ""
         if "@" in login:
@@ -1032,43 +1035,45 @@ def getLogin():
         else:
             input("What you entered isn't a token or an e-mail. Restart NabBot to retry.")
             quit()
-        f = open("login.py","w+")
+        f = open("login.py", "w+")
         f.write("#Token always has priority, if token is defined it will always attempt to login using a token\n")
         f.write("#Comment the token line or set it empty to use email login\n")
-        f.write("token = '{0}'\nemail = '{1}'\npassword = '{2}'\n".format(token,email,password))
+        f.write("token = '{0}'\nemail = '{1}'\npassword = '{2}'\n".format(token, email, password))
         f.close()
         print("Login data has been saved correctly. You can change this later by editing login.py")
         input("Press any key to start NabBot now...")
         quit()
     return __import__("login")
 
+
 def utilsGetBot(_bot):
     global bot
     bot = _bot
 
+
 def formatMessage(message):
     """##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/"""
     upper = r'\\(.+?)/'
-    upper = re.compile(upper,re.MULTILINE+re.S)
+    upper = re.compile(upper, re.MULTILINE+re.S)
     lower = r'/(.+?)\\'
-    lower = re.compile(lower,re.MULTILINE+re.S)
+    lower = re.compile(lower, re.MULTILINE+re.S)
     title = r'/(.+?)/'
-    title = re.compile(title,re.MULTILINE+re.S)
+    title = re.compile(title, re.MULTILINE+re.S)
     skipproper = r'\^(.+?)\^(.+?)([a-zA-Z])'
     skipproper = re.compile(skipproper,re.MULTILINE+re.S)
-    message = re.sub(upper,lambda m: m.group(1).upper(), message)
-    message = re.sub(lower,lambda m: m.group(1).lower(), message)
-    message = re.sub(title,lambda m: m.group(1).title(), message)
-    message = re.sub(skipproper,lambda m: m.group(2)+m.group(3) if m.group(3).istitle() else m.group(1)+m.group(2)+m.group(3) , message)
+    message = re.sub(upper, lambda m: m.group(1).upper(), message)
+    message = re.sub(lower, lambda m: m.group(1).lower(), message)
+    message = re.sub(title, lambda m: m.group(1).title(), message)
+    message = re.sub(skipproper, lambda m: m.group(2)+m.group(3) if m.group(3).istitle() else m.group(1)+m.group(2)+m.group(3), message)
     return message
 
 
-def weighedChoice(messages,condition1=False,condition2=False,condition3=False,condition4=False):
+def weighedChoice(messages, condition1=False, condition2=False, condition3=False, condition4=False):
     """Makes weighed choices from message lists where [0] is a value representing the relative odds
     of picking a message and [1] is the message string"""
     
-    ##find the max range by adding up the weigh of every message in the list
-    #and purge out messages that dont fulfil the conditions
+    # Find the max range by adding up the weigh of every message in the list
+    # and purge out messages that dont fulfil the conditions
     range = 0
     _messages = []
     for message in messages:
@@ -1091,22 +1096,22 @@ def weighedChoice(messages,condition1=False,condition2=False,condition3=False,co
         else:
             range = range+(message[0] if not message[1] in lastmessages else message[0]/10)
             _messages.append(message)
-    #choose a random number
+    # Choose a random number
     rangechoice = random.randint(0, range)
-    #iterate until we find the matching message
+    # Iterate until we find the matching message
     rangepos = 0
     for message in _messages:
-        if rangechoice >= rangepos and rangechoice < rangepos+(message[0] if not message[1] in lastmessages else message[0]/10):
+        if rangepos <= rangechoice < rangepos+(message[0] if not message[1] in lastmessages else message[0]/10):
             currentChar = lastmessages.pop()
             lastmessages.insert(0, message[1])
             return message[1]
         rangepos = rangepos+(message[0] if not message[1] in lastmessages else message[0]/10)
-    #this shouldnt ever happen...
+    # This shouldnt ever happen...
     print("Error in weighedChoice!")
     return _messages[0][1]
 
     
-def getChannelByServerAndName(server_name : str, channel_name : str):
+def getChannelByServerAndName(server_name: str, channel_name: str):
     """Returns a channel within a server
     
     If server_name is left blank, it will search on all servers the bot can see"""
@@ -1121,9 +1126,9 @@ def getChannelByName(channel_name : str):
     """Alias for getChannelByServerAndName
     
     mainserver is searched first, then all visible servers"""
-    channel = getChannelByServerAndName(mainserver,channel_name)
+    channel = getChannelByServerAndName(mainserver, channel_name)
     if channel is None:
-        return getChannelByServerAndName("",channel_name)
+        return getChannelByServerAndName("", channel_name)
     return channel
 
 
@@ -1131,6 +1136,7 @@ def getServerByName(server_name : str):
     """Returns a server by its name"""
     server = discord.utils.find(lambda m: m.name == server_name, bot.servers)
     return server
+
 
 def getUserByName(userName):
     """Returns a discord user by its name
@@ -1149,6 +1155,7 @@ def getUserByName(userName):
             user = private.user
     return user
 
+
 def getUserById(userId):
     """Returns a discord user by its id"""
     user = discord.utils.find(lambda m: m.id == str(userId), bot.get_all_members())
@@ -1158,12 +1165,13 @@ def getUserById(userId):
             user = private.user
     return user
 
+
 def getTimeDiff(time):
     """Returns a string showing the time difference of a timedelta"""
     if not isinstance(time, timedelta):
         return None
     hours = time.seconds//3600
-    minutes = (time.seconds//60)%60
+    minutes = (time.seconds//60) % 60
     if time.days > 1:
         return "{0} days".format(time.days)
     if time.days == 1:
@@ -1177,18 +1185,19 @@ def getTimeDiff(time):
     else:
         return "moments"
 
+
 def getLocalTimezone():
     """Returns the server's local time zone"""
-    #Getting local time and GMT
+    # Getting local time and GMT
     t = time.localtime()
     u = time.gmtime(time.mktime(t))
-    #UTC Offset
-    return ((timegm(t) - timegm(u))/60/60)
+    # UTC Offset
+    return (timegm(t) - timegm(u)) / 60 / 60
 
-##Returns Germany's timezone, considering their daylight saving time dates
+
 def getTibiaTimeZone():
     """Returns Germany's timezone, considering their daylight saving time dates"""
-    #Find date in Germany
+    # Find date in Germany
     gt = datetime.utcnow()+timedelta(hours=1)
     germany_date = date(gt.year,gt.month,gt.day)
     dst_start = date(gt.year,3,(31 - (int(((5 * gt.year) / 4) + 4) % int(7))))
@@ -1199,7 +1208,7 @@ def getTibiaTimeZone():
     
 def getBrasiliaTimeZone():
     """Returns Brasilia's timezone, considering their daylight saving time dates"""
-    #Find date in Brasilia
+    # Find date in Brasilia
     bt = datetime.utcnow()-timedelta(hours=3)
     brasilia_date = date(bt.year,bt.month,bt.day)
     dst_start = date(bt.year,10,16)#These are the dates for the 2016/2017 time change, they vary yearly but ¯\0/¯, good enough
@@ -1228,7 +1237,7 @@ def getUptime():
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
 
-def joinList(list,separator,endseparator):
+def joinList(list, separator, endseparator):
     """Joins elements in a list with a separator between all elements and a different separator for the last element."""
     size = len(list)
     if size == 0:
@@ -1236,6 +1245,7 @@ def joinList(list,separator,endseparator):
     if size == 1:
         return list[0]
     return separator.join(list[:size-1])+endseparator+str(list[size-1])
+
 
 def getAboutContent():
     """Returns a formatted string with general information about the bot.
@@ -1265,13 +1275,14 @@ def getAboutContent():
     reply += "\t- Tracked chars: "+str(char_count)
     return reply
 
+
 def getListRoles(server):
     """Lists all role within the discord server and returns to caller."""
     
     roles = []
     
     for role in server.roles:
-        #Ignore @everyone and @NabBot
+        # Ignore @everyone and @NabBot
         if role.name not in ["@everyone", "Nab Bot"]:
             roles.append(role)
       
