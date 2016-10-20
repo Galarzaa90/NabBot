@@ -2,14 +2,13 @@ from utils import *
 
 
 @asyncio.coroutine
-def getPlayerDeaths(name, singleDeath=False, tries=5):
+def getPlayerDeaths(name, single_death=False, tries=5):
     """Returns a list with the player's deaths
     
     Each list element is a dictionary with the following keys: time, level, killer, byPlayer.
-    If singleDeath is true, it stops looking after fetching the first death.
+    If single_death is true, it stops looking after fetching the first death.
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly"""
     url = "https://secure.tibia.com/community/?subtopic=characters&name="+urllib.parse.quote(name)
-    content = ""
     deathList = []
 
     # Fetch website
@@ -22,18 +21,18 @@ def getPlayerDeaths(name, singleDeath=False, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from getPlayerDeaths(name, singleDeath, tries)
+            ret = yield from getPlayerDeaths(name, single_death, tries)
             return ret
 
-    if content == "":
+    if not content:
         log.error("getPlayerDeaths: Couldn't fetch {0}, network error.".format(name))
         return ERROR_NETWORK
 
     # Trimming content to reduce load
     try:
-        startIndex = content.index('<div class="BoxContent"')
-        endIndex = content.index("<B>Search Character</B>")
-        content = content[startIndex:endIndex]
+        start_index = content.index('<div class="BoxContent"')
+        end_index = content.index("<B>Search Character</B>")
+        content = content[start_index:end_index]
     except ValueError:
         # Website fetch was incomplete, due to a network error
         if tries == 0:
@@ -41,7 +40,7 @@ def getPlayerDeaths(name, singleDeath=False, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from getPlayerDeaths(name, singleDeath, tries)
+            ret = yield from getPlayerDeaths(name, single_death, tries)
             return ret
 
     # Check if player exists
@@ -53,8 +52,8 @@ def getPlayerDeaths(name, singleDeath=False, tries=5):
         return deathList
 
     # Trimming content again once we've checked char exists and has deaths
-    startIndex = content.index("<b>Character Deaths</b>")
-    content = content[startIndex:]
+    start_index = content.index("<b>Character Deaths</b>")
+    content = content[start_index:]
 
     regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
     pattern = re.compile(regex_deaths, re.MULTILINE+re.S)
@@ -89,7 +88,7 @@ def getPlayerDeaths(name, singleDeath=False, tries=5):
                 deathByPlayer = True
 
         deathList.append({'time': deathTime, 'level': deathLevel, 'killer': deathKiller, 'byPlayer': deathByPlayer})
-        if singleDeath:
+        if single_death:
             break
     return deathList
 
@@ -101,7 +100,6 @@ def getServerOnline(server, tries=5):
     Each list element is a dictionary with the following keys: name, level"""
     url = 'https://secure.tibia.com/community/?subtopic=worlds&world='+server
     onlineList = []
-    content = ""
 
     # Fetch website
     try:
@@ -117,7 +115,7 @@ def getServerOnline(server, tries=5):
             ret = yield from getServerOnline(server,tries)
             return ret
 
-    while content == "" and tries > 0:
+    while not content and tries > 0:
         try:
             page = yield from aiohttp.get(url)
             content = yield from page.text(encoding='ISO-8859-1')
@@ -126,9 +124,9 @@ def getServerOnline(server, tries=5):
 
     # Trimming content to reduce load
     try:
-        startIndex = content.index('<div class="BoxContent"')
-        endIndex = content.index('<div id="ThemeboxesColumn" >')
-        content = content[startIndex:endIndex]
+        start_index = content.index('<div class="BoxContent"')
+        end_index = content.index('<div id="ThemeboxesColumn" >')
+        content = content[start_index:end_index]
     except ValueError:
         # Website fetch was incomplete due to a network error
         if tries == 0:
@@ -471,7 +469,7 @@ def getLoot(id):
     c.execute("SELECT itemid FROM CreatureDrops WHERE creatureid LIKE ?", (id,))
     result = c.fetchone()
     try:
-        if(result is not None):
+        if result is not None:
             c.execute(
                 "SELECT itemid, percentage, min, max FROM CreatureDrops WHERE creatureid LIKE ? ORDER BY percentage DESC",
                 (id,)
@@ -527,10 +525,10 @@ def getItem(itemname):
             item = dict(zip(['name','look_text'], result))
 
             # Checking NPCs that buy the item
-            c.execute("SELECT NPCs.title, city, value"+
-            " FROM Items, SellItems, NPCs WHERE Items.name LIKE ?"+
-            " AND SellItems.itemid = Items.id AND NPCs.id = vendorid"+
-            " ORDER BY value DESC",(itemname,))
+            c.execute("SELECT NPCs.title, city, value "
+                      "FROM Items, SellItems, NPCs "
+                      "WHERE Items.name LIKE ? AND SellItems.itemid = Items.id AND NPCs.id = vendorid "
+                      "ORDER BY value DESC", (itemname,))
             npcs = []
             value_sell = None
             for row in c:
@@ -554,10 +552,10 @@ def getItem(itemname):
             item['value_sell'] = value_sell
 
             # Checking NPCs that sell the item
-            c.execute("SELECT NPCs.title, city, value"+
-            " FROM Items, BuyItems, NPCs WHERE Items.name LIKE ?"+
-            " AND BuyItems.itemid = Items.id AND NPCs.id = vendorid"+
-            " ORDER BY value ASC",(itemname,))
+            c.execute("SELECT NPCs.title, city, value "
+                      "FROM Items, BuyItems, NPCs "
+                      "WHERE Items.name LIKE ? AND BuyItems.itemid = Items.id AND NPCs.id = vendorid "
+                      "ORDER BY value ASC", (itemname,))
             npcs = []
             value_buy = None
             for row in c:
@@ -617,7 +615,7 @@ def getLocalTime(tibiaTime):
         utc_offset = 2
     else:
         return None
-    # Add/substract hours to get the real time
+    # Add/subtract hours to get the real time
     return t + timedelta(hours=(local_utc_offset - utc_offset))
 
 
@@ -670,27 +668,29 @@ def getCharString(char):
     pronoun = "He"
     if char['gender'] == "female":
         pronoun = "She"
-    replyF = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}"
-    guildF = "\n{0} is __{1}__ of the **{2}**."
-    marriedF = "\n{0} is married to **{1}**."
+    reply_format = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}"
+    guild_format = "\n{0} is __{1}__ of the **{2}**."
+    married_format = "\n{0} is married to **{1}**."
+    login_format = "\n{0} hasn't logged in for **{1}**."
     guild = ""
     married = ""
+    login = "\n{0} has **never** logged in.".format(pronoun)
     if char.get('guild', None):
-        guild = guildF.format(pronoun,char['rank'],char['guild'])
+        guild = guild_format.format(pronoun, char['rank'], char['guild'])
     if char.get('married', None):
-        married = marriedF.format(pronoun,char['married'])
+        married = married_format.format(pronoun, char['married'])
 
-    loginStr = "\n{0} has **never** logged in.".format(pronoun)
     if char['last_login'] is not None:
         last_login = getLocalTime(char['last_login'])
         now = datetime.now()
-        timediff = now-last_login
-        if timediff.days > 7:
-            loginStr = "\n{0} hasn't logged in for **{1}**.".format(pronoun,getTimeDiff(timediff))
+        time_diff = now-last_login
+        if time_diff.days > last_login_days:
+            login = login_format.format(pronoun, getTimeDiff(time_diff))
         else:
-            loginStr = ""
+            login = ""
 
-    reply = replyF.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'], char['world'], guild, married, loginStr)
+    reply = reply_format.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'],
+                                char['world'], guild, married, login)
     return reply
 
 
@@ -809,7 +809,7 @@ def getSpell(name):
         result = c.fetchall()
         # This should always be true
         if result is not None:
-            for (name,city,knight, paladin, sorcerer, druid) in result:
+            for (name, city, knight, paladin, sorcerer, druid) in result:
                 seller = {"name": name,
                           "city": city.title(),
                           "knight": True if knight == 1 else False,
@@ -829,7 +829,7 @@ class Tibia():
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(aliases=['check','player','checkplayer','char','character'])
+    @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'])
     @asyncio.coroutine
     def whois(self, *name: str):
         """Tells you the characters of a user or the owner of a character and/or information of a tibia character
@@ -911,7 +911,7 @@ class Tibia():
 
     @commands.command(aliases=['expshare', 'party'])
     @asyncio.coroutine
-    def share(self,*param : str):
+    def share(self, *param: str):
         """Shows the sharing range for that level or character"""
         level = 0
         name = ''

@@ -38,6 +38,9 @@ globalOnlineList = []
 # Level threshold for announces (level < announceLevel)
 announceTreshold = 30
 
+# Minimum days to show last login in /check command.
+last_login_days = 7
+
 # Delay inbreed server checks
 serveronline_delay = timedelta(seconds=25)
 
