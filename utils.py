@@ -1212,7 +1212,7 @@ def getBrasiliaTimeZone():
     bt = datetime.utcnow()-timedelta(hours=3)
     brasilia_date = date(bt.year,bt.month,bt.day)
     dst_start = date(bt.year,10,16)#These are the dates for the 2016/2017 time change, they vary yearly but ¯\0/¯, good enough
-    dst_end = date(bt.year,2,21)
+    dst_end = date(bt.year+1,2,21)
     if dst_start < brasilia_date < dst_end:
         return -2
     return -3
