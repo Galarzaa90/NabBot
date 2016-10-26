@@ -295,6 +295,7 @@ def think():
                                 "UPDATE chars SET last_death_time = ? WHERE name LIKE ?",
                                 (None, serverChar['name'],)
                             )
+                            yield from checkDeath(serverChar['name'])
 
                         # Else we check for levelup
                         elif lastLevel < serverChar['level'] and lastLevel > 0:
