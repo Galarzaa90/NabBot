@@ -117,14 +117,17 @@ def announceEvents():
     secondAnnouncement = 60*15
     thirdAnnouncement = 60*5
     c = userDatabase.cursor()
-    channel = getChannelByServerAndName(mainserver, mainchannel)
     try:
+        channel = getChannelByServerAndName(mainserver, mainchannel)
         # Current time
         date = time.time()
         # Find incoming events
 
         # First announcement
-        c.execute("SELECT creator, start, name, id FROM events WHERE start < ? AND start > ? AND active = 1 AND status > 3 ORDER by start ASC", (date+firstAnnouncement+60, date+firstAnnouncement,))
+        c.execute("SELECT creator, start, name, id "
+                  "FROM events "
+                  "WHERE start < ? AND start > ? AND active = 1 AND status > 3 "
+                  "ORDER by start ASC", (date+firstAnnouncement+60, date+firstAnnouncement,))
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
@@ -141,11 +144,14 @@ def announceEvents():
                     start = '{0} minutes'.format(minutes)
 
                 message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name, author, start, id)
-                c.execute("UPDATE events SET status = 3 WHERE id = ?",(id,))
+                c.execute("UPDATE events SET status = 3 WHERE id = ?", (id,))
                 log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, id))
                 yield from bot.send_message(channel, message)
         # Second announcement
-        c.execute("SELECT creator, start, name, id FROM events WHERE start < ? AND start > ? AND active = 1 AND status > 2 ORDER by start ASC", (date+secondAnnouncement+60, date+secondAnnouncement,))
+        c.execute("SELECT creator, start, name, id "
+                  "FROM events "
+                  "WHERE start < ? AND start > ? AND active = 1 AND status > 2 "
+                  "ORDER by start ASC", (date+secondAnnouncement+60, date+secondAnnouncement,))
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
@@ -166,7 +172,10 @@ def announceEvents():
                 log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, id))
                 yield from bot.send_message(channel, message)
         # Third announcement
-        c.execute("SELECT creator, start, name, id FROM events WHERE start < ? AND start > ? AND active = 1 AND status > 1 ORDER by start ASC",(date+thirdAnnouncement+60, date+thirdAnnouncement,))
+        c.execute("SELECT creator, start, name, id "
+                  "FROM events "
+                  "WHERE start < ? AND start > ? AND active = 1 AND status > 1 "
+                  "ORDER by start ASC", (date+thirdAnnouncement+60, date+thirdAnnouncement,))
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
@@ -187,7 +196,10 @@ def announceEvents():
                 log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, id))
                 yield from bot.send_message(channel, message)
         # Last announcement
-        c.execute("SELECT creator, start, name, id FROM events WHERE start < ? AND start > ? AND active = 1 AND status > 0 ORDER by start ASC",(date+60,date,))
+        c.execute("SELECT creator, start, name, id "
+                  "FROM events "
+                  "WHERE start < ? AND start > ? AND active = 1 AND status > 0 "
+                  "ORDER by start ASC", (date+60,date,))
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
@@ -207,6 +219,8 @@ def announceEvents():
                 c.execute("UPDATE events SET status = 0 WHERE id = ?", (id,))
                 log.info("Announcing event: {0} (by @{1},ID:{3}) - Starting ({2})".format(name, author, start, id))
                 yield from bot.send_message(channel, message)
+    except AttributeError:
+        pass
     finally:
         userDatabase.commit()
         c.close()
@@ -251,7 +265,7 @@ def think():
                             offlineList.append(char)
                 for nowOfflineChar in offlineList:
                     globalOnlineList.remove(nowOfflineChar)
-                    # Check for deaths and levelups when removing from online list
+                    # Check for deaths and level ups when removing from online list
                     nowOfflineChar = yield from getPlayer(nowOfflineChar.split("_",1)[1])
                     if not(nowOfflineChar == ERROR_NETWORK or nowOfflineChar == ERROR_DOESNTEXIST):
                         c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (nowOfflineChar['name'],))
@@ -298,14 +312,14 @@ def think():
                             yield from checkDeath(serverChar['name'])
 
                         # Else we check for levelup
-                        elif lastLevel < serverChar['level'] and lastLevel > 0:
+                        elif serverChar['level'] > lastLevel > 0:
                             # Saving level up date in database
                             c.execute(
                                 "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
                                 (result[2], serverChar['level'], time.time(),)
                             )
                             # Announce the level up
-                            yield from announceLevel(serverChar['name'],serverChar['level'])
+                            yield from announceLevel(serverChar['name'], serverChar['level'])
 
                 # Close cursor and commit changes
                 userDatabase.commit()
@@ -316,7 +330,7 @@ def think():
 
         # Periodically check for deaths
         if datetime.now() - lastPlayerDeathCheck > playerdeath_delay and len(globalOnlineList) > 0:
-            # Pop last char in qeue, reinsert it at the beggining
+            # Pop last char in queue, reinsert it at the beginning
             currentChar = globalOnlineList.pop()
             globalOnlineList.insert(0, currentChar)
 
