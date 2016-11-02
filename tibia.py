@@ -488,15 +488,16 @@ def getMonster(name):
     The dictionary has the following keys: name, id, hp, exp, maxdmg, elem_physical, elem_holy, 
     elem_death, elem_fire, elem_energy, elem_ice, elem_earth, elem_drown, elem_lifedrain, senseinvis,
     arm, image."""
+    # TODO: Row factory applied locally, remove once it's implemented globally
+    tibiaDatabase.row_factory = dict_factory
+
     # Reading monster database
     c = tibiaDatabase.cursor()
-    c.execute("SELECT title, id, health, experience, maxdamage, physical, holy, death, fire, energy, ice, earth, drown, lifedrain, senseinvis, abilities, armor, image FROM Creatures WHERE name LIKE ?",(name,))
-    result = c.fetchone()
+    c.execute("SELECT * FROM Creatures WHERE name LIKE ?", (name,))
+    monster = c.fetchone()
     try:
         # Checking if monster exists
-        if(result is not None):
-            # Turning result tuple into dictionary
-            monster = dict(zip(['name', 'id', 'hp', 'exp', 'maxdmg', 'elem_physical', 'elem_holy', 'elem_death', 'elem_fire', 'elem_energy', 'elem_ice','elem_earth', 'elem_drown', 'elem_lifedrain', 'senseinvis', 'abilities', 'arm', 'image'], result))
+        if monster is not None:
             if monster['hp'] is None or monster['hp'] < 1:
                 monster['hp'] = 1
             if monster['exp'] is None or monster['exp'] < 1:
