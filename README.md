@@ -40,10 +40,10 @@ python nabbot.py
 ```
 
 ##Current features
-* Character database to keep track of the member's characters;
-* Level up and deaths are announced by the bot;
-* Events can be created by users and announced by the bot;
-* Items/Monsters database;
+* Character database to keep track of the member's characters
+* Level up and deaths are announced by the bot
+* Events can be created by users and announced by the bot
+* Items/Monsters database
 
 
 ### Commands
