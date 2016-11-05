@@ -1121,7 +1121,7 @@ def roles(ctx, *userName:str):
 
             #Ignoring "default" roles
             for role in user.roles:
-                if role.name not in ["@everyone", "NabBotTx"]:
+                if role.name not in ["@everyone", "Nab Bot"]:
                     roles.append(role.name)
 
             #There shouldn't be anyone without active roles, but since people can check for NabBot,
