@@ -1002,7 +1002,7 @@ class Tibia():
         itemname = " ".join(itemname).strip()
         item = getItem(itemname)
         if item is not None:
-            filename = item['name'] + ".gif"
+            filename = item['name'] + ".png"
             while os.path.isfile(filename):
                 filename = "_" + filename
             with open(filename, "w+b") as f:
@@ -1034,7 +1034,7 @@ class Tibia():
             return
         monster = getMonster(monstername)
         if monster is not None:
-            filename = monster['name']+".gif"
+            filename = monster['name']+".png"
             while os.path.isfile(filename):
                 filename = "_"+filename
             with open(filename, "w+b") as f:
