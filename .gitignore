@@ -5,3 +5,4 @@ console.txt
 *.log
 *.db-journal
 .idea
+*.gif

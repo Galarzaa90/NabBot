@@ -433,34 +433,7 @@ def getRashidCity():
             "Carlin"][tibia_time.weekday()]
 
 
-def getItemByName(name):
-    """Returns an item's id by its name"""
-    c = tibiaDatabase.cursor()
-    c.execute("SELECT id FROM Items WHERE title LIKE ?", (name,))
-    result = c.fetchone()
-    try:
-        if result is not None:
-            item = dict(zip(['id'], result))
-            return item
-    finally:
-        c.close()
-    return
-
-
-def getItemById(id):
-    """Returns an item's name by its id"""
-    c = tibiaDatabase.cursor()
-    c.execute("SELECT title FROM Items WHERE id LIKE ?", (id,))
-    result = c.fetchone()
-    try:
-        if result is not None:
-            item = dict(zip(['name'], result))
-            return item
-    finally:
-        c.close()
-    return
-
-
+# TODO: Merge this into getMonster()
 def getLoot(id):
     """Returns a tuple of a monster's item drops.
     
@@ -470,9 +443,11 @@ def getLoot(id):
     result = c.fetchone()
     try:
         if result is not None:
-            c.execute(
-                "SELECT itemid, percentage, min, max FROM CreatureDrops WHERE creatureid LIKE ? ORDER BY percentage DESC",
-                (id,)
+            c.execute("SELECT Items.title as name, percentage, min, max "
+                      "FROM CreatureDrops, Items "
+                      "WHERE Items.id = CreatureDrops.itemid AND creatureid LIKE ? "
+                      "ORDER BY percentage DESC",
+                      (id,)
             )
             result = c.fetchall()
             if result is not None:
@@ -498,10 +473,10 @@ def getMonster(name):
     try:
         # Checking if monster exists
         if monster is not None:
-            if monster['hp'] is None or monster['hp'] < 1:
-                monster['hp'] = 1
-            if monster['exp'] is None or monster['exp'] < 1:
-                monster['exp'] = 1
+            if monster['health'] is None or monster['health'] < 1:
+                monster['health'] = 1
+            if monster['experience'] is None or monster['experience'] < 1:
+                monster['experience'] = 1
             return monster
     finally:
         c.close()
@@ -513,17 +488,20 @@ def getItem(itemname):
     
     The dictionary has the following keys: name, look_text, npcs_sold*, value_sell, npcs_bought*, value_buy.
         *npcs_sold and npcs_bought are list, each element is a dictionary with the keys: name, city."""
+
+    # TODO: Row factory applied locally, remove once it's implemented globally
+    tibiaDatabase.row_factory = dict_factory
+
     # Reading item database
     c = tibiaDatabase.cursor()
 
     # Search query
-    c.execute("SELECT title, look_text FROM Items WHERE name LIKE ?",(itemname,))
-    result = c.fetchone()
+    c.execute("SELECT * FROM Items WHERE name LIKE ?",(itemname,))
+    item = c.fetchone()
     try:
         # Checking if item exists
-        if(result is not None):
+        if item is not None:
             # Turning result tuple into dictionary
-            item = dict(zip(['name','look_text'], result))
 
             # Checking NPCs that buy the item
             c.execute("SELECT NPCs.title, city, value "
@@ -532,12 +510,12 @@ def getItem(itemname):
                       "ORDER BY value DESC", (itemname,))
             npcs = []
             value_sell = None
-            for row in c:
-                name = row[0]
-                city = row[1].title()
+            for npc in c:
+                name = npc["title"]
+                city = npc["city"].title()
                 if value_sell is None:
-                    value_sell = row[2]
-                elif row[2] != value_sell:
+                    value_sell = npc["value"]
+                elif npc["value"] != value_sell:
                     break
                 # Replacing cities for special npcs
                 if name == 'Alesar' or name == 'Yaman':
@@ -559,12 +537,12 @@ def getItem(itemname):
                       "ORDER BY value ASC", (itemname,))
             npcs = []
             value_buy = None
-            for row in c:
-                name = row[0]
-                city = row[1].title()
+            for npc in c:
+                name = npc["title"]
+                city = npc["city"].title()
                 if value_buy is None:
-                    value_buy = row[2]
-                elif row[2] != value_buy:
+                    value_buy = npc["value"]
+                elif npc["value"] != value_buy:
                     break
                 # Replacing cities for special npcs
                 if name == 'Alesar' or name == 'Yaman':
@@ -589,6 +567,16 @@ def getItem(itemname):
             item['npcs_bought'] = npcs
             item['value_buy'] = value_buy
 
+            # Get creatures that drop it
+            c.execute("SELECT Creatures.title as name, CreatureDrops.percentage "
+                      "FROM CreatureDrops, Creatures "
+                      "WHERE CreatureDrops.creatureid = Creatures.id AND CreatureDrops.itemid = ? "
+                      "ORDER BY percentage DESC", (item["id"],))
+            drops = c.fetchall()
+            if drops is not None:
+                item["dropped_by"] = drops
+            else:
+                item["dropped_by"] = None
             return item
     finally:
         c.close()
@@ -699,17 +687,22 @@ def getMonsterString(monster, short=True):
     """Returns a formatted string containing a character's info.
     
     If short is true, it returns a shorter version."""
-    reply = monster['name']+"\r\n```"
-    reply += "HP:"+str(monster['hp'])+"   Exp:"+str(monster['exp'])+"\r\n"
-    reply += "HP/Exp Ratio: "+"{0:.2f}".format(monster['exp']/monster['hp']).zfill(4)
+
+    reply = monster['title']+"\r\n```"
+    reply += "HP:"+str(monster['health'])+"   Exp:"+str(monster['experience'])+"\r\n"
+    reply += "HP/Exp Ratio: "+"{0:.2f}".format(monster['experience']/monster['health']).zfill(4)
     reply += "\r\n```"
     reply += "```"
     loot = getLoot(monster['id'])
     weak = []
     resist = []
+    elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth", "drown", "lifedrain"]
     for index, value in monster.items():
-        if index[:5] == "elem_":
-            weak.append([index[5:].title(),monster[index]]) if (monster[index] > 100) else resist.append([index[5:].title(), monster[index]]) if (monster[index] < 100) else False
+        if index in elements:
+            if monster[index] > 100:
+                weak.append([index.title(), monster[index]])
+            if monster[index] < 100:
+                resist.append([index.title(), monster[index]])
     if len(weak) >= 1:
         reply += 'Weak to:'+"\r\n"
         for element in sorted(weak, key=lambda elem: elem[1]):
@@ -727,13 +720,23 @@ def getMonsterString(monster, short=True):
         reply += "\r\nLoot:\r\n"
         if loot is not None:
             for item in loot:
-                item = dict(zip(['itemid','percentage','min','max'],item))
-                reply += ("??.??%" if item['percentage'] is None else "Always" if item['percentage'] >= 100 else ("{0:.2f}".format(item['percentage']).zfill(5)+"%"))+"  "+getItemById(item['itemid'])['name']+(" ("+str(item['min'])+"-"+str(item['max'])+")" if item['max'] > 1 else "")+"\r\n"
+                if item["percentage"] is None:
+                    item["percentage"] = "??.??%"
+                elif item["percentage"] >= 100:
+                    item["percentage"] = "Always"
+                else:
+                    item["percentage"] = "{0:.2f}".format(item['percentage']).zfill(5)+"%"
+                if item["max"] > 1:
+                    item["count"] = "({min}-{max})".format(**item)
+                else:
+                    item["count"] = ""
+                reply += "{percentage} {name} {count}\r\n".format(**item)
+
         else:
             reply += "Doesn't drop anything"
         reply += "\r\n```"
         reply += "```"
-        reply += "Max damage:"+str(monster["maxdmg"]) if monster["maxdmg"] is not None else "???"+"\r\n"
+        reply += "Max damage:"+str(monster["maxdamage"]) if monster["maxdamage"] is not None else "???"+"\r\n"
         reply += "\r\n```"
         reply += "```"
         if monster['abilities'] is not None:
@@ -745,40 +748,56 @@ def getMonsterString(monster, short=True):
     return reply
 
 
-def getItemString(item,short=True):
+def getItemString(item, short=True):
     """Returns a formatted string with an item's info.
     
     If short is true, it returns a shorter version."""
-    reply = ""
+    reply = "**{0}**\n".format(item["title"])
+
     if 'look_text' in item:
-        reply = item['look_text']
+        reply += "```{0}```".format(item['look_text'])
 
     if 'npcs_bought' in item and len(item['npcs_bought']) > 0:
-        reply += "\n\n**{0}** can be bought for {1:,} gold coins from:".format(item['name'], item['value_buy'])
+        reply += "```Can be bought for {0:,} gold coins from:".format(item['value_buy'])
         count = 0
         for npc in item['npcs_bought']:
             if count < 3 or not short:
-                reply += "\n\t**{0}** in *{1}*".format(npc['name'],npc['city'])
+                reply += "\n\t{0} in {1}".format(npc['name'], npc['city'])
             count += 1
         if count >= 3 and short:
-            reply += "\n\t*And **{0}** others.*".format(count-3)
+            reply += "\n\tAnd {0} others.".format(count-3)
+        reply += "```"
     else:
-        reply += '\n\n**'+item['name']+'** can\'t be bought from NPCs.'
+        reply += "```\nCan't be bought from NPCs```"
 
     if 'npcs_sold' in item and len(item['npcs_sold']) > 0:
-        reply += "\n\n**{0}** can be sold for {1:,} gold coins to:".format(item['name'], item['value_sell'])
+        reply += "```Can be sold for {1:,} gold coins to:".format(item['name'], item['value_sell'])
         count = 0
         for npc in item['npcs_sold']:
             if count < 3 or not short:
-                reply += "\n\t**{0}** in *{1}*".format(npc['name'], npc['city'])
+                reply += "\n\t{0} in {1}".format(npc['name'], npc['city'])
             count += 1
         if count >= 3 and short:
-            reply += "\n\t*And **{0}** others.*".format(count-3)
+            reply += "\n\tAnd {0} others.".format(count-3)
+        reply += "```"
     else:
-        reply += '\n\n**'+item['name']+'** can\'t be sold to NPCs.'
+        reply += "```\nCan't be sold to NPCs```"
 
     if (len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3) and short:
         reply += '\n\n*The list of NPCs was too long, so I PM\'d you an extended version.*'
+
+    if item["dropped_by"] is not None and not short:
+        reply += "```Dropped by:"
+        if len(item["dropped_by"]) > 20:
+            item["dropped_by"] = item["dropped_by"][:20]
+        for creature in item["dropped_by"]:
+            if creature["percentage"] is None:
+                creature["percentage"] = "??.??"
+            reply += "\n\t{name} ({percentage}%)".format(**creature)
+        reply += "```"
+
+    if len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3 or item["dropped_by"] is not None and short:
+        reply += "*I also PM'd you this item's complete NPC list and creatures that drop it.*"
     return reply
 
 
@@ -889,7 +908,7 @@ class Tibia():
                     return
 
                 c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?", (name,))
-                result = c.fetchone();
+                result = c.fetchone()
                 if result is not None:
                     user2 = getUserById(result[1])
                     if user2 is not None:
@@ -983,11 +1002,23 @@ class Tibia():
         itemname = " ".join(itemname).strip()
         item = getItem(itemname)
         if item is not None:
+            filename = item['name'] + ".gif"
+            while os.path.isfile(filename):
+                filename = "_" + filename
+            with open(filename, "w+b") as f:
+                f.write(bytearray(item['image']))
+                f.close()
+
+            with open(filename, "r+b") as f:
+                yield from self.bot.send_file(ctx.message.channel, f)
+                f.close()
+            os.remove(filename)
+
             if ctx.message.channel.is_private or ctx.message.channel.name == askchannel:
-                yield from self.bot.say(getItemString(item,False))
+                yield from self.bot.say(getItemString(item, False))
             else:
                 yield from self.bot.say(getItemString(item))
-                if len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3:
+                if len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3 or item["dropped_by"] is not None:
                     if ctx.message.author is not None:
                         yield from self.bot.send_message(ctx.message.author, getItemString(item, False))
         else:
