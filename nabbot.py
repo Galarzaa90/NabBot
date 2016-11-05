@@ -841,8 +841,8 @@ def stalk(ctx, subcommand, *args: str):
                         c.execute("UPDATE chars SET name = ? WHERE id LIKE ?", (user['name'], result[1],))
                         yield from bot.say("This character's name was changed from **{0}** to **{1}**".format(params[1], char['name']))
                     # Registered to a different user
-                    if result[1] != user.id:
-                        username = "unknown" if getUserById(result[1]) is None else getUserById(result[1]).display_name
+                    if result[1] != user.id and getUserById(result[1]) is not None:
+                        username = getUserById(result[1]).display_name
                         yield from bot.say("This character is already registered to **@{0}**".format(username))
                         return
                     # Registered to current user
