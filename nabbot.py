@@ -1094,21 +1094,46 @@ def shutdown(ctx):
 
 @bot.command(pass_context=True)
 @asyncio.coroutine
-def roles(ctx):
-    """Shows all role names within the Discord server"""
+def roles(ctx, *userName:str):
+    """Shows all role names within the Discord server, or all roles for a single member"""
     # If you call via PM, then server=None, so you can't find the roles
     if ctx.message.channel.is_private:
         log.warning("Cannot run this command via PM")
         return
 
-    msg = "These are the active roles for this server:\r\n"
+    userName = " ".join(userName).strip()
+    msg = "These are the active roles for "
 
-    for role in getListRoles(ctx.message.server):
-        msg += role.name + "\r\n"
+    if not userName:
+        msg += "this server:\r\n"
+
+        for role in getListRoles(ctx.message.server):
+            msg += role.name + "\r\n"
+    else:
+        user = getUserByName(userName);
+
+        if user is None:
+            msg = "I don't see any user named **" + userName + "**. \r\n"
+            msg += "I can only check roles from an username registered on this server."
+        else:
+            msg += "**" + user.display_name + "**:\r\n"
+            roles = []
+
+            #Ignoring "default" roles
+            for role in user.roles:
+                if role.name not in ["@everyone", "Nab Bot"]:
+                    roles.append(role.name)
+
+            #There shouldn't be anyone without active roles, but since people can check for NabBot,
+            #might as well show a specific message.
+            if roles:
+                for roleName in roles:
+                    msg += roleName + "\r\n"
+            else:
+                msg = "There are no active roles for **" + user.display_name + "**."
 
     yield from bot.say(msg)
     return
-
 
 @bot.command(pass_context=True)
 @asyncio.coroutine
