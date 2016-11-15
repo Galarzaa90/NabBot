@@ -153,12 +153,15 @@ def getServerOnline(server, tries=5):
 
 @asyncio.coroutine
 def getGuildOnline(guildname, titlecase=True, tries=5):
-    """Returns a list with the online players of a guild
-    
-    Each list element is a dictionary with the following keys: rank, name, title, vocation, level, joined.
+    """Returns a guild's world and online member list in a dictionary.
+
+    The dictionary contains two keys: name, world and members.
+    The key members contains a list where each element is a dictionary with the following keys:
+        rank, name, title, vocation, level, joined.
     Guilds are case sensitive on tibia.com so guildstats.eu is checked for correct case.
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
     gstats_url = 'http://guildstats.eu/guild?guild='+urllib.parse.quote(guildname)
+    guild = {}
     # Fix casing using guildstats.eu if needed
     # Sorry guildstats.eu :D
     if not titlecase:
@@ -169,7 +172,7 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
         except Exception:
             if tries == 0:
                 log.error("getGuildOnline: Couldn't fetch {0} from guildstats.eu, network error.".format(guildname))
-                return ERROR_NETWORK,guildname
+                return ERROR_NETWORK
             else:
                 tries -= 1
                 ret = yield from getGuildOnline(guildname, titlecase, tries)
@@ -182,7 +185,7 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
             # Website fetch was incomplete, due to a network error
             if tries == 0:
                 log.error("getGuildOnline: Couldn't fetch {0} from guildstats.eu, network error.".format(guildname))
-                return ERROR_NETWORK, guildname
+                return ERROR_NETWORK
             else:
                 tries -= 1
                 ret = yield from getGuildOnline(guildname, titlecase, tries)
@@ -190,7 +193,7 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
 
         # Check if the guild doesn't exist
         if "<div>Sorry!" in content:
-            return ERROR_DOESNTEXIST, guildname
+            return ERROR_DOESNTEXIST
 
 
         # Failsafe in case guildstats.eu changes their websites format
@@ -199,7 +202,7 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
             content.index("Recruitment")
         except Exception:
             log.error("getGuildOnline: -IMPORTANT- guildstats.eu seems to have changed their websites format.")
-            return ERROR_NETWORK, guildname
+            return ERROR_NETWORK
 
         startIndex = content.index("General info")
         endIndex = content.index("Recruitment")
@@ -218,10 +221,10 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
     except Exception:
         if tries == 0:
             log.error("getGuildOnline: Couldn't fetch {0}, network error.".format(guildname))
-            return ERROR_NETWORK, guildname
+            return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from getGuildOnline(guildname,titlecase,tries)
+            ret = yield from getGuildOnline(guildname, titlecase, tries)
             return ret
 
     # Trimming content to reduce load and making sure we got a healthy fetch
@@ -233,28 +236,33 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
         # Website fetch was incomplete, due to a network error
         if tries == 0:
             log.error("getGuildOnline: Couldn't fetch {0}, network error.".format(guildname))
-            return ERROR_NETWORK,guildname
+            return ERROR_NETWORK
         else:
             tries -= 1
             ret = yield from getGuildOnline(guildname, titlecase, tries)
             return ret
 
     # Check if the guild doesn't exist
-    # Note: for some reason, when the bot fetches an inexistent guild it gets an error saying "An internal error has occurred. Please try again later!"
-    # instead of the "A guild by that name was not found." error, that's why we're just searching for the "Error" title.
+    # Tibia.com has no search function, so there's no guild doesn't exist page cause you're not supposed to get to a
+    # guild that doesn't exists. So the message displayed is "An internal error has ocurred. Please try again later!".
     if '<div class="Text" >Error</div>' in content:
         if titlecase:
             ret = yield from getGuildOnline(guildname,False)
             return ret
         else:
-            return ERROR_DOESNTEXIST, guildname
+            return ERROR_DOESNTEXIST
 
-    # Regex pattern to fetch information
+    # Regex pattern to fetch world and founding date
+    m = re.search(r'founded on (\w+) on ([^.]+)', content)
+    if m:
+        guild['world'] = m.group(1)
+
+    # Regex pattern to fetch members
     regex_members = r'<TR BGCOLOR=#[\dABCDEF]+><TD>(.+?)</TD>\s</td><TD><A HREF="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)">.+?</A> *\(*(.*?)\)*</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>'
     pattern = re.compile(regex_members, re.MULTILINE+re.S)
 
     m = re.findall(pattern, content)
-    member_list = []
+    guild['members'] = []
     # Check if list is empty
     if m:
         # Building dictionary list from members
@@ -262,9 +270,10 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
             rank = '' if (rank == '&#160;') else rank
             name = urllib.parse.unquote_plus(name)
             joined = joined.replace('&#160;', '-')
-            member_list.append({'rank': rank, 'name': name, 'title': title,
+            guild['members'].append({'rank': rank, 'name': name, 'title': title,
             'vocation': vocation, 'level': level, 'joined': joined})
-    return member_list, guildname
+    guild['name'] = guildname
+    return guild
 
 
 @asyncio.coroutine
@@ -971,21 +980,24 @@ class Tibia():
     def guild(self, *guildname: str):
         """Checks who is online in a guild"""
         guildname = " ".join(guildname)
-        onlinelist, guildname = yield from getGuildOnline(guildname)
-        if onlinelist == ERROR_DOESNTEXIST:
-            yield from self.bot.say("The guild "+urllib.parse.unquote_plus(guildname)+" doesn't exist.")
+        guild = yield from getGuildOnline(guildname)
+        if guild == ERROR_DOESNTEXIST:
+            yield from self.bot.say("The guild {0} doesn't exist.".format(guildname))
             return
-        if onlinelist == ERROR_NETWORK:
+        if guild == ERROR_NETWORK:
             yield from self.bot.say("Can you repeat that?")
             return
-        if len(onlinelist) < 1:
-            yield from self.bot.say("Nobody is online on "+urllib.parse.unquote_plus(guildname)+".")
+        if len(guild['members']) < 1:
+            yield from self.bot.say("Nobody is online on **{name}** ({world}).".format(**guild))
             return
-
-        result = ('There '
-                    + ('are' if (len(onlinelist) > 1) else 'is')+' '+str(len(onlinelist))+' player'
-                    + ('s' if (len(onlinelist) > 1) else '')+' online in **'+guildname+'**:')
-        for member in onlinelist:
+        plural = ""
+        article = "is"
+        if len(guild['members']) > 1:
+            article = "are"
+            plural = "s"
+        result = "There {0} {1} player{2} online in **{3}** ({4}):".format(
+            article, len(guild['members']), plural, guild['name'], guild['world'])
+        for member in guild['members']:
             result += '\n'
             if member['rank'] != '':
                 result += '__'+member['rank']+'__\n'
