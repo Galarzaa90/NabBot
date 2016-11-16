@@ -1075,21 +1075,21 @@ class Tibia():
         if not name:
             c = userDatabase.cursor()
             try:
-                c.execute("SELECT level, date, name, user_id, byplayer, killer FROM char_deaths, chars WHERE char_id = id ORDER BY date DESC LIMIT 15")
+                c.execute("SELECT * FROM char_deaths, chars WHERE char_id = id ORDER BY date DESC LIMIT 15")
                 result = c.fetchall()
                 if len(result) < 1:
                     yield from self.bot.say("No one has died recently")
                     return
                 now = time.time()
                 reply = "Latest deaths:"
-                for level, date, name, user_id, byplayer, killer in result:
-                    timediff = timedelta(seconds=now-date)
-                    died = "Killed" if byplayer else "Died"
-                    user = getUserById(user_id)
-                    username = "unkown"
+                for death in result:
+                    timediff = timedelta(seconds=now-death["date"])
+                    died = "Killed" if death["byplayer"] else "Died"
+                    user = getUserById(death["user_id"])
+                    username = "unknown"
                     if user:
                         username = user.display_name
-                    reply += "\n\t{4} (**@{5}**) - {0} at level **{1}** by {2} - *{3} ago*".format(died, level, killer, getTimeDiff(timediff), name, username)
+                    reply += "\n\t{4} (**@{5}**) - {0} at level **{1}** by {2} - *{3} ago*".format(died, death["level"], death["killer"], getTimeDiff(timediff), name, username)
                 yield from self.bot.say(reply)
                 return
             finally:
