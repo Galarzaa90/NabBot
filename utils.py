@@ -1282,14 +1282,14 @@ def getAboutContent():
     char_count = 0
     try:
         c = userDatabase.cursor()
-        c.execute("SELECT COUNT(*) FROM discord_users")
+        c.execute("SELECT COUNT(*) as count FROM discord_users")
         result = c.fetchone()
         if result is not None:
-            user_count = result[0]
-        c.execute("SELECT COUNT(*) FROM chars")
+            user_count = result["count"]
+        c.execute("SELECT COUNT(*) as count FROM chars")
         result = c.fetchone()
         if result is not None:
-            char_count = result[0]
+            char_count = result["count"]
     finally:
         c.close()
 
