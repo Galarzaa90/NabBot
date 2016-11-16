@@ -1020,7 +1020,7 @@ userDatabase.row_factory = dict_factory
 tibiaDatabase.row_factory = dict_factory
 
 
-def vocAbb(vocation):
+def vocAbb(vocation) -> str:
     """Given a vocation name, it returns an abbreviated string """
     abbrev = {'None': 'N', 'Druid': 'D', 'Sorcerer': 'S', 'Paladin': 'P', 'Knight': 'K', 'Elder Druid': 'ED',
               'Master Sorcerer': 'MS', 'Royal Paladin': 'RP', 'Elite Knight': 'EK'}
@@ -1066,7 +1066,7 @@ def utilsGetBot(_bot):
     bot = _bot
 
 
-def formatMessage(message):
+def formatMessage(message) -> str:
     """##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/"""
     upper = r'\\(.+?)/'
     upper = re.compile(upper, re.MULTILINE + re.S)
@@ -1085,7 +1085,7 @@ def formatMessage(message):
     return message
 
 
-def weighedChoice(messages, condition1=False, condition2=False, condition3=False, condition4=False):
+def weighedChoice(messages, condition1=False, condition2=False, condition3=False, condition4=False) -> str:
     """Makes weighed choices from message lists where [0] is a value representing the relative odds
     of picking a message and [1] is the message string"""
 
@@ -1130,7 +1130,7 @@ def weighedChoice(messages, condition1=False, condition2=False, condition3=False
     return _messages[0][1]
 
 
-def getChannelByServerAndName(server_name: str, channel_name: str):
+def getChannelByServerAndName(server_name: str, channel_name: str) -> discord.Channel:
     """Returns a channel within a server
     
     If server_name is left blank, it will search on all servers the bot can see"""
@@ -1143,7 +1143,7 @@ def getChannelByServerAndName(server_name: str, channel_name: str):
     return channel
 
 
-def getChannelByName(channel_name: str):
+def getChannelByName(channel_name: str) -> discord.Channel:
     """Alias for getChannelByServerAndName
     
     mainserver is searched first, then all visible servers"""
@@ -1153,7 +1153,7 @@ def getChannelByName(channel_name: str):
     return channel
 
 
-def getServerByName(server_name: str):
+def getServerByName(server_name: str) -> discord.Server:
     """Returns a server by its name"""
     server = discord.utils.find(lambda m: m.name == server_name, bot.servers)
     return server
@@ -1189,7 +1189,7 @@ def getUserById(userId, search_pm=True) -> discord.User:
     return user
 
 
-def getTimeDiff(time):
+def getTimeDiff(time) -> str:
     """Returns a string showing the time difference of a timedelta"""
     if not isinstance(time, timedelta):
         return None
@@ -1209,7 +1209,7 @@ def getTimeDiff(time):
         return "moments"
 
 
-def getLocalTimezone():
+def getLocalTimezone() -> int:
     """Returns the server's local time zone"""
     # Getting local time and GMT
     t = time.localtime()
@@ -1218,7 +1218,7 @@ def getLocalTimezone():
     return (timegm(t) - timegm(u)) / 60 / 60
 
 
-def getTibiaTimeZone():
+def getTibiaTimeZone() -> int:
     """Returns Germany's timezone, considering their daylight saving time dates"""
     # Find date in Germany
     gt = datetime.utcnow() + timedelta(hours=1)
@@ -1230,7 +1230,7 @@ def getTibiaTimeZone():
     return 1
 
 
-def getBrasiliaTimeZone():
+def getBrasiliaTimeZone() -> int:
     """Returns Brasilia's timezone, considering their daylight saving time dates"""
     # Find date in Brasilia
     bt = datetime.utcnow() - timedelta(hours=3)
@@ -1246,7 +1246,7 @@ def getBrasiliaTimeZone():
 start_time = datetime.utcnow()
 
 
-def getUptime():
+def getUptime() -> str:
     """Returns a string with the time the bot has been running for.
 
     Start time is saved when this module is loaded, not when the bot actually logs in,
@@ -1264,7 +1264,7 @@ def getUptime():
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
 
-def joinList(list, separator, endseparator):
+def joinList(list, separator, endseparator) -> str:
     """Joins elements in a list with a separator between all elements and a different separator for the last element."""
     size = len(list)
     if size == 0:
@@ -1274,7 +1274,7 @@ def joinList(list, separator, endseparator):
     return separator.join(list[:size - 1]) + endseparator + str(list[size - 1])
 
 
-def getAboutContent():
+def getAboutContent() -> str:
     """Returns a formatted string with general information about the bot.
     
     Used in /about and /whois Nab Bot"""
@@ -1303,7 +1303,7 @@ def getAboutContent():
     return reply
 
 
-def getListRoles(server):
+def getListRoles(server) -> list[discord.Role]:
     """Lists all role within the discord server and returns to caller."""
 
     roles = []

@@ -428,7 +428,7 @@ def getPlayer(name, tries=5):
     return char
 
 
-def getRashidCity():
+def getRashidCity() -> str:
     """Returns the city Rashid is currently in."""
     offset = getTibiaTimeZone() - getLocalTimezone()
     # Server save is at 10am, so in tibia a new day starts at that hour
