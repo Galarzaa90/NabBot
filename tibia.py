@@ -1145,12 +1145,12 @@ class Tibia():
                 now = time.time()
                 reply = "Latest level ups:"
                 for levelup in result:
-                    timediff = timedelta(seconds=now-levelup[1])
-                    user = getUserById(levelup[3])
+                    timediff = timedelta(seconds=now-levelup["date"])
+                    user = getUserById(levelup["user_id"])
                     username = "unkown"
                     if user:
                         username = user.display_name
-                    reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1} ago*".format(levelup[0], getTimeDiff(timediff), levelup[2], username)
+                    reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1} ago*".format(levelup["level"], getTimeDiff(timediff), levelup["name"], username)
                 if siteEnabled:
                     reply += "\nSee more levels check: <{0}{1}>".format(baseUrl, levelsPage)
                 yield from self.bot.say(reply)
@@ -1162,8 +1162,8 @@ class Tibia():
                 yield from self.bot.say("I don't have a character with that name registered.")
                 return
             # Getting correct capitalization
-            name = result[1]
-            id = result[0]
+            name = result["name"]
+            id = result["id"]
             c.execute("SELECT level, date FROM char_levelups WHERE char_id = ? ORDER BY date DESC LIMIT ?", (id, limit,))
             result = c.fetchall()
             # Checking number of level ups
@@ -1173,8 +1173,8 @@ class Tibia():
             now = time.time()
             reply = "**{0}** latest level ups:".format(name)
             for levelup in result:
-                timediff = timedelta(seconds=now-levelup[1])
-                reply += "\n\tLevel **{0}** - *{1} ago*".format(levelup[0], getTimeDiff(timediff))
+                timediff = timedelta(seconds=now-levelup["date"])
+                reply += "\n\tLevel **{0}** - *{1} ago*".format(levelup["level"], getTimeDiff(timediff))
 
             reply += "\nSee more levels at: <{0}{1}?name={2}>".format(baseUrl, charactersPage, urllib.parse.quote(name))
             yield from self.bot.say(reply)
