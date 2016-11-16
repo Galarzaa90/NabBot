@@ -804,43 +804,26 @@ def getItemString(item, short=True):
         reply += "*I also PM'd you this item's complete NPC list and creatures that drop it.*"
     return reply
 
-
+# TODO: Improve formatting to match /monster and /item
 def getSpell(name):
     """Returns a formatted string containing a spell's info."""
     c = tibiaDatabase.cursor()
     try:
-        c.execute("""SELECT id, name, words, levelrequired, promotion, premium, goldcost, manacost,
-                  knight, paladin, sorcerer, druid FROM Spells WHERE words LIKE ? OR name LIKE ?""", (name+"%", name,))
-        result = c.fetchone()
-        if result is None:
+        c.execute("""SELECT * FROM Spells WHERE words LIKE ? OR name LIKE ?""", (name+"%", name,))
+        spell = c.fetchone()
+        if spell is None:
             return None
-        id = result[0]
-        spell = {"name": result[1],
-                 "words": result[2],
-                 "level": result[3],
-                 "promotion": True if result[4] == 1 else False,
-                 "premium": True if result[5] == 1 else False,
-                 "price": result[6],
-                 "mana": result[7],
-                 "knight": True if result[8] == 1 else False,
-                 "paladin": True if result[9] == 1 else False,
-                 "sorcerer": True if result[10] == 1 else False,
-                 "druid": True if result[11] == 1 else False,
-                 "npcs": list()}
-        c.execute("""SELECT NPCs.title, NPCs.city, SpellNPCs.knight, SpellNPCs.paladin,
-                  SpellNPCs.sorcerer, SpellNPCs.druid FROM NPCs, SpellNPCs WHERE
-                  SpellNPCs.spellid = ? AND SpellNPCs.npcid = NPCs.id""", (id,))
+        spell["npcs"] = []
+
+        c.execute("""SELECT NPCs.title as name, NPCs.city, SpellNPCs.knight, SpellNPCs.paladin,
+                  SpellNPCs.sorcerer, SpellNPCs.druid FROM NPCs, SpellNPCs
+                  WHERE SpellNPCs.spellid = ? AND SpellNPCs.npcid = NPCs.id""", (spell["id"],))
         result = c.fetchall()
         # This should always be true
         if result is not None:
-            for (name, city, knight, paladin, sorcerer, druid) in result:
-                seller = {"name": name,
-                          "city": city.title(),
-                          "knight": True if knight == 1 else False,
-                          "paladin": True if paladin == 1 else False,
-                          "sorcerer": True if sorcerer == 1 else False,
-                          "druid": True if druid == 1 else False}
-                spell["npcs"].append(seller)
+            for npc in result:
+                npc["city"] = npc["city"].title()
+                spell["npcs"].append(npc)
         return spell
 
     finally:
@@ -848,19 +831,18 @@ def getSpell(name):
 
 
 # Commands
-class Tibia():
+class Tibia:
     """Tibia related commands."""
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'])
     @asyncio.coroutine
-    def whois(self, *name: str):
+    def whois(self, *, name: str):
         """Tells you the characters of a user or the owner of a character and/or information of a tibia character
 
         Note that the bot has no way to know the characters of a member that just joined.
         The bot has to be taught about the character's of an user."""
-        name = " ".join(name).strip()
         user = getUserByName(name)
         c = userDatabase.cursor()
         try:
@@ -972,9 +954,8 @@ class Tibia():
 
     @commands.command(aliases=['guildcheck', 'checkguild'])
     @asyncio.coroutine
-    def guild(self, *guildname: str):
+    def guild(self, *, guildname: str):
         """Checks who is online in a guild"""
-        guildname = " ".join(guildname)
         guild = yield from getGuildOnline(guildname)
         if guild == ERROR_DOESNTEXIST:
             yield from self.bot.say("The guild {0} doesn't exist.".format(guildname))
@@ -1004,9 +985,8 @@ class Tibia():
 
     @commands.command(pass_context=True, aliases=['checkprice', 'item'])
     @asyncio.coroutine
-    def itemprice(self,ctx, *itemname: str):
+    def itemprice(self, ctx, *, itemname: str):
         """Checks an item's highest NPC price"""
-        itemname = " ".join(itemname).strip()
         item = getItem(itemname)
         if item is not None:
             filename = item['name'] + ".png"
@@ -1033,9 +1013,8 @@ class Tibia():
 
     @commands.command(pass_context=True, aliases=['mon', 'mob', 'creature'])
     @asyncio.coroutine
-    def monster(self, ctx, *monstername: str):
+    def monster(self, ctx, *, monstername: str):
         """Gives information about a monster"""
-        monstername = " ".join(monstername).strip()
         if monstername.lower() == "nab bot":
             yield from self.bot.say(random.choice(["**Nab Bot** is too strong for you to hunt!","Sure, you kill *one* child and suddenly you're a monster!","I'M NOT A MONSTER"]))
             return
@@ -1261,33 +1240,32 @@ class Tibia():
 
     @commands.command()
     @asyncio.coroutine
-    def spell(self, *name: str):
+    def spell(self, *, name: str):
         """Tells you information about a certain spell."""
-        name = " ".join(name)
         spell = getSpell(name)
         if spell is None:
             yield from self.bot.say("I don't know any spell with that name or words.")
             return
-        mana = spell["mana"]
+        mana = spell["manacost"]
         if mana < 0:
             mana = "variable"
         words = spell["words"]
         if "exani hur" in words:
             words = "exani hur up/down"
         vocs = list()
-        if(spell['knight']): vocs.append("knights")
-        if(spell['paladin']): vocs.append("paladins")
-        if(spell['druid']): vocs.append("druids")
-        if(spell['sorcerer']): vocs.append("sorcerers")
+        if spell['knight']: vocs.append("knights")
+        if spell['paladin']: vocs.append("paladins")
+        if spell['druid']: vocs.append("druids")
+        if spell['sorcerer']: vocs.append("sorcerers")
         voc = joinList(vocs, ", ", " and ")
         reply = "**{0}** (*{1}*) is a {2}spell for level **{3}** and up. It uses **{4}** mana."
         reply = reply.format(spell["name"], words, "premium " if spell["premium"] else "",
-                            spell["level"], mana)
+                            spell["levelrequired"], mana)
         reply += " It can be used by {0}.".format(voc)
-        if spell["price"] == 0:
+        if spell["goldcost"] == 0:
             reply += "\nIt can be obtained for free."
         else:
-            reply += "\nIt can be bought for {0:,} gold coins.".format(spell["price"])
+            reply += "\nIt can be bought for {0:,} gold coins.".format(spell["goldcost"])
         # Todo: Show which NPCs sell the spell
         """if(len(spell['npcs']) > 0):
             for npc in spell['npcs']:

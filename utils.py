@@ -1303,7 +1303,7 @@ def getAboutContent() -> str:
     return reply
 
 
-def getListRoles(server) -> list[discord.Role]:
+def getListRoles(server):
     """Lists all role within the discord server and returns to caller."""
 
     roles = []
