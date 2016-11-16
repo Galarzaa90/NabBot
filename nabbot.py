@@ -989,9 +989,9 @@ def stalk(ctx, subcommand, *args: str):
             yield from bot.say("Initiating purge...")
             # Deleting users no longer in server
             for row in result:
-                user = getUserById(row[0])
+                user = getUserById(row["id"])
                 if user is None:
-                    delete_users.append((row[0],))
+                    delete_users.append((row["id"],))
             if len(delete_users) > 0:
                 c.executemany("DELETE FROM discord_users WHERE id = ?", delete_users)
                 yield from bot.say("{0} user(s) no longer in the server were removed.".format(c.rowcount))
