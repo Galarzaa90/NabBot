@@ -927,10 +927,10 @@ def initDatabase():
     db_version = 0
     try:
         c = userDatabase.cursor()
-        c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
+        c.execute("SELECT COUNT(*) as count FROM sqlite_master WHERE type = 'table'")
         result = c.fetchone()
         # Database is empty
-        if (result is None or result[0] == 0):
+        if result is None or result["count"] == 0:
             c.execute("""CREATE TABLE discord_users (
                       id INTEGER NOT NULL,
                       weight INTEGER DEFAULT 5,
@@ -949,7 +949,7 @@ def initDatabase():
                       date INTEGER
                       )""")
         c.execute("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND name LIKE 'db_info'")
-        result = c.fetchone();
+        result = c.fetchone()
         # If there's no version value, version 1 is assumed
         if (result is None):
             c.execute("""CREATE TABLE db_info (
@@ -961,7 +961,7 @@ def initDatabase():
             print("No version found, version 1 assumed")
         else:
             c.execute("SELECT value FROM db_info WHERE key LIKE 'version'")
-            db_version = int(c.fetchone()[0])
+            db_version = int(c.fetchone()["value"])
             print("Version {0}".format(db_version))
         if db_version == DB_LASTVERSION:
             print("Database is up to date.")
@@ -1007,7 +1007,6 @@ def initDatabase():
         userDatabase.commit()
 
 
-# TODO: Implement this factory by default on connectors, requires updating all code using fetch functions
 def dict_factory(cursor, row):
     """Makes values returned by cursor fetch functions return a dictionary instead of a tuple.
 
@@ -1016,6 +1015,9 @@ def dict_factory(cursor, row):
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
+
+userDatabase.row_factory = dict_factory
+tibiaDatabase.row_factory = dict_factory
 
 
 def vocAbb(vocation):
@@ -1157,7 +1159,7 @@ def getServerByName(server_name: str):
     return server
 
 
-def getUserByName(userName):
+def getUserByName(userName, search_pm=True) -> discord.User:
     """Returns a discord user by its name
     
     If there's duplicate usernames, it will return the first user found
@@ -1168,17 +1170,19 @@ def getUserByName(userName):
         user = discord.utils.find(lambda m: m.display_name.lower() == userName.lower(), _mainserver.members)
     if user is None:
         user = discord.utils.find(lambda m: m.display_name.lower() == userName.lower(), bot.get_all_members())
-    if user is None:
+    if user is None and search_pm:
         private = discord.utils.find(lambda m: m.user.display_name.lower() == userName.lower(), bot.private_channels)
         if private is not None:
             user = private.user
     return user
 
 
-def getUserById(userId):
-    """Returns a discord user by its id"""
+def getUserById(userId, search_pm=True) -> discord.User:
+    """Returns a discord user by its id
+
+    If search_pm is False, only users in servers the bot can see will be searched."""
     user = discord.utils.find(lambda m: m.id == str(userId), bot.get_all_members())
-    if user is None:
+    if user is None and search_pm:
         private = discord.utils.find(lambda m: m.user.id == str(userId), bot.private_channels)
         if private is not None:
             user = private.user

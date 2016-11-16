@@ -348,7 +348,7 @@ def getPlayer(name, tries=5):
             c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (char['name'],))
             result = c.fetchone()
             if result:
-                char['level'] = abs(result[1])
+                char['level'] = abs(result["last_level"])
             c.close()
             break
 
@@ -398,9 +398,9 @@ def getPlayer(name, tries=5):
     c.execute("SELECT vocation FROM chars WHERE name LIKE ?",(name,))
     result = c.fetchone()
     if result:
-        if result[0] != char['vocation']:
+        if result["vocation"] != char['vocation']:
             c.execute("UPDATE chars SET vocation = ? WHERE name LIKE ?",(char['vocation'],name,))
-            log.info("{0}'s vocation was set to {1} from {2} during getPlayer()".format(char['name'],char['vocation'],result[0]))
+            log.info("{0}'s vocation was set to {1} from {2} during getPlayer()".format(char['name'],char['vocation'],result["vocation"]))
         # if name != char['name']:
         #     c.execute("UPDATE chars SET name = ? WHERE name LIKE ?",(char['name'],name,))
         #     yield from bot.say("**{0}** was renamed to **{1}**, updating...".format(name,char['name']))
@@ -472,8 +472,6 @@ def getMonster(name):
     The dictionary has the following keys: name, id, hp, exp, maxdmg, elem_physical, elem_holy, 
     elem_death, elem_fire, elem_energy, elem_ice, elem_earth, elem_drown, elem_lifedrain, senseinvis,
     arm, image."""
-    # TODO: Row factory applied locally, remove once it's implemented globally
-    tibiaDatabase.row_factory = dict_factory
 
     # Reading monster database
     c = tibiaDatabase.cursor()
@@ -497,9 +495,6 @@ def getItem(itemname):
     
     The dictionary has the following keys: name, look_text, npcs_sold*, value_sell, npcs_bought*, value_buy.
         *npcs_sold and npcs_bought are list, each element is a dictionary with the keys: name, city."""
-
-    # TODO: Row factory applied locally, remove once it's implemented globally
-    tibiaDatabase.row_factory = dict_factory
 
     # Reading item database
     c = tibiaDatabase.cursor()
@@ -877,14 +872,14 @@ class Tibia():
             if user is None:
                 # If it's not a discord user, it might be a known tibia character
                 if result is not None:
-                    user = getUserById(result[1])
+                    user = getUserById(result["user_id"])
                     # Check if the user exists just in case
                     if user is not None:
                         if char == ERROR_NETWORK:
                             charString = "I couldn't fetch that character's info, though. Maybe try again?"
                         if char == ERROR_DOESNTEXIST:
                             charString = "But the character no longer exists."
-                        charString = "**{0}** is a character of **@{1.display_name}**.\n".format(result[0], user)+charString
+                        charString = "**{0}** is a character of **@{1.display_name}**.\n".format(result["name"], user)+charString
                         yield from self.bot.say(charString)
                         return
                 # It wasn't a discord user nor a known tibia character
@@ -899,14 +894,14 @@ class Tibia():
                 return
             c.execute("SELECT name, last_level, vocation FROM chars WHERE user_id = ? ORDER BY abs(last_level) DESC", (user.id,))
             chars = []
-            for name, level, vocation in c:
+            for character in c:
                 try:
-                    level = int(level)
+                    level = int(character["last_level"])
                 except ValueError:
                     level = 0
 
-                vocation = vocAbb(vocation)
-                chars.append("{0} (Lvl {1} {2})".format(name,abs(level) if level != 0 else "",vocation))
+                vocation = vocAbb(character["vocation"])
+                chars.append("{0} (Lvl {1} {2})".format(character["name"], abs(level) if level != 0 else "", vocation))
             if len(chars) <= 0:
                 yield from self.bot.say("I don't know who **@{0.display_name}** is...".format(user))
                 if char == ERROR_NETWORK:
@@ -919,7 +914,7 @@ class Tibia():
                 c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?", (name,))
                 result = c.fetchone()
                 if result is not None:
-                    user2 = getUserById(result[1])
+                    user2 = getUserById(result["user_id"])
                     if user2 is not None:
                         charString = "But **{0}** is a character of **@{1.display_name}**.\n".format(char['name'], user2) + charString
                         yield from self.bot.say(charString)

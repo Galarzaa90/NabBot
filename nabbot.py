@@ -131,11 +131,11 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
-                name = row[2]
-                id = row[3]
-                timediff = timedelta(seconds=row[1]-date)
-                days,hours,minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60)%60
+                author = "unknown" if getUserById(row["creator"]) is None else getUserById(row["creator"]).display_name
+                name = row["name"]
+                id = row["id"]
+                timediff = timedelta(seconds=row["start"]-date)
+                days, hours, minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60)%60
                 if days:
                     start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
                 elif hours:
@@ -155,15 +155,15 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
-                name = row[2]
-                id = row[3]
-                timediff = timedelta(seconds=row[1]-date)
+                author = "unknown" if getUserById(row["creator"]) is None else getUserById(row["creator"]).display_name
+                name = row["name"]
+                id = row["id"]
+                timediff = timedelta(seconds=row["start"]-date)
                 days,hours,minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60) % 60
                 if days:
                     start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
                 elif hours:
-                    start = '{0} hours and {1} minutes'.format(hours,minutes)
+                    start = '{0} hours and {1} minutes'.format(hours, minutes)
                 else:
                     start = '{0} minutes'.format(minutes)
 
@@ -179,10 +179,10 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
-                name = row[2]
-                id = row[3]
-                timediff = timedelta(seconds=row[1]-date)
+                author = "unknown" if getUserById(row["creator"]) is None else getUserById(row["creator"]).display_name
+                name = row["name"]
+                id = row["id"]
+                timediff = timedelta(seconds=row["start"]-date)
                 days, hours, minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60) % 60
                 if days:
                     start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
@@ -203,10 +203,10 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
-                name = row[2]
-                id = row[3]
-                timediff = timedelta(seconds=row[1]-date)
+                author = "unknown" if getUserById(row["creator"]) is None else getUserById(row["creator"]).display_name
+                name = row["name"]
+                id = row["id"]
+                timediff = timedelta(seconds=row["start"]-date)
                 days, hours, minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60) % 60
                 if days:
                     start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
@@ -271,7 +271,7 @@ def think():
                         c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (nowOfflineChar['name'],))
                         result = c.fetchone()
                         if result:
-                            lastLevel = result[1]
+                            lastLevel = result["last_level"]
                             c.execute(
                                 "UPDATE chars SET last_level = ? WHERE name LIKE ?",
                                 (nowOfflineChar['level'], nowOfflineChar['name'],)
@@ -280,7 +280,7 @@ def think():
                                 # Saving level up date in database
                                 c.execute(
                                     "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                    (result[2], nowOfflineChar['level'], time.time(),)
+                                    (result["id"], nowOfflineChar['level'], time.time(),)
                                 )
                                 # Announce the level up
                                 yield from announceLevel(nowOfflineChar['name'], nowOfflineChar['level'])
@@ -288,15 +288,15 @@ def think():
 
                 # Add new online chars and announce level differences
                 for serverChar in currentServerOnline:
-                    c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",(serverChar['name'],))
+                    c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (serverChar['name'],))
                     result = c.fetchone()
                     if result:
                         # If its a stalked character
-                        lastLevel = result[1]
+                        lastLevel = result["last_level"]
                         # We update their last level in the db
                         c.execute(
                             "UPDATE chars SET last_level = ? WHERE name LIKE ?",
-                            (serverChar['level'],serverChar['name'],)
+                            (serverChar['level'], serverChar['name'],)
                         )
 
                         if not (currentServer+"_"+serverChar['name']) in globalOnlineList:
@@ -316,7 +316,7 @@ def think():
                             # Saving level up date in database
                             c.execute(
                                 "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                (result[2], serverChar['level'], time.time(),)
+                                (result["id"], serverChar['level'], time.time(),)
                             )
                             # Announce the level up
                             yield from announceLevel(serverChar['name'], serverChar['level'])
@@ -360,7 +360,7 @@ def checkDeath(character):
         result = c.fetchone()
         if result:
             lastDeath = characterDeaths[0]
-            dbLastDeathTime = result[1]
+            dbLastDeathTime = result["last_death_time"]
             # If the db lastDeathTime is None it means this is the first time we're seeing them online
             # so we just update it without announcing deaths
             if dbLastDeathTime is None:
@@ -372,7 +372,7 @@ def checkDeath(character):
                 # Saving death info in database
                 c.execute(
                     "INSERT INTO char_deaths (char_id,level,killer,byplayer,date) VALUES(?,?,?,?,?)",
-                    (result[2], int(lastDeath['level']), lastDeath['killer'], lastDeath['byPlayer'], time.time(),)
+                    (result["id"], int(lastDeath['level']), lastDeath['killer'], lastDeath['byPlayer'], time.time(),)
                 )
                 # Announce the death
                 yield from announceDeath(character, lastDeath['time'], lastDeath['level'], lastDeath['killer'], lastDeath['byPlayer'])
@@ -513,7 +513,7 @@ def im(ctx, *charname: str):
                 return
         else:
             # Add the user if it doesn't exist
-            c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)",(user.id,user.display_name,))
+            c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)", (user.id, user.display_name,))
 
         char = yield from getPlayer(charname)
         if type(char) is not dict:
@@ -536,11 +536,11 @@ def im(ctx, *charname: str):
             c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
             result = c.fetchone()
             if result is not None:
-                if getUserById(result[1]) is None:
-                    updated.append({'name': char['name'], 'world': char['world'], 'prevowner': result[1]})
+                if getUserById(result["user_id"]) is None:
+                    updated.append({'name': char['name'], 'world': char['world'], 'prevowner': result["user_id"]})
                     continue
                 else:
-                    yield from bot.say("I'm sorry but a character in that account was already claimed by **@{0}**.".format(getUserById(result[1]).display_name)+"\r\n"+
+                    yield from bot.say("I'm sorry but a character in that account was already claimed by **@{0}**.".format(getUserById(result["user_id"]).display_name)+"\r\n"+
                         "Have you made a mistake? Message "+admins_message+" if you need any help!")
                     return
             char = yield from getPlayer(char['name'])
@@ -582,7 +582,8 @@ def online():
             result = c.fetchone()
             if result:
                 # This will always be true unless a char is removed from chars in between globalOnlineList updates
-                discordOnlineChars.append({"name": result[0], "id": result[1], "vocation": result[2], "level": result[3]})
+                discordOnlineChars.append({"name": result["name"], "id": result["user_id"],
+                                           "vocation": result["vocation"], "level": result["last_level"]})
         if len(discordOnlineChars) == 0:
             yield from bot.say("There is no one online from Discord.")
         else:
@@ -591,7 +592,7 @@ def online():
                 user = getUserById(char['id'])
 
                 char['vocation'] = vocAbb(char['vocation'])
-                #discordName = user.display_name if (user is not None) else "unknown"
+                # discordName = user.display_name if (user is not None) else "unknown"
                 if user is not None:
                     discordName = user.display_name
                     reply += "\n\t{0} (Lvl {1} {2}, **@{3}**)".format(char['name'], abs(char['level']), char['vocation'], discordName)
@@ -639,10 +640,10 @@ def events(ctx, *args: str):
             if len(results) > 0:
                 reply += "Recent events:"
                 for row in results:
-                    author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
-                    name = row[2]
-                    id = row[3]
-                    timediff = timedelta(seconds=date-row[1])
+                    author = "unknown" if getUserById(row["creator"]) is None else getUserById(row["creator"]).display_name
+                    name = row["name"]
+                    id = row["id"]
+                    timediff = timedelta(seconds=date-row["start"])
                     minutes = (timediff.seconds//60) % 60
                     start = 'Started {0} minutes ago'.format(minutes)
                     reply += "\n\t**{0}** (by **@{1}**,*ID:{3}*) - {2}".format(name, author, start, id)
@@ -654,13 +655,13 @@ def events(ctx, *args: str):
                     reply += "\n"
                 reply += "Upcoming events:"
                 for row in results:
-                    author = "unknown" if getUserById(row[0]) is None else getUserById(row[0]).display_name
-                    name = row[2]
-                    id = row[3]
-                    timediff = timedelta(seconds=row[1]-date)
-                    days,hours,minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60)%60
+                    author = "unknown" if getUserById(row["creator"]) is None else getUserById(row["creator"]).display_name
+                    name = row["name"]
+                    id = row["id"]
+                    timediff = timedelta(seconds=row["start"]-date)
+                    days,hours,minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60) % 60
                     if days:
-                        start = 'In {0} days, {1} hours and {2} minutes'.format(days,hours,minutes)
+                        start = 'In {0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
                     elif hours:
                         start = 'In {0} hours and {1} minutes'.format(hours,minutes)
                     elif minutes > 0:
@@ -668,7 +669,7 @@ def events(ctx, *args: str):
                     else:
                         start = 'Starting now!'
 
-                    reply += "\n\t**{0}** (by **@{1}**,*ID:{3}*) - {2}".format(name,author,start,id)
+                    reply += "\n\t**{0}** (by **@{1}**,*ID:{3}*) - {2}".format(name, author, start, id)
             if reply:
                 yield from bot.say(reply)
             else:
@@ -767,7 +768,7 @@ def events(ctx, *args: str):
             if not result:
                 yield from bot.say("There are no active events with that ID.")
                 return
-            if result[0] != int(creator) and creator not in admin_ids:
+            if result["creator"] != int(creator) and creator not in admin_ids:
                 yield from bot.say("You can only delete your own events.")
 
             c.execute("UPDATE events SET active = 0 WHERE id = ?", (id,))
@@ -799,15 +800,16 @@ def stalk(ctx, subcommand, *args: str):
         return
     params = (" ".join(args)).split(",")
     try:
+        userDatabase.row_factory = dict_factory
         c = userDatabase.cursor()
         # Add user
         if subcommand == "add":
             if len(params) != 1:
-                yield from bot.say("The correct syntax is: /stalk add username")
+                yield from bot.say("The correct syntax is: ``/stalk add username``")
                 return
             user = getUserByName(params[0])
             if user is None:
-                yield from bot.say("I don't see any user named **{0}**".format(params[0]))
+                yield from bot.say("I don't see any user named **{0}**.".format(params[0]))
                 return
             c.execute("SELECT id from discord_users WHERE id LIKE ?", (user.id,))
             if c.fetchone() is not None:
@@ -819,7 +821,7 @@ def stalk(ctx, subcommand, *args: str):
         # Add char & Add account common operations
         if subcommand == "addchar" or subcommand == "addacc":
             if len(params) != 2:
-                yield from bot.say("The correct syntax is: /stalk {0} username,character".format(subcommand))
+                yield from bot.say("The correct syntax is: ``/stalk {0} username,character``".format(subcommand))
                 return
             user = getUserByName(params[0])
             char = yield from getPlayer(params[1])
@@ -834,21 +836,33 @@ def stalk(ctx, subcommand, *args: str):
                 return
             # Add char
             if subcommand == "addchar":
-                c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
+                c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (char['name'],))
                 result = c.fetchone()
+                # Char is already in database
                 if result is not None:
+                    # Update name if it was changed
                     if char['name'] != params[1]:
-                        c.execute("UPDATE chars SET name = ? WHERE id LIKE ?", (user['name'], result[1],))
-                        yield from bot.say("This character's name was changed from **{0}** to **{1}**".format(params[1], char['name']))
+                        c.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
+                        yield from bot.say("This character's name was changed from **{0}** to **{1}**".format(
+                            params[1], char['name'])
+                        )
                     # Registered to a different user
-                    if result[1] != user.id and getUserById(result[1]) is not None:
-                        username = getUserById(result[1]).display_name
-                        yield from bot.say("This character is already registered to **@{0}**".format(username))
+                    if result["user_id"] != user.id:
+                        current_user = getUserById(result["user_id"])
+                        # User no longer in server
+                        if current_user is None:
+                            c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
+                            yield from bot.say("This character was registered to a user no longer in server. "
+                                               "It was assigned to this user successfully.")
+                        else:
+                            yield from bot.say("This character is already registered to **@{0}**".format(current_user.display_name))
                         return
                     # Registered to current user
                     yield from bot.say("This character is already registered to this user.")
                     return
-                c.execute("INSERT INTO chars (name,last_level,vocation,user_id) VALUES (?,?,?,?)", (char['name'], char['level']*-1, char['vocation'], user.id))
+                c.execute("INSERT INTO chars (name,last_level,vocation,user_id) VALUES (?,?,?,?)",
+                          (char['name'], char['level']*-1, char['vocation'], user.id))
+                # Check if user is already registered
                 c.execute("SELECT id from discord_users WHERE id = ?", (user.id,))
                 result = c.fetchone()
                 if result is None:
@@ -869,13 +883,22 @@ def stalk(ctx, subcommand, *args: str):
                         yield from bot.say("**{0}** skipped, character not in server list.".format(char['name']))
                         continue
                     char = yield from getPlayer(char['name'])
-                    c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
-                    result = c.fetchone();
+                    c.execute("SELECT id, name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
+                    result = c.fetchone()
+                    # Char is already in database
                     if result is not None:
-                        if result[1] != user.id:
-                            username = "unknown" if getUserById(result[1]) is None else getUserById(result[1]).display_name
-                            yield from bot.say("**{0}** is already registered to **@{1}**".format(char['name'], username))
-                            continue
+                        # Registered to different user
+                        if result["user_id"] != user.id:
+                            current_user = getUserById(result["user_id"])
+                            # Char is registered to user no longer in server
+                            if current_user is None:
+                                c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
+                                yield from bot.say("**{0}** was registered to a user no longer in server. "
+                                                   "It was assigned to this user successfully.".format(char["name"]))
+                            else:
+                                yield from bot.say("**{0}** is already registered to **@{1}**".format(char['name'], current_user.display_name))
+                                continue
+                        # Registered too current user
                         yield from bot.say("**{0}** is already registered to this user.".format(char['name']))
                         continue
                     c.execute(
@@ -888,12 +911,12 @@ def stalk(ctx, subcommand, *args: str):
                 if result is None:
                     c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)", (user.id, user.display_name,))
                     yield from bot.say("**@{0}** was registered successfully.".format(user.display_name))
-                    return
+                return
 
         # Remove char
         if subcommand == "removechar":
             if len(params) != 1:
-                yield from bot.say("The correct syntax is: /stalk {0} character".format(subcommand))
+                yield from bot.say("The correct syntax is: ``/stalk {0} character``".format(subcommand))
                 return
             char = params[0]
             # This could be used to remove deleted chars so we don't need to check anything
@@ -910,25 +933,50 @@ def stalk(ctx, subcommand, *args: str):
         # Remove user
         if subcommand == "remove":
             if len(params) != 1:
-                yield from bot.say("The correct syntax is: /stalk {0} user".format(subcommand))
+                yield from bot.say("The correct syntax is: ``/stalk {0} user``".format(subcommand))
                 return
-            user = getUserByName(params[0])
-            if user is None:
-                yield from bot.say("I don't see any user named **{0}**\nI recommend using purge to remove former users.".format(params[0]))
+
+            # Searching users in server
+            user = getUserByName(params[0],search_pm=False)
+            # Searching users in database
+            c.execute("SELECT id, name from discord_users WHERE name LIKE ?", (params[0],))
+            result = c.fetchone()
+            # Users in database and not in servers
+            if result is not None and getUserById(result['id'], search_pm=False) is None:
+                yield from bot.say("**@{0}** was no longer in server and was removed successfully.".format(result["name"]))
+                delete_id = result["id"]
+            # User in servers and in database
+            elif user is not None and result is not None:
+                yield from bot.say("**{0}** was removed successfully.".format(user.display_name))
+                delete_id = user.id
+            # User in server but not in database
+            elif user is not None and result is None:
+                yield from bot.say("**{0}** is not registered.".format(user.display_name))
                 return
-            c.execute("SELECT id from discord_users WHERE id = ?", (user.id,))
-            if c.fetchone() is None:
-                yield from bot.say("**@{0}** wasn't registered.".format(user.display_name))
+            # User not in server or database
+            else:
+                yield from bot.say("I don't see any user named **{0}**.".format(params[0]))
                 return
-            c.execute("DELETE FROM discord_users WHERE id = ?", (user.id,))
-            yield from bot.say("**@{0}** was removed successfully.".format(user.display_name))
-            c.execute("SELECT name FROM chars WHERE user_id = ?",(user.id,))
+
+            c.execute("DELETE FROM discord_users WHERE id = ?", (delete_id,))
+            c.execute("SELECT name FROM chars WHERE user_id = ?", (delete_id,))
             result = c.fetchall()
             if len(result) >= 1:
-                chars = ["**"+i[0]+"**" for i in result]
-                reply = "The following chars were registered to that user, remove them or use purge to clean up:\n\t"
+                chars = ["**"+i["name"]+"**" for i in result]
+                reply = "The following characters were registered to the user:\n\t"
                 reply += "\n\t".join(chars)
+                reply += "\nDo you want to delete them? ``(yes/no)``"
                 yield from bot.say(reply)
+
+                answer = yield from bot.wait_for_message(author=ctx.message.author, channel=ctx.message.channel,
+                                                         timeout=20.0)
+                if answer is None:
+                    yield from bot.reply("I will take your silence as a no...")
+                elif answer.content.lower() in ["yes", "y"]:
+                    c.execute("DELETE FROM chars WHERE user_id = ?", (delete_id,))
+                    yield from bot.say("Characters deleted successfully.")
+                else:
+                    yield from bot.say("Ok, we are done then.")
             return
         # Purge
         if subcommand == "purge":
@@ -945,17 +993,19 @@ def stalk(ctx, subcommand, *args: str):
                 if user is None:
                     delete_users.append((row[0],))
             if len(delete_users) > 0:
-                c.executemany("DELETE FROM discord_users WHERE id = ?",delete_users)
+                c.executemany("DELETE FROM discord_users WHERE id = ?", delete_users)
                 yield from bot.say("{0} user(s) no longer in the server were removed.".format(c.rowcount))
+
             # Deleting chars with non-existent user
             c.execute("SELECT name FROM chars WHERE user_id NOT IN (SELECT id FROM discord_users)")
             result = c.fetchall()
             if len(result) >= 1:
-                chars = ["**"+i[0]+"**" for i in result]
+                chars = ["**"+i["name"]+"**" for i in result]
                 reply = "{0} char(s) were assigned to a non-existent user and were deleted:\n\t".format(len(result))
                 reply += "\n\t".join(chars)
                 yield from bot.say(reply)
                 c.execute("DELETE FROM chars WHERE user_id NOT IN (SELECT id FROM discord_users)")
+
             # Removing deleted chars
             c.execute("SELECT name,last_level,vocation FROM chars")
             result = c.fetchall()
@@ -964,49 +1014,44 @@ def stalk(ctx, subcommand, *args: str):
             delete_chars = list()
             rename_chars = list()
             # revoc_chars = list()
-            for name, last_level, vocation in result:
-                char = yield from getPlayer(name)
+            for row in result:
+                char = yield from getPlayer(row["name"])
                 if char == ERROR_NETWORK:
-                    yield from bot.say("Couldn't fetch **{0}**, skipping...".format(name))
+                    yield from bot.say("Couldn't fetch **{0}**, skipping...".format(row["name"]))
                     continue
                 # Char was deleted
                 if char == ERROR_DOESNTEXIST:
-                    delete_chars.append((name,))
-                    yield from bot.say("**{0}** doesn't exists, deleting...".format(name))
+                    delete_chars.append((row["name"],))
+                    yield from bot.say("**{0}** doesn't exists, deleting...".format(row["name"]))
                     continue
                 # Char was renamed
-                if char['name'] != name:
-                    rename_chars.append((char['name'], name,))
-                    yield from bot.say("**{0}** was renamed to **{1}**, updating...".format(name, char['name']))
-                # Char vocation changed
-                """
-                if char['vocation'] != vocation:
-                    revoc_chars.append((char['vocation'],name,))
-                    yield from bot.say("**{0}**'s vocation was set to **{1}** from **{2}**, updating...".format(name,char['vocation'], vocation))
-                """
+                if char['name'] != row["name"]:
+                    rename_chars.append((char['name'], row["name"],))
+                    yield from bot.say("**{0}** was renamed to **{1}**, updating...".format(row["name"], char['name']))
 
             # No need to check if user exists cause those were removed already
             if len(delete_chars) > 0:
                 c.executemany("DELETE FROM chars WHERE name LIKE ?", delete_chars)
                 yield from bot.say("{0} char(s) were removed.".format(c.rowcount))
-            """
-            if len(revoc_chars) > 0:
-                c.executemany("UPDATE chars SET vocation = ? WHERE name LIKE ?", revoc_chars)
-                yield from bot.say("{0} char(s)' vocations were updated.".format(c.rowcount))
-            """
             if len(rename_chars) > 0:
                 c.executemany("UPDATE chars SET name = ? WHERE name LIKE ?", rename_chars)
                 yield from bot.say("{0} char(s) were renamed.".format(c.rowcount))
+
             # Remove users with no chars
             c.execute("SELECT id FROM discord_users WHERE id NOT IN (SELECT user_id FROM chars)")
             result = c.fetchall()
             if len(result) >= 1:
                 c.execute("DELETE FROM discord_users WHERE id NOT IN (SELECT user_id FROM chars)")
                 yield from bot.say("{0} user(s) with no characters were removed.".format(c.rowcount))
+
+            # Remove level ups of removed characters
             c.execute("DELETE FROM char_levelups WHERE char_id NOT IN (SELECT id FROM chars)")
-            c.execute("DELETE FROM char_deaths WHERE char_id NOT IN (SELECT id FROM chars)")
             if c.rowcount > 0:
                 yield from bot.say("{0} level up registries from removed characters were deleted.".format(c.rowcount))
+            c.execute("DELETE FROM char_deaths WHERE char_id NOT IN (SELECT id FROM chars)")
+            # Remove deaths of removed characters
+            if c.rowcount > 0:
+                yield from bot.say("{0} death registries from removed characters were deleted.".format(c.rowcount))
             yield from bot.say("Purge done.")
             return
         # Check
@@ -1017,7 +1062,7 @@ def stalk(ctx, subcommand, *args: str):
             if len(result) <= 0:
                 yield from bot.say("There are no registered characters.")
                 return
-            users = [str(i[0]) for i in result]
+            users = [str(i["user_id"]) for i in result]
             members = getServerByName(mainserver).members
             empty_members = list()
             for member in members:
@@ -1038,8 +1083,8 @@ def stalk(ctx, subcommand, *args: str):
                 return
             update_users = list()
             for user in result:
-                update_users.append(("unknown" if getUserById(user[0]) is None else getUserById(user[0]).display_name,user[0]))
-            c.executemany("UPDATE discord_users SET name = ? WHERE id LIKE ?",update_users)
+                update_users.append(("unknown" if getUserById(user[0]) is None else getUserById(user[0]).display_name, user["id"]))
+            c.executemany("UPDATE discord_users SET name = ? WHERE id LIKE ?", update_users)
             yield from bot.say("Usernames updated successfully.")
     finally:
         c.close()
@@ -1119,13 +1164,13 @@ def roles(ctx, *userName:str):
             msg += "**" + user.display_name + "**:\r\n"
             roles = []
 
-            #Ignoring "default" roles
+            # Ignoring "default" roles
             for role in user.roles:
                 if role.name not in ["@everyone", "Nab Bot"]:
                     roles.append(role.name)
 
-            #There shouldn't be anyone without active roles, but since people can check for NabBot,
-            #might as well show a specific message.
+            # There shouldn't be anyone without active roles, but since people can check for NabBot,
+            # might as well show a specific message.
             if roles:
                 for roleName in roles:
                     msg += roleName + "\r\n"
@@ -1134,6 +1179,7 @@ def roles(ctx, *userName:str):
 
     yield from bot.say(msg)
     return
+
 
 @bot.command(pass_context=True)
 @asyncio.coroutine
