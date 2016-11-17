@@ -26,7 +26,7 @@ https://discordapp.com/developers/docs/topics/oauth2#bots
 ```
 
 Define the bots permissions for your server.  
-As of 01/Oct/2016, Nab Bot needs the following permissions: 261120 
+As of 17/November/2016, Nab Bot needs the following permissions: 191488 
 
 ```
 https://discordapi.com/permissions.html
@@ -38,6 +38,8 @@ To run the bot, execute the following command:
 ```
 python nabbot.py
 ```
+
+For more detailed instructions, read the [wiki article](https://github.com/Galarzaa90/NabBot/wiki/Creating-a-Discord-Bot).
 
 ##Current features
 * Character database to keep track of the member's characters
