@@ -1280,26 +1280,28 @@ def getAboutContent() -> str:
     Used in /about and /whois Nab Bot"""
     user_count = 0
     char_count = 0
-    try:
-        c = userDatabase.cursor()
-        c.execute("SELECT COUNT(*) as count FROM discord_users")
-        result = c.fetchone()
-        if result is not None:
-            user_count = result["count"]
-        c.execute("SELECT COUNT(*) as count FROM chars")
-        result = c.fetchone()
-        if result is not None:
-            char_count = result["count"]
-    finally:
-        c.close()
+    if not lite_mode:
+        try:
+            c = userDatabase.cursor()
+            c.execute("SELECT COUNT(*) as count FROM discord_users")
+            result = c.fetchone()
+            if result is not None:
+                user_count = result["count"]
+            c.execute("SELECT COUNT(*) as count FROM chars")
+            result = c.fetchone()
+            if result is not None:
+                char_count = result["count"]
+        finally:
+            c.close()
 
     reply = "*Beep boop beep boop*. I'm just a bot!\n"
     reply += "\t- Authors: @Galarzaa#8515, @Nezune#2269\n"
     reply += "\t- Platform: Python " + EMOJI[":snake:"] + "\n"
     reply += "\t- Created: March 30th 2016\n"
     reply += "\t- Uptime: " + getUptime() + "\n"
-    reply += "\t- Tracked users: " + str(user_count) + "\n"
-    reply += "\t- Tracked chars: " + str(char_count)
+    if not lite_mode:
+        reply += "\t- Tracked users: " + str(user_count) + "\n"
+        reply += "\t- Tracked chars: " + str(char_count)
     return reply
 
 

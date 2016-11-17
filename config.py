@@ -1,5 +1,12 @@
 from utils import *
 
+# Lite mode:
+# If lite is enabled, all user database related functions are disabled.
+# /stalk, /im, /whois /levels are disabled
+# /whois, /deaths have limited functionality
+# Level up and deaths announcements are disabled
+lite_mode = False
+
 # This is the name of the server where the bot will work
 # This bot doesn't support multiple servers yet
 # mainchannel is where the Bot will do announcements, but he will reply to commands everywhere

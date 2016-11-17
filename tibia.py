@@ -804,6 +804,7 @@ def getItemString(item, short=True):
         reply += "*I also PM'd you this item's complete NPC list and creatures that drop it.*"
     return reply
 
+
 # TODO: Improve formatting to match /monster and /item
 def getSpell(name):
     """Returns a formatted string containing a spell's info."""
@@ -843,11 +844,21 @@ class Tibia:
 
         Note that the bot has no way to know the characters of a member that just joined.
         The bot has to be taught about the character's of an user."""
+        if lite_mode:
+            char = yield from getPlayer(name)
+            if char == ERROR_DOESNTEXIST:
+                yield from self.bot.say("I couldn't find a character with that name")
+            elif char == ERROR_NETWORK:
+                yield from self.bot.say("Sorry, I couldn't fetch the character's info, maybe you should try again...")
+            else:
+                yield from self.bot.say(getCharString(char))
+            return
+
         user = getUserByName(name)
         c = userDatabase.cursor()
         try:
             # Checking if the param used is the name of a character in the database
-            c.execute("SELECT name, user_id FROM chars WHERE name LIKE ?",(name,))
+            c.execute("SELECT name, user_id FROM chars WHERE name LIKE ?", (name,))
             char = yield from getPlayer(name)
             charString = getCharString(char)
             result = c.fetchone()
@@ -1051,6 +1062,8 @@ class Tibia:
     def deaths(self, *name: str):
         """Shows a player's recent deaths or global deaths if no player is specified"""
         name = " ".join(name).strip()
+        if not name and lite_mode:
+            return
         if not name:
             c = userDatabase.cursor()
             try:
@@ -1105,13 +1118,15 @@ class Tibia:
 
         yield from self.bot.say(reply)
 
-    @commands.command(pass_context=True,aliases=['levelups', 'lvl', 'level', 'lvls'])
+    @commands.command(pass_context=True,aliases=['levelups', 'lvl', 'level', 'lvls'],hidden=lite_mode)
     @asyncio.coroutine
     def levels(self, ctx, *name: str):
         """Shows a player's recent level ups or global leveups if no player is specified
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
+        if lite_mode:
+            return
         name = " ".join(name)
         c = userDatabase.cursor()
         limit = 10

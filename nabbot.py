@@ -74,9 +74,11 @@ def on_message(message):
 @asyncio.coroutine
 def on_member_join(member):
     """Called every time a member joins a server visible by the bot."""
+    log.info("New member joined: {0.display_name} (ID: {0.id})".format(member))
+    if lite_mode:
+        return
     message = "Welcome {0.mention}! Please tell us about yourself, who is your Tibia character?\r\n" \
               "Say /im *charactername* and I'll begin tracking it for you!"
-    log.info("New member joined: {0.display_name} (ID: {0.id})".format(member))
     # Starting a private message with members allows us to keep track of them even after they leave our visible servers.
     yield from bot.start_private_message(member)
     yield from bot.send_message(member.server, message.format(member))
@@ -116,6 +118,8 @@ def on_message_edit(older_message, message):
 
 @asyncio.coroutine
 def announceEvents():
+    if lite_mode:
+        return
     """Announces when an event is close to starting."""
     firstAnnouncement = 60*30
     secondAnnouncement = 60*15
@@ -232,6 +236,8 @@ def announceEvents():
 
 @asyncio.coroutine
 def think():
+    if lite_mode:
+        return
     #################################################
     #             Nezune's cave                     #
     # Do not touch anything, enter at your own risk #
@@ -483,12 +489,15 @@ def choose(ctx, *choices: str):
     yield from bot.say('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
 
-@bot.command(pass_context=True,aliases=["i'm","iam"],no_pm=True)
+@bot.command(pass_context=True, aliases=["i'm", "iam"], no_pm=True, hidden=lite_mode)
 @asyncio.coroutine
 def im(ctx, *charname: str):
     """Lets you add your first tibia character(s) for the bot to track.
 
     If you need to add any more characters or made a mistake, please message an admin."""
+
+    if lite_mode:
+        return
 
     # This is equivalent to someone using /stalk addacc on themselves.
     # To avoid abuse it will only work on users who have joined recently and have no characters added to their account.
@@ -570,13 +579,15 @@ def im(ctx, *charname: str):
         userDatabase.commit()
 
 
-@bot.command()
+@bot.command(hidden=lite_mode)
 @asyncio.coroutine
 def online():
     """Tells you which users are online on Tibia
 
     This list gets updated based on Tibia.com online list, so it takes a couple minutes
     to be updated."""
+    if lite_mode:
+        return
     discordOnlineChars = []
     c = userDatabase.cursor()
     try:
@@ -612,7 +623,7 @@ def about():
     yield from bot.say(getAboutContent())
 
 
-@bot.command(pass_context=True, aliases=["event", "checkevents", "checkevent"])
+@bot.command(pass_context=True, aliases=["event", "checkevents", "checkevent"], hidden=lite_mode)
 @asyncio.coroutine
 def events(ctx, *args: str):
     """Shows a list of current active events
@@ -630,6 +641,10 @@ def events(ctx, *args: str):
     
     To delete an event, use:
     /events delete [id]"""
+
+    if lite_mode:
+        return
+
     # Time the event will be shown in the event list
     timeThreshold = 60*30
     c = userDatabase.cursor()
@@ -800,6 +815,8 @@ def makesay(ctx, *args: str):
 @bot.command(pass_context=True, hidden=True)
 @asyncio.coroutine
 def stalk(ctx, subcommand, *args: str):
+    if lite_mode:
+        return
     if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
         return
     params = (" ".join(args)).split(",")
@@ -1102,6 +1119,8 @@ def stalk(ctx, subcommand, *args: str):
 @stalk.error
 @asyncio.coroutine
 def stalk_error(error, ctx):
+    if lite_mode:
+        return
     if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
         return
     if type(error) is commands.MissingRequiredArgument:
