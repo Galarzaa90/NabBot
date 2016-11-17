@@ -60,7 +60,11 @@ def on_message(message):
             return
     else:
         message.content = message.content.lower()
-        if message.author.id != bot.user.id and (not message.content.lower()[1:] in command_list or not message.content[:1] == "/") and not message.channel.is_private and message.channel.name == askchannel:
+        # Delete messages in askchannel
+        if message.author.id != bot.user.id \
+                and (not message.content.lower()[1:] in command_list or not message.content[:1] == "/") \
+                and not message.channel.is_private \
+                and message.channel.name == askchannel:
             yield from bot.delete_message(message)
             return
     yield from bot.process_commands(message)
@@ -75,7 +79,7 @@ def on_member_join(member):
     log.info("New member joined: {0.display_name} (ID: {0.id})".format(member))
     # Starting a private message with members allows us to keep track of them even after they leave our visible servers.
     yield from bot.start_private_message(member)
-    yield from bot.send_message(member.server,message.format(member))
+    yield from bot.send_message(member.server, message.format(member))
 
 
 @bot.event
@@ -97,7 +101,7 @@ def on_message_delete(message):
 
 @bot.event
 @asyncio.coroutine
-def on_message_edit(older_message,message):
+def on_message_edit(older_message, message):
     """Called every time a message is edited."""
     older_message_decoded = decode_emoji(older_message.content)
     log.info("{0} has edited the message: '{1}'".format(older_message.author.display_name,older_message_decoded))
@@ -800,7 +804,6 @@ def stalk(ctx, subcommand, *args: str):
         return
     params = (" ".join(args)).split(",")
     try:
-        userDatabase.row_factory = dict_factory
         c = userDatabase.cursor()
         # Add user
         if subcommand == "add":
@@ -855,7 +858,9 @@ def stalk(ctx, subcommand, *args: str):
                             yield from bot.say("This character was registered to a user no longer in server. "
                                                "It was assigned to this user successfully.")
                         else:
-                            yield from bot.say("This character is already registered to **@{0}**".format(current_user.display_name))
+                            yield from bot.say("This character is already registered to **@{0}**".format(
+                                current_user.display_name)
+                            )
                         return
                     # Registered to current user
                     yield from bot.say("This character is already registered to this user.")
@@ -896,7 +901,10 @@ def stalk(ctx, subcommand, *args: str):
                                 yield from bot.say("**{0}** was registered to a user no longer in server. "
                                                    "It was assigned to this user successfully.".format(char["name"]))
                             else:
-                                yield from bot.say("**{0}** is already registered to **@{1}**".format(char['name'], current_user.display_name))
+                                yield from bot.say("**{0}** is already registered to **@{1}**".format(
+                                    char['name'],
+                                    current_user.display_name)
+                                )
                                 continue
                         # Registered too current user
                         yield from bot.say("**{0}** is already registered to this user.".format(char['name']))
