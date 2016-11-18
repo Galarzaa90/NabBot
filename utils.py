@@ -1257,9 +1257,9 @@ def getUptime() -> str:
     minutes, seconds = divmod(remainder, 60)
     days, hours = divmod(hours, 24)
     if days:
-        fmt = '{d} days, {h} hours, {m} minutes, and {s} seconds'
+        fmt = '{d}d {h}h {m}m {s}s'
     else:
-        fmt = '{h} hours, {m} minutes, and {s} seconds'
+        fmt = '{h}h {m}m {s}s'
 
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
@@ -1274,7 +1274,7 @@ def joinList(list, separator, endseparator) -> str:
     return separator.join(list[:size - 1]) + endseparator + str(list[size - 1])
 
 
-def getAboutContent() -> str:
+def getAboutContent() -> discord.Embed:
     """Returns a formatted string with general information about the bot.
     
     Used in /about and /whois Nab Bot"""
@@ -1294,15 +1294,15 @@ def getAboutContent() -> str:
         finally:
             c.close()
 
-    reply = "*Beep boop beep boop*. I'm just a bot!\n"
-    reply += "\t- Authors: @Galarzaa#8515, @Nezune#2269\n"
-    reply += "\t- Platform: Python " + EMOJI[":snake:"] + "\n"
-    reply += "\t- Created: March 30th 2016\n"
-    reply += "\t- Uptime: " + getUptime() + "\n"
+    embed = discord.Embed(description="*Beep boop beep boop*. I'm just a bot!")
+    embed.add_field(name="Authors", value="@Galarzaa#8515, @Nezune#2269")
+    embed.add_field(name="Platform", value="Python " + EMOJI[":snake:"])
+    embed.add_field(name="Created", value="March 30th 2016")
+    embed.add_field(name="Uptime", value=getUptime())
     if not lite_mode:
-        reply += "\t- Tracked users: " + str(user_count) + "\n"
-        reply += "\t- Tracked chars: " + str(char_count)
-    return reply
+        embed.add_field(name="Tracked users", value=str(user_count))
+        embed.add_field(name="Tracked chars", value=str(char_count))
+    return embed
 
 
 def getListRoles(server):

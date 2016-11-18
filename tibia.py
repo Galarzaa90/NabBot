@@ -883,7 +883,7 @@ class Tibia:
                 yield from self.bot.say(charString)
                 return
             if user.id == self.bot.user.id:
-                yield from self.bot.say(getAboutContent())
+                yield from self.bot.say(embed=getAboutContent())
                 return
             c.execute("SELECT name, last_level, vocation FROM chars WHERE user_id = ? ORDER BY abs(last_level) DESC", (user.id,))
             chars = []

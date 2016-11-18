@@ -620,7 +620,7 @@ def online():
 @asyncio.coroutine
 def about():
     """Shows information about the bot"""
-    yield from bot.say(getAboutContent())
+    yield from bot.say(embed=getAboutContent())
 
 
 @bot.command(pass_context=True, aliases=["event", "checkevents", "checkevent"], hidden=lite_mode)
