@@ -95,8 +95,11 @@ def on_member_remove(member):
 @asyncio.coroutine
 def on_message_delete(message):
     """Called every time a message is deleted."""
+    if message.channel.name == askchannel:
+        return
+
     message_decoded = decode_emoji(message.content)
-    log.info("A message by {0} was deleted. Message: '{1}'".format(message.author.display_name,message_decoded))
+    log.info("A message by {0} was deleted. Message: '{1}'".format(message.author.display_name, message_decoded))
     for attachment in message.attachments:
         log.info(attachment)
 
@@ -105,6 +108,10 @@ def on_message_delete(message):
 @asyncio.coroutine
 def on_message_edit(older_message, message):
     """Called every time a message is edited."""
+
+    if older_message.author.id == bot.user.id:
+        return
+
     older_message_decoded = decode_emoji(older_message.content)
     log.info("{0} has edited the message: '{1}'".format(older_message.author.display_name,older_message_decoded))
     for attachment in older_message.attachments:
