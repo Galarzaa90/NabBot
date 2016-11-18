@@ -12,7 +12,7 @@ lite_mode = False
 # mainchannel is where the Bot will do announcements, but he will reply to commands everywhere
 # askchannel is a channel where the bot replies with full length messages (like on pms)
 #   Messages that are not commands are automatically deleted in askchannel
-mainserver = "nezunee"
+mainserver = "Redd Alliance/Bald Dwarfs"
 mainchannel = "general-chat"
 askchannel = "ask-nabbot"
 

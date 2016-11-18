@@ -195,7 +195,6 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
         if "<div>Sorry!" in content:
             return ERROR_DOESNTEXIST
 
-
         # Failsafe in case guildstats.eu changes their websites format
         try:
             content.index("General info")
@@ -320,7 +319,6 @@ def getPlayer(name, tries=5):
     if "Name:</td><td>" not in content:
         return ERROR_DOESNTEXIST
 
-
     # TODO: Is there a way to reduce this part?
     # Name
     m = re.search(r'Name:</td><td>([^<,]+)', content)
@@ -345,7 +343,7 @@ def getPlayer(name, tries=5):
     for onchar in globalOnlineList:
         if onchar.split("_", 1)[1] == char['name']:
             c = userDatabase.cursor()
-            c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (char['name'],))
+            c.execute("SELECT last_level FROM chars WHERE name LIKE ?", (char['name'],))
             result = c.fetchone()
             if result:
                 char['level'] = abs(result["last_level"])
@@ -957,11 +955,10 @@ class Tibia:
         low = int(round(level*2/3, 0))
         high = int(round(level*3/2, 0))
         if name == '':
-            yield from self.bot.say('A level '+str(level)+' can share experience with levels **'+str(low)+
-        '** to **'+str(high)+'**.')
+            reply = 'A level {0} can share experience with levels **{1}** to **{2}**.'.format(level, low, high)
         else:
-            yield from self.bot.say('**'+name+'** ('+str(level)+') can share experience with levels **'+str(low)+
-        '** to **'+str(high)+'**.')
+            reply = '**{0}** ({1}) can share experience with levels **{2}** to **{3}**.'.format(name, level, low, high)
+        yield from self.bot.say(reply)
 
     @commands.command(aliases=['guildcheck', 'checkguild'])
     @asyncio.coroutine
