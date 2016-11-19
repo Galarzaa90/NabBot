@@ -17,6 +17,7 @@ import sys
 import aiohttp
 from messages import *
 from config import *
+import psutil
 
 # Command list (populated automatically, used to check if a message is(n't) a command invocation)
 command_list = []
@@ -442,9 +443,12 @@ def getAboutContent() -> discord.Embed:
     embed.add_field(name="Platform", value="Python " + EMOJI[":snake:"])
     embed.add_field(name="Created", value="March 30th 2016")
     embed.add_field(name="Uptime", value=getUptime())
+    memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
     if not lite_mode:
         embed.add_field(name="Tracked users", value=str(user_count))
         embed.add_field(name="Tracked chars", value=str(char_count))
+
+    embed.add_field(name='Memory Usage', value='{:.2f} MiB'.format(memory_usage))
     return embed
 
 
