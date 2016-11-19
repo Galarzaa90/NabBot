@@ -155,7 +155,7 @@ def getServerOnline(server, tries=5):
 def getGuildOnline(guildname, titlecase=True, tries=5):
     """Returns a guild's world and online member list in a dictionary.
 
-    The dictionary contains two keys: name, world and members.
+    The dictionary contains the following keys: name, logo_url, world and members.
     The key members contains a list where each element is a dictionary with the following keys:
         rank, name, title, vocation, level, joined.
     Guilds are case sensitive on tibia.com so guildstats.eu is checked for correct case.
@@ -255,6 +255,11 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
     m = re.search(r'founded on (\w+) on ([^.]+)', content)
     if m:
         guild['world'] = m.group(1)
+
+    # Logo URL
+    m = re.search(r'<IMG SRC=\"([^\"]+)\" W', content)
+    if m:
+        guild['logo_url'] = m.group(1)
 
     # Regex pattern to fetch members
     regex_members = r'<TR BGCOLOR=#[\dABCDEF]+><TD>(.+?)</TD>\s</td><TD><A HREF="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)">.+?</A> *\(*(.*?)\)*</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>'
@@ -962,8 +967,10 @@ class Tibia:
 
     @commands.command(aliases=['guildcheck', 'checkguild'])
     @asyncio.coroutine
-    def guild(self, *, guildname: str):
+    def guild(self, *, guildname=None):
         """Checks who is online in a guild"""
+        if guildname is None:
+            return
         guild = yield from getGuildOnline(guildname)
         if guild == ERROR_DOESNTEXIST:
             yield from self.bot.say("The guild {0} doesn't exist.".format(guildname))
@@ -971,25 +978,32 @@ class Tibia:
         if guild == ERROR_NETWORK:
             yield from self.bot.say("Can you repeat that?")
             return
+
+        embed = discord.Embed()
+        embed.set_author(name="{name} ({world})".format(**guild),
+                         url=url_guild + urllib.parse.quote(guild["name"]),
+                         )
+        embed.set_thumbnail(url=guild["logo_url"])
         if len(guild['members']) < 1:
-            yield from self.bot.say("Nobody is online on **{name}** ({world}).".format(**guild))
+            embed.description = "Nobody is online."
+            yield from self.bot.say(embed=embed)
             return
+
         plural = ""
-        article = "is"
         if len(guild['members']) > 1:
-            article = "are"
             plural = "s"
-        result = "There {0} {1} player{2} online in **{3}** ({4}):".format(
-            article, len(guild['members']), plural, guild['name'], guild['world'])
+        result = "It has {0} player{1} online:".format(len(guild['members']), plural)
         for member in guild['members']:
             result += '\n'
             if member['rank'] != '':
                 result += '__'+member['rank']+'__\n'
-            result += '\t'+member['name']
-            result += (' (*'+member['title']+'*)' if (member['title'] != '') else '')
-            result += ' -- '+member['level']+' '
-            result += vocAbb(member['vocation'])
-        yield from self.bot.say(result)
+
+            member["title"] = ' (*' + member['title'] + '*)' if member['title'] != '' else ''
+            member["vocation"] = vocAbb(member["vocation"])
+
+            result += "\t{name} {title} -- {level} {vocation}".format(**member)
+        embed.description = result
+        yield from self.bot.say(embed=embed)
 
     @commands.command(pass_context=True, aliases=['checkprice', 'item'])
     @asyncio.coroutine

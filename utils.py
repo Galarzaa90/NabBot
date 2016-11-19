@@ -57,6 +57,10 @@ tibiaDatabase = sqlite3.connect(TIBIADB)
 
 DB_LASTVERSION = 5
 
+# Tibia.com URLs:
+url_character = "https://secure.tibia.com/community/?subtopic=characters&name="
+url_guild = "https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName="
+url_guild_online = "https://secure.tibia.com/community/?subtopic=guilds&page=view&onlyshowonline=1&"
 
 def initDatabase():
     """Initializes and/or updates the database to the current version"""
