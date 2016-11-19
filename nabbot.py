@@ -44,6 +44,11 @@ def on_command(command, ctx):
     message_decoded = decode_emoji(ctx.message.content)
     log.info('Command by {0} in {1}: {2}'.format(ctx.message.author.display_name, destination, message_decoded))
 
+@bot.event
+@asyncio.coroutine
+def on_command_error(exception, context):
+    if exception is discord.ext.commands.errors.CommandNotFound:
+        return
 
 @bot.event
 @asyncio.coroutine

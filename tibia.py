@@ -396,6 +396,12 @@ def getPlayer(name, tries=5):
         else:
             char['last_login'] = lastLogin
 
+    # Discord owner
+    c = userDatabase.cursor()
+    c.execute("SELECT user_id FROM chars WHERE name LIKE ?", (char["name"],))
+    result = c.fetchone()
+    char["owner_id"] = None if result is None else result["user_id"]
+
     # Update name and vocation in chars database if necessary
     c = userDatabase.cursor()
     c.execute("SELECT vocation FROM chars WHERE name LIKE ?",(name,))
@@ -659,21 +665,30 @@ def getStats(level, vocation):
 
 def getCharString(char):
     """Returns a formatted string containing a character's info."""
+    # Todo: Links in embed descriptions are not supported on mobile, readd when/if they are supported
     if char == ERROR_NETWORK or char == ERROR_DOESNTEXIST:
         return char
     pronoun = "He"
     if char['gender'] == "female":
         pronoun = "She"
+    # url = url_character + urllib.parse.quote(char["name"])
+    # reply_format = "**[{1}]({9})** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}"
     reply_format = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}"
+    # guild_format = "\n{0} is __{1}__ of the **[{2}]({3})**."
     guild_format = "\n{0} is __{1}__ of the **{2}**."
+    # married_format = "\n{0} is married to **[{1}]({2})**."
     married_format = "\n{0} is married to **{1}**."
     login_format = "\n{0} hasn't logged in for **{1}**."
     guild = ""
     married = ""
     login = "\n{0} has **never** logged in.".format(pronoun)
     if char.get('guild', None):
+        # guild_url = url_guild+urllib.parse.quote(char["guild"])
+        # guild = guild_format.format(pronoun, char['rank'], char['guild'],guild_url)
         guild = guild_format.format(pronoun, char['rank'], char['guild'])
     if char.get('married', None):
+        # married_url = url_character + urllib.parse.quote(char["name"])
+        # married = married_format.format(pronoun, char['married'], married_url)
         married = married_format.format(pronoun, char['married'])
 
     if char['last_login'] is not None:
@@ -685,9 +700,43 @@ def getCharString(char):
         else:
             login = ""
 
+    # reply = reply_format.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'],
+    #                            char['world'], guild, married, login, url)
     reply = reply_format.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'],
                                 char['world'], guild, married, login)
     return reply
+
+
+def getUserString(username):
+    user = getUserByName(username)
+    c = userDatabase.cursor()
+    if user is None:
+        return ERROR_DOESNTEXIST
+    try:
+        c.execute("SELECT name, ABS(last_level) as level, vocation FROM chars WHERE user_id = ? ORDER BY level DESC", (user.id,))
+        result = c.fetchall()
+        if result:
+            charList = []
+            for character in result:
+                try:
+                    character["level"] = int(character["level"])
+                except ValueError:
+                    character["level"] = ""
+                character["vocation"] = vocAbb(character["vocation"])
+                # Todo: Links in embed descriptions are not supported on mobile, readd when/if they are supported
+                # character["url"] = url_character+urllib.parse.quote(character["name"])
+                character["url"] = url_character+urllib.parse.quote(character["name"])
+                # charList.append("[{name}]({url}) (Lvl {level} {vocation})".format(**character))
+                charList.append("{name} (Lvl {level} {vocation})".format(**character))
+
+            charString = "@**{0.display_name}**'s character{1}: {2}"
+            plural = "s are" if len(charList) > 1 else " is"
+            reply = charString.format(user, plural, joinList(charList, ", ",  " and "))
+        else:
+            reply = "I don't know who @**{0.display_name}** is...".format(user)
+        return reply
+    finally:
+        c.close()
 
 
 def getMonsterString(monster, short=True):
@@ -840,14 +889,16 @@ class Tibia:
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'])
+    @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'],pass_context=True)
     @asyncio.coroutine
-    def whois(self, *, name: str):
+    def whois(self, ctx, *, name=None):
         """Tells you the characters of a user or the owner of a character and/or information of a tibia character
 
         Note that the bot has no way to know the characters of a member that just joined.
         The bot has to be taught about the character's of an user."""
         if lite_mode:
+            if name is None:
+                yield from self.bot.say("Tell me which character you want to check.")
             char = yield from getPlayer(name)
             if char == ERROR_DOESNTEXIST:
                 yield from self.bot.say("I couldn't find a character with that name")
@@ -857,77 +908,48 @@ class Tibia:
                 yield from self.bot.say(getCharString(char))
             return
 
+        if name is None:
+            yield from self.bot.say("Tell me which character or user you want to check.")
+
+        char = yield from getPlayer(name)
+        charString = getCharString(char)
         user = getUserByName(name)
-        c = userDatabase.cursor()
-        try:
-            # Checking if the param used is the name of a character in the database
-            c.execute("SELECT name, user_id FROM chars WHERE name LIKE ?", (name,))
-            char = yield from getPlayer(name)
-            charString = getCharString(char)
-            result = c.fetchone()
-            if user is None:
-                # If it's not a discord user, it might be a known tibia character
-                if result is not None:
-                    user = getUserById(result["user_id"])
-                    # Check if the user exists just in case
-                    if user is not None:
-                        if char == ERROR_NETWORK:
-                            charString = "I couldn't fetch that character's info, though. Maybe try again?"
-                        if char == ERROR_DOESNTEXIST:
-                            charString = "But the character no longer exists."
-                        charString = "**{0}** is a character of **@{1.display_name}**.\n".format(result["name"], user)+charString
-                        yield from self.bot.say(charString)
-                        return
-                # It wasn't a discord user nor a known tibia character
-                if char == ERROR_NETWORK:
-                    charString = "I... can you repeat that?"
-                if char == ERROR_DOESNTEXIST:
-                    charString = "I don't see any user or character with that name."
-                yield from self.bot.say(charString)
-                return
-            if user.id == self.bot.user.id:
-                yield from self.bot.say(embed=getAboutContent())
-                return
-            c.execute("SELECT name, last_level, vocation FROM chars WHERE user_id = ? ORDER BY abs(last_level) DESC", (user.id,))
-            chars = []
-            for character in c:
-                try:
-                    level = int(character["last_level"])
-                except ValueError:
-                    level = 0
+        userString = getUserString(name)
+        embed = discord.Embed()
+        embed.description = ""
 
-                vocation = vocAbb(character["vocation"])
-                chars.append("{0} (Lvl {1} {2})".format(character["name"], abs(level) if level != 0 else "", vocation))
-            if len(chars) <= 0:
-                yield from self.bot.say("I don't know who **@{0.display_name}** is...".format(user))
-                if char == ERROR_NETWORK:
-                    yield from self.bot.say("I also failed to do a character search for some reason "+EMOJI[":astonished:"])
-                    return
-                if char == ERROR_DOESNTEXIST:
-                    yield from self.bot.say("And I don't see any character with that name.")
-                    return
-
-                c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?", (name,))
-                result = c.fetchone()
-                if result is not None:
-                    user2 = getUserById(result["user_id"])
-                    if user2 is not None:
-                        charString = "But **{0}** is a character of **@{1.display_name}**.\n".format(char['name'], user2) + charString
-                        yield from self.bot.say(charString)
-                        return
-                yield from self.bot.say(charString)
-                return
-            # TODO: Fix possesive if user ends with s
-            yield from self.bot.say("@**{0.display_name}**'s character{1}: {2}.".format(user,"s are" if len(chars) > 1 else " is", joinList(chars, ", ", " and ")))
-            if char == ERROR_NETWORK:
-                yield from self.bot.say("But I failed to do a character search for some reason "+EMOJI[":astonished:"])
-                return
-            if char == ERROR_DOESNTEXIST:
-                return
-            yield from self.bot.say("The character "+charString)
+        # No user or char with that name
+        if char == ERROR_DOESNTEXIST and user is None:
+            yield from self.bot.say("I don't see any user or character with that name.")
             return
-        finally:
-            c.close()
+        # We found an user
+        if user is not None:
+            embed.description = userString
+            color = getUserColor(user, ctx.message.server)
+            if color is not discord.Colour.default():
+                embed.colour = color
+            if "I don't know" not in userString:
+                embed.set_thumbnail(url=user.avatar_url)
+            # Check if we found a char too
+            if type(char) is dict:
+                embed.description += "\n\nThe character "+charString
+            elif char == ERROR_NETWORK:
+                embed.description += "I failed to do a character search for some reason "+EMOJI[":astonished:"]
+        else:
+            if type(char) is dict:
+                if char == ERROR_NETWORK:
+                    embed.description += "I failed to do a character search for some reason " + EMOJI[":astonished:"]
+                # Char is owned by a discord user
+                else:
+                    if char["owner_id"] is not None and getUserById(char["owner_id"]):
+                        owner = getUserById(char["owner_id"])
+                        embed.set_thumbnail(url=owner.avatar_url)
+                        color = getUserColor(owner, ctx.message.server)
+                        if color is not discord.Colour.default():
+                            embed.colour = color
+                        embed.description += "**{0}** is a character of @**{1.display_name}**\n".format(char["name"], owner)
+                    embed.description += charString
+        yield from self.bot.say(embed=embed)
 
     @commands.command(aliases=['expshare', 'party'])
     @asyncio.coroutine

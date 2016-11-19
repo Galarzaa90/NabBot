@@ -28,6 +28,7 @@ bot = ""
 # Global constants
 ERROR_NETWORK = 0
 ERROR_DOESNTEXIST = 1
+ERROR_NOTINDATABASE = 2
 
 # Start logging
 # Create logs folder
@@ -463,6 +464,17 @@ def getListRoles(server):
             roles.append(role)
 
     return roles
+
+
+def getUserColor(user: discord.User, server: discord.Server) -> discord.Colour:
+    """Gets the user's color based on the highest role with a color"""
+    # If it's a PM, server will be none
+    if server is None:
+        return discord.Colour.default()
+    member = server.get_member(user.id)  # type: discord.Member
+    if member is not None:
+        return member.colour
+    return discord.Colour.default()
 
 
 if __name__ == "__main__":
