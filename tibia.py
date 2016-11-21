@@ -907,6 +907,9 @@ class Tibia:
             else:
                 yield from self.bot.say(getCharString(char))
             return
+        if name.lower() == self.bot.user.name.lower():
+            yield from self.bot.say(embed=getAboutContent())
+            return
 
         if name is None:
             yield from self.bot.say("Tell me which character or user you want to check.")

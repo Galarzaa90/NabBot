@@ -261,6 +261,9 @@ def think():
         # Announce incoming events
         yield from announceEvents()
 
+        yield from announceDeath("Nezune",None,100,"a chicken",False)
+        yield from announceLevel("Nezune",100)
+
         # Periodically check server online lists
         if datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
             # Pop last server in queue, reinsert it at the beginning
@@ -423,12 +426,12 @@ def announceDeath(charName, deathTime, deathLevel, deathKiller, deathByPlayer):
     # Choose correct pronouns
     pronoun = ["he", "his", "him"] if char['gender'] == "male" else ["she", "her", "her"]
 
-    channel = getChannelByServerAndName(mainserver,mainchannel)
+    channel = getChannelByServerAndName(mainserver, mainchannel)
     # Find killer article (a/an)
     deathKillerArticle = ""
     if not deathByPlayer:
-        deathKillerArticle = deathKiller.split(" ",1)
-        if deathKillerArticle[0] in ["a","an"] and len(deathKillerArticle) > 1:
+        deathKillerArticle = deathKiller.split(" ", 1)
+        if deathKillerArticle[0] in ["a", "an"] and len(deathKillerArticle) > 1:
             deathKiller = deathKillerArticle[1]
             deathKillerArticle = deathKillerArticle[0]+" "
         else:
@@ -442,6 +445,7 @@ def announceDeath(charName, deathTime, deathLevel, deathKiller, deathByPlayer):
     message = message.format(**deathInfo)
     # Format extra stylization
     message = formatMessage(message)
+    message = EMOJI[":skull_crossbones:"] + " " + message
 
     yield from bot.send_message(channel,message[:1].upper()+message[1:])
 
@@ -451,7 +455,7 @@ def announceLevel(charName,newLevel):
     if int(newLevel) < announceTreshold:
         # Don't announce low level players
         return
-    log.info("Announcing level up: {0} ({1})".format(charName,newLevel))
+    log.info("Announcing level up: {0} ({1})".format(charName, newLevel))
     char = yield from getPlayer(charName)
     # Failsafe in case getPlayer fails to retrieve player data
     if type(char) is not dict:
@@ -460,16 +464,17 @@ def announceLevel(charName,newLevel):
     # Choose correct pronouns
     pronoun = ["he", "his", "him"] if char['gender'] == "male" else ["she", "her", "her"]
 
-    channel = getChannelByServerAndName(mainserver,mainchannel)
+    channel = getChannelByServerAndName(mainserver, mainchannel)
 
     # Select a message
-    message = weighedChoice(levelmessages,char['vocation'],int(newLevel))
+    message = weighedChoice(levelmessages, char['vocation'], int(newLevel))
     # Format message with level information
     levelInfo = {'charName': charName, 'newLevel': newLevel, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
                  'pronoun3': pronoun[2]}
     message = message.format(**levelInfo)
     # Format extra stylization
     message = formatMessage(message)
+    message = EMOJI[":star2:"]+" "+message
 
     yield from bot.send_message(channel, message)
 
