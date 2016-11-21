@@ -261,9 +261,6 @@ def think():
         # Announce incoming events
         yield from announceEvents()
 
-        yield from announceDeath("Nezune",None,100,"a chicken",False)
-        yield from announceLevel("Nezune",100)
-
         # Periodically check server online lists
         if datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
             # Pop last server in queue, reinsert it at the beginning
