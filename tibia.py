@@ -8,7 +8,7 @@ def getPlayerDeaths(name, single_death=False, tries=5):
     Each list element is a dictionary with the following keys: time, level, killer, byPlayer.
     If single_death is true, it stops looking after fetching the first death.
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly"""
-    url = "https://secure.tibia.com/community/?subtopic=characters&name="+urllib.parse.quote(name)
+    url = url_character+urllib.parse.quote(name)
     deathList = []
 
     # Fetch website
@@ -289,8 +289,7 @@ def getPlayer(name, tries=5):
         *chars is list that contains other characters in the same account (if not hidden).
         Each list element is dictionary with the keys: name, world.
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
-    url = "https://secure.tibia.com/community/?subtopic=characters&name="+urllib.parse.quote(name)
-    content = ""
+    url = url_character+urllib.parse.quote(name)
     char = dict()
 
     # Fetch website
@@ -889,7 +888,7 @@ class Tibia:
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'],pass_context=True)
+    @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'], pass_context=True)
     @asyncio.coroutine
     def whois(self, ctx, *, name=None):
         """Tells you the characters of a user or the owner of a character and/or information of a tibia character
@@ -915,9 +914,9 @@ class Tibia:
             yield from self.bot.say("Tell me which character or user you want to check.")
 
         char = yield from getPlayer(name)
-        charString = getCharString(char)
+        char_string = getCharString(char)
         user = getUserByName(name)
-        userString = getUserString(name)
+        user_string = getUserString(name)
         embed = discord.Embed()
         embed.description = ""
 
@@ -927,31 +926,35 @@ class Tibia:
             return
         # We found an user
         if user is not None:
-            embed.description = userString
+            embed.description = user_string
             color = getUserColor(user, ctx.message.server)
             if color is not discord.Colour.default():
                 embed.colour = color
-            if "I don't know" not in userString:
+            if "I don't know" not in user_string:
                 embed.set_thumbnail(url=user.avatar_url)
             # Check if we found a char too
             if type(char) is dict:
-                embed.description += "\n\nThe character "+charString
+                if char["owner_id"] != int(user.id):
+                    embed.description += "\n\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_"
+                else:
+                    embed.description += "\n"
+                embed.description += "\nThe character "+char_string
             elif char == ERROR_NETWORK:
                 embed.description += "I failed to do a character search for some reason "+EMOJI[":astonished:"]
         else:
-            if type(char) is dict:
-                if char == ERROR_NETWORK:
-                    embed.description += "I failed to do a character search for some reason " + EMOJI[":astonished:"]
+            if char == ERROR_NETWORK:
+                embed.description += "I failed to do a character search for some reason " + EMOJI[":astonished:"]
+            elif type(char) is dict:
                 # Char is owned by a discord user
-                else:
-                    if char["owner_id"] is not None and getUserById(char["owner_id"]):
-                        owner = getUserById(char["owner_id"])
-                        embed.set_thumbnail(url=owner.avatar_url)
-                        color = getUserColor(owner, ctx.message.server)
-                        if color is not discord.Colour.default():
-                            embed.colour = color
-                        embed.description += "**{0}** is a character of @**{1.display_name}**\n".format(char["name"], owner)
-                    embed.description += charString
+                owner = getUserById(char["owner_id"])
+                if owner is not None:
+                    embed.set_thumbnail(url=owner.avatar_url)
+                    color = getUserColor(owner, ctx.message.server)
+                    if color is not discord.Colour.default():
+                        embed.colour = color
+                    embed.description += "**{0}** is a character of @**{1.display_name}**\n".format(char["name"], owner)
+
+                embed.description += char_string
         yield from self.bot.say(embed=embed)
 
     @commands.command(aliases=['expshare', 'party'])
