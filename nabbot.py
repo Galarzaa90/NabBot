@@ -44,11 +44,15 @@ def on_command(command, ctx):
     message_decoded = decode_emoji(ctx.message.content)
     log.info('Command by {0} in {1}: {2}'.format(ctx.message.author.display_name, destination, message_decoded))
 
+
 @bot.event
 @asyncio.coroutine
-def on_command_error(exception, context):
-    if exception is discord.ext.commands.errors.CommandNotFound:
+def on_command_error(error, ctx):
+    if isinstance(error, commands.errors.CommandNotFound):
         return
+    elif isinstance(error, commands.NoPrivateMessage):
+        yield from bot.send_message(ctx.message.author, "This command cannot be used in private messages.")
+
 
 @bot.event
 @asyncio.coroutine
@@ -56,6 +60,10 @@ def on_message(message):
     """Called every time a message is sent on a visible channel.
 
     This is used to make commands case insensitive."""
+    # Ignore if message is from any bot
+    if message.author.bot:
+        return
+
     split = message.content.split(" ", 1)
     if len(split) == 2:
         message.content = split[0].lower()+" "+split[1]
@@ -1176,6 +1184,38 @@ def shutdown(ctx):
     bot.logout()
     log.warning("Closing NabBot")
     quit()
+
+
+@bot.command(pass_context=True, no_pm=True, name="server", aliases=["serverinfo", "server_info"])
+@asyncio.coroutine
+def info_server(ctx):
+    embed = discord.Embed()
+    _server = ctx.message.server  # type: discord.Server
+    embed.set_thumbnail(url=_server.icon_url)
+    embed.description = _server.name
+    # Check if owner has a nickname
+    if _server.owner.name == _server.owner.display_name:
+        owner = "{0.name}#{0.discriminator}".format(_server.owner)
+    else:
+        owner = "{0.display_name}\n({0.name}#{0.discriminator})".format(_server.owner)
+    embed.add_field(name="Owner", value=owner)
+    embed.add_field(name="Created", value=_server.created_at.strftime("%d/%m/%y"))
+    # Todo: Process region enum into a better formatted string
+    embed.add_field(name="Server Region", value=str(_server.region))
+
+    # Channels
+    text_channels = 0
+    for channel in _server.channels:
+        if channel.type == discord.ChannelType.text:
+            text_channels += 1
+    voice_channels = len(_server.channels) - text_channels
+    embed.add_field(name="Text channels", value=text_channels)
+    embed.add_field(name="Voice channels", value=voice_channels)
+    embed.add_field(name="Members", value=_server.member_count)
+    embed.add_field(name="Roles", value=len(_server.roles))
+    embed.add_field(name="Emojis", value=len(_server.emojis))
+    embed.add_field(name="Bot joined", value=_server.me.joined_at.strftime("%d/%m/%y"))
+    yield from bot.say(embed=embed)
 
 
 @bot.command(pass_context=True)
