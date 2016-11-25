@@ -425,9 +425,11 @@ def getAboutContent() -> discord.Embed:
     Used in /about and /whois Nab Bot"""
     user_count = 0
     char_count = 0
+    deaths_count = 0
+    levels_count = 0
     if not lite_mode:
+        c = userDatabase.cursor()
         try:
-            c = userDatabase.cursor()
             c.execute("SELECT COUNT(*) as count FROM discord_users")
             result = c.fetchone()
             if result is not None:
@@ -436,6 +438,14 @@ def getAboutContent() -> discord.Embed:
             result = c.fetchone()
             if result is not None:
                 char_count = result["count"]
+            c.execute("SELECT COUNT(*) as count FROM char_deaths")
+            result = c.fetchone()
+            if result is not None:
+                deaths_count = result["count"]
+            c.execute("SELECT COUNT(*) as count FROM char_levelups")
+            result = c.fetchone()
+            if result is not None:
+                levels_count = result["count"]
         finally:
             c.close()
 
@@ -448,8 +458,10 @@ def getAboutContent() -> discord.Embed:
     embed.add_field(name="Uptime", value=getUptime())
     memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
     if not lite_mode:
-        embed.add_field(name="Tracked users", value=str(user_count))
-        embed.add_field(name="Tracked chars", value=str(char_count))
+        embed.add_field(name="Tracked users", value="{0:,}".format(user_count))
+        embed.add_field(name="Tracked chars", value="{0:,}".format(char_count))
+        embed.add_field(name="Tracked deaths", value="{0:,}".format(deaths_count))
+        embed.add_field(name="Tracked level ups", value="{0:,}".format(levels_count))
 
     embed.add_field(name='Memory Usage', value='{:.2f} MiB'.format(memory_usage))
     return embed
@@ -477,6 +489,24 @@ def getUserColor(user: discord.User, server: discord.Server) -> discord.Colour:
     if member is not None:
         return member.colour
     return discord.Colour.default()
+
+
+def getRegionString(region: discord.ServerRegion) -> str:
+    regions = {"us-west": EMOJI[":flag_us:"]+"US West",
+               "us-east": EMOJI[":flag_us:"]+"US East",
+               "us-central": EMOJI[":flag_us:"]+"US Central",
+               "us-south": EMOJI[":flag_us:"]+"US South",
+               "eu-west": EMOJI[":flag_eu:"]+"West Europe",
+               "eu-central": EMOJI[":flag_eu:"]+"Central Europe",
+               "singapore": EMOJI[":flag_sg:"]+"Singapore",
+               "london": EMOJI[":flag_gb:"]+"London",
+               "sydney": EMOJI[":flag_au:"]+"Sydney",
+               "amsterdam": EMOJI[":flag_nl:"]+"Amsterdam",
+               "frankfurt": EMOJI[":flag_de:"]+"Frankfurt",
+               "brazil": EMOJI[":flag_br:"]+"Brazil"
+               }
+    return regions.get(str(region),str(region))
+
 
 
 if __name__ == "__main__":

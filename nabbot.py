@@ -1200,8 +1200,7 @@ def info_server(ctx):
         owner = "{0.display_name}\n({0.name}#{0.discriminator})".format(_server.owner)
     embed.add_field(name="Owner", value=owner)
     embed.add_field(name="Created", value=_server.created_at.strftime("%d/%m/%y"))
-    # Todo: Process region enum into a better formatted string
-    embed.add_field(name="Server Region", value=str(_server.region))
+    embed.add_field(name="Server Region", value=getRegionString(_server.region))
 
     # Channels
     text_channels = 0
