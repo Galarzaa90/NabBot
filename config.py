@@ -1,4 +1,4 @@
-from utils import *
+from datetime import timedelta
 
 # Lite mode:
 # If lite is enabled, all user database related functions are disabled.
