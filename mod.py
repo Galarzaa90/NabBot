@@ -5,17 +5,15 @@ import asyncio
 from utils import *
 from config import *
 
-
-class Admin:
+class Mod:
     def __init__(self, bot):
         self.bot = bot
 
     # Admin only commands #
     @commands.command(pass_context=True, hidden=True)
+    @is_mod()
     @asyncio.coroutine
     def makesay(self, ctx, *args: str):
-        if ctx.message.author.id not in admin_ids:
-            return
         if ctx.message.channel.is_private:
             channel = getChannelByServerAndName(mainserver, mainchannel)
             yield from self.bot.send_message(channel, " ".join(args))
@@ -24,11 +22,11 @@ class Admin:
             yield from self.bot.send_message(ctx.message.channel, " ".join(args))
 
     @commands.command(pass_context=True, hidden=True)
+    @is_mod()
+    @is_pm()
     @asyncio.coroutine
     def stalk(self, ctx, subcommand, *args: str):
         if lite_mode:
-            return
-        if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
             return
         params = (" ".join(args)).split(",")
         try:
@@ -299,6 +297,7 @@ class Admin:
                 # Fetch a list of users with chars only:
                 c.execute("SELECT user_id FROM chars GROUP BY user_id")
                 result = c.fetchall()
+                print(result)
                 if len(result) <= 0:
                     yield from self.bot.say("There are no registered characters.")
                     return
@@ -338,8 +337,6 @@ class Admin:
     def stalk_error(self, error, ctx):
         if lite_mode:
             return
-        if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
-            return
         if type(error) is commands.MissingRequiredArgument:
             yield from self.bot.say("""```Valid subcommands are:
             /stalk add user
@@ -351,33 +348,6 @@ class Admin:
             /stalk check
             /stalk refreshnames```""")
 
-    # Restart command
-    @commands.command(pass_context=True, hidden=True)
-    @asyncio.coroutine
-    def restart(self, ctx):
-        if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
-            return
-        yield from self.bot.say('Restarting...')
-        self.bot.logout()
-        log.warning("Closing NabBot")
-        if platform.system() == "Linux":
-            os.system("python3 restart.py {0}".format(ctx.message.author.id))
-        else:
-            os.system("python restart.py {0}".format(ctx.message.author.id))
-
-        quit()
-
-    # Shutdown command
-    @commands.command(pass_context=True, hidden=True)
-    @asyncio.coroutine
-    def shutdown(self, ctx):
-        if not (ctx.message.channel.is_private and ctx.message.author.id in admin_ids):
-            return
-        yield from self.bot.say('Shutdown...')
-        self.bot.logout()
-        log.warning("Closing NabBot")
-        quit()
-
 
 def setup(bot):
-    bot.add_cog(Admin(bot))
+    bot.add_cog(Mod(bot))

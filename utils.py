@@ -1,5 +1,6 @@
 import asyncio
 import discord
+from discord.ext import commands
 import logging
 import random
 import urllib.request
@@ -1197,6 +1198,31 @@ def getSpell(name):
 
     finally:
         c.close()
+
+# Check decorators for commands
+
+def check_is_owner(message):
+    return message.author.id in owner_ids
+
+
+def is_owner():
+    return commands.check(lambda ctx: check_is_owner(ctx.message))
+
+
+def check_is_mod(message):
+    return message.author.id in mod_ids or message.author.id in owner_ids
+
+
+def is_mod():
+    return commands.check(lambda ctx: check_is_mod(ctx.message))
+
+
+def check_is_pm(message):
+    return message.channel.is_private
+
+
+def is_pm():
+    return commands.check(lambda ctx: check_is_pm(ctx.message))
 
 
 if __name__ == "__main__":

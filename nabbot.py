@@ -1,4 +1,6 @@
 import asyncio
+import traceback
+
 from discord.ext import commands
 import discord
 import sys
@@ -13,7 +15,8 @@ bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True)
 @asyncio.coroutine
 def on_ready():
     bot.load_extension("tibia")
-    bot.load_extension("admin")
+    bot.load_extension("mod")
+    bot.load_extension("owner")
     print('Logged in as')
     print(bot.user.name)
     print(bot.user.id)
@@ -56,6 +59,10 @@ def on_command_error(error, ctx):
         return
     elif isinstance(error, commands.NoPrivateMessage):
         yield from bot.send_message(ctx.message.author, "This command cannot be used in private messages.")
+    elif isinstance(error, commands.CommandInvokeError):
+        print('In {0.command.qualified_name}:'.format(ctx), file=sys.stderr)
+        traceback.print_tb(error.original.__traceback__)
+        print('{0.__class__.__name__}: {0}'.format(error.original), file=sys.stderr)
 
 
 @bot.event
@@ -533,7 +540,8 @@ def im(ctx, *charname: str):
     user = ctx.message.author
     try:
         c = userDatabase.cursor()
-        admins_message = joinList(["**@"+getUserById(admin).display_name+"**" for admin in admin_ids], ", ", " or ")
+        mod_list = owner_ids + mod_ids
+        admins_message = joinList(["**@" + getUserById(admin).display_name + "**" for admin in mod_list], ", ", " or ")
         servers_message = joinList(["**"+server+"**" for server in tibiaservers], ", ", " or ")
         notallowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help adding characters to your account please message "+admins_message+".").format(user)
 
@@ -744,7 +752,7 @@ def events(ctx, *args: str):
 
             c.execute("SELECT * FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, date,))
             result = c.fetchall()
-            if len(result) > 1 and creator not in admin_ids:
+            if len(result) > 1 and creator not in owner_ids:
                 yield from bot.say("You can only have two running events at a time. Delete or edit your active event.")
                 return
             c.execute("INSERT INTO events (creator,start,name) VALUES(?,?,?)", (creator, date, name,))
@@ -782,7 +790,7 @@ def events(ctx, *args: str):
             if not result:
                 yield from bot.say("There are no active events with that ID.")
                 return
-            if result[0] != int(creator) and creator not in admin_ids:
+            if result[0] != int(creator) and creator not in owner_ids:
                 yield from bot.say("You can only edit your own events.")
                 return
 
@@ -813,7 +821,7 @@ def events(ctx, *args: str):
             if not result:
                 yield from bot.say("There are no active events with that ID.")
                 return
-            if result["creator"] != int(creator) and creator not in admin_ids:
+            if result["creator"] != int(creator) and creator not in owner_ids:
                 yield from bot.say("You can only delete your own events.")
 
             c.execute("UPDATE events SET active = 0 WHERE id = ?", (id,))
