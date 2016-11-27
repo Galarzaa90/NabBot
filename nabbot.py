@@ -550,7 +550,7 @@ def im(ctx, *charname: str):
             yield from bot.say(notallowed_message)
             return
         # Check that this user doesn't exist or has no chars added to it yet.
-        c.execute("SELECT id from discord_users WHERE id = ?", (user.id,))
+        c.execute("SELECT id from users WHERE id = ?", (user.id,))
         result = c.fetchone()
         if result is not None:
             c.execute("SELECT name,user_id FROM chars WHERE user_id LIKE ?", (user.id,))
@@ -560,7 +560,8 @@ def im(ctx, *charname: str):
                 return
         else:
             # Add the user if it doesn't exist
-            c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)", (user.id, user.display_name,))
+            c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
+            c.execute("INSERT INTO user_servers(id,server) VALUES (?,?)", (user.id, ctx.message.server.id,))
 
         char = yield from getPlayer(charname)
         if type(char) is not dict:
@@ -601,8 +602,8 @@ def im(ctx, *charname: str):
             log.info("Character {0} was reasigned to {1.display_name} (ID: {1.id}) from /im. (Previous owner (ID: {2}) was not found)".format(char['name'], user, char['prevowner']))
         for char in added:
             c.execute(
-                "INSERT INTO chars (name,last_level,vocation,user_id) VALUES (?,?,?,?)",
-                (char['name'], char['level']*-1, char['vocation'], user.id)
+                "INSERT INTO chars (name,last_level,vocation,user_id, world) VALUES (?,?,?,?,?)",
+                (char['name'], char['level']*-1, char['vocation'], user.id, char["world"])
             )
             log.info("Character {0} was asigned to {1.display_name} (ID: {1.id}) from /im.".format(char['name'], user))
 
@@ -627,7 +628,7 @@ def online():
     try:
         for char in globalOnlineList:
             char = char.split("_", 1)[1]
-            c.execute("SELECT name, user_id, vocation, last_level FROM chars WHERE name LIKE ?",(char,))
+            c.execute("SELECT name, user_id, vocation, last_level FROM chars WHERE name LIKE ?", (char,))
             result = c.fetchone()
             if result:
                 # This will always be true unless a char is removed from chars in between globalOnlineList updates
@@ -830,6 +831,7 @@ def events(ctx, *args: str):
     finally:
         userDatabase.commit()
         c.close()
+
 
 @bot.command(pass_context=True, no_pm=True, name="server", aliases=["serverinfo", "server_info"])
 @asyncio.coroutine

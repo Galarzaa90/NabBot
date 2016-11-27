@@ -52,7 +52,7 @@ log.addHandler(consoleHandler)
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 
-DB_LASTVERSION = 5
+DB_LASTVERSION = 6
 
 # Tibia.com URLs:
 url_character = "https://secure.tibia.com/community/?subtopic=characters&name="
@@ -64,7 +64,6 @@ def initDatabase():
 
     # Database file is automatically created with connect, now we have to check if it has tables
     print("Checking database version...")
-    db_version = 0
     try:
         c = userDatabase.cursor()
         c.execute("SELECT COUNT(*) as count FROM sqlite_master WHERE type = 'table'")
@@ -91,7 +90,7 @@ def initDatabase():
         c.execute("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND name LIKE 'db_info'")
         result = c.fetchone()
         # If there's no version value, version 1 is assumed
-        if (result is None):
+        if result is None:
             c.execute("""CREATE TABLE db_info (
                       key TEXT,
                       value TEXT
@@ -139,6 +138,16 @@ def initDatabase():
         if db_version == 4:
             # Added 'name' column to 'discord_users' table to save their names for external use
             c.execute("ALTER TABLE discord_users ADD name TEXT")
+            db_version += 1
+        if db_version == 5:
+            # Added 'world' column to 'chars', renamed 'discord_users' to 'users', created table 'user_servers'
+            c.execute("ALTER TABLE chars ADD world TEXT")
+            c.execute("ALTER TABLE discord_users RENAME TO users")
+            c.execute("""CREATE TABLE user_servers (
+                      id INTEGER,
+                      server INTEGER,
+                      PRIMARY KEY(id)
+                      );""")
             db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))

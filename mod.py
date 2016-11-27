@@ -40,11 +40,11 @@ class Mod:
                 if user is None:
                     yield from self.bot.say("I don't see any user named **{0}**.".format(params[0]))
                     return
-                c.execute("SELECT id from discord_users WHERE id LIKE ?", (user.id,))
+                c.execute("SELECT id from users WHERE id LIKE ?", (user.id,))
                 if c.fetchone() is not None:
                     yield from self.bot.say("**@{0}** is already registered.".format(user.display_name))
                     return
-                c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)", (user.id, user.display_name,))
+                c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
                 yield from self.bot.say("**@{0}** was registered successfully.".format(user.display_name))
 
             # Add char & Add account common operations
@@ -94,10 +94,10 @@ class Mod:
                     c.execute("INSERT INTO chars (name,last_level,vocation,user_id) VALUES (?,?,?,?)",
                               (char['name'], char['level'] * -1, char['vocation'], user.id))
                     # Check if user is already registered
-                    c.execute("SELECT id from discord_users WHERE id = ?", (user.id,))
+                    c.execute("SELECT id from users WHERE id = ?", (user.id,))
                     result = c.fetchone()
                     if result is None:
-                        c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)", (user.id, user.display_name,))
+                        c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
                         yield from self.bot.say("**@{0}** was registered successfully.".format(user.display_name))
                     yield from self.bot.say("**{0}** was registered successfully to this user.".format(char['name']))
                     return
@@ -141,10 +141,10 @@ class Mod:
                             (char['name'], char['level'] * -1, char['vocation'], user.id)
                         )
                         yield from self.bot.say("**{0}** was registered successfully to this user.".format(char['name']))
-                    c.execute("SELECT id from discord_users WHERE id = ?", (user.id,))
+                    c.execute("SELECT id from users WHERE id = ?", (user.id,))
                     result = c.fetchone()
                     if result is None:
-                        c.execute("INSERT INTO discord_users(id,name) VALUES (?,?)", (user.id, user.display_name,))
+                        c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
                         yield from self.bot.say("**@{0}** was registered successfully.".format(user.display_name))
                     return
 
@@ -174,7 +174,7 @@ class Mod:
                 # Searching users in server
                 user = getUserByName(params[0], search_pm=False)
                 # Searching users in database
-                c.execute("SELECT id, name from discord_users WHERE name LIKE ?", (params[0],))
+                c.execute("SELECT id, name from users WHERE name LIKE ?", (params[0],))
                 result = c.fetchone()
                 # Users in database and not in servers
                 if result is not None and getUserById(result['id'], search_pm=False) is None:
@@ -194,7 +194,7 @@ class Mod:
                     yield from self.bot.say("I don't see any user named **{0}**.".format(params[0]))
                     return
 
-                c.execute("DELETE FROM discord_users WHERE id = ?", (delete_id,))
+                c.execute("DELETE FROM users WHERE id = ?", (delete_id,))
                 c.execute("SELECT name FROM chars WHERE user_id = ?", (delete_id,))
                 result = c.fetchall()
                 if len(result) >= 1:
@@ -216,7 +216,7 @@ class Mod:
                 return
             # Purge
             if subcommand == "purge":
-                c.execute("SELECT id FROM discord_users")
+                c.execute("SELECT id FROM users")
                 result = c.fetchall()
                 if result is None:
                     yield from self.bot.say("There are no users registered.")
@@ -229,18 +229,18 @@ class Mod:
                     if user is None:
                         delete_users.append((row["id"],))
                 if len(delete_users) > 0:
-                    c.executemany("DELETE FROM discord_users WHERE id = ?", delete_users)
+                    c.executemany("DELETE FROM users WHERE id = ?", delete_users)
                     yield from self.bot.say("{0} user(s) no longer in the server were removed.".format(c.rowcount))
 
                 # Deleting chars with non-existent user
-                c.execute("SELECT name FROM chars WHERE user_id NOT IN (SELECT id FROM discord_users)")
+                c.execute("SELECT name FROM chars WHERE user_id NOT IN (SELECT id FROM users)")
                 result = c.fetchall()
                 if len(result) >= 1:
                     chars = ["**" + i["name"] + "**" for i in result]
                     reply = "{0} char(s) were assigned to a non-existent user and were deleted:\n\t".format(len(result))
                     reply += "\n\t".join(chars)
                     yield from self.bot.say(reply)
-                    c.execute("DELETE FROM chars WHERE user_id NOT IN (SELECT id FROM discord_users)")
+                    c.execute("DELETE FROM chars WHERE user_id NOT IN (SELECT id FROM users)")
 
                 # Removing deleted chars
                 c.execute("SELECT name,last_level,vocation FROM chars")
@@ -275,10 +275,10 @@ class Mod:
                     yield from self.bot.say("{0} char(s) were renamed.".format(c.rowcount))
 
                 # Remove users with no chars
-                c.execute("SELECT id FROM discord_users WHERE id NOT IN (SELECT user_id FROM chars)")
+                c.execute("SELECT id FROM users WHERE id NOT IN (SELECT user_id FROM chars)")
                 result = c.fetchall()
                 if len(result) >= 1:
-                    c.execute("DELETE FROM discord_users WHERE id NOT IN (SELECT user_id FROM chars)")
+                    c.execute("DELETE FROM users WHERE id NOT IN (SELECT user_id FROM chars)")
                     yield from self.bot.say("{0} user(s) with no characters were removed.".format(c.rowcount))
 
                 # Remove level ups of removed characters
@@ -317,7 +317,7 @@ class Mod:
                         "\n\t".join(empty_members)))
             # Checknames
             if subcommand == "refreshnames":
-                c.execute("SELECT id FROM discord_users")
+                c.execute("SELECT id FROM users")
                 result = c.fetchall()
                 if len(result) <= 0:
                     yield from self.bot.say("There are no registered users.")
@@ -326,7 +326,7 @@ class Mod:
                 for user in result:
                     update_users.append(
                         ("unknown" if getUserById(user[0]) is None else getUserById(user[0]).display_name, user["id"]))
-                c.executemany("UPDATE discord_users SET name = ? WHERE id LIKE ?", update_users)
+                c.executemany("UPDATE users SET name = ? WHERE id LIKE ?", update_users)
                 yield from self.bot.say("Usernames updated successfully.")
         finally:
             c.close()
