@@ -26,7 +26,12 @@ class Tibia:
             elif char == ERROR_NETWORK:
                 yield from self.bot.say("Sorry, I couldn't fetch the character's info, maybe you should try again...")
             else:
-                yield from self.bot.say(getCharString(char))
+                embed = discord.Embed(description=getCharString(char))
+                embed.set_author(name=char["name"],
+                                 url=url_character + urllib.parse.quote(char["name"]),
+                                 icon_url="http://static.tibia.com/images/global/general/favicon.ico"
+                                 )
+                yield from self.bot.say(embed=embed)
             return
         if name.lower() == self.bot.user.name.lower():
             yield from self.bot.say(embed=getAboutContent())

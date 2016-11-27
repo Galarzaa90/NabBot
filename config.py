@@ -25,8 +25,8 @@ deathsPage = "deaths.php"
 levelsPage = "levels.php"
 
 # Discord id for the users that can use admin or mod commands
-owner_ids = ["162060569803751424", "162070610556616705", "164253469912334350", "159815675194507265"]
-mod_ids = ["164253469912334350", "159815675194507265"]
+owner_ids = ["162060569803751424", "162070610556616705"]
+mod_ids = ["164253469912334350", "159815675194507265", "164253469912334350", "159815675194507265"]
 # Enable of disable specific timezones for /time
 displayBrasiliaTime = True
 displaySonoraTime = True
