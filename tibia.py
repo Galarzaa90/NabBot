@@ -151,6 +151,7 @@ class Tibia:
         embed = discord.Embed()
         embed.set_author(name="{name} ({world})".format(**guild),
                          url=url_guild + urllib.parse.quote(guild["name"]),
+                         icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                          )
         embed.set_thumbnail(url=guild["logo_url"])
         if len(guild['members']) < 1:
@@ -161,17 +162,22 @@ class Tibia:
         plural = ""
         if len(guild['members']) > 1:
             plural = "s"
-        result = "It has {0} player{1} online:".format(len(guild['members']), plural)
+        embed.description = "It has {0} player{1} online:".format(len(guild['members']), plural)
+        current_field = ""
+        result = ""
         for member in guild['members']:
-            result += '\n'
-            if member['rank'] != '':
-                result += '__'+member['rank']+'__\n'
+            if current_field == "":
+                current_field = member['rank']
+            elif member['rank'] != current_field and member["rank"] != "":
+                embed.add_field(name=current_field, value=result, inline=False)
+                result = ""
+                current_field = member['rank']
 
-            member["title"] = ' (*' + member['title'] + '*)' if member['title'] != '' else ''
+            member["title"] = ' (' + member['title'] + ')' if member['title'] != '' else ''
             member["vocation"] = vocAbb(member["vocation"])
 
-            result += "\t{name} {title} -- {level} {vocation}".format(**member)
-        embed.description = result
+            result += "{name} {title} -- {level} {vocation}\n".format(**member)
+        embed.add_field(name=current_field, value=result, inline=False)
         yield from self.bot.say(embed=embed)
 
     @commands.command(pass_context=True, aliases=['checkprice', 'item'])
