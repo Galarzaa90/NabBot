@@ -438,7 +438,7 @@ def getAboutContent() -> discord.Embed:
     if not lite_mode:
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT COUNT(*) as count FROM discord_users")
+            c.execute("SELECT COUNT(*) as count FROM users")
             result = c.fetchone()
             if result is not None:
                 user_count = result["count"]
