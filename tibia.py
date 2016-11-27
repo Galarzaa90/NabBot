@@ -32,7 +32,6 @@ class Tibia:
             yield from self.bot.say(embed=getAboutContent())
             return
 
-
         if name is None:
             yield from self.bot.say("Tell me which character or user you want to check.")
 
@@ -57,17 +56,30 @@ class Tibia:
                 embed.set_thumbnail(url=user.avatar_url)
             # Check if we found a char too
             if type(char) is dict:
-                if char["owner_id"] != int(user.id):
-                    embed.description += "\n\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_"
+                # If it's owned by the user, we append it to the same embed.
+                if char["owner_id"] == int(user.id):
+                    embed.description += "\n\nThe character "+char_string
+                    yield from self.bot.say(embed=embed)
+                    return
+                # Not owned by same user, we display a separate embed
                 else:
-                    embed.description += "\n"
-                embed.description += "\nThe character "+char_string
+                    char_embed = discord.Embed(description=char_string)
+                    char_embed.set_author(name=char["name"],
+                                          url=url_character+urllib.parse.quote(char["name"]),
+                                          icon_url="http://static.tibia.com/images/global/general/favicon.ico"
+                                          )
+                    yield from self.bot.say(embed=embed)
+                    yield from self.bot.say(embed=char_embed)
             elif char == ERROR_NETWORK:
-                embed.description += "I failed to do a character search for some reason "+EMOJI[":astonished:"]
+                yield from self.bot.say("I failed to do a character search for some reason "+EMOJI[":astonished:"])
         else:
             if char == ERROR_NETWORK:
-                embed.description += "I failed to do a character search for some reason " + EMOJI[":astonished:"]
+                yield from self.bot.say("I failed to do a character search for some reason " + EMOJI[":astonished:"])
             elif type(char) is dict:
+                embed.set_author(name=char["name"],
+                                 url=url_character + urllib.parse.quote(char["name"]),
+                                 icon_url="http://static.tibia.com/images/global/general/favicon.ico"
+                                 )
                 # Char is owned by a discord user
                 owner = getUserById(char["owner_id"])
                 if owner is not None:
@@ -75,10 +87,11 @@ class Tibia:
                     color = getUserColor(owner, ctx.message.server)
                     if color is not discord.Colour.default():
                         embed.colour = color
-                    embed.description += "**{0}** is a character of @**{1.display_name}**\n".format(char["name"], owner)
+                    embed.description += "A character of @**{1.display_name}**\n".format(char["name"], owner)
 
                 embed.description += char_string
-        yield from self.bot.say(embed=embed)
+
+            yield from self.bot.say(embed=embed)
 
     @commands.command(aliases=['expshare', 'party'])
     @asyncio.coroutine
