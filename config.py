@@ -24,10 +24,11 @@ charactersPage = "characters.php"
 deathsPage = "deaths.php"
 levelsPage = "levels.php"
 
-# Discord id for the users that can use admin or mod commands
+# Mods can register and unregister chars and users and use makesay
+# Owners can use mods commands and more sensible commands like /shutdown and restart
 owner_ids = ["162060569803751424", "162070610556616705"]
-mod_ids = ["159815675194507265", "164253469912334350", "159815675194507265"]
 # Enable of disable specific timezones for /time
+mod_ids = ["159815675194507265", "164253469912334350"]
 displayBrasiliaTime = True
 displaySonoraTime = True
 
