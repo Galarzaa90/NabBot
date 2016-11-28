@@ -324,7 +324,7 @@ def think():
                                     (result["id"], nowOfflineChar['level'], time.time(),)
                                 )
                                 # Announce the level up
-                                yield from announceLevel(nowOfflineChar['name'], nowOfflineChar['level'])
+                                yield from announceLevel(nowOfflineChar, nowOfflineChar['level'])
                         yield from checkDeath(nowOfflineChar['name'])
 
                 # Add new online chars and announce level differences
@@ -360,7 +360,7 @@ def think():
                                 (result["id"], serverChar['level'], time.time(),)
                             )
                             # Announce the level up
-                            yield from announceLevel(serverChar['name'], serverChar['level'])
+                            yield from announceLevel(serverChar, serverChar['level'])
 
                 # Close cursor and commit changes
                 userDatabase.commit()
@@ -467,17 +467,16 @@ def announceDeath(charName, deathTime, deathLevel, deathKiller, deathByPlayer):
 
 
 @asyncio.coroutine
-def announceLevel(charName,newLevel):
+def announceLevel(char, newLevel):
+    # Don't announce low level players
     if int(newLevel) < announceTreshold:
-        # Don't announce low level players
         return
-    log.info("Announcing level up: {0} ({1})".format(charName, newLevel))
-    char = yield from getPlayer(charName)
-    # Failsafe in case getPlayer fails to retrieve player data
     if type(char) is not dict:
-        log.error("Error in announceLevel, failed to getPlayer("+charName+")")
+        log.error("Error in announceLevel, invalid character passed")
         return
-    # Choose correct pronouns
+    log.info("Announcing level up: {0} ({1})".format(char["name"], newLevel))
+
+    # Get pronouns based on gender
     pronoun = ["he", "his", "him"] if char['gender'] == "male" else ["she", "her", "her"]
 
     channel = getChannelByServerAndName(mainserver, mainchannel)
@@ -485,7 +484,7 @@ def announceLevel(charName,newLevel):
     # Select a message
     message = weighedChoice(levelmessages, char['vocation'], int(newLevel))
     # Format message with level information
-    levelInfo = {'charName': charName, 'newLevel': newLevel, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
+    levelInfo = {'charName': char["name"], 'newLevel': newLevel, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
                  'pronoun3': pronoun[2]}
     message = message.format(**levelInfo)
     # Format extra stylization
