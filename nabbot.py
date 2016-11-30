@@ -302,7 +302,7 @@ def think():
                 for nowOfflineChar in offlineList:
                     globalOnlineList.remove(nowOfflineChar)
                     # Check for deaths and level ups when removing from online list
-                    nowOfflineChar = yield from getPlayer(nowOfflineChar.split("_",1)[1])
+                    nowOfflineChar = yield from getPlayer(nowOfflineChar.split("_", 1)[1])
                     if not(nowOfflineChar == ERROR_NETWORK or nowOfflineChar == ERROR_DOESNTEXIST):
                         c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (nowOfflineChar['name'],))
                         result = c.fetchone()
@@ -355,7 +355,8 @@ def think():
                                 (result["id"], serverChar['level'], time.time(),)
                             )
                             # Announce the level up
-                            yield from announceLevel(serverChar, serverChar['level'])
+                            char = yield from getPlayer(serverChar['name'])
+                            yield from announceLevel(char, serverChar['level'])
 
                 # Close cursor and commit changes
                 userDatabase.commit()
