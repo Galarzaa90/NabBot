@@ -128,7 +128,7 @@ class Tibia:
                        ]
             yield from self.bot.say(random.choice(replies))
             return
-        low, high = getShareRange()
+        low, high = getShareRange(level)
         if name == '':
             reply = 'A level {0} can share experience with levels **{1}** to **{2}**.'.format(level, low, high)
         else:

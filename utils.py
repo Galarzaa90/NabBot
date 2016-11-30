@@ -1160,7 +1160,7 @@ def getStats(level, vocation):
     return {"vocation": vocation, "hp": hp, "mp": mp, "cap": cap}
 
 
-def getShareRange(level:int):
+def getShareRange(level: int):
     """Returns the share range for a specific level
 
     The returned value is a list with the lower limit and the upper limit in that order."""
