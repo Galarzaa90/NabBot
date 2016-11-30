@@ -169,14 +169,6 @@ userDatabase.row_factory = dict_factory
 tibiaDatabase.row_factory = dict_factory
 
 
-bot = discord.Client()
-
-
-def utilsGetBot(_bot):
-    global bot
-    bot = _bot
-
-
 def vocAbb(vocation) -> str:
     """Given a vocation name, it returns an abbreviated string """
     abbrev = {'None': 'N', 'Druid': 'D', 'Sorcerer': 'S', 'Paladin': 'P', 'Knight': 'K', 'Elder Druid': 'ED',
@@ -282,64 +274,48 @@ def weighedChoice(messages, condition1=False, condition2=False, condition3=False
     return _messages[0][1]
 
 
-def getChannelByServerAndName(server_name: str, channel_name: str) -> discord.Channel:
-    """Returns a channel within a server
-    
-    If server_name is left blank, it will search on all servers the bot can see"""
-    if server_name == "":
+def getChannelByName(bot: discord.Client, channel_name: str, server_name=None) -> discord.Channel:
+    """Finds a channel by name on all the channels visible by the bot.
+
+    If server_name is specified, only channels in that server will be searched"""
+    if server_name is None:
         channel = discord.utils.find(lambda m: m.name == channel_name and not m.type == discord.ChannelType.voice,
                                      bot.get_all_channels())
     else:
+        server = getServerByName(bot, server_name)
         channel = discord.utils.find(lambda m: m.name == channel_name and not m.type == discord.ChannelType.voice,
-                                     getServerByName(server_name).channels)
+                                     server.channels)
     return channel
 
 
-def getChannelByName(channel_name: str) -> discord.Channel:
-    """Alias for getChannelByServerAndName
-    
-    mainserver is searched first, then all visible servers"""
-    channel = getChannelByServerAndName(mainserver, channel_name)
-    if channel is None:
-        return getChannelByServerAndName("", channel_name)
-    return channel
-
-
-def getServerByName(server_name: str) -> discord.Server:
+def getServerByName(bot: discord.Client, server_name: str) -> discord.Server:
     """Returns a server by its name"""
     server = discord.utils.find(lambda m: m.name == server_name, bot.servers)
     return server
 
 
-def getUserByName(userName, search_pm=True) -> discord.User:
-    """Returns a discord user by its name
+def getMemberByName(bot: discord.Client, name: str, server=None) -> discord.Member:
+    """Returns a member matching the name
     
-    If there's duplicate usernames, it will return the first user found
-    Users are searched on mainserver first, then on all visible channel and finally private channels."""
-    user = None
-    _mainserver = getServerByName(mainserver)
-
-    if _mainserver is not None:
-        user = discord.utils.find(lambda m: m.display_name.lower() == userName.lower(), _mainserver.members)
-    if user is None:
-        user = discord.utils.find(lambda m: m.display_name.lower() == userName.lower(), bot.get_all_members())
-    if user is None and search_pm:
-        private = discord.utils.find(lambda m: m.user.display_name.lower() == userName.lower(), bot.private_channels)
-        if private is not None:
-            user = private.user
-    return user
+    If no server_id is specified, the first member matching the id will be returned, meaning that the server he
+    belongs to will be unknown, so member-only functions may be inaccurate.
+    User functions remain the same, regardless of server"""
+    if server is not None:
+        return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), server.members)
+    else:
+        return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), bot.get_all_members())
 
 
-def getUserById(userId, search_pm=True) -> discord.User:
-    """Returns a discord user by its id
+def getMember(bot: discord.Client, id, server=None) -> discord.Member:
+    """Returns a member matching the id
 
-    If search_pm is False, only users in servers the bot can see will be searched."""
-    user = discord.utils.find(lambda m: m.id == str(userId), bot.get_all_members())
-    if user is None and search_pm:
-        private = discord.utils.find(lambda m: m.user.id == str(userId), bot.private_channels)
-        if private is not None:
-            user = private.user
-    return user
+    If no server_id is specified, the first member matching the id will be returned, meaning that the server he
+    belongs to will be unknown, so member-only functions may be inaccurate.
+    User functions remain the same, regardless of server"""
+    if server is not None:
+        return discord.utils.get(server.members, id=str(id))
+    else:
+        return discord.utils.get(bot.get_all_members(), id=str(id))
 
 
 def getTimeDiff(time) -> str:

@@ -7,7 +7,7 @@ from utils import *
 # Commands
 class Tibia:
     """Tibia related commands."""
-    def __init__(self, bot):
+    def __init__(self, bot: discord.Client):
         self.bot = bot
 
     @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'], pass_context=True)
@@ -17,9 +17,11 @@ class Tibia:
 
         Note that the bot has no way to know the characters of a member that just joined.
         The bot has to be taught about the character's of an user."""
+        if name is None:
+            yield from self.bot.say("Tell me which character or user you want to check.")
+            return
+
         if lite_mode:
-            if name is None:
-                yield from self.bot.say("Tell me which character you want to check.")
             char = yield from getPlayer(name)
             if char == ERROR_DOESNTEXIST:
                 yield from self.bot.say("I couldn't find a character with that name")
@@ -33,17 +35,15 @@ class Tibia:
                                  )
                 yield from self.bot.say(embed=embed)
             return
+
         if name.lower() == self.bot.user.name.lower():
             yield from self.bot.say(embed=getAboutContent())
             return
 
-        if name is None:
-            yield from self.bot.say("Tell me which character or user you want to check.")
-
         char = yield from getPlayer(name)
         char_string = getCharString(char)
-        user = getUserByName(name)
-        user_string = getUserString(name)
+        user = getMemberByName(self.bot, name)
+        user_string = getUserString(self.bot, name)
         embed = discord.Embed()
         embed.description = ""
 
@@ -86,7 +86,7 @@ class Tibia:
                                  icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                  )
                 # Char is owned by a discord user
-                owner = getUserById(char["owner_id"])
+                owner = getMember(self.bot, char["owner_id"])
                 if owner is not None:
                     embed.set_thumbnail(url=owner.avatar_url)
                     color = getUserColor(owner, ctx.message.server)
@@ -266,7 +266,7 @@ class Tibia:
                 for death in result:
                     timediff = timedelta(seconds=now-death["date"])
                     died = "Killed" if death["byplayer"] else "Died"
-                    user = getUserById(death["user_id"])
+                    user = getMember(self.bot, death["user_id"])
                     username = "unknown"
                     if user:
                         username = user.display_name
@@ -329,7 +329,7 @@ class Tibia:
                 reply = "Latest level ups:"
                 for levelup in result:
                     timediff = timedelta(seconds=now-levelup["date"])
-                    user = getUserById(levelup["user_id"])
+                    user = getMember(self.bot, levelup["user_id"])
                     username = "unkown"
                     if user:
                         username = user.display_name
@@ -555,8 +555,8 @@ def getCharString(char):
     return reply
 
 
-def getUserString(username):
-    user = getUserByName(username)
+def getUserString(bot, username):
+    user = getMemberByName(bot, username)
     c = userDatabase.cursor()
     if user is None:
         return ERROR_DOESNTEXIST
