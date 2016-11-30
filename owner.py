@@ -99,7 +99,7 @@ class Owner:
         yield from self.bot.say("Server permissions:"+reply)
         channels = server.channels
         for channel in channels:
-            if channel.name == "General":
+            if channel.type == discord.ChannelType.voice:
                 continue
             channel_permissions = channel.permissions_for(member)
             reply = reply_format.format(getCheckEmoji(channel_permissions.read_messages),
