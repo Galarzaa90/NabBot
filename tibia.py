@@ -75,8 +75,10 @@ class Tibia:
                                           )
                     yield from self.bot.say(embed=embed)
                     yield from self.bot.say(embed=char_embed)
-            elif char == ERROR_NETWORK:
-                yield from self.bot.say("I failed to do a character search for some reason "+EMOJI[":astonished:"])
+            else:
+                yield from self.bot.say(embed=embed)
+                if char == ERROR_NETWORK:
+                    yield from self.bot.say("I failed to do a character search for some reason "+EMOJI[":astonished:"])
         else:
             if char == ERROR_NETWORK:
                 yield from self.bot.say("I failed to do a character search for some reason " + EMOJI[":astonished:"])
