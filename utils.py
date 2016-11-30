@@ -1159,6 +1159,13 @@ def getStats(level, vocation):
 
     return {"vocation": vocation, "hp": hp, "mp": mp, "cap": cap}
 
+
+def getShareRange(level:int):
+    """Returns the share range for a specific level
+
+    The returned value is a list with the lower limit and the upper limit in that order."""
+    return int(round(level * 2 / 3, 0)), int(round(level * 3 / 2, 0))
+
 # TODO: Improve formatting to match /monster and /item
 def getSpell(name):
     """Returns a formatted string containing a spell's info."""
@@ -1209,6 +1216,13 @@ def check_is_pm(message):
 def is_pm():
     return commands.check(lambda ctx: check_is_pm(ctx.message))
 
+
+def is_numeric(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
 
 if __name__ == "__main__":
     input("To run NabBot, run nabbot.py")

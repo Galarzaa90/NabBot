@@ -128,13 +128,110 @@ class Tibia:
                        ]
             yield from self.bot.say(random.choice(replies))
             return
-        low = int(round(level*2/3, 0))
-        high = int(round(level*3/2, 0))
+        low, high = getShareRange()
         if name == '':
             reply = 'A level {0} can share experience with levels **{1}** to **{2}**.'.format(level, low, high)
         else:
             reply = '**{0}** ({1}) can share experience with levels **{2}** to **{3}**.'.format(name, level, low, high)
         yield from self.bot.say(reply)
+
+    @commands.command(name="find",aliases=["whereteam","team","findteam","searchteam","search"], hidden=lite_mode)
+    @asyncio.coroutine
+    def find_team(self, *, params=None):
+        """Searches for characters of a specific vocation in range with another character or level range.
+
+        There are 3 ways to use this command:
+        -Find a character of a certain vocation in share range with another character:
+        /find vocation,charname
+
+        -Find a character of a certain vocation in share range with a certain level
+        /find vocation,level
+
+        -Find a character of a certain vocation between a level range
+        /find vocation,min_level,max_level"""
+        if lite_mode:
+            return
+        invalid_arguments = "Invalid arguments used, examples:\n" \
+                            "```/find vocation,charname\n" \
+                            "/find vocation,level\n" \
+                            "/find vocation,minlevel,maxlevel```"
+        if params is None:
+            yield from self.bot.say(invalid_arguments)
+            return
+        params = params.split(",")
+        if len(params) < 2 or len(params) > 3:
+            yield from self.bot.say(invalid_arguments)
+            return
+        if params[0] in ["knight","elite knight","ek"]:
+            vocation = "knight"
+        elif params[0] in ["druid","elder druid","ed"]:
+            vocation = "druid"
+        elif params[0] in ["sorcerer","master sorcerer","ms"]:
+            vocation = "sorcerer"
+        elif params[0] in ["paladin","royal paladin","rp"]:
+            vocation = "paladin"
+        else:
+            yield from self.bot.say(invalid_arguments)
+            return
+
+        # params[1] could be a character's name, a character's level or one of the level ranges
+        # If it's not a number, it should be a player's name
+        if not is_numeric(params[1]):
+            # We shouldn't have another parameter if a character name was specified
+            if len(params) == 3:
+                yield from self.bot.say(invalid_arguments)
+                return
+            char = yield from getPlayer(params[1])
+            if type(char) is not dict:
+                yield from self.bot.say("I couldn't find a character with that name.")
+                return
+            low, high = getShareRange(char["level"])
+            found = "I found the following {0}s in share range with **{1}**:".format(vocation,char["name"])
+            empty = "I didn't find any {0}s in share range with **{1}**".format(vocation,char["name"])
+        else:
+            # Check if we have another parameter, meaning this is a level range
+            if len(params) == 3:
+                try:
+                    level1 = int(params[1])
+                    level2 = int(params[2])
+                except ValueError:
+                    yield from self.bot.say(invalid_arguments)
+                    return
+                if level1 <= 0 or level2 <= 0:
+                    yield from self.bot.say("You entered an invalid level.")
+                    return
+                low = min(level1, level2)
+                high = max(level1, level2)
+                found = "I found the following {0}s between levels **{1}** and **{2}**:".format(vocation, low, high)
+                empty = "I didn't find any {0}s between levels **{1}** and **{2}**".format(vocation, low, high)
+            # We only got a level, so we get the share range for it
+            else:
+                if int(params[1]) <= 0:
+                    yield from self.bot.say("You entered an invalid level.")
+                    return
+                low, high = getShareRange(int(params[1]))
+                found = "I found the following {0}s in share range with level **{1}**:".format(vocation, params[1])
+                empty = "I didn't find any {0}s in share range with level **{1}**".format(vocation, params[1])
+
+        c=userDatabase.cursor()
+        try:
+            c.execute("SELECT name, user_id, ABS(last_level) as level FROM chars "
+                      "WHERE vocation LIKE ? AND level >= ? AND level <= ? "
+                      "ORDER by level DESC LIMIT 20", ("%"+vocation,low,high))
+            result = c.fetchall()
+            if len(result) < 1:
+                yield from self.bot.say(empty)
+                return
+            for player in result:
+                owner = getMember(self.bot,player["user_id"])
+                if owner is None:
+                    continue
+                player["owner"] = owner.display_name
+                found += "\n\t**{name}** - Level {level} - @**{owner}**".format(**player)
+            yield from self.bot.say(found)
+        finally:
+            c.close()
+
 
     @commands.command(aliases=['guildcheck', 'checkguild'])
     @asyncio.coroutine
