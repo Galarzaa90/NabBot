@@ -4,6 +4,8 @@ import asyncio
 
 from utils import *
 from config import *
+from utils_tibia import *
+
 
 class Mod:
     def __init__(self, bot: discord.Client):

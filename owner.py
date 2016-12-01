@@ -3,6 +3,7 @@ from discord.ext import commands
 import platform
 
 from utils import *
+from utils_tibia import *
 
 
 class Owner:
@@ -14,8 +15,6 @@ class Owner:
     @is_pm()
     @asyncio.coroutine
     def restart(self, ctx):
-        if not (ctx.message.channel.is_private and ctx.message.author.id in owner_ids):
-            return
         yield from self.bot.say('Restarting...')
         self.bot.logout()
         log.warning("Closing NabBot")
@@ -27,11 +26,11 @@ class Owner:
         quit()
 
     # Shutdown command
-    @commands.command(pass_context=True, hidden=True)
+    @commands.command(hidden=True)
     @is_owner()
     @is_pm()
     @asyncio.coroutine
-    def shutdown(self, ctx):
+    def shutdown(self):
         yield from self.bot.say('Shutdown...')
         self.bot.logout()
         log.warning("Closing NabBot")
@@ -47,7 +46,6 @@ class Owner:
             return
         code = code.strip('` ')
         python = '```py\n{}\n```'
-        result = None
 
         env = {
             'bot': self.bot,
@@ -111,7 +109,7 @@ class Owner:
             yield from self.bot.say("#{0} permissions:{1}".format(channel.name, reply))
 
 
-def getCheckEmoji(check: bool):
+def getCheckEmoji(check: bool) -> str:
     return EMOJI[":white_check_mark:"] if check else EMOJI[":x:"]
 
 

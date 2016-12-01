@@ -5,7 +5,9 @@ from discord.ext import commands
 import discord
 import sys
 import platform
+
 from utils import *
+from utils_tibia import *
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True)
@@ -636,7 +638,7 @@ def online():
             for char in discordOnlineChars:
                 user = getMember(bot, char['id'])
 
-                char['vocation'] = vocAbb(char['vocation'])
+                char['vocation'] = get_voc_abb(char['vocation'])
                 # discordName = user.display_name if (user is not None) else "unknown"
                 if user is not None:
                     discordName = user.display_name
@@ -859,22 +861,17 @@ def info_server(ctx):
     yield from bot.say(embed=embed)
 
 
-@bot.command(pass_context=True)
+@bot.command(pass_context=True, no_pm=True)
 @asyncio.coroutine
 def roles(ctx, *userName:str):
     """Shows all role names within the Discord server, or all roles for a single member"""
-    # If you call via PM, then server=None, so you can't find the roles
-    if ctx.message.channel.is_private:
-        log.warning("Cannot run this command via PM")
-        return
-
     userName = " ".join(userName).strip()
     msg = "These are the active roles for "
 
     if not userName:
         msg += "this server:\r\n"
 
-        for role in getListRoles(ctx.message.server):
+        for role in getRoleList(ctx.message.server):
             msg += role.name + "\r\n"
     else:
         user = getMemberByName(bot, userName)
@@ -903,22 +900,17 @@ def roles(ctx, *userName:str):
     return
 
 
-@bot.command(pass_context=True)
+@bot.command(pass_context=True, no_pm=True)
 @asyncio.coroutine
 def role(ctx, *roleName:str):
     """Shows member list within the specified role"""
-    # If you call via PM, then server=None, so you can't find the roles
-    if ctx.message.channel.is_private:
-        log.warning("Cannot run this command via PM")
-        return
-
     roleName = " ".join(roleName).strip()
     lowerRoleName = roleName.lower()
     roleDict = {}
 
     # Need to get all roles and check all members because there's
     # no API call like role.getMembers
-    for role in getListRoles(ctx.message.server):
+    for role in getRoleList(ctx.message.server):
         if role.name.lower() == lowerRoleName:
             roleDict[role] = []
 

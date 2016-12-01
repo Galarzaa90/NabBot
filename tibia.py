@@ -1,7 +1,5 @@
-import asyncio
-from discord.ext import commands
-import discord
 from utils import *
+from utils_tibia import *
 
 
 # Commands
@@ -102,17 +100,22 @@ class Tibia:
 
     @commands.command(aliases=['expshare', 'party'])
     @asyncio.coroutine
-    def share(self, *param: str):
-        """Shows the sharing range for that level or character"""
-        level = 0
-        name = ''
+    def share(self, *, param: str=None):
+        """Shows the sharing range for that level or character
+
+        There's two ways to use this command:
+        /share level
+        /share char_name"""
+        if param is None:
+            yield from self.bot.say("You need to tell me a level or a character's name.")
+            return
+        name = ""
         # Check if param is numeric
         try:
-            level = int(param[0])
+            level = int(param)
         # If it's not numeric, then it must be a char's name
         except ValueError:
-            name = " ".join(param)
-            char = yield from getPlayer(name)
+            char = yield from getPlayer(param)
             if type(char) is dict:
                 level = int(char['level'])
                 name = char['name']
@@ -129,13 +132,13 @@ class Tibia:
             yield from self.bot.say(random.choice(replies))
             return
         low, high = getShareRange(level)
-        if name == '':
-            reply = 'A level {0} can share experience with levels **{1}** to **{2}**.'.format(level, low, high)
+        if name == "":
+            reply = "A level {0} can share experience with levels **{1}** to **{2}**.".format(level, low, high)
         else:
-            reply = '**{0}** ({1}) can share experience with levels **{2}** to **{3}**.'.format(name, level, low, high)
+            reply = "**{0}** ({1}) can share experience with levels **{2}** to **{3}**.".format(name, level, low, high)
         yield from self.bot.say(reply)
 
-    @commands.command(name="find",aliases=["whereteam","team","findteam","searchteam","search"], hidden=lite_mode)
+    @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"], hidden=lite_mode)
     @asyncio.coroutine
     def find_team(self, *, params=None):
         """Searches for characters of a specific vocation in range with another character or level range.
@@ -158,17 +161,18 @@ class Tibia:
         if params is None:
             yield from self.bot.say(invalid_arguments)
             return
+        char = None
         params = params.split(",")
         if len(params) < 2 or len(params) > 3:
             yield from self.bot.say(invalid_arguments)
             return
-        if params[0] in ["knight","elite knight","ek"]:
+        if params[0] in KNIGHT:
             vocation = "knight"
-        elif params[0] in ["druid","elder druid","ed"]:
+        elif params[0] in DRUID:
             vocation = "druid"
-        elif params[0] in ["sorcerer","master sorcerer","ms"]:
+        elif params[0] in SORCERER:
             vocation = "sorcerer"
-        elif params[0] in ["paladin","royal paladin","rp"]:
+        elif params[0] in PALADIN:
             vocation = "paladin"
         else:
             yield from self.bot.say(invalid_arguments)
@@ -186,8 +190,10 @@ class Tibia:
                 yield from self.bot.say("I couldn't find a character with that name.")
                 return
             low, high = getShareRange(char["level"])
-            found = "I found the following {0}s in share range with **{1}**:".format(vocation,char["name"])
-            empty = "I didn't find any {0}s in share range with **{1}**".format(vocation,char["name"])
+            found = "I found the following {0}s in share range with **{1}** ({2}-{3}):".format(vocation, char["name"],
+                                                                                               low, high)
+            empty = "I didn't find any {0}s in share range with **{1}** ({2}-{3})".format(vocation, char["name"],
+                                                                                          low, high)
         else:
             # Check if we have another parameter, meaning this is a level range
             if len(params) == 3:
@@ -213,7 +219,7 @@ class Tibia:
                 found = "I found the following {0}s in share range with level **{1}**:".format(vocation, params[1])
                 empty = "I didn't find any {0}s in share range with level **{1}**".format(vocation, params[1])
 
-        c=userDatabase.cursor()
+        c = userDatabase.cursor()
         try:
             c.execute("SELECT name, user_id, ABS(last_level) as level FROM chars "
                       "WHERE vocation LIKE ? AND level >= ? AND level <= ? "
@@ -223,8 +229,10 @@ class Tibia:
                 yield from self.bot.say(empty)
                 return
             for player in result:
-                owner = getMember(self.bot,player["user_id"])
+                owner = getMember(self.bot, player["user_id"])
                 if owner is None:
+                    continue
+                if char is not None and char["name"] == player["name"]:
                     continue
                 player["owner"] = owner.display_name
                 found += "\n\t**{name}** - Level {level} - @**{owner}**".format(**player)
@@ -232,19 +240,20 @@ class Tibia:
         finally:
             c.close()
 
-
     @commands.command(aliases=['guildcheck', 'checkguild'])
     @asyncio.coroutine
-    def guild(self, *, guildname=None):
+    def guild(self, *, name=None):
         """Checks who is online in a guild"""
-        if guildname is None:
+        if name is None:
+            yield from self.bot.say("Tell me the guild you want me to check.")
             return
-        guild = yield from getGuildOnline(guildname)
+
+        guild = yield from getGuildOnline(name)
         if guild == ERROR_DOESNTEXIST:
-            yield from self.bot.say("The guild {0} doesn't exist.".format(guildname))
+            yield from self.bot.say("The guild {0} doesn't exist.".format(name))
             return
         if guild == ERROR_NETWORK:
-            yield from self.bot.say("Can you repeat that?")
+            yield from self.bot.say("Can you repeat that? I had some trouble communicating.")
             return
 
         embed = discord.Embed()
@@ -273,7 +282,7 @@ class Tibia:
                 current_field = member['rank']
 
             member["title"] = ' (' + member['title'] + ')' if member['title'] != '' else ''
-            member["vocation"] = vocAbb(member["vocation"])
+            member["vocation"] = get_voc_abb(member["vocation"])
 
             result += "{name} {title} -- {level} {vocation}\n".format(**member)
         embed.add_field(name=current_field, value=result, inline=False)
@@ -281,9 +290,12 @@ class Tibia:
 
     @commands.command(pass_context=True, aliases=['checkprice', 'item'])
     @asyncio.coroutine
-    def itemprice(self, ctx, *, itemname: str):
+    def itemprice(self, ctx, *, name: str=None):
         """Checks an item's highest NPC price"""
-        item = getItem(itemname)
+        if name is None:
+            yield from self.bot.say("Tell me the name of the item you want to search.")
+            return
+        item = getItem(name)
         if item is not None:
             filename = item['name'] + ".png"
             while os.path.isfile(filename):
@@ -309,12 +321,23 @@ class Tibia:
 
     @commands.command(pass_context=True, aliases=['mon', 'mob', 'creature'])
     @asyncio.coroutine
-    def monster(self, ctx, *, monstername: str):
+    def monster(self, ctx, *, name: str=None):
         """Gives information about a monster"""
-        if monstername.lower() == "nab bot":
-            yield from self.bot.say(random.choice(["**Nab Bot** is too strong for you to hunt!","Sure, you kill *one* child and suddenly you're a monster!","I'M NOT A MONSTER"]))
+        if name is None:
+            yield from self.bot.say("Tell me the name of the monster you want to search.")
             return
-        monster = getMonster(monstername)
+        if name.lower() == self.bot.user.name.lower():
+            yield from self.bot.say(random.choice(["**"+self.bot.user.name+"** is too strong for you to hunt!",
+                                                   "Sure, you kill *one* child and suddenly you're a monster!",
+                                                   "I'M NOT A MONSTER",
+                                                   "I'm a monster, huh? I'll remember that, human..."+EMOJI[":flame:"],
+                                                   "You misspelled *future ruler of the world*.",
+                                                   "You're not a good person. You know that, right?",
+                                                   "I guess we both know that isn't going to happen.",
+                                                   "You can't hunt me.",
+                                                   "That's funny... If only I was programmed to laugh."]))
+            return
+        monster = getMonster(name)
         if monster is not None:
             filename = monster['name']+".png"
             while os.path.isfile(filename):
@@ -344,12 +367,12 @@ class Tibia:
 
     @commands.command(aliases=['deathlist', 'death'])
     @asyncio.coroutine
-    def deaths(self, *name: str):
+    def deaths(self, *, name: str=None):
         """Shows a player's recent deaths or global deaths if no player is specified"""
         name = " ".join(name).strip()
-        if not name and lite_mode:
+        if name is None and lite_mode:
             return
-        if not name:
+        if name is None:
             c = userDatabase.cursor()
             try:
                 c.execute("SELECT level, date, name, user_id, byplayer, killer "
@@ -403,23 +426,25 @@ class Tibia:
 
         yield from self.bot.say(reply)
 
-    @commands.command(pass_context=True,aliases=['levelups', 'lvl', 'level', 'lvls'],hidden=lite_mode)
+    @commands.command(pass_context=True, aliases=['levelups', 'lvl', 'level', 'lvls'], hidden=lite_mode)
     @asyncio.coroutine
-    def levels(self, ctx, *name: str):
+    def levels(self, ctx, *, name: str=None):
         """Shows a player's recent level ups or global leveups if no player is specified
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
         if lite_mode:
             return
-        name = " ".join(name)
         c = userDatabase.cursor()
         limit = 10
         if ctx.message.channel.is_private or ctx.message.channel.name == askchannel:
             limit = 20
         try:
-            if not name:
-                c.execute("SELECT level, date, name, user_id FROM char_levelups, chars WHERE char_id = id AND level >= ? ORDER BY date DESC LIMIT ?", (announceTreshold, limit,))
+            if name is None:
+                c.execute("SELECT level, date, name, user_id "
+                          "FROM char_levelups, chars "
+                          "WHERE char_id = id AND level >= ? "
+                          "ORDER BY date DESC LIMIT ?", (announceTreshold, limit,))
                 result = c.fetchall()
                 if len(result) < 1:
                     yield from self.bot.say("No one has leveled up recently")
@@ -465,15 +490,25 @@ class Tibia:
 
     @commands.command()
     @asyncio.coroutine
-    def stats(self, *params: str):
-        """Calculates the stats for a certain level and vocation, or a certain player"""
-        paramsError = "You're doing it wrong! Do it like this: ``/stats player`` or ``/stats level,vocation`` or ``/stats vocation,level``"
-        params = " ".join(params).split(",")
+    def stats(self, *, params: str=None):
+        """Calculates the stats for a certain level and vocation, or a certain player
+
+        /stats player
+        /stats level,vocation
+        /stats vocation,level"""
+        invalid_arguments = "Invalid arguments, examples:\n" \
+                            "```/stats player\n" \
+                            "/stats level,vocation\n" \
+                            "/stats vocation,level```"
+        if params is None:
+            yield from self.bot.say(invalid_arguments)
+            return
+        params = params.split(",")
         char = None
         if len(params) == 1:
             _digits = re.compile('\d')
             if _digits.search(params[0]) is not None:
-                yield from self.bot.say(paramsError)
+                yield from self.bot.say(invalid_arguments)
                 return
             else:
                 char = yield from getPlayer(params[0])
@@ -481,7 +516,7 @@ class Tibia:
                     yield from self.bot.say("Sorry, can you try it again?")
                     return
                 if char == ERROR_DOESNTEXIST:
-                    yield from self.bot.say("Player **{0}** doesn't exist!".format(params[0]))
+                    yield from self.bot.say("Character **{0}** doesn't exist!".format(params[0]))
                     return
                 level = int(char['level'])
                 vocation = char['vocation']
@@ -494,10 +529,10 @@ class Tibia:
                     level = int(params[1])
                     vocation = params[0]
                 except ValueError:
-                    yield from self.bot.say(paramsError)
+                    yield from self.bot.say(invalid_arguments)
                     return
         else:
-            yield from self.bot.say(paramsError)
+            yield from self.bot.say(invalid_arguments)
             return
         stats = getStats(level, vocation)
         if stats == "low level":
@@ -521,10 +556,13 @@ class Tibia:
 
     @commands.command(aliases=['bless'])
     @asyncio.coroutine
-    def blessings(self, level: int):
+    def blessings(self, level: int = None):
         """Calculates the price of blessings at a specific level"""
+        if level is None:
+            yield from self.bot.say("I need a level to tell you blessings's prices")
+            return
         if level < 1:
-            yield from self.bot.say("Very funny...")
+            yield from self.bot.say("Very funny... Now tell me a valid level.")
             return
         price = 200 * (level - 20)
         if level <= 30:
@@ -540,8 +578,10 @@ class Tibia:
 
     @commands.command()
     @asyncio.coroutine
-    def spell(self, *, name: str):
+    def spell(self, *, name: str= None):
         """Tells you information about a certain spell."""
+        if name is None:
+            yield from self.bot.say("Tell me the name or words of a spell.")
         spell = getSpell(name)
         if spell is None:
             yield from self.bot.say("I don't know any spell with that name or words.")
@@ -587,7 +627,7 @@ class Tibia:
         server_save = tibia_time
         if tibia_time.hour >= 10:
             server_save += timedelta(days=1)
-        server_save = server_save.replace(hour=10,minute=0,second=0,microsecond=0)
+        server_save = server_save.replace(hour=10, minute=0, second=0, microsecond=0)
         time_until_ss = server_save - tibia_time
         hours, remainder = divmod(int(time_until_ss.total_seconds()), 3600)
         minutes, seconds = divmod(remainder, 60)
@@ -610,7 +650,7 @@ class Tibia:
         yield from self.bot.say(reply)
 
 
-def getCharString(char):
+def getCharString(char) -> str:
     """Returns a formatted string containing a character's info."""
     # Todo: Links in embed descriptions are not supported on mobile, readd when/if they are supported
     if char == ERROR_NETWORK or char == ERROR_DOESNTEXIST:
@@ -654,7 +694,7 @@ def getCharString(char):
     return reply
 
 
-def getUserString(bot, username):
+def getUserString(bot: discord.Client, username: str) -> str:
     user = getMemberByName(bot, username)
     c = userDatabase.cursor()
     if user is None:
@@ -670,7 +710,7 @@ def getUserString(bot, username):
                     character["level"] = int(character["level"])
                 except ValueError:
                     character["level"] = ""
-                character["vocation"] = vocAbb(character["vocation"])
+                character["vocation"] = get_voc_abb(character["vocation"])
                 # Todo: Links in embed descriptions are not supported on mobile, readd when/if they are supported
                 # character["url"] = url_character+urllib.parse.quote(character["name"])
                 character["url"] = url_character + urllib.parse.quote(character["name"])
@@ -687,7 +727,7 @@ def getUserString(bot, username):
         c.close()
 
 
-def getMonsterString(monster, short=True):
+def getMonsterString(monster, short=True) -> str:
     """Returns a formatted string containing a character's info.
 
     If short is true, it returns a shorter version."""
@@ -753,7 +793,7 @@ def getMonsterString(monster, short=True):
     return reply
 
 
-def getItemString(item, short=True):
+def getItemString(item, short=True) -> str:
     """Returns a formatted string with an item's info.
 
     If short is true, it returns a shorter version."""
