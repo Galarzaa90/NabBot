@@ -355,7 +355,6 @@ class Tibia:
                 f.close()
 
             long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
-            print(long)
             embed, loot_embed = getMonsterEmbeds(monster, long)
             yield from self.bot.say(embed=embed)
             if loot_embed is not None:
@@ -365,7 +364,6 @@ class Tibia:
     @asyncio.coroutine
     def deaths(self, *, name: str=None):
         """Shows a player's recent deaths or global deaths if no player is specified"""
-        name = " ".join(name).strip()
         if name is None and lite_mode:
             return
         if name is None:
