@@ -481,30 +481,6 @@ def getRashidCity() -> str:
             "Carlin"][tibia_time.weekday()]
 
 
-# TODO: Merge this into getMonster()
-def getLoot(id):
-    """Returns a tuple of a monster's item drops.
-
-    Each tuple element is a dictionary with the following keys: itemid, percentage, min, max"""
-    c = tibiaDatabase.cursor()
-    c.execute("SELECT itemid FROM CreatureDrops WHERE creatureid LIKE ?", (id,))
-    result = c.fetchone()
-    try:
-        if result is not None:
-            c.execute("SELECT Items.title as name, percentage, min, max "
-                      "FROM CreatureDrops, Items "
-                      "WHERE Items.id = CreatureDrops.itemid AND creatureid LIKE ? "
-                      "ORDER BY percentage DESC",
-                      (id,)
-                      )
-            result = c.fetchall()
-            if result is not None:
-                return result
-    finally:
-        c.close()
-    return
-
-
 def getMonster(name):
     """Returns a dictionary with a monster's info.
 
@@ -520,9 +496,7 @@ def getMonster(name):
         # Checking if monster exists
         if monster is not None:
             if monster['health'] is None or monster['health'] < 1:
-                monster['health'] = 1
-            if monster['experience'] is None or monster['experience'] < 1:
-                monster['experience'] = 0
+                monster['health'] = None
             c.execute("SELECT Items.title as name, percentage, min, max "
                       "FROM CreatureDrops, Items "
                       "WHERE Items.id = CreatureDrops.itemid AND creatureid = ? "

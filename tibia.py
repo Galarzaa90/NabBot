@@ -727,9 +727,15 @@ def getMonsterEmbeds(monster, long):
     """Gets the monster embeds to show in /mob command
     The message is split in two embeds, the second contains loot only and is only shown if long is True"""
     embed = discord.Embed(title=monster["title"])
-    embed.add_field(name="HP", value="{0:,}".format(monster["health"]))
-    embed.add_field(name="Experience", value="{0:,}".format(monster["experience"]))
-    embed.add_field(name="HP/Exp Ratio", value="{0:.2f}".format(monster['experience'] / monster['health']))
+    hp = "?" if monster["health"] is None else "{0:,}".format(monster["health"])
+    experience = "?" if monster["experience"] is None else "{0:,}".format(monster["experience"])
+    if not (monster["experience"] is None or monster["health"] is None or monster["health"] < 0):
+        ratio = "{0:.2f}".format(monster['experience'] / monster['health'])
+    else:
+        ratio = "?"
+    embed.add_field(name="HP", value=hp)
+    embed.add_field(name="Experience", value=experience)
+    embed.add_field(name="HP/Exp Ratio", value=ratio)
 
     weak = []
     resist = []
