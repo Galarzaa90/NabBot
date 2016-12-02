@@ -522,7 +522,13 @@ def getMonster(name):
             if monster['health'] is None or monster['health'] < 1:
                 monster['health'] = 1
             if monster['experience'] is None or monster['experience'] < 1:
-                monster['experience'] = 1
+                monster['experience'] = 0
+            c.execute("SELECT Items.title as name, percentage, min, max "
+                      "FROM CreatureDrops, Items "
+                      "WHERE Items.id = CreatureDrops.itemid AND creatureid = ? "
+                      "ORDER BY percentage DESC",
+                      (monster["id"],))
+            monster["loot"] = c.fetchall()
             return monster
     finally:
         c.close()

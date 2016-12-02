@@ -338,32 +338,28 @@ class Tibia:
                                                    "That's funny... If only I was programmed to laugh."]))
             return
         monster = getMonster(name)
+        if monster is None:
+            yield from self.bot.say("I couldn't find a monster with that name.")
+            return
         if monster is not None:
-            filename = monster['name']+".png"
+            # Get monster's image:
+            filename = monster['name'] + ".png"
             while os.path.isfile(filename):
-                filename = "_"+filename
+                filename = "_" + filename
             with open(filename, "w+b") as f:
                 f.write(bytearray(monster['image']))
                 f.close()
+            # Send monster's image
+            with open(filename, "r+b") as f:
+                yield from self.bot.send_file(ctx.message.channel, f)
+                f.close()
 
-            if ctx.message.channel.is_private or ctx.message.channel.name == askchannel:
-                with open(filename, "r+b") as f:
-                    yield from self.bot.send_file(ctx.message.channel, f)
-                    f.close()
-                yield from self.bot.say(getMonsterString(monster, False))
-            else:
-                with open(filename, "r+b") as f:
-                    yield from self.bot.send_file(ctx.message.channel, f)
-                    f.close()
-                yield from self.bot.say(getMonsterString(monster))
-                if ctx.message.author is not None:
-                    with open(filename, "r+b") as f:
-                        yield from self.bot.send_file(ctx.message.author, f)
-                        f.close()
-                    yield from self.bot.send_message(ctx.message.author, getMonsterString(monster, False))
-            os.remove(filename)
-        else:
-            yield from self.bot.say("I couldn't find a monster with that name.")
+            long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
+            print(long)
+            embed, loot_embed = getMonsterEmbeds(monster, long)
+            yield from self.bot.say(embed=embed)
+            if loot_embed is not None:
+                yield from self.bot.say(embed=loot_embed)
 
     @commands.command(aliases=['deathlist', 'death'])
     @asyncio.coroutine
@@ -727,70 +723,73 @@ def getUserString(bot: discord.Client, username: str) -> str:
         c.close()
 
 
-def getMonsterString(monster, short=True) -> str:
-    """Returns a formatted string containing a character's info.
+def getMonsterEmbeds(monster, long):
+    """Gets the monster embeds to show in /mob command
+    The message is split in two embeds, the second contains loot only and is only shown if long is True"""
+    embed = discord.Embed(title=monster["title"])
+    embed.add_field(name="HP", value="{0:,}".format(monster["health"]))
+    embed.add_field(name="Experience", value="{0:,}".format(monster["experience"]))
+    embed.add_field(name="HP/Exp Ratio", value="{0:.2f}".format(monster['experience'] / monster['health']))
 
-    If short is true, it returns a shorter version."""
-
-    reply = monster['title'] + "\r\n```"
-    reply += "HP:" + str(monster['health']) + "   Exp:" + str(monster['experience']) + "\r\n"
-    reply += "HP/Exp Ratio: " + "{0:.2f}".format(monster['experience'] / monster['health']).zfill(4)
-    reply += "\r\n```"
-    reply += "```"
-    loot = getLoot(monster['id'])
     weak = []
     resist = []
+    immune = []
     elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth", "drown", "lifedrain"]
+    # Iterate through elemental types
     for index, value in monster.items():
         if index in elements:
-            if monster[index] > 100:
-                weak.append([index.title(), monster[index]])
-            if monster[index] < 100:
-                resist.append([index.title(), monster[index]])
-    if len(weak) >= 1:
-        reply += 'Weak to:' + "\r\n"
-        for element in sorted(weak, key=lambda elem: elem[1]):
-            reply += "\t+" + str(element[1] - 100) + "%  " + element[0] + "\r\n"
-    if len(resist) >= 1:
-        reply += 'Resistant to:' + "\r\n"
-        for element in sorted(resist, key=lambda elem: elem[1]):
-            reply += "\t" + ((" -" + str(100 - element[1]) + "% ") if 100 - element[1] < 100 else "Immune") + " " + \
-                     element[0] + "\r\n"
-    reply += "\r\n```"
-    reply += "```"
-    reply += ("Can" if monster['senseinvis'] else "Can't") + " sense invisibility" + "\r\n"
-    reply += "\r\n```"
-    if not short:
-        reply += "```"
-        reply += "\r\nLoot:\r\n"
-        if loot is not None:
-            for item in loot:
-                if item["percentage"] is None:
-                    item["percentage"] = "??.??%"
-                elif item["percentage"] >= 100:
-                    item["percentage"] = "Always"
-                else:
-                    item["percentage"] = "{0:.2f}".format(item['percentage']).zfill(5) + "%"
-                if item["max"] > 1:
-                    item["count"] = "({min}-{max})".format(**item)
-                else:
-                    item["count"] = ""
-                reply += "{percentage} {name} {count}\r\n".format(**item)
+            if monster[index] == 0:
+                immune.append(index.title())
+            elif monster[index] > 100:
+                weak.append([index.title(), monster[index]-100])
+            elif monster[index] < 100:
+                resist.append([index.title(), monster[index]-100])
+    # Add paralysis to immunities
+    if monster["paralysable"] == 0:
+        immune.append("Paralysis")
+    if monster["senseinvis"] == 1:
+        immune.append("Invisibility")
 
-        else:
-            reply += "Doesn't drop anything"
-        reply += "\r\n```"
-        reply += "```"
-        reply += "Max damage:" + str(monster["maxdamage"]) if monster["maxdamage"] is not None else "???" + "\r\n"
-        reply += "\r\n```"
-        reply += "```"
-        if monster['abilities'] is not None:
-            reply += "Abilities:\r\n"
-            reply += monster['abilities']
-        reply += "\r\n```"
+    if immune:
+        embed.add_field(name="Immune to", value="\n".join(immune))
     else:
-        reply += '*I also PM\'d you this monster\'s full information with loot and abilities.*'
-    return reply
+        embed.add_field(name="Immune to", value="Nothing")
+
+    if resist:
+        embed.add_field(name="Resistant to", value="\n".join(["{1}% {0}".format(*i) for i in resist]))
+    else:
+        embed.add_field(name="Resistant to", value="Nothing")
+    if weak:
+        embed.add_field(name="Weak to", value="\n".join(["+{1}% {0}".format(*i) for i in weak]))
+    else:
+        embed.add_field(name="Weak to", value="Nothing")
+
+    # If monster drops no loot, we might as well show everything
+    if long or not monster["loot"]:
+        embed.add_field(name="Max damage",
+                        value="{maxdamage:,}".format(**monster) if monster["maxdamage"] is not None else "???")
+        embed.add_field(name="Abilities", value=monster["abilities"], inline=False)
+    embed_loot = None
+    if monster["loot"] and long:
+        loot_string = ""
+        for item in monster["loot"]:
+            if item["percentage"] is None:
+                item["percentage"] = "??.??%"
+            elif item["percentage"] >= 100:
+                item["percentage"] = "Always"
+            else:
+                item["percentage"] = "{0:.2f}".format(item['percentage']).zfill(5) + "%"
+            if item["max"] > 1:
+                item["count"] = "({min}-{max})".format(**item)
+            else:
+                item["count"] = ""
+            loot_string += "{percentage} {name} {count}\n".format(**item)
+        embed_loot = discord.Embed(title="Loot",description="`"+loot_string+"`")
+    if monster["loot"] and not long:
+        askchannel_string = " or use #"+askchannel if askchannel is not None else ""
+        # Using character U+200F as an invisible space as normal space gets stripped and empty values are not allowed.
+        embed.add_field(name="To see more, PM me{0}.".format(askchannel_string), value="\U0000200F", inline=False)
+    return embed, embed_loot
 
 
 def getItemString(item, short=True) -> str:
