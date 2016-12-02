@@ -309,13 +309,13 @@ class Tibia:
                 f.close()
             os.remove(filename)
 
-            if ctx.message.channel.is_private or ctx.message.channel.name == askchannel:
-                yield from self.bot.say(getItemString(item, False))
-            else:
-                yield from self.bot.say(getItemString(item))
-                if len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3 or item["dropped_by"] is not None:
-                    if ctx.message.author is not None:
-                        yield from self.bot.send_message(ctx.message.author, getItemString(item, False))
+            long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
+            embed, embed_drops = getItemEmbeds(item, long)
+            yield from self.bot.say(embed=embed)
+            if embed_drops is not None:
+                yield from self.bot.say(embed=embed_drops)
+            return
+
         else:
             yield from self.bot.say("I couldn't find an item with that name.")
 
@@ -353,6 +353,7 @@ class Tibia:
             with open(filename, "r+b") as f:
                 yield from self.bot.send_file(ctx.message.channel, f)
                 f.close()
+            os.remove(filename)
 
             long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
             embed, loot_embed = getMonsterEmbeds(monster, long)
@@ -796,57 +797,76 @@ def getMonsterEmbeds(monster, long):
     return embed, embed_loot
 
 
-def getItemString(item, short=True) -> str:
-    """Returns a formatted string with an item's info.
+def getItemEmbeds(item, long):
+    """Gets the item embeds to show in /item command
+    The message is split in two embeds, the second contains monster drops only and is only shown if long is True"""
+    short_limit = 5
+    long_limit = 40
+    npcs_too_long = False
+    drops_too_long = False
 
-    If short is true, it returns a shorter version."""
-    reply = "**{0}**\n".format(item["title"])
-
-    if 'look_text' in item:
-        reply += "```{0}```".format(item['look_text'])
-
+    embed = discord.Embed(title=item["title"], description=item["look_text"])
+    embed_drops = None
+    if "color" in item:
+        embed.colour = item["color"]
     if 'npcs_bought' in item and len(item['npcs_bought']) > 0:
-        reply += "```Can be bought for {0:,} gold coins from:".format(item['value_buy'])
+        name = "Bought for {0:,} gold coins from".format(item['value_buy'])
+        value = ""
         count = 0
         for npc in item['npcs_bought']:
-            if count < 3 or not short:
-                reply += "\n\t{0} in {1}".format(npc['name'], npc['city'])
             count += 1
-        if count >= 3 and short:
-            reply += "\n\tAnd {0} others.".format(count - 3)
-        reply += "```"
-    else:
-        reply += "```\nCan't be bought from NPCs```"
+            value += "\n{name} ({city})".format(**npc)
+            if count >= short_limit and not long:
+                value += "\n*...And {0} others*".format(len(item['npcs_bought']) - short_limit)
+                npcs_too_long = True
+                break
+
+        embed.add_field(name=name, value=value)
 
     if 'npcs_sold' in item and len(item['npcs_sold']) > 0:
-        reply += "```Can be sold for {1:,} gold coins to:".format(item['name'], item['value_sell'])
+        name = "Sold for {0:,} gold coins to".format(item['value_sell'])
+        value = ""
         count = 0
         for npc in item['npcs_sold']:
-            if count < 3 or not short:
-                reply += "\n\t{0} in {1}".format(npc['name'], npc['city'])
             count += 1
-        if count >= 3 and short:
-            reply += "\n\tAnd {0} others.".format(count - 3)
-        reply += "```"
-    else:
-        reply += "```\nCan't be sold to NPCs```"
+            value += "\n{name} ({city})".format(**npc)
+            if count >= short_limit and not long:
+                value += "\n*...And {0} others*".format(len(item['npcs_sold']) - short_limit)
+                npcs_too_long = True
+                break
 
-    if (len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3) and short:
-        reply += '\n\n*The list of NPCs was too long, so I PM\'d you an extended version.*'
+        embed.add_field(name=name, value=value)
 
-    if item["dropped_by"] is not None and not short:
-        reply += "```Dropped by:"
-        if len(item["dropped_by"]) > 20:
-            item["dropped_by"] = item["dropped_by"][:20]
+    if len(item["dropped_by"]):
+        name = "Dropped by"
+        count = 0
+        value = ""
+
         for creature in item["dropped_by"]:
+            count += 1
             if creature["percentage"] is None:
                 creature["percentage"] = "??.??"
-            reply += "\n\t{name} ({percentage}%)".format(**creature)
-        reply += "```"
+            value += "\n{name} ({percentage}%)".format(**creature)
+            if count >= short_limit and not long:
+                value += "\n*...And {0} others*".format(len(item["dropped_by"]) - short_limit)
+                drops_too_long = True
+                break
+            if long and count >= long_limit:
+                value += "\n*...And {0} others*".format(len(item["dropped_by"]) - long_limit)
+                break
 
-    if len(item['npcs_bought']) > 3 or len(item['npcs_sold']) > 3 or item["dropped_by"] is not None and short:
-        reply += "*I also PM'd you this item's complete NPC list and creatures that drop it.*"
-    return reply
+        if long:
+            embed_drops = discord.Embed(title=name, description=value)
+            if "color" in item:
+                embed_drops.colour = item["color"]
+        else:
+            embed.add_field(name=name, value=value)
+
+    if npcs_too_long or drops_too_long:
+        askchannel_string = " or use #" + askchannel if askchannel is not None else ""
+        # Using character U+200F as an invisible space as normal space gets stripped and empty values are not allowed.
+        embed.add_field(name="To see more, PM me{0}.".format(askchannel_string), value="\U0000200F", inline=False)
+    return embed, embed_drops
 
 
 def setup(bot):

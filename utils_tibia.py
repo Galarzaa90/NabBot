@@ -1,4 +1,5 @@
 import asyncio
+from discord import Colour
 import datetime
 import urllib
 import urllib.request
@@ -543,10 +544,13 @@ def getItem(itemname):
                 # Replacing cities for special npcs
                 if name == 'Alesar' or name == 'Yaman':
                     city = 'Green Djinn\'s Fortress'
+                    item["color"] = Colour.green()
                 elif name == 'Nah\'Bob' or name == 'Haroun':
                     city = 'Blue Djinn\'s Fortress'
+                    item["color"] = Colour.blue()
                 elif name == 'Rashid':
                     city = getRashidCity()
+                    item["color"] = Colour(0xF0E916)
                 elif name == 'Yasir':
                     city = 'his boat'
                 npcs.append({"name": name, "city": city})
@@ -595,11 +599,7 @@ def getItem(itemname):
                       "FROM CreatureDrops, Creatures "
                       "WHERE CreatureDrops.creatureid = Creatures.id AND CreatureDrops.itemid = ? "
                       "ORDER BY percentage DESC", (item["id"],))
-            drops = c.fetchall()
-            if drops is not None:
-                item["dropped_by"] = drops
-            else:
-                item["dropped_by"] = None
+            item["dropped_by"] = c.fetchall()
             return item
     finally:
         c.close()
