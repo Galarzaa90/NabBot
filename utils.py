@@ -290,7 +290,7 @@ def getMember(bot: discord.Client, user_id, server: discord.Server=None) -> disc
     belongs to will be unknown, so member-only functions may be inaccurate.
     User functions remain the same, regardless of server"""
     if server is not None:
-        return discord.utils.get(server.members, id=str(user_id))
+        return server.get_member(user_id)
     else:
         return discord.utils.get(bot.get_all_members(), id=str(user_id))
 

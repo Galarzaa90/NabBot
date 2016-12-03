@@ -15,13 +15,47 @@ class Mod:
     @commands.command(pass_context=True, hidden=True)
     @is_mod()
     @asyncio.coroutine
-    def makesay(self, ctx, *args: str):
+    def makesay(self, ctx, *, message: str):
         if ctx.message.channel.is_private:
-            channel = getChannelByName(self.bot, mainchannel, mainserver)
-            yield from self.bot.send_message(channel, " ".join(args))
+            description_list = []
+            channel_list = []
+            for server in self.bot.servers:
+                author = getMember(self.bot, ctx.message.author.id, server)
+                bot_member = getMember(self.bot, self.bot.user.id, server)
+                if author is None:
+                    break
+                for channel in server.channels:
+                    if channel.type != discord.ChannelType.text:
+                        continue
+                    author_permissions = author.permissions_in(channel)  # type: discord.Permissions
+                    bot_permissions = bot_member.permissions_in(channel)  # type: discord.Permissions
+                    if author_permissions.send_messages and bot_permissions.send_messages:
+                        description_list.append("**#{0}** in **{1}**".format(channel.name, server.name))
+                        channel_list.append(channel)
+            if len(description_list) < 1:
+                yield from self.bot.say("We don't have channels in common with permissions.")
+                return
+            yield from self.bot.say("Choose a channel for me to send your message (number only):" +
+                                    "\n\t0: *Cancel*\n\t" +
+                                    "\n\t".join(["{0}: {1}".format(i+1, j) for i, j in enumerate(description_list)]))
+            answer = yield from self.bot.wait_for_message(author=ctx.message.author, channel=ctx.message.channel,
+                                                          timeout=30.0)
+            if answer is None:
+                yield from self.bot.say("... are you there? Fine, nevermind!")
+            elif is_numeric(answer.content):
+                answer = int(answer.content)
+                if answer == 0:
+                    yield from self.bot.say("Changed your mind? Typical human.")
+                    return
+                try:
+                    yield from self.bot.send_message(channel_list[answer-1], message)
+                    yield from self.bot.say("Message sent on #"+channel_list[answer-1].name)
+                except IndexError:
+                    yield from self.bot.say("That wasn't in the choices, you ruined it. Start from the beginning.")
+
         else:
             yield from self.bot.delete_message(ctx.message)
-            yield from self.bot.send_message(ctx.message.channel, " ".join(args))
+            yield from self.bot.send_message(ctx.message.channel, message)
 
     @commands.command(pass_context=True, hidden=True)
     @is_mod()
