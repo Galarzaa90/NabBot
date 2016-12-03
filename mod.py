@@ -22,13 +22,17 @@ class Mod:
             for server in self.bot.servers:
                 author = getMember(self.bot, ctx.message.author.id, server)
                 bot_member = getMember(self.bot, self.bot.user.id, server)
+                # Skip servers where the command user is not in
                 if author is None:
-                    break
+                    continue
+                # Check for every channel
                 for channel in server.channels:
+                    # Skip voice channels
                     if channel.type != discord.ChannelType.text:
                         continue
                     author_permissions = author.permissions_in(channel)  # type: discord.Permissions
                     bot_permissions = bot_member.permissions_in(channel)  # type: discord.Permissions
+                    # Check if both the author and the bot have permissions to send messages and add channel to list
                     if author_permissions.send_messages and bot_permissions.send_messages:
                         description_list.append("**#{0}** in **{1}**".format(channel.name, server.name))
                         channel_list.append(channel)

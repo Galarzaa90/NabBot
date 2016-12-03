@@ -454,7 +454,7 @@ def getRegionString(region: discord.ServerRegion) -> str:
                "frankfurt": EMOJI[":flag_de:"]+"Frankfurt",
                "brazil": EMOJI[":flag_br:"]+"Brazil"
                }
-    return regions.get(str(region),str(region))
+    return regions.get(str(region), str(region))
 
 
 # Check decorators for commands
