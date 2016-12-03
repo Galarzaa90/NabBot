@@ -457,9 +457,7 @@ def getRegionString(region: discord.ServerRegion) -> str:
     return regions.get(str(region),str(region))
 
 
-
 # Check decorators for commands
-
 def check_is_owner(message):
     return message.author.id in owner_ids
 

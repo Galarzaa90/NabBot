@@ -138,9 +138,10 @@ class Tibia:
             reply = "**{0}** ({1}) can share experience with levels **{2}** to **{3}**.".format(name, level, low, high)
         yield from self.bot.say(reply)
 
-    @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"], hidden=lite_mode)
+    @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"], hidden=lite_mode,
+                      pass_context=True)
     @asyncio.coroutine
-    def find_team(self, *, params=None):
+    def find_team(self, ctx, *, params=None):
         """Searches for characters of a specific vocation in range with another character or level range.
 
         There are 3 ways to use this command:
@@ -154,6 +155,7 @@ class Tibia:
         /find vocation,min_level,max_level"""
         if lite_mode:
             return
+
         invalid_arguments = "Invalid arguments used, examples:\n" \
                             "```/find vocation,charname\n" \
                             "/find vocation,level\n" \
@@ -161,11 +163,16 @@ class Tibia:
         if params is None:
             yield from self.bot.say(invalid_arguments)
             return
+
+        result_limit = 10
+        askchannel_limit = 25
+        too_long = False
         char = None
         params = params.split(",")
         if len(params) < 2 or len(params) > 3:
             yield from self.bot.say(invalid_arguments)
             return
+        params[0] = params[0].lower()
         if params[0] in KNIGHT:
             vocation = "knight"
         elif params[0] in DRUID:
@@ -216,26 +223,42 @@ class Tibia:
                     yield from self.bot.say("You entered an invalid level.")
                     return
                 low, high = getShareRange(int(params[1]))
-                found = "I found the following {0}s in share range with level **{1}**:".format(vocation, params[1])
-                empty = "I didn't find any {0}s in share range with level **{1}**".format(vocation, params[1])
+                found = "I found the following {0}s in share range with level **{1}** ({2}-{3}):".format(vocation,
+                                                                                                         params[1],
+                                                                                                         low, high)
+                empty = "I didn't find any {0}s in share range with level **{1}** ({2}-{3})".format(vocation,
+                                                                                                    params[1],
+                                                                                                    low, high)
 
         c = userDatabase.cursor()
         try:
             c.execute("SELECT name, user_id, ABS(last_level) as level FROM chars "
                       "WHERE vocation LIKE ? AND level >= ? AND level <= ? "
-                      "ORDER by level DESC LIMIT 20", ("%"+vocation,low,high))
-            result = c.fetchall()
-            if len(result) < 1:
-                yield from self.bot.say(empty)
-                return
-            for player in result:
+                      "ORDER by level DESC", ("%"+vocation, low, high))
+            count = 0
+            while True:
+                player = c.fetchone()
+                if player is None:
+                    break
+                if char is not None and char["name"] == player["name"]:
+                    continue
                 owner = getMember(self.bot, player["user_id"])
                 if owner is None:
                     continue
-                if char is not None and char["name"] == player["name"]:
-                    continue
+                count += 1
                 player["owner"] = owner.display_name
-                found += "\n\t**{name}** - Level {level} - @**{owner}**".format(**player)
+                if count <= result_limit or (count <= askchannel_limit and ctx.message.channel.name == askchannel):
+                    found += "\n\t**{name}** - Level {level} - @**{owner}**".format(**player)
+                else:
+                    # Check if there's at least one more to suggest using askchannel
+                    if c.fetchone() is not None:
+                        too_long = True
+                    break
+            if count < 1:
+                yield from self.bot.say(empty)
+                return
+            if getChannelByName(self.bot, askchannel) is not None and too_long:
+                found += "\nYou can see more results in "+getChannelByName(self.bot, askchannel).mention
             yield from self.bot.say(found)
         finally:
             c.close()
