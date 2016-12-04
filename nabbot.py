@@ -20,7 +20,7 @@ def on_ready():
     bot.load_extension("mod")
     bot.load_extension("owner")
     print('Logged in as')
-    print(bot.user.name)
+    print(bot.user)
     print(bot.user.id)
     print('------')
     log.info('Bot is online and ready')
@@ -97,7 +97,7 @@ def on_message(message):
 @asyncio.coroutine
 def on_member_join(member):
     """Called every time a member joins a server visible by the bot."""
-    log.info("New member joined: {0.display_name} (ID: {0.id})".format(member))
+    log.info("{0.display_name} (ID: {0.id}) joined {0.server.name}".format(member))
     if lite_mode:
         return
     message = "Welcome {0.mention}! Please tell us about yourself, who is your Tibia character?\r\n" \
@@ -108,8 +108,22 @@ def on_member_join(member):
 @bot.event
 @asyncio.coroutine
 def on_member_remove(member):
-    """Called every time a member leaves or is kicked from a server."""
-    log.info("A member left discord: {0.display_name} (ID: {0.id})".format(member))
+    """Called when a member leaves or is kicked from a server."""
+    log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.server.name}".format(member))
+
+
+@bot.event
+@asyncio.coroutine
+def on_member_ban(member):
+    """Called when a member is banned from a server."""
+    log.info("{0.display_name} (ID:{0.id}) was banned from {0.server.name}".format(member))
+
+
+@bot.event
+@asyncio.coroutine
+def on_member_unban(server, user):
+    """Called when a member is unbanned from a server"""
+    log.info("{1.name} (ID:{1.id}) was unbanned from {0.name}".format(server, user))
 
 
 @bot.event
@@ -134,7 +148,7 @@ def on_message_edit(older_message, message):
         return
 
     older_message_decoded = decode_emoji(older_message.content)
-    log.info("{0} has edited the message: '{1}'".format(older_message.author.display_name,older_message_decoded))
+    log.info("{0} has edited the message: '{1}'".format(older_message.author.display_name, older_message_decoded))
     for attachment in older_message.attachments:
         log.info(attachment)
 
