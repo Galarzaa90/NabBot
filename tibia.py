@@ -1,3 +1,5 @@
+from colorthief import ColorThief
+
 from utils import *
 from utils_tibia import *
 
@@ -319,28 +321,33 @@ class Tibia:
             yield from self.bot.say("Tell me the name of the item you want to search.")
             return
         item = getItem(name)
-        if item is not None:
-            filename = item['name'] + ".png"
-            while os.path.isfile(filename):
-                filename = "_" + filename
-            with open(filename, "w+b") as f:
-                f.write(bytearray(item['image']))
-                f.close()
-
-            with open(filename, "r+b") as f:
-                yield from self.bot.send_file(ctx.message.channel, f)
-                f.close()
-            os.remove(filename)
-
-            long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
-            embed, embed_drops = getItemEmbeds(item, long)
-            yield from self.bot.say(embed=embed)
-            if embed_drops is not None:
-                yield from self.bot.say(embed=embed_drops)
+        if item is None:
+            yield from self.bot.say("I couldn't find an item with that name.")
             return
 
-        else:
-            yield from self.bot.say("I couldn't find an item with that name.")
+        if type(item) is list:
+            embed = discord.Embed(title="Suggestions", description="\n".join(item))
+            yield from self.bot.say("I couldn't find that item, maybe you meant one of these?", embed=embed)
+            return
+
+        filename = item['name'] + ".png"
+        while os.path.isfile(filename):
+            filename = "_" + filename
+        with open(filename, "w+b") as f:
+            f.write(bytearray(item['image']))
+            f.close()
+
+        with open(filename, "r+b") as f:
+            yield from self.bot.send_file(ctx.message.channel, f)
+            f.close()
+        os.remove(filename)
+
+        long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
+        embed, embed_drops = getItemEmbeds(item, long)
+        yield from self.bot.say(embed=embed)
+        if embed_drops is not None:
+            yield from self.bot.say(embed=embed_drops)
+        return
 
     @commands.command(pass_context=True, aliases=['mon', 'mob', 'creature'])
     @asyncio.coroutine
@@ -364,25 +371,31 @@ class Tibia:
         if monster is None:
             yield from self.bot.say("I couldn't find a monster with that name.")
             return
-        if monster is not None:
-            # Get monster's image:
-            filename = monster['name'] + ".png"
-            while os.path.isfile(filename):
-                filename = "_" + filename
-            with open(filename, "w+b") as f:
-                f.write(bytearray(monster['image']))
-                f.close()
-            # Send monster's image
-            with open(filename, "r+b") as f:
-                yield from self.bot.send_file(ctx.message.channel, f)
-                f.close()
-            os.remove(filename)
 
-            long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
-            embed, loot_embed = getMonsterEmbeds(monster, long)
-            yield from self.bot.say(embed=embed)
-            if loot_embed is not None:
-                yield from self.bot.say(embed=loot_embed)
+        if type(monster) is list:
+            embed = discord.Embed(title="Suggestions", description="\n".join(monster))
+            yield from self.bot.say("I couldn't find that creature, maybe you meant one of these?", embed=embed)
+            return
+
+        # Get monster's image:
+        filename = monster['name'] + ".png"
+        while os.path.isfile(filename):
+            filename = "_" + filename
+        with open(filename, "w+b") as f:
+            f.write(bytearray(monster['image']))
+            f.close()
+        # Send monster's image
+        with open(filename, "r+b") as f:
+            yield from self.bot.send_file(ctx.message.channel, f)
+            f.close()
+        os.remove(filename)
+
+        long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
+        embed, loot_embed = getMonsterEmbeds(monster, long)
+
+        yield from self.bot.say(embed=embed)
+        if loot_embed is not None:
+            yield from self.bot.say(embed=loot_embed)
 
     @commands.command(aliases=['deathlist', 'death'])
     @asyncio.coroutine

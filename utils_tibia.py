@@ -483,7 +483,7 @@ def getRashidCity() -> str:
 
 
 def getMonster(name):
-    """Returns a dictionary with a monster's info.
+    """Returns a dictionary with a monster's info, if no exact match was found, it returns a list of suggestions.
 
     The dictionary has the following keys: name, id, hp, exp, maxdmg, elem_physical, elem_holy,
     elem_death, elem_fire, elem_energy, elem_ice, elem_earth, elem_drown, elem_lifedrain, senseinvis,
@@ -491,27 +491,30 @@ def getMonster(name):
 
     # Reading monster database
     c = tibiaDatabase.cursor()
-    c.execute("SELECT * FROM Creatures WHERE name LIKE ?", (name,))
-    monster = c.fetchone()
+    c.execute("SELECT * FROM Creatures WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%"+name+"%",))
+    result = c.fetchall()
+    if len(result) == 0:
+        return None
+    elif result[0]["title"].lower() == name.lower() or len(result) == 1:
+        monster = result[0]
+    else:
+        return [x['title'] for x in result]
     try:
-        # Checking if monster exists
-        if monster is not None:
-            if monster['health'] is None or monster['health'] < 1:
-                monster['health'] = None
-            c.execute("SELECT Items.title as name, percentage, min, max "
-                      "FROM CreatureDrops, Items "
-                      "WHERE Items.id = CreatureDrops.itemid AND creatureid = ? "
-                      "ORDER BY percentage DESC",
-                      (monster["id"],))
-            monster["loot"] = c.fetchall()
-            return monster
+        if monster['health'] is None or monster['health'] < 1:
+            monster['health'] = None
+        c.execute("SELECT Items.title as name, percentage, min, max "
+                  "FROM CreatureDrops, Items "
+                  "WHERE Items.id = CreatureDrops.itemid AND creatureid = ? "
+                  "ORDER BY percentage DESC",
+                  (monster["id"],))
+        monster["loot"] = c.fetchall()
+        return monster
     finally:
         c.close()
-    return
 
 
 def getItem(itemname):
-    """Returns a dictionary containing an item's info.
+    """Returns a dictionary containing an item's info, if no exact match was found, it returns a list of suggestions.
 
     The dictionary has the following keys: name, look_text, npcs_sold*, value_sell, npcs_bought*, value_buy.
         *npcs_sold and npcs_bought are list, each element is a dictionary with the keys: name, city."""
@@ -520,13 +523,17 @@ def getItem(itemname):
     c = tibiaDatabase.cursor()
 
     # Search query
-    c.execute("SELECT * FROM Items WHERE name LIKE ?", (itemname,))
-    item = c.fetchone()
+    c.execute("SELECT * FROM Items WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%"+itemname+"%",))
+    result = c.fetchall()
+    if len(result) == 0:
+        return None
+    elif result[0]["title"].lower() == itemname.lower() or len(result) == 1:
+        item = result[0]
+    else:
+        return [x['title'] for x in result]
     try:
         # Checking if item exists
         if item is not None:
-            # Turning result tuple into dictionary
-
             # Checking NPCs that buy the item
             c.execute("SELECT NPCs.title, city, value "
                       "FROM Items, SellItems, NPCs "
@@ -541,7 +548,7 @@ def getItem(itemname):
                     value_sell = npc["value"]
                 elif npc["value"] != value_sell:
                     break
-                # Replacing cities for special npcs
+                # Replacing cities for special npcs and adding colors
                 if name == 'Alesar' or name == 'Yaman':
                     city = 'Green Djinn\'s Fortress'
                     item["color"] = Colour.green()
@@ -553,6 +560,8 @@ def getItem(itemname):
                     item["color"] = Colour(0xF0E916)
                 elif name == 'Yasir':
                     city = 'his boat'
+                elif name == 'Briasol':
+                    item["color"] = Colour(0xA958C4)
                 npcs.append({"name": name, "city": city})
             item['npcs_sold'] = npcs
             item['value_sell'] = value_sell
