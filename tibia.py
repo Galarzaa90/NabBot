@@ -1,5 +1,3 @@
-from colorthief import ColorThief
-
 from utils import *
 from utils_tibia import *
 

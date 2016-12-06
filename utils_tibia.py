@@ -418,7 +418,7 @@ def getPlayer(name, tries=5):
             char['guild'] = urllib.parse.unquote_plus(m.group(1))
 
     # Last login
-    m = re.search(r'Last login:</td><td>([^<]+)', content)
+    m = re.search(r'Last Login:</td><td>([^<]+)', content)
     if m:
         lastLogin = m.group(1).replace("&#160;", " ").replace(",", "")
         if "never" in lastLogin:
