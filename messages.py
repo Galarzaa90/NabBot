@@ -1432,7 +1432,11 @@ deathmessages_monster = [
         ":dragon_face:"] + ".", False, False, ["dragon", "dragon lord"]],
     [20000,
      "Asian chicks are no joke **{charName}** ({deathLevel}) " + EMOJI[":hocho:"] + EMOJI[":broken_heart:"] + ".",
-     False, False, ["midnight asura", "dawnfire asura"]]]
+     False, False, ["midnight asura", "dawnfire asura"]],
+    [20000,
+     "Watch out for that **{deathKiller}**'s wav... Oh"+EMOJI[":neutral_face:"]+"... Rest in peace **{charName}** ({deathLevel}).",
+     False, False, ["hellhound", "hellfire fighter", "dragon lord", "undead dragon", "dragon", "draken spellweaver"]]
+]
 # deaths by player
 deathmessages_player = [[100, "**{charName}** ({deathLevel}) got rekt! **{deathKiller}** ish pekay!"],
                         [100, "HALP **{deathKiller}** is going around killing innocent **{charName}** ({deathLevel})!"],
