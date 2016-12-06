@@ -9,7 +9,7 @@ from datetime import datetime, date, timedelta
 from calendar import timegm
 import time
 
-from utils import log, globalOnlineList, tibiaDatabase, userDatabase, getLocalTimezone
+from utils import log, globalOnlineList, tibiaDatabase, userDatabase, get_local_timezone
 
 # Constants
 ERROR_NETWORK = 0
@@ -30,7 +30,7 @@ NO_VOCATION = ["no vocation", "no voc", "novoc", "nv", "n v", "none", "no", "n",
 
 
 @asyncio.coroutine
-def getPlayerDeaths(name, single_death=False, tries=5):
+def get_character_deaths(name, single_death=False, tries=5):
     """Returns a list with the player's deaths
 
     Each list element is a dictionary with the following keys: time, level, killer, byPlayer.
@@ -49,7 +49,7 @@ def getPlayerDeaths(name, single_death=False, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from getPlayerDeaths(name, single_death, tries)
+            ret = yield from get_character_deaths(name, single_death, tries)
             return ret
 
     if not content:
@@ -68,7 +68,7 @@ def getPlayerDeaths(name, single_death=False, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from getPlayerDeaths(name, single_death, tries)
+            ret = yield from get_character_deaths(name, single_death, tries)
             return ret
 
     # Check if player exists
@@ -125,7 +125,7 @@ def getPlayerDeaths(name, single_death=False, tries=5):
 
 
 @asyncio.coroutine
-def getServerOnline(server, tries=5):
+def get_server_online(server, tries=5):
     """Returns a list of all the online players in current server.
 
     Each list element is a dictionary with the following keys: name, level"""
@@ -143,7 +143,7 @@ def getServerOnline(server, tries=5):
             return onlineList
         else:
             tries -= 1
-            ret = yield from getServerOnline(server, tries)
+            ret = yield from get_server_online(server, tries)
             return ret
 
     while not content and tries > 0:
@@ -166,7 +166,7 @@ def getServerOnline(server, tries=5):
             return onlineList
         else:
             tries -= 1
-            ret = yield from getServerOnline(server, tries)
+            ret = yield from get_server_online(server, tries)
             return ret
 
     regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td>'
@@ -182,7 +182,7 @@ def getServerOnline(server, tries=5):
 
 
 @asyncio.coroutine
-def getGuildOnline(guildname, titlecase=True, tries=5):
+def get_guild_online(guildname, titlecase=True, tries=5):
     """Returns a guild's world and online member list in a dictionary.
 
     The dictionary contains the following keys: name, logo_url, world and members.
@@ -205,7 +205,7 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
                 return ERROR_NETWORK
             else:
                 tries -= 1
-                ret = yield from getGuildOnline(guildname, titlecase, tries)
+                ret = yield from get_guild_online(guildname, titlecase, tries)
                 return ret
 
         # Make sure we got a healthy fetch
@@ -218,7 +218,7 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
                 return ERROR_NETWORK
             else:
                 tries -= 1
-                ret = yield from getGuildOnline(guildname, titlecase, tries)
+                ret = yield from get_guild_online(guildname, titlecase, tries)
                 return ret
 
         # Check if the guild doesn't exist
@@ -254,7 +254,7 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from getGuildOnline(guildname, titlecase, tries)
+            ret = yield from get_guild_online(guildname, titlecase, tries)
             return ret
 
     # Trimming content to reduce load and making sure we got a healthy fetch
@@ -269,7 +269,7 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from getGuildOnline(guildname, titlecase, tries)
+            ret = yield from get_guild_online(guildname, titlecase, tries)
             return ret
 
     # Check if the guild doesn't exist
@@ -277,7 +277,7 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
     # guild that doesn't exists. So the message displayed is "An internal error has ocurred. Please try again later!".
     if '<div class="Text" >Error</div>' in content:
         if titlecase:
-            ret = yield from getGuildOnline(guildname, False)
+            ret = yield from get_guild_online(guildname, False)
             return ret
         else:
             return ERROR_DOESNTEXIST
@@ -312,7 +312,7 @@ def getGuildOnline(guildname, titlecase=True, tries=5):
 
 
 @asyncio.coroutine
-def getPlayer(name, tries=5):
+def get_character(name, tries=5):
     """Returns a dictionary with a player's info
 
     The dictionary contains the following keys: name, deleted, level, vocation, world, residence,
@@ -333,7 +333,7 @@ def getPlayer(name, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from getPlayer(name, tries)
+            ret = yield from get_character(name, tries)
             return ret
 
     # Trimming content to reduce load
@@ -348,7 +348,7 @@ def getPlayer(name, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from getPlayer(name, tries)
+            ret = yield from get_character(name, tries)
             return ret
     # Check if player exists
     if "Name:</td><td>" not in content:
@@ -468,9 +468,9 @@ def getPlayer(name, tries=5):
     return char
 
 
-def getRashidCity() -> str:
+def get_rashid_city() -> str:
     """Returns the city Rashid is currently in."""
-    offset = getTibiaTimeZone() - getLocalTimezone()
+    offset = get_tibia_time_zone() - get_local_timezone()
     # Server save is at 10am, so in tibia a new day starts at that hour
     tibia_time = datetime.now() + timedelta(hours=offset - 10)
     return ["Svargrond",
@@ -482,7 +482,7 @@ def getRashidCity() -> str:
             "Carlin"][tibia_time.weekday()]
 
 
-def getMonster(name):
+def get_monster(name):
     """Returns a dictionary with a monster's info, if no exact match was found, it returns a list of suggestions.
 
     The dictionary has the following keys: name, id, hp, exp, maxdmg, elem_physical, elem_holy,
@@ -513,7 +513,7 @@ def getMonster(name):
         c.close()
 
 
-def getItem(itemname):
+def get_item(name):
     """Returns a dictionary containing an item's info, if no exact match was found, it returns a list of suggestions.
 
     The dictionary has the following keys: name, look_text, npcs_sold*, value_sell, npcs_bought*, value_buy.
@@ -523,11 +523,11 @@ def getItem(itemname):
     c = tibiaDatabase.cursor()
 
     # Search query
-    c.execute("SELECT * FROM Items WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%"+itemname+"%",))
+    c.execute("SELECT * FROM Items WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%" + name + "%",))
     result = c.fetchall()
     if len(result) == 0:
         return None
-    elif result[0]["title"].lower() == itemname.lower() or len(result) == 1:
+    elif result[0]["title"].lower() == name.lower() or len(result) == 1:
         item = result[0]
     else:
         return [x['title'] for x in result]
@@ -538,7 +538,7 @@ def getItem(itemname):
             c.execute("SELECT NPCs.title, city, value "
                       "FROM Items, SellItems, NPCs "
                       "WHERE Items.name LIKE ? AND SellItems.itemid = Items.id AND NPCs.id = vendorid "
-                      "ORDER BY value DESC", (itemname,))
+                      "ORDER BY value DESC", (name,))
             npcs = []
             value_sell = None
             for npc in c:
@@ -556,7 +556,7 @@ def getItem(itemname):
                     city = 'Blue Djinn\'s Fortress'
                     item["color"] = Colour.blue()
                 elif name == 'Rashid':
-                    city = getRashidCity()
+                    city = get_rashid_city()
                     item["color"] = Colour(0xF0E916)
                 elif name == 'Yasir':
                     city = 'his boat'
@@ -570,7 +570,7 @@ def getItem(itemname):
             c.execute("SELECT NPCs.title, city, value "
                       "FROM Items, BuyItems, NPCs "
                       "WHERE Items.name LIKE ? AND BuyItems.itemid = Items.id AND NPCs.id = vendorid "
-                      "ORDER BY value ASC", (itemname,))
+                      "ORDER BY value ASC", (name,))
             npcs = []
             value_buy = None
             for npc in c:
@@ -586,7 +586,7 @@ def getItem(itemname):
                 elif name == 'Nah\'Bob' or name == 'Haroun':
                     city = 'Blue Djinn\'s Fortress'
                 elif name == 'Rashid':
-                    offset = getTibiaTimeZone() - getLocalTimezone()
+                    offset = get_tibia_time_zone() - get_local_timezone()
                     # Server save is at 10am, so in tibia a new day starts at that hour
                     tibia_time = datetime.now() + timedelta(hours=offset - 10)
                     city = [
@@ -615,7 +615,7 @@ def getItem(itemname):
     return
 
 
-def getLocalTime(tibia_time) -> timedelta:
+def get_local_time(tibia_time) -> timedelta:
     """Gets a time object from a time string from tibia.com"""
     # Getting local time and GMT
     t = time.localtime()
@@ -640,7 +640,7 @@ def getLocalTime(tibia_time) -> timedelta:
     return t + timedelta(hours=(local_utc_offset - utc_offset))
 
 
-def getStats(level: int, vocation: str):
+def get_stats(level: int, vocation: str):
     """Returns a dictionary with the stats for a character of a certain vocation and level.
 
     The dictionary has the following keys: vocation, hp, mp, cap."""
@@ -683,7 +683,7 @@ def getStats(level: int, vocation: str):
 
 
 
-def getShareRange(level: int):
+def get_share_range(level: int):
     """Returns the share range for a specific level
 
     The returned value is a list with the lower limit and the upper limit in that order."""
@@ -691,7 +691,7 @@ def getShareRange(level: int):
 
 
 # TODO: Improve formatting to match /monster and /item
-def getSpell(name):
+def get_spell(name):
     """Returns a formatted string containing a spell's info."""
     c = tibiaDatabase.cursor()
     try:
@@ -716,7 +716,7 @@ def getSpell(name):
         c.close()
 
 
-def getTibiaTimeZone() -> int:
+def get_tibia_time_zone() -> int:
     """Returns Germany's timezone, considering their daylight saving time dates"""
     # Find date in Germany
     gt = datetime.utcnow() + timedelta(hours=1)

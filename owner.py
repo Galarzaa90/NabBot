@@ -72,19 +72,18 @@ class Owner:
     @is_owner()
     @asyncio.coroutine
     def permissions(self, ctx, *, server_name=None):
-        print(server_name)
         if server_name is None and ctx.message.channel.is_private:
             yield from self.bot.say("This commands requires a parameter when used in private channels.\n "
                                     "Specify the server you want to check permissions for.")
             return
         elif server_name is not None:
-            server = getServerByName(self.bot, server_name)
+            server = get_server_by_name(self.bot, server_name)
             if server is None:
                 yield from self.bot.say("I couldn't find a server with that name.")
                 return
         else:
             server = ctx.message.server
-        member = getMember(self.bot, self.bot.user.id, server)
+        member = get_member(self.bot, self.bot.user.id, server)
         server_permissions = member.server_permissions
         reply_format = "\n\t{0} Read Messages\n\t{1} Send Messages\n\t{2} Manage Messages\n\t" \
                        "{3} Embed Links\n\t{4} Attach Files\n\t{5} Mention Everyone"

@@ -20,8 +20,8 @@ class Mod:
             description_list = []
             channel_list = []
             for server in self.bot.servers:
-                author = getMember(self.bot, ctx.message.author.id, server)
-                bot_member = getMember(self.bot, self.bot.user.id, server)
+                author = get_member(self.bot, ctx.message.author.id, server)
+                bot_member = get_member(self.bot, self.bot.user.id, server)
                 # Skip servers where the command user is not in
                 if author is None:
                     continue
@@ -76,7 +76,7 @@ class Mod:
                 if len(params) != 1:
                     yield from self.bot.say("The correct syntax is: ``/stalk add username``")
                     return
-                user = getMemberByName(self.bot, params[0])
+                user = get_member_by_name(self.bot, params[0])
                 if user is None:
                     yield from self.bot.say("I don't see any user named **{0}**.".format(params[0]))
                     return
@@ -92,8 +92,8 @@ class Mod:
                 if len(params) != 2:
                     yield from self.bot.say("The correct syntax is: ``/stalk {0} username,character``".format(subcommand))
                     return
-                user = getMemberByName(self.bot, params[0])
-                char = yield from getPlayer(params[1])
+                user = get_member_by_name(self.bot, params[0])
+                char = yield from get_character(params[1])
                 if user is None:
                     yield from self.bot.say("I don't see any user named **{0}**".format(params[0]))
                     return
@@ -117,7 +117,7 @@ class Mod:
                             )
                         # Registered to a different user
                         if result["user_id"] != user.id:
-                            current_user = getMember(self.bot, result["user_id"])
+                            current_user = get_member(self.bot, result["user_id"])
                             # User no longer in server
                             if current_user is None:
                                 c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
@@ -153,14 +153,14 @@ class Mod:
                         if char['world'] not in tibiaservers:
                             yield from self.bot.say("**{0}** skipped, character not in server list.".format(char['name']))
                             continue
-                        char = yield from getPlayer(char['name'])
+                        char = yield from get_character(char['name'])
                         c.execute("SELECT id, name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
                         result = c.fetchone()
                         # Char is already in database
                         if result is not None:
                             # Registered to different user
                             if result["user_id"] != user.id:
-                                current_user = getMember(self.bot, result["user_id"])
+                                current_user = get_member(self.bot, result["user_id"])
                                 # Char is registered to user no longer in server
                                 if current_user is None:
                                     c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
@@ -201,7 +201,7 @@ class Mod:
                 if result is None:
                     yield from self.bot.say("There's no character with that name registered.")
                     return
-                username = "unknown" if getMember(self.bot, result[1]) is None else getMember(self.bot, result[1]).display_name
+                username = "unknown" if get_member(self.bot, result[1]) is None else get_member(self.bot, result[1]).display_name
                 c.execute("DELETE FROM chars WHERE name LIKE ?", (result[0],))
                 yield from self.bot.say("**{0}** was removed successfully from **@{1}**.".format(result[0], username))
                 return
@@ -212,12 +212,12 @@ class Mod:
                     return
 
                 # Searching users in server
-                user = getMemberByName(self.bot, params[0])
+                user = get_member_by_name(self.bot, params[0])
                 # Searching users in database
                 c.execute("SELECT id, name from users WHERE name LIKE ?", (params[0],))
                 result = c.fetchone()
                 # Users in database and not in servers
-                if result is not None and getMember(self.bot, result['id']) is None:
+                if result is not None and get_member(self.bot, result['id']) is None:
                     yield from self.bot.say(
                         "**@{0}** was no longer in server and was removed successfully.".format(result["name"]))
                     delete_id = result["id"]
@@ -265,7 +265,7 @@ class Mod:
                 yield from self.bot.say("Initiating purge...")
                 # Deleting users no longer in server
                 for row in result:
-                    user = getMember(self.bot, row["id"])
+                    user = get_member(self.bot, row["id"])
                     if user is None:
                         delete_users.append((row["id"],))
                 if len(delete_users) > 0:
@@ -291,7 +291,7 @@ class Mod:
                 rename_chars = list()
                 # revoc_chars = list()
                 for row in result:
-                    char = yield from getPlayer(row["name"])
+                    char = yield from get_character(row["name"])
                     if char == ERROR_NETWORK:
                         yield from self.bot.say("Couldn't fetch **{0}**, skipping...".format(row["name"]))
                         continue
@@ -342,7 +342,7 @@ class Mod:
                     yield from self.bot.say("There are no registered characters.")
                     return
                 users = [str(i["user_id"]) for i in result]
-                members = getServerByName(self.bot, mainserver).members
+                members = get_server_by_name(self.bot, mainserver).members
                 empty_members = list()
                 for member in members:
                     if member.id == self.bot.user.id:
@@ -365,7 +365,7 @@ class Mod:
                 update_users = list()
                 for user in result:
                     update_users.append(
-                        ("unknown" if getMember(self.bot, user[0]) is None else getMember(self.bot, user[0]).display_name, user["id"]))
+                        ("unknown" if get_member(self.bot, user[0]) is None else get_member(self.bot, user[0]).display_name, user["id"]))
                 c.executemany("UPDATE users SET name = ? WHERE id LIKE ?", update_users)
                 yield from self.bot.say("Usernames updated successfully.")
         finally:

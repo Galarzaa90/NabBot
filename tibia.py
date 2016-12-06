@@ -20,7 +20,7 @@ class Tibia:
             return
 
         if lite_mode:
-            char = yield from getPlayer(name)
+            char = yield from get_character(name)
             if char == ERROR_DOESNTEXIST:
                 yield from self.bot.say("I couldn't find a character with that name")
             elif char == ERROR_NETWORK:
@@ -35,12 +35,12 @@ class Tibia:
             return
 
         if name.lower() == self.bot.user.name.lower():
-            yield from self.bot.say(embed=getAboutContent())
+            yield from self.bot.say(embed=get_about_content())
             return
 
-        char = yield from getPlayer(name)
+        char = yield from get_character(name)
         char_string = getCharString(char)
-        user = getMemberByName(self.bot, name)
+        user = get_member_by_name(self.bot, name)
         user_string = getUserString(self.bot, name)
         embed = discord.Embed()
         embed.description = ""
@@ -52,7 +52,7 @@ class Tibia:
         # We found an user
         if user is not None:
             embed.description = user_string
-            color = getUserColor(user, ctx.message.server)
+            color = get_user_color(user, ctx.message.server)
             if color is not discord.Colour.default():
                 embed.colour = color
             if "I don't know" not in user_string:
@@ -86,10 +86,10 @@ class Tibia:
                                  icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                  )
                 # Char is owned by a discord user
-                owner = getMember(self.bot, char["owner_id"])
+                owner = get_member(self.bot, char["owner_id"])
                 if owner is not None:
                     embed.set_thumbnail(url=owner.avatar_url)
-                    color = getUserColor(owner, ctx.message.server)
+                    color = get_user_color(owner, ctx.message.server)
                     if color is not discord.Colour.default():
                         embed.colour = color
                     embed.description += "A character of @**{1.display_name}**\n".format(char["name"], owner)
@@ -115,7 +115,7 @@ class Tibia:
             level = int(param)
         # If it's not numeric, then it must be a char's name
         except ValueError:
-            char = yield from getPlayer(param)
+            char = yield from get_character(param)
             if type(char) is dict:
                 level = int(char['level'])
                 name = char['name']
@@ -131,7 +131,7 @@ class Tibia:
                        ]
             yield from self.bot.say(random.choice(replies))
             return
-        low, high = getShareRange(level)
+        low, high = get_share_range(level)
         if name == "":
             reply = "A level {0} can share experience with levels **{1}** to **{2}**.".format(level, low, high)
         else:
@@ -192,11 +192,11 @@ class Tibia:
             if len(params) == 3:
                 yield from self.bot.say(invalid_arguments)
                 return
-            char = yield from getPlayer(params[1])
+            char = yield from get_character(params[1])
             if type(char) is not dict:
                 yield from self.bot.say("I couldn't find a character with that name.")
                 return
-            low, high = getShareRange(char["level"])
+            low, high = get_share_range(char["level"])
             found = "I found the following {0}s in share range with **{1}** ({2}-{3}):".format(vocation, char["name"],
                                                                                                low, high)
             empty = "I didn't find any {0}s in share range with **{1}** ({2}-{3})".format(vocation, char["name"],
@@ -222,7 +222,7 @@ class Tibia:
                 if int(params[1]) <= 0:
                     yield from self.bot.say("You entered an invalid level.")
                     return
-                low, high = getShareRange(int(params[1]))
+                low, high = get_share_range(int(params[1]))
                 found = "I found the following {0}s in share range with level **{1}** ({2}-{3}):".format(vocation,
                                                                                                          params[1],
                                                                                                          low, high)
@@ -236,19 +236,23 @@ class Tibia:
                       "WHERE vocation LIKE ? AND level >= ? AND level <= ? "
                       "ORDER by level DESC", ("%"+vocation, low, high))
             count = 0
+            online_list = [x.split("_",1)[1] for x in globalOnlineList]
             while True:
                 player = c.fetchone()
                 if player is None:
                     break
+                # Do not show the same character that was searched for
                 if char is not None and char["name"] == player["name"]:
                     continue
-                owner = getMember(self.bot, player["user_id"])
+                owner = get_member(self.bot, player["user_id"], ctx.message.server)
+                # If the owner is not in server, skip
                 if owner is None:
                     continue
                 count += 1
                 player["owner"] = owner.display_name
+                player["online"] = EMOJI[":large_blue_circle:"] if player["name"] in online_list else ""
                 if count <= result_limit or (count <= askchannel_limit and ctx.message.channel.name == askchannel):
-                    found += "\n\t**{name}** - Level {level} - @**{owner}**".format(**player)
+                    found += "\n\t**{name}** - Level {level} - @**{owner}** {online}".format(**player)
                 else:
                     # Check if there's at least one more to suggest using askchannel
                     if c.fetchone() is not None:
@@ -257,8 +261,8 @@ class Tibia:
             if count < 1:
                 yield from self.bot.say(empty)
                 return
-            if getChannelByName(self.bot, askchannel) is not None and too_long:
-                found += "\nYou can see more results in "+getChannelByName(self.bot, askchannel).mention
+            if get_channel_by_name(self.bot, askchannel) is not None and too_long:
+                found += "\nYou can see more results in " + get_channel_by_name(self.bot, askchannel).mention
             yield from self.bot.say(found)
         finally:
             c.close()
@@ -271,7 +275,7 @@ class Tibia:
             yield from self.bot.say("Tell me the guild you want me to check.")
             return
 
-        guild = yield from getGuildOnline(name)
+        guild = yield from get_guild_online(name)
         if guild == ERROR_DOESNTEXIST:
             yield from self.bot.say("The guild {0} doesn't exist.".format(name))
             return
@@ -318,7 +322,7 @@ class Tibia:
         if name is None:
             yield from self.bot.say("Tell me the name of the item you want to search.")
             return
-        item = getItem(name)
+        item = get_item(name)
         if item is None:
             yield from self.bot.say("I couldn't find an item with that name.")
             return
@@ -365,7 +369,7 @@ class Tibia:
                                                    "You can't hunt me.",
                                                    "That's funny... If only I was programmed to laugh."]))
             return
-        monster = getMonster(name)
+        monster = get_monster(name)
         if monster is None:
             yield from self.bot.say("I couldn't find a monster with that name.")
             return
@@ -417,11 +421,11 @@ class Tibia:
                 for death in result:
                     timediff = timedelta(seconds=now-death["date"])
                     died = "Killed" if death["byplayer"] else "Died"
-                    user = getMember(self.bot, death["user_id"])
+                    user = get_member(self.bot, death["user_id"])
                     username = "unknown"
                     if user:
                         username = user.display_name
-                    reply += "\n\t{4} (**@{5}**) - {0} at level **{1}** by {2} - *{3} ago*".format(died, death["level"], death["killer"], getTimeDiff(timediff), death["name"], username)
+                    reply += "\n\t{4} (**@{5}**) - {0} at level **{1}** by {2} - *{3} ago*".format(died, death["level"], death["killer"], get_time_diff(timediff), death["name"], username)
                 yield from self.bot.say(reply)
                 return
             finally:
@@ -429,7 +433,7 @@ class Tibia:
         if name.lower() == "nab bot":
             yield from self.bot.say("**Nab Bot** never dies.")
             return
-        deaths = yield from getPlayerDeaths(name)
+        deaths = yield from get_character_deaths(name)
         if deaths == ERROR_DOESNTEXIST:
             yield from self.bot.say("That character doesn't exist!")
             return
@@ -447,7 +451,7 @@ class Tibia:
         reply = name.title()+" recent deaths:"
 
         for death in deaths:
-            diff = getTimeDiff(datetime.now() - getLocalTime(death['time']))
+            diff = get_time_diff(datetime.now() - get_local_time(death['time']))
             died = "Killed" if death['byPlayer'] else "Died"
             reply += "\n\t{0} at level **{1}** by {2} - *{3} ago*".format(died, death['level'], death['killer'], diff)
         if tooMany:
@@ -482,11 +486,11 @@ class Tibia:
                 reply = "Latest level ups:"
                 for levelup in result:
                     timediff = timedelta(seconds=now-levelup["date"])
-                    user = getMember(self.bot, levelup["user_id"])
+                    user = get_member(self.bot, levelup["user_id"])
                     username = "unkown"
                     if user:
                         username = user.display_name
-                    reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1} ago*".format(levelup["level"], getTimeDiff(timediff), levelup["name"], username)
+                    reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1} ago*".format(levelup["level"], get_time_diff(timediff), levelup["name"], username)
                 if siteEnabled:
                     reply += "\nSee more levels check: <{0}{1}>".format(baseUrl, levelsPage)
                 yield from self.bot.say(reply)
@@ -510,7 +514,7 @@ class Tibia:
             reply = "**{0}** latest level ups:".format(name)
             for levelup in result:
                 timediff = timedelta(seconds=now-levelup["date"])
-                reply += "\n\tLevel **{0}** - *{1} ago*".format(levelup["level"], getTimeDiff(timediff))
+                reply += "\n\tLevel **{0}** - *{1} ago*".format(levelup["level"], get_time_diff(timediff))
 
             reply += "\nSee more levels at: <{0}{1}?name={2}>".format(baseUrl, charactersPage, urllib.parse.quote(name))
             yield from self.bot.say(reply)
@@ -540,7 +544,7 @@ class Tibia:
                 yield from self.bot.say(invalid_arguments)
                 return
             else:
-                char = yield from getPlayer(params[0])
+                char = yield from get_character(params[0])
                 if char == ERROR_NETWORK:
                     yield from self.bot.say("Sorry, can you try it again?")
                     return
@@ -563,7 +567,7 @@ class Tibia:
         else:
             yield from self.bot.say(invalid_arguments)
             return
-        stats = getStats(level, vocation)
+        stats = get_stats(level, vocation)
         if stats == "low level":
             yield from self.bot.say("Not even *you* can go down so low!")
         elif stats == "high level":
@@ -611,7 +615,7 @@ class Tibia:
         """Tells you information about a certain spell."""
         if name is None:
             yield from self.bot.say("Tell me the name or words of a spell.")
-        spell = getSpell(name)
+        spell = get_spell(name)
         if spell is None:
             yield from self.bot.say("I don't know any spell with that name or words.")
             return
@@ -626,7 +630,7 @@ class Tibia:
         if spell['paladin']: vocs.append("paladins")
         if spell['druid']: vocs.append("druids")
         if spell['sorcerer']: vocs.append("sorcerers")
-        voc = joinList(vocs, ", ", " and ")
+        voc = join_list(vocs, ", ", " and ")
         reply = "**{0}** (*{1}*) is a {2}spell for level **{3}** and up. It uses **{4}** mana."
         reply = reply.format(spell["name"], words, "premium " if spell["premium"] else "",
                             spell["levelrequired"], mana)
@@ -651,7 +655,7 @@ class Tibia:
     @asyncio.coroutine
     def time(self):
         """Displays tibia server's time and time until server save"""
-        offset = getTibiaTimeZone() - getLocalTimezone()
+        offset = get_tibia_time_zone() - get_local_timezone()
         tibia_time = datetime.now()+timedelta(hours=offset)
         server_save = tibia_time
         if tibia_time.hour >= 10:
@@ -666,16 +670,16 @@ class Tibia:
 
         reply = "It's currently **{0}** in Tibia's servers.".format(timestrtibia)
         if displayBrasiliaTime:
-            offsetbrasilia = getBrasiliaTimeZone() - getLocalTimezone()
+            offsetbrasilia = get_brasilia_time_zone() - get_local_timezone()
             brasilia_time = datetime.now()+timedelta(hours=offsetbrasilia)
             timestrbrasilia = brasilia_time.strftime("%H:%M")
             reply += "\n**{0}** in Brazil (Brasilia).".format(timestrbrasilia)
         if displaySonoraTime:
-            offsetsonora = -7 - getLocalTimezone()
+            offsetsonora = -7 - get_local_timezone()
             sonora_time = datetime.now()+timedelta(hours=offsetsonora)
             timestrsonora = sonora_time.strftime("%H:%M")
             reply += "\n**{0}** in Mexico (Sonora).".format(timestrsonora)
-        reply += "\nServer save is in {0}.\nRashid is in **{1}** today.".format(server_save_str,getRashidCity())
+        reply += "\nServer save is in {0}.\nRashid is in **{1}** today.".format(server_save_str, get_rashid_city())
         yield from self.bot.say(reply)
 
 
@@ -708,11 +712,11 @@ def getCharString(char) -> str:
         married = married_format.format(pronoun, char['married'])
 
     if char['last_login'] is not None:
-        last_login = getLocalTime(char['last_login'])
+        last_login = get_local_time(char['last_login'])
         now = datetime.now()
         time_diff = now - last_login
         if time_diff.days > last_login_days:
-            login = login_format.format(pronoun, getTimeDiff(time_diff))
+            login = login_format.format(pronoun, get_time_diff(time_diff))
         else:
             login = ""
 
@@ -724,7 +728,7 @@ def getCharString(char) -> str:
 
 
 def getUserString(bot: discord.Client, username: str) -> str:
-    user = getMemberByName(bot, username)
+    user = get_member_by_name(bot, username)
     c = userDatabase.cursor()
     if user is None:
         return ERROR_DOESNTEXIST
@@ -748,7 +752,7 @@ def getUserString(bot: discord.Client, username: str) -> str:
 
             charString = "@**{0.display_name}**'s character{1}: {2}"
             plural = "s are" if len(charList) > 1 else " is"
-            reply = charString.format(user, plural, joinList(charList, ", ", " and "))
+            reply = charString.format(user, plural, join_list(charList, ", ", " and "))
         else:
             reply = "I don't know who @**{0.display_name}** is...".format(user)
         return reply

@@ -251,7 +251,7 @@ def weighedChoice(messages, condition1=False, condition2=False, condition3=False
     return _messages[0][1]
 
 
-def getChannelByName(bot: discord.Client, channel_name: str, server_name: str=None) -> discord.Channel:
+def get_channel_by_name(bot: discord.Client, channel_name: str, server_name: str=None) -> discord.Channel:
     """Finds a channel by name on all the channels visible by the bot.
 
     If server_name is specified, only channels in that server will be searched"""
@@ -259,19 +259,19 @@ def getChannelByName(bot: discord.Client, channel_name: str, server_name: str=No
         channel = discord.utils.find(lambda m: m.name == channel_name and not m.type == discord.ChannelType.voice,
                                      bot.get_all_channels())
     else:
-        server = getServerByName(bot, server_name)
+        server = get_server_by_name(bot, server_name)
         channel = discord.utils.find(lambda m: m.name == channel_name and not m.type == discord.ChannelType.voice,
                                      server.channels)
     return channel
 
 
-def getServerByName(bot: discord.Client, server_name: str) -> discord.Server:
+def get_server_by_name(bot: discord.Client, server_name: str) -> discord.Server:
     """Returns a server by its name"""
     server = discord.utils.find(lambda m: m.name == server_name, bot.servers)
     return server
 
 
-def getMemberByName(bot: discord.Client, name: str, server: discord.Server=None) -> discord.Member:
+def get_member_by_name(bot: discord.Client, name: str, server: discord.Server=None) -> discord.Member:
     """Returns a member matching the name
     
     If no server is specified, the first member matching the id will be returned, meaning that the server he
@@ -283,7 +283,7 @@ def getMemberByName(bot: discord.Client, name: str, server: discord.Server=None)
         return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), bot.get_all_members())
 
 
-def getMember(bot: discord.Client, user_id, server: discord.Server=None) -> discord.Member:
+def get_member(bot: discord.Client, user_id, server: discord.Server=None) -> discord.Member:
     """Returns a member matching the id
 
     If no server_id is specified, the first member matching the id will be returned, meaning that the server he
@@ -295,7 +295,7 @@ def getMember(bot: discord.Client, user_id, server: discord.Server=None) -> disc
         return discord.utils.get(bot.get_all_members(), id=str(user_id))
 
 
-def getTimeDiff(time_diff: timedelta) -> str:
+def get_time_diff(time_diff: timedelta) -> str:
     """Returns a string showing the time difference of a timedelta"""
     if not isinstance(time_diff, timedelta):
         return None
@@ -315,7 +315,7 @@ def getTimeDiff(time_diff: timedelta) -> str:
         return "moments"
 
 
-def getLocalTimezone() -> int:
+def get_local_timezone() -> int:
     """Returns the server's local time zone"""
     # Getting local time and GMT
     t = time.localtime()
@@ -324,7 +324,7 @@ def getLocalTimezone() -> int:
     return (timegm(t) - timegm(u)) / 60 / 60
 
 
-def getBrasiliaTimeZone() -> int:
+def get_brasilia_time_zone() -> int:
     """Returns Brasilia's timezone, considering their daylight saving time dates"""
     # Find date in Brasilia
     bt = datetime.utcnow() - timedelta(hours=3)
@@ -340,7 +340,7 @@ def getBrasiliaTimeZone() -> int:
 start_time = datetime.utcnow()
 
 
-def getUptime() -> str:
+def get_uptime() -> str:
     """Returns a string with the time the bot has been running for.
 
     Start time is saved when this module is loaded, not when the bot actually logs in,
@@ -358,7 +358,7 @@ def getUptime() -> str:
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
 
-def joinList(list, separator, endseparator) -> str:
+def join_list(list, separator, endseparator) -> str:
     """Joins elements in a list with a separator between all elements and a different separator for the last element."""
     size = len(list)
     if size == 0:
@@ -368,7 +368,7 @@ def joinList(list, separator, endseparator) -> str:
     return separator.join(list[:size - 1]) + endseparator + str(list[size - 1])
 
 
-def getAboutContent() -> discord.Embed:
+def get_about_content() -> discord.Embed:
     """Returns a formatted string with general information about the bot.
     
     Used in /about and /whois Nab Bot"""
@@ -404,7 +404,7 @@ def getAboutContent() -> discord.Embed:
     embed.add_field(name="Authors", value="@Galarzaa#8515, @Nezune#2269")
     embed.add_field(name="Platform", value="Python " + EMOJI[":snake:"])
     embed.add_field(name="Created", value="March 30th 2016")
-    embed.add_field(name="Uptime", value=getUptime())
+    embed.add_field(name="Uptime", value=get_uptime())
     memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
     if not lite_mode:
         embed.add_field(name="Tracked users", value="{0:,}".format(user_count))
@@ -416,11 +416,9 @@ def getAboutContent() -> discord.Embed:
     return embed
 
 
-def getRoleList(server: discord.Server):
+def get_role_list(server: discord.Server):
     """Lists all role within the discord server and returns to caller."""
-
     roles = []
-
     for role in server.roles:
         # Ignore @everyone and NabBot
         if role.name not in ["@everyone", "Nab Bot"]:
@@ -429,7 +427,7 @@ def getRoleList(server: discord.Server):
     return roles
 
 
-def getUserColor(user: discord.User, server: discord.Server) -> discord.Colour:
+def get_user_color(user: discord.User, server: discord.Server) -> discord.Colour:
     """Gets the user's color based on the highest role with a color"""
     # If it's a PM, server will be none
     if server is None:
@@ -440,7 +438,8 @@ def getUserColor(user: discord.User, server: discord.Server) -> discord.Colour:
     return discord.Colour.default()
 
 
-def getRegionString(region: discord.ServerRegion) -> str:
+def get_region_string(region: discord.ServerRegion) -> str:
+    """Returns a formatted string for a given ServerRegion"""
     regions = {"us-west": EMOJI[":flag_us:"]+"US West",
                "us-east": EMOJI[":flag_us:"]+"US East",
                "us-central": EMOJI[":flag_us:"]+"US Central",

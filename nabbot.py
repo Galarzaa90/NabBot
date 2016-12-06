@@ -30,7 +30,7 @@ def on_ready():
 
     # Notify reset author
     if len(sys.argv) > 1:
-        user = getMember(bot, sys.argv[1])
+        user = get_member(bot, sys.argv[1])
         sys.argv[1] = 0
         if user is not None:
             yield from bot.send_message(user, "Restart complete")
@@ -168,7 +168,7 @@ def announceEvents():
     thirdAnnouncement = 60*5
     c = userDatabase.cursor()
     try:
-        channel = getChannelByName(bot, mainchannel, mainserver)
+        channel = get_channel_by_name(bot, mainchannel, mainserver)
         # Current time
         date = time.time()
         # Find incoming events
@@ -181,7 +181,7 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getMember(bot, row["creator"]) is None else getMember(bot, row["creator"]).display_name
+                author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
                 name = row["name"]
                 id = row["id"]
                 timediff = timedelta(seconds=row["start"]-date)
@@ -205,7 +205,7 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getMember(bot, row["creator"]) is None else getMember(bot, row["creator"]).display_name
+                author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
                 name = row["name"]
                 id = row["id"]
                 timediff = timedelta(seconds=row["start"]-date)
@@ -229,7 +229,7 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getMember(bot, row["creator"]) is None else getMember(bot, row["creator"]).display_name
+                author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
                 name = row["name"]
                 id = row["id"]
                 timediff = timedelta(seconds=row["start"]-date)
@@ -253,7 +253,7 @@ def announceEvents():
         results = c.fetchall()
         if len(results) > 0:
             for row in results:
-                author = "unknown" if getMember(bot, row["creator"]) is None else getMember(bot, row["creator"]).display_name
+                author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
                 name = row["name"]
                 id = row["id"]
                 timediff = timedelta(seconds=row["start"]-date)
@@ -298,7 +298,7 @@ def think():
             tibiaservers.insert(0, currentServer)
 
             # Get online list for this server
-            currentServerOnline = yield from getServerOnline(currentServer)
+            currentServerOnline = yield from get_server_online(currentServer)
 
             if len(currentServerOnline) > 0:
                 # Open connection to users.db
@@ -318,7 +318,7 @@ def think():
                 for nowOfflineChar in offlineList:
                     globalOnlineList.remove(nowOfflineChar)
                     # Check for deaths and level ups when removing from online list
-                    nowOfflineChar = yield from getPlayer(nowOfflineChar.split("_", 1)[1])
+                    nowOfflineChar = yield from get_character(nowOfflineChar.split("_", 1)[1])
                     if not(nowOfflineChar == ERROR_NETWORK or nowOfflineChar == ERROR_DOESNTEXIST):
                         c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (nowOfflineChar['name'],))
                         result = c.fetchone()
@@ -371,7 +371,7 @@ def think():
                                 (result["id"], serverChar['level'], time.time(),)
                             )
                             # Announce the level up
-                            char = yield from getPlayer(serverChar['name'])
+                            char = yield from get_character(serverChar['name'])
                             yield from announceLevel(char, serverChar['level'])
 
                 # Close cursor and commit changes
@@ -404,7 +404,7 @@ def checkDeath(character):
     """Gets death list for a character (from database)
 
     Only the first death is needed"""
-    characterDeaths = yield from getPlayerDeaths(character, True)
+    characterDeaths = yield from get_character_deaths(character, True)
 
     if (type(characterDeaths) is list) and len(characterDeaths) > 0:
         c = userDatabase.cursor()
@@ -442,7 +442,7 @@ def announceDeath(charName, deathTime, deathLevel, deathKiller, deathByPlayer):
         return
 
     log.info("Announcing death: {0}({1}) | {2}".format(charName, deathLevel, deathKiller))
-    char = yield from getPlayer(charName)
+    char = yield from get_character(charName)
     # Failsafe in case getPlayer fails to retrieve player data
     if type(char) is not dict:
         log.warning("Error in announceDeath, failed to getPlayer("+charName+")")
@@ -454,7 +454,7 @@ def announceDeath(charName, deathTime, deathLevel, deathKiller, deathByPlayer):
     # Choose correct pronouns
     pronoun = ["he", "his", "him"] if char['gender'] == "male" else ["she", "her", "her"]
 
-    channel = getChannelByName(bot, mainchannel, mainserver)
+    channel = get_channel_by_name(bot, mainchannel, mainserver)
     # Find killer article (a/an)
     deathKillerArticle = ""
     if not deathByPlayer:
@@ -491,7 +491,7 @@ def announceLevel(char, newLevel):
     # Get pronouns based on gender
     pronoun = ["he", "his", "him"] if char['gender'] == "male" else ["she", "her", "her"]
 
-    channel = getChannelByName(bot, mainchannel, mainserver)
+    channel = get_channel_by_name(bot, mainchannel, mainserver)
 
     # Select a message
     message = weighedChoice(levelmessages, char['vocation'], int(newLevel))
@@ -552,8 +552,8 @@ def im(ctx, *charname: str):
     try:
         c = userDatabase.cursor()
         mod_list = owner_ids + mod_ids
-        admins_message = joinList(["**@" + getMember(bot, admin).display_name + "**" for admin in mod_list], ", ", " or ")
-        servers_message = joinList(["**"+server+"**" for server in tibiaservers], ", ", " or ")
+        admins_message = join_list(["**@" + get_member(bot, admin, ctx.message.server).display_name + "**" for admin in mod_list], ", ", " or ")
+        servers_message = join_list(["**" + server + "**" for server in tibiaservers], ", ", " or ")
         notallowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help adding characters to your account please message "+admins_message+".").format(user)
 
         # Check if the user has joined recently
@@ -574,7 +574,7 @@ def im(ctx, *charname: str):
             c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
             c.execute("INSERT INTO user_servers(id,server) VALUES (?,?)", (user.id, ctx.message.server.id,))
 
-        char = yield from getPlayer(charname)
+        char = yield from get_character(charname)
         if type(char) is not dict:
             if char == ERROR_NETWORK:
                 yield from bot.say("I couldn't fetch the character, please try again.")
@@ -595,14 +595,14 @@ def im(ctx, *charname: str):
             c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
             result = c.fetchone()
             if result is not None:
-                if getMember(bot, result["user_id"]) is None:
+                if get_member(bot, result["user_id"]) is None:
                     updated.append({'name': char['name'], 'world': char['world'], 'prevowner': result["user_id"]})
                     continue
                 else:
-                    yield from bot.say("I'm sorry but a character in that account was already claimed by **@{0}**.".format(getMember(bot, result["user_id"]).display_name) + "\r\n" +
+                    yield from bot.say("I'm sorry but a character in that account was already claimed by **@{0}**.".format(get_member(bot, result["user_id"]).display_name) + "\r\n" +
                         "Have you made a mistake? Message " + admins_message +" if you need any help!")
                     return
-            char = yield from getPlayer(char['name'])
+            char = yield from get_character(char['name'])
             added.append(char)
         if len(skipped) == len(chars):
             yield from bot.say("I'm sorry, I couldn't find any characters in that account from the worlds I track ("+servers_message+")\r\n"+
@@ -650,7 +650,7 @@ def online():
         else:
             reply = "The following discord users are online:"
             for char in discordOnlineChars:
-                user = getMember(bot, char['id'])
+                user = get_member(bot, char['id'])
 
                 char['vocation'] = get_voc_abb(char['vocation'])
                 # discordName = user.display_name if (user is not None) else "unknown"
@@ -666,7 +666,7 @@ def online():
 @asyncio.coroutine
 def about():
     """Shows information about the bot"""
-    yield from bot.say(embed=getAboutContent())
+    yield from bot.say(embed=get_about_content())
 
 
 @bot.command(pass_context=True, aliases=["event", "checkevents", "checkevent"], hidden=lite_mode)
@@ -705,7 +705,7 @@ def events(ctx, *args: str):
             if len(results) > 0:
                 reply += "Recent events:"
                 for row in results:
-                    author = "unknown" if getMember(bot, row["creator"]) is None else getMember(bot, row["creator"]).display_name
+                    author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
                     name = row["name"]
                     id = row["id"]
                     timediff = timedelta(seconds=date-row["start"])
@@ -720,7 +720,7 @@ def events(ctx, *args: str):
                     reply += "\n"
                 reply += "Upcoming events:"
                 for row in results:
-                    author = "unknown" if getMember(bot, row["creator"]) is None else getMember(bot, row["creator"]).display_name
+                    author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
                     name = row["name"]
                     id = row["id"]
                     timediff = timedelta(seconds=row["start"]-date)
@@ -847,6 +847,7 @@ def events(ctx, *args: str):
 @bot.command(pass_context=True, no_pm=True, name="server", aliases=["serverinfo", "server_info"])
 @asyncio.coroutine
 def info_server(ctx):
+    """Shows the server's information."""
     embed = discord.Embed()
     _server = ctx.message.server  # type: discord.Server
     embed.set_thumbnail(url=_server.icon_url)
@@ -858,7 +859,7 @@ def info_server(ctx):
         owner = "{0.display_name}\n({0.name}#{0.discriminator})".format(_server.owner)
     embed.add_field(name="Owner", value=owner)
     embed.add_field(name="Created", value=_server.created_at.strftime("%d/%m/%y"))
-    embed.add_field(name="Server Region", value=getRegionString(_server.region))
+    embed.add_field(name="Server Region", value=get_region_string(_server.region))
 
     # Channels
     text_channels = 0
@@ -885,10 +886,10 @@ def roles(ctx, *userName:str):
     if not userName:
         msg += "this server:\r\n"
 
-        for role in getRoleList(ctx.message.server):
+        for role in get_role_list(ctx.message.server):
             msg += role.name + "\r\n"
     else:
-        user = getMemberByName(bot, userName)
+        user = get_member_by_name(bot, userName)
 
         if user is None:
             msg = "I don't see any user named **" + userName + "**. \r\n"
@@ -924,7 +925,7 @@ def role(ctx, *roleName:str):
 
     # Need to get all roles and check all members because there's
     # no API call like role.getMembers
-    for role in getRoleList(ctx.message.server):
+    for role in get_role_list(ctx.message.server):
         if role.name.lower() == lowerRoleName:
             roleDict[role] = []
 
