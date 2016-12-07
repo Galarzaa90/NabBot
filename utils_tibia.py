@@ -396,7 +396,7 @@ def get_character(name, tries=5):
         char['residence'] = m.group(1)
 
     # Marriage
-    m = re.search(r'Married to:</td><td>?.+name=([^"]+)', content)
+    m = re.search(r'Married To:</td><td>?.+name=([^"]+)', content)
     if m:
         char['married'] = urllib.parse.unquote_plus(m.group(1))
 
@@ -409,11 +409,11 @@ def get_character(name, tries=5):
             char['gender'] = 'female'
 
     # Guild rank
-    m = re.search(r'membership:</td><td>([^<]+)\sof the', content)
+    m = re.search(r'Membership:</td><td>([^<]+)\sof the', content)
     if m:
         char['rank'] = m.group(1)
         # Guild membership
-        m = re.search(r'GuildName=.*?([^"]+).+', content)
+        m = re.search(r'GuildName=.*?([^&]+).+', content)
         if m:
             char['guild'] = urllib.parse.unquote_plus(m.group(1))
 

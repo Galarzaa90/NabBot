@@ -26,7 +26,7 @@ class Tibia:
             elif char == ERROR_NETWORK:
                 yield from self.bot.say("Sorry, I couldn't fetch the character's info, maybe you should try again...")
             else:
-                embed = discord.Embed(description=getCharString(char))
+                embed = discord.Embed(description=self.get_char_string(char))
                 embed.set_author(name=char["name"],
                                  url=url_character + urllib.parse.quote(char["name"]),
                                  icon_url="http://static.tibia.com/images/global/general/favicon.ico"
@@ -39,9 +39,9 @@ class Tibia:
             return
 
         char = yield from get_character(name)
-        char_string = getCharString(char)
+        char_string = self.get_char_string(char)
         user = get_member_by_name(self.bot, name)
-        user_string = getUserString(self.bot, name)
+        user_string = self.get_user_string(name)
         embed = discord.Embed()
         embed.description = ""
 
@@ -236,7 +236,7 @@ class Tibia:
                       "WHERE vocation LIKE ? AND level >= ? AND level <= ? "
                       "ORDER by level DESC", ("%"+vocation, low, high))
             count = 0
-            online_list = [x.split("_",1)[1] for x in globalOnlineList]
+            online_list = [x.split("_", 1)[1] for x in globalOnlineList]
             while True:
                 player = c.fetchone()
                 if player is None:
@@ -345,7 +345,7 @@ class Tibia:
         os.remove(filename)
 
         long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
-        embed, embed_drops = getItemEmbeds(item, long)
+        embed, embed_drops = self.get_item_embeds(item, long)
         yield from self.bot.say(embed=embed)
         if embed_drops is not None:
             yield from self.bot.say(embed=embed_drops)
@@ -393,7 +393,7 @@ class Tibia:
         os.remove(filename)
 
         long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
-        embed, loot_embed = getMonsterEmbeds(monster, long)
+        embed, loot_embed = self.get_monster_embeds(monster, long)
 
         yield from self.bot.say(embed=embed)
         if loot_embed is not None:
@@ -682,229 +682,217 @@ class Tibia:
         reply += "\nServer save is in {0}.\nRashid is in **{1}** today.".format(server_save_str, get_rashid_city())
         yield from self.bot.say(reply)
 
+    @staticmethod
+    def get_char_string(char) -> str:
+        """Returns a formatted string containing a character's info."""
+        if char == ERROR_NETWORK or char == ERROR_DOESNTEXIST:
+            return char
+        pronoun = "He"
+        if char['gender'] == "female":
+            pronoun = "She"
+        url = url_character + urllib.parse.quote(char["name"])
+        reply_format = "[{1}]({9}) is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}"
+        guild_format = "\n{0} is __{1}__ of the [{2}]({3})."
+        married_format = "\n{0} is married to [{1}]({2})."
+        login_format = "\n{0} hasn't logged in for **{1}**."
+        guild = ""
+        married = ""
+        login = "\n{0} has **never** logged in.".format(pronoun)
+        if char.get('guild', None):
+            guild_url = url_guild+urllib.parse.quote(char["guild"])
+            guild = guild_format.format(pronoun, char['rank'], char['guild'], guild_url)
+        if char.get('married', None):
+            married_url = url_character + urllib.parse.quote(char["married"])
+            married = married_format.format(pronoun, char['married'], married_url)
 
-def getCharString(char) -> str:
-    """Returns a formatted string containing a character's info."""
-    # Todo: Links in embed descriptions are not supported on mobile, readd when/if they are supported
-    if char == ERROR_NETWORK or char == ERROR_DOESNTEXIST:
-        return char
-    pronoun = "He"
-    if char['gender'] == "female":
-        pronoun = "She"
-    # url = url_character + urllib.parse.quote(char["name"])
-    # reply_format = "**[{1}]({9})** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}"
-    reply_format = "**{1}** is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}"
-    # guild_format = "\n{0} is __{1}__ of the **[{2}]({3})**."
-    guild_format = "\n{0} is __{1}__ of the **{2}**."
-    # married_format = "\n{0} is married to **[{1}]({2})**."
-    married_format = "\n{0} is married to **{1}**."
-    login_format = "\n{0} hasn't logged in for **{1}**."
-    guild = ""
-    married = ""
-    login = "\n{0} has **never** logged in.".format(pronoun)
-    if char.get('guild', None):
-        # guild_url = url_guild+urllib.parse.quote(char["guild"])
-        # guild = guild_format.format(pronoun, char['rank'], char['guild'],guild_url)
-        guild = guild_format.format(pronoun, char['rank'], char['guild'])
-    if char.get('married', None):
-        # married_url = url_character + urllib.parse.quote(char["name"])
-        # married = married_format.format(pronoun, char['married'], married_url)
-        married = married_format.format(pronoun, char['married'])
+        if char['last_login'] is not None:
+            last_login = get_local_time(char['last_login'])
+            now = datetime.now()
+            time_diff = now - last_login
+            if time_diff.days > last_login_days:
+                login = login_format.format(pronoun, get_time_diff(time_diff))
+            else:
+                login = ""
 
-    if char['last_login'] is not None:
-        last_login = get_local_time(char['last_login'])
-        now = datetime.now()
-        time_diff = now - last_login
-        if time_diff.days > last_login_days:
-            login = login_format.format(pronoun, get_time_diff(time_diff))
-        else:
-            login = ""
-
-    # reply = reply_format.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'],
-    #                            char['world'], guild, married, login, url)
-    reply = reply_format.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'],
-                                char['world'], guild, married, login)
-    return reply
-
-
-def getUserString(bot: discord.Client, username: str) -> str:
-    user = get_member_by_name(bot, username)
-    c = userDatabase.cursor()
-    if user is None:
-        return ERROR_DOESNTEXIST
-    try:
-        c.execute("SELECT name, ABS(last_level) as level, vocation FROM chars WHERE user_id = ? ORDER BY level DESC",
-                  (user.id,))
-        result = c.fetchall()
-        if result:
-            charList = []
-            for character in result:
-                try:
-                    character["level"] = int(character["level"])
-                except ValueError:
-                    character["level"] = ""
-                character["vocation"] = get_voc_abb(character["vocation"])
-                # Todo: Links in embed descriptions are not supported on mobile, readd when/if they are supported
-                # character["url"] = url_character+urllib.parse.quote(character["name"])
-                character["url"] = url_character + urllib.parse.quote(character["name"])
-                # charList.append("[{name}]({url}) (Lvl {level} {vocation})".format(**character))
-                charList.append("{name} (Lvl {level} {vocation})".format(**character))
-
-            charString = "@**{0.display_name}**'s character{1}: {2}"
-            plural = "s are" if len(charList) > 1 else " is"
-            reply = charString.format(user, plural, join_list(charList, ", ", " and "))
-        else:
-            reply = "I don't know who @**{0.display_name}** is...".format(user)
+        reply = reply_format.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'],
+                                    char['world'], guild, married, login, url)
         return reply
-    finally:
-        c.close()
 
+    def get_user_string(self, username: str) -> str:
+        user = get_member_by_name(self.bot, username)
+        c = userDatabase.cursor()
+        if user is None:
+            return ERROR_DOESNTEXIST
+        try:
+            c.execute("SELECT name, ABS(last_level) as level, vocation FROM chars WHERE user_id = ? ORDER BY level DESC",
+                      (user.id,))
+            result = c.fetchall()
+            if result:
+                charList = []
+                for character in result:
+                    try:
+                        character["level"] = int(character["level"])
+                    except ValueError:
+                        character["level"] = ""
+                    character["vocation"] = get_voc_abb(character["vocation"])
+                    character["url"] = url_character + urllib.parse.quote(character["name"])
+                    charList.append("[{name}]({url}) (Lvl {level} {vocation})".format(**character))
 
-def getMonsterEmbeds(monster, long):
-    """Gets the monster embeds to show in /mob command
-    The message is split in two embeds, the second contains loot only and is only shown if long is True"""
-    embed = discord.Embed(title=monster["title"])
-    hp = "?" if monster["health"] is None else "{0:,}".format(monster["health"])
-    experience = "?" if monster["experience"] is None else "{0:,}".format(monster["experience"])
-    if not (monster["experience"] is None or monster["health"] is None or monster["health"] < 0):
-        ratio = "{0:.2f}".format(monster['experience'] / monster['health'])
-    else:
-        ratio = "?"
-    embed.add_field(name="HP", value=hp)
-    embed.add_field(name="Experience", value=experience)
-    embed.add_field(name="HP/Exp Ratio", value=ratio)
-
-    weak = []
-    resist = []
-    immune = []
-    elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth", "drown", "lifedrain"]
-    # Iterate through elemental types
-    for index, value in monster.items():
-        if index in elements:
-            if monster[index] == 0:
-                immune.append(index.title())
-            elif monster[index] > 100:
-                weak.append([index.title(), monster[index]-100])
-            elif monster[index] < 100:
-                resist.append([index.title(), monster[index]-100])
-    # Add paralysis to immunities
-    if monster["paralysable"] == 0:
-        immune.append("Paralysis")
-    if monster["senseinvis"] == 1:
-        immune.append("Invisibility")
-
-    if immune:
-        embed.add_field(name="Immune to", value="\n".join(immune))
-    else:
-        embed.add_field(name="Immune to", value="Nothing")
-
-    if resist:
-        embed.add_field(name="Resistant to", value="\n".join(["{1}% {0}".format(*i) for i in resist]))
-    else:
-        embed.add_field(name="Resistant to", value="Nothing")
-    if weak:
-        embed.add_field(name="Weak to", value="\n".join(["+{1}% {0}".format(*i) for i in weak]))
-    else:
-        embed.add_field(name="Weak to", value="Nothing")
-
-    # If monster drops no loot, we might as well show everything
-    if long or not monster["loot"]:
-        embed.add_field(name="Max damage",
-                        value="{maxdamage:,}".format(**monster) if monster["maxdamage"] is not None else "???")
-        embed.add_field(name="Abilities", value=monster["abilities"], inline=False)
-    embed_loot = None
-    if monster["loot"] and long:
-        loot_string = ""
-        for item in monster["loot"]:
-            if item["percentage"] is None:
-                item["percentage"] = "??.??%"
-            elif item["percentage"] >= 100:
-                item["percentage"] = "Always"
+                charString = "@**{0.display_name}**'s character{1}: {2}"
+                plural = "s are" if len(charList) > 1 else " is"
+                reply = charString.format(user, plural, join_list(charList, ", ", " and "))
             else:
-                item["percentage"] = "{0:.2f}".format(item['percentage']).zfill(5) + "%"
-            if item["max"] > 1:
-                item["count"] = "({min}-{max})".format(**item)
-            else:
-                item["count"] = ""
-            loot_string += "{percentage} {name} {count}\n".format(**item)
-        embed_loot = discord.Embed(title="Loot",description="`"+loot_string+"`")
-    if monster["loot"] and not long:
-        askchannel_string = " or use #"+askchannel if askchannel is not None else ""
-        # Using character U+200F as an invisible space as normal space gets stripped and empty values are not allowed.
-        embed.add_field(name="To see more, PM me{0}.".format(askchannel_string), value="\U0000200F", inline=False)
-    return embed, embed_loot
+                reply = "I don't know who @**{0.display_name}** is...".format(user)
+            return reply
+        finally:
+            c.close()
 
-
-def getItemEmbeds(item, long):
-    """Gets the item embeds to show in /item command
-    The message is split in two embeds, the second contains monster drops only and is only shown if long is True"""
-    short_limit = 5
-    long_limit = 40
-    npcs_too_long = False
-    drops_too_long = False
-
-    embed = discord.Embed(title=item["title"], description=item["look_text"])
-    embed_drops = None
-    if "color" in item:
-        embed.colour = item["color"]
-    if 'npcs_bought' in item and len(item['npcs_bought']) > 0:
-        name = "Bought for {0:,} gold coins from".format(item['value_buy'])
-        value = ""
-        count = 0
-        for npc in item['npcs_bought']:
-            count += 1
-            value += "\n{name} ({city})".format(**npc)
-            if count >= short_limit and not long:
-                value += "\n*...And {0} others*".format(len(item['npcs_bought']) - short_limit)
-                npcs_too_long = True
-                break
-
-        embed.add_field(name=name, value=value)
-
-    if 'npcs_sold' in item and len(item['npcs_sold']) > 0:
-        name = "Sold for {0:,} gold coins to".format(item['value_sell'])
-        value = ""
-        count = 0
-        for npc in item['npcs_sold']:
-            count += 1
-            value += "\n{name} ({city})".format(**npc)
-            if count >= short_limit and not long:
-                value += "\n*...And {0} others*".format(len(item['npcs_sold']) - short_limit)
-                npcs_too_long = True
-                break
-
-        embed.add_field(name=name, value=value)
-
-    if len(item["dropped_by"]):
-        name = "Dropped by"
-        count = 0
-        value = ""
-
-        for creature in item["dropped_by"]:
-            count += 1
-            if creature["percentage"] is None:
-                creature["percentage"] = "??.??"
-            value += "\n{name} ({percentage}%)".format(**creature)
-            if count >= short_limit and not long:
-                value += "\n*...And {0} others*".format(len(item["dropped_by"]) - short_limit)
-                drops_too_long = True
-                break
-            if long and count >= long_limit:
-                value += "\n*...And {0} others*".format(len(item["dropped_by"]) - long_limit)
-                break
-
-        if long:
-            embed_drops = discord.Embed(title=name, description=value)
-            if "color" in item:
-                embed_drops.colour = item["color"]
+    @staticmethod
+    def get_monster_embeds(monster, long):
+        """Gets the monster embeds to show in /mob command
+        The message is split in two embeds, the second contains loot only and is only shown if long is True"""
+        embed = discord.Embed(title=monster["title"])
+        hp = "?" if monster["health"] is None else "{0:,}".format(monster["health"])
+        experience = "?" if monster["experience"] is None else "{0:,}".format(monster["experience"])
+        if not (monster["experience"] is None or monster["health"] is None or monster["health"] < 0):
+            ratio = "{0:.2f}".format(monster['experience'] / monster['health'])
         else:
+            ratio = "?"
+        embed.add_field(name="HP", value=hp)
+        embed.add_field(name="Experience", value=experience)
+        embed.add_field(name="HP/Exp Ratio", value=ratio)
+
+        weak = []
+        resist = []
+        immune = []
+        elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth", "drown", "lifedrain"]
+        # Iterate through elemental types
+        for index, value in monster.items():
+            if index in elements:
+                if monster[index] == 0:
+                    immune.append(index.title())
+                elif monster[index] > 100:
+                    weak.append([index.title(), monster[index]-100])
+                elif monster[index] < 100:
+                    resist.append([index.title(), monster[index]-100])
+        # Add paralysis to immunities
+        if monster["paralysable"] == 0:
+            immune.append("Paralysis")
+        if monster["senseinvis"] == 1:
+            immune.append("Invisibility")
+
+        if immune:
+            embed.add_field(name="Immune to", value="\n".join(immune))
+        else:
+            embed.add_field(name="Immune to", value="Nothing")
+
+        if resist:
+            embed.add_field(name="Resistant to", value="\n".join(["{1}% {0}".format(*i) for i in resist]))
+        else:
+            embed.add_field(name="Resistant to", value="Nothing")
+        if weak:
+            embed.add_field(name="Weak to", value="\n".join(["+{1}% {0}".format(*i) for i in weak]))
+        else:
+            embed.add_field(name="Weak to", value="Nothing")
+
+        # If monster drops no loot, we might as well show everything
+        if long or not monster["loot"]:
+            embed.add_field(name="Max damage",
+                            value="{maxdamage:,}".format(**monster) if monster["maxdamage"] is not None else "???")
+            embed.add_field(name="Abilities", value=monster["abilities"], inline=False)
+        embed_loot = None
+        if monster["loot"] and long:
+            loot_string = ""
+            for item in monster["loot"]:
+                if item["percentage"] is None:
+                    item["percentage"] = "??.??%"
+                elif item["percentage"] >= 100:
+                    item["percentage"] = "Always"
+                else:
+                    item["percentage"] = "{0:.2f}".format(item['percentage']).zfill(5) + "%"
+                if item["max"] > 1:
+                    item["count"] = "({min}-{max})".format(**item)
+                else:
+                    item["count"] = ""
+                loot_string += "{percentage} {name} {count}\n".format(**item)
+            embed_loot = discord.Embed(title="Loot",description="`"+loot_string+"`")
+        if monster["loot"] and not long:
+            askchannel_string = " or use #"+askchannel if askchannel is not None else ""
+            # Using character U+200F as an invisible space, normal space gets stripped and empty values are not allowed.
+            embed.add_field(name="To see more, PM me{0}.".format(askchannel_string), value="\U0000200F", inline=False)
+        return embed, embed_loot
+
+    @staticmethod
+    def get_item_embeds(item, long):
+        """Gets the item embeds to show in /item command
+        The message is split in two embeds, the second contains monster drops only and is only shown if long is True"""
+        short_limit = 5
+        long_limit = 40
+        npcs_too_long = False
+        drops_too_long = False
+
+        embed = discord.Embed(title=item["title"], description=item["look_text"])
+        embed_drops = None
+        if "color" in item:
+            embed.colour = item["color"]
+        if 'npcs_bought' in item and len(item['npcs_bought']) > 0:
+            name = "Bought for {0:,} gold coins from".format(item['value_buy'])
+            value = ""
+            count = 0
+            for npc in item['npcs_bought']:
+                count += 1
+                value += "\n{name} ({city})".format(**npc)
+                if count >= short_limit and not long:
+                    value += "\n*...And {0} others*".format(len(item['npcs_bought']) - short_limit)
+                    npcs_too_long = True
+                    break
+
             embed.add_field(name=name, value=value)
 
-    if npcs_too_long or drops_too_long:
-        askchannel_string = " or use #" + askchannel if askchannel is not None else ""
-        # Using character U+200F as an invisible space as normal space gets stripped and empty values are not allowed.
-        embed.add_field(name="To see more, PM me{0}.".format(askchannel_string), value="\U0000200F", inline=False)
-    return embed, embed_drops
+        if 'npcs_sold' in item and len(item['npcs_sold']) > 0:
+            name = "Sold for {0:,} gold coins to".format(item['value_sell'])
+            value = ""
+            count = 0
+            for npc in item['npcs_sold']:
+                count += 1
+                value += "\n{name} ({city})".format(**npc)
+                if count >= short_limit and not long:
+                    value += "\n*...And {0} others*".format(len(item['npcs_sold']) - short_limit)
+                    npcs_too_long = True
+                    break
+
+            embed.add_field(name=name, value=value)
+
+        if len(item["dropped_by"]):
+            name = "Dropped by"
+            count = 0
+            value = ""
+
+            for creature in item["dropped_by"]:
+                count += 1
+                if creature["percentage"] is None:
+                    creature["percentage"] = "??.??"
+                value += "\n{name} ({percentage}%)".format(**creature)
+                if count >= short_limit and not long:
+                    value += "\n*...And {0} others*".format(len(item["dropped_by"]) - short_limit)
+                    drops_too_long = True
+                    break
+                if long and count >= long_limit:
+                    value += "\n*...And {0} others*".format(len(item["dropped_by"]) - long_limit)
+                    break
+
+            if long:
+                embed_drops = discord.Embed(title=name, description=value)
+                if "color" in item:
+                    embed_drops.colour = item["color"]
+            else:
+                embed.add_field(name=name, value=value)
+
+        if npcs_too_long or drops_too_long:
+            askchannel_string = " or use #" + askchannel if askchannel is not None else ""
+            # Using character U+200F as an invisible space, normal space gets stripped and empty values are not allowed.
+            embed.add_field(name="To see more, PM me{0}.".format(askchannel_string), value="\U0000200F", inline=False)
+        return embed, embed_drops
 
 
 def setup(bot):
