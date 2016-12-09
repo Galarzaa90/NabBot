@@ -805,10 +805,10 @@ def event_add(ctx, starts_in: TimeString, *, params):
     server = ctx.message.server.id
     start = now+starts_in.seconds
     params = params.split(",", 1)
-    name = single_line(params[0])
+    name = single_line(clean_string(ctx, params[0]))
     event_description = ""
     if len(params) > 1:
-        event_description = params[1]
+        event_description = clean_string(ctx, params[1])
 
     c = userDatabase.cursor()
     try:
@@ -826,10 +826,10 @@ def event_add(ctx, starts_in: TimeString, *, params):
         userDatabase.commit()
         c.close()
 
+
 @event_add.error
 @asyncio.coroutine
 def event_add_error(error, ctx):
-    print("event_add_error",error)
     if isinstance(error, commands.BadArgument):
         yield from bot.say(str(error))
 
@@ -843,7 +843,7 @@ def event_edit_name(ctx, event_id: int, *, new_name):
     Only upcoming events can be edited"""
     c = userDatabase.cursor()
     now = time.time()
-    new_name = single_line(new_name)
+    new_name = single_line(clean_string(ctx, new_name))
     try:
         c.execute("SELECT creator FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
         event = c.fetchone()
@@ -876,6 +876,7 @@ def event_edit_description(ctx, event_id: int, *, new_description):
     Only upcoming events can be edited"""
     c = userDatabase.cursor()
     now = time.time()
+    new_description = clean_string(ctx, new_description)
     try:
         c.execute("SELECT creator FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
         event = c.fetchone()
@@ -970,7 +971,7 @@ def event_remove(ctx, event_id: int):
 def event_make(ctx):
     """Creates an event guiding you step by step
 
-    Instead of using confusing paramenters, commas and spaces, this commands has the bot ask you step by step."""
+    Instead of using confusing parameters, commas and spaces, this commands has the bot ask you step by step."""
     author = ctx.message.author
     creator = author.id
     server = ctx.message.server.id
@@ -987,7 +988,7 @@ def event_make(ctx):
         if name is None:
             yield from bot.say("...You took to long. Try the command again.")
             return
-        name = single_line(name.content)
+        name = single_line(name.clean_content)
 
         yield from bot.say("Alright, what description would you like the event to have? `(no/none = no description)`")
         event_description = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=30.0)
@@ -998,7 +999,7 @@ def event_make(ctx):
             yield from bot.say("No description then? Alright, now tell me the start time of the event from now.")
             event_description = ""
         else:
-            event_description = event_description.content
+            event_description = event_description.clean_content
             yield from bot.say("Alright, now tell me the start time of the event from now.")
 
         starts_in = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=30.0)
@@ -1070,7 +1071,6 @@ def event_error(error, ctx):
 @event_subscribe.error
 @asyncio.coroutine
 def event_error(error, ctx):
-    print("event_error", error)
     if isinstance(error, commands.BadArgument):
         yield from bot.say("Invalid arguments used. `Type /help {0}`".format(ctx.invoked_subcommand))
     elif isinstance(error, commands.errors.MissingRequiredArgument):
@@ -1150,7 +1150,7 @@ def roles(ctx, *userName:str):
 
 @bot.command(pass_context=True, no_pm=True)
 @asyncio.coroutine
-def role(ctx, *roleName:str):
+def role(ctx, *roleName: str):
     """Shows member list within the specified role"""
     roleName = " ".join(roleName).strip()
     lowerRoleName = roleName.lower()

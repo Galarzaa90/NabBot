@@ -305,6 +305,15 @@ def get_member(bot: discord.Client, user_id, server: discord.Server=None) -> dis
         return discord.utils.get(bot.get_all_members(), id=str(user_id))
 
 
+def get_role(server: discord.Server, role_id) -> discord.Role:
+    """Returns a role matching the id in a server"""
+    if server is not None:
+        for role in server.roles:
+            if role.id == str(role_id):
+                return role
+    return None
+
+
 def get_time_diff(time_diff: timedelta) -> str:
     """Returns a string showing the time difference of a timedelta"""
     if not isinstance(time_diff, timedelta):
@@ -474,6 +483,35 @@ def single_line(string: str) -> str:
     return string.replace("\r\n", " ").replace("\n", " ")
 
 
+def clean_string(ctx: discord.ext.commands.Context, string: str) -> str:
+    """Turns mentions into plain text
+
+    For message object, there's already a property that odes this: message.clean_content"""
+    def repl_channel(match):
+        channel_id = match.group(0).replace("<", "").replace("#", "").replace(">", "")
+        channel = ctx.message.server.get_channel(str(channel_id))
+        return "#deleted_channel" if channel is None else "#"+channel.name
+
+    def repl_role(match):
+        role_id = match.group(0).replace("<", "").replace("@", "").replace("&", "").replace(">", "")
+        role = get_role(ctx.message.server, role_id)
+        return "@deleted_role" if role is None else "@"+role.name
+
+    def repl_user(match):
+        user_id = match.group(0).replace("<", "").replace("@", "").replace("!", "").replace(">", "")
+        user = ctx.message.server.get_member(user_id)
+        return "@deleted_role" if user is None else "@" + user.display_name
+    # Find channel mentions:
+    string = re.sub(r"<#\d+>", repl_channel, string)
+    # Find role mentions
+    string = re.sub(r"<@&\d+>", repl_role, string)
+    # Find user mentions
+    string = re.sub(r"<@!\d+>", repl_user, string)
+    string = re.sub(r"<@\d+>", repl_user, string)
+    # Clean @everyone and @here
+    return string.replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
+
+
 # Check decorators for commands
 def check_is_owner(message):
     return message.author.id in owner_ids
@@ -491,15 +529,8 @@ def is_mod():
     return commands.check(lambda ctx: check_is_mod(ctx.message))
 
 
-def check_is_pm(message):
-    return message.channel.is_private
-
-
-def is_pm():
-    return commands.check(lambda ctx: check_is_pm(ctx.message))
-
-
 def is_numeric(s):
+    """Checks if a string is numeric"""
     try:
         int(s)
         return True
@@ -531,6 +562,12 @@ class TimeString:
 
         if self.seconds < 0:
             raise commands.BadArgument("I can't go back in time.")
+
+        if self.seconds > (60*60*24*15):
+            raise commands.BadArgument("That's a bit too far in the future... Try less than 15 days.")
+
+
+
 
 if __name__ == "__main__":
     input("To run NabBot, run nabbot.py")

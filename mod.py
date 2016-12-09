@@ -68,23 +68,26 @@ class Mod:
 
     @commands.group(invoke_without_command=True, pass_context=True)
     @is_mod()
-    @is_pm()
     @asyncio.coroutine
     def stalk(self, ctx):
         """Manipulate the user databases
 
-        Check the available subcommands for more info."""
+        Check the available subcommands for more info.
+        Commands and subcommands can only be used on pm"""
+        if not ctx.message.channel.is_private:
+            return True
         yield from self.bot.say("```Valid subcommands are:\n"
                                 "add, addchar, addacc, remove, removechar, purge, check, refreshnames```")
 
-    @stalk.command(name="add", aliases=["add_user", "register_user", "user"])
+    @stalk.command(pass_context=True, name="add", aliases=["add_user", "register_user", "user"])
     @is_mod()
-    @is_pm()
     @asyncio.coroutine
-    def add_user(self, *, name):
+    def add_user(self, ctx, *, name):
         """Registers an user in the database
 
         User must be visible by the bot."""
+        if not ctx.message.channel.is_private:
+            return True
         c = userDatabase.cursor()
         try:
             user = get_member_by_name(self.bot, name)
@@ -101,17 +104,18 @@ class Mod:
             c.close()
             userDatabase.commit()
 
-    @stalk.command(name="addchar", aliases=["char"])
+    @stalk.command(pass_context=True, name="addchar", aliases=["char"])
     @is_mod()
-    @is_pm()
     @asyncio.coroutine
-    def add_char(self, *, params):
+    def add_char(self, ctx, *, params):
         """Registers a tibia character to a discord user
 
         The syntax is:
         /stalk add user,character
 
         The user is registered automatically if it wasn't registered already."""
+        if not ctx.message.channel.is_private:
+            return True
         if lite_mode:
             return
         params = params.split(",")
@@ -171,17 +175,18 @@ class Mod:
             c.close()
             userDatabase.commit()
 
-    @stalk.command(name="addacc", aliases=["account", "addaccount", "acc"])
+    @stalk.command(pass_context=True, name="addacc", aliases=["account", "addaccount", "acc"])
     @is_mod()
-    @is_pm()
     @asyncio.coroutine
-    def add_account(self, *, params):
+    def add_account(self, ctx, *, params):
         """Register a character and all other visible characters to a discord user.
 
         If a character is hidden, only that characater will be addeed. Characters in other worlds are skipped.
 
         The syntax is the following:
         /stalk addacc user,char"""
+        if not ctx.message.channel.is_private:
+            return True
         if lite_mode:
             return
         params = params.split(",")
@@ -248,12 +253,13 @@ class Mod:
             c.close()
             userDatabase.commit()
 
-    @stalk.command(name="removechar", aliases=["deletechar"])
+    @stalk.command(pass_context=True, name="removechar", aliases=["deletechar"])
     @is_owner()
-    @is_pm()
     @asyncio.coroutine
-    def remove_char(self, *, name):
+    def remove_char(self, ctx, *, name):
         """Removes a registered character."""
+        if not ctx.message.channel.is_private:
+            return True
         if lite_mode:
             return
         # This could be used to remove deleted chars so we don't need to check anything
@@ -276,10 +282,11 @@ class Mod:
 
     @stalk.command(name="remove", aliases=["delete", "deleteuser", "removeuser"], pass_context=True)
     @is_owner()
-    @is_pm()
     @asyncio.coroutine
     def remove_user(self, ctx, *, name):
         """Removes a discord user from the database"""
+        if not ctx.message.channel.is_private:
+            return True
         if lite_mode:
             return
         c = userDatabase.cursor()
@@ -331,14 +338,15 @@ class Mod:
             c.close()
             userDatabase.commit()
 
-    @stalk.command(aliases=["clean"])
+    @stalk.command(pass_context=True, aliases=["clean"])
     @is_owner()
-    @is_pm()
     @asyncio.coroutine
-    def purge(self):
+    def purge(self, ctx):
         """Performs a database cleanup
 
         Removes characters that have been deleted and users with no characters or no longer in server."""
+        if not ctx.message.channel.is_private:
+            return True
         if lite_mode:
             return
         c = userDatabase.cursor()
@@ -423,19 +431,19 @@ class Mod:
             tibiaDatabase.commit()
             c.close()
 
-    @stalk.command()
+    @stalk.command(pass_context=True)
     @is_mod()
-    @is_pm()
     @asyncio.coroutine
-    def check(self):
+    def check(self, ctx):
         """Check which users are currently not registered."""
+        if not ctx.message.channel.is_private:
+            return True
         if lite_mode:
             return
         c = userDatabase.cursor()
         try:
             c.execute("SELECT user_id FROM chars GROUP BY user_id")
             result = c.fetchall()
-            print(result)
             if len(result) <= 0:
                 yield from self.bot.say("There are no registered characters.")
                 return
@@ -456,12 +464,13 @@ class Mod:
         finally:
             c.close()
 
-    @stalk.command(name="refreshnames")
+    @stalk.command(pass_context=True, name="refreshnames")
     @is_mod()
-    @is_pm()
     @asyncio.coroutine
-    def refresh_names(self):
+    def refresh_names(self, ctx):
         """Checks and updates user names on the database."""
+        if not ctx.message.channel.is_private:
+            return True
         if lite_mode:
             return
         c = userDatabase.cursor()

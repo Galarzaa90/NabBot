@@ -13,10 +13,13 @@ class Owner:
 
     @commands.command(pass_context=True, aliases=["reset"])
     @is_owner()
-    @is_pm()
     @asyncio.coroutine
     def restart(self, ctx: discord.ext.commands.Context):
-        """Shutdowns and restarts the server again."""
+        """Shutdowns and starts the bot again.
+
+        This command can only be used on pms"""
+        if not ctx.message.channel.is_private:
+            return True
         yield from self.bot.say('Restarting...')
         self.bot.logout()
         log.warning("Closing NabBot")
@@ -28,12 +31,15 @@ class Owner:
         quit()
 
     # Shutdown command
-    @commands.command(hidden=True, aliases=["close"])
+    @commands.command(pass_context=True, aliases=["close"])
     @is_owner()
-    @is_pm()
     @asyncio.coroutine
-    def shutdown(self):
-        """Shutdowns the bot"""
+    def shutdown(self, ctx):
+        """Shutdowns the bot
+
+        This command can only be used on pms"""
+        if not ctx.message.channel.is_private:
+            return True
         yield from self.bot.say('Shutdown...')
         self.bot.logout()
         log.warning("Closing NabBot")
@@ -74,8 +80,8 @@ class Owner:
     @commands.command(pass_context=True)
     @is_owner()
     @asyncio.coroutine
-    def permissions(self, ctx, *, server_name=None):
-        """Checks the bot's neccessary permissions.
+    def permissions(self, ctx: discord.ext.commands.Context, *, server_name=None):
+        """Checks the bot's necessary permissions.
 
         If server_name is specified, the permissions for that server will be checked
         if no server_name is specified, the current server's permissions will be checked
