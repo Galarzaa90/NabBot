@@ -197,6 +197,15 @@ def announceEvents():
                 c.execute("UPDATE events SET status = 3 WHERE id = ?", (id,))
                 log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, id))
                 yield from bot.send_message(channel, message)
+                # Send PM to subscribers:
+                c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (id,))
+                subscribers = c.fetchall()
+                if len(subscribers) > 0:
+                    for subscriber in subscribers:
+                        user = get_member(bot, subscriber["user_id"])
+                        if user is None:
+                            continue
+                        yield from bot.send_message(user, message)
         # Second announcement
         c.execute("SELECT creator, start, name, id "
                   "FROM events "
@@ -209,7 +218,7 @@ def announceEvents():
                 name = row["name"]
                 id = row["id"]
                 timediff = timedelta(seconds=row["start"]-date)
-                days,hours,minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60) % 60
+                days, hours, minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60) % 60
                 if days:
                     start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
                 elif hours:
@@ -221,6 +230,15 @@ def announceEvents():
                 c.execute("UPDATE events SET status = 2 WHERE id = ?", (id,))
                 log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, id))
                 yield from bot.send_message(channel, message)
+                # Send PM to subscribers:
+                c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (id,))
+                subscribers = c.fetchall()
+                if len(subscribers) > 0:
+                    for subscriber in subscribers:
+                        user = get_member(bot, subscriber["user_id"])
+                        if user is None:
+                            continue
+                        yield from bot.send_message(user, message)
         # Third announcement
         c.execute("SELECT creator, start, name, id "
                   "FROM events "
@@ -245,6 +263,15 @@ def announceEvents():
                 c.execute("UPDATE events SET status = 1 WHERE id = ?", (id,))
                 log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, id))
                 yield from bot.send_message(channel, message)
+                # Send PM to subscribers:
+                c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (id,))
+                subscribers = c.fetchall()
+                if len(subscribers) > 0:
+                    for subscriber in subscribers:
+                        user = get_member(bot, subscriber["user_id"])
+                        if user is None:
+                            continue
+                        yield from bot.send_message(user, message)
         # Last announcement
         c.execute("SELECT creator, start, name, id "
                   "FROM events "
@@ -269,6 +296,15 @@ def announceEvents():
                 c.execute("UPDATE events SET status = 0 WHERE id = ?", (id,))
                 log.info("Announcing event: {0} (by @{1},ID:{3}) - Starting ({2})".format(name, author, start, id))
                 yield from bot.send_message(channel, message)
+                # Send PM to subscribers:
+                c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (id,))
+                subscribers = c.fetchall()
+                if len(subscribers) > 0:
+                    for subscriber in subscribers:
+                        user = get_member(bot, subscriber["user_id"])
+                        if user is None:
+                            continue
+                        yield from bot.send_message(user, message)
     except AttributeError:
         pass
     finally:
@@ -887,7 +923,7 @@ def event_edit_time(ctx, event_id: int, starts_in: TimeString):
         if answer is None:
             yield from bot.say("I will take your silence as a no...")
         elif answer.content.lower() in ["yes", "y"]:
-            c.execute("UPDATE events SET start = ? WHERE id = ?", (starts_in.seconds, event_id,))
+            c.execute("UPDATE events SET start = ? WHERE id = ?", (now+starts_in.seconds, event_id,))
             yield from bot.say(
                 "Your event's start time was changed successfully to **{0}**.".format(starts_in.original))
         else:
@@ -985,6 +1021,38 @@ def event_make(ctx):
         c.close()
 
 
+@events.command(pass_context=True, name="subscribe", aliases=["sub"])
+@asyncio.coroutine
+def event_subscribe(ctx, event_id: int):
+    c = userDatabase.cursor()
+    author = ctx.message.author
+    now = time.time()
+    try:
+        c.execute("SELECT * FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now))
+        event = c.fetchone()
+        if event is None:
+            yield from bot.say("There are no active events with that id.")
+            return
+
+        c.execute("SELECT * FROM event_subscribers WHERE event_id = ? AND user_id = ?", (event_id, author.id))
+        subscription = c.fetchone()
+        if subscription is not None:
+            yield from bot.say("You're already subscribed to this event.")
+            return
+        yield from bot.say("Do you want to subscribe to **{0}**? `(yes/no)`".format(event["name"]))
+        reply = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=30.0)
+        if reply is None:
+            yield from bot.say("No answer? Nevermind then.")
+        elif reply.content in ["yes", "y"]:
+            c.execute("INSERT INTO event_subscribers (event_id, user_id) VALUES(?,?)", (event_id, author.id))
+            yield from bot.say("You have subscribed successfully to this event. I'll let you know when it's happening.")
+        else:
+            yield from bot.say("Alright then...")
+    finally:
+        c.close()
+        userDatabase.commit()
+
+
 @event_add.error
 @asyncio.coroutine
 def event_error(error, ctx):
@@ -999,6 +1067,7 @@ def event_error(error, ctx):
 @event_edit_description.error
 @event_edit_time.error
 @event_remove.error
+@event_subscribe.error
 @asyncio.coroutine
 def event_error(error, ctx):
     print("event_error", error)
