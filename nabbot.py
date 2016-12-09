@@ -850,10 +850,10 @@ def event_edit_name(ctx, event_id: int, *, new_name):
         if not event:
             yield from bot.say("There are no active events with that ID.")
             return
-        if event["creator"] != int(ctx.message.author.id) or ctx.message.author.id not in mod_ids+owner_ids:
+        if event["creator"] != int(ctx.message.author.id) and ctx.message.author.id not in mod_ids+owner_ids:
             yield from bot.say("You can only edit your own events.")
             return
-        yield from bot.say("Do you want to change the name of **{0}**? `(yes/no)`")
+        yield from bot.say("Do you want to change the name of **{0}**? `(yes/no)`".format(event["name"]))
         answer = yield from bot.wait_for_message(author=ctx.message.author, channel=ctx.message.channel, timeout=30.0)
         if answer is None:
             yield from bot.say("I will take your silence as a no...")
@@ -883,7 +883,7 @@ def event_edit_description(ctx, event_id: int, *, new_description):
         if not event:
             yield from bot.say("There are no active events with that ID.")
             return
-        if event["creator"] != int(ctx.message.author.id) or ctx.message.author.id not in mod_ids+owner_ids:
+        if event["creator"] != int(ctx.message.author.id) and ctx.message.author.id not in mod_ids+owner_ids:
             yield from bot.say("You can only edit your own events.")
             return
         yield from bot.say("Do you want to change the description of **{0}**? `(yes/no)`")
@@ -916,7 +916,7 @@ def event_edit_time(ctx, event_id: int, starts_in: TimeString):
         if not event:
             yield from bot.say("There are no active events with that ID.")
             return
-        if event["creator"] != int(ctx.message.author.id) or ctx.message.author.id not in mod_ids+owner_ids:
+        if event["creator"] != int(ctx.message.author.id) and ctx.message.author.id not in mod_ids+owner_ids:
             yield from bot.say("You can only edit your own events.")
             return
         yield from bot.say("Do you want to change the start time of '**{0}**'? `(yes/no)`".format(event["name"]))
@@ -949,7 +949,7 @@ def event_remove(ctx, event_id: int):
         if not event:
             yield from bot.say("There are no active events with that ID.")
             return
-        if event["creator"] != int(ctx.message.author.id) or ctx.message.author.id not in mod_ids+owner_ids:
+        if event["creator"] != int(ctx.message.author.id) and ctx.message.author.id not in mod_ids+owner_ids:
             yield from bot.say("You can only delete your own events.")
             return
         yield from bot.say("Do you want to delete the event '**{0}**'? `(yes/no)`".format(event["name"]))
@@ -988,7 +988,7 @@ def event_make(ctx):
         if name is None:
             yield from bot.say("...You took to long. Try the command again.")
             return
-        name = single_line(name.clean_content)
+        name = single_line(name.clean_content).capitalize()
 
         yield from bot.say("Alright, what description would you like the event to have? `(no/none = no description)`")
         event_description = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=30.0)
@@ -999,7 +999,7 @@ def event_make(ctx):
             yield from bot.say("No description then? Alright, now tell me the start time of the event from now.")
             event_description = ""
         else:
-            event_description = event_description.clean_content
+            event_description = event_description.clean_content.capitalize()
             yield from bot.say("Alright, now tell me the start time of the event from now.")
 
         starts_in = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=30.0)
@@ -1009,7 +1009,7 @@ def event_make(ctx):
         try:
             starts_in = TimeString(starts_in.content)
         except commands.BadArgument:
-            yield from bot.say("Invalid time. Try  the command again. `Time examples: `1h2m, 2d30m, 40m, 5h`")
+            yield from bot.say("Invalid time. Try  the command again. `Time examples: 1h2m, 2d30m, 40m, 5h`")
             return
         now = time.time()
         c.execute("INSERT INTO events (creator,server,start,name,description) VALUES(?,?,?,?,?)",
@@ -1048,7 +1048,7 @@ def event_subscribe(ctx, event_id: int):
             c.execute("INSERT INTO event_subscribers (event_id, user_id) VALUES(?,?)", (event_id, author.id))
             yield from bot.say("You have subscribed successfully to this event. I'll let you know when it's happening.")
         else:
-            yield from bot.say("Alright then...")
+            yield from bot.say("No? Alright then...")
     finally:
         c.close()
         userDatabase.commit()
