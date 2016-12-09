@@ -74,10 +74,8 @@ class Mod:
         """Manipulate the user databases
 
         Check the available subcommands for more info."""
-        if ctx.invoked_subcommand is None:
-            yield from self.bot.say("```Valid subcommands are:\n"
-                                    "add, addchar, addacc, remove, removechar, purge, check, refreshnames```")
-        pass
+        yield from self.bot.say("```Valid subcommands are:\n"
+                                "add, addchar, addacc, remove, removechar, purge, check, refreshnames```")
 
     @stalk.command(name="add", aliases=["add_user", "register_user", "user"])
     @is_mod()
@@ -497,10 +495,10 @@ class Mod:
         if not ctx.message.channel.is_private or lite_mode:
             return
         if isinstance(error, commands.errors.CheckFailure):
-            yield from self.bot.send_message(ctx.message.channel, "You don't have permission to use this command.")
+            yield from self.bot.say("You don't have permission to use this command.")
         elif isinstance(error, commands.errors.MissingRequiredArgument):
-            yield from self.bot.send_message(ctx.message.channel, "You're missing a required argument."
-                                                                  "`Type /help {0}`".format(ctx.invoked_subcommand))
+            yield from self.bot.say("You're missing a required argument. "
+                                    "`Type /help {0}`".format(ctx.invoked_subcommand))
 
 
 def setup(bot):

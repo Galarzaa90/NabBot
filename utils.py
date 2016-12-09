@@ -43,7 +43,7 @@ log.addHandler(consoleHandler)
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 
-DB_LASTVERSION = 6
+DB_LASTVERSION = 7
 
 def initDatabase():
     """Initializes and/or updates the database to the current version"""
@@ -136,6 +136,16 @@ def initDatabase():
                       PRIMARY KEY(id)
                       );""")
             db_version += 1
+        if db_version == 6:
+            # Added 'description', 'server' column to 'events', created table 'events_subscribers'
+            c.execute("ALTER TABLE events ADD description TEXT AFTER name")
+            c.execute("ALTER TABLE events ADD server INTEGER AFTER creator")
+            c.execute("""CREATE TABLE event_subscribers (
+                      event_id INTEGER,
+                      user_id INTEGER
+                      );""")
+            db_version += 1
+
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
 
@@ -456,6 +466,14 @@ def get_region_string(region: discord.ServerRegion) -> str:
     return regions.get(str(region), str(region))
 
 
+def single_line(string: str) -> str:
+    """Turns a multi-line string into a single
+
+    Some platforms use CR and LF, others use only LF, so we first replace CR and LF together and then LF to avoid
+    adding multiple spaces."""
+    return string.replace("\r\n", " ").replace("\n", " ")
+
+
 # Check decorators for commands
 def check_is_owner(message):
     return message.author.id in owner_ids
@@ -487,6 +505,32 @@ def is_numeric(s):
         return True
     except ValueError:
         return False
+
+
+class TimeString:
+    def __init__(self, argument):
+        compiled = re.compile(r"(?:(?P<days>\d+)d)?(?:(?P<hours>\d+)h)?(?:(?P<minutes>\d+)m)?(?:(?P<seconds>\d+)s)?")
+        self.original = argument
+        match = compiled.match(argument)
+        if match is None or not match.group(0):
+            raise commands.BadArgument("That's not a valid time, try something like this: 1d7h or 4h20m")
+
+        self.seconds = 0
+        days = match.group('days')
+        if days is not None:
+            self.seconds += int(days) * 86400
+        hours = match.group('hours')
+        if hours is not None:
+            self.seconds += int(hours) * 3600
+        minutes = match.group('minutes')
+        if minutes is not None:
+            self.seconds += int(minutes) * 60
+        seconds = match.group('seconds')
+        if seconds is not None:
+            self.seconds += int(seconds)
+
+        if self.seconds < 0:
+            raise commands.BadArgument("I can't go back in time.")
 
 if __name__ == "__main__":
     input("To run NabBot, run nabbot.py")
