@@ -75,15 +75,19 @@ def on_message(message):
         return
 
     split = message.content.split(" ", 1)
+    if split[0][:1] == "/" and split[0].lower()[1:] in command_list:
+        if len(split) > 1:
+            message.content = split[0].lower()+" "+split[1]
+        else:
+            message.content = message.content.lower()
     if len(split) == 2:
-        message.content = split[0].lower()+" "+split[1]
         if message.author.id != bot.user.id and (not split[0].lower()[1:] in command_list or not split[0][:1] == "/")\
                 and not message.channel.is_private and message.channel.name == askchannel:
             yield from bot.delete_message(message)
             return
     else:
-        message.content = message.content.lower()
         # Delete messages in askchannel
+
         if message.author.id != bot.user.id \
                 and (not message.content.lower()[1:] in command_list or not message.content[:1] == "/") \
                 and not message.channel.is_private \
@@ -91,7 +95,6 @@ def on_message(message):
             yield from bot.delete_message(message)
             return
     yield from bot.process_commands(message)
-
 
 @bot.event
 @asyncio.coroutine
@@ -988,7 +991,7 @@ def event_make(ctx):
         if name is None:
             yield from bot.say("...You took to long. Try the command again.")
             return
-        name = single_line(name.clean_content).capitalize()
+        name = single_line(name.clean_content)
 
         yield from bot.say("Alright, what description would you like the event to have? `(no/none = no description)`")
         event_description = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=30.0)
@@ -999,7 +1002,7 @@ def event_make(ctx):
             yield from bot.say("No description then? Alright, now tell me the start time of the event from now.")
             event_description = ""
         else:
-            event_description = event_description.clean_content.capitalize()
+            event_description = event_description.clean_content
             yield from bot.say("Alright, now tell me the start time of the event from now.")
 
         starts_in = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=30.0)
