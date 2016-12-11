@@ -16,6 +16,7 @@ import psutil
 # Command list (populated automatically, used to check if a message is(n't) a command invocation)
 command_list = []
 
+
 # Start logging
 # Create logs folder
 os.makedirs('logs/', exist_ok=True)
@@ -281,7 +282,7 @@ def get_channel_by_name(bot: discord.Client, channel_name: str, server: discord.
 
 def get_server_by_name(bot: discord.Client, server_name: str) -> discord.Server:
     """Returns a server by its name"""
-    server = discord.utils.find(lambda m: m.name == server_name, bot.servers)
+    server = discord.utils.find(lambda m: m.name.lower() == server_name.lower(), bot.servers)
     return server
 
 

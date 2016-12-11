@@ -95,6 +95,17 @@ def on_message(message):
             return
     yield from bot.process_commands(message)
 
+
+@bot.event
+@asyncio.coroutine
+def on_server_join(server: discord.Server):
+    log.info("Nab Bot added to server: {0.name} (ID: {0.id])".format(server))
+    message = "Hello! I'm now in **{0.name}**. To see my available commands, type \help\n" \
+              "I will reply to commands from any channel I can see, but if you create a channel called {1}, I will " \
+              "give longer replies and more information there."
+    formatted_message = message.format(server, ask_channel_name)
+    yield from bot.send_message(server.owner, formatted_message)
+
 @bot.event
 @asyncio.coroutine
 def on_member_join(member):
@@ -513,7 +524,7 @@ def announceDeath(charName, deathTime, deathLevel, deathKiller, deathByPlayer):
     message = formatMessage(message)
     message = EMOJI[":skull_crossbones:"] + " " + message
 
-    yield from bot.send_message(channel,message[:1].upper()+message[1:])
+    yield from bot.send_message(channel, message[:1].upper()+message[1:])
 
 
 @asyncio.coroutine

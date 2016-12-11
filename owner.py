@@ -80,8 +80,8 @@ class Owner:
     @commands.command(pass_context=True)
     @is_owner()
     @asyncio.coroutine
-    def permissions(self, ctx: discord.ext.commands.Context, *, server_name=None):
-        """Checks the bot's necessary permissions.
+    def diagnose(self, ctx: discord.ext.commands.Context, *, server_name=None):
+        """Checks the bot's necessary permissions and if it has a correct ask channel
 
         If server_name is specified, the permissions for that server will be checked
         if no server_name is specified, the current server's permissions will be checked
@@ -98,28 +98,64 @@ class Owner:
         else:
             server = ctx.message.server
         member = get_member(self.bot, self.bot.user.id, server)
-        server_permissions = member.server_permissions
-        reply_format = "\n\t{0} Read Messages\n\t{1} Send Messages\n\t{2} Manage Messages\n\t" \
-                       "{3} Embed Links\n\t{4} Attach Files\n\t{5} Mention Everyone"
-        reply = reply_format.format(get_check_emoji(server_permissions.read_messages),
-                                    get_check_emoji(server_permissions.send_messages),
-                                    get_check_emoji(server_permissions.manage_messages),
-                                    get_check_emoji(server_permissions.embed_links),
-                                    get_check_emoji(server_permissions.attach_files),
-                                    get_check_emoji(server_permissions.mention_everyone))
-        yield from self.bot.say("Server permissions:"+reply)
+        server_perms = member.server_permissions
+
         channels = server.channels
+        not_read_messages = []
+        not_send_messages = []
+        not_manage_messages = []
+        not_embed_links = []
+        not_attach_files = []
+        not_mention_everyone = []
+        count = 0
         for channel in channels:
             if channel.type == discord.ChannelType.voice:
                 continue
+            count += 1
             channel_permissions = channel.permissions_for(member)
-            reply = reply_format.format(get_check_emoji(channel_permissions.read_messages),
-                                        get_check_emoji(channel_permissions.send_messages),
-                                        get_check_emoji(channel_permissions.manage_messages),
-                                        get_check_emoji(channel_permissions.embed_links),
-                                        get_check_emoji(channel_permissions.attach_files),
-                                        get_check_emoji(channel_permissions.mention_everyone))
-            yield from self.bot.say("#{0} permissions:{1}".format(channel.name, reply))
+            if not channel_permissions.read_messages:
+                not_read_messages.append(channel)
+            if not channel_permissions.send_messages:
+                not_send_messages.append(channel)
+            if not channel_permissions.manage_messages:
+                not_manage_messages.append(channel)
+            if not channel_permissions.embed_links:
+                not_embed_links.append(channel)
+            if not channel_permissions.attach_files:
+                not_attach_files.append(channel)
+            if not channel_permissions.mention_everyone:
+                not_mention_everyone.append(channel)
+
+        channel_lists_list = [not_read_messages, not_send_messages, not_manage_messages, not_embed_links,
+                              not_attach_files, not_mention_everyone]
+        permission_names_list = ["Read Messages", "Send Messages", "Manage Messages", "Embed Links", "Attach Files",
+                                 "Mention Everyone"]
+        server_wide_list = [server_perms.read_messages, server_perms.send_messages, server_perms.manage_messages,
+                            server_perms.embed_links, server_perms.attach_files, server_perms.mention_everyone]
+
+        reply = "Permissions for {0.name}:\n".format(server)
+        i = 0
+        while i < len(channel_lists_list):
+            reply += "**{0}**\n\t{1} Server wide".format(permission_names_list[i], get_check_emoji(server_wide_list[i]))
+            if len(channel_lists_list[i]) == 0:
+                reply += "\n\t{0} All channels\n".format(get_check_emoji(True))
+            elif len(channel_lists_list[i]) == count:
+                reply += "\n\t All channels\n".format(get_check_emoji(False))
+            else:
+                channel_list = ["#" + x.name for x in channel_lists_list[i]]
+                reply += "\n\t{0} Not in: {1}\n".format(get_check_emoji(False), ",".join(channel_list))
+            i += 1
+
+        ask_channel = get_channel_by_name(self.bot, ask_channel_name, server)
+        reply += "\nAsk channel:\n\t"
+        if ask_channel is not None:
+            reply += "{0} Enabled: {1.mention}".format(get_check_emoji(True), ask_channel)
+        else:
+            reply += "{0} Not enabled".format(get_check_emoji(False))
+        yield from self.bot.say(reply)
+        return
+
+
 
 
 def get_check_emoji(check: bool) -> str:
