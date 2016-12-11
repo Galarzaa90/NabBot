@@ -82,16 +82,15 @@ def on_message(message):
             message.content = message.content.lower()
     if len(split) == 2:
         if message.author.id != bot.user.id and (not split[0].lower()[1:] in command_list or not split[0][:1] == "/")\
-                and not message.channel.is_private and message.channel.name == askchannel:
+                and not message.channel.is_private and message.channel.name == ask_channel_name:
             yield from bot.delete_message(message)
             return
     else:
         # Delete messages in askchannel
-
         if message.author.id != bot.user.id \
                 and (not message.content.lower()[1:] in command_list or not message.content[:1] == "/") \
                 and not message.channel.is_private \
-                and message.channel.name == askchannel:
+                and message.channel.name == ask_channel_name:
             yield from bot.delete_message(message)
             return
     yield from bot.process_commands(message)
@@ -133,7 +132,7 @@ def on_member_unban(server, user):
 @asyncio.coroutine
 def on_message_delete(message):
     """Called every time a message is deleted."""
-    if message.channel.name == askchannel:
+    if message.channel.name == ask_channel_name:
         return
 
     message_decoded = decode_emoji(message.content)
@@ -171,7 +170,7 @@ def announceEvents():
     thirdAnnouncement = 60*5
     c = userDatabase.cursor()
     try:
-        channel = get_channel_by_name(bot, mainchannel, mainserver)
+        channel = get_channel_by_name(bot, main_channel, server_id=main_server)
         # Current time
         date = time.time()
         # Find incoming events
@@ -493,7 +492,7 @@ def announceDeath(charName, deathTime, deathLevel, deathKiller, deathByPlayer):
     # Choose correct pronouns
     pronoun = ["he", "his", "him"] if char['gender'] == "male" else ["she", "her", "her"]
 
-    channel = get_channel_by_name(bot, mainchannel, mainserver)
+    channel = get_channel_by_name(bot, main_channel, server_id=main_server)
     # Find killer article (a/an)
     deathKillerArticle = ""
     if not deathByPlayer:
@@ -530,7 +529,7 @@ def announceLevel(char, newLevel):
     # Get pronouns based on gender
     pronoun = ["he", "his", "him"] if char['gender'] == "male" else ["she", "her", "her"]
 
-    channel = get_channel_by_name(bot, mainchannel, mainserver)
+    channel = get_channel_by_name(bot, main_channel, server_id=main_server)
 
     # Select a message
     message = weighedChoice(levelmessages, char['vocation'], int(newLevel))
@@ -718,7 +717,8 @@ def events(ctx):
         return
     c = userDatabase.cursor()
     try:
-        embed = discord.Embed(description="For more info about an event, use ``/event info (id)``")
+        embed = discord.Embed(description="For more info about an event, use `/event info (id)`"
+                                          "\nTo receive notifications for an event, use `/event sub (id)`")
         c.execute("SELECT creator, start, name, id FROM events "
                   "WHERE start < ? AND start > ? AND active = 1 AND server = ?"
                   "ORDER by start ASC", (now, now - time_threshold, ctx.message.server.id))

@@ -9,16 +9,17 @@ lite_mode = False
 
 # This is the name of the server where the bot will work
 # This bot doesn't support multiple servers yet
-# mainchannel is where the Bot will do announcements, but he will reply to commands everywhere
-# askchannel is a channel where the bot replies with full length messages (like on pms)
-#   Messages that are not commands are automatically deleted in askchannel
-mainserver = "Redd Alliance/Bald Dwarfs"
-mainchannel = "general-chat"
-askchannel = "ask-nabbot"
+# main_channel is where the Bot will do announcements, but he will reply to commands everywhere
+# ask_channel is a channel where the bot replies with full length messages (like on pms)
+#   Messages that are not commands are automatically deleted in ask_channel
+# main_server must be a server id
+main_server = "159815897052086272"
+main_channel = "general-chat"
+ask_channel_name = "ask-nabbot"
 
 # It's possible to fetch the database contents on a website to show more entries than what the bot can display
 # If enabled, certain commands will link to the website
-siteEnabled = True
+site_Enabled = True
 baseUrl = "http://galarzaa.no-ip.org:7005/ReddAlliance/"
 charactersPage = "characters.php"
 deathsPage = "deaths.php"

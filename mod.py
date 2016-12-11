@@ -448,7 +448,7 @@ class Mod:
                 yield from self.bot.say("There are no registered characters.")
                 return
             users = [str(i["user_id"]) for i in result]
-            members = get_server_by_name(self.bot, mainserver).members
+            members = get_server_by_name(self.bot, main_server).members
             empty_members = list()
             for member in members:
                 if member.id == self.bot.user.id:

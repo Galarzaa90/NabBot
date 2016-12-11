@@ -261,15 +261,19 @@ def weighedChoice(messages, condition1=False, condition2=False, condition3=False
     return _messages[0][1]
 
 
-def get_channel_by_name(bot: discord.Client, channel_name: str, server_name: str=None) -> discord.Channel:
+def get_channel_by_name(bot: discord.Client, channel_name: str, server: discord.Server = None,
+                        server_id: str=None, server_name: str = None) -> discord.Channel:
     """Finds a channel by name on all the channels visible by the bot.
 
-    If server_name is specified, only channels in that server will be searched"""
-    if server_name is None:
+    If server, server_id or server_name is specified, only channels in that server will be searched"""
+    if server is None and server_id is not None:
+        server = bot.get_server(server_id)
+    if server is None and server_name is not None:
+        server = get_server_by_name(bot, server_name)
+    if server is None:
         channel = discord.utils.find(lambda m: m.name == channel_name and not m.type == discord.ChannelType.voice,
                                      bot.get_all_channels())
     else:
-        server = get_server_by_name(bot, server_name)
         channel = discord.utils.find(lambda m: m.name == channel_name and not m.type == discord.ChannelType.voice,
                                      server.channels)
     return channel

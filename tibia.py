@@ -165,7 +165,7 @@ class Tibia:
             return
 
         result_limit = 10
-        askchannel_limit = 25
+        ask_channel_limit = 25
         too_long = False
         char = None
         params = params.split(",")
@@ -250,8 +250,8 @@ class Tibia:
                     continue
                 count += 1
                 player["owner"] = owner.display_name
-                player["online"] = EMOJI[":large_blue_circle:"] if player["name"] in online_list else ""
-                if count <= result_limit or (count <= askchannel_limit and ctx.message.channel.name == askchannel):
+                player["online"] = EMOJI[":small_blue_diamond:"] if player["name"] in online_list else ""
+                if count <= result_limit or (count <= ask_channel_limit and ctx.message.channel.name == ask_channel_name):
                     found += "\n\t**{name}** - Level {level} - @**{owner}** {online}".format(**player)
                 else:
                     # Check if there's at least one more to suggest using askchannel
@@ -261,8 +261,9 @@ class Tibia:
             if count < 1:
                 yield from self.bot.say(empty)
                 return
-            if get_channel_by_name(self.bot, askchannel) is not None and too_long:
-                found += "\nYou can see more results in " + get_channel_by_name(self.bot, askchannel).mention
+            ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
+            if ask_channel is not None and too_long:
+                found += "\nYou can see more results in " + ask_channel.mention
             yield from self.bot.say(found)
         finally:
             c.close()
@@ -332,19 +333,22 @@ class Tibia:
             yield from self.bot.say("I couldn't find that item, maybe you meant one of these?", embed=embed)
             return
 
-        filename = item['name'] + ".png"
-        while os.path.isfile(filename):
-            filename = "_" + filename
-        with open(filename, "w+b") as f:
-            f.write(bytearray(item['image']))
-            f.close()
+        # Attach item's image only if the bot has permissions
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if permissions.attach_files:
+            filename = item['name'] + ".png"
+            while os.path.isfile(filename):
+                filename = "_" + filename
+            with open(filename, "w+b") as f:
+                f.write(bytearray(item['image']))
+                f.close()
 
-        with open(filename, "r+b") as f:
-            yield from self.bot.send_file(ctx.message.channel, f)
-            f.close()
-        os.remove(filename)
+            with open(filename, "r+b") as f:
+                yield from self.bot.send_file(ctx.message.channel, f)
+                f.close()
+            os.remove(filename)
 
-        long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
+        long = ctx.message.channel.is_private or ctx.message.channel.name == ask_channel_name
         embed, embed_drops = self.get_item_embeds(item, long)
         yield from self.bot.say(embed=embed)
         if embed_drops is not None:
@@ -379,20 +383,22 @@ class Tibia:
             yield from self.bot.say("I couldn't find that creature, maybe you meant one of these?", embed=embed)
             return
 
-        # Get monster's image:
-        filename = monster['name'] + ".png"
-        while os.path.isfile(filename):
-            filename = "_" + filename
-        with open(filename, "w+b") as f:
-            f.write(bytearray(monster['image']))
-            f.close()
-        # Send monster's image
-        with open(filename, "r+b") as f:
-            yield from self.bot.send_file(ctx.message.channel, f)
-            f.close()
-        os.remove(filename)
+        # Attach item's image only if the bot has permissions
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if permissions.attach_files:
+            filename = monster['name'] + ".png"
+            while os.path.isfile(filename):
+                filename = "_" + filename
+            with open(filename, "w+b") as f:
+                f.write(bytearray(monster['image']))
+                f.close()
+            # Send monster's image
+            with open(filename, "r+b") as f:
+                yield from self.bot.send_file(ctx.message.channel, f)
+                f.close()
+            os.remove(filename)
 
-        long = ctx.message.channel.is_private or ctx.message.channel.name == askchannel
+        long = ctx.message.channel.is_private or ctx.message.channel.name == ask_channel_name
         embed, loot_embed = self.get_monster_embeds(monster, long)
 
         yield from self.bot.say(embed=embed)
@@ -470,7 +476,7 @@ class Tibia:
             return
         c = userDatabase.cursor()
         limit = 10
-        if ctx.message.channel.is_private or ctx.message.channel.name == askchannel:
+        if ctx.message.channel.is_private or ctx.message.channel.name == ask_channel_name:
             limit = 20
         try:
             if name is None:
@@ -491,7 +497,7 @@ class Tibia:
                     if user:
                         username = user.display_name
                     reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1} ago*".format(levelup["level"], get_time_diff(timediff), levelup["name"], username)
-                if siteEnabled:
+                if site_Enabled:
                     reply += "\nSee more levels check: <{0}{1}>".format(baseUrl, levelsPage)
                 yield from self.bot.say(reply)
                 return
@@ -817,7 +823,7 @@ class Tibia:
                 loot_string += "{percentage} {name} {count}\n".format(**item)
             embed_loot = discord.Embed(title="Loot",description="`"+loot_string+"`")
         if monster["loot"] and not long:
-            askchannel_string = " or use #"+askchannel if askchannel is not None else ""
+            askchannel_string = " or use #" + ask_channel_name if ask_channel_name is not None else ""
             # Using character U+200F as an invisible space, normal space gets stripped and empty values are not allowed.
             embed.add_field(name="To see more, PM me{0}.".format(askchannel_string), value="\U0000200F", inline=False)
         return embed, embed_loot
@@ -889,7 +895,7 @@ class Tibia:
                 embed.add_field(name=name, value=value)
 
         if npcs_too_long or drops_too_long:
-            askchannel_string = " or use #" + askchannel if askchannel is not None else ""
+            askchannel_string = " or use #" + ask_channel_name if ask_channel_name is not None else ""
             # Using character U+200F as an invisible space, normal space gets stripped and empty values are not allowed.
             embed.add_field(name="To see more, PM me{0}.".format(askchannel_string), value="\U0000200F", inline=False)
         return embed, embed_drops
