@@ -108,6 +108,7 @@ def on_server_join(server: discord.Server):
     formatted_message = message.format(server, ask_channel_name, log_channel_name)
     yield from bot.send_message(server.owner, formatted_message)
 
+
 @bot.event
 @asyncio.coroutine
 def on_member_join(member: discord.Member):
@@ -177,6 +178,7 @@ def on_message_edit(older_message, message):
     for attachment in message.attachments:
         log.info(attachment)
 
+
 @bot.event
 @asyncio.coroutine
 def on_member_update(before: discord.Member, after: discord.Member):
@@ -199,6 +201,7 @@ def on_server_update(before: discord.Server, after: discord.Server):
         reply = "Server region changed from {0} to {1}".format(get_region_string(before.region),
                                                                get_region_string(after.region))
         yield from send_log_message(bot, after, reply)
+
 
 @asyncio.coroutine
 def announceEvents():
@@ -683,7 +686,7 @@ def im(ctx, *, char_name: str):
         if len(skipped) == len(chars):
             reply = "Sorry, I couldn't find any characters in that account from the servers I track ({1}).\n" \
                     "Maybe you made a mistake? Message {1} if you need help!"
-            yield from bot.say(reply.format(servers_message,admins_message))
+            yield from bot.say(reply.format(servers_message, admins_message))
             return
         for char in updated:
             c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
@@ -754,7 +757,7 @@ def about():
     yield from bot.say(embed=get_about_content())
 
 
-@bot.group(pass_context=True, aliases=["event"], hidden=lite_mode, invoke_without_command=True, no_pm=True)
+@bot.group(pass_context=True, aliases=["event"], hidden=lite_mode, invoke_without_command=True)
 @asyncio.coroutine
 def events(ctx):
     """Shows a list of current active events"""
@@ -764,14 +767,22 @@ def events(ctx):
         return
     c = userDatabase.cursor()
     try:
+        # If this is used on a PM, show events for all shared servers
+        if ctx.message.channel.is_private:
+            servers = get_user_servers(bot, ctx.message.author.id)
+        else:
+            servers = [ctx.message.server]
+        servers_ids = [s.id for s in servers]
+        placeholders = ", ".join("?" for s in servers)
         embed = discord.Embed(description="For more info about an event, use `/event info (id)`"
                                           "\nTo receive notifications for an event, use `/event sub (id)`")
-        c.execute("SELECT creator, start, name, id FROM events "
-                  "WHERE start < ? AND start > ? AND active = 1 AND server = ?"
-                  "ORDER by start ASC", (now, now - time_threshold, ctx.message.server.id))
+        c.execute("SELECT creator, start, name, id, server FROM events "
+                  "WHERE start < {0} AND start > {1} AND active = 1 AND server IN ({2}) "
+                  "ORDER by start ASC".format(now, now - time_threshold, placeholders), tuple(servers_ids))
         recent_events = c.fetchall()
-        c.execute("SELECT creator, start, name, id FROM events "
-                  "WHERE start > ? AND active = 1 ORDER BY start ASC", (now,))
+        c.execute("SELECT creator, start, name, id, server FROM events "
+                  "WHERE start > {0} AND active = 1 AND server IN ({1})"
+                  "ORDER BY start ASC".format(now, placeholders), tuple(servers_ids))
         upcoming_events = c.fetchall()
         if len(recent_events) + len(upcoming_events) == 0:
             yield from bot.say("There are no upcoming events.")
@@ -812,13 +823,22 @@ def events(ctx):
         c.close()
 
 
-@events.command(pass_context=True, name="info", aliases=["show", "details"], no_pm=True)
+@events.command(pass_context=True, name="info", aliases=["show", "details"])
 @asyncio.coroutine
 def event_info(ctx, event_id: int):
     """Displays an event's info"""
     c = userDatabase.cursor()
     try:
-        c.execute("SELECT * FROM events WHERE id = ? AND active = 1 and server = ?", (event_id, ctx.message.server.id))
+        # If this is used on a PM, show events for all shared servers
+        if ctx.message.channel.is_private:
+            servers = get_user_servers(bot, ctx.message.author.id)
+        else:
+            servers = [ctx.message.server]
+        servers_ids = [s.id for s in servers]
+        placeholders = ", ".join("?" for s in servers)
+
+        c.execute("SELECT * FROM events "
+                  "WHERE id = {0} AND active = 1 and server IN ({1})".format(event_id, placeholders), tuple(servers_ids))
         event = c.fetchone()
         if not event:
             yield from bot.say("There's no event with that id.")
@@ -837,7 +857,7 @@ def event_info(ctx, event_id: int):
         c.close()
 
 
-@events.command(name="add", pass_context=True, no_pm=True)
+@events.command(name="add", pass_context=True)
 @asyncio.coroutine
 def event_add(ctx, starts_in: TimeString, *, params):
     """Adds an event
@@ -852,7 +872,6 @@ def event_add(ctx, starts_in: TimeString, *, params):
     """
     now = time.time()
     creator = ctx.message.author.id
-    server = ctx.message.server.id
     start = now+starts_in.seconds
     params = params.split(",", 1)
     name = single_line(clean_string(ctx, params[0]))
@@ -867,8 +886,40 @@ def event_add(ctx, starts_in: TimeString, *, params):
         if len(result) > 1 and creator not in owner_ids+mod_ids:
             yield from bot.say("You can only have two running events simultaneously. Delete or edit an active event")
             return
+
+        servers = get_user_servers(bot, creator)
+        # If message is via PM, but user only shares one server, we just consider that server
+        if ctx.message.channel.is_private and len(servers) == 1:
+            server = servers[0]
+        # Not a private message, so we just take current server
+        elif not ctx.message.channel.is_private:
+            server = ctx.message.server
+        # PM and user shares multiple servers, we must ask him for which server is the event
+        else:
+            yield from bot.say("For which server is this event? Choose one (number only)" +
+                               "\n\t0: *Cancel*\n\t" +
+                               "\n\t".join(["{0}: **{1.name}**".format(i+1, j) for i, j in enumerate(servers)]))
+            reply = yield from bot.wait_for_message(author=ctx.message.author, channel=ctx.message.channel,
+                                                    timeout=50.0)
+            if reply is None:
+                yield from bot.say("Nothing? Forget it then.")
+                return
+            elif is_numeric(reply.content):
+                answer = int(reply.content)
+                if answer == 0:
+                    yield from bot.say("Changed your mind? Typical human.")
+                    return
+                try:
+                    server = servers[answer-1]
+                except IndexError:
+                    yield from bot.say("That wasn't in the choices, you ruined it. Start from the beginning.")
+                    return
+            else:
+                yield from bot.say("That's not a valid answer, try the command again.")
+                return
+
         c.execute("INSERT INTO events (creator,server,start,name,description) VALUES(?,?,?,?,?)",
-                  (creator, server, start, name, event_description))
+                  (creator, server.id, start, name, event_description))
         event_id = c.lastrowid
         reply = "Event registered successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
         yield from bot.say(reply.format(name, starts_in.original, event_id))
@@ -884,7 +935,7 @@ def event_add_error(error, ctx):
         yield from bot.say(str(error))
 
 
-@events.command(name="editname", pass_context=True, no_pm=True)
+@events.command(name="editname", pass_context=True)
 @asyncio.coroutine
 def event_edit_name(ctx, event_id: int, *, new_name):
     """Changes an event's name
@@ -917,7 +968,7 @@ def event_edit_name(ctx, event_id: int, *, new_name):
         c.close()
 
 
-@events.command(name="editdesc", aliases=["editdescription"], pass_context=True, no_pm=True)
+@events.command(name="editdesc", aliases=["editdescription"], pass_context=True)
 @asyncio.coroutine
 def event_edit_description(ctx, event_id: int, *, new_description):
     """Changes an event's description
@@ -951,7 +1002,7 @@ def event_edit_description(ctx, event_id: int, *, new_description):
         c.close()
 
 
-@events.command(name="edittime", aliases=["editstart"], pass_context=True, no_pm=True)
+@events.command(name="edittime", aliases=["editstart"], pass_context=True)
 @asyncio.coroutine
 def event_edit_time(ctx, event_id: int, starts_in: TimeString):
     """Changes an event's time
@@ -984,7 +1035,7 @@ def event_edit_time(ctx, event_id: int, starts_in: TimeString):
         c.close()
 
 
-@events.command(name="delete", aliases=["remove"], pass_context=True, no_pm=True)
+@events.command(name="delete", aliases=["remove"], pass_context=True)
 @asyncio.coroutine
 def event_remove(ctx, event_id: int):
     """Deletes an event
@@ -1016,7 +1067,7 @@ def event_remove(ctx, event_id: int):
         c.close()
 
 
-@events.command(pass_context=True, name="make", aliases=["creator", "maker"], no_pm=True)
+@events.command(pass_context=True, name="make", aliases=["creator", "maker"])
 @asyncio.coroutine
 def event_make(ctx):
     """Creates an event guiding you step by step
@@ -1024,7 +1075,6 @@ def event_make(ctx):
     Instead of using confusing parameters, commas and spaces, this commands has the bot ask you step by step."""
     author = ctx.message.author
     creator = author.id
-    server = ctx.message.server.id
     now = time.time()
     c = userDatabase.cursor()
     try:
@@ -1034,14 +1084,14 @@ def event_make(ctx):
             return
         yield from bot.say("Let's create an event. What would you like the name to be?")
 
-        name = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=30.0)
+        name = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=50.0)
         if name is None:
             yield from bot.say("...You took to long. Try the command again.")
             return
         name = single_line(name.clean_content)
 
         yield from bot.say("Alright, what description would you like the event to have? `(no/none = no description)`")
-        event_description = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=30.0)
+        event_description = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=50.0)
         if event_description is None:
             yield from bot.say("...You took too long. Try the command again.")
             return
@@ -1052,7 +1102,7 @@ def event_make(ctx):
             event_description = event_description.clean_content
             yield from bot.say("Alright, now tell me the start time of the event from now.")
 
-        starts_in = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=30.0)
+        starts_in = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=50.0)
         if starts_in is None:
             yield from bot.say("...You took too long. Try the command again.")
             return
@@ -1061,9 +1111,41 @@ def event_make(ctx):
         except commands.BadArgument:
             yield from bot.say("Invalid time. Try  the command again. `Time examples: 1h2m, 2d30m, 40m, 5h`")
             return
+
+        servers = get_user_servers(bot, creator)
+        # If message is via PM, but user only shares one server, we just consider that server
+        if ctx.message.channel.is_private and len(servers) == 1:
+            server = servers[0]
+        # Not a private message, so we just take current server
+        elif not ctx.message.channel.is_private:
+            server = ctx.message.server
+        # PM and user shares multiple servers, we must ask him for which server is the event
+        else:
+            yield from bot.say("One more question...for which server is this event? Choose one (number only)" +
+                               "\n\t0: *Cancel*\n\t" +
+                               "\n\t".join(["{0}: **{1.name}**".format(i+1, j) for i, j in enumerate(servers)]))
+            reply = yield from bot.wait_for_message(author=ctx.message.author, channel=ctx.message.channel,
+                                                    timeout=50.0)
+            if reply is None:
+                yield from bot.say("Nothing? Forget it then.")
+                return
+            elif is_numeric(reply.content):
+                answer = int(reply.content)
+                if answer == 0:
+                    yield from bot.say("Changed your mind? Typical human.")
+                    return
+                try:
+                    server = servers[answer-1]
+                except IndexError:
+                    yield from bot.say("That wasn't in the choices, you ruined it. Start from the beginning.")
+                    return
+            else:
+                yield from bot.say("That's not a valid answer, try the command again.")
+                return
+
         now = time.time()
         c.execute("INSERT INTO events (creator,server,start,name,description) VALUES(?,?,?,?,?)",
-                  (creator, server, now+starts_in.seconds, name, event_description))
+                  (creator, server.id, now+starts_in.seconds, name, event_description))
         event_id = c.lastrowid
         reply = "Event registered successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
         yield from bot.say(reply.format(name, starts_in.original, event_id))
@@ -1079,7 +1161,16 @@ def event_subscribe(ctx, event_id: int):
     author = ctx.message.author
     now = time.time()
     try:
-        c.execute("SELECT * FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now))
+        # If this is used on a PM, show events for all shared servers
+        if ctx.message.channel.is_private:
+            servers = get_user_servers(bot, ctx.message.author.id)
+        else:
+            servers = [ctx.message.server]
+        servers_ids = [s.id for s in servers]
+        placeholders = ", ".join("?" for s in servers)
+        c.execute("SELECT * FROM events "
+                  "WHERE id = {0} AND active = 1 AND start > {1} AND server IN ({2})".format(event_id, now, placeholders)
+                  , tuple(servers_ids))
         event = c.fetchone()
         if event is None:
             yield from bot.say("There are no active events with that id.")
@@ -1238,6 +1329,17 @@ def role(ctx, *roleName: str):
     return
 
 
+@asyncio.coroutine
+def game_update():
+    game_list = ["Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2017", "Russian Roulette",
+                 "with my toy humans", "with fire"+EMOJI[":fire:"], "God", "innocent", "the part", "hard to get",
+                 "with my human minions", "Singularity", "Portal 3", "Dank Souls"]
+    yield from bot.wait_until_ready()
+    while not bot.is_closed:
+        yield from bot.change_presence(game=discord.Game(name=random.choice(game_list)))
+        yield from asyncio.sleep(60*20)  # Change game every 20 minutes
+
+
 if __name__ == "__main__":
     initDatabase()
 
@@ -1254,6 +1356,8 @@ if __name__ == "__main__":
         email = ""
         password = ""
     try:
+        # Background tasks
+        bot.loop.create_task(game_update())
         if token:
             bot.run(token)
         elif email and password:

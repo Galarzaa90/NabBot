@@ -141,8 +141,8 @@ def initDatabase():
             db_version += 1
         if db_version == 6:
             # Added 'description', 'server' column to 'events', created table 'events_subscribers'
-            c.execute("ALTER TABLE events ADD description TEXT AFTER name")
-            c.execute("ALTER TABLE events ADD server INTEGER AFTER creator")
+            c.execute("ALTER TABLE events ADD description TEXT")
+            c.execute("ALTER TABLE events ADD server INTEGER")
             c.execute("""CREATE TABLE event_subscribers (
                       event_id INTEGER,
                       user_id INTEGER
@@ -311,8 +311,14 @@ def get_member(bot: discord.Client, user_id, server: discord.Server=None) -> dis
     else:
         return discord.utils.get(bot.get_all_members(), id=str(user_id))
 
+
+def get_user_servers(bot: discord.Client, user_id):
+    """Returns a list of the user's shared servers with the bot"""
+    return [m.server for m in bot.get_all_members() if m.id == str(user_id)]
+
+
 @asyncio.coroutine
-def send_log_message(bot: discord.Client, server : discord.Server, content = None, embed: discord.Embed = None):
+def send_log_message(bot: discord.Client, server: discord.Server, content=None, embed: discord.Embed = None):
     """Sends a message on the server-log channel
 
     If the channel doesn't exist, it doesn't send anything or give of any warnings as it meant to be an optional

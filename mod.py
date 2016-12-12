@@ -61,6 +61,8 @@ class Mod:
                     yield from self.bot.say("Message sent on #"+channel_list[answer-1].name)
                 except IndexError:
                     yield from self.bot.say("That wasn't in the choices, you ruined it. Start from the beginning.")
+            else:
+                yield from self.bot.say("That's not a valid answer!")
 
         else:
             yield from self.bot.delete_message(ctx.message)
