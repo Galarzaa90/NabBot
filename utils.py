@@ -1,3 +1,5 @@
+import asyncio
+
 import discord
 from discord.ext import commands
 import logging
@@ -308,6 +310,17 @@ def get_member(bot: discord.Client, user_id, server: discord.Server=None) -> dis
         return server.get_member(str(user_id))
     else:
         return discord.utils.get(bot.get_all_members(), id=str(user_id))
+
+@asyncio.coroutine
+def send_log_message(bot: discord.Client, server : discord.Server, content = None, embed: discord.Embed = None):
+    """Sends a message on the server-log channel
+
+    If the channel doesn't exist, it doesn't send anything or give of any warnings as it meant to be an optional
+    feature"""
+    channel = get_channel_by_name(bot, log_channel_name, server)
+    if channel is None:
+        return
+    yield from bot.send_message(channel, content=content, embed=embed)
 
 
 def get_role(server: discord.Server, role_id) -> discord.Role:

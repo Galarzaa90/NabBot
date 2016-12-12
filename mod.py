@@ -239,7 +239,7 @@ class Mod:
                     yield from self.bot.say("**{0}** is already registered to this user.".format(char['name']))
                     continue
                 c.execute(
-                    "INSERT INTO chars (name,last_level,vocation,user_id, world) VALUES (?,?,?,?)",
+                    "INSERT INTO chars (name,last_level,vocation,user_id, world) VALUES (?,?,?,?,?)",
                     (char["name"], char["level"]*-1, char["vocation"], user.id, char["world"])
                 )
                 yield from self.bot.say("**{0}** was registered successfully to this user.".format(char['name']))

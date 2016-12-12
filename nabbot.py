@@ -101,21 +101,25 @@ def on_message(message):
 def on_server_join(server: discord.Server):
     log.info("Nab Bot added to server: {0.name} (ID: {0.id])".format(server))
     message = "Hello! I'm now in **{0.name}**. To see my available commands, type \help\n" \
-              "I will reply to commands from any channel I can see, but if you create a channel called {1}, I will " \
-              "give longer replies and more information there."
-    formatted_message = message.format(server, ask_channel_name)
+              "I will reply to commands from any channel I can see, but if you create a channel called *{1}*, I will " \
+              "give longer replies and more information there.\n" \
+              "If you want a server log channel, create a channel called *{2}*, I will post logs in there. You might " \
+              "want to make it private though."
+    formatted_message = message.format(server, ask_channel_name, log_channel_name)
     yield from bot.send_message(server.owner, formatted_message)
 
 @bot.event
 @asyncio.coroutine
-def on_member_join(member):
+def on_member_join(member: discord.Member):
     """Called every time a member joins a server visible by the bot."""
     log.info("{0.display_name} (ID: {0.id}) joined {0.server.name}".format(member))
     if lite_mode:
         return
-    message = "Welcome {0.mention}! Please tell us about yourself, who is your Tibia character?\r\n" \
-              "Say /im *charactername* and I'll begin tracking it for you!"
-    yield from bot.send_message(member.server, message.format(member))
+    message = "Welcome to **{0.server.name}**! I'm **{1.user.name}**, to learn more about my commands type `/help`\n" \
+              "Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking " \
+              "your level ups and deaths!"
+    yield from bot.send_message(member, message.format(member, bot))
+    yield from send_log_message(bot, member.server, "{0.mention} joined.".format(member))
 
 
 @bot.event
@@ -123,6 +127,7 @@ def on_member_join(member):
 def on_member_remove(member):
     """Called when a member leaves or is kicked from a server."""
     log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.server.name}".format(member))
+    yield from send_log_message(bot, member.server, "{0.mention} left or was kicked.".format(member))
 
 
 @bot.event
@@ -130,6 +135,7 @@ def on_member_remove(member):
 def on_member_ban(member):
     """Called when a member is banned from a server."""
     log.info("{0.display_name} (ID:{0.id}) was banned from {0.server.name}".format(member))
+    yield from send_log_message(bot, member.server, "{0.mention} was banned.".format(member))
 
 
 @bot.event
@@ -137,6 +143,7 @@ def on_member_ban(member):
 def on_member_unban(server, user):
     """Called when a member is unbanned from a server"""
     log.info("{1.name} (ID:{1.id}) was unbanned from {0.name}".format(server, user))
+    yield from send_log_message(bot, server, "{0.mention} was unbanned.".format(user))
 
 
 @bot.event
@@ -170,6 +177,28 @@ def on_message_edit(older_message, message):
     for attachment in message.attachments:
         log.info(attachment)
 
+@bot.event
+@asyncio.coroutine
+def on_member_update(before: discord.Member, after: discord.Member):
+    if before.nick != after.nick:
+        reply = "{1.mention}: Changed his nickname from **{0.nick}** to **{1.nick}**".format(before, after)
+        yield from send_log_message(bot, after.server, reply)
+    elif before.name != after.name:
+        reply = "{1.mention}: Changed his name from **{0.name}** to **{1.name}**".format(before, after)
+        yield from send_log_message(bot, after.server, reply)
+    return
+
+
+@bot.event
+@asyncio.coroutine
+def on_server_update(before: discord.Server, after: discord.Server):
+    if before.name != after.name:
+        reply = "Server name changed from **{0.name}** to **{1.name}**".format(before, after)
+        yield from send_log_message(bot, after, reply)
+    elif before.region != after.region:
+        reply = "Server region changed from {0} to {1}".format(get_region_string(before.region),
+                                                               get_region_string(after.region))
+        yield from send_log_message(bot, after, reply)
 
 @asyncio.coroutine
 def announceEvents():
@@ -582,9 +611,9 @@ def choose(ctx, *choices: str):
     yield from bot.say('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
 
-@bot.command(pass_context=True, aliases=["i'm", "iam"], no_pm=True, hidden=lite_mode)
+@bot.command(pass_context=True, aliases=["i'm", "iam"], hidden=lite_mode)
 @asyncio.coroutine
-def im(ctx, *charname: str):
+def im(ctx, *, char_name: str):
     """Lets you add your first tibia character(s) for the bot to track.
 
     If you need to add any more characters or made a mistake, please message an admin."""
@@ -594,21 +623,16 @@ def im(ctx, *charname: str):
 
     # This is equivalent to someone using /stalk addacc on themselves.
     # To avoid abuse it will only work on users who have joined recently and have no characters added to their account.
-    # This command can't work on private messages, since we need a member instead of an user to be able to check the joining date.
 
-    charname = " ".join(charname).strip()
     user = ctx.message.author
     try:
         c = userDatabase.cursor()
-        mod_list = owner_ids + mod_ids
-        admins_message = join_list(["**@" + get_member(bot, admin, ctx.message.server).display_name + "**" for admin in mod_list], ", ", " or ")
+        mod_list = owner_ids+mod_ids
+        admins_message = join_list(["**" + get_member(bot, admin, ctx.message.server).mention + "**" for admin in mod_list], ", ", " or ")
         servers_message = join_list(["**" + server + "**" for server in tibiaservers], ", ", " or ")
-        notallowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help adding characters to your account please message "+admins_message+".").format(user)
+        not_allowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help "
+                              "adding characters to your account please message {1}.").format(user, admins_message)
 
-        # Check if the user has joined recently
-        if datetime.now() - user.joined_at > timewindow_im_joining:
-            yield from bot.say(notallowed_message)
-            return
         # Check that this user doesn't exist or has no chars added to it yet.
         c.execute("SELECT id from users WHERE id = ?", (user.id,))
         result = c.fetchone()
@@ -616,14 +640,13 @@ def im(ctx, *charname: str):
             c.execute("SELECT name,user_id FROM chars WHERE user_id LIKE ?", (user.id,))
             result = c.fetchone()
             if result is not None:
-                yield from bot.say(notallowed_message)
+                yield from bot.say(not_allowed_message)
                 return
         else:
             # Add the user if it doesn't exist
             c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
-            c.execute("INSERT INTO user_servers(id,server) VALUES (?,?)", (user.id, ctx.message.server.id,))
 
-        char = yield from get_character(charname)
+        char = yield from get_character(char_name)
         if type(char) is not dict:
             if char == ERROR_NETWORK:
                 yield from bot.say("I couldn't fetch the character, please try again.")
@@ -644,18 +667,23 @@ def im(ctx, *charname: str):
             c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
             result = c.fetchone()
             if result is not None:
-                if get_member(bot, result["user_id"]) is None:
-                    updated.append({'name': char['name'], 'world': char['world'], 'prevowner': result["user_id"]})
+                owner = get_member(bot, result["user_id"])
+                if owner is None:
+                    updated.append({'name': char['name'], 'world': char['world'], 'prevowner': result["user_id"],
+                                    'guild': char.get("guild", "No guild")})
                     continue
                 else:
-                    yield from bot.say("I'm sorry but a character in that account was already claimed by **@{0}**.".format(get_member(bot, result["user_id"]).display_name) + "\r\n" +
-                        "Have you made a mistake? Message " + admins_message +" if you need any help!")
+                    reply = "Sorry but a character in that account was already claimed by **{0.mention}**.\n" \
+                            "Maybe you made a mistake? Message {1} if you need any help!"
+                    yield from bot.say(reply.format(owner, admins_message))
                     return
             char = yield from get_character(char['name'])
+            char["guild"] = char.get("guild", "No guild")
             added.append(char)
         if len(skipped) == len(chars):
-            yield from bot.say("I'm sorry, I couldn't find any characters in that account from the worlds I track ("+servers_message+")\r\n"+
-                        "Have you made a mistake? Message "+admins_message+" if you need any help!")
+            reply = "Sorry, I couldn't find any characters in that account from the servers I track ({1}).\n" \
+                    "Maybe you made a mistake? Message {1} if you need help!"
+            yield from bot.say(reply.format(servers_message,admins_message))
             return
         for char in updated:
             c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
@@ -665,9 +693,17 @@ def im(ctx, *charname: str):
                 "INSERT INTO chars (name,last_level,vocation,user_id, world) VALUES (?,?,?,?,?)",
                 (char['name'], char['level']*-1, char['vocation'], user.id, char["world"])
             )
-            log.info("Character {0} was asigned to {1.display_name} (ID: {1.id}) from /im.".format(char['name'], user))
+            log.info("Character {0} was assigned to {1.display_name} (ID: {1.id}) from /im.".format(char['name'], user))
 
-        yield from bot.say(("Thanks {0.mention}! I have added the following character(s) to your account: "+", ".join("**"+char['name']+"**" for char in added)+", ".join("**"+char['name']+"**" for char in updated)+".\r\nFrom now on I will track level advances and deaths for you, if you need to add any more characters please message "+admins_message+".").format(user))
+        reply = "Thanks {0.mention}! I have added the following character(s) to your account: {1}\n" \
+                "From now on I will track level ups and deaths for you, if you need to add any more characters " \
+                "please message {2}"
+        added_chars = join_list(["**" + char['name'] + "**" for char in added + updated], ", ", " and ")
+        yield from bot.say(reply.format(user, added_chars, admins_message))
+
+        log_entry = "{0.mention} registered the following characters:\n\t".format(ctx.message.author)
+        log_entry += "\n\t".join(["{name} - {level} {vocation} - **{guild}**".format(**char) for char in added+updated])
+        yield from send_log_message(bot, ctx.message.server, log_entry)
         return
     finally:
         c.close()
@@ -1071,7 +1107,6 @@ def event_subscribe(ctx, event_id: int):
 @event_add.error
 @asyncio.coroutine
 def event_error(error, ctx):
-    print("event_error", error)
     if isinstance(error, commands.BadArgument):
         yield from bot.say(str(error))
     elif isinstance(error, commands.errors.MissingRequiredArgument):

@@ -152,10 +152,15 @@ class Owner:
             reply += "{0} Enabled: {1.mention}".format(get_check_emoji(True), ask_channel)
         else:
             reply += "{0} Not enabled".format(get_check_emoji(False))
+
+        log_channel = get_channel_by_name(self.bot, log_channel_name, server)
+        reply += "\nLog channel:\n\t"
+        if log_channel is not None:
+            reply += "{0} Enabled: {1.mention}".format(get_check_emoji(True), log_channel)
+        else:
+            reply += "{0} Not enabled".format(get_check_emoji(False))
         yield from self.bot.say(reply)
         return
-
-
 
 
 def get_check_emoji(check: bool) -> str:
