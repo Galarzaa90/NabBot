@@ -1,3 +1,6 @@
+import random
+import re
+
 from config import announceTreshold
 
 # Emoji code
@@ -1353,7 +1356,7 @@ levelmessages = [
 ###message list for announceDeath ({charName},{deathTime},{deathLevel},{deathKiller},{deathKillerArticle},{pronoun1} (he/she),{pronoun2} (his/her),{pronoun3} (him/her))
 ##additionally, words surrounded by \WORD/ are uppercased, /word\ are lowercased, /Word/ are title cased
 ##              words surrounded by ^WORD^ are ignored if the next letter found is uppercase (useful for dealing with proper nouns)
-##values are: relative chance(int), message(str)   (conditions aren't being used yet (see: weighedChoice in utils.py))
+##values are: relative chance(int), message(str)   (conditions aren't being used yet (see: weighedChoice in general.py))
 ##values are: relative chance(int), message(str), valid vocations(iterable or False to ignore), valid levels(iterable or False to ignore),valid killers(iterable or False to ignore, only for monster deaths)
 
 # deaths by monster
@@ -1441,3 +1444,67 @@ deathmessages_monster = [
 deathmessages_player = [[100, "**{charName}** ({deathLevel}) got rekt! **{deathKiller}** ish pekay!"],
                         [100, "HALP **{deathKiller}** is going around killing innocent **{charName}** ({deathLevel})!"],
                         [100, "Next time stay away from **{deathKiller}**, **{charName}** ({deathLevel})."]]
+
+
+def formatMessage(message) -> str:
+    """##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/"""
+    upper = r'\\(.+?)/'
+    upper = re.compile(upper, re.MULTILINE + re.S)
+    lower = r'/(.+?)\\'
+    lower = re.compile(lower, re.MULTILINE + re.S)
+    title = r'/(.+?)/'
+    title = re.compile(title, re.MULTILINE + re.S)
+    skipproper = r'\^(.+?)\^(.+?)([a-zA-Z])'
+    skipproper = re.compile(skipproper, re.MULTILINE + re.S)
+    message = re.sub(upper, lambda m: m.group(1).upper(), message)
+    message = re.sub(lower, lambda m: m.group(1).lower(), message)
+    message = re.sub(title, lambda m: m.group(1).title(), message)
+    message = re.sub(skipproper,
+                     lambda m: m.group(2) + m.group(3) if m.group(3).istitle() else m.group(1) + m.group(2) + m.group(
+                         3), message)
+    return message
+
+
+def weighedChoice(messages, condition1=False, condition2=False, condition3=False, condition4=False) -> str:
+    """Makes weighed choices from message lists where [0] is a value representing the relative odds
+    of picking a message and [1] is the message string"""
+
+    # Find the max range by adding up the weigh of every message in the list
+    # and purge out messages that dont fulfil the conditions
+    range = 0
+    _messages = []
+    for message in messages:
+        if len(message) == 6:
+            if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]) and (
+                not message[4] or condition3 in message[4]) and (not message[5] or condition4 in message[5]):
+                range = range + (message[0] if not message[1] in lastmessages else message[0] / 10)
+                _messages.append(message)
+        elif len(message) == 5:
+            if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]) and (
+                not message[4] or condition3 in message[4]):
+                range = range + (message[0] if not message[1] in lastmessages else message[0] / 10)
+                _messages.append(message)
+        elif len(message) == 4:
+            if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]):
+                range = range + (message[0] if not message[1] in lastmessages else message[0] / 10)
+                _messages.append(message)
+        elif len(message) == 3:
+            if (not message[2] or condition1 in message[2]):
+                range = range + (message[0] if not message[1] in lastmessages else message[0] / 10)
+                _messages.append(message)
+        else:
+            range = range + (message[0] if not message[1] in lastmessages else message[0] / 10)
+            _messages.append(message)
+    # Choose a random number
+    rangechoice = random.randint(0, range)
+    # Iterate until we find the matching message
+    rangepos = 0
+    for message in _messages:
+        if rangepos <= rangechoice < rangepos + (message[0] if not message[1] in lastmessages else message[0] / 10):
+            currentChar = lastmessages.pop()
+            lastmessages.insert(0, message[1])
+            return message[1]
+        rangepos = rangepos + (message[0] if not message[1] in lastmessages else message[0] / 10)
+    # This shouldnt ever happen...
+    print("Error in weighedChoice!")
+    return _messages[0][1]

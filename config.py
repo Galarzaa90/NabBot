@@ -38,13 +38,10 @@ displaySonoraTime = True
 # The list of servers to check for with getServerOnline
 tibiaservers = ["Fidera"]
 
-# Time since joining until the bot will ignore /im from an user. (See: /im in nabbot.py)
-# Note that an user can simply rejoin the server to reset his join date, but that will trigger a log message.
-timewindow_im_joining = timedelta(days=3)
-
 # This is the global online list
 # don't look at it too closely or you'll go blind!
-# characters are added as servername_charactername and the list is updated periodically on think() using getServerOnline()
+# characters are added as servername_charactername
+# The list is updated periodically on think() using get_server_online()
 globalOnlineList = []
 
 # Level threshold for announces (level < announceLevel)

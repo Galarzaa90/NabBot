@@ -9,7 +9,7 @@ from datetime import datetime, date, timedelta
 from calendar import timegm
 import time
 
-from utils import log, globalOnlineList, tibiaDatabase, userDatabase, get_local_timezone
+from .general import log, globalOnlineList, tibiaDatabase, userDatabase, get_local_timezone
 
 # Constants
 ERROR_NETWORK = 0

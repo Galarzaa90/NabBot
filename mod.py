@@ -1,10 +1,12 @@
-import platform
-from discord.ext import commands
 import asyncio
+import discord
+from discord.ext import commands
 
-from utils import *
-from config import *
-from utils_tibia import *
+from config import lite_mode, main_server, tibiaservers
+from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
+from utils.general import is_numeric, userDatabase
+from utils.discord import get_member, get_member_by_name
+from utils import checks
 
 
 class Mod:
@@ -14,7 +16,7 @@ class Mod:
 
     # Admin only commands #
     @commands.command(pass_context=True)
-    @is_mod()
+    @checks.is_mod()
     @asyncio.coroutine
     def makesay(self, ctx: discord.ext.commands.Context, *, message: str):
         """Makes the bot say a message
@@ -69,7 +71,7 @@ class Mod:
             yield from self.bot.send_message(ctx.message.channel, message)
 
     @commands.group(invoke_without_command=True, pass_context=True)
-    @is_mod()
+    @checks.is_mod()
     @asyncio.coroutine
     def stalk(self, ctx):
         """Manipulate the user databases
@@ -82,7 +84,7 @@ class Mod:
                                 "add, addchar, addacc, remove, removechar, purge, check, refreshnames```")
 
     @stalk.command(pass_context=True, name="add", aliases=["add_user", "register_user", "user"])
-    @is_mod()
+    @checks.is_mod()
     @asyncio.coroutine
     def add_user(self, ctx, *, name):
         """Registers an user in the database
@@ -107,7 +109,7 @@ class Mod:
             userDatabase.commit()
 
     @stalk.command(pass_context=True, name="addchar", aliases=["char"])
-    @is_mod()
+    @checks.is_mod()
     @asyncio.coroutine
     def add_char(self, ctx, *, params):
         """Registers a tibia character to a discord user
@@ -178,7 +180,7 @@ class Mod:
             userDatabase.commit()
 
     @stalk.command(pass_context=True, name="addacc", aliases=["account", "addaccount", "acc"])
-    @is_mod()
+    @checks.is_mod()
     @asyncio.coroutine
     def add_account(self, ctx, *, params):
         """Register a character and all other visible characters to a discord user.
@@ -256,7 +258,7 @@ class Mod:
             userDatabase.commit()
 
     @stalk.command(pass_context=True, name="removechar", aliases=["deletechar"])
-    @is_owner()
+    @checks.is_owner()
     @asyncio.coroutine
     def remove_char(self, ctx, *, name):
         """Removes a registered character."""
@@ -283,7 +285,7 @@ class Mod:
             userDatabase.commit()
 
     @stalk.command(name="remove", aliases=["delete", "deleteuser", "removeuser"], pass_context=True)
-    @is_owner()
+    @checks.is_owner()
     @asyncio.coroutine
     def remove_user(self, ctx, *, name):
         """Removes a discord user from the database"""
@@ -341,7 +343,7 @@ class Mod:
             userDatabase.commit()
 
     @stalk.command(pass_context=True, aliases=["clean"])
-    @is_owner()
+    @checks.is_owner()
     @asyncio.coroutine
     def purge(self, ctx):
         """Performs a database cleanup
@@ -430,11 +432,11 @@ class Mod:
             yield from self.bot.say("Purge done.")
             return
         finally:
-            tibiaDatabase.commit()
+            userDatabase.commit()
             c.close()
 
     @stalk.command(pass_context=True)
-    @is_mod()
+    @checks.is_mod()
     @asyncio.coroutine
     def check(self, ctx):
         """Check which users are currently not registered."""
@@ -450,7 +452,7 @@ class Mod:
                 yield from self.bot.say("There are no registered characters.")
                 return
             users = [str(i["user_id"]) for i in result]
-            members = get_server_by_name(self.bot, main_server).members
+            members = self.bot.get_server(main_server).members
             empty_members = list()
             for member in members:
                 if member.id == self.bot.user.id:
@@ -467,7 +469,7 @@ class Mod:
             c.close()
 
     @stalk.command(pass_context=True, name="refreshnames")
-    @is_mod()
+    @checks.is_mod()
     @asyncio.coroutine
     def refresh_names(self, ctx):
         """Checks and updates user names on the database."""

@@ -1,5 +1,14 @@
-from utils import *
-from utils_tibia import *
+import os
+import random
+
+from discord.ext import commands
+import discord
+
+from config import *
+from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone
+from utils.messages import EMOJI
+from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name
+from utils.tibia import *
 
 
 # Commands
@@ -35,7 +44,7 @@ class Tibia:
             return
 
         if name.lower() == self.bot.user.name.lower():
-            yield from self.bot.say(embed=get_about_content())
+            yield from ctx.invoke(self.bot.commands.get('about'))
             return
 
         char = yield from get_character(name)

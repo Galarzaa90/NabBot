@@ -1,13 +1,26 @@
 import asyncio
-import traceback
+import os
+import random
+from datetime import timedelta, datetime
 
-from discord.ext import commands
 import discord
-import sys
+import time
+from discord.ext import commands
 import platform
+import sys
+import traceback
+import psutil
 
-from utils import *
-from utils_tibia import *
+from config import *
+from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, get_character_deaths, \
+    get_voc_abb
+from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
+    clean_string, get_role_list
+from utils.general import command_list, userDatabase, join_list, get_uptime, TimeString, \
+    single_line, is_numeric, initDatabase, getLogin
+from utils.general import log
+from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
+    weighedChoice, formatMessage
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True)
@@ -606,7 +619,7 @@ def roll(dice: str):
     yield from bot.say(result)
 
 
-@bot.command(pass_context=True,description='For when you wanna settle the score some other way')
+@bot.command(pass_context=True, description='For when you wanna settle the score some other way')
 @asyncio.coroutine
 def choose(ctx, *choices: str):
     """Chooses between multiple choices."""
@@ -754,7 +767,48 @@ def online():
 @asyncio.coroutine
 def about():
     """Shows information about the bot"""
-    yield from bot.say(embed=get_about_content())
+    user_count = 0
+    char_count = 0
+    deaths_count = 0
+    levels_count = 0
+    if not lite_mode:
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT COUNT(*) as count FROM users")
+            result = c.fetchone()
+            if result is not None:
+                user_count = result["count"]
+            c.execute("SELECT COUNT(*) as count FROM chars")
+            result = c.fetchone()
+            if result is not None:
+                char_count = result["count"]
+            c.execute("SELECT COUNT(*) as count FROM char_deaths")
+            result = c.fetchone()
+            if result is not None:
+                deaths_count = result["count"]
+            c.execute("SELECT COUNT(*) as count FROM char_levelups")
+            result = c.fetchone()
+            if result is not None:
+                levels_count = result["count"]
+        finally:
+            c.close()
+
+    embed = discord.Embed(description="*Beep boop beep boop*. I'm just a bot!")
+    embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
+                     icon_url="https://assets-cdn.github.com/favicon.ico")
+    embed.add_field(name="Authors", value="@Galarzaa#8515, @Nezune#2269")
+    embed.add_field(name="Platform", value="Python " + EMOJI[":snake:"])
+    embed.add_field(name="Created", value="March 30th 2016")
+    embed.add_field(name="Uptime", value=get_uptime())
+    memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
+    if not lite_mode:
+        embed.add_field(name="Tracked users", value="{0:,}".format(user_count))
+        embed.add_field(name="Tracked chars", value="{0:,}".format(char_count))
+        embed.add_field(name="Tracked deaths", value="{0:,}".format(deaths_count))
+        embed.add_field(name="Tracked level ups", value="{0:,}".format(levels_count))
+
+    embed.add_field(name='Memory Usage', value='{:.2f} MiB'.format(memory_usage))
+    yield from bot.say(embed=embed)
 
 
 @bot.group(pass_context=True, aliases=["event"], hidden=lite_mode, invoke_without_command=True)

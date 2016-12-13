@@ -1,9 +1,12 @@
-import asyncio
 from discord.ext import commands
 import platform
 
-from utils import *
-from utils_tibia import *
+# Eeverything is imported to put it in /debug scope
+from utils.discord import *
+from utils.general import *
+from utils.messages import *
+from utils.tibia import *
+from utils import checks
 
 
 class Owner:
@@ -12,7 +15,7 @@ class Owner:
         self.bot = bot
 
     @commands.command(pass_context=True, aliases=["reset"])
-    @is_owner()
+    @checks.is_owner()
     @asyncio.coroutine
     def restart(self, ctx: discord.ext.commands.Context):
         """Shutdowns and starts the bot again.
@@ -32,7 +35,7 @@ class Owner:
 
     # Shutdown command
     @commands.command(pass_context=True, aliases=["close"])
-    @is_owner()
+    @checks.is_owner()
     @asyncio.coroutine
     def shutdown(self, ctx):
         """Shutdowns the bot
@@ -46,7 +49,7 @@ class Owner:
         quit()
 
     @commands.command(pass_context=True)
-    @is_owner()
+    @checks.is_owner()
     @asyncio.coroutine
     def debug(self, ctx: discord.ext.commands.Context, *, code: str):
         """Evaluates code."""
@@ -78,7 +81,7 @@ class Owner:
         yield from self.bot.say(python.format(result))
 
     @commands.command(pass_context=True)
-    @is_owner()
+    @checks.is_owner()
     @asyncio.coroutine
     def diagnose(self, ctx: discord.ext.commands.Context, *, server_name=None):
         """Checks the bot's necessary permissions and if it has a correct ask channel
