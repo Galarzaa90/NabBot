@@ -157,5 +157,3 @@ def reload_worlds():
         tibia_worlds_dict.update(tibia_servers_dict_temp)
     finally:
         c.close()
-
-reload_worlds()

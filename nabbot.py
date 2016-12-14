@@ -12,7 +12,7 @@ import traceback
 import psutil
 
 from config import *
-from utils.database import init_database, userDatabase
+from utils.database import init_database, userDatabase, reload_worlds
 from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, get_character_deaths, \
     get_voc_abb
 from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
@@ -1404,6 +1404,7 @@ def game_update():
 
 if __name__ == "__main__":
     init_database()
+    reload_worlds()
 
     print("Attempting login...")
 
