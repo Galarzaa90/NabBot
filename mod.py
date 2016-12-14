@@ -3,8 +3,9 @@ import discord
 from discord.ext import commands
 
 from config import lite_mode, main_server, tibia_servers
+from utils.database import userDatabase
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
-from utils.general import is_numeric, userDatabase
+from utils.general import is_numeric
 from utils.discord import get_member, get_member_by_name
 from utils import checks
 

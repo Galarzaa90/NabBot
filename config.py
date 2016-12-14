@@ -35,6 +35,8 @@ display_sonora_time = True
 
 # The list of servers to check for with getServerOnline
 tibia_servers = ["Fidera"]
+tibia_worlds = []
+tibia_worlds_dict = {}
 
 # This is the global online list
 # don't look at it too closely or you'll go blind!

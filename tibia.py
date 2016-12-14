@@ -5,6 +5,7 @@ from discord.ext import commands
 import discord
 
 from config import *
+from utils.database import userDatabase
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone
 from utils.messages import EMOJI
 from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name

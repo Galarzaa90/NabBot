@@ -12,12 +12,13 @@ import traceback
 import psutil
 
 from config import *
+from utils.database import init_database, userDatabase
 from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, get_character_deaths, \
     get_voc_abb
 from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
     clean_string, get_role_list, get_member_by_name
-from utils.general import command_list, userDatabase, join_list, get_uptime, TimeString, \
-    single_line, is_numeric, initDatabase, getLogin
+from utils.general import command_list, join_list, get_uptime, TimeString, \
+    single_line, is_numeric, getLogin
 from utils.general import log
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
     weighedChoice, formatMessage
@@ -32,6 +33,7 @@ def on_ready():
     bot.load_extension("tibia")
     bot.load_extension("mod")
     bot.load_extension("owner")
+    bot.load_extension("admin")
     print('Logged in as')
     print(bot.user)
     print(bot.user.id)
@@ -1401,7 +1403,7 @@ def game_update():
 
 
 if __name__ == "__main__":
-    initDatabase()
+    init_database()
 
     print("Attempting login...")
 

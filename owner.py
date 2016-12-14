@@ -3,6 +3,7 @@ import platform
 
 # Eeverything is imported to put it in /debug scope
 from utils.discord import *
+from utils.database import *
 from utils.general import *
 from utils.messages import *
 from utils.tibia import *
