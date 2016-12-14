@@ -15,7 +15,7 @@ from config import *
 from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, get_character_deaths, \
     get_voc_abb
 from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
-    clean_string, get_role_list
+    clean_string, get_role_list, get_member_by_name
 from utils.general import command_list, userDatabase, join_list, get_uptime, TimeString, \
     single_line, is_numeric, initDatabase, getLogin
 from utils.general import log
@@ -37,6 +37,7 @@ def on_ready():
     print(bot.user.id)
     print('------')
     log.info('Bot is online and ready')
+
     # Populate command_list
     for command_name, command in bot.commands.items():
         command_list.append(command_name)
@@ -48,8 +49,11 @@ def on_ready():
         if user is not None:
             yield from bot.send_message(user, "Restart complete")
 
-    yield from think()
-    # Anything below this won't be executed in this definition.
+    # Background tasks
+    bot.loop.create_task(game_update())
+    bot.loop.create_task(events_announce())
+    bot.loop.create_task(scan_deaths())
+    bot.loop.create_task(scan_online_chars())
 
 
 @bot.event
@@ -217,312 +221,313 @@ def on_server_update(before: discord.Server, after: discord.Server):
 
 
 @asyncio.coroutine
-def announceEvents():
+def events_announce():
     if lite_mode:
         return
-    """Announces when an event is close to starting."""
-    firstAnnouncement = 60*30
-    secondAnnouncement = 60*15
-    thirdAnnouncement = 60*5
-    c = userDatabase.cursor()
-    try:
-        channel = get_channel_by_name(bot, main_channel, server_id=main_server)
-        # Current time
-        date = time.time()
-        # Find incoming events
+    yield from bot.wait_until_ready()
+    while not bot.is_closed:
+        """Announces when an event is close to starting."""
+        first_announcement = 60*30
+        second_announcement = 60*15
+        third_announcement = 60*5
+        c = userDatabase.cursor()
+        try:
+            channel = get_channel_by_name(bot, main_channel, server_id=main_server)
+            # Current time
+            date = time.time()
+            # Find incoming events
 
-        # First announcement
-        c.execute("SELECT creator, start, name, id "
-                  "FROM events "
-                  "WHERE start < ? AND start > ? AND active = 1 AND status > 3 "
-                  "ORDER by start ASC", (date+firstAnnouncement+60, date+firstAnnouncement,))
-        results = c.fetchall()
-        if len(results) > 0:
-            for row in results:
-                author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
-                name = row["name"]
-                id = row["id"]
-                timediff = timedelta(seconds=row["start"]-date)
-                days, hours, minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60)%60
-                if days:
-                    start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
-                elif hours:
-                    start = '{0} hours and {1} minutes'.format(hours, minutes)
-                else:
-                    start = '{0} minutes'.format(minutes)
+            # First announcement
+            c.execute("SELECT creator, start, name, id "
+                      "FROM events "
+                      "WHERE start < ? AND start > ? AND active = 1 AND status > 3 "
+                      "ORDER by start ASC", (date+first_announcement+60, date+first_announcement,))
+            results = c.fetchall()
+            if len(results) > 0:
+                for row in results:
+                    author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
+                    name = row["name"]
+                    event_id = row["id"]
+                    time_diff = timedelta(seconds=row["start"]-date)
+                    days, hours, minutes = time_diff.days, time_diff.seconds//3600, (time_diff.seconds//60)%60
+                    if days:
+                        start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
+                    elif hours:
+                        start = '{0} hours and {1} minutes'.format(hours, minutes)
+                    else:
+                        start = '{0} minutes'.format(minutes)
 
-                message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name, author, start, id)
-                c.execute("UPDATE events SET status = 3 WHERE id = ?", (id,))
-                log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, id))
-                yield from bot.send_message(channel, message)
-                # Send PM to subscribers:
-                c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (id,))
-                subscribers = c.fetchall()
-                if len(subscribers) > 0:
-                    for subscriber in subscribers:
-                        user = get_member(bot, subscriber["user_id"])
-                        if user is None:
-                            continue
-                        yield from bot.send_message(user, message)
-        # Second announcement
-        c.execute("SELECT creator, start, name, id "
-                  "FROM events "
-                  "WHERE start < ? AND start > ? AND active = 1 AND status > 2 "
-                  "ORDER by start ASC", (date+secondAnnouncement+60, date+secondAnnouncement,))
-        results = c.fetchall()
-        if len(results) > 0:
-            for row in results:
-                author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
-                name = row["name"]
-                id = row["id"]
-                timediff = timedelta(seconds=row["start"]-date)
-                days, hours, minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60) % 60
-                if days:
-                    start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
-                elif hours:
-                    start = '{0} hours and {1} minutes'.format(hours, minutes)
-                else:
-                    start = '{0} minutes'.format(minutes)
+                    message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name, author, start, event_id)
+                    c.execute("UPDATE events SET status = 3 WHERE id = ?", (event_id,))
+                    log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
+                    yield from bot.send_message(channel, message)
+                    # Send PM to subscribers:
+                    c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
+                    subscribers = c.fetchall()
+                    if len(subscribers) > 0:
+                        for subscriber in subscribers:
+                            user = get_member(bot, subscriber["user_id"])
+                            if user is None:
+                                continue
+                            yield from bot.send_message(user, message)
+            # Second announcement
+            c.execute("SELECT creator, start, name, id "
+                      "FROM events "
+                      "WHERE start < ? AND start > ? AND active = 1 AND status > 2 "
+                      "ORDER by start ASC", (date+second_announcement+60, date+second_announcement,))
+            results = c.fetchall()
+            if len(results) > 0:
+                for row in results:
+                    author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
+                    name = row["name"]
+                    event_id = row["id"]
+                    time_diff = timedelta(seconds=row["start"]-date)
+                    days, hours, minutes = time_diff.days, time_diff.seconds//3600, (time_diff.seconds//60) % 60
+                    if days:
+                        start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
+                    elif hours:
+                        start = '{0} hours and {1} minutes'.format(hours, minutes)
+                    else:
+                        start = '{0} minutes'.format(minutes)
 
-                message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name, author, start, id)
-                c.execute("UPDATE events SET status = 2 WHERE id = ?", (id,))
-                log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, id))
-                yield from bot.send_message(channel, message)
-                # Send PM to subscribers:
-                c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (id,))
-                subscribers = c.fetchall()
-                if len(subscribers) > 0:
-                    for subscriber in subscribers:
-                        user = get_member(bot, subscriber["user_id"])
-                        if user is None:
-                            continue
-                        yield from bot.send_message(user, message)
-        # Third announcement
-        c.execute("SELECT creator, start, name, id "
-                  "FROM events "
-                  "WHERE start < ? AND start > ? AND active = 1 AND status > 1 "
-                  "ORDER by start ASC", (date+thirdAnnouncement+60, date+thirdAnnouncement,))
-        results = c.fetchall()
-        if len(results) > 0:
-            for row in results:
-                author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
-                name = row["name"]
-                id = row["id"]
-                timediff = timedelta(seconds=row["start"]-date)
-                days, hours, minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60) % 60
-                if days:
-                    start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
-                elif hours:
-                    start = '{0} hours and {1} minutes'.format(hours, minutes)
-                else:
-                    start = '{0} minutes'.format(minutes)
+                    message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name, author, start, event_id)
+                    c.execute("UPDATE events SET status = 2 WHERE id = ?", (event_id,))
+                    log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
+                    yield from bot.send_message(channel, message)
+                    # Send PM to subscribers:
+                    c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
+                    subscribers = c.fetchall()
+                    if len(subscribers) > 0:
+                        for subscriber in subscribers:
+                            user = get_member(bot, subscriber["user_id"])
+                            if user is None:
+                                continue
+                            yield from bot.send_message(user, message)
+            # Third announcement
+            c.execute("SELECT creator, start, name, id "
+                      "FROM events "
+                      "WHERE start < ? AND start > ? AND active = 1 AND status > 1 "
+                      "ORDER by start ASC", (date+third_announcement+60, date+third_announcement,))
+            results = c.fetchall()
+            if len(results) > 0:
+                for row in results:
+                    author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
+                    name = row["name"]
+                    event_id = row["id"]
+                    time_diff = timedelta(seconds=row["start"]-date)
+                    days, hours, minutes = time_diff.days, time_diff.seconds//3600, (time_diff.seconds//60) % 60
+                    if days:
+                        start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
+                    elif hours:
+                        start = '{0} hours and {1} minutes'.format(hours, minutes)
+                    else:
+                        start = '{0} minutes'.format(minutes)
 
-                message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}!".format(name, author, start, id)
-                c.execute("UPDATE events SET status = 1 WHERE id = ?", (id,))
-                log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, id))
-                yield from bot.send_message(channel, message)
-                # Send PM to subscribers:
-                c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (id,))
-                subscribers = c.fetchall()
-                if len(subscribers) > 0:
-                    for subscriber in subscribers:
-                        user = get_member(bot, subscriber["user_id"])
-                        if user is None:
-                            continue
-                        yield from bot.send_message(user, message)
-        # Last announcement
-        c.execute("SELECT creator, start, name, id "
-                  "FROM events "
-                  "WHERE start < ? AND start > ? AND active = 1 AND status > 0 "
-                  "ORDER by start ASC", (date+60,date,))
-        results = c.fetchall()
-        if len(results) > 0:
-            for row in results:
-                author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
-                name = row["name"]
-                id = row["id"]
-                timediff = timedelta(seconds=row["start"]-date)
-                days, hours, minutes = timediff.days, timediff.seconds//3600, (timediff.seconds//60) % 60
-                if days:
-                    start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
-                elif hours:
-                    start = '{0} hours and {1} minutes'.format(hours, minutes)
-                else:
-                    start = '{0} minutes'.format(minutes)
+                    message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}!".format(name, author, start, event_id)
+                    c.execute("UPDATE events SET status = 1 WHERE id = ?", (event_id,))
+                    log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
+                    yield from bot.send_message(channel, message)
+                    # Send PM to subscribers:
+                    c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
+                    subscribers = c.fetchall()
+                    if len(subscribers) > 0:
+                        for subscriber in subscribers:
+                            user = get_member(bot, subscriber["user_id"])
+                            if user is None:
+                                continue
+                            yield from bot.send_message(user, message)
+            # Last announcement
+            c.execute("SELECT creator, start, name, id "
+                      "FROM events "
+                      "WHERE start < ? AND start > ? AND active = 1 AND status > 0 "
+                      "ORDER by start ASC", (date+60,date,))
+            results = c.fetchall()
+            if len(results) > 0:
+                for row in results:
+                    author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
+                    name = row["name"]
+                    event_id = row["id"]
+                    time_diff = timedelta(seconds=row["start"]-date)
+                    days, hours, minutes = time_diff.days, time_diff.seconds//3600, (time_diff.seconds//60) % 60
+                    if days:
+                        start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
+                    elif hours:
+                        start = '{0} hours and {1} minutes'.format(hours, minutes)
+                    else:
+                        start = '{0} minutes'.format(minutes)
 
-                message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting right now!".format(name, author, start, id)
-                c.execute("UPDATE events SET status = 0 WHERE id = ?", (id,))
-                log.info("Announcing event: {0} (by @{1},ID:{3}) - Starting ({2})".format(name, author, start, id))
-                yield from bot.send_message(channel, message)
-                # Send PM to subscribers:
-                c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (id,))
-                subscribers = c.fetchall()
-                if len(subscribers) > 0:
-                    for subscriber in subscribers:
-                        user = get_member(bot, subscriber["user_id"])
-                        if user is None:
-                            continue
-                        yield from bot.send_message(user, message)
-    except AttributeError:
-        pass
-    finally:
-        userDatabase.commit()
-        c.close()
+                    message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting right now!".format(name, author, start, event_id)
+                    c.execute("UPDATE events SET status = 0 WHERE id = ?", (event_id,))
+                    log.info("Announcing event: {0} (by @{1},ID:{3}) - Starting ({2})".format(name, author, start, event_id))
+                    yield from bot.send_message(channel, message)
+                    # Send PM to subscribers:
+                    c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
+                    subscribers = c.fetchall()
+                    if len(subscribers) > 0:
+                        for subscriber in subscribers:
+                            user = get_member(bot, subscriber["user_id"])
+                            if user is None:
+                                continue
+                            yield from bot.send_message(user, message)
+        except AttributeError:
+            pass
+        finally:
+            userDatabase.commit()
+            c.close()
+        yield from asyncio.sleep(20)
 
 
 @asyncio.coroutine
-def think():
-    if lite_mode:
-        return
+def scan_deaths():
     #################################################
     #             Nezune's cave                     #
     # Do not touch anything, enter at your own risk #
     #################################################
-    lastServerOnlineCheck = datetime.now()
-    lastPlayerDeathCheck = datetime.now()
-    global globalOnlineList
-    while 1:
-        # Announce incoming events
-        yield from announceEvents()
+    if lite_mode:
+        return
+    yield from bot.wait_until_ready()
+    while not bot.is_closed:
+        yield from asyncio.sleep(death_scan_interval)
+        if len(global_online_list) == 0:
+            continue
+        # Pop last char in queue, reinsert it at the beginning
+        current_char = global_online_list.pop()
+        global_online_list.insert(0, current_char)
 
-        # Periodically check server online lists
-        if datetime.now() - lastServerOnlineCheck > serveronline_delay and len(tibiaservers) > 0:
-            # Pop last server in queue, reinsert it at the beginning
-            currentServer = tibiaservers.pop()
-            tibiaservers.insert(0, currentServer)
+        # Get rid of server name
+        current_char = current_char.split("_", 1)[1]
+        # Check for new death
+        yield from check_death(current_char)
 
-            # Get online list for this server
-            currentServerOnline = yield from get_server_online(currentServer)
-
-            if len(currentServerOnline) > 0:
-                # Open connection to users.db
-                c = userDatabase.cursor()
-
-                # Remove chars that are no longer online from the globalOnlineList
-                offlineList = []
-                for char in globalOnlineList:
-                    if char.split("_", 1)[0] == currentServer:
-                        offline = True
-                        for serverChar in currentServerOnline:
-                            if serverChar['name'] == char.split("_", 1)[1]:
-                                offline = False
-                                break
-                        if offline:
-                            offlineList.append(char)
-                for nowOfflineChar in offlineList:
-                    globalOnlineList.remove(nowOfflineChar)
-                    # Check for deaths and level ups when removing from online list
-                    nowOfflineChar = yield from get_character(nowOfflineChar.split("_", 1)[1])
-                    if not(nowOfflineChar == ERROR_NETWORK or nowOfflineChar == ERROR_DOESNTEXIST):
-                        c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (nowOfflineChar['name'],))
-                        result = c.fetchone()
-                        if result:
-                            lastLevel = result["last_level"]
-                            c.execute(
-                                "UPDATE chars SET last_level = ? WHERE name LIKE ?",
-                                (nowOfflineChar['level'], nowOfflineChar['name'],)
-                            )
-                            if nowOfflineChar['level'] > lastLevel > 0:
-                                # Saving level up date in database
-                                c.execute(
-                                    "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                    (result["id"], nowOfflineChar['level'], time.time(),)
-                                )
-                                # Announce the level up
-                                yield from announceLevel(nowOfflineChar, nowOfflineChar['level'])
-                        yield from checkDeath(nowOfflineChar['name'])
-
-                # Add new online chars and announce level differences
-                for serverChar in currentServerOnline:
-                    c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (serverChar['name'],))
-                    result = c.fetchone()
-                    if result:
-                        # If its a stalked character
-                        lastLevel = result["last_level"]
-                        # We update their last level in the db
-                        c.execute(
-                            "UPDATE chars SET last_level = ? WHERE name LIKE ?",
-                            (serverChar['level'], serverChar['name'],)
-                        )
-
-                        if not (currentServer+"_"+serverChar['name']) in globalOnlineList:
-                            # If the character wasn't in the globalOnlineList we add them
-                            # (We insert them at the beginning of the list to avoid messing with the death checks order)
-                            globalOnlineList.insert(0, (currentServer+"_"+serverChar['name']))
-                            # Since this is the first time we see them online we flag their last death time
-                            # to avoid backlogged death announces
-                            c.execute(
-                                "UPDATE chars SET last_death_time = ? WHERE name LIKE ?",
-                                (None, serverChar['name'],)
-                            )
-                            yield from checkDeath(serverChar['name'])
-
-                        # Else we check for levelup
-                        elif serverChar['level'] > lastLevel > 0:
-                            # Saving level up date in database
-                            c.execute(
-                                "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                (result["id"], serverChar['level'], time.time(),)
-                            )
-                            # Announce the level up
-                            char = yield from get_character(serverChar['name'])
-                            yield from announceLevel(char, serverChar['level'])
-
-                # Close cursor and commit changes
-                userDatabase.commit()
-                c.close()
-
-            # Update last server check time
-            lastServerOnlineCheck = datetime.now()
-
-        # Periodically check for deaths
-        if datetime.now() - lastPlayerDeathCheck > playerdeath_delay and len(globalOnlineList) > 0:
-            # Pop last char in queue, reinsert it at the beginning
-            currentChar = globalOnlineList.pop()
-            globalOnlineList.insert(0, currentChar)
-
-            # Get rid of server name
-            currentChar = currentChar.split("_", 1)[1]
-            # Check for new death
-            yield from checkDeath(currentChar)
-
-            # Update last death check time
-            lastPlayerDeathCheck = datetime.now()
-
-        # Sleep for a bit and then loop back
-        yield from asyncio.sleep(1)
 
 
 @asyncio.coroutine
-def checkDeath(character):
+def scan_online_chars():
+    #################################################
+    #             Nezune's cave                     #
+    # Do not touch anything, enter at your own risk #
+    #################################################
+    yield from bot.wait_until_ready()
+    while not bot.is_closed:
+        yield from asyncio.sleep(online_scan_interval)
+        if len(tibia_servers) == 0:
+            continue
+        # Pop last server in queue, reinsert it at the beginning
+        current_server = tibia_servers.pop()
+        tibia_servers.insert(0, current_server)
+
+        # Get online list for this server
+        current_server_online = yield from get_server_online(current_server)
+
+        if len(current_server_online) > 0:
+            # Open connection to users.db
+            c = userDatabase.cursor()
+
+            # Remove chars that are no longer online from the globalOnlineList
+            offline_list = []
+            for char in global_online_list:
+                if char.split("_", 1)[0] == current_server:
+                    offline = True
+                    for server_char in current_server_online:
+                        if server_char['name'] == char.split("_", 1)[1]:
+                            offline = False
+                            break
+                    if offline:
+                        offline_list.append(char)
+            for now_offline_char in offline_list:
+                global_online_list.remove(now_offline_char)
+                # Check for deaths and level ups when removing from online list
+                now_offline_char = yield from get_character(now_offline_char.split("_", 1)[1])
+                if not (now_offline_char == ERROR_NETWORK or now_offline_char == ERROR_DOESNTEXIST):
+                    c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (now_offline_char['name'],))
+                    result = c.fetchone()
+                    if result:
+                        last_level = result["last_level"]
+                        c.execute(
+                            "UPDATE chars SET last_level = ? WHERE name LIKE ?",
+                            (now_offline_char['level'], now_offline_char['name'],)
+                        )
+                        if now_offline_char['level'] > last_level > 0:
+                            # Saving level up date in database
+                            c.execute(
+                                "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
+                                (result["id"], now_offline_char['level'], time.time(),)
+                            )
+                            # Announce the level up
+                            yield from announce_level(now_offline_char, now_offline_char['level'])
+                    yield from check_death(now_offline_char['name'])
+
+            # Add new online chars and announce level differences
+            for server_char in current_server_online:
+                c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (server_char['name'],))
+                result = c.fetchone()
+                if result:
+                    # If its a stalked character
+                    last_level = result["last_level"]
+                    # We update their last level in the db
+                    c.execute(
+                        "UPDATE chars SET last_level = ? WHERE name LIKE ?",
+                        (server_char['level'], server_char['name'],)
+                    )
+
+                    if not (current_server + "_" + server_char['name']) in global_online_list:
+                        # If the character wasn't in the globalOnlineList we add them
+                        # (We insert them at the beginning of the list to avoid messing with the death checks order)
+                        global_online_list.insert(0, (current_server + "_" + server_char['name']))
+                        # Since this is the first time we see them online we flag their last death time
+                        # to avoid backlogged death announces
+                        c.execute(
+                            "UPDATE chars SET last_death_time = ? WHERE name LIKE ?",
+                            (None, server_char['name'],)
+                        )
+                        yield from check_death(server_char['name'])
+
+                    # Else we check for levelup
+                    elif server_char['level'] > last_level > 0:
+                        # Saving level up date in database
+                        c.execute(
+                            "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
+                            (result["id"], server_char['level'], time.time(),)
+                        )
+                        # Announce the level up
+                        char = yield from get_character(server_char['name'])
+                        yield from announce_level(char, server_char['level'])
+
+            # Close cursor and commit changes
+            userDatabase.commit()
+            c.close()
+
+
+@asyncio.coroutine
+def check_death(character):
     """Gets death list for a character (from database)
 
     Only the first death is needed"""
-    characterDeaths = yield from get_character_deaths(character, True)
+    character_deaths = yield from get_character_deaths(character, True)
 
-    if (type(characterDeaths) is list) and len(characterDeaths) > 0:
+    if (type(character_deaths) is list) and len(character_deaths) > 0:
         c = userDatabase.cursor()
 
         c.execute("SELECT name, last_death_time, id FROM chars WHERE name LIKE ?", (character,))
         result = c.fetchone()
         if result:
-            lastDeath = characterDeaths[0]
-            dbLastDeathTime = result["last_death_time"]
+            last_death = character_deaths[0]
+            db_last_death_time = result["last_death_time"]
             # If the db lastDeathTime is None it means this is the first time we're seeing them online
             # so we just update it without announcing deaths
-            if dbLastDeathTime is None:
-                c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?", (lastDeath['time'], character,))
+            if db_last_death_time is None:
+                c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?", (last_death['time'], character,))
             # Else if the last death's time doesn't match the one in the db
-            elif dbLastDeathTime != lastDeath['time']:
+            elif db_last_death_time != last_death['time']:
                 # Update the lastDeathTime for this char in the db
-                c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?", (lastDeath['time'], character,))
+                c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?", (last_death['time'], character,))
                 # Saving death info in database
                 c.execute(
                     "INSERT INTO char_deaths (char_id,level,killer,byplayer,date) VALUES(?,?,?,?,?)",
-                    (result["id"], int(lastDeath['level']), lastDeath['killer'], lastDeath['byPlayer'], time.time(),)
+                    (result["id"], int(last_death['level']), last_death['killer'], last_death['byPlayer'], time.time(),)
                 )
                 # Announce the death
-                yield from announceDeath(character, lastDeath['time'], lastDeath['level'], lastDeath['killer'], lastDeath['byPlayer'])
+                yield from announce_death(character, last_death['time'], last_death['level'], last_death['killer'], last_death['byPlayer'])
 
         # Close cursor and commit changes
         userDatabase.commit()
@@ -530,19 +535,19 @@ def checkDeath(character):
 
 
 @asyncio.coroutine
-def announceDeath(charName, deathTime, deathLevel, deathKiller, deathByPlayer):
-    if int(deathLevel) < announceTreshold:
+def announce_death(char_name, death_time, death_level, death_killer, death_by_player):
+    if int(death_level) < announceTreshold:
         # Don't announce for low level players
         return
 
-    log.info("Announcing death: {0}({1}) | {2}".format(charName, deathLevel, deathKiller))
-    char = yield from get_character(charName)
+    log.info("Announcing death: {0}({1}) | {2}".format(char_name, death_level, death_killer))
+    char = yield from get_character(char_name)
     # Failsafe in case getPlayer fails to retrieve player data
     if type(char) is not dict:
-        log.warning("Error in announceDeath, failed to getPlayer("+charName+")")
+        log.warning("Error in announceDeath, failed to getPlayer(" + char_name + ")")
         return
 
-    if not(char['world'] in tibiaservers):
+    if not(char['world'] in tibia_servers):
         # Don't announce for players in non-tracked worlds
         return
     # Choose correct pronouns
@@ -550,19 +555,19 @@ def announceDeath(charName, deathTime, deathLevel, deathKiller, deathByPlayer):
 
     channel = get_channel_by_name(bot, main_channel, server_id=main_server)
     # Find killer article (a/an)
-    deathKillerArticle = ""
-    if not deathByPlayer:
-        deathKillerArticle = deathKiller.split(" ", 1)
-        if deathKillerArticle[0] in ["a", "an"] and len(deathKillerArticle) > 1:
-            deathKiller = deathKillerArticle[1]
-            deathKillerArticle = deathKillerArticle[0]+" "
+    death_killer_article = ""
+    if not death_by_player:
+        death_killer_article = death_killer.split(" ", 1)
+        if death_killer_article[0] in ["a", "an"] and len(death_killer_article) > 1:
+            death_killer = death_killer_article[1]
+            death_killer_article = death_killer_article[0]+" "
         else:
-            deathKillerArticle = ""
+            death_killer_article = ""
     # Select a message
-    message = weighedChoice(deathmessages_player, char['vocation'], int(deathLevel)) if deathByPlayer else weighedChoice(deathmessages_monster, char['vocation'], int(deathLevel), deathKiller)
+    message = weighedChoice(deathmessages_player, char['vocation'], int(death_level)) if death_by_player else weighedChoice(deathmessages_monster, char['vocation'], int(death_level), death_killer)
     # Format message with death information
-    deathInfo = {'charName': charName, 'deathTime': deathTime, 'deathLevel': deathLevel, 'deathKiller': deathKiller,
-                 'deathKillerArticle': deathKillerArticle, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
+    deathInfo = {'charName': char_name, 'deathTime': death_time, 'deathLevel': death_level, 'deathKiller': death_killer,
+                 'deathKillerArticle': death_killer_article, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
                  'pronoun3': pronoun[2]}
     message = message.format(**deathInfo)
     # Format extra stylization
@@ -573,14 +578,14 @@ def announceDeath(charName, deathTime, deathLevel, deathKiller, deathByPlayer):
 
 
 @asyncio.coroutine
-def announceLevel(char, newLevel):
+def announce_level(char, new_level):
     # Don't announce low level players
-    if int(newLevel) < announceTreshold:
+    if int(new_level) < announceTreshold:
         return
     if type(char) is not dict:
         log.error("Error in announceLevel, invalid character passed")
         return
-    log.info("Announcing level up: {0} ({1})".format(char["name"], newLevel))
+    log.info("Announcing level up: {0} ({1})".format(char["name"], new_level))
 
     # Get pronouns based on gender
     pronoun = ["he", "his", "him"] if char['gender'] == "male" else ["she", "her", "her"]
@@ -588,11 +593,11 @@ def announceLevel(char, newLevel):
     channel = get_channel_by_name(bot, main_channel, server_id=main_server)
 
     # Select a message
-    message = weighedChoice(levelmessages, char['vocation'], int(newLevel))
+    message = weighedChoice(levelmessages, char['vocation'], int(new_level))
     # Format message with level information
-    levelInfo = {'charName': char["name"], 'newLevel': newLevel, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
+    level_info = {'charName': char["name"], 'newLevel': new_level, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
                  'pronoun3': pronoun[2]}
-    message = message.format(**levelInfo)
+    message = message.format(**level_info)
     # Format extra stylization
     message = formatMessage(message)
     message = EMOJI[":star2:"]+" "+message
@@ -645,7 +650,7 @@ def im(ctx, *, char_name: str):
         c = userDatabase.cursor()
         mod_list = owner_ids+mod_ids
         admins_message = join_list(["**" + get_member(bot, admin, ctx.message.server).mention + "**" for admin in mod_list], ", ", " or ")
-        servers_message = join_list(["**" + server + "**" for server in tibiaservers], ", ", " or ")
+        servers_message = join_list(["**" + server + "**" for server in tibia_servers], ", ", " or ")
         not_allowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help "
                               "adding characters to your account please message {1}.").format(user, admins_message)
 
@@ -677,7 +682,7 @@ def im(ctx, *, char_name: str):
         updated = []
         added = []
         for char in chars:
-            if char['world'] not in tibiaservers:
+            if char['world'] not in tibia_servers:
                 skipped.append(char)
                 continue
             c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
@@ -735,29 +740,30 @@ def online():
     to be updated."""
     if lite_mode:
         return
-    discordOnlineChars = []
+    discord_online_chars = []
     c = userDatabase.cursor()
     try:
-        for char in globalOnlineList:
+        for char in global_online_list:
             char = char.split("_", 1)[1]
             c.execute("SELECT name, user_id, vocation, last_level FROM chars WHERE name LIKE ?", (char,))
             result = c.fetchone()
             if result:
                 # This will always be true unless a char is removed from chars in between globalOnlineList updates
-                discordOnlineChars.append({"name": result["name"], "id": result["user_id"],
-                                           "vocation": result["vocation"], "level": result["last_level"]})
-        if len(discordOnlineChars) == 0:
+                discord_online_chars.append({"name": result["name"], "id": result["user_id"],
+                                             "vocation": result["vocation"], "level": result["last_level"]})
+        if len(discord_online_chars) == 0:
             yield from bot.say("There is no one online from Discord.")
         else:
             reply = "The following discord users are online:"
-            for char in discordOnlineChars:
+            for char in discord_online_chars:
                 user = get_member(bot, char['id'])
 
                 char['vocation'] = get_voc_abb(char['vocation'])
+
                 # discordName = user.display_name if (user is not None) else "unknown"
                 if user is not None:
-                    discordName = user.display_name
-                    reply += "\n\t{0} (Lvl {1} {2}, **@{3}**)".format(char['name'], abs(char['level']), char['vocation'], discordName)
+                    discord_name = user.display_name
+                    reply += "\n\t{0} (Lvl {1} {2}, **@{3}**)".format(char['name'], abs(char['level']), char['vocation'], discord_name)
             yield from bot.say(reply)
     finally:
         c.close()
@@ -1397,6 +1403,8 @@ def game_update():
 if __name__ == "__main__":
     initDatabase()
 
+    print("Attempting login...")
+
     login = getLogin()
     try:
         token = login.token
@@ -1410,8 +1418,6 @@ if __name__ == "__main__":
         email = ""
         password = ""
     try:
-        # Background tasks
-        bot.loop.create_task(game_update())
         if token:
             bot.run(token)
         elif email and password:

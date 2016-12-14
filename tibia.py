@@ -245,7 +245,7 @@ class Tibia:
                       "WHERE vocation LIKE ? AND level >= ? AND level <= ? "
                       "ORDER by level DESC", ("%"+vocation, low, high))
             count = 0
-            online_list = [x.split("_", 1)[1] for x in globalOnlineList]
+            online_list = [x.split("_", 1)[1] for x in global_online_list]
             while True:
                 player = c.fetchone()
                 if player is None:
@@ -684,12 +684,12 @@ class Tibia:
         server_save_str = '{h} hours and {m} minutes'.format(h=hours, m=minutes)
 
         reply = "It's currently **{0}** in Tibia's servers.".format(timestrtibia)
-        if displayBrasiliaTime:
+        if display_brasilia_time:
             offsetbrasilia = get_brasilia_time_zone() - get_local_timezone()
             brasilia_time = datetime.now()+timedelta(hours=offsetbrasilia)
             timestrbrasilia = brasilia_time.strftime("%H:%M")
             reply += "\n**{0}** in Brazil (Brasilia).".format(timestrbrasilia)
-        if displaySonoraTime:
+        if display_sonora_time:
             offsetsonora = -7 - get_local_timezone()
             sonora_time = datetime.now()+timedelta(hours=offsetsonora)
             timestrsonora = sonora_time.strftime("%H:%M")

@@ -9,7 +9,7 @@ from datetime import datetime, date, timedelta
 from calendar import timegm
 import time
 
-from .general import log, globalOnlineList, tibiaDatabase, userDatabase, get_local_timezone
+from .general import log, global_online_list, tibiaDatabase, userDatabase, get_local_timezone
 
 # Constants
 ERROR_NETWORK = 0
@@ -375,7 +375,7 @@ def get_character(name, tries=5):
     if m:
         char['level'] = int(m.group(1))
     # Use database levels for online characters
-    for onchar in globalOnlineList:
+    for onchar in global_online_list:
         if onchar.split("_", 1)[1] == char['name']:
             c = userDatabase.cursor()
             c.execute("SELECT last_level FROM chars WHERE name LIKE ?", (char['name'],))

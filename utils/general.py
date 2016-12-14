@@ -5,7 +5,7 @@ import re
 import sqlite3
 import time
 from calendar import timegm
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from config import *
 

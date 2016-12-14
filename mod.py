@@ -2,7 +2,7 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from config import lite_mode, main_server, tibiaservers
+from config import lite_mode, main_server, tibia_servers
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
 from utils.general import is_numeric, userDatabase
 from utils.discord import get_member, get_member_by_name
@@ -165,7 +165,7 @@ class Mod:
                 # Registered to current user
                 yield from self.bot.say("This character is already registered to this user.")
                 return
-            c.execute("INSERT INTO chars (name,last_level,vocation,user_id, world) VALUES (?,?,?,?)",
+            c.execute("INSERT INTO chars (name,last_level,vocation,user_id, world) VALUES (?,?,?,?,?)",
                       (char["name"], char["level"] * -1, char["vocation"], user.id, char["world"]))
             # Check if user is already registered
             c.execute("SELECT id from users WHERE id = ?", (user.id,))
@@ -217,7 +217,7 @@ class Mod:
                 chars = [char]
             for char in chars:
                 # Character not in followed server(s), skip.
-                if char['world'] not in tibiaservers:
+                if char['world'] not in tibia_servers:
                     yield from self.bot.say("**{0}** skipped, character not in server list.".format(char['name']))
                     continue
                 char = yield from get_character(char['name'])

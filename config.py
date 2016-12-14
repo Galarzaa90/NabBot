@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 # Lite mode:
 # If lite is enabled, all user database related functions are disabled.
 # /stalk, /im, /whois /levels are disabled
@@ -21,7 +19,7 @@ log_channel_name = "server-log"
 
 # It's possible to fetch the database contents on a website to show more entries than what the bot can display
 # If enabled, certain commands will link to the website
-site_Enabled = True
+site_Enabled = False
 baseUrl = "http://galarzaa.no-ip.org:7005/ReddAlliance/"
 charactersPage = "characters.php"
 deathsPage = "deaths.php"
@@ -32,17 +30,17 @@ levelsPage = "levels.php"
 owner_ids = ["162060569803751424", "162070610556616705"]
 mod_ids = ["159815675194507265", "164253469912334350"]
 # Enable of disable specific timezones for /time
-displayBrasiliaTime = True
-displaySonoraTime = True
+display_brasilia_time = True
+display_sonora_time = True
 
 # The list of servers to check for with getServerOnline
-tibiaservers = ["Fidera"]
+tibia_servers = ["Fidera"]
 
 # This is the global online list
 # don't look at it too closely or you'll go blind!
 # characters are added as servername_charactername
 # The list is updated periodically on think() using get_server_online()
-globalOnlineList = []
+global_online_list = []
 
 # Level threshold for announces (level < announceLevel)
 announceTreshold = 30
@@ -51,10 +49,10 @@ announceTreshold = 30
 last_login_days = 7
 
 # Delay inbreed server checks
-serveronline_delay = timedelta(seconds=25)
+online_scan_interval = 25
 
-# Delay in between player death checks
-playerdeath_delay = timedelta(seconds=15)
+# Delay in between player death checks in seconds
+death_scan_interval = 15
 
 # Databases filenames
 USERDB = "users.db"
