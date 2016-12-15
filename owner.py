@@ -85,7 +85,7 @@ class Owner:
     @checks.is_owner()
     @asyncio.coroutine
     def diagnose(self, ctx: discord.ext.commands.Context, *, server_name=None):
-        """Checks the bot's necessary permissions and if it has a correct ask channel
+        """Diagnose the bots permissions and channels
 
         If server_name is specified, the permissions for that server will be checked
         if no server_name is specified, the current server's permissions will be checked

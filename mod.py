@@ -75,7 +75,7 @@ class Mod:
     @checks.is_mod()
     @asyncio.coroutine
     def stalk(self, ctx):
-        """Manipulate the user databases
+        """Manipulate the user database. See subcommands
 
         Check the available subcommands for more info.
         Commands and subcommands can only be used on pm"""
@@ -90,7 +90,10 @@ class Mod:
     def add_user(self, ctx, *, name):
         """Registers an user in the database
 
-        User must be visible by the bot."""
+        User must be visible by the bot.
+
+        The syntax is:
+        /stalk add user"""
         if not ctx.message.channel.is_private:
             return True
         c = userDatabase.cursor()
@@ -115,10 +118,10 @@ class Mod:
     def add_char(self, ctx, *, params):
         """Registers a tibia character to a discord user
 
-        The syntax is:
-        /stalk add user,character
+        The user is registered automatically if it wasn't registered already.
 
-        The user is registered automatically if it wasn't registered already."""
+        The syntax is:
+        /stalk addchar user,character"""
         if not ctx.message.channel.is_private:
             return True
         if lite_mode:
@@ -262,7 +265,10 @@ class Mod:
     @checks.is_owner()
     @asyncio.coroutine
     def remove_char(self, ctx, *, name):
-        """Removes a registered character."""
+        """Removes a registered character.
+
+        The syntax is:
+        /stalk removechar name"""
         if not ctx.message.channel.is_private:
             return True
         if lite_mode:
@@ -289,7 +295,10 @@ class Mod:
     @checks.is_owner()
     @asyncio.coroutine
     def remove_user(self, ctx, *, name):
-        """Removes a discord user from the database"""
+        """Removes a discord user from the database
+
+        The syntax is:
+        /stalk remove name"""
         if not ctx.message.channel.is_private:
             return True
         if lite_mode:

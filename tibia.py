@@ -21,7 +21,10 @@ class Tibia:
     @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'], pass_context=True)
     @asyncio.coroutine
     def whois(self, ctx, *, name=None):
-        """Tells you the characters of a user or the owner of a character and/or information of a tibia character
+        """Tells you a character's or a discord user's information
+
+        If it matches a discord user, it displays its registered users
+        If it matches a character, it displays its information.
 
         Note that the bot has no way to know the characters of a member that just joined.
         The bot has to be taught about the character's of an user."""
@@ -152,7 +155,7 @@ class Tibia:
                       pass_context=True)
     @asyncio.coroutine
     def find_team(self, ctx, *, params=None):
-        """Searches for characters of a specific vocation in range with another character or level range.
+        """Searches for a registered character that meets the criteria
 
         There are 3 ways to use this command:
         -Find a character of a certain vocation in share range with another character:
@@ -329,7 +332,9 @@ class Tibia:
     @commands.command(pass_context=True, aliases=['checkprice', 'item'])
     @asyncio.coroutine
     def itemprice(self, ctx, *, name: str=None):
-        """Checks an item's highest NPC price"""
+        """Checks an item's information
+
+        Shows name, picture, npcs that buy and sell and creature drops"""
         if name is None:
             yield from self.bot.say("Tell me the name of the item you want to search.")
             return
@@ -418,7 +423,7 @@ class Tibia:
     @commands.command(aliases=['deathlist', 'death'])
     @asyncio.coroutine
     def deaths(self, *, name: str=None):
-        """Shows a player's recent deaths or global deaths if no player is specified"""
+        """Shows a player's or everyone's recent deaths"""
         if name is None and lite_mode:
             return
         if name is None:
@@ -478,7 +483,7 @@ class Tibia:
     @commands.command(pass_context=True, aliases=['levelups', 'lvl', 'level', 'lvls'], hidden=lite_mode)
     @asyncio.coroutine
     def levels(self, ctx, *, name: str=None):
-        """Shows a player's recent level ups or global leveups if no player is specified
+        """Shows a player's or everoyne's recent level ups
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
@@ -540,8 +545,9 @@ class Tibia:
     @commands.command()
     @asyncio.coroutine
     def stats(self, *, params: str=None):
-        """Calculates the stats for a certain level and vocation, or a certain player
+        """Calculates character stats
 
+        There are 3 ways to use this command:
         /stats player
         /stats level,vocation
         /stats vocation,level"""

@@ -1,30 +1,31 @@
 import asyncio
 import os
+import platform
 import random
+import sys
+import time
+import traceback
 from datetime import timedelta, datetime
 
 import discord
-import time
-from discord.ext import commands
-import platform
-import sys
-import traceback
 import psutil
+from discord.ext import commands
 
 from config import *
 from utils.database import init_database, userDatabase, reload_worlds
-from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, get_character_deaths, \
-    get_voc_abb
 from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
     clean_string, get_role_list, get_member_by_name
 from utils.general import command_list, join_list, get_uptime, TimeString, \
     single_line, is_numeric, getLogin
 from utils.general import log
+from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
     weighedChoice, formatMessage
+from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, get_character_deaths, \
+    get_voc_abb
 
 description = '''Mission: Destroy all humans.'''
-bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True)
+bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True, formatter=NabHelpFormat())
 
 
 @bot.event
@@ -1219,6 +1220,7 @@ def event_make(ctx):
 @events.command(pass_context=True, name="subscribe", aliases=["sub"])
 @asyncio.coroutine
 def event_subscribe(ctx, event_id: int):
+    """Subscribe to receive a PM when an event is happening."""
     c = userDatabase.cursor()
     author = ctx.message.author
     now = time.time()
@@ -1314,7 +1316,7 @@ def info_server(ctx):
 @bot.command(pass_context=True, no_pm=True)
 @asyncio.coroutine
 def roles(ctx, *userName:str):
-    """Shows all role names within the Discord server, or all roles for a single member"""
+    """Shows a list of roles or an user's roles"""
     userName = " ".join(userName).strip()
     msg = "These are the active roles for "
 
