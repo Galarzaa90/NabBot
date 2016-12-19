@@ -148,7 +148,7 @@ def on_member_join(member: discord.Member):
 def on_member_remove(member):
     """Called when a member leaves or is kicked from a server."""
     log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.server.name}".format(member))
-    yield from send_log_message(bot, member.server, "{0.mention} left or was kicked.".format(member))
+    yield from send_log_message(bot, member.server, "**{0.name}#{0.discriminator}** left or was kicked.".format(member))
 
 
 @bot.event
@@ -156,7 +156,7 @@ def on_member_remove(member):
 def on_member_ban(member):
     """Called when a member is banned from a server."""
     log.info("{0.display_name} (ID:{0.id}) was banned from {0.server.name}".format(member))
-    yield from send_log_message(bot, member.server, "{0.mention} was banned.".format(member))
+    yield from send_log_message(bot, member.server, "**{0.name}#{0.discriminator}** was banned.".format(member))
 
 
 @bot.event
@@ -164,7 +164,7 @@ def on_member_ban(member):
 def on_member_unban(server, user):
     """Called when a member is unbanned from a server"""
     log.info("{1.name} (ID:{1.id}) was unbanned from {0.name}".format(server, user))
-    yield from send_log_message(bot, server, "{0.mention} was unbanned.".format(user))
+    yield from send_log_message(bot, server, "**{0.name}#{0.discriminator}** was unbanned.".format(user))
 
 
 @bot.event
