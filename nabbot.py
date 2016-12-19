@@ -140,6 +140,7 @@ def on_member_join(member: discord.Member):
               "Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking " \
               "your level ups and deaths!"
     yield from bot.send_message(member, message.format(member, bot))
+    yield from bot.send_message(member.server, "Look who just joined! Welcome {0.mention}!".format(member))
     yield from send_log_message(bot, member.server, "{0.mention} joined.".format(member))
 
 
@@ -609,27 +610,11 @@ def announce_level(char, new_level):
 
 
 # Bot commands
-@bot.command(aliases=["dice"])
-@asyncio.coroutine
-def roll(dice: str):
-    """Rolls a dice in TdN format.
-
-    Rolls a N-sides dice T times.
-    Example:
-    /roll 3d6 - Rolls a 6 sided dice 3 times"""
-    try:
-        rolls, limit = map(int, dice.split('d'))
-    except Exception:
-        yield from bot.say('Format has to be in NdN!')
-        return
-
-    result = ', '.join(str(random.randint(1, limit)) for r in range(rolls))
-    yield from bot.say(result)
-
-
 @bot.command(pass_context=True, description='For when you wanna settle the score some other way')
 @asyncio.coroutine
 def choose(ctx, *choices: str):
+    if choices is None:
+        return
     """Chooses between multiple choices."""
     user = ctx.message.author
     yield from bot.say('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
