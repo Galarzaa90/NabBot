@@ -8,15 +8,88 @@ from config import *
 from utils.database import userDatabase
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone
 from utils.messages import EMOJI
+from utils.messages import send_messageEx
 from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name
 from utils.tibia import *
 
-
+import requests
+import io
+from loot import *
 # Commands
 class Tibia:
     """Tibia related commands."""
     def __init__(self, bot: discord.Client):
         self.bot = bot
+
+    @commands.command(pass_context=True)
+    @asyncio.coroutine
+    def loot(self, ctx, *args: str):
+        global loot_current
+        if loot_current < loot_max:
+            for attachment in ctx.message.attachments:
+                filename = attachment['url'].split("/")[len(attachment['url'].split("/"))-1]
+                filehttp = attachment['url'][:-len(filename)]
+                r = requests.get(attachment['url'])
+                lootImage = None
+                try:
+                    lootImage = Image.open(io.BytesIO(bytearray(r.content))).convert("RGBA")
+                except Exception:
+                    yield from self.bot.send_message(ctx.message.channel,"Either that wasn't an image or I failed to load it, please try again.")
+                if lootImage is not None:
+                    loot_current+=1
+                    yield from self.bot.send_message(ctx.message.channel,"I've begun parsing your image, **@{0}**. Please be patient, this may take a few moments.".format(ctx.message.author.display_name))
+                    percentmessage = ""
+                    for _p in range(0,10): percentmessage+=":black_large_square:"
+                    progressMsg = yield from self.bot.send_message(ctx.message.channel,"Status: ...")
+                    progressBar = yield from self.bot.send_message(ctx.message.channel,percentmessage)
+                    lootList,lootImageOverlay = yield from lootScan(self.bot,lootImage,filename,progressMsg,progressBar)
+                    loot_current-=1
+                    message = ""
+                    message_pm = ""
+                    #embed = discord.Embed()
+                    #embed.description = ""
+                    if len(lootList) == 0:
+                        message = "Sorry, I couldn't find any loot in that image. Loot parsing will only work on high quality images, so make sure the image wasn't compressed."
+                    else:
+                        message = "I've finished parsing your image **@{0}**\r\n".format(ctx.message.author.display_name)
+                        #reply += "Loot:\r\n"
+                        totalvalue = 0
+                        
+                        unknown = False
+                        for item in lootList:
+                            if lootList[item]['group'] == "Unknown":
+                                unknown = lootList[item]
+                                break
+                                
+                        groups = []
+                        for item in lootList:
+                            if not lootList[item]['group'] in groups and lootList[item]['group'] != "Unknown":
+                                groups.append(lootList[item]['group'])
+                        #groups.append("No Value")
+                        
+                        for group in groups:
+                            message_pm+="__"+group+":__\r\n"
+                            for item in lootList:
+                                """if lootList[item]['value'] == 0 and lootList[item]['group'] != "Unknown" and group == "No Value":
+                                    message_pm+="{0} (x{1}) {2}gp each, {3}gp total.\r\n".format(item,lootList[item]['count'],lootList[item]['value'],lootList[item]['count']*lootList[item]['value'])
+                                    totalvalue+= lootList[item]['count']*lootList[item]['value']
+                                elif lootList[item]['value'] > 0 and lootList[item]['group'] == group:"""
+                                if lootList[item]['group'] == group and lootList[item]['group'] != "Unknown":
+                                    message_pm+="{0} (x{1}) {2}gp each, {3}gp total.\r\n".format(item,lootList[item]['count'],lootList[item]['value'],lootList[item]['count']*lootList[item]['value'])
+                                    totalvalue+= lootList[item]['count']*lootList[item]['value']
+                        
+                        if unknown != False:
+                            message_pm+="\r\n**There were {0} unknown items.**\r\n".format(unknown['count'])
+                        
+                        message += "Total value: {0}\r\n".format(totalvalue)
+                        message_pm += "\r\n__Total value:__ {0}\r\n".format(totalvalue)
+                        message += "I've also sent you a PM with more detailed information."
+                        yield from self.bot.send_message(ctx.message.author,"This was your image: {0}\r\nThis is the result of my scan:".format(attachment['url']))
+                        yield from self.bot.send_file(ctx.message.author, lootImageOverlay,filename=filename+".png")
+                    yield from self.bot.say(message)
+                    yield from send_messageEx(self.bot,ctx.message.author,message_pm,True)
+        else:
+            yield from self.bot.send_message(ctx.message.channel,"Sorry, I am already parsing too many loot images, please wait a couple of minutes and try again.")
 
     @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'], pass_context=True)
     @asyncio.coroutine

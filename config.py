@@ -44,6 +44,11 @@ tibia_worlds_dict = {}
 # The list is updated periodically on think() using get_server_online()
 global_online_list = []
 
+# Max amount of simultaneous images /loot can try to parse
+loot_max = 3
+global loot_current
+loot_current = 0
+
 # Level threshold for announces (level < announceLevel)
 announceTreshold = 30
 
@@ -59,6 +64,7 @@ death_scan_interval = 15
 # Databases filenames
 USERDB = "users.db"
 TIBIADB = "Database.db"
+LOOTDB = "loot/loot.db"
 
 if __name__ == "__main__":
     input("To run NabBot, run nabbot.py")
