@@ -1,5 +1,6 @@
 import random
 import re
+import discord
 
 from config import announceTreshold
 
@@ -1508,3 +1509,27 @@ def weighedChoice(messages, condition1=False, condition2=False, condition3=False
     # This shouldnt ever happen...
     print("Error in weighedChoice!")
     return _messages[0][1]
+
+def message_split(message):
+    if len(message) <= 2000:
+        return [message]
+    else:
+        lines = message.splitlines()
+        message_list = []
+        while len(lines) > 0:
+            new_message = ""
+            while len(lines) > 0 and len(new_message+lines[0]+"\r\n") <= 2000:
+                new_message+=lines[0]+"\r\n"
+                lines.remove(lines[0])
+            message_list.append(new_message)
+        return message_list
+
+def send_messageEx(bot,dest,message,embed=False):
+    message = message_split(message)
+    for msg in message:
+        if embed:
+            msg_embed = discord.Embed()
+            msg_embed.description = msg
+            yield from bot.send_message(dest,embed=msg_embed)
+        else:
+            yield from bot.send_message(dest,msg)

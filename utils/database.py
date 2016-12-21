@@ -1,9 +1,10 @@
 import sqlite3
 
-from config import USERDB, TIBIADB, tibia_worlds_dict, tibia_worlds
+from config import USERDB, TIBIADB, LOOTDB, tibia_worlds_dict, tibia_worlds
 
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
+lootDatabase = sqlite3.connect(LOOTDB)
 
 DB_LASTVERSION = 8
 
@@ -134,6 +135,7 @@ def dict_factory(cursor, row):
 
 userDatabase.row_factory = dict_factory
 tibiaDatabase.row_factory = dict_factory
+lootDatabase.row_factory = dict_factory
 
 
 def reload_worlds():
