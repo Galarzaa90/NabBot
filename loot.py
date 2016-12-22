@@ -6,18 +6,18 @@ import os
 from utils.database import lootDatabase
 from utils.messages import EMOJI
 
-slot = Image.open("loot/images/slot.PNG")
-slot_border = Image.open("loot/images/slotborder.PNG").convert("RGBA").getdata()
-numbers = [Image.open("loot/images/0.PNG"),
-           Image.open("loot/images/1.PNG"),
-           Image.open("loot/images/2.PNG"),
-           Image.open("loot/images/3.PNG"),
-           Image.open("loot/images/4.PNG"),
-           Image.open("loot/images/5.PNG"),
-           Image.open("loot/images/6.PNG"),
-           Image.open("loot/images/7.PNG"),
-           Image.open("loot/images/8.PNG"),
-           Image.open("loot/images/9.PNG")]
+slot = Image.open("loot/images/slot.png")
+slot_border = Image.open("loot/images/slotborder.png").convert("RGBA").getdata()
+numbers = [Image.open("loot/images/0.png"),
+           Image.open("loot/images/1.png"),
+           Image.open("loot/images/2.png"),
+           Image.open("loot/images/3.png"),
+           Image.open("loot/images/4.png"),
+           Image.open("loot/images/5.png"),
+           Image.open("loot/images/6.png"),
+           Image.open("loot/images/7.png"),
+           Image.open("loot/images/8.png"),
+           Image.open("loot/images/9.png")]
 
 
 def is_transparent(pixel):
@@ -377,16 +377,16 @@ def loot_scan(bot, loot_image, image_name, progress_msg, progress_bar):
     debug_output = str(debug_outputex)+"_"+debug_output
     
     loot_image_original = loot_image.copy()
-    groupimages = {'Green Djinn':Image.open("loot/images/Green Djinn.PNG"),
-                   'Blue Djinn':Image.open("loot/images/Blue Djinn.PNG"),
-                   'Rashid': Image.open("loot/images/Rashid.PNG"),
-                   'Yasir': Image.open("loot/images/Yasir.PNG"),
-                   'Tamoril': Image.open("loot/images/Tamoril.PNG"),
-                   'Jewels': Image.open("loot/images/Jewels.PNG"),
-                   'Gnomission': Image.open("loot/images/Gnomission.PNG"),
-                   'Other': Image.open("loot/images/Other.PNG"),
-                   'NoValue': Image.open("loot/images/NoValue.PNG"),
-                   'Unknown': Image.open("loot/images/Unknown.PNG")}
+    groupimages = {'Green Djinn':Image.open("loot/images/Green Djinn.png"),
+                   'Blue Djinn':Image.open("loot/images/Blue Djinn.png"),
+                   'Rashid': Image.open("loot/images/Rashid.png"),
+                   'Yasir': Image.open("loot/images/Yasir.png"),
+                   'Tamoril': Image.open("loot/images/Tamoril.png"),
+                   'Jewels': Image.open("loot/images/Jewels.png"),
+                   'Gnomission': Image.open("loot/images/Gnomission.png"),
+                   'Other': Image.open("loot/images/Other.png"),
+                   'NoValue': Image.open("loot/images/NoValue.png"),
+                   'Unknown': Image.open("loot/images/Unknown.png")}
 
     yield from bot.edit_message(progress_msg, "Status: Detecting item slots.")
     slot_list = yield from find_slots(bot, loot_image, progress_bar)
@@ -452,15 +452,15 @@ def loot_scan(bot, loot_image, image_name, progress_msg, progress_bar):
             # Save the loot image and the cropped item that couldn't be recognize
             if not os.path.exists("loot/debug/"+debug_output):
                 os.makedirs("loot/debug/"+debug_output)
-                loot_image_original.save("loot/debug/" + debug_output +"/" + image_name, "PNG")
+                loot_image_original.save("loot/debug/" + debug_output +"/" + image_name, "png")
             filename = "Unknown"
             filenameex = 0
             while os.path.isfile("loot/debug/"+debug_output+"/"+str(filenameex)+"_"+filename+".png"):
                 filenameex += 1
             # Save with background
-            loot_image.crop((found_slot['x'] + 1, found_slot['y'] + 1, found_slot['x'] + 33, found_slot['y'] + 33)).save("loot/debug/" + debug_output + "/" + str(filenameex) + "_" + filename + ".png", "PNG")
+            loot_image.crop((found_slot['x'] + 1, found_slot['y'] + 1, found_slot['x'] + 33, found_slot['y'] + 33)).save("loot/debug/" + debug_output + "/" + str(filenameex) + "_" + filename + ".png", "png")
             # Save without background
-            unknown_image.save("loot/debug/"+debug_output+"/"+str(filenameex)+"_"+filename+"-clean.png","PNG")
+            unknown_image.save("loot/debug/"+debug_output+"/"+str(filenameex)+"_"+filename+"-clean.png","png")
         if type(result) == dict:
             if quality > 2 and not result in unknown_items_list and not result in lq_items_list:
                 quality_warning += 1
@@ -468,7 +468,7 @@ def loot_scan(bot, loot_image, image_name, progress_msg, progress_bar):
                     yield from bot.send_message(progress_bar.channel,"WARNING: You seem to be using a low quality image, or a screenshot taken using Tibia's **software** renderer. Some items may not be recognized correctly, and overall scanning speed will be slower!")
                 lq_item = result
                 img_byte_arr = io.BytesIO()
-                qz_item.save(img_byte_arr, format='PNG')
+                qz_item.save(img_byte_arr, format='png')
                 img_byte_arr = img_byte_arr.getvalue()
                 lq_item['original'] = result['frame']
                 lq_item['frame'] = pickle.dumps(img_byte_arr)
@@ -517,6 +517,6 @@ def loot_scan(bot, loot_image, image_name, progress_msg, progress_bar):
     c.close()
     lootDatabase.commit()
     img_byte_arr = io.BytesIO()
-    loot_image.save(img_byte_arr, format='PNG')
+    loot_image.save(img_byte_arr, format='png')
     img_byte_arr = img_byte_arr.getvalue()
     return loot_list, img_byte_arr
