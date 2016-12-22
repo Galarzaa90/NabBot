@@ -1,9 +1,9 @@
 login.py
 users.db
 __pycache__
-*.log
 *.db-journal
 .idea
 *.gif
 *.png
 logs/
+/loot/loot.db
