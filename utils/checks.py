@@ -1,6 +1,7 @@
+import discord
 from discord.ext import commands
 
-from config import owner_ids, mod_ids
+from config import owner_ids, mod_ids, main_server
 
 
 # Checks if the user is the owner of the bot
@@ -27,4 +28,16 @@ def is_admin():
         if channel.is_private:
             return False
         return channel.permissions_for(author).manage_server or author.id in owner_ids
+    return commands.check(predicate)
+
+
+# Checks if the user belongs to main_server
+def is_main_server():
+    def predicate(ctx):
+        if ctx.message.author.id in owner_ids:
+            return True
+        member = discord.utils.get(ctx.bot.get_all_members(), server__id=main_server)
+        if member is None:
+            return False
+        return True
     return commands.check(predicate)

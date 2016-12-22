@@ -62,7 +62,7 @@ death_scan_interval = 15
 # Databases filenames
 USERDB = "users.db"
 TIBIADB = "Database.db"
-LOOTDB = "loot/loot.db"
+LOOTDB = "utils/loot.db"
 
 if __name__ == "__main__":
     input("To run NabBot, run nabbot.py")

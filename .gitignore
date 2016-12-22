@@ -5,4 +5,5 @@ __pycache__
 .idea
 /*.png
 logs/
-/loot/loot.db
+/utils/loot.db
+/loot/debug/

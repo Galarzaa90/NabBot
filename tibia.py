@@ -1,21 +1,18 @@
+import discord
+from discord.ext import commands
+from PIL import Image
 import os
 import random
-
-from PIL import Image
-from discord.ext import commands
-import discord
+import requests
+import io
 
 from config import *
-from loot import loot_scan
-from utils.database import userDatabase
+from utils import checks
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone
+from utils.loot import loot_scan
 from utils.messages import EMOJI
 from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name
 from utils.tibia import *
-
-import requests
-import io
-from loot import *
 
 # Commands
 class Tibia:
@@ -25,6 +22,7 @@ class Tibia:
         self.parsing_count = 0
 
     @commands.group(pass_context=True, invoke_without_command=True)
+    @checks.is_main_server()
     @asyncio.coroutine
     def loot(self, ctx):
         """Scans a loot image and returns it's loot value
@@ -131,7 +129,7 @@ class Tibia:
     @asyncio.coroutine
     def loot_legend(self):
         """Shows the meaning of the overlayed icons."""
-        with open("loot/images/legend.png", "r+b") as f:
+        with open("./images/legend.png", "r+b") as f:
             yield from self.bot.upload(f)
             f.close()
 
