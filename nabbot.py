@@ -2,6 +2,7 @@ import asyncio
 import os
 import platform
 import random
+import re
 import sys
 import time
 import traceback
@@ -26,6 +27,8 @@ from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_D
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True, formatter=NabHelpFormat())
+# We remove the default help command so we can override it
+bot.remove_command("help")
 
 
 @bot.event
@@ -610,6 +613,62 @@ def announce_level(char, new_level):
 
 
 # Bot commands
+@bot.command(pass_context=True)
+@asyncio.coroutine
+def help(ctx, *commands: str):
+    """Shows this message."""
+    _mentions_transforms = {
+        '@everyone': '@\u200beveryone',
+        '@here': '@\u200bhere'
+    }
+    _mention_pattern = re.compile('|'.join(_mentions_transforms.keys()))
+
+    bot = ctx.bot
+    destination = ctx.message.channel if ctx.message.channel.name == ask_channel_name else ctx.message.author
+
+    def repl(obj):
+        return _mentions_transforms.get(obj.group(0), '')
+
+    # help by itself just lists our own commands.
+    if len(commands) == 0:
+        pages = bot.formatter.format_help_for(ctx, bot)
+    elif len(commands) == 1:
+        # try to see if it is a cog name
+        name = _mention_pattern.sub(repl, commands[0])
+        command = None
+        if name in bot.cogs:
+            command = bot.cogs[name]
+        else:
+            command = bot.commands.get(name)
+            if command is None:
+                yield from bot.send_message(destination, bot.command_not_found.format(name))
+                return
+
+        pages = bot.formatter.format_help_for(ctx, command)
+    else:
+        name = _mention_pattern.sub(repl, commands[0])
+        command = bot.commands.get(name)
+        if command is None:
+            yield from bot.send_message(destination, bot.command_not_found.format(name))
+            return
+
+        for key in commands[1:]:
+            try:
+                key = _mention_pattern.sub(repl, key)
+                command = command.commands.get(key)
+                if command is None:
+                    yield from bot.send_message(destination, bot.command_not_found.format(key))
+                    return
+            except AttributeError:
+                yield from bot.send_message(destination, bot.command_has_no_subcommands.format(command, key))
+                return
+
+        pages = bot.formatter.format_help_for(ctx, command)
+
+    for page in pages:
+        yield from bot.send_message(destination, page)
+
+
 @bot.command(pass_context=True, description='For when you wanna settle the score some other way')
 @asyncio.coroutine
 def choose(ctx, *choices: str):
