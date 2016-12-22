@@ -44,7 +44,9 @@ class Tibia:
             return
 
         attachment = ctx.message.attachments[0]
-
+        if attachment.size > 2097152:
+            yield from self.bot.say("That image was too big! Try splitting it into smaller images, or cropping out anything irrelevant.")
+            return
         file_name = attachment['url'].split("/")[len(attachment['url'].split("/"))-1]
         file_url = attachment['url']
         r = requests.get(attachment['url'])
