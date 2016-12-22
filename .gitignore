@@ -3,7 +3,6 @@ users.db
 __pycache__
 *.db-journal
 .idea
-*.gif
-*.png
+/*.png
 logs/
 /loot/loot.db
