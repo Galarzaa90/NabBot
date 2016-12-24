@@ -21,6 +21,7 @@ ERROR_NOTINDATABASE = 2
 url_character = "https://secure.tibia.com/community/?subtopic=characters&name="
 url_guild = "https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName="
 url_guild_online = "https://secure.tibia.com/community/?subtopic=guilds&page=view&onlyshowonline=1&"
+url_house = "https://secure.tibia.com/community/?subtopic=houses&page=view&houseid={id}&world={world}"
 
 KNIGHT = ["knight", "elite knight", "ek", "k", "kina", "eliteknight","elite"]
 PALADIN = ["paladin", "royal paladin", "rp", "p", "pally", "royalpaladin", "royalpally"]
@@ -417,6 +418,15 @@ def get_character(name, tries=5):
         m = re.search(r'GuildName=.*?([^&]+).+', content)
         if m:
             char['guild'] = urllib.parse.unquote_plus(m.group(1))
+
+    # House
+    m = re.search(r'House:</td><td> <a href=\"https://secure\.tibia\.com/community/\?subtopic=houses.+houseid=(\d+)'
+                  r'&amp;character=(?:[^&]+)&amp;action=characters\" >([^<]+)</a> \(([^(]+)\) is paid until '
+                  r'([A-z]+).*?;(\d+).*?;(\d+)', content)
+    if m:
+        char["house_id"] = m.group(1)
+        char["house"] = m.group(2)
+        char["house_town"] = m.group(3)
 
     # Last login
     m = re.search(r'Last Login:</td><td>([^<]+)', content)

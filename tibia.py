@@ -14,6 +14,7 @@ from utils.messages import EMOJI
 from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name
 from utils.tibia import *
 
+
 # Commands
 class Tibia:
     """Tibia related commands."""
@@ -828,20 +829,24 @@ class Tibia:
         if char['gender'] == "female":
             pronoun = "She"
         url = url_character + urllib.parse.quote(char["name"])
-        reply_format = "[{1}]({9}) is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}"
+        reply_format = "[{1}]({9}) is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}{10}"
         guild_format = "\n{0} is __{1}__ of the [{2}]({3})."
         married_format = "\n{0} is married to [{1}]({2})."
         login_format = "\n{0} hasn't logged in for **{1}**."
+        house_format = "\n{0} owns [{1}]({2}) in {3}."
         guild = ""
         married = ""
+        house = ""
         login = "\n{0} has **never** logged in.".format(pronoun)
-        if char.get('guild', None):
+        if "guild" in char:
             guild_url = url_guild+urllib.parse.quote(char["guild"])
             guild = guild_format.format(pronoun, char['rank'], char['guild'], guild_url)
-        if char.get('married', None):
+        if "married" in char:
             married_url = url_character + urllib.parse.quote(char["married"])
             married = married_format.format(pronoun, char['married'], married_url)
-
+        if "house" in char:
+            house_url = url_house.format(id=char["house_id"], world=char["world"])
+            house = house_format.format(pronoun, char["house"], house_url, char["house_town"])
         if char['last_login'] is not None:
             last_login = get_local_time(char['last_login'])
             now = datetime.now()
@@ -852,7 +857,7 @@ class Tibia:
                 login = ""
 
         reply = reply_format.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'],
-                                    char['world'], guild, married, login, url)
+                                    char['world'], guild, married, login, url, house)
         return reply
 
     def get_user_string(self, username: str) -> str:

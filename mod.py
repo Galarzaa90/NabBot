@@ -415,7 +415,6 @@ class Mod:
                                                 new_char["name"], new_char["vocation"]))
                 return
             confirm_message = "Are you sure **{0}** ({1} {2}) is **{3}** ({4} {5}) now? `yes/no`"
-            print(old_char_db)
             yield from self.bot.say(confirm_message.format(old_char_db["name"], abs(old_char_db["last_level"]),
                                                            old_char_db["vocation"], new_char["name"], new_char["level"],
                                                            new_char["vocation"]))

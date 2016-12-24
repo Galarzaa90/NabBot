@@ -414,6 +414,8 @@ def scan_online_chars():
     #             Nezune's cave                     #
     # Do not touch anything, enter at your own risk #
     #################################################
+    if lite_mode:
+        return
     yield from bot.wait_until_ready()
     while not bot.is_closed:
         yield from asyncio.sleep(online_scan_interval)
