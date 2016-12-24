@@ -352,6 +352,103 @@ class Mod:
             c.close()
             userDatabase.commit()
 
+    @stalk.command(name="namelock", pass_context=True, aliases=["namechange","rename"])
+    @checks.is_mod()
+    @asyncio.coroutine
+    def stalk_namelock(self, ctx, *, params):
+        """Register the name of a new character that was namelocked.
+
+        Characters that get namelocked can't be searched by their old name, so they must be reassigned manually.
+
+        If the character got a name change (from the store), searching the old name redirects to the new name, so
+        this are usually reassigned automatically.
+
+        The syntax is:
+        /stalk namelock oldname,newname"""
+        if not ctx.message.channel.is_private:
+            return True
+        if lite_mode:
+            return
+        params = params.split(",")
+        if len(params) != 2:
+            yield from self.bot.say("The correct syntax is: `/stalk namelock oldname,newname")
+            return
+
+        old_name = params[0]
+        new_name = params[1]
+        try:
+            c = userDatabase.cursor()
+            c.execute("SELECT * FROM chars WHERE name LIKE ? LIMIT 1", (old_name,))
+            old_char_db = c.fetchone()
+            # If character wasn't registered, there's nothing to do.
+            if old_char_db is None:
+                yield from self.bot.say("I don't have a character registered with the name: **{0}**".format(old_name))
+                return
+            # Search old name to see if there's a result
+            old_char = yield from get_character(old_name)
+            if old_char == ERROR_NETWORK:
+                yield from self.bot.say("I'm having problem with 'the internet' as you humans say, try again.")
+                return
+            # Check if returns a result
+            if type(old_char) is dict:
+                if old_name.lower() == old_char["name"].lower():
+                    yield from self.bot.say("The character **{0}** wasn't namelocked.".format(old_char["name"]))
+                else:
+                    yield from self.bot.say("The character **{0}** was renamed to **{1}**.".format(old_name,
+                                                                                                   old_char["name"]))
+                    # Renaming is actually done in get_character(), no need to do anything.
+                return
+
+            # Check if new name exists
+            new_char = yield from get_character(new_name)
+            if new_char == ERROR_NETWORK:
+                yield from self.bot.say("I'm having problem with 'the internet' as you humans say, try again.")
+                return
+            if new_char == ERROR_DOESNTEXIST:
+                yield from self.bot.say("The character **{0}** doesn't exists.".format(new_name))
+                return
+            # Check if vocations are similar
+            if not (old_char_db["vocation"].lower() in new_char["vocation"].lower()
+                    or new_char["vocation"].lower() in old_char_db["vocation"].lower()):
+                yield from self.bot.say("**{0}** was a *{1}* and **{2}** is a *{3}*. I think you're making a mistake."
+                                        .format(old_char_db["name"], old_char_db["vocation"],
+                                                new_char["name"], new_char["vocation"]))
+                return
+            confirm_message = "Are you sure **{0}** ({1} {2}) is **{3}** ({4} {5}) now? `yes/no`"
+            print(old_char_db)
+            yield from self.bot.say(confirm_message.format(old_char_db["name"], abs(old_char_db["last_level"]),
+                                                           old_char_db["vocation"], new_char["name"], new_char["level"],
+                                                           new_char["vocation"]))
+            reply = yield from self.bot.wait_for_message(author=ctx.message.author, channel=ctx.message.channel,
+                                                         timeout=50.0)
+            if reply is None:
+                yield from self.bot.say("No answer? I guess you changed your mind.")
+                return
+            elif reply.content.lower() not in ["yes", "y"]:
+                yield from self.bot.say("No then? Alright.")
+                return
+
+            # Check if new name was already registered
+            c.execute("SELECT * FROM chars WHERE name LIKE ?", (new_char["name"],))
+            new_char_db = c.fetchone()
+
+            if new_char_db is None:
+                c.execute("UPDATE chars SET name = ?, vocation = ?, last_level = ? WHERE id = ?", (new_char["name"],
+                                                                                                    new_char["vocation"],
+                                                                                                    new_char["level"],
+                                                                                                    old_char_db["id"],))
+            else:
+                # Replace new char with old char id and delete old char, reassign deaths and levelups
+                c.execute("DELETE FROM chars WHERE id = ?", (old_char_db["id"]),)
+                c.execute("UPDATE chars SET id = ? WHERE id = ?", (old_char_db["id"], new_char_db["id"],))
+                c.execute("UPDATE char_deaths SET id = ? WHERE id = ?", (old_char_db["id"], new_char_db["id"],))
+                c.execute("UPDATE char_levelups SET id = ? WHERE id = ?", (old_char_db["id"], new_char_db["id"],))
+
+            yield from self.bot.say("Character renamed successfully.")
+        finally:
+            c.close()
+            userDatabase.commit()
+
     @stalk.command(pass_context=True, aliases=["clean"])
     @checks.is_owner()
     @asyncio.coroutine

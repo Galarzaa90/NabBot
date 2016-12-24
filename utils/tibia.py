@@ -435,16 +435,17 @@ def get_character(name, tries=5):
 
     # Update name and vocation in chars database if necessary
     c = userDatabase.cursor()
-    c.execute("SELECT vocation FROM chars WHERE name LIKE ?", (name,))
+    c.execute("SELECT vocation, name, id FROM chars WHERE name LIKE ?", (name,))
     result = c.fetchone()
     if result:
         if result["vocation"] != char['vocation']:
-            c.execute("UPDATE chars SET vocation = ? WHERE name LIKE ?", (char['vocation'], name,))
-            log.info("{0}'s vocation was set to {1} from {2} during getPlayer()".format(char['name'], char['vocation'],
-                                                                                        result["vocation"]))
-            # if name != char['name']:
-            #     c.execute("UPDATE chars SET name = ? WHERE name LIKE ?",(char['name'],name,))
-            #     yield from bot.say("**{0}** was renamed to **{1}**, updating...".format(name,char['name']))
+            c.execute("UPDATE chars SET vocation = ? WHERE id = ?", (char['vocation'], result["id"],))
+            log.info("{0}'s vocation was set to {1} from {2} during get_character()".format(char['name'],
+                                                                                            char['vocation'],
+                                                                                            result["vocation"]))
+        if result["name"] != char["name"]:
+            c.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
+            log.info("{0} was renamed to {1} during get_character()".format(result["name"], char['name']))
 
     # Other chars
     # note that an empty char list means the character is hidden
