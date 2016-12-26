@@ -10,6 +10,7 @@ from calendar import timegm
 import time
 
 from utils.database import userDatabase, tibiaDatabase
+from config import highscore_categories
 from .general import log, global_online_list, get_local_timezone
 
 # Constants
@@ -22,6 +23,7 @@ url_character = "https://secure.tibia.com/community/?subtopic=characters&name="
 url_guild = "https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName="
 url_guild_online = "https://secure.tibia.com/community/?subtopic=guilds&page=view&onlyshowonline=1&"
 url_house = "https://secure.tibia.com/community/?subtopic=houses&page=view&houseid={id}&world={world}"
+url_highscores = "https://secure.tibia.com/community/?subtopic=highscores&world={0}&list={1}&profession=0&currentpage={2}"
 
 KNIGHT = ["knight", "elite knight", "ek", "k", "kina", "eliteknight","elite"]
 PALADIN = ["paladin", "royal paladin", "rp", "p", "pally", "royalpaladin", "royalpally"]
@@ -31,6 +33,51 @@ MAGE = DRUID + SORCERER + ["mage"]
 NO_VOCATION = ["no vocation", "no voc", "novoc", "nv", "n v", "none", "no", "n", "noob", "noobie", "rook", "rookie"]
 
 
+@asyncio.coroutine
+def get_highscores(server,category,pagenum, tries=5):
+    """Gets a specific page of the highscores
+    Each list element is a dictionary with the following keys: rank, name, value.
+    May return ERROR_NETWORK"""
+    url = url_highscores.format(server,category,pagenum)
+    #print(url)
+    # Fetch website
+    try:
+        page = yield from aiohttp.get(url)
+        content = yield from page.text(encoding='ISO-8859-1')
+    except Exception:
+        if tries == 0:
+            log.error("get_highscores: Couldn't fetch {0}, network error.".format(url))
+            return ERROR_NETWORK
+        else:
+            tries -= 1
+            ret = yield from get_highscores(server,category,pagenum, tries)
+            return ret
+    
+    # Trimming content to reduce load
+    try:
+        start_index = content.index('<td style="width: 20%;" >Vocation</td>')
+        end_index = content.index('<div style="float: left;"><b>&raquo; Pages:')
+        content = content[start_index:end_index]
+        #print(content)
+    except ValueError:
+        # Website fetch was incomplete, due to a network error
+        if tries == 0:
+            log.error("get_highscores: Couldn't fetch {0}, network error.".format(url))
+            return ERROR_NETWORK
+        else:
+            tries -= 1
+            ret = yield from get_highscores(server,category,pagenum, tries)
+            return ret
+    
+    regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
+    pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
+    matches = re.findall(pattern, content)
+    scoreList = []
+    for m in matches:
+        #print(m)
+        scoreList.append({'rank': m[0], 'name': m[1], 'value': m[2]})
+    return scoreList
+    
 @asyncio.coroutine
 def get_character_deaths(name, single_death=False, tries=5):
     """Returns a list with the player's deaths
@@ -457,6 +504,17 @@ def get_character(name, tries=5):
             c.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
             log.info("{0} was renamed to {1} during get_character()".format(result["name"], char['name']))
 
+    #Skills from highscores
+    c = userDatabase.cursor()
+    for category,_categorystring in highscore_categories.items():
+        c.execute("SELECT "+category+","+category+"_rank FROM chars WHERE name LIKE ?", (name,))
+        result = c.fetchone()
+        if result:
+            if result[category] is not None and result[category+'_rank'] is not None:
+                char[category] = result[category]
+                char[category+'_rank'] = result[category+'_rank']
+                print(char['name'],char[category],char[category+'_rank'])
+    
     # Other chars
     # note that an empty char list means the character is hidden
     # otherwise you'd have at least the same char in the list

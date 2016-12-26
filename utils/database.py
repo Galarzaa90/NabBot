@@ -6,7 +6,7 @@ userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 8
+DB_LASTVERSION = 9
 
 
 def init_database():
@@ -116,6 +116,29 @@ def init_database():
                       name TEXT,
                       value TEXT
                       );""")
+            db_version += 1
+        if db_version == 8:
+            # Added 'achievements', 'axe', 'club', 'distance', 'fishing', 'fist', 'loyalty', 'magic', 'shielding', 'sword', 'achievements_rank', 'axe_rank', 'club_rank', 'distance_rank', 'fishing_rank', 'fist_rank', 'loyalty_rank', 'magic_rank', 'shielding_rank', 'sword_rank',  columns to 'chars'
+            c.execute("ALTER TABLE chars ADD achievements INTEGER")
+            c.execute("ALTER TABLE chars ADD axe INTEGER")
+            c.execute("ALTER TABLE chars ADD club INTEGER")
+            c.execute("ALTER TABLE chars ADD distance INTEGER")
+            c.execute("ALTER TABLE chars ADD fishing INTEGER")
+            c.execute("ALTER TABLE chars ADD fist INTEGER")
+            c.execute("ALTER TABLE chars ADD loyalty INTEGER")
+            c.execute("ALTER TABLE chars ADD magic INTEGER")
+            c.execute("ALTER TABLE chars ADD shielding INTEGER")
+            c.execute("ALTER TABLE chars ADD sword INTEGER")
+            c.execute("ALTER TABLE chars ADD achievements_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD axe_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD club_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD distance_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD fishing_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD fist_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD loyalty_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD magic_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD shielding_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD sword_rank INTEGER")
             db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
