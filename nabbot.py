@@ -23,7 +23,7 @@ from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
     weighedChoice, formatMessage
 from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, get_character_deaths, \
-    get_voc_abb
+    get_voc_abb,get_highscores
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True, formatter=NabHelpFormat())
@@ -60,6 +60,7 @@ def on_ready():
     bot.loop.create_task(events_announce())
     bot.loop.create_task(scan_deaths())
     bot.loop.create_task(scan_online_chars())
+    bot.loop.create_task(scan_highscores())
 
 
 @bot.event
@@ -407,7 +408,37 @@ def scan_deaths():
         yield from check_death(current_char)
 
 
-
+@asyncio.coroutine
+def scan_highscores():
+    #################################################
+    #             Nezune's cave                     #
+    # Do not touch anything, enter at your own risk #
+    #################################################
+    yield from bot.wait_until_ready()
+    while not bot.is_closed:
+        if len(tibia_servers) == 0:
+            break
+        for server in tibia_servers:
+            for category,_categorystring in highscore_categories.items():
+                highscores = []
+                for pagenum in range(1,13):
+                    scores = yield from get_highscores(server,category,pagenum)
+                    if not (scores == ERROR_NETWORK):
+                        highscores+=scores
+                    yield from asyncio.sleep(3)
+                # Open connection to users.db
+                c = userDatabase.cursor()
+                for score in highscores:
+                    c.execute(
+                        "UPDATE chars SET "+category+" = NULL, "+category+"_rank"+" = NULL WHERE "+category+"_rank"+" LIKE ?",
+                        (score['rank'],)
+                    )
+                    c.execute(
+                        "UPDATE chars SET "+category+"_rank"+" = ?, "+category+" = ? WHERE name LIKE ?",
+                        (score['rank'],score['value'],score['name'],)
+                    )
+                userDatabase.commit()
+                c.close()
 @asyncio.coroutine
 def scan_online_chars():
     #################################################

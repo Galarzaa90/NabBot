@@ -858,6 +858,12 @@ class Tibia:
 
         reply = reply_format.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'],
                                     char['world'], guild, married, login, url, house)
+        
+        # Insert any highscores this character holds
+        highscore_format = "\n{0} is on place **{1}** on the highscore table with {2}."
+        for category,categorystring in highscore_categories.items():
+            if char.get(category, None):
+                reply+=highscore_format.format(pronoun,char[category+'_rank'], categorystring.format(char[category]))
         return reply
 
     def get_user_string(self, username: str) -> str:
