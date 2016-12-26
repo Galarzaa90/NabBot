@@ -513,7 +513,6 @@ def get_character(name, tries=5):
             if result[category] is not None and result[category+'_rank'] is not None:
                 char[category] = result[category]
                 char[category+'_rank'] = result[category+'_rank']
-                print(char['name'],char[category],char[category+'_rank'])
     
     # Other chars
     # note that an empty char list means the character is hidden
