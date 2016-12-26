@@ -407,7 +407,6 @@ def scan_deaths():
         # Check for new death
         yield from check_death(current_char)
 
-
 @asyncio.coroutine
 def scan_highscores():
     #################################################
@@ -428,17 +427,24 @@ def scan_highscores():
                     yield from asyncio.sleep(3)
                 # Open connection to users.db
                 c = userDatabase.cursor()
+                scores_tuple = []
+                ranks_tuple = []
                 for score in highscores:
-                    c.execute(
-                        "UPDATE chars SET "+category+" = NULL, "+category+"_rank"+" = NULL WHERE "+category+"_rank"+" LIKE ?",
-                        (score['rank'],)
-                    )
-                    c.execute(
-                        "UPDATE chars SET "+category+"_rank"+" = ?, "+category+" = ? WHERE name LIKE ?",
-                        (score['rank'],score['value'],score['name'],)
-                    )
+                    scores_tuple.append((score['rank'],score['value'],score['name']))
+                    ranks_tuple.append((score['rank'],server))
+                # Clear out old rankings
+                c.executemany(
+                    "UPDATE chars SET "+category+" = NULL, "+category+"_rank"+" = NULL WHERE "+category+"_rank"+" LIKE ? AND world LIKE ?",
+                    (ranks_tuple)
+                )
+                # Add new rankings
+                c.executemany(
+                    "UPDATE chars SET "+category+"_rank"+" = ?, "+category+" = ? WHERE name LIKE ?",
+                    (scores_tuple)
+                )
                 userDatabase.commit()
                 c.close()
+
 @asyncio.coroutine
 def scan_online_chars():
     #################################################
