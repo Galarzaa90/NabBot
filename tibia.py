@@ -536,38 +536,48 @@ class Tibia:
         if loot_embed is not None:
             yield from self.bot.say(embed=loot_embed)
 
-    @commands.command(aliases=['deathlist', 'death'])
+    @commands.command(aliases=['deathlist', 'death'], pass_context=True)
     @asyncio.coroutine
-    def deaths(self, *, name: str=None):
+    def deaths(self, ctx, *, name: str=None):
         """Shows a player's or everyone's recent deaths"""
         if name is None and lite_mode:
             return
+        now = time.time()
+        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
+        ask_message = ""
+        embed = discord.Embed(title="Latest deaths:", description="")
+        embed.colour = discord.Colour.dark_red()
+        limit = 5
+        if ctx.message.channel.is_private or ctx.message.channel == ask_channel:
+            limit = 20
+        elif ask_channel is not None:
+            ask_message = "\nFor longer replies use {0.mention}".format(ask_channel)
         if name is None:
             c = userDatabase.cursor()
             try:
                 c.execute("SELECT level, date, name, user_id, byplayer, killer "
                           "FROM char_deaths, chars "
                           "WHERE char_id = id "
-                          "ORDER BY date DESC LIMIT 15")
+                          "ORDER BY date DESC LIMIT ?", (limit,))
                 result = c.fetchall()
                 if len(result) < 1:
                     yield from self.bot.say("No one has died recently")
                     return
-                now = time.time()
-                reply = "Latest deaths:"
+
                 for death in result:
                     timediff = timedelta(seconds=now-death["date"])
-                    died = "Killed" if death["byplayer"] else "Died"
                     user = get_member(self.bot, death["user_id"])
                     username = "unknown"
                     if user:
                         username = user.display_name
-                    reply += "\n\t{4} (**@{5}**) - {0} at level **{1}** by {2} - *{3} ago*".format(died, death["level"], death["killer"], get_time_diff(timediff), death["name"], username)
-                yield from self.bot.say(reply)
+                    time_string = get_time_diff(timediff)
+                    embed.description += "\n\u25BA {3} (**@{4}**) - At level **{0}** by {1} - *{2} ago*".format(death["level"], death["killer"], time_string, death["name"], username)
+                embed.description += ask_message
+                yield from self.bot.say(embed=embed)
                 return
             finally:
                 c.close()
-        if name.lower() == "nab bot":
+        if name.lower() == self.bot.user.name.lower():
             yield from self.bot.say("**Nab Bot** never dies.")
             return
         deaths = yield from get_character_deaths(name)
@@ -581,20 +591,19 @@ class Tibia:
             yield from self.bot.say(name.title()+" hasn't died recently.")
             return
         tooMany = False
-        if len(deaths) > 15:
+        if len(deaths) > limit:
+            deaths = deaths[:limit]
             tooMany = True
-            deaths = deaths[:15]
 
-        reply = name.title()+" recent deaths:"
+        embed.title = name.title()+" recent deaths:"
 
         for death in deaths:
             diff = get_time_diff(datetime.now() - get_local_time(death['time']))
-            died = "Killed" if death['byPlayer'] else "Died"
-            reply += "\n\t{0} at level **{1}** by {2} - *{3} ago*".format(died, death['level'], death['killer'], diff)
+            embed.description += "\n\u25BA At level **{0}** by {1} - *{2} ago*".format(death['level'], death['killer'], diff)
         if tooMany:
-            reply += "\n*This person dies too much, I can't show you all the deaths!*"
+            embed.description += ask_message
 
-        yield from self.bot.say(reply)
+        yield from self.bot.say(embed=embed)
 
     @commands.command(pass_context=True, aliases=['levelups', 'lvl', 'level', 'lvls'], hidden=lite_mode)
     @asyncio.coroutine
@@ -605,10 +614,17 @@ class Tibia:
         by the users of this discord server."""
         if lite_mode:
             return
+        now = time.time()
         c = userDatabase.cursor()
-        limit = 10
-        if ctx.message.channel.is_private or ctx.message.channel.name == ask_channel_name:
+        limit = 5
+        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
+        ask_message = ""
+        embed = discord.Embed(title="Latest level ups:", description="")
+        embed.colour = discord.Colour.dark_green()
+        if ctx.message.channel.is_private or ctx.message.channel == ask_channel:
             limit = 20
+        elif ask_channel is not None:
+            ask_message = "\nFor longer replies use {0.mention}".format(ask_channel)
         try:
             if name is None:
                 c.execute("SELECT level, date, name, user_id "
@@ -619,18 +635,20 @@ class Tibia:
                 if len(result) < 1:
                     yield from self.bot.say("No one has leveled up recently")
                     return
-                now = time.time()
-                reply = "Latest level ups:"
+
+                levels = ""
                 for levelup in result:
                     timediff = timedelta(seconds=now-levelup["date"])
                     user = get_member(self.bot, levelup["user_id"])
                     username = "unkown"
                     if user:
                         username = user.display_name
-                    reply += "\n\tLevel **{0}** - {2} (**@{3}**) - *{1} ago*".format(levelup["level"], get_time_diff(timediff), levelup["name"], username)
-                if site_Enabled:
-                    reply += "\nSee more levels check: <{0}{1}>".format(baseUrl, levelsPage)
-                yield from self.bot.say(reply)
+                    embed.description += "\n\u25BA Level **{0}** - {2} (**@{3}**) - *{1} ago*"\
+                        .format(levelup["level"], get_time_diff(timediff), levelup["name"], username)
+                if site_enabled:
+                    embed.description += "\nSee more levels [here]({0}{1})".format(baseUrl, levelsPage)
+                embed.description += ask_message
+                yield from self.bot.say(embed=embed)
                 return
             # Checking if character exists in db and get id while we're at it
             c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
@@ -647,14 +665,17 @@ class Tibia:
             if len(result) < 1:
                 yield from self.bot.say("I haven't seen **{0}** level up.".format(name))
                 return
-            now = time.time()
-            reply = "**{0}** latest level ups:".format(name)
+            embed.title = "**{0}** latest level ups:".format(name)
+            levels = ""
             for levelup in result:
                 timediff = timedelta(seconds=now-levelup["date"])
-                reply += "\n\tLevel **{0}** - *{1} ago*".format(levelup["level"], get_time_diff(timediff))
-
-            reply += "\nSee more levels at: <{0}{1}?name={2}>".format(baseUrl, charactersPage, urllib.parse.quote(name))
-            yield from self.bot.say(reply)
+                embed.description += "\n\u25BA Level **{0}** - *{1} ago*".format(levelup["level"],
+                                                                                 get_time_diff(timediff))
+            if site_enabled:
+                embed.description += "\nSee more levels [here]({0}{1}?name={2})".format(baseUrl, charactersPage,
+                                                                                        urllib.parse.quote(name))
+            embed.description += ask_message
+            yield from self.bot.say(embed=embed)
         finally:
             c.close()
 

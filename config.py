@@ -19,7 +19,7 @@ log_channel_name = "server-log"
 
 # It's possible to fetch the database contents on a website to show more entries than what the bot can display
 # If enabled, certain commands will link to the website
-site_Enabled = True
+site_enabled = True
 baseUrl = "http://galarzaa.no-ip.org:7005/ReddAlliance/"
 charactersPage = "characters.php"
 deathsPage = "deaths.php"
