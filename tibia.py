@@ -847,8 +847,10 @@ class Tibia:
         if char == ERROR_NETWORK or char == ERROR_DOESNTEXIST:
             return char
         pronoun = "He"
+        pronoun2 ="His"
         if char['gender'] == "female":
             pronoun = "She"
+            pronoun2 = "Her"
         url = url_character + urllib.parse.quote(char["name"])
         reply_format = "[{1}]({9}) is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}{10}"
         guild_format = "\n{0} is __{1}__ of the [{2}]({3})."
@@ -881,10 +883,10 @@ class Tibia:
                                     char['world'], guild, married, login, url, house)
         
         # Insert any highscores this character holds
-        highscore_format = "\n{0} is on place **{1}** on the highscore table with {2}."
-        for category,categorystring in highscore_categories.items():
+        for category in highscores_categories:
             if char.get(category, None):
-                reply+=highscore_format.format(pronoun,char[category+'_rank'], categorystring.format(char[category]))
+                highscore_string = highscore_format[category].format(pronoun2, char[category+'_rank'], char[category])
+                reply += "\n"+EMOJI[":trophy:"]+" {0}".format(highscore_string)
         return reply
 
     def get_user_string(self, username: str) -> str:

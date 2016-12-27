@@ -10,7 +10,7 @@ from calendar import timegm
 import time
 
 from utils.database import userDatabase, tibiaDatabase
-from config import highscore_categories
+from config import highscores_categories
 from .general import log, global_online_list, get_local_timezone
 
 # Constants
@@ -32,13 +32,24 @@ SORCERER = ["sorcerer", "master sorcerer", "ms", "s", "sorc", "mastersorcerer", 
 MAGE = DRUID + SORCERER + ["mage"]
 NO_VOCATION = ["no vocation", "no voc", "novoc", "nv", "n v", "none", "no", "n", "noob", "noobie", "rook", "rookie"]
 
+highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on rank **{2}**",
+                    "axe": "{0} __axe fighting__ level is **{1}**, on rank **{2}**",
+                    "club": "{0} __club fighting__ level is **{1}**, on rank **{2}**",
+                    "distance": "{0} __distance fighting__ level is **{1}**, on rank **{2}**",
+                    "fishing": "{0} __fishing__ level is **{1}**, on rank **{2}**",
+                    "fist": "{0} __fist fighting__ level is **{1}**, on rank **{2}**",
+                    "loyalty": "{0} __loyalty points__ are **{1}**, on rank **{2}**",
+                    "magic": "{0} __magic level__ is **{1}**, on rank **{2}**",
+                    "shielding": "{0} __shielding__ level is **{1}**, on rank **{2}**",
+                    "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
+
 
 @asyncio.coroutine
-def get_highscores(server,category,pagenum, tries=5):
+def get_highscores(server, category, pagenum, tries=5):
     """Gets a specific page of the highscores
     Each list element is a dictionary with the following keys: rank, name, value.
     May return ERROR_NETWORK"""
-    url = url_highscores.format(server,category,pagenum)
+    url = url_highscores.format(server, category, pagenum)
     #print(url)
     # Fetch website
     try:
@@ -50,7 +61,7 @@ def get_highscores(server,category,pagenum, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from get_highscores(server,category,pagenum, tries)
+            ret = yield from get_highscores(server, category, pagenum, tries)
             return ret
     
     # Trimming content to reduce load
@@ -66,7 +77,7 @@ def get_highscores(server,category,pagenum, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from get_highscores(server,category,pagenum, tries)
+            ret = yield from get_highscores(server, category, pagenum, tries)
             return ret
     
     regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
@@ -504,9 +515,9 @@ def get_character(name, tries=5):
             c.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
             log.info("{0} was renamed to {1} during get_character()".format(result["name"], char['name']))
 
-    #Skills from highscores
+    #S kills from highscores
     c = userDatabase.cursor()
-    for category,_categorystring in highscore_categories.items():
+    for category in highscores_categories:
         c.execute("SELECT "+category+","+category+"_rank FROM chars WHERE name LIKE ?", (name,))
         result = c.fetchone()
         if result:

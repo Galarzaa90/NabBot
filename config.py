@@ -39,16 +39,8 @@ tibia_worlds = []
 tibia_worlds_dict = {}
 
 # Which highscores to track (can be empty)
-highscore_categories = {"achievements":"**{0}** achievement points",
-            "axe":"axe fighting level **{0}**",
-            "club":"club fighting level **{0}**",
-            "distance":"distance fighting level **{0}**",
-            "fishing":"fishing level **{0}**",
-            "fist":"fist fighting level **{0}**",
-            "loyalty":"**{0}** loyalty points",
-            "magic":"magic level **{0}**",
-            "shielding":"shielding level **{0}**",
-            "sword":"sword fighting level **{0}**"}
+highscores_categories = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
+                         "loyalty", "achievements"]
 # This is the global online list
 # don't look at it too closely or you'll go blind!
 # characters are added as servername_charactername

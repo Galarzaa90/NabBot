@@ -418,20 +418,20 @@ def scan_highscores():
         if len(tibia_servers) == 0:
             break
         for server in tibia_servers:
-            for category,_categorystring in highscore_categories.items():
+            for category in highscores_categories:
                 highscores = []
                 for pagenum in range(1,13):
-                    scores = yield from get_highscores(server,category,pagenum)
+                    scores = yield from get_highscores(server, category, pagenum)
                     if not (scores == ERROR_NETWORK):
-                        highscores+=scores
+                        highscores += scores
                     yield from asyncio.sleep(3)
                 # Open connection to users.db
                 c = userDatabase.cursor()
                 scores_tuple = []
                 ranks_tuple = []
                 for score in highscores:
-                    scores_tuple.append((score['rank'],score['value'],score['name']))
-                    ranks_tuple.append((score['rank'],server))
+                    scores_tuple.append((score['rank'], score['value'], score['name']))
+                    ranks_tuple.append((score['rank'], server))
                 # Clear out old rankings
                 c.executemany(
                     "UPDATE chars SET "+category+" = NULL, "+category+"_rank"+" = NULL WHERE "+category+"_rank"+" LIKE ? AND world LIKE ?",
