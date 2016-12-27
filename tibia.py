@@ -885,7 +885,7 @@ class Tibia:
         # Insert any highscores this character holds
         for category in highscores_categories:
             if char.get(category, None):
-                highscore_string = highscore_format[category].format(pronoun2, char[category+'_rank'], char[category])
+                highscore_string = highscore_format[category].format(pronoun2, char[category], char[category+'_rank'])
                 reply += "\n"+EMOJI[":trophy:"]+" {0}".format(highscore_string)
         return reply
 

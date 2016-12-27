@@ -421,10 +421,16 @@ def scan_highscores():
             for category in highscores_categories:
                 highscores = []
                 for pagenum in range(1,13):
-                    scores = yield from get_highscores(server, category, pagenum)
+                    # Special cases (ek/rp mls)
+                    if category == "magic_ek":
+                        scores = yield from get_highscores(server,"magic",pagenum,3)
+                    elif category == "magic_rp":
+                        scores = yield from get_highscores(server,"magic",pagenum,4)
+                    else:
+                        scores = yield from get_highscores(server,category,pagenum)
                     if not (scores == ERROR_NETWORK):
                         highscores += scores
-                    yield from asyncio.sleep(3)
+                    yield from asyncio.sleep(1)
                 # Open connection to users.db
                 c = userDatabase.cursor()
                 scores_tuple = []

@@ -40,7 +40,7 @@ tibia_worlds_dict = {}
 
 # Which highscores to track (can be empty)
 highscores_categories = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
-                         "loyalty", "achievements"]
+                         "magic_ek", "magic_rp", "loyalty", "achievements"]
 # This is the global online list
 # don't look at it too closely or you'll go blind!
 # characters are added as servername_charactername
