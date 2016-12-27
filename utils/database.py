@@ -6,7 +6,7 @@ userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 9
+DB_LASTVERSION = 10
 
 
 def init_database():
@@ -139,6 +139,13 @@ def init_database():
             c.execute("ALTER TABLE chars ADD magic_rank INTEGER")
             c.execute("ALTER TABLE chars ADD shielding_rank INTEGER")
             c.execute("ALTER TABLE chars ADD sword_rank INTEGER")
+            db_version += 1
+        if db_version == 9:
+            # Added 'magic_ek', 'magic_rp', 'magic_ek_rank', 'magic_rp_rank' columns to 'chars'
+            c.execute("ALTER TABLE chars ADD magic_ek INTEGER")
+            c.execute("ALTER TABLE chars ADD magic_rp INTEGER")
+            c.execute("ALTER TABLE chars ADD magic_ek_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD magic_rp_rank INTEGER")
             db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))

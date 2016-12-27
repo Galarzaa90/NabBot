@@ -23,7 +23,7 @@ url_character = "https://secure.tibia.com/community/?subtopic=characters&name="
 url_guild = "https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName="
 url_guild_online = "https://secure.tibia.com/community/?subtopic=guilds&page=view&onlyshowonline=1&"
 url_house = "https://secure.tibia.com/community/?subtopic=houses&page=view&houseid={id}&world={world}"
-url_highscores = "https://secure.tibia.com/community/?subtopic=highscores&world={0}&list={1}&profession=0&currentpage={2}"
+url_highscores = "https://secure.tibia.com/community/?subtopic=highscores&world={0}&list={1}&profession={2}&currentpage={3}"
 
 KNIGHT = ["knight", "elite knight", "ek", "k", "kina", "eliteknight","elite"]
 PALADIN = ["paladin", "royal paladin", "rp", "p", "pally", "royalpaladin", "royalpally"]
@@ -40,17 +40,18 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
                     "fist": "{0} __fist fighting__ level is **{1}**, on rank **{2}**",
                     "loyalty": "{0} __loyalty points__ are **{1}**, on rank **{2}**",
                     "magic": "{0} __magic level__ is **{1}**, on rank **{2}**",
+                    "magic_ek": "{0} __magic level__ is **{1}**, on rank **{2}** (knights)",
+                    "magic_rp": "{0} __magic level__ is **{1}**, on rank **{2}** (paladins)",
                     "shielding": "{0} __shielding__ level is **{1}**, on rank **{2}**",
                     "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
 
 
 @asyncio.coroutine
-def get_highscores(server, category, pagenum, tries=5):
+def get_highscores(server,category,pagenum, profession=0, tries=5):
     """Gets a specific page of the highscores
     Each list element is a dictionary with the following keys: rank, name, value.
     May return ERROR_NETWORK"""
-    url = url_highscores.format(server, category, pagenum)
-    #print(url)
+    url = url_highscores.format(server,category,profession,pagenum)
     # Fetch website
     try:
         page = yield from aiohttp.get(url)
@@ -61,7 +62,7 @@ def get_highscores(server, category, pagenum, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from get_highscores(server, category, pagenum, tries)
+            ret = yield from get_highscores(server,category,pagenum,profession,tries)
             return ret
     
     # Trimming content to reduce load
@@ -77,7 +78,7 @@ def get_highscores(server, category, pagenum, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from get_highscores(server, category, pagenum, tries)
+            ret = yield from get_highscores(server,category,pagenum,profession,tries)
             return ret
     
     regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
