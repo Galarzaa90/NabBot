@@ -45,6 +45,14 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
                     "shielding": "{0} __shielding__ level is **{1}**, on rank **{2}**",
                     "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
 
+tibia_worlds = ["amera", "antica", "astera", "aurera", "aurora", "bellona", "belobra", "beneva", "calmera", "calva",
+                "calvera", "candia", "celesta", "chrona", "danera", "dolera", "efidia", "eldera", "feobra", "fidera",
+                "fortera", "garnera", "guardia", "harmonia", "honera", "hydera", "inferna" "iona", "irmada", "julera",
+                "justera", "kenora", "kronera", "laudera", "luminera", "magera", "menera", "morta", "mortera",
+                "neptera", "nerana", "nika", "olympa", "osera", "pacera", "premia", "pythera", "quilia", "refugia",
+                "rowana", "secura", "serdebra", "shivera", "silvera", "solera", "tavara", "thera", "umera", "unitera",
+                "veludera", "verlana" "xantera", "xylana", "yanara", "zanera", "zeluna"]
+
 
 @asyncio.coroutine
 def get_highscores(server,category,pagenum, profession=0, tries=5):
@@ -734,21 +742,21 @@ def get_stats(level: int, vocation: str):
     elif level > 2000:
         return "high level"
 
-    vocation = vocation.lower().lstrip().rstrip()
+    vocation = vocation.lower().strip()
     if vocation in KNIGHT:
-        hp = 5 * (3 * level - 2 * 8 + 29)
-        mp = 5 * level + 50
-        cap = 5 * (5 * level - 5 * 8 + 94)
+        hp = (level - 8) * 15 + 185
+        mp = (level - 0) * 5 + 50
+        cap = (level - 8) * 25 + 470
         vocation = "knight"
     elif vocation in PALADIN:
-        hp = 5 * (2 * level - 8 + 29)
-        mp = 5 * (3 * level - 2 * 8) + 50
-        cap = 10 * (2 * level - 8 + 39)
+        hp = (level - 8) * 10 + 185
+        mp = (level - 8) * 15 + 90
+        cap = (level - 8) * 20 + 470
         vocation = "paladin"
     elif vocation in MAGE:
-        hp = 5 * (level + 29)
-        mp = 5 * (6 * level - 5 * 8) + 50
-        cap = 10 * (level + 39)
+        hp = (level - 0) * 5 + 145
+        mp = (level - 8) * 30 + 90
+        cap = (level - 0) * 10 + 390
         vocation = "mage"
     elif vocation in NO_VOCATION:
         vocation = "no vocation"
@@ -756,11 +764,15 @@ def get_stats(level: int, vocation: str):
         return "bad vocation"
 
     if level < 8 or vocation == "no vocation":
-        hp = 5 * (level + 29)
-        mp = 5 * level + 50
-        cap = 10 * (level + 39)
+        hp = (level - 0) * 5 + 145
+        mp = (level - 0) * 5 + 50
 
-    return {"vocation": vocation, "hp": hp, "mp": mp, "cap": cap}
+        cap = (level - 0) * 10 + 390
+
+    exp = (50*pow(level, 3)/3) - 100*pow(level, 2) + (850*level/3) - 200
+    exp_tnl = 50*level*level - 150 * level + 200
+
+    return {"vocation": vocation, "hp": hp, "mp": mp, "cap": cap, "exp": int(exp), "exp_tnl": exp_tnl}
 
 
 

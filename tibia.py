@@ -740,9 +740,23 @@ class Tibia:
                 stats["vocation"] = "with no vocation"
             if char:
                 pronoun = "he" if char['gender'] == "male" else "she"
-                yield from self.bot.say("**{5}** is a level **{0}** {1}, {6} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level, char["vocation"].lower(), stats["hp"], stats["mp"], stats["cap"], char['name'], pronoun))
+                yield from self.bot.say("**{5}** is a level **{0}** {1}, {6} has:"
+                                        "\n\t**{2:,}** HP"
+                                        "\n\t**{3:,}** MP"
+                                        "\n\t**{4:,}** Capacity"
+                                        "\n\t**{7:,}** Total experience"
+                                        "\n\t**{8:,}** to next level"
+                                        .format(level, char["vocation"].lower(), stats["hp"], stats["mp"], stats["cap"],
+                                                char['name'], pronoun, stats["exp"], stats["exp_tnl"]))
             else:
-                yield from self.bot.say("A level **{0}** {1} has:\n\t**{2:,}** HP\n\t**{3:,}** MP\n\t**{4:,}** Capacity".format(level, stats["vocation"], stats["hp"], stats["mp"], stats["cap"]))
+                yield from self.bot.say("A level **{0}** {1} has:"
+                                        "\n\t**{2:,}** HP"
+                                        "\n\t**{3:,}** MP"
+                                        "\n\t**{4:,}** Capacity"
+                                        "\n\t**{5:,}** Experience"
+                                        "\n\t**{6:,}** to next level"
+                                        .format(level, stats["vocation"], stats["hp"], stats["mp"], stats["cap"],
+                                                stats["exp"], stats["exp_tnl"]))
         else:
             yield from self.bot.say("Are you sure that is correct?")
 
