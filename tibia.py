@@ -22,7 +22,7 @@ class Tibia:
         self.bot = bot
         self.parsing_count = 0
 
-    @commands.group(pass_context=True, invoke_without_command=True)
+    @commands.group(pass_context=True, invoke_without_command=True, hidden=lite_mode)
     @checks.is_main_server()
     @asyncio.coroutine
     def loot(self, ctx):
@@ -32,6 +32,8 @@ class Tibia:
         If the image is compressed or was taken using Tibia's software render, the bot might struggle finding matches.
 
         The bot can only scan 3 images simultaneously."""
+        if lite_mode:
+            return
         author = ctx.message.author
         if self.parsing_count >= loot_max:
             yield from self.bot.say("Sorry, I am already parsing too many loot images, "
@@ -130,6 +132,8 @@ class Tibia:
     @asyncio.coroutine
     def loot_legend(self):
         """Shows the meaning of the overlayed icons."""
+        if lite_mode:
+            return
         with open("./images/legend.png", "r+b") as f:
             yield from self.bot.upload(f)
             f.close()
@@ -861,7 +865,7 @@ class Tibia:
         if char == ERROR_NETWORK or char == ERROR_DOESNTEXIST:
             return char
         pronoun = "He"
-        pronoun2 ="His"
+        pronoun2 = "His"
         if char['gender'] == "female":
             pronoun = "She"
             pronoun2 = "Her"
@@ -895,7 +899,8 @@ class Tibia:
 
         reply = reply_format.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'],
                                     char['world'], guild, married, login, url, house)
-        
+        if lite_mode:
+            return reply
         # Insert any highscores this character holds
         for category in highscores_categories:
             if char.get(category, None):

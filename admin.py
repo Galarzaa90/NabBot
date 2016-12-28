@@ -4,6 +4,7 @@ import re
 import discord
 from discord.ext import commands
 
+from config import lite_mode
 from utils import checks
 from utils.database import *
 
@@ -13,13 +14,15 @@ class Admin:
     def __init__(self, bot: discord.Client):
         self.bot = bot
 
-    @commands.group(name="setworld", pass_context=True, no_pm=True)
+    @commands.group(name="setworld", pass_context=True, no_pm=True, hidden=lite_mode)
     @checks.is_admin()
     @asyncio.coroutine
     def set_world(self, ctx: commands.Context, *, world: str = None):
         """Sets this server's Tibia world.
 
         If no world is passed, it shows this server's current assigned world."""
+        if lite_mode:
+            return
         server_id = ctx.message.server.id
         if world is None:
             current_world = tibia_worlds_dict.get(server_id, None)
@@ -54,7 +57,6 @@ class Admin:
             c.close()
             userDatabase.commit()
             reload_worlds()
-
 
 
 def setup(bot):

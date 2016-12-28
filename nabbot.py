@@ -41,6 +41,8 @@ def on_ready():
     print('Logged in as')
     print(bot.user)
     print(bot.user.id)
+    if lite_mode:
+        print("Running in Lite mode!")
     print('------')
     log.info('Bot is online and ready')
 
@@ -407,12 +409,15 @@ def scan_deaths():
         # Check for new death
         yield from check_death(current_char)
 
+
 @asyncio.coroutine
 def scan_highscores():
     #################################################
     #             Nezune's cave                     #
     # Do not touch anything, enter at your own risk #
     #################################################
+    if lite_mode:
+        return
     yield from bot.wait_until_ready()
     while not bot.is_closed:
         if len(tibia_servers) == 0:
@@ -420,14 +425,14 @@ def scan_highscores():
         for server in tibia_servers:
             for category in highscores_categories:
                 highscores = []
-                for pagenum in range(1,13):
+                for pagenum in range(1, 13):
                     # Special cases (ek/rp mls)
                     if category == "magic_ek":
-                        scores = yield from get_highscores(server,"magic",pagenum,3)
+                        scores = yield from get_highscores(server, "magic", pagenum, 3)
                     elif category == "magic_rp":
-                        scores = yield from get_highscores(server,"magic",pagenum,4)
+                        scores = yield from get_highscores(server, "magic", pagenum, 4)
                     else:
-                        scores = yield from get_highscores(server,category,pagenum)
+                        scores = yield from get_highscores(server, category, pagenum)
                     if not (scores == ERROR_NETWORK):
                         highscores += scores
                     yield from asyncio.sleep(1)
@@ -441,12 +446,12 @@ def scan_highscores():
                 # Clear out old rankings
                 c.executemany(
                     "UPDATE chars SET "+category+" = NULL, "+category+"_rank"+" = NULL WHERE "+category+"_rank"+" LIKE ? AND world LIKE ?",
-                    (ranks_tuple)
+                    ranks_tuple
                 )
                 # Add new rankings
                 c.executemany(
                     "UPDATE chars SET "+category+"_rank"+" = ?, "+category+" = ? WHERE name LIKE ?",
-                    (scores_tuple)
+                    scores_tuple
                 )
                 userDatabase.commit()
                 c.close()
