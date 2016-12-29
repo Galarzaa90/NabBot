@@ -10,7 +10,7 @@ from config import *
 from utils import checks
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone
 from utils.loot import loot_scan
-from utils.messages import EMOJI
+from utils.messages import EMOJI, split_message
 from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name
 from utils.tibia import *
 
@@ -487,11 +487,8 @@ class Tibia:
             os.remove(filename)
 
         long = ctx.message.channel.is_private or ctx.message.channel.name == ask_channel_name
-        embed, embed_drops = self.get_item_embeds(item, long)
+        embed = self.get_item_embed(ctx, item, long)
         yield from self.bot.say(embed=embed)
-        if embed_drops is not None:
-            yield from self.bot.say(embed=embed_drops)
-        return
 
     @commands.command(pass_context=True, aliases=['mon', 'mob', 'creature'])
     @asyncio.coroutine
@@ -541,11 +538,9 @@ class Tibia:
             os.remove(filename)
 
         long = ctx.message.channel.is_private or ctx.message.channel.name == ask_channel_name
-        embed, loot_embed = self.get_monster_embeds(monster, long)
+        embed = self.get_monster_embed(ctx, monster, long)
 
         yield from self.bot.say(embed=embed)
-        if loot_embed is not None:
-            yield from self.bot.say(embed=loot_embed)
 
     @commands.command(aliases=['deathlist', 'death'], pass_context=True)
     @asyncio.coroutine
@@ -945,7 +940,7 @@ class Tibia:
             c.close()
 
     @staticmethod
-    def get_monster_embeds(monster, long):
+    def get_monster_embed(ctx, monster, long):
         """Gets the monster embeds to show in /mob command
         The message is split in two embeds, the second contains loot only and is only shown if long is True"""
         embed = discord.Embed(title=monster["title"])
@@ -997,7 +992,6 @@ class Tibia:
             embed.add_field(name="Max damage",
                             value="{maxdamage:,}".format(**monster) if monster["maxdamage"] is not None else "???")
             embed.add_field(name="Abilities", value=monster["abilities"], inline=False)
-        embed_loot = None
         if monster["loot"] and long:
             loot_string = ""
             for item in monster["loot"]:
@@ -1012,15 +1006,24 @@ class Tibia:
                 else:
                     item["count"] = ""
                 loot_string += "{percentage} {name} {count}\n".format(**item)
-            embed_loot = discord.Embed(title="Loot",description="`"+loot_string+"`")
+            split_loot = split_message(loot_string, 1024)
+            for loot in split_loot:
+                if loot == split_loot[0]:
+                    name = "Loot"
+                else:
+                    name = "\u200F"
+                embed.add_field(name=name, value="`"+loot+"`")
         if monster["loot"] and not long:
-            askchannel_string = " or use #" + ask_channel_name if ask_channel_name is not None else ""
-            # Using character U+200F as an invisible space, normal space gets stripped and empty values are not allowed.
-            embed.add_field(name="To see more, PM me{0}.".format(askchannel_string), value="\U0000200F", inline=False)
-        return embed, embed_loot
+            ask_channel = get_channel_by_name(ctx.bot, ask_channel_name, ctx.message.server)
+            if ask_channel:
+                askchannel_string = " or use #" + ask_channel.name
+            else:
+                askchannel_string = ""
+            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
+        return embed
 
     @staticmethod
-    def get_item_embeds(item, long):
+    def get_item_embed(ctx, item, long):
         """Gets the item embeds to show in /item command
         The message is split in two embeds, the second contains monster drops only and is only shown if long is True"""
         short_limit = 5
@@ -1029,7 +1032,6 @@ class Tibia:
         drops_too_long = False
 
         embed = discord.Embed(title=item["title"], description=item["look_text"])
-        embed_drops = None
         if "color" in item:
             embed.colour = item["color"]
         if 'npcs_bought' in item and len(item['npcs_bought']) > 0:
@@ -1078,18 +1080,17 @@ class Tibia:
                     value += "\n*...And {0} others*".format(len(item["dropped_by"]) - long_limit)
                     break
 
-            if long:
-                embed_drops = discord.Embed(title=name, description=value)
-                if "color" in item:
-                    embed_drops.colour = item["color"]
-            else:
-                embed.add_field(name=name, value=value)
+            embed.add_field(name=name, value=value)
 
         if npcs_too_long or drops_too_long:
+            ask_channel = get_channel_by_name(ctx.bot, ask_channel_name, ctx.message.server)
+            if ask_channel:
+                askchannel_string = " or use #" + ask_channel.name
+            else:
+                askchannel_string = ""
             askchannel_string = " or use #" + ask_channel_name if ask_channel_name is not None else ""
-            # Using character U+200F as an invisible space, normal space gets stripped and empty values are not allowed.
-            embed.add_field(name="To see more, PM me{0}.".format(askchannel_string), value="\U0000200F", inline=False)
-        return embed, embed_drops
+            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
+        return embed
 
 
 def setup(bot):

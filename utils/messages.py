@@ -1510,22 +1510,33 @@ def weighedChoice(messages, condition1=False, condition2=False, condition3=False
     print("Error in weighedChoice!")
     return _messages[0][1]
 
-def message_split(message):
-    if len(message) <= 2000:
+
+def split_message(message: str, limit: int=2000):
+    """Splits a message into a list of messages if it exceeds limit.
+
+    Messages are only split at new lines.
+
+    Discord message limits:
+        Normal message: 2000
+        Embed description: 2048
+        Embed field name: 256
+        Embed field value: 1024"""
+    if len(message) <= limit:
         return [message]
     else:
         lines = message.splitlines()
         message_list = []
         while len(lines) > 0:
             new_message = ""
-            while len(lines) > 0 and len(new_message+lines[0]+"\r\n") <= 2000:
-                new_message+=lines[0]+"\r\n"
+            while len(lines) > 0 and len(new_message+lines[0]+"\r\n") <= limit:
+                new_message += lines[0]+"\r\n"
                 lines.remove(lines[0])
             message_list.append(new_message)
         return message_list
 
+
 def send_messageEx(bot,dest,message,embed=False):
-    message = message_split(message)
+    message = split_message(message)
     for msg in message:
         if embed:
             msg_embed = discord.Embed()
