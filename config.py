@@ -5,6 +5,9 @@
 # Level up and deaths announcements are disabled
 lite_mode = False
 
+# If this is True users are only allowed to use /im when they don't have any characters assigned to them
+im_new_only = True
+
 # This is the name of the server where the bot will work
 # This bot doesn't support multiple servers yet
 # main_channel is where the Bot will do announcements, but he will reply to commands everywhere
