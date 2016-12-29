@@ -732,7 +732,7 @@ def choose(ctx, *choices: str):
 @bot.command(pass_context=True, aliases=["i'm", "iam"], hidden=lite_mode)
 @asyncio.coroutine
 def im(ctx, *, char_name: str):
-    """Lets you add your first tibia character(s) for the bot to track.
+    """Lets you add your tibia character(s) for the bot to track.
 
     If you need to add any more characters or made a mistake, please message an admin."""
 
@@ -740,7 +740,7 @@ def im(ctx, *, char_name: str):
         return
 
     # This is equivalent to someone using /stalk addacc on themselves.
-    # To avoid abuse it will only work on users who have joined recently and have no characters added to their account.
+    # If im_new_only is True it will only work on users who have no characters added to their account.
 
     user = ctx.message.author
     try:
@@ -757,7 +757,7 @@ def im(ctx, *, char_name: str):
         if result is not None:
             c.execute("SELECT name,user_id FROM chars WHERE user_id LIKE ?", (user.id,))
             result = c.fetchone()
-            if result is not None:
+            if im_new_only and result is not None:
                 yield from bot.say(not_allowed_message)
                 return
         else:
@@ -790,6 +790,8 @@ def im(ctx, *, char_name: str):
                     updated.append({'name': char['name'], 'world': char['world'], 'prevowner': result["user_id"],
                                     'guild': char.get("guild", "No guild")})
                     continue
+                elif owner.id == user.id:
+                    continue
                 else:
                     reply = "Sorry but a character in that account was already claimed by **{0.mention}**.\n" \
                             "Maybe you made a mistake? Message {1} if you need any help!"
@@ -817,6 +819,9 @@ def im(ctx, *, char_name: str):
                 "From now on I will track level ups and deaths for you, if you need to add any more characters " \
                 "please message {2}"
         added_chars = join_list(["**" + char['name'] + "**" for char in added + updated], ", ", " and ")
+        if added_chars == "":
+            yield from bot.say("That character is already assigned to you!")
+            return
         yield from bot.say(reply.format(user, added_chars, admins_message))
 
         log_entry = "{0.mention} registered the following characters:\n\t".format(ctx.message.author)
