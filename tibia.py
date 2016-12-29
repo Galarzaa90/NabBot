@@ -166,8 +166,11 @@ class Tibia:
                                  )
                 yield from self.bot.say(embed=embed)
             return
-
-        if name.lower() == self.bot.user.name.lower():
+        if ctx.message.channel.is_private:
+            bot_member = self.bot.user
+        else:
+            bot_member = get_member(self.bot, self.bot.user.id, ctx.message.server)
+        if name.lower() == bot_member.display_name.lower():
             yield from ctx.invoke(self.bot.commands.get('about'))
             return
 
@@ -497,8 +500,12 @@ class Tibia:
         if name is None:
             yield from self.bot.say("Tell me the name of the monster you want to search.")
             return
-        if name.lower() == self.bot.user.name.lower():
-            yield from self.bot.say(random.choice(["**"+self.bot.user.name+"** is too strong for you to hunt!",
+        if ctx.message.channel.is_private:
+            bot_member = self.bot.user
+        else:
+            bot_member = get_member(self.bot, self.bot.user.id, ctx.message.server)
+        if name.lower() == bot_member.display_name.lower():
+            yield from self.bot.say(random.choice(["**"+bot_member.display_name+"** is too strong for you to hunt!",
                                                    "Sure, you kill *one* child and suddenly you're a monster!",
                                                    "I'M NOT A MONSTER",
                                                    "I'm a monster, huh? I'll remember that, human..."+EMOJI[":flame:"],
