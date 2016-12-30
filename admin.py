@@ -25,7 +25,7 @@ class Admin:
             return
         server_id = ctx.message.server.id
         if world is None:
-            current_world = tibia_worlds_dict.get(server_id, None)
+            current_world = tracked_worlds.get(server_id, None)
             if current_world is None:
                 yield from self.bot.say("This server has no tibia world assigned.")
             else:

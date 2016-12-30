@@ -36,10 +36,15 @@ mod_ids = ["159815675194507265", "164253469912334350"]
 display_brasilia_time = True
 display_sonora_time = True
 
-# The list of servers to check for with getServerOnline
-tibia_servers = ["Fidera"]
-tibia_worlds = []
-tibia_worlds_dict = {}
+# This list is used while the other lists are fully implemented
+legacy_worlds = ["Fidera"]
+
+# The list of servers tracked by nabbot
+# The list is popupalated from database
+tracked_worlds = {}
+tracked_worlds_list = []
+
+
 
 # Which highscores to track (can be empty)
 highscores_categories = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",

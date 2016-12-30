@@ -2,7 +2,7 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from config import lite_mode, main_server, tibia_servers
+from config import lite_mode, main_server, tracked_worlds, legacy_worlds
 from utils.database import userDatabase
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
 from utils.general import is_numeric
@@ -221,7 +221,7 @@ class Mod:
                 chars = [char]
             for char in chars:
                 # Character not in followed server(s), skip.
-                if char['world'] not in tibia_servers:
+                if char['world'] not in legacy_worlds:
                     yield from self.bot.say("**{0}** skipped, character not in server list.".format(char['name']))
                     continue
                 char = yield from get_character(char['name'])

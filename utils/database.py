@@ -1,6 +1,6 @@
 import sqlite3
 
-from config import USERDB, TIBIADB, LOOTDB, tibia_worlds_dict, tibia_worlds
+from config import USERDB, TIBIADB, LOOTDB, tracked_worlds, tracked_worlds_list
 
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
@@ -178,14 +178,14 @@ def reload_worlds():
     try:
         c.execute("SELECT server_id, value FROM server_properties WHERE name = 'world' ORDER BY value ASC")
         result = c.fetchall()
-        del tibia_worlds[:]
+        del tracked_worlds_list[:]
         if len(result) > 0:
             for row in result:
-                if row["value"] not in tibia_worlds:
-                    tibia_worlds.append(row["value"])
+                if row["value"] not in tracked_worlds_list:
+                    tracked_worlds_list.append(row["value"])
                 tibia_servers_dict_temp[row["server_id"]] = row["value"]
 
-        tibia_worlds_dict.clear()
-        tibia_worlds_dict.update(tibia_servers_dict_temp)
+        tracked_worlds.clear()
+        tracked_worlds.update(tibia_servers_dict_temp)
     finally:
         c.close()

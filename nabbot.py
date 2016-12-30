@@ -23,7 +23,7 @@ from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
     weighedChoice, formatMessage
 from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, get_character_deaths, \
-    get_voc_abb,get_highscores
+    get_voc_abb,get_highscores, tibia_worlds
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True, formatter=NabHelpFormat())
@@ -420,9 +420,9 @@ def scan_highscores():
         return
     yield from bot.wait_until_ready()
     while not bot.is_closed:
-        if len(tibia_servers) == 0:
+        if len(tracked_worlds_list) == 0:
             break
-        for server in tibia_servers:
+        for server in tracked_worlds_list:
             for category in highscores_categories:
                 highscores = []
                 for pagenum in range(1, 13):
@@ -435,7 +435,7 @@ def scan_highscores():
                         scores = yield from get_highscores(server, category, pagenum)
                     if not (scores == ERROR_NETWORK):
                         highscores += scores
-                    yield from asyncio.sleep(1)
+                    yield from asyncio.sleep(2)
                 # Open connection to users.db
                 c = userDatabase.cursor()
                 scores_tuple = []
@@ -456,6 +456,7 @@ def scan_highscores():
                 userDatabase.commit()
                 c.close()
 
+
 @asyncio.coroutine
 def scan_online_chars():
     #################################################
@@ -466,13 +467,15 @@ def scan_online_chars():
         return
     yield from bot.wait_until_ready()
     while not bot.is_closed:
-        yield from asyncio.sleep(online_scan_interval)
-        if len(tibia_servers) == 0:
-            continue
         # Pop last server in queue, reinsert it at the beginning
-        current_server = tibia_servers.pop()
-        tibia_servers.insert(0, current_server)
+        current_server = tibia_worlds.pop()
+        tibia_worlds.insert(0, current_server)
 
+        if current_server.capitalize() not in tracked_worlds_list:
+            yield from asyncio.sleep(0.1)
+            continue
+
+        yield from asyncio.sleep(online_scan_interval)
         # Get online list for this server
         current_server_online = yield from get_server_online(current_server)
 
@@ -604,7 +607,7 @@ def announce_death(char_name, death_time, death_level, death_killer, death_by_pl
         log.warning("Error in announceDeath, failed to getPlayer(" + char_name + ")")
         return
 
-    if not(char['world'] in tibia_servers):
+    if char['world'] not in legacy_worlds:
         # Don't announce for players in non-tracked worlds
         return
     # Choose correct pronouns
@@ -747,7 +750,7 @@ def im(ctx, *, char_name: str):
         c = userDatabase.cursor()
         mod_list = owner_ids+mod_ids
         admins_message = join_list(["**" + get_member(bot, admin, ctx.message.server).mention + "**" for admin in mod_list], ", ", " or ")
-        servers_message = join_list(["**" + server + "**" for server in tibia_servers], ", ", " or ")
+        servers_message = join_list(["**" + server + "**" for server in legacy_worlds], ", ", " or ")
         not_allowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help "
                               "adding characters to your account please message {1}.").format(user, admins_message)
 
@@ -779,7 +782,7 @@ def im(ctx, *, char_name: str):
         updated = []
         added = []
         for char in chars:
-            if char['world'] not in tibia_servers:
+            if char['world'] not in legacy_worlds:
                 skipped.append(char)
                 continue
             c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?", (char['name'],))

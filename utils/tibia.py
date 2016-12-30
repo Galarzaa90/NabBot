@@ -47,11 +47,11 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
 
 tibia_worlds = ["amera", "antica", "astera", "aurera", "aurora", "bellona", "belobra", "beneva", "calmera", "calva",
                 "calvera", "candia", "celesta", "chrona", "danera", "dolera", "efidia", "eldera", "feobra", "fidera",
-                "fortera", "garnera", "guardia", "harmonia", "honera", "hydera", "inferna" "iona", "irmada", "julera",
+                "fortera", "garnera", "guardia", "harmonia", "honera", "hydera", "inferna", "iona", "irmada", "julera",
                 "justera", "kenora", "kronera", "laudera", "luminera", "magera", "menera", "morta", "mortera",
                 "neptera", "nerana", "nika", "olympa", "osera", "pacera", "premia", "pythera", "quilia", "refugia",
                 "rowana", "secura", "serdebra", "shivera", "silvera", "solera", "tavara", "thera", "umera", "unitera",
-                "veludera", "verlana" "xantera", "xylana", "yanara", "zanera", "zeluna"]
+                "veludera", "verlana", "xantera", "xylana", "yanara", "zanera", "zeluna"]
 
 
 @asyncio.coroutine
@@ -59,7 +59,7 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
     """Gets a specific page of the highscores
     Each list element is a dictionary with the following keys: rank, name, value.
     May return ERROR_NETWORK"""
-    url = url_highscores.format(server,category,profession,pagenum)
+    url = url_highscores.format(server, category, profession, pagenum)
     # Fetch website
     try:
         page = yield from aiohttp.get(url)
@@ -70,7 +70,7 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from get_highscores(server,category,pagenum,profession,tries)
+            ret = yield from get_highscores(server, category, pagenum, profession, tries)
             return ret
     
     # Trimming content to reduce load
@@ -78,7 +78,6 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
         start_index = content.index('<td style="width: 20%;" >Vocation</td>')
         end_index = content.index('<div style="float: left;"><b>&raquo; Pages:')
         content = content[start_index:end_index]
-        #print(content)
     except ValueError:
         # Website fetch was incomplete, due to a network error
         if tries == 0:
@@ -86,7 +85,7 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
-            ret = yield from get_highscores(server,category,pagenum,profession,tries)
+            ret = yield from get_highscores(server, category, pagenum, profession, tries)
             return ret
     
     regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
@@ -94,7 +93,6 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
     matches = re.findall(pattern, content)
     scoreList = []
     for m in matches:
-        #print(m)
         scoreList.append({'rank': m[0], 'name': m[1], 'value': m[2]})
     return scoreList
     
@@ -198,6 +196,7 @@ def get_server_online(server, tries=5):
     """Returns a list of all the online players in current server.
 
     Each list element is a dictionary with the following keys: name, level"""
+    server = server.capitalize()
     url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + server
     onlineList = []
 
