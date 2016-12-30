@@ -13,6 +13,7 @@ import psutil
 from discord.ext import commands
 
 from config import *
+from utils import checks
 from utils.database import init_database, userDatabase, reload_worlds
 from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
     clean_string, get_role_list, get_member_by_name
@@ -732,16 +733,13 @@ def choose(ctx, *choices: str):
     yield from bot.say('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
 
-@bot.command(pass_context=True, aliases=["i'm", "iam"], hidden=lite_mode)
+@bot.command(pass_context=True, aliases=["i'm", "iam"])
+@checks.is_not_lite()
 @asyncio.coroutine
 def im(ctx, *, char_name: str):
     """Lets you add your tibia character(s) for the bot to track.
 
     If you need to add any more characters or made a mistake, please message an admin."""
-
-    if lite_mode:
-        return
-
     # This is equivalent to someone using /stalk addacc on themselves.
     # If im_new_only is True it will only work on users who have no characters added to their account.
 
@@ -836,7 +834,8 @@ def im(ctx, *, char_name: str):
         userDatabase.commit()
 
 
-@bot.command(hidden=lite_mode)
+@bot.command()
+@checks.is_not_lite()
 @asyncio.coroutine
 def online():
     """Tells you which users are online on Tibia
@@ -922,14 +921,13 @@ def about():
     yield from bot.say(embed=embed)
 
 
-@bot.group(pass_context=True, aliases=["event"], hidden=lite_mode, invoke_without_command=True)
+@bot.group(pass_context=True, aliases=["event"], invoke_without_command=True)
+@checks.is_not_lite()
 @asyncio.coroutine
 def events(ctx):
     """Shows a list of current active events"""
     time_threshold = 60 * 30
     now = time.time()
-    if lite_mode:
-        return
     c = userDatabase.cursor()
     try:
         # If this is used on a PM, show events for all shared servers
@@ -989,6 +987,7 @@ def events(ctx):
 
 
 @events.command(pass_context=True, name="info", aliases=["show", "details"])
+@checks.is_not_lite()
 @asyncio.coroutine
 def event_info(ctx, event_id: int):
     """Displays an event's info"""
@@ -1023,6 +1022,7 @@ def event_info(ctx, event_id: int):
 
 
 @events.command(name="add", pass_context=True)
+@checks.is_not_lite()
 @asyncio.coroutine
 def event_add(ctx, starts_in: TimeString, *, params):
     """Adds an event
@@ -1094,6 +1094,7 @@ def event_add(ctx, starts_in: TimeString, *, params):
 
 
 @event_add.error
+@checks.is_not_lite()
 @asyncio.coroutine
 def event_add_error(error, ctx):
     if isinstance(error, commands.BadArgument):
@@ -1101,6 +1102,7 @@ def event_add_error(error, ctx):
 
 
 @events.command(name="editname", pass_context=True)
+@checks.is_not_lite()
 @asyncio.coroutine
 def event_edit_name(ctx, event_id: int, *, new_name):
     """Changes an event's name
@@ -1134,6 +1136,7 @@ def event_edit_name(ctx, event_id: int, *, new_name):
 
 
 @events.command(name="editdesc", aliases=["editdescription"], pass_context=True)
+@checks.is_not_lite()
 @asyncio.coroutine
 def event_edit_description(ctx, event_id: int, *, new_description):
     """Changes an event's description
@@ -1168,6 +1171,7 @@ def event_edit_description(ctx, event_id: int, *, new_description):
 
 
 @events.command(name="edittime", aliases=["editstart"], pass_context=True)
+@checks.is_not_lite()
 @asyncio.coroutine
 def event_edit_time(ctx, event_id: int, starts_in: TimeString):
     """Changes an event's time
@@ -1201,6 +1205,7 @@ def event_edit_time(ctx, event_id: int, starts_in: TimeString):
 
 
 @events.command(name="delete", aliases=["remove"], pass_context=True)
+@checks.is_not_lite()
 @asyncio.coroutine
 def event_remove(ctx, event_id: int):
     """Deletes an event
@@ -1233,6 +1238,7 @@ def event_remove(ctx, event_id: int):
 
 
 @events.command(pass_context=True, name="make", aliases=["creator", "maker"])
+@checks.is_not_lite()
 @asyncio.coroutine
 def event_make(ctx):
     """Creates an event guiding you step by step
@@ -1320,6 +1326,7 @@ def event_make(ctx):
 
 
 @events.command(pass_context=True, name="subscribe", aliases=["sub"])
+@checks.is_not_lite()
 @asyncio.coroutine
 def event_subscribe(ctx, event_id: int):
     """Subscribe to receive a PM when an event is happening."""

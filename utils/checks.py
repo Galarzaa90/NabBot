@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from config import owner_ids, mod_ids, main_server
+from config import owner_ids, mod_ids, main_server, lite_mode
 
 
 # Checks if the user is the owner of the bot
@@ -40,4 +40,11 @@ def is_main_server():
         if member is None:
             return False
         return True
+    return commands.check(predicate)
+
+
+# Checks if the bot is not ruining in lite mode
+def is_not_lite():
+    def predicate(ctx):
+        return not lite_mode
     return commands.check(predicate)

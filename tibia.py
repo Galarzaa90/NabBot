@@ -22,8 +22,9 @@ class Tibia:
         self.bot = bot
         self.parsing_count = 0
 
-    @commands.group(pass_context=True, invoke_without_command=True, hidden=lite_mode)
+    @commands.group(pass_context=True, invoke_without_command=True)
     @checks.is_main_server()
+    @checks.is_not_lite()
     @asyncio.coroutine
     def loot(self, ctx):
         """Scans a loot image and returns it's loot value
@@ -32,8 +33,6 @@ class Tibia:
         If the image is compressed or was taken using Tibia's software render, the bot might struggle finding matches.
 
         The bot can only scan 3 images simultaneously."""
-        if lite_mode:
-            return
         author = ctx.message.author
         if self.parsing_count >= loot_max:
             yield from self.bot.say("Sorry, I am already parsing too many loot images, "
@@ -129,11 +128,10 @@ class Tibia:
         yield from self.bot.send_message(destination, embed=embed)
 
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
+    @checks.is_not_lite()
     @asyncio.coroutine
     def loot_legend(self):
         """Shows the meaning of the overlayed icons."""
-        if lite_mode:
-            return
         with open("./images/legend.png", "r+b") as f:
             yield from self.bot.upload(f)
             f.close()
@@ -274,8 +272,8 @@ class Tibia:
             reply = "**{0}** ({1}) can share experience with levels **{2}** to **{3}**.".format(name, level, low, high)
         yield from self.bot.say(reply)
 
-    @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"], hidden=lite_mode,
-                      pass_context=True)
+    @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"], pass_context=True)
+    @checks.is_not_lite()
     @asyncio.coroutine
     def find_team(self, ctx, *, params=None):
         """Searches for a registered character that meets the criteria
@@ -289,8 +287,6 @@ class Tibia:
 
         -Find a character of a certain vocation between a level range
         /find vocation,min_level,max_level"""
-        if lite_mode:
-            return
 
         invalid_arguments = "Invalid arguments used, examples:\n" \
                             "```/find vocation,charname\n" \
@@ -611,7 +607,8 @@ class Tibia:
 
         yield from self.bot.say(embed=embed)
 
-    @commands.command(pass_context=True, aliases=['levelups', 'lvl', 'level', 'lvls'], hidden=lite_mode)
+    @commands.command(pass_context=True, aliases=['levelups', 'lvl', 'level', 'lvls'])
+    @checks.is_not_lite()
     @asyncio.coroutine
     def levels(self, ctx, *, name: str=None):
         """Shows a player's or everoyne's recent level ups

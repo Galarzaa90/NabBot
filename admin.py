@@ -14,15 +14,14 @@ class Admin:
     def __init__(self, bot: discord.Client):
         self.bot = bot
 
-    @commands.group(name="setworld", pass_context=True, no_pm=True, hidden=lite_mode)
+    @commands.group(name="setworld", pass_context=True, no_pm=True)
     @checks.is_admin()
+    @checks.is_not_lite()
     @asyncio.coroutine
     def set_world(self, ctx: commands.Context, *, world: str = None):
         """Sets this server's Tibia world.
 
         If no world is passed, it shows this server's current assigned world."""
-        if lite_mode:
-            return
         server_id = ctx.message.server.id
         if world is None:
             current_world = tracked_worlds.get(server_id, None)
