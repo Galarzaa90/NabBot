@@ -11,7 +11,7 @@ from utils import checks
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone
 from utils.loot import loot_scan
 from utils.messages import EMOJI, split_message
-from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name
+from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_servers
 from utils.tibia import *
 
 
@@ -175,7 +175,7 @@ class Tibia:
         char = yield from get_character(name)
         char_string = self.get_char_string(char)
         user = get_member_by_name(self.bot, name)
-        user_string = self.get_user_string(name)
+        user_string = self.get_user_string(ctx, name)
         embed = discord.Embed()
         embed.description = ""
 
@@ -907,15 +907,36 @@ class Tibia:
                 reply += "\n"+EMOJI[":trophy:"]+" {0}".format(highscore_string)
         return reply
 
-    def get_user_string(self, username: str) -> str:
-        user = get_member_by_name(self.bot, username)
-        c = userDatabase.cursor()
+    def get_user_string(self, ctx, username: str) -> str:
+        user = get_member_by_name(self.bot, username, ctx.message.server)
         if user is None:
             return ERROR_DOESNTEXIST
+        # List of servers the user shares with the bot
+        user_servers = get_user_servers(self.bot, user.id)
+        # List of Tibia worlds tracked in the servers the user is
+        if ctx.message.channel.is_private:
+            user_tibia_worlds = [world for server, world in tracked_worlds.items() if
+                                 server in [s.id for s in user_servers]]
+        else:
+            if tracked_worlds.get(ctx.message.server.id) is None:
+                user_tibia_worlds = []
+            else:
+                user_tibia_worlds = [tracked_worlds[ctx.message.server.id]]
+        print(user_tibia_worlds)
+        # If server tracks no worlds, do not display owned chars
+        if len(user_tibia_worlds) == 0:
+            return "I don't know who @**{0.display_name}** is...".format(user)
+
+        placeholders = ", ".join("?" for w in user_tibia_worlds)
+
+        c = userDatabase.cursor()
         try:
-            c.execute("SELECT name, ABS(last_level) as level, vocation FROM chars WHERE user_id = ? ORDER BY level DESC",
-                      (user.id,))
+            c.execute("SELECT name, ABS(last_level) as level, vocation "
+                      "FROM chars "
+                      "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
+                      tuple(user_tibia_worlds))
             result = c.fetchall()
+            print(result)
             if result:
                 charList = []
                 for character in result:
@@ -927,9 +948,9 @@ class Tibia:
                     character["url"] = url_character + urllib.parse.quote(character["name"])
                     charList.append("[{name}]({url}) (Lvl {level} {vocation})".format(**character))
 
-                charString = "@**{0.display_name}**'s character{1}: {2}"
+                char_string = "@**{0.display_name}**'s character{1}: {2}"
                 plural = "s are" if len(charList) > 1 else " is"
-                reply = charString.format(user, plural, join_list(charList, ", ", " and "))
+                reply = char_string.format(user, plural, join_list(charList, ", ", " and "))
             else:
                 reply = "I don't know who @**{0.display_name}** is...".format(user)
             return reply

@@ -45,13 +45,13 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
                     "shielding": "{0} __shielding__ level is **{1}**, on rank **{2}**",
                     "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
 
-tibia_worlds = ["amera", "antica", "astera", "aurera", "aurora", "bellona", "belobra", "beneva", "calmera", "calva",
-                "calvera", "candia", "celesta", "chrona", "danera", "dolera", "efidia", "eldera", "feobra", "fidera",
-                "fortera", "garnera", "guardia", "harmonia", "honera", "hydera", "inferna", "iona", "irmada", "julera",
-                "justera", "kenora", "kronera", "laudera", "luminera", "magera", "menera", "morta", "mortera",
-                "neptera", "nerana", "nika", "olympa", "osera", "pacera", "premia", "pythera", "quilia", "refugia",
-                "rowana", "secura", "serdebra", "shivera", "silvera", "solera", "tavara", "thera", "umera", "unitera",
-                "veludera", "verlana", "xantera", "xylana", "yanara", "zanera", "zeluna"]
+tibia_worlds = ["Amera", "Antica", "Astera", "Aurera", "Aurora", "Bellona", "Belobra", "Beneva", "Calmera", "Calva",
+                "Calvera", "Candia", "Celesta", "Chrona", "Danera", "Dolera", "Efidia", "Eldera", "Ferobra", "Fidera",
+                "Fortera", "Garnera", "Guardia", "Harmonia", "Honera", "Hydera", "Inferna", "Iona", "Irmada", "Julera",
+                "Justera", "Kenora", "Kronera", "Laudera", "Luminera", "Magera", "Menera", "Morta", "Mortera",
+                "Neptera", "Nerana", "Nika", "Olympa", "Osera", "Pacera", "Premia", "Pythera", "Guilia", "Refugia",
+                "Rowana", "Secura", "Serdebra", "Shivera", "Silvera", "Solera", "Tavara", "Thera", "Umera", "Unitera",
+                "Veludera", "Verlana", "Xantera", "Xylana", "Yanara", "Zanera", "Zeluna"]
 
 
 @asyncio.coroutine

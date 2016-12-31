@@ -166,6 +166,17 @@ class Owner:
         yield from self.bot.say(reply)
         return
 
+    @commands.command()
+    @checks.is_owner()
+    @asyncio.coroutine
+    def servers(self):
+        """Lists the servers the bot is in"""
+        reply = "I'm in the following servers:"
+        for server in self.bot.servers:
+            reply += "\n\t**{0.name}** - (Owner: {0.owner.name}#{0.owner.discriminator}) - {1}"\
+                .format(server, tracked_worlds.get(server.id, "No world tracked."))
+        yield from self.bot.say(reply)
+
 
 def get_check_emoji(check: bool) -> str:
     return EMOJI[":white_check_mark:"] if check else EMOJI[":x:"]

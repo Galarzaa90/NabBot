@@ -422,7 +422,9 @@ def scan_highscores():
     yield from bot.wait_until_ready()
     while not bot.is_closed:
         if len(tracked_worlds_list) == 0:
-            break
+            # If no worlds are tracked, just sleep, worlds might get registered later
+            yield from asyncio.sleep(30)
+            continue
         for server in tracked_worlds_list:
             for category in highscores_categories:
                 highscores = []
@@ -456,6 +458,7 @@ def scan_highscores():
                 )
                 userDatabase.commit()
                 c.close()
+            yield from asyncio.sleep(10)
 
 
 @asyncio.coroutine
@@ -744,27 +747,27 @@ def im(ctx, *, char_name: str):
     # If im_new_only is True it will only work on users who have no characters added to their account.
 
     user = ctx.message.author
+    # List of servers the user shares with the bot
+    user_servers = get_user_servers(bot, user.id)
+    # List of Tibia worlds tracked in the servers the user is
+    user_tibia_worlds = [world for server, world in tracked_worlds.items() if server in [s.id for s in user_servers]]
+
+    if len(user_tibia_worlds) == 0:
+        return
+
+    c = userDatabase.cursor()
     try:
-        c = userDatabase.cursor()
         mod_list = owner_ids+mod_ids
-        admins_message = join_list(["**" + get_member(bot, admin, ctx.message.server).mention + "**" for admin in mod_list], ", ", " or ")
+        valid_mods = []
+        for id in (owner_ids+mod_ids):
+            mod = get_member(bot, id, ctx.message.server)
+            if mod is not None:
+                valid_mods.append(mod.mention)
+        admins_message = join_list(valid_mods, ", ", " or ")
         servers_message = join_list(["**" + server + "**" for server in legacy_worlds], ", ", " or ")
         not_allowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help "
-                              "adding characters to your account please message {1}.").format(user, admins_message)
-
-        # Check that this user doesn't exist or has no chars added to it yet.
-        c.execute("SELECT id from users WHERE id = ?", (user.id,))
-        result = c.fetchone()
-        if result is not None:
-            c.execute("SELECT name,user_id FROM chars WHERE user_id LIKE ?", (user.id,))
-            result = c.fetchone()
-            if im_new_only and result is not None:
-                yield from bot.say(not_allowed_message)
-                return
-        else:
-            # Add the user if it doesn't exist
-            c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
-
+                               "adding characters to your account please message {1}.").format(user, admins_message)
+        yield from bot.send_typing(ctx.message.channel)
         char = yield from get_character(char_name)
         if type(char) is not dict:
             if char == ERROR_NETWORK:
@@ -773,62 +776,99 @@ def im(ctx, *, char_name: str):
                 yield from bot.say("That character doesn't exists.")
             return
         chars = char['chars']
-        # If the char is hidden,we still add the searched character
-        if len(chars) == 0:
+        # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
+        # searched char, so we don't have to look him up again
+        if len(chars) == 0 or len(chars) == 1:
             chars = [char]
+
         skipped = []
         updated = []
         added = []
+        existent = []
         for char in chars:
-            if char['world'] not in legacy_worlds:
+            if char["world"] not in user_tibia_worlds:
                 skipped.append(char)
                 continue
-            c.execute("SELECT name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
-            result = c.fetchone()
-            if result is not None:
-                owner = get_member(bot, result["user_id"])
+            c.execute("SELECT name, user_id as owner FROM chars WHERE name LIKE ?", (char["name"],))
+            db_char = c.fetchone()
+            if db_char is not None:
+                owner = get_member(bot, db_char["owner"])
+                # Previous owner doesn't exist anymore
                 if owner is None:
-                    updated.append({'name': char['name'], 'world': char['world'], 'prevowner': result["user_id"],
+                    updated.append({'name': char['name'], 'world': char['world'], 'prevowner': db_char["owner"],
                                     'guild': char.get("guild", "No guild")})
                     continue
+                # Char already registered to this user
                 elif owner.id == user.id:
+                    existent.append("{name} ({world})".format(**char))
                     continue
+                # Character is registered to another user
                 else:
-                    reply = "Sorry but a character in that account was already claimed by **{0.mention}**.\n" \
-                            "Maybe you made a mistake? Message {1} if you need any help!"
-                    yield from bot.say(reply.format(owner, admins_message))
+                    reply = "Sorry, a character in that account ({0}) is already claimed by **{1.mention}**.\n" \
+                            "Maybe you made a mistake? Or someone claimed a character of yours? " \
+                            "Message {2} if you need help!"
+                    yield from bot.say(reply.format(db_char["name"], owner, admins_message))
                     return
-            char = yield from get_character(char['name'])
+            # If we only have one char, it already contains full data
+            if len(chars) > 1:
+                yield from bot.send_typing(ctx.message.channel)
+                char = yield from get_character(char["name"])
+                if char == ERROR_NETWORK:
+                    yield from bot.reply("I'm having network troubles, please try again.")
+                    return
             char["guild"] = char.get("guild", "No guild")
             added.append(char)
+
         if len(skipped) == len(chars):
-            reply = "Sorry, I couldn't find any characters in that account from the servers I track ({1}).\n" \
-                    "Maybe you made a mistake? Message {1} if you need help!"
-            yield from bot.say(reply.format(servers_message, admins_message))
+            reply = "Sorry, I couldn't find any characters from the servers I track ({0})."
+            yield from bot.reply(reply.format(join_list(user_tibia_worlds, ", ", " and ")))
             return
+
+        reply = ""
+        log_reply = dict().fromkeys([server.id for server in user_servers], "")
+        if len(existent) > 0:
+            reply += "\nThe following characters were already registered to you: {0}" \
+                .format(join_list(existent, ", ", " and "))
+
+        if len(added) > 0:
+            reply += "\nThe following characters were added to your account: {0}" \
+                .format(join_list(["{name} ({world})".format(**c) for c in added], ", ", " and "))
+            for char in added:
+                log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
+                # Announce on server log of each server
+                for server in user_servers:
+                    # Only announce on worlds where the character's world is tracked
+                    if tracked_worlds.get(server.id, None) == char["world"]:
+                        log_reply[server.id] += "\n\t{name} - {level} {vocation} - **{guild}**".format(**char)
+
+        if len(updated) > 0:
+            reply += "\nThe following characters were reassigned to you: {0}" \
+                .format(join_list(["{name} ({world})".format(**c)for c in updated], ", ", " and "))
+            for char in updated:
+                log.info("Character {0} was reassigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
+                # Announce on server log of each server
+                for server in user_servers:
+                    # Only announce on worlds where the character's world is tracked
+                    if tracked_worlds.get(server.id, None) == char["world"]:
+                        log_reply[server.id] += "\n\t{name} (Reassigned)".format(**char)
+
         for char in updated:
             c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
-            log.info("Character {0} was reasigned to {1.display_name} (ID: {1.id}) from /im. (Previous owner (ID: {2}) was not found)".format(char['name'], user, char['prevowner']))
         for char in added:
             c.execute(
                 "INSERT INTO chars (name,last_level,vocation,user_id, world) VALUES (?,?,?,?,?)",
                 (char['name'], char['level']*-1, char['vocation'], user.id, char["world"])
             )
-            log.info("Character {0} was assigned to {1.display_name} (ID: {1.id}) from /im.".format(char['name'], user))
 
-        reply = "Thanks {0.mention}! I have added the following character(s) to your account: {1}\n" \
-                "From now on I will track level ups and deaths for you, if you need to add any more characters " \
-                "please message {2}"
-        added_chars = join_list(["**" + char['name'] + "**" for char in added + updated], ", ", " and ")
-        if added_chars == "":
-            yield from bot.say("That character is already assigned to you!")
-            return
-        yield from bot.say(reply.format(user, added_chars, admins_message))
+        c.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
+        c.execute("UPDATE users SET name = ? WHERE id = ?", (user.display_name, user.id, ))
 
-        log_entry = "{0.mention} registered the following characters:\n\t".format(ctx.message.author)
-        log_entry += "\n\t".join(["{name} - {level} {vocation} - **{guild}**".format(**char) for char in added+updated])
-        yield from send_log_message(bot, ctx.message.server, log_entry)
-        return
+        yield from bot.reply(reply)
+        for server_id, message in log_reply.items():
+            if message:
+                message = user.mention + " registered the following characters: " + message
+                yield from send_log_message(bot, bot.get_server(server_id), message)
+
     finally:
         c.close()
         userDatabase.commit()
@@ -909,14 +949,16 @@ def about():
     embed.add_field(name="Authors", value="@Galarzaa#8515, @Nezune#2269")
     embed.add_field(name="Platform", value="Python " + EMOJI[":snake:"])
     embed.add_field(name="Created", value="March 30th 2016")
-    embed.add_field(name="Uptime", value=get_uptime())
-    memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
+    embed.add_field(name="Servers", value="{0:,}".format(len(bot.servers)))
+    embed.add_field(name="Members", value="{0:,}".format(len(set(bot.get_all_members()))))
     if not lite_mode:
         embed.add_field(name="Tracked users", value="{0:,}".format(user_count))
         embed.add_field(name="Tracked chars", value="{0:,}".format(char_count))
         embed.add_field(name="Tracked deaths", value="{0:,}".format(deaths_count))
         embed.add_field(name="Tracked level ups", value="{0:,}".format(levels_count))
 
+    embed.add_field(name="Uptime", value=get_uptime())
+    memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
     embed.add_field(name='Memory Usage', value='{:.2f} MiB'.format(memory_usage))
     yield from bot.say(embed=embed)
 
