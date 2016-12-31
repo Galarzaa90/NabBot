@@ -922,7 +922,6 @@ class Tibia:
                 user_tibia_worlds = []
             else:
                 user_tibia_worlds = [tracked_worlds[ctx.message.server.id]]
-        print(user_tibia_worlds)
         # If server tracks no worlds, do not display owned chars
         if len(user_tibia_worlds) == 0:
             return "I don't know who @**{0.display_name}** is...".format(user)
@@ -936,7 +935,6 @@ class Tibia:
                       "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
                       tuple(user_tibia_worlds))
             result = c.fetchall()
-            print(result)
             if result:
                 charList = []
                 for character in result:
