@@ -143,12 +143,31 @@ def on_member_join(member: discord.Member):
     log.info("{0.display_name} (ID: {0.id}) joined {0.server.name}".format(member))
     if lite_mode:
         return
-    message = "Welcome to **{0.server.name}**! I'm **{1.user.name}**, to learn more about my commands type `/help`\n" \
-              "Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking " \
-              "your level ups and deaths!"
-    yield from bot.send_message(member, message.format(member, bot))
+    pm = "Welcome to **{0.server.name}**! I'm **{1.user.name}**, to learn more about my commands type `/help`\n" \
+         "Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking " \
+         "your level ups and deaths!".format(member, bot)
+    log_message = "{0.mention} joined.".format(member)
+
+    # Check if user already has characters registered
+    # This could be because he rejoined the server or is in another server tracking the same worlds
+    world = tracked_worlds.get(member.server.id)
+    if world is not None:
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT name, vocation, ABS(last_level) as level "
+                      "FROM chars WHERE user_id = ? and world = ?", (member.id, world,))
+            results = c.fetchall()
+            if len(results) > 0:
+                pm += "\nYou already have these characters in {0} registered to you: {1}"\
+                    .format(world, join_list([r["name"] for r in results], ", ", " and "))
+                log_message += "\nPreviously registered characters:\n\t"
+                log_message += "\n\t".join("{name} - {level} {vocation}".format(**r) for r in results)
+        finally:
+            c.close()
+
+    yield from send_log_message(bot, member.server, log_message)
+    yield from bot.send_message(member, pm)
     yield from bot.send_message(member.server, "Look who just joined! Welcome {0.mention}!".format(member))
-    yield from send_log_message(bot, member.server, "{0.mention} joined.".format(member))
 
 
 @bot.event
