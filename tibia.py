@@ -180,11 +180,11 @@ class Tibia:
         embed.description = ""
 
         # No user or char with that name
-        if char == ERROR_DOESNTEXIST and (user is None or user_string != ERROR_DOESNTEXIST):
+        if char == ERROR_DOESNTEXIST and (user is None or user_string == ERROR_DOESNTEXIST):
             yield from self.bot.say("I don't see any user or character with that name.")
             return
         # We found an user
-        if user is not None:
+        if user is not None and user_string != ERROR_DOESNTEXIST:
             embed.description = user_string
             color = get_user_color(user, ctx.message.server)
             if color is not discord.Colour.default():
