@@ -10,7 +10,7 @@ from calendar import timegm
 import time
 
 from utils.database import userDatabase, tibiaDatabase
-from config import highscores_categories
+from config import highscores_categories, network_retry_delay
 from .general import log, global_online_list, get_local_timezone
 
 # Constants
@@ -70,6 +70,7 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
+            yield from asyncio.sleep(network_retry_delay)
             ret = yield from get_highscores(server, category, pagenum, profession, tries)
             return ret
     
@@ -85,6 +86,7 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
+            yield from asyncio.sleep(network_retry_delay)
             ret = yield from get_highscores(server, category, pagenum, profession, tries)
             return ret
     
@@ -95,7 +97,8 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
     for m in matches:
         scoreList.append({'rank': m[0], 'name': m[1], 'value': m[2]})
     return scoreList
-    
+
+# TODO: Merge this with get_character, with a paramter to skip death parsing
 @asyncio.coroutine
 def get_character_deaths(name, single_death=False, tries=5):
     """Returns a list with the player's deaths
@@ -116,6 +119,7 @@ def get_character_deaths(name, single_death=False, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
+            yield from asyncio.sleep(network_retry_delay)
             ret = yield from get_character_deaths(name, single_death, tries)
             return ret
 
@@ -135,6 +139,7 @@ def get_character_deaths(name, single_death=False, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
+            yield from asyncio.sleep(network_retry_delay)
             ret = yield from get_character_deaths(name, single_death, tries)
             return ret
 
@@ -211,6 +216,7 @@ def get_server_online(server, tries=5):
             return onlineList
         else:
             tries -= 1
+            yield from asyncio.sleep(network_retry_delay)
             ret = yield from get_server_online(server, tries)
             return ret
 
@@ -234,6 +240,7 @@ def get_server_online(server, tries=5):
             return onlineList
         else:
             tries -= 1
+            yield from asyncio.sleep(network_retry_delay)
             ret = yield from get_server_online(server, tries)
             return ret
 
@@ -273,6 +280,7 @@ def get_guild_online(guildname, titlecase=True, tries=5):
                 return ERROR_NETWORK
             else:
                 tries -= 1
+                yield from asyncio.sleep(network_retry_delay)
                 ret = yield from get_guild_online(guildname, titlecase, tries)
                 return ret
 
@@ -286,6 +294,7 @@ def get_guild_online(guildname, titlecase=True, tries=5):
                 return ERROR_NETWORK
             else:
                 tries -= 1
+                yield from asyncio.sleep(network_retry_delay)
                 ret = yield from get_guild_online(guildname, titlecase, tries)
                 return ret
 
@@ -322,6 +331,7 @@ def get_guild_online(guildname, titlecase=True, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
+            yield from asyncio.sleep(network_retry_delay)
             ret = yield from get_guild_online(guildname, titlecase, tries)
             return ret
 
@@ -337,6 +347,7 @@ def get_guild_online(guildname, titlecase=True, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
+            yield from asyncio.sleep(network_retry_delay)
             ret = yield from get_guild_online(guildname, titlecase, tries)
             return ret
 
@@ -401,6 +412,7 @@ def get_character(name, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
+            yield from asyncio.sleep(network_retry_delay)
             ret = yield from get_character(name, tries)
             return ret
 
@@ -416,6 +428,7 @@ def get_character(name, tries=5):
             return ERROR_NETWORK
         else:
             tries -= 1
+            yield from asyncio.sleep(network_retry_delay)
             ret = yield from get_character(name, tries)
             return ret
     # Check if player exists
@@ -828,3 +841,14 @@ def get_voc_abb(vocation: str) -> str:
         return abbrev[vocation]
     except KeyError:
         return 'N'
+
+
+def get_pronouns(gender: str):
+    gender = gender.lower()
+    if gender == "female":
+        pronoun = ["she", "her", "her"]
+    elif gender == "male":
+        pronoun = ["he", "his", "him"]
+    else:
+        pronoun = ["it", "its", "it"]
+    return pronoun

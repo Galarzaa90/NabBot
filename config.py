@@ -59,7 +59,7 @@ global_online_list = []
 loot_max = 3
 
 # Level threshold for announces (level < announceLevel)
-announceTreshold = 30
+announce_treshold = 30
 
 # Minimum days to show last login in /check command.
 last_login_days = 7
@@ -69,6 +69,9 @@ online_scan_interval = 25
 
 # Delay in between player death checks in seconds
 death_scan_interval = 15
+
+# Delay betwen retries when there's a network error in seconds
+network_retry_delay = 0.4
 
 # Databases filenames
 USERDB = "users.db"

@@ -2,6 +2,7 @@ from discord.ext import commands
 import platform
 
 # Eeverything is imported to put it in /debug scope
+from nabbot import announce_death, announce_level
 from utils.discord import *
 from utils.database import *
 from utils.general import *

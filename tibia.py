@@ -633,7 +633,7 @@ class Tibia:
                 c.execute("SELECT level, date, name, user_id "
                           "FROM char_levelups, chars "
                           "WHERE char_id = id AND level >= ? "
-                          "ORDER BY date DESC LIMIT ?", (announceTreshold, limit,))
+                          "ORDER BY date DESC LIMIT ?", (announce_treshold, limit,))
                 result = c.fetchall()
                 if len(result) < 1:
                     yield from self.bot.say("No one has leveled up recently")

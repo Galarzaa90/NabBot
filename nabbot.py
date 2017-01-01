@@ -18,13 +18,13 @@ from utils.database import init_database, userDatabase, reload_worlds
 from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
     clean_string, get_role_list, get_member_by_name
 from utils.general import command_list, join_list, get_uptime, TimeString, \
-    single_line, is_numeric, getLogin
+    single_line, is_numeric, getLogin, start_time
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
     weighedChoice, formatMessage
 from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, get_character_deaths, \
-    get_voc_abb,get_highscores, tibia_worlds
+    get_voc_abb, get_highscores, tibia_worlds, get_pronouns
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True, formatter=NabHelpFormat())
@@ -427,7 +427,7 @@ def scan_deaths():
         # Get rid of server name
         current_char = current_char.split("_", 1)[1]
         # Check for new death
-        yield from check_death(current_char)
+        yield from check_death(bot, current_char)
 
 
 @asyncio.coroutine
@@ -537,12 +537,12 @@ def scan_online_chars():
                                 (result["id"], now_offline_char['level'], time.time(),)
                             )
                             # Announce the level up
-                            yield from announce_level(now_offline_char, now_offline_char['level'])
-                    yield from check_death(now_offline_char['name'])
+                            yield from announce_level(bot, now_offline_char['level'], char=now_offline_char)
+                    yield from check_death(bot, now_offline_char['name'])
 
             # Add new online chars and announce level differences
             for server_char in current_server_online:
-                c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (server_char['name'],))
+                c.execute("SELECT name, last_level, id, user_id FROM chars WHERE name LIKE ?", (server_char['name'],))
                 result = c.fetchone()
                 if result:
                     # If its a stalked character
@@ -563,7 +563,7 @@ def scan_online_chars():
                             "UPDATE chars SET last_death_time = ? WHERE name LIKE ?",
                             (None, server_char['name'],)
                         )
-                        yield from check_death(server_char['name'])
+                        yield from check_death(bot, server_char['name'])
 
                     # Else we check for levelup
                     elif server_char['level'] > last_level > 0:
@@ -573,8 +573,7 @@ def scan_online_chars():
                             (result["id"], server_char['level'], time.time(),)
                         )
                         # Announce the level up
-                        char = yield from get_character(server_char['name'])
-                        yield from announce_level(char, server_char['level'])
+                        yield from announce_level(bot, server_char['level'], char_name=server_char["name"])
 
             # Close cursor and commit changes
             userDatabase.commit()
@@ -582,10 +581,8 @@ def scan_online_chars():
 
 
 @asyncio.coroutine
-def check_death(character):
-    """Gets death list for a character (from database)
-
-    Only the first death is needed"""
+def check_death(bot, character):
+    """Checks if the player has new deaths"""
     character_deaths = yield from get_character_deaths(character, True)
 
     if (type(character_deaths) is list) and len(character_deaths) > 0:
@@ -610,7 +607,7 @@ def check_death(character):
                     (result["id"], int(last_death['level']), last_death['killer'], last_death['byPlayer'], time.time(),)
                 )
                 # Announce the death
-                yield from announce_death(character, last_death['time'], last_death['level'], last_death['killer'], last_death['byPlayer'])
+                yield from announce_death(bot, character, last_death['level'], last_death['killer'], last_death['byPlayer'])
 
         # Close cursor and commit changes
         userDatabase.commit()
@@ -618,25 +615,22 @@ def check_death(character):
 
 
 @asyncio.coroutine
-def announce_death(char_name, death_time, death_level, death_killer, death_by_player):
-    if int(death_level) < announceTreshold:
+def announce_death(bot, char_name, death_level, death_killer, death_by_player):
+    """Announces a level up on the corresponding servers"""
+    if int(death_level) < announce_treshold:
         # Don't announce for low level players
         return
 
-    log.info("Announcing death: {0}({1}) | {2}".format(char_name, death_level, death_killer))
     char = yield from get_character(char_name)
-    # Failsafe in case getPlayer fails to retrieve player data
     if type(char) is not dict:
-        log.warning("Error in announceDeath, failed to getPlayer(" + char_name + ")")
+        log.warning("announce_death: couldn't fetch character (" + char_name + ")")
         return
 
-    if char['world'] not in legacy_worlds:
-        # Don't announce for players in non-tracked worlds
-        return
-    # Choose correct pronouns
-    pronoun = ["he", "his", "him"] if char['gender'] == "male" else ["she", "her", "her"]
+    log.info("Announcing death: {0}({1}) | {2}".format(char_name, death_level, death_killer))
 
-    channel = get_channel_by_name(bot, main_channel, server_id=main_server)
+    # Get correct pronouns
+    pronoun = get_pronouns(char["gender"])
+
     # Find killer article (a/an)
     death_killer_article = ""
     if not death_by_player:
@@ -649,7 +643,7 @@ def announce_death(char_name, death_time, death_level, death_killer, death_by_pl
     # Select a message
     message = weighedChoice(deathmessages_player, char['vocation'], int(death_level)) if death_by_player else weighedChoice(deathmessages_monster, char['vocation'], int(death_level), death_killer)
     # Format message with death information
-    deathInfo = {'charName': char_name, 'deathTime': death_time, 'deathLevel': death_level, 'deathKiller': death_killer,
+    deathInfo = {'charName': char_name, 'deathLevel': death_level, 'deathKiller': death_killer,
                  'deathKillerArticle': death_killer_article, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
                  'pronoun3': pronoun[2]}
     message = message.format(**deathInfo)
@@ -657,23 +651,38 @@ def announce_death(char_name, death_time, death_level, death_killer, death_by_pl
     message = formatMessage(message)
     message = EMOJI[":skull_crossbones:"] + " " + message
 
-    yield from bot.send_message(channel, message[:1].upper()+message[1:])
+    for server_id, tracked_world in tracked_worlds.items():
+        server = bot.get_server(server_id)
+        if char["world"] == tracked_world and server is not None \
+                and server.get_member(str(char["owner_id"])) is not None:
+            yield from bot.send_message(server, message[:1].upper()+message[1:])
 
 
 @asyncio.coroutine
-def announce_level(char, new_level):
+def announce_level(bot, new_level, char_name=None, char=None):
+    """Announces a level up on corresponding servers
+
+    One of these must be passed:
+    char is a character dictionary
+    char_name is a character's name
+
+    If char_name is passed, the character is fetched here."""
     # Don't announce low level players
-    if int(new_level) < announceTreshold:
+    if int(new_level) < announce_treshold:
         return
+    if char is None:
+        if char_name is None:
+            log.error("announce_level: no character or character name passed.")
+            return
+        char = yield from get_character(char_name)
     if type(char) is not dict:
-        log.error("Error in announceLevel, invalid character passed")
+        log.warning("announce_level: couldn't fetch character (" + char_name + ")")
         return
+
     log.info("Announcing level up: {0} ({1})".format(char["name"], new_level))
 
     # Get pronouns based on gender
-    pronoun = ["he", "his", "him"] if char['gender'] == "male" else ["she", "her", "her"]
-
-    channel = get_channel_by_name(bot, main_channel, server_id=main_server)
+    pronoun = get_pronouns(char['gender'])
 
     # Select a message
     message = weighedChoice(levelmessages, char['vocation'], int(new_level))
@@ -685,7 +694,11 @@ def announce_level(char, new_level):
     message = formatMessage(message)
     message = EMOJI[":star2:"]+" "+message
 
-    yield from bot.send_message(channel, message)
+    for server_id, tracked_world in tracked_worlds.items():
+        server = bot.get_server(server_id)
+        if char["world"] == tracked_world and server is not None \
+                and server.get_member(str(char["owner_id"])) is not None:
+            yield from bot.send_message(server, message)
 
 
 # Bot commands
@@ -893,41 +906,54 @@ def im(ctx, *, char_name: str):
         userDatabase.commit()
 
 
-@bot.command()
+@bot.command(pass_context=True, no_pm=True)
 @checks.is_not_lite()
 @asyncio.coroutine
-def online():
+def online(ctx):
     """Tells you which users are online on Tibia
 
     This list gets updated based on Tibia.com online list, so it takes a couple minutes
     to be updated."""
     if lite_mode:
         return
+    tracked_world = tracked_worlds.get(ctx.message.server.id)
+    if tracked_world is None:
+        yield from bot.say("This server is not tracking any tibia worlds.")
+        return
     discord_online_chars = []
     c = userDatabase.cursor()
+    now = datetime.utcnow()
+    uptime = (now-start_time).total_seconds()
     try:
         for char in global_online_list:
-            char = char.split("_", 1)[1]
-            c.execute("SELECT name, user_id, vocation, last_level FROM chars WHERE name LIKE ?", (char,))
+            char = char.split("_", 1)
+            world = char[0]
+            name = char[1]
+            if world != tracked_world:
+                continue
+            c.execute("SELECT name, user_id, vocation, last_level FROM chars WHERE name LIKE ?", (name,))
             result = c.fetchone()
             if result:
                 # This will always be true unless a char is removed from chars in between globalOnlineList updates
                 discord_online_chars.append({"name": result["name"], "id": result["user_id"],
-                                             "vocation": result["vocation"], "level": result["last_level"]})
+                                             "vocation": result["vocation"], "level": abs(result["last_level"])})
         if len(discord_online_chars) == 0:
-            yield from bot.say("There is no one online from Discord.")
-        else:
-            reply = "The following discord users are online:"
-            for char in discord_online_chars:
-                user = get_member(bot, char['id'])
+            if uptime < 60:
+                yield from bot.say("I just started, give me some time to check online lists..."+EMOJI[":clock2:"])
+            else:
+                yield from bot.say("There is no one online from Discord.")
+            return
+        reply = "The following discord users are online:"
+        for char in discord_online_chars:
+            user = get_member(bot, char['id'], ctx.message.server)
 
-                char['vocation'] = get_voc_abb(char['vocation'])
+            char['vocation'] = get_voc_abb(char['vocation'])
 
-                # discordName = user.display_name if (user is not None) else "unknown"
-                if user is not None:
-                    discord_name = user.display_name
-                    reply += "\n\t{0} (Lvl {1} {2}, **@{3}**)".format(char['name'], abs(char['level']), char['vocation'], discord_name)
-            yield from bot.say(reply)
+            # discordName = user.display_name if (user is not None) else "unknown"
+            if user is not None:
+                discord_name = user.display_name
+                reply += "\n\t{0} (Lvl {1} {2}, **@{3}**)".format(char['name'], char['level'], char['vocation'], discord_name)
+        yield from bot.say(reply)
     finally:
         c.close()
 
