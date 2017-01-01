@@ -131,7 +131,8 @@ def on_server_join(server: discord.Server):
               "I will reply to commands from any channel I can see, but if you create a channel called *{1}*, I will " \
               "give longer replies and more information there.\n" \
               "If you want a server log channel, create a channel called *{2}*, I will post logs in there. You might " \
-              "want to make it private though."
+              "want to make it private though.\n" \
+              "To have all of Nab Bot's features, use `/setworld <tibia_world>`"
     formatted_message = message.format(server, ask_channel_name, log_channel_name)
     yield from bot.send_message(server.owner, formatted_message)
 
@@ -252,6 +253,7 @@ def on_server_update(before: discord.Server, after: discord.Server):
 
 @asyncio.coroutine
 def events_announce():
+    # TODO: This needs some denezunifying
     if lite_mode:
         return
     yield from bot.wait_until_ready()
@@ -262,13 +264,11 @@ def events_announce():
         third_announcement = 60*5
         c = userDatabase.cursor()
         try:
-            channel = get_channel_by_name(bot, main_channel, server_id=main_server)
             # Current time
             date = time.time()
             # Find incoming events
-
             # First announcement
-            c.execute("SELECT creator, start, name, id "
+            c.execute("SELECT creator, start, name, id, server "
                       "FROM events "
                       "WHERE start < ? AND start > ? AND active = 1 AND status > 3 "
                       "ORDER by start ASC", (date+first_announcement+60, date+first_announcement,))
@@ -290,7 +290,9 @@ def events_announce():
                     message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name, author, start, event_id)
                     c.execute("UPDATE events SET status = 3 WHERE id = ?", (event_id,))
                     log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
-                    yield from bot.send_message(channel, message)
+                    destination = bot.get_server(str(row["server"]))
+                    if destination:
+                        yield from bot.send_message(destination, message)
                     # Send PM to subscribers:
                     c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
                     subscribers = c.fetchall()
@@ -301,7 +303,7 @@ def events_announce():
                                 continue
                             yield from bot.send_message(user, message)
             # Second announcement
-            c.execute("SELECT creator, start, name, id "
+            c.execute("SELECT creator, start, name, id, server "
                       "FROM events "
                       "WHERE start < ? AND start > ? AND active = 1 AND status > 2 "
                       "ORDER by start ASC", (date+second_announcement+60, date+second_announcement,))
@@ -323,7 +325,9 @@ def events_announce():
                     message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name, author, start, event_id)
                     c.execute("UPDATE events SET status = 2 WHERE id = ?", (event_id,))
                     log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
-                    yield from bot.send_message(channel, message)
+                    destination = bot.get_server(str(row["server"]))
+                    if destination:
+                        yield from bot.send_message(destination, message)
                     # Send PM to subscribers:
                     c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
                     subscribers = c.fetchall()
@@ -334,7 +338,7 @@ def events_announce():
                                 continue
                             yield from bot.send_message(user, message)
             # Third announcement
-            c.execute("SELECT creator, start, name, id "
+            c.execute("SELECT creator, start, name, id, server "
                       "FROM events "
                       "WHERE start < ? AND start > ? AND active = 1 AND status > 1 "
                       "ORDER by start ASC", (date+third_announcement+60, date+third_announcement,))
@@ -356,7 +360,9 @@ def events_announce():
                     message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}!".format(name, author, start, event_id)
                     c.execute("UPDATE events SET status = 1 WHERE id = ?", (event_id,))
                     log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
-                    yield from bot.send_message(channel, message)
+                    destination = bot.get_server(str(row["server"]))
+                    if destination:
+                        yield from bot.send_message(destination, message)
                     # Send PM to subscribers:
                     c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
                     subscribers = c.fetchall()
@@ -367,7 +373,7 @@ def events_announce():
                                 continue
                             yield from bot.send_message(user, message)
             # Last announcement
-            c.execute("SELECT creator, start, name, id "
+            c.execute("SELECT creator, start, name, id, server "
                       "FROM events "
                       "WHERE start < ? AND start > ? AND active = 1 AND status > 0 "
                       "ORDER by start ASC", (date+60,date,))
@@ -389,7 +395,9 @@ def events_announce():
                     message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting right now!".format(name, author, start, event_id)
                     c.execute("UPDATE events SET status = 0 WHERE id = ?", (event_id,))
                     log.info("Announcing event: {0} (by @{1},ID:{3}) - Starting ({2})".format(name, author, start, event_id))
-                    yield from bot.send_message(channel, message)
+                    destination = bot.get_server(str(row["server"]))
+                    if destination:
+                        yield from bot.send_message(destination, message)
                     # Send PM to subscribers:
                     c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
                     subscribers = c.fetchall()
@@ -617,7 +625,7 @@ def check_death(bot, character):
 @asyncio.coroutine
 def announce_death(bot, char_name, death_level, death_killer, death_by_player):
     """Announces a level up on the corresponding servers"""
-    if int(death_level) < announce_treshold:
+    if int(death_level) < announce_threshold:
         # Don't announce for low level players
         return
 
@@ -668,7 +676,7 @@ def announce_level(bot, new_level, char_name=None, char=None):
 
     If char_name is passed, the character is fetched here."""
     # Don't announce low level players
-    if int(new_level) < announce_treshold:
+    if int(new_level) < announce_threshold:
         return
     if char is None:
         if char_name is None:

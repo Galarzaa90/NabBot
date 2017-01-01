@@ -2,7 +2,7 @@ import random
 import re
 import discord
 
-from config import announce_treshold
+from config import announce_threshold
 
 # Emoji code
 # Emoji :shortname: list
@@ -1342,7 +1342,7 @@ levelmessages = [
     [30000, "**{charName}** is level {newLevel}! You can become a ninja now!" + EMOJI[":bust_in_silhouette:"],
      ["Paladin", "Royal Paladin"], [80]],
     [20000, "Level {newLevel}, **{charName}**? You're finally important enough for me to notice!", False,
-     [announce_treshold]],
+     [announce_threshold]],
     [20000, "**{charName}** is now level {newLevel}! Time to go berserk! " + EMOJI[":anger:"],
      ["Knight", "Elite Knight"], [35]],
     [30000, "**{charName}** is level {newLevel}!!!!\r\n" +
