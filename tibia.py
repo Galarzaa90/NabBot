@@ -272,7 +272,8 @@ class Tibia:
             reply = "**{0}** ({1}) can share experience with levels **{2}** to **{3}**.".format(name, level, low, high)
         yield from self.bot.say(reply)
 
-    @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"], pass_context=True)
+    @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"], no_pm=True,
+                      pass_context=True)
     @checks.is_not_lite()
     @asyncio.coroutine
     def find_team(self, ctx, *, params=None):
@@ -292,6 +293,12 @@ class Tibia:
                             "```/find vocation,charname\n" \
                             "/find vocation,level\n" \
                             "/find vocation,minlevel,maxlevel```"
+
+        tracked_world = tracked_worlds.get(ctx.message.server.id)
+        if tracked_world is None:
+            yield from self.bot.say("This server is not tracking any tibia worlds.")
+            return
+
         if params is None:
             yield from self.bot.say(invalid_arguments)
             return
@@ -365,8 +372,8 @@ class Tibia:
         c = userDatabase.cursor()
         try:
             c.execute("SELECT name, user_id, ABS(last_level) as level FROM chars "
-                      "WHERE vocation LIKE ? AND level >= ? AND level <= ? "
-                      "ORDER by level DESC", ("%"+vocation, low, high))
+                      "WHERE vocation LIKE ? AND level >= ? AND level <= ? AND world = ?"
+                      "ORDER by level DESC", ("%"+vocation, low, high, tracked_world, ))
             count = 0
             online_list = [x.split("_", 1)[1] for x in global_online_list]
             while True:
