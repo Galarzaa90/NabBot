@@ -13,8 +13,7 @@ To install discord.py simply run the following on the command line:
 
 ```
 pip3 install -U https://github.com/Rapptz/discord.py/archive/master.zip#egg=discord.py[voice]  
-pip3 install psutil
-pip3 install pillow
+pip3 install pillow psutil requests
 ```
 
 Create a bot token on Discord

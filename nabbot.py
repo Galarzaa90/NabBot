@@ -797,16 +797,6 @@ def im(ctx, *, char_name: str):
 
     c = userDatabase.cursor()
     try:
-        mod_list = owner_ids+mod_ids
-        valid_mods = []
-        for id in (owner_ids+mod_ids):
-            mod = get_member(bot, id, ctx.message.server)
-            if mod is not None:
-                valid_mods.append(mod.mention)
-        admins_message = join_list(valid_mods, ", ", " or ")
-        servers_message = join_list(["**" + server + "**" for server in legacy_worlds], ", ", " or ")
-        not_allowed_message = ("I'm sorry, {0.mention}, this command is reserved for new users, if you need any help "
-                               "adding characters to your account please message {1}.").format(user, admins_message)
         yield from bot.send_typing(ctx.message.channel)
         char = yield from get_character(char_name)
         if type(char) is not dict:
@@ -912,6 +902,51 @@ def im(ctx, *, char_name: str):
     finally:
         c.close()
         userDatabase.commit()
+
+
+@bot.command(pass_context=True, aliases=["i'mnot"])
+@checks.is_not_lite()
+@asyncio.coroutine
+def imnot(ctx, *, name):
+    """Removes a character assigned to you
+
+    All registered level ups and deaths will be lost forever."""
+    c = userDatabase.cursor()
+    try:
+        c.execute("SELECT id, name, ABS(last_level) as level, user_id, vocation, world "
+                  "FROM chars WHERE name LIKE ?", (name, ))
+        char = c.fetchone()
+        if char is None:
+            yield from bot.say("There's no character registered with that name.")
+            return
+        if str(char["user_id"]) != ctx.message.author.id:
+            yield from bot.say("The character **{0}** is not registered to you.".format(char["name"]))
+            return
+
+        yield from bot.say("Are you sure you want to unregister **{name}** ({level} {vocation})? `yes/no`"
+                           "\n*All registered level ups and deaths will be lost forever.*"
+                           .format(**char))
+        reply = yield from bot.wait_for_message(timeout=50.0, author=ctx.message.author, channel=ctx.message.channel)
+        if reply is None:
+            yield from bot.say("I guess you changed your mind.")
+            return
+        elif reply.content.lower() not in ["yes", "y"]:
+            yield from bot.say("No then? Ok.")
+            return
+
+        c.execute("DELETE FROM chars WHERE id = ?", (char["id"], ))
+        c.execute("DELETE FROM char_levelups WHERE char_id = ?", (char["id"], ))
+        c.execute("DELETE FROM char_deaths WHERE char_id = ?", (char["id"], ))
+        yield from bot.say("**{0}** is no longer registered to you.".format(char["name"]))
+
+        user_servers = [s.id for s in get_user_servers(bot, ctx.message.author.id)]
+        for server_id, world in tracked_worlds.items():
+            if char["world"] == world and server_id in user_servers:
+                message = "{0} unregistered **{1}**".format(ctx.message.author.mention, char["name"])
+                yield from send_log_message(bot, bot.get_server(server_id), message)
+    finally:
+        userDatabase.commit()
+        c.close()
 
 
 @bot.command(pass_context=True, no_pm=True)
