@@ -797,6 +797,13 @@ def im(ctx, *, char_name: str):
 
     c = userDatabase.cursor()
     try:
+        mod_list = owner_ids + mod_ids
+        valid_mods = []
+        for id in (owner_ids + mod_ids):
+            mod = get_member(bot, id, ctx.message.server)
+            if mod is not None:
+                valid_mods.append(mod.mention)
+        admins_message = join_list(valid_mods, ", ", " or ")
         yield from bot.send_typing(ctx.message.channel)
         char = yield from get_character(char_name)
         if type(char) is not dict:
