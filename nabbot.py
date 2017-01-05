@@ -126,7 +126,7 @@ def on_message(message):
 @bot.event
 @asyncio.coroutine
 def on_server_join(server: discord.Server):
-    log.info("Nab Bot added to server: {0.name} (ID: {0.id])".format(server))
+    log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(server))
     message = "Hello! I'm now in **{0.name}**. To see my available commands, type \help\n" \
               "I will reply to commands from any channel I can see, but if you create a channel called *{1}*, I will " \
               "give longer replies and more information there.\n" \
