@@ -710,7 +710,7 @@ def announce_level(bot, new_level, char_name=None, char=None):
 
 
 # Bot commands
-@bot.command(pass_context=True)
+@bot.command(pass_context=True, aliases=["commands"])
 @asyncio.coroutine
 def help(ctx, *commands: str):
     """Shows this message."""
