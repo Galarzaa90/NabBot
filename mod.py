@@ -131,6 +131,9 @@ class Mod:
         if char["world"] not in common_worlds:
             yield from self.bot.say("**{name}** ({world}) is not in a world you can manage.".format(**char))
             return
+        if char.get("deleted", False):
+            yield from self.bot.say("**{name}** ({world}) is scheduled for deletion and can't be added.".format(**char))
+            return
         c = userDatabase.cursor()
         try:
             c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (char['name'],))
@@ -221,7 +224,7 @@ class Mod:
         yield from self.bot.send_typing(ctx.message.channel)
         char = yield from get_character(params[1])
         if user is None:
-            yield from self.bot.say("I don't see any user named **{0}**".format(params[0]))
+            yield from self.bot.say("I don't see any user named **{0}** in the servers you manage.".format(params[0]))
             return
         if type(char) is not dict:
             if char == ERROR_NETWORK:
@@ -252,6 +255,10 @@ class Mod:
                     char = yield from get_character(char["name"])
                 if type(char) is not dict:
                     error.append(name)
+                    continue
+                # Skip characters scheduled for deletion
+                if char.get("deleted", False):
+                    skipped.append([char["name"], char["world"]])
                     continue
                 c.execute("SELECT id, name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
                 result = c.fetchone()
@@ -299,7 +306,7 @@ class Mod:
                     char["guild"] = char.get("guild", "No guild")
                     reply += "\n\t**{name}** ({level} {vocation}) - **{guild}**".format(**char)
             if skipped:
-                reply += "\nThe following characters were skipped (not in tracked worlds):"
+                reply += "\nThe following characters were skipped (not in tracked worlds or scheduled deletion):"
                 for char, world in skipped:
                     reply += "\n\t{0} ({1})".format(char, world)
             if error:

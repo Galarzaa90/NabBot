@@ -797,7 +797,6 @@ def im(ctx, *, char_name: str):
 
     c = userDatabase.cursor()
     try:
-        mod_list = owner_ids + mod_ids
         valid_mods = []
         for id in (owner_ids + mod_ids):
             mod = get_member(bot, id, ctx.message.server)
@@ -853,6 +852,9 @@ def im(ctx, *, char_name: str):
                 if char == ERROR_NETWORK:
                     yield from bot.reply("I'm having network troubles, please try again.")
                     return
+            if char.get("deleted", False):
+                skipped.append(char)
+                continue
             char["guild"] = char.get("guild", "No guild")
             added.append(char)
 
