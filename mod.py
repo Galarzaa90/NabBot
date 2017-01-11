@@ -2,11 +2,13 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from config import lite_mode, main_server, tracked_worlds, legacy_worlds
+from config import lite_mode, tracked_worlds, mod_ids, owner_ids
 from utils.database import userDatabase
+from utils.messages import split_message
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
 from utils.general import is_numeric
-from utils.discord import get_member, get_member_by_name
+from utils.discord import get_member, get_member_by_name, get_user_servers, get_user_worlds, send_log_message, \
+    get_user_admin_servers
 from utils import checks
 
 
@@ -82,46 +84,14 @@ class Mod:
         Commands and subcommands can only be used on pm"""
         if not ctx.message.channel.is_private:
             return True
-        yield from self.bot.say("```Valid subcommands are:\n"
-                                "add, addchar, addacc, remove, removechar, purge, check, refreshnames```")
-
-    @stalk.command(pass_context=True, name="add", aliases=["add_user", "register_user", "user"])
-    @checks.is_mod()
-    @checks.is_not_lite()
-    @asyncio.coroutine
-    def add_user(self, ctx, *, name):
-        """Registers an user in the database
-
-        User must be visible by the bot.
-
-        The syntax is:
-        /stalk add user"""
-        if not ctx.message.channel.is_private:
-            return True
-        c = userDatabase.cursor()
-        try:
-            user = get_member_by_name(self.bot, name)
-            if user is None:
-                yield from self.bot.say("I don't see any user named **{0}**.".format(name))
-                return
-            c.execute("SELECT id from users WHERE id LIKE ?", (user.id,))
-            if c.fetchone() is not None:
-                yield from self.bot.say("**@{0}** is already registered.".format(user.display_name))
-                return
-            c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
-            yield from self.bot.say("**@{0}** was registered successfully.".format(user.display_name))
-        finally:
-            c.close()
-            userDatabase.commit()
+        yield from self.bot.say("To see valid subcommands use ´/help stalk´")
 
     @stalk.command(pass_context=True, name="addchar", aliases=["char"])
     @checks.is_mod()
     @checks.is_not_lite()
     @asyncio.coroutine
     def add_char(self, ctx, *, params):
-        """Registers a tibia character to a discord user
-
-        The user is registered automatically if it wasn't registered already.
+        """Registers a tibia character to a discord user.
 
         The syntax is:
         /stalk addchar user,character"""
@@ -131,16 +101,35 @@ class Mod:
         if len(params) != 2:
             yield from self.bot.say("The correct syntax is: ``/stalk addchar username,character``")
             return
-        user = get_member_by_name(self.bot, params[0])
+
+        author = ctx.message.author
+        if author.id in mod_ids+owner_ids:
+            author_servers = get_user_servers(self.bot, author.id)
+        else:
+            author_servers = get_user_admin_servers(self.bot, author.id)
+        author_worlds = get_user_worlds(self.bot, author.id)
+
+        # Only search in the servers the command author is
+        user = get_member_by_name(self.bot, params[0], server_list=author_servers)
+        user_servers = get_user_servers(self.bot, user.id)
+        user_worlds = get_user_worlds(self.bot, author.id)
+
+        common_worlds = list(set(author_worlds) & set(user_worlds))
+
+        yield from self.bot.send_typing(ctx.message.channel)
         char = yield from get_character(params[1])
+
         if user is None:
-            yield from self.bot.say("I don't see any user named **{0}**".format(params[0]))
+            yield from self.bot.say("I don't see any user named **{0}** in the servers you manage.".format(params[0]))
             return
         if type(char) is not dict:
             if char == ERROR_NETWORK:
                 yield from self.bot.say("I couldn't fetch the character, please try again.")
             elif char == ERROR_DOESNTEXIST:
                 yield from self.bot.say("That character doesn't exists.")
+            return
+        if char["world"] not in common_worlds:
+            yield from self.bot.say("**{name}** ({world}) is not in a world you can manage.".format(**char))
             return
         c = userDatabase.cursor()
         try:
@@ -162,6 +151,14 @@ class Mod:
                         c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
                         yield from self.bot.say("This character was registered to a user no longer in server. "
                                                 "It was assigned to this user successfully.")
+                        # Log on relevant servers
+                        for server in user_servers:
+                            world = tracked_worlds.get(server.id, None)
+                            if world == char["world"]:
+                                log_msg = "{0.mention} registered **{1}** ({2} {3}) to {4.mention}."
+                                yield from send_log_message(self.bot, server, log_msg.format(author, char["name"],
+                                                                                             char["level"],
+                                                                                             char["vocation"], user))
                     else:
                         yield from self.bot.say("This character is already registered to **@{0}**".format(
                             current_user.display_name)
@@ -177,8 +174,15 @@ class Mod:
             result = c.fetchone()
             if result is None:
                 c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
-                yield from self.bot.say("**@{0}** was registered successfully.".format(user.display_name))
             yield from self.bot.say("**{0}** was registered successfully to this user.".format(char['name']))
+            # Log on relevant servers
+            for server in user_servers:
+                world = tracked_worlds.get(server.id, None)
+                if world == char["world"]:
+                    char["guild"] = char.get("guild", "No guild")
+                    log_msg = "{0.mention} registered **{1}** ({2} {3}, {4}) to {5.mention}."
+                    yield from send_log_message(self.bot, server, log_msg.format(author, char["name"], char["level"],
+                                                                                 char["vocation"], char["guild"], user))
             return
         finally:
             c.close()
@@ -191,7 +195,7 @@ class Mod:
     def add_account(self, ctx, *, params):
         """Register a character and all other visible characters to a discord user.
 
-        If a character is hidden, only that characater will be addeed. Characters in other worlds are skipped.
+        If a character is hidden, only that character will be added. Characters in other worlds are skipped.
 
         The syntax is the following:
         /stalk addacc user,char"""
@@ -201,7 +205,20 @@ class Mod:
         if len(params) != 2:
             yield from self.bot.say("The correct syntax is: ``/stalk addacc username,character``")
             return
-        user = get_member_by_name(self.bot, params[0])
+
+        author = ctx.message.author
+        if author.id in mod_ids+owner_ids:
+            author_servers = get_user_servers(self.bot, author.id)
+        else:
+            author_servers = get_user_admin_servers(self.bot, author.id)
+        author_worlds = get_user_worlds(self.bot, author.id)
+
+        user = get_member_by_name(self.bot, params[0], server_list=author_servers)
+        user_servers = get_user_servers(self.bot, user.id)
+        user_worlds = get_user_worlds(self.bot, user.id)
+
+        common_worlds = list(set(author_worlds) & set(user_worlds))
+        yield from self.bot.send_typing(ctx.message.channel)
         char = yield from get_character(params[1])
         if user is None:
             yield from self.bot.say("I don't see any user named **{0}**".format(params[0]))
@@ -219,43 +236,81 @@ class Mod:
             if len(chars) == 0:
                 yield from self.bot.say("Character is hidden.")
                 chars = [char]
+            skipped = list()
+            added = list()
+            added_tuples = list()
+            reassigned_tuples = list()
+            existent = list()
+            error = list()
             for char in chars:
                 # Character not in followed server(s), skip.
-                if char['world'] not in legacy_worlds:
-                    yield from self.bot.say("**{0}** skipped, character not in server list.".format(char['name']))
+                if char['world'] not in common_worlds:
+                    skipped.append([char["name"], char["world"]])
                     continue
-                char = yield from get_character(char['name'])
+                name = char["name"]
+                if len(chars) != 1:
+                    char = yield from get_character(char["name"])
+                if type(char) is not dict:
+                    error.append(name)
+                    continue
                 c.execute("SELECT id, name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
                 result = c.fetchone()
                 # Char is already in database
                 if result is not None:
                     # Registered to different user
-                    if result["user_id"] != user.id:
+                    if str(result["user_id"]) != user.id:
                         current_user = get_member(self.bot, result["user_id"])
                         # Char is registered to user no longer in server
                         if current_user is None:
-                            c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
-                            yield from self.bot.say("**{0}** was registered to a user no longer in server. "
-                                                    "It was assigned to this user successfully.".format(char["name"]))
-                        else:
-                            yield from self.bot.say("**{0}** is already registered to **@{1}**".format(
-                                char['name'],
-                                current_user.display_name)
-                            )
+                            added.append(char)
+                            reassigned_tuples.append((user.id, result["id"],))
                             continue
+                        else:
+                            yield from self.bot.say("{0} is already assigned to {1}. We can't add any other of these "
+                                                    "characters.".format(char["name"], current_user.display_name))
+                            return
                     # Registered to current user
-                    yield from self.bot.say("**{0}** is already registered to this user.".format(char['name']))
+                    existent.append(char)
                     continue
-                c.execute(
-                    "INSERT INTO chars (name,last_level,vocation,user_id, world) VALUES (?,?,?,?,?)",
-                    (char["name"], char["level"]*-1, char["vocation"], user.id, char["world"])
-                )
-                yield from self.bot.say("**{0}** was registered successfully to this user.".format(char['name']))
+                added.append(char)
+                added_tuples.append((char["name"], char["level"]*-1, char["vocation"], user.id, char["world"],))
             c.execute("SELECT id from users WHERE id = ?", (user.id,))
             result = c.fetchone()
             if result is None:
                 c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
-                yield from self.bot.say("**@{0}** was registered successfully.".format(user.display_name))
+
+            c.executemany("INSERT INTO chars(name,last_level,vocation,user_id, world) VALUES (?,?,?,?,?)", added_tuples)
+            c.executemany("UPDATE chars SET user_id = ? WHERE id = ?", reassigned_tuples)
+            reply = ""
+            log_reply = dict().fromkeys([server.id for server in user_servers], "")
+            if added:
+                reply += "\nThe following characters were registered or reassigned successfully:"
+                for char in added:
+                    char["guild"] = char.get("guild", "No guild")
+                    reply += "\n\t**{name}** ({level} {vocation}) - **{guild}**".format(**char)
+                    # Announce on server log of each server
+                    for server in user_servers:
+                        # Only announce on worlds where the character's world is tracked
+                        if tracked_worlds.get(server.id, None) == char["world"]:
+                            log_reply[server.id] += "\n\t{name} - {level} {vocation} - **{guild}**".format(**char)
+            if existent:
+                reply += "\nThe following characters were already registered to this user:"
+                for char in existent:
+                    char["guild"] = char.get("guild", "No guild")
+                    reply += "\n\t**{name}** ({level} {vocation}) - **{guild}**".format(**char)
+            if skipped:
+                reply += "\nThe following characters were skipped (not in tracked worlds):"
+                for char, world in skipped:
+                    reply += "\n\t{0} ({1})".format(char, world)
+            if error:
+                reply += "\nThe following characters couldn't be fetched: "
+                reply += ", ".join(error)
+            yield from self.bot.say(reply)
+            for server_id, message in log_reply.items():
+                if message:
+                    message = "{0.mention} registered the following characters to {1.mention}: {2}".format(author, user,
+                                                                                                           message)
+                    yield from send_log_message(self.bot, self.bot.get_server(server_id), message)
             return
         finally:
             c.close()
@@ -274,9 +329,11 @@ class Mod:
             return True
         # This could be used to remove deleted chars so we don't need to check anything
         # Except if the char exists in the database...
+        yield from self.bot.send_typing(ctx.message.channel)
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT name, user_id FROM chars WHERE name LIKE ?", (name,))
+            c.execute("SELECT name, user_id, world, ABS(last_level) as level, vocation "
+                      "FROM chars WHERE name LIKE ?", (name,))
             result = c.fetchone()
             if result is None:
                 yield from self.bot.say("There's no character with that name registered.")
@@ -285,6 +342,15 @@ class Mod:
             username = "unknown" if user is None else user.display_name
             c.execute("DELETE FROM chars WHERE name LIKE ?", (name,))
             yield from self.bot.say("**{0}** was removed successfully from **@{1}**.".format(name, username))
+            if user is not None:
+                for server in get_user_servers(self.bot, user.id):
+                    world = tracked_worlds.get(server.id, None)
+                    if world != result["world"]:
+                        continue
+                    log_msg = "{0.mention} removed **{1}** ({2} {3}) from {4.mention}.".\
+                        format(ctx.message.author, result["name"], result["level"], result["vocation"], user)
+                    yield from send_log_message(self.bot, server, log_msg)
+
             return
         finally:
             c.close()
@@ -302,6 +368,7 @@ class Mod:
         if not ctx.message.channel.is_private:
             return True
         c = userDatabase.cursor()
+        yield from self.bot.send_typing(ctx.message.channel)
         # Searching users in server
         user = get_member_by_name(self.bot, name)
         # Searching users in database
@@ -350,6 +417,7 @@ class Mod:
             c.close()
             userDatabase.commit()
 
+    # Todo: Add server-log entry
     @stalk.command(name="namelock", pass_context=True, aliases=["namechange","rename"])
     @checks.is_mod()
     @checks.is_not_lite()
@@ -373,8 +441,9 @@ class Mod:
 
         old_name = params[0]
         new_name = params[1]
+        yield from self.bot.send_typing(ctx.message.channel)
+        c = userDatabase.cursor()
         try:
-            c = userDatabase.cursor()
             c.execute("SELECT * FROM chars WHERE name LIKE ? LIMIT 1", (old_name,))
             old_char_db = c.fetchone()
             # If character wasn't registered, there's nothing to do.
@@ -430,9 +499,9 @@ class Mod:
 
             if new_char_db is None:
                 c.execute("UPDATE chars SET name = ?, vocation = ?, last_level = ? WHERE id = ?", (new_char["name"],
-                                                                                                    new_char["vocation"],
-                                                                                                    new_char["level"],
-                                                                                                    old_char_db["id"],))
+                                                                                                   new_char["vocation"],
+                                                                                                   new_char["level"],
+                                                                                                   old_char_db["id"],))
             else:
                 # Replace new char with old char id and delete old char, reassign deaths and levelups
                 c.execute("DELETE FROM chars WHERE id = ?", (old_char_db["id"]),)
@@ -445,6 +514,7 @@ class Mod:
             c.close()
             userDatabase.commit()
 
+    # Todo: Reduce number of messages
     @stalk.command(pass_context=True, aliases=["clean"])
     @checks.is_owner()
     @checks.is_not_lite()
@@ -545,27 +615,46 @@ class Mod:
         """Check which users are currently not registered."""
         if not ctx.message.channel.is_private:
             return True
+
+        author = ctx.message.author
+        if author.id in mod_ids+owner_ids:
+            author_servers = get_user_servers(self.bot, author.id)
+        else:
+            author_servers = get_user_admin_servers(self.bot, author.id)
+
+        embed = discord.Embed(description="Members with unregistered users.")
+
+        yield from self.bot.send_typing(ctx.message.channel)
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT user_id FROM chars GROUP BY user_id")
-            result = c.fetchall()
-            if len(result) <= 0:
-                yield from self.bot.say("There are no registered characters.")
-                return
-            users = [str(i["user_id"]) for i in result]
-            members = self.bot.get_server(main_server).members
-            empty_members = list()
-            for member in members:
-                if member.id == self.bot.user.id:
+            for server in author_servers:
+                world = tracked_worlds.get(server.id, None)
+                if world is None:
                     continue
-                if member.id not in users:
-                    empty_members.append("**@" + member.display_name + "**")
-            if len(empty_members) == 0:
-                yield from self.bot.say("There are no unregistered users or users without characters.")
-                return
-            yield from self.bot.say(
-                "The following users are not registered or have no chars registered to them:\n\t{0}".format(
-                    "\n\t".join(empty_members)))
+                c.execute("SELECT user_id FROM chars WHERE world LIKE ? GROUP BY user_id", (world,))
+                result = c.fetchall()
+                if len(result) <= 0:
+                    embed.add_field(name=server.name, value="There are no registered characters.", inline=False)
+                    continue
+                users = [str(i["user_id"]) for i in result]
+                empty_members = list()
+                for member in server.members:
+                    if member.id == self.bot.user.id:
+                        continue
+                    if member.id not in users:
+                        empty_members.append("**@" + member.display_name + "**")
+                if len(empty_members) == 0:
+                    embed.add_field(name=server.name, value="There are no unregistered users.", inline=False)
+                    continue
+                field_value = "\n{0}".format("\n".join(empty_members))
+                split_value = split_message(field_value, 1024)
+                for empty_member in split_value:
+                    if empty_member == split_value[0]:
+                        name = server.name
+                    else:
+                        name = "\u200F"
+                    embed.add_field(name=name, value=empty_member)
+                yield from self.bot.say(embed=embed)
         finally:
             c.close()
 
@@ -595,7 +684,6 @@ class Mod:
             c.close()
             userDatabase.commit()
 
-    @add_user.error
     @add_char.error
     @add_account.error
     @remove_char.error

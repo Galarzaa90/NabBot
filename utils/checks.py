@@ -2,32 +2,40 @@ import discord
 from discord.ext import commands
 
 from config import owner_ids, mod_ids, main_server, lite_mode
+from utils.discord import get_user_admin_servers
 
 
 # Checks if the user is the owner of the bot
 # Bot owner can pass any checks
+
+
+def is_owner_check(ctx):
+    return ctx.message.author.id in owner_ids
+
+
 def is_owner():
-    def predicate(ctx):
-        author = ctx.message.author
-        return author.id in owner_ids
-    return commands.check(predicate)
+    return commands.check(is_owner_check)
+
+
+def is_mod_check(ctx):
+    return ctx.message.author.id in mod_ids
 
 
 def is_mod():
     def predicate(ctx):
-        author = ctx.message.author
-        return author.id in mod_ids or author.id in owner_ids
+        return is_owner_check(ctx) or is_mod_check(ctx) or is_admin_check(ctx)
     return commands.check(predicate)
+
+
+def is_admin_check(ctx):
+    author = ctx.message.author
+    return len(get_user_admin_servers(ctx.bot, author.id)) > 0 or is_owner_check(ctx)
 
 
 # Checks if the user is a server admin
 def is_admin():
     def predicate(ctx):
-        channel = ctx.message.channel
-        author = ctx.message.author
-        if channel.is_private:
-            return False
-        return channel.permissions_for(author).manage_server or author.id in owner_ids
+        return is_admin_check(ctx) or is_owner_check(ctx)
     return commands.check(predicate)
 
 

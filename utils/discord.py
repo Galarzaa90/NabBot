@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 import re
 
-from config import log_channel_name
+from config import log_channel_name, tracked_worlds
 from .messages import EMOJI
 
 
@@ -31,12 +31,16 @@ def get_server_by_name(bot: discord.Client, server_name: str) -> discord.Server:
     return server
 
 
-def get_member_by_name(bot: discord.Client, name: str, server: discord.Server = None) -> discord.Member:
+def get_member_by_name(bot: discord.Client, name: str, server: discord.Server=None, server_list=None) -> discord.Member:
     """Returns a member matching the name
 
     If no server is specified, the first member matching the id will be returned, meaning that the server he
     belongs to will be unknown, so member-only functions may be inaccurate.
+    If server_list is defined, only members within that server list will be searched for
     User functions remain the same, regardless of server"""
+    if server_list is not None and len(server_list) > 0:
+        members = [m for ml in [s.members for s in server_list] for m in ml]
+        return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), members)
     if server is not None:
         return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), server.members)
     else:
@@ -58,6 +62,27 @@ def get_member(bot: discord.Client, user_id, server: discord.Server = None) -> d
 def get_user_servers(bot: discord.Client, user_id):
     """Returns a list of the user's shared servers with the bot"""
     return [m.server for m in bot.get_all_members() if m.id == str(user_id)]
+
+
+def get_user_admin_servers(bot: discord.Client, user_id):
+    """Returns a list of the servers the user is and admin of and the bot is a member of"""
+    servers = get_user_servers(bot, user_id)
+    ret = []
+    for server in servers:
+        member = server.get_member(str(user_id))   # type: discord.Member
+        if member.server_permissions.administrator:
+            ret.append(server)
+    return ret
+
+
+def get_user_worlds(bot: discord.Client, user_id, server_list=None):
+    """Returns a list of all the tibia worlds the user is tracked in.
+
+    This is based on the tracked world of each server the user belongs to.
+    server_list can be passed to search in a specific set of servers. Note that the user may not belong to them."""
+    if server_list is None:
+        server_list = get_user_servers(bot, user_id)
+    return [world for server, world in tracked_worlds.items() if server in [s.id for s in server_list]]
 
 
 @asyncio.coroutine

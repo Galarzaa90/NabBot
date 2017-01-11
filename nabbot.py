@@ -1495,7 +1495,7 @@ def event_subscribe(ctx, event_id: int):
         reply = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=30.0)
         if reply is None:
             yield from bot.say("No answer? Nevermind then.")
-        elif reply.content in ["yes", "y"]:
+        elif reply.content.lower() in ["yes", "y"]:
             c.execute("INSERT INTO event_subscribers (event_id, user_id) VALUES(?,?)", (event_id, author.id))
             yield from bot.say("You have subscribed successfully to this event. I'll let you know when it's happening.")
         else:

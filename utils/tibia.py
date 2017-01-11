@@ -98,7 +98,8 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
         scoreList.append({'rank': m[0], 'name': m[1], 'value': m[2]})
     return scoreList
 
-# TODO: Merge this with get_character, with a paramter to skip death parsing
+
+# TODO: Merge this with get_character, with a parameter to skip death parsing
 @asyncio.coroutine
 def get_character_deaths(name, single_death=False, tries=5):
     """Returns a list with the player's deaths
