@@ -653,8 +653,8 @@ class Mod:
                         name = server.name
                     else:
                         name = "\u200F"
-                    embed.add_field(name=name, value=empty_member)
-                yield from self.bot.say(embed=embed)
+                    embed.add_field(name=name, value=empty_member, inline=False)
+        yield from self.bot.say(embed=embed)
         finally:
             c.close()
 
