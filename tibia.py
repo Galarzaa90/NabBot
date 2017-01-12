@@ -12,6 +12,7 @@ from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_tim
 from utils.loot import loot_scan
 from utils.messages import EMOJI, split_message
 from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_servers
+from utils.paginator import Paginator
 from utils.tibia import *
 
 
@@ -622,72 +623,53 @@ class Tibia:
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
-        if lite_mode:
-            return
-        now = time.time()
         c = userDatabase.cursor()
-        limit = 5
+        entries = []
+        now = time.time()
         ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
-        ask_message = ""
-        embed = discord.Embed(title="Latest level ups:", description="")
-        embed.colour = discord.Colour.dark_green()
         if ctx.message.channel.is_private or ctx.message.channel == ask_channel:
-            limit = 20
-        elif ask_channel is not None:
-            ask_message = "\nFor longer replies use {0.mention}".format(ask_channel)
+            per_page = 20
+        else:
+            per_page = 5
         try:
             if name is None:
+                title = "Latest level ups"
                 c.execute("SELECT level, date, name, user_id "
                           "FROM char_levelups, chars "
                           "WHERE char_id = id AND level >= ? "
-                          "ORDER BY date DESC LIMIT ?", (announce_threshold, limit,))
-                result = c.fetchall()
-                if len(result) < 1:
-                    yield from self.bot.say("No one has leveled up recently")
+                          "ORDER BY date DESC LIMIT 100", (announce_threshold, ))
+                results = c.fetchall()
+                if not results:
+                    yield from self.bot.say("There are no registered level ups.")
                     return
-
-                levels = ""
-                for levelup in result:
-                    timediff = timedelta(seconds=now-levelup["date"])
-                    user = get_member(self.bot, levelup["user_id"])
-                    username = "unkown"
-                    if user:
-                        username = user.display_name
-                    embed.description += "\n\u25BA Level **{0}** - {2} (**@{3}**) - *{1} ago*"\
-                        .format(levelup["level"], get_time_diff(timediff), levelup["name"], username)
-                if site_enabled:
-                    embed.description += "\nSee more levels [here]({0}{1})".format(baseUrl, levelsPage)
-                embed.description += ask_message
-                yield from self.bot.say(embed=embed)
-                return
-            # Checking if character exists in db and get id while we're at it
-            c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
-            result = c.fetchone()
-            if result is None:
-                yield from self.bot.say("I don't have a character with that name registered.")
-                return
-            # Getting correct capitalization
-            name = result["name"]
-            id = result["id"]
-            c.execute("SELECT level, date FROM char_levelups WHERE char_id = ? ORDER BY date DESC LIMIT ?", (id, limit,))
-            result = c.fetchall()
-            # Checking number of level ups
-            if len(result) < 1:
-                yield from self.bot.say("I haven't seen **{0}** level up.".format(name))
-                return
-            embed.title = "**{0}** latest level ups:".format(name)
-            levels = ""
-            for levelup in result:
-                timediff = timedelta(seconds=now-levelup["date"])
-                embed.description += "\n\u25BA Level **{0}** - *{1} ago*".format(levelup["level"],
-                                                                                 get_time_diff(timediff))
-            if site_enabled:
-                embed.description += "\nSee more levels [here]({0}{1}?name={2})".format(baseUrl, charactersPage,
-                                                                                        urllib.parse.quote(name))
-            embed.description += ask_message
-            yield from self.bot.say(embed=embed)
+                for row in results:
+                    row["time"] = get_time_diff(timedelta(seconds=now-row["date"]))
+                    user = get_member(self.bot, row["user_id"], ctx.message.server)
+                    row["user"] = "unknown" if user is None else user.display_name
+                    entries.append("Level **{level}** - {name} (**@{user}**) - *{time} ago*".format(**row))
+            else:
+                c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
+                result = c.fetchone()
+                if result is None:
+                    yield from self.bot.say("I don't have a character with that name registered.")
+                    return
+                # Getting correct capitalization
+                name = result["name"]
+                id = result["id"]
+                c.execute("SELECT level, date FROM char_levelups WHERE char_id = ? ORDER BY date DESC LIMIT 100",
+                          (id,))
+                results = c.fetchall()
+                if not results:
+                    yield from self.bot.say("I haven't seen **{0}** level up.".format(name))
+                    return
+                title = "**{0}** latest level ups:".format(name)
+                for row in results:
+                    row["time"] = get_time_diff(timedelta(seconds=now-row["date"]))
+                    entries.append("Level **{level}** - *{time} ago*".format(**row))
         finally:
             c.close()
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        yield from pages.paginate()
 
     @commands.command()
     @asyncio.coroutine
