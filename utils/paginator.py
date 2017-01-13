@@ -141,7 +141,7 @@ class Paginator:
         self.paginating = False
 
     def react_check(self, reaction, user):
-        if user.id != self.author.id:
+        if not self.message.channel.is_private and user.id != self.author.id:
             return False
 
         for (emoji, func) in self.reaction_emojis:

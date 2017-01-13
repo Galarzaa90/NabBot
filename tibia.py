@@ -625,28 +625,37 @@ class Tibia:
         by the users of this discord server."""
         c = userDatabase.cursor()
         entries = []
+        count = 0
         now = time.time()
         ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
         if ctx.message.channel.is_private or ctx.message.channel == ask_channel:
             per_page = 20
         else:
             per_page = 5
+        yield from self.bot.send_typing(ctx.message.channel)
         try:
             if name is None:
                 title = "Latest level ups"
                 c.execute("SELECT level, date, name, user_id "
                           "FROM char_levelups, chars "
                           "WHERE char_id = id AND level >= ? "
-                          "ORDER BY date DESC LIMIT 100", (announce_threshold, ))
-                results = c.fetchall()
-                if not results:
+                          "ORDER BY date DESC", (announce_threshold, ))
+                while True:
+                    row = c.fetchone()
+                    if row is None:
+                        break
+                    user = get_member(self.bot, row["user_id"], ctx.message.server)
+                    if user is None:
+                        continue
+                    count += 1
+                    row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                    row["user"] = user.display_name
+                    entries.append("Level **{level}** - {name} (**@{user}**) - *{time} ago*".format(**row))
+                    if count >= 100:
+                        break
+                if count == 0:
                     yield from self.bot.say("There are no registered level ups.")
                     return
-                for row in results:
-                    row["time"] = get_time_diff(timedelta(seconds=now-row["date"]))
-                    user = get_member(self.bot, row["user_id"], ctx.message.server)
-                    row["user"] = "unknown" if user is None else user.display_name
-                    entries.append("Level **{level}** - {name} (**@{user}**) - *{time} ago*".format(**row))
             else:
                 c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
                 result = c.fetchone()

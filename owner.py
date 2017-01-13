@@ -113,6 +113,7 @@ class Owner:
         not_attach_files = []
         not_mention_everyone = []
         not_add_reactions = []
+        not_read_history = []
         count = 0
         for channel in channels:
             if channel.type == discord.ChannelType.voice:
@@ -133,14 +134,16 @@ class Owner:
                 not_mention_everyone.append(channel)
             if not channel_permissions.add_reactions:
                 not_add_reactions.append(channel)
+            if not channel_permissions.read_message_history:
+                not_read_history.append(channel)
 
         channel_lists_list = [not_read_messages, not_send_messages, not_manage_messages, not_embed_links,
                               not_attach_files, not_mention_everyone, not_add_reactions]
         permission_names_list = ["Read Messages", "Send Messages", "Manage Messages", "Embed Links", "Attach Files",
-                                 "Mention Everyone", "Add reactions"]
+                                 "Mention Everyone", "Add reactions", "Read Message History"]
         server_wide_list = [server_perms.read_messages, server_perms.send_messages, server_perms.manage_messages,
                             server_perms.embed_links, server_perms.attach_files, server_perms.mention_everyone,
-                            server_perms.add_reactions]
+                            server_perms.add_reactions, server_perms.read_message_history]
 
         reply = "Permissions for {0.name}:\n".format(server)
         i = 0
