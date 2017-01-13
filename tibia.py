@@ -548,72 +548,80 @@ class Tibia:
 
     @commands.command(aliases=['deathlist', 'death'], pass_context=True)
     @asyncio.coroutine
-    def deaths(self, ctx, *, name: str=None):
+    def deaths(self, ctx, *, name: str = None):
         """Shows a player's or everyone's recent deaths"""
         if name is None and lite_mode:
             return
+        c = userDatabase.cursor()
+        entries = []
+        count = 0
         now = time.time()
         ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
-        ask_message = ""
-        embed = discord.Embed(title="Latest deaths:", description="")
-        embed.colour = discord.Colour.dark_red()
-        limit = 5
         if ctx.message.channel.is_private or ctx.message.channel == ask_channel:
-            limit = 20
-        elif ask_channel is not None:
-            ask_message = "\nFor longer replies use {0.mention}".format(ask_channel)
-        if name is None:
-            c = userDatabase.cursor()
-            try:
+            per_page = 20
+        else:
+            per_page = 5
+        try:
+            if name is None:
+                title = "Latest deaths"
                 c.execute("SELECT level, date, name, user_id, byplayer, killer "
                           "FROM char_deaths, chars "
                           "WHERE char_id = id "
-                          "ORDER BY date DESC LIMIT ?", (limit,))
-                result = c.fetchall()
-                if len(result) < 1:
-                    yield from self.bot.say("No one has died recently")
+                          "ORDER BY date")
+                while True:
+                    row = c.fetchone()
+                    if row is None:
+                        break
+                    user = get_member(self.bot, row["user_id"], ctx.message.server)
+                    if user is None:
+                        continue
+                    count += 1
+                    row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                    row["user"] = user.display_name
+                    entries.append("{name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*".format(**row))
+                    if count >= 100:
+                        break
+                if count == 0:
+                    yield from self.bot.say("There are no registered deaths.")
                     return
+            else:
+                # TODO: If get_character_deaths gets merged with get_character, get correct name
+                title = "**{0}** latest deaths:".format(name.title())
+                deaths = yield from get_character_deaths(name)
+                if deaths == ERROR_DOESNTEXIST:
+                    yield from self.bot.say("That character doesn't exist.")
+                    return
+                elif deaths == ERROR_NETWORK:
+                    yield from self.bot.say("Sorry, I had trouble checking that character, try it again.")
+                    return
+                last_time = now
+                for death in deaths:
+                    last_time = time.mktime(get_local_time(death["time"]).timetuple())
+                    death["time"] = get_time_diff(datetime.now() - get_local_time(death['time']))
+                    entries.append("At level **{level}** by {killer} - *{time} ago*".format(**death))
+                    count += 1
 
-                for death in result:
-                    timediff = timedelta(seconds=now-death["date"])
-                    user = get_member(self.bot, death["user_id"])
-                    username = "unknown"
-                    if user:
-                        username = user.display_name
-                    time_string = get_time_diff(timediff)
-                    embed.description += "\n\u25BA {3} (**@{4}**) - At level **{0}** by {1} - *{2} ago*".format(death["level"], death["killer"], time_string, death["name"], username)
-                embed.description += ask_message
-                yield from self.bot.say(embed=embed)
-                return
-            finally:
-                c.close()
-        if name.lower() == self.bot.user.name.lower():
-            yield from self.bot.say("**Nab Bot** never dies.")
-            return
-        deaths = yield from get_character_deaths(name)
-        if deaths == ERROR_DOESNTEXIST:
-            yield from self.bot.say("That character doesn't exist!")
-            return
-        if deaths == ERROR_NETWORK:
-            yield from self.bot.say("Sorry, try it again, I'll do it right this time.")
-            return
-        if len(deaths) == 0:
-            yield from self.bot.say(name.title()+" hasn't died recently.")
-            return
-        tooMany = False
-        if len(deaths) > limit:
-            deaths = deaths[:limit]
-            tooMany = True
+                c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
+                result = c.fetchone()
+                if result is not None and not lite_mode:
+                    id = result["id"]
+                    c.execute("SELECT level, date, byplayer, killer "
+                              "FROM char_deaths "
+                              "WHERE char_id = ? AND date < ? "
+                              "ORDER BY date DESC LIMIT ?",
+                              (id, last_time, 100-count))
+                    results = c.fetchall()
+                    for row in results:
+                        row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                        entries.append("At level **{level}** by {killer} - *{time} ago*".format(**row))
+        finally:
+            c.close()
 
-        embed.title = name.title()+" recent deaths:"
-
-        for death in deaths:
-            diff = get_time_diff(datetime.now() - get_local_time(death['time']))
-            embed.description += "\n\u25BA At level **{0}** by {1} - *{2} ago*".format(death['level'], death['killer'], diff)
-        if tooMany:
-            embed.description += ask_message
-
-        yield from self.bot.say(embed=embed)
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        try:
+            yield from pages.paginate()
+        except CannotPaginate as e:
+            yield from self.bot.say(e)
 
     @commands.command(pass_context=True, aliases=['levelups', 'lvl', 'level', 'lvls'])
     @checks.is_not_lite()

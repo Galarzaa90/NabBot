@@ -717,7 +717,7 @@ def get_item(name):
     return
 
 
-def get_local_time(tibia_time) -> timedelta:
+def get_local_time(tibia_time) -> datetime:
     """Gets a time object from a time string from tibia.com"""
     # Getting local time and GMT
     t = time.localtime()
