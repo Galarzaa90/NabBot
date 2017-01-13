@@ -29,7 +29,7 @@ https://discordapp.com/developers/docs/topics/oauth2#bots
 ```
 
 Define the bots permissions for your server.  
-As of 17/November/2016, Nab Bot needs the following permissions: 191488 
+As of 17/November/2016, Nab Bot needs the following permissions: 257088
 
 ```
 https://discordapi.com/permissions.html
