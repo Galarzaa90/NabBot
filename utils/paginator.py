@@ -54,6 +54,7 @@ class Paginator:
         self.reaction_emojis = [
             ('\N{BLACK LEFT-POINTING TRIANGLE}', self.previous_page),
             ('\N{BLACK RIGHT-POINTING TRIANGLE}', self.next_page),
+            ('\U000023F9', self.stop_pages)
         ]
         server = self.message.server
         if server is not None:
@@ -92,6 +93,8 @@ class Paginator:
         # verify we can actually use the pagination session
         if not self.permissions.add_reactions:
             raise CannotPaginate('Bot does not have add reactions permission.')
+        if not self.permissions.read_message_history:
+            raise CannotPaginate("Bot does not have read message history permission.")
 
         self.embed.description = '\n'.join(p)
         self.message = yield from self.bot.send_message(self.message.channel, embed=self.embed)
@@ -137,7 +140,12 @@ class Paginator:
     @asyncio.coroutine
     def stop_pages(self):
         """stops the interactive pagination session"""
-        yield from self.bot.delete_message(self.message)
+        # yield from self.bot.delete_message(self.message)
+        try:
+            yield from self.bot.clear_reactions(self.message)
+        except:
+            pass
+        yield from self.show_page(1)
         self.paginating = False
 
     def react_check(self, reaction, user):

@@ -12,7 +12,7 @@ from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_tim
 from utils.loot import loot_scan
 from utils.messages import EMOJI, split_message
 from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_servers
-from utils.paginator import Paginator
+from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import *
 
 
@@ -678,7 +678,10 @@ class Tibia:
         finally:
             c.close()
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
-        yield from pages.paginate()
+        try:
+            yield from pages.paginate()
+        except CannotPaginate as e:
+            yield from self.bot.say(e)
 
     @commands.command()
     @asyncio.coroutine

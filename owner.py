@@ -138,7 +138,7 @@ class Owner:
                 not_read_history.append(channel)
 
         channel_lists_list = [not_read_messages, not_send_messages, not_manage_messages, not_embed_links,
-                              not_attach_files, not_mention_everyone, not_add_reactions]
+                              not_attach_files, not_mention_everyone, not_add_reactions, not_read_history]
         permission_names_list = ["Read Messages", "Send Messages", "Manage Messages", "Embed Links", "Attach Files",
                                  "Mention Everyone", "Add reactions", "Read Message History"]
         server_wide_list = [server_perms.read_messages, server_perms.send_messages, server_perms.manage_messages,
