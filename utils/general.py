@@ -11,6 +11,11 @@ from config import *
 # Command list (populated automatically, used to check if a message is(n't) a command invocation)
 command_list = []
 
+# This is the global online list
+# don't look at it too closely or you'll go blind!
+# characters are added as servername_charactername
+# The list is updated periodically on think() using get_server_online()
+global_online_list = []
 
 # Start logging
 # Create logs folder

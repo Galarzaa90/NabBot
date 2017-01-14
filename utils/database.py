@@ -1,12 +1,17 @@
 import sqlite3
 
-from config import USERDB, TIBIADB, LOOTDB, tracked_worlds, tracked_worlds_list
+from config import USERDB, TIBIADB, LOOTDB
 
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 lootDatabase = sqlite3.connect(LOOTDB)
 
 DB_LASTVERSION = 10
+
+# The list of servers tracked by nabbot
+# The list is popupalated from database
+tracked_worlds = {}
+tracked_worlds_list = []
 
 
 def init_database():

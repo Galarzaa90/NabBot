@@ -14,11 +14,11 @@ from discord.ext import commands
 
 from config import *
 from utils import checks
-from utils.database import init_database, userDatabase, reload_worlds
+from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, tracked_worlds_list
 from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
     clean_string, get_role_list, get_member_by_name
 from utils.general import command_list, join_list, get_uptime, TimeString, \
-    single_line, is_numeric, getLogin, start_time
+    single_line, is_numeric, getLogin, start_time, global_online_list
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
@@ -112,7 +112,7 @@ def on_message(message):
                 and not message.channel.is_private and message.channel.name == ask_channel_name:
             yield from bot.delete_message(message)
             return
-    else:
+    elif ask_channel_delete:
         # Delete messages in askchannel
         if message.author.id != bot.user.id \
                 and (not message.content.lower()[1:] in command_list or not message.content[:1] == "/") \
@@ -450,7 +450,7 @@ def scan_highscores():
     while not bot.is_closed:
         if len(tracked_worlds_list) == 0:
             # If no worlds are tracked, just sleep, worlds might get registered later
-            yield from asyncio.sleep(30)
+            yield from asyncio.sleep(highscores_delay)
             continue
         for server in tracked_worlds_list:
             for category in highscores_categories:
@@ -465,7 +465,7 @@ def scan_highscores():
                         scores = yield from get_highscores(server, category, pagenum)
                     if not (scores == ERROR_NETWORK):
                         highscores += scores
-                    yield from asyncio.sleep(2)
+                    yield from asyncio.sleep(highscores_page_delay)
                 # Open connection to users.db
                 c = userDatabase.cursor()
                 scores_tuple = []

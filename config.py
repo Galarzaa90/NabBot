@@ -5,16 +5,19 @@
 # Level up and deaths announcements are disabled
 lite_mode = False
 
-# This is the name of the server where the bot will work
-# This bot doesn't support multiple servers yet
-# main_channel is where the Bot will do announcements, but he will reply to commands everywhere
-# ask_channel is a channel where the bot replies with full length messages (like on pms)
-#   Messages that are not commands are automatically deleted in ask_channel
-# server_log_channel is where the bot will log certain actions
-# main_server must be a server id
-main_server = "159815897052086272"
+
+# Special bot channels
+# ask_channel is a channel where the bot will give longer replies to some commands (like on pms)
+#   If ask_channel_delete is True, any message that is not a command will be deleted, to keep the channel for
+#   commands only
+# server_log_channel is where the bot will log certain actions such as member joining and registering characters.
 ask_channel_name = "ask-nabbot"
+ask_channel_delete = True
 log_channel_name = "server-log"
+
+# main_server is the ID of the server NabBot is originally made for, meaning there may be
+# some exclusive features and/or commands on this server only.
+main_server = "159815897052086272"
 
 # It's possible to fetch the database contents on a website to show more entries than what the bot can display
 # If enabled, certain commands will link to the website
@@ -25,29 +28,16 @@ deathsPage = "deaths.php"
 levelsPage = "levels.php"
 
 # Owners can use mods commands and more sensible commands like /shutdown and restart
-# Mods can register and unregister chars and users and use makesay
+# Mods can register chars and users and use makesay
 owner_ids = ["162060569803751424", "162070610556616705"]
 mod_ids = ["159815675194507265", "164253469912334350"]
 # Enable of disable specific timezones for /time
 display_brasilia_time = True
 display_sonora_time = True
 
-# This list is used while the other lists are fully implemented
-legacy_worlds = ["Fidera"]
-
-# The list of servers tracked by nabbot
-# The list is popupalated from database
-tracked_worlds = {}
-tracked_worlds_list = []
-
 # Which highscores to track (can be empty)
 highscores_categories = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
                          "magic_ek", "magic_rp", "loyalty", "achievements"]
-# This is the global online list
-# don't look at it too closely or you'll go blind!
-# characters are added as servername_charactername
-# The list is updated periodically on think() using get_server_online()
-global_online_list = []
 
 # Max amount of simultaneous images /loot can try to parse
 loot_max = 3
@@ -64,8 +54,12 @@ online_scan_interval = 25
 # Delay in between player death checks in seconds
 death_scan_interval = 15
 
+# Delay between each tracked world's highscore check and delay between pages scan
+highscores_delay = 45
+highscores_page_delay = 5
+
 # Delay between retries when there's a network error in seconds
-network_retry_delay = 0.4
+network_retry_delay = 0.5
 
 # Databases filenames
 USERDB = "users.db"

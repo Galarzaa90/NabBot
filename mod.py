@@ -2,8 +2,8 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from config import lite_mode, tracked_worlds, mod_ids, owner_ids
-from utils.database import userDatabase
+from config import lite_mode, mod_ids, owner_ids
+from utils.database import userDatabase, tracked_worlds
 from utils.messages import split_message
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
 from utils.general import is_numeric

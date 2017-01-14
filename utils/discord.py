@@ -3,7 +3,8 @@ import discord
 from discord.ext import commands
 import re
 
-from config import log_channel_name, tracked_worlds
+from config import log_channel_name
+from utils.database import tracked_worlds
 from .messages import EMOJI
 
 

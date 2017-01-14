@@ -8,6 +8,7 @@ import io
 
 from config import *
 from utils import checks
+from utils.database import tracked_worlds
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone
 from utils.loot import loot_scan
 from utils.messages import EMOJI, split_message
