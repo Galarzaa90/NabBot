@@ -222,7 +222,7 @@ class Tibia:
                                  icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                  )
                 # Char is owned by a discord user
-                owner = get_member(self.bot, char["owner_id"])
+                owner = get_member(self.bot, char["owner_id"], ctx.message.server)
                 if owner is not None:
                     embed.set_thumbnail(url=owner.avatar_url)
                     color = get_user_color(owner, ctx.message.server)
