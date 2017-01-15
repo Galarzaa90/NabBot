@@ -547,7 +547,7 @@ class Tibia:
 
         yield from self.bot.say(embed=embed)
 
-    @commands.command(aliases=['deathlist', 'death'], pass_context=True)
+    @commands.group(aliases=['deathlist', 'death'], pass_context=True, invoke_without_command=True)
     @asyncio.coroutine
     def deaths(self, ctx, *, name: str = None):
         """Shows a player's or everyone's recent deaths"""
@@ -587,7 +587,7 @@ class Tibia:
                     return
             else:
                 # TODO: If get_character_deaths gets merged with get_character, get correct name
-                title = "**{0}** latest deaths:".format(name.title())
+                title = "{0} latest deaths:".format(name.title())
                 deaths = yield from get_character_deaths(name)
                 if deaths == ERROR_DOESNTEXIST:
                     yield from self.bot.say("That character doesn't exist.")
@@ -618,6 +618,58 @@ class Tibia:
         finally:
             c.close()
 
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        try:
+            yield from pages.paginate()
+        except CannotPaginate as e:
+            yield from self.bot.say(e)
+
+    @deaths.command(pass_context=True, name="monster", aliases=["mob", "killer"])
+    @checks.is_not_lite()
+    @asyncio.coroutine
+    def deaths_monsters(self, ctx, *, name: str=None):
+        if name is None:
+            yield from self.bot.say("You must tell me a monster's name to look for its kills.")
+            return
+        c = userDatabase.cursor()
+        count = 0
+        entries = []
+        now = time.time()
+        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
+        if ctx.message.channel.is_private or ctx.message.channel == ask_channel:
+            per_page = 20
+        else:
+            per_page = 5
+
+        if name[:1] in ["a", "e", "i", "o", "u"]:
+            name_with_article = "an "+name
+        else:
+            name_with_article = "a "+name
+        try:
+            c.execute("SELECT level, date, name, user_id, byplayer, killer "
+                      "FROM char_deaths, chars "
+                      "WHERE char_id = id AND (killer LIKE ? OR killer LIKE ?) "
+                      "ORDER BY date DESC", (name, name_with_article))
+            while True:
+                row = c.fetchone()
+                if row is None:
+                    break
+                user = get_member(self.bot, row["user_id"], ctx.message.server)
+                if user is None:
+                    continue
+                count += 1
+                row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                row["user"] = user.display_name
+                entries.append("{name} (**@{user}**) - At level **{level}** - *{time} ago*".format(**row))
+                if count >= 100:
+                    break
+            if count == 0:
+                yield from self.bot.say("There are no registered deaths by that killer.")
+                return
+        finally:
+            c.close()
+
+        title = "{0} latest kills".format(name.title())
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
             yield from pages.paginate()
