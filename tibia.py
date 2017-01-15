@@ -305,9 +305,15 @@ class Tibia:
             yield from self.bot.say(invalid_arguments)
             return
 
-        result_limit = 10
-        ask_channel_limit = 25
-        too_long = False
+        entries = []
+        online_entries = []
+
+        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
+        if ctx.message.channel.is_private or ctx.message.channel == ask_channel:
+            per_page = 20
+        else:
+            per_page = 5
+
         char = None
         params = params.split(",")
         if len(params) < 2 or len(params) > 3:
@@ -338,8 +344,8 @@ class Tibia:
                 yield from self.bot.say("I couldn't find a character with that name.")
                 return
             low, high = get_share_range(char["level"])
-            found = "I found the following {0}s in share range with **{1}** ({2}-{3}):".format(vocation, char["name"],
-                                                                                               low, high)
+            title = "I found the following {0}s in share range with {1} ({2}-{3}):".format(vocation, char["name"],
+                                                                                           low, high)
             empty = "I didn't find any {0}s in share range with **{1}** ({2}-{3})".format(vocation, char["name"],
                                                                                           low, high)
         else:
@@ -356,7 +362,7 @@ class Tibia:
                     return
                 low = min(level1, level2)
                 high = max(level1, level2)
-                found = "I found the following {0}s between levels **{1}** and **{2}**:".format(vocation, low, high)
+                title = "I found the following {0}s between levels {1} and {2}".format(vocation, low, high)
                 empty = "I didn't find any {0}s between levels **{1}** and **{2}**".format(vocation, low, high)
             # We only got a level, so we get the share range for it
             else:
@@ -364,9 +370,8 @@ class Tibia:
                     yield from self.bot.say("You entered an invalid level.")
                     return
                 low, high = get_share_range(int(params[1]))
-                found = "I found the following {0}s in share range with level **{1}** ({2}-{3}):".format(vocation,
-                                                                                                         params[1],
-                                                                                                         low, high)
+                title = "I found the following {0}s in share range with level {1} ({2}-{3})".format(vocation, params[1],
+                                                                                                    low, high)
                 empty = "I didn't find any {0}s in share range with level **{1}** ({2}-{3})".format(vocation,
                                                                                                     params[1],
                                                                                                     low, high)
@@ -391,23 +396,28 @@ class Tibia:
                     continue
                 count += 1
                 player["owner"] = owner.display_name
-                player["online"] = EMOJI[":small_blue_diamond:"] if player["name"] in online_list else ""
-                if count <= result_limit or (count <= ask_channel_limit and ctx.message.channel.name == ask_channel_name):
-                    found += "\n\t**{name}** - Level {level} - @**{owner}** {online}".format(**player)
+                player["online"] = ""
+                line_format = "**{name}** - Level {level} - @**{owner}** {online}"
+                if player["name"] in online_list:
+                    player["online"] = EMOJI[":small_blue_diamond:"]
+                    online_entries.append(line_format.format(**player))
                 else:
-                    # Check if there's at least one more to suggest using askchannel
-                    if c.fetchone() is not None:
-                        too_long = True
-                    break
+                    entries.append(line_format.format(**player))
             if count < 1:
                 yield from self.bot.say(empty)
                 return
-            ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
-            if ask_channel is not None and too_long:
-                found += "\nYou can see more results in " + ask_channel.mention
-            yield from self.bot.say(found)
         finally:
             c.close()
+        if online_entries:
+            description = EMOJI[":small_blue_diamond:"]+" = online"
+        else:
+            description = ""
+        pages = Paginator(self.bot, message=ctx.message, entries=online_entries+entries, per_page=per_page,
+                          title=title, numerate=False, description=description)
+        try:
+            yield from pages.paginate()
+        except CannotPaginate as e:
+            yield from self.bot.say(e)
 
     @commands.command(aliases=['guildcheck', 'checkguild'])
     @asyncio.coroutine
@@ -628,6 +638,7 @@ class Tibia:
     @checks.is_not_lite()
     @asyncio.coroutine
     def deaths_monsters(self, ctx, *, name: str=None):
+        """Returns a list of the latest kills by that monster"""
         if name is None:
             yield from self.bot.say("You must tell me a monster's name to look for its kills.")
             return

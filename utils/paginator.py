@@ -37,7 +37,7 @@ class Paginator:
     permissions: discord.Permissions
         Our permissions for the channel.
     """
-    def __init__(self, bot, *, message, entries, per_page=10, title=None):
+    def __init__(self, bot, *, message, entries, per_page=10, title=None, description="", numerate=True):
         self.bot = bot
         self.entries = entries
         self.message = message
@@ -45,6 +45,8 @@ class Paginator:
         self.per_page = per_page
         self.current_page = 1
         self.title = title
+        self.numerate = numerate
+        self.description = description
         pages, left_over = divmod(len(self.entries), self.per_page)
         if left_over:
             pages += 1
@@ -74,21 +76,24 @@ class Paginator:
         self.current_page = page
         entries = self.get_page(page)
         p = []
-        for t in enumerate(entries, 1 + ((page - 1) * self.per_page)):
-            p.append('%s. %s' % t)
+        if self.numerate:
+            for t in enumerate(entries, 1 + ((page - 1) * self.per_page)):
+                p.append('%s. %s' % t)
+        else:
+            for t in entries:
+                p.append(t)
         self.embed.set_footer(text='Page %s/%s (%s entries)' % (page, self.maximum_pages, len(self.entries)))
         if self.title:
             self.embed.title = self.title
 
+        self.embed.description = self.description+"\n"+'\n'.join(p)
         if not self.paginating:
-            self.embed.description = '\n'.join(p)
             ret = yield from self.bot.send_message(self.message.channel, embed=self.embed)
             return ret
 
         if not first:
-            self.embed.description = '\n'.join(p)
-            ret = yield from self.bot.edit_message(self.message, embed=self.embed)
-            return ret
+            yield from self.bot.edit_message(self.message, embed=self.embed)
+            return
 
         # verify we can actually use the pagination session
         if not self.permissions.add_reactions:
@@ -96,7 +101,6 @@ class Paginator:
         if not self.permissions.read_message_history:
             raise CannotPaginate("Bot does not have read message history permission.")
 
-        self.embed.description = '\n'.join(p)
         self.message = yield from self.bot.send_message(self.message.channel, embed=self.embed)
         for (reaction, _) in self.reaction_emojis:
             if self.maximum_pages == 2 and reaction in ('\u23ed', '\u23ee'):
