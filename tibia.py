@@ -176,7 +176,7 @@ class Tibia:
 
         char = yield from get_character(name)
         char_string = self.get_char_string(char)
-        user = get_member_by_name(self.bot, name)
+        user = get_member_by_name(self.bot, name, ctx.message.server)
         user_string = self.get_user_string(ctx, name)
         embed = discord.Embed()
         embed.description = ""
