@@ -84,7 +84,7 @@ class Mod:
         Commands and subcommands can only be used on pm"""
         if not ctx.message.channel.is_private:
             return True
-        yield from self.bot.say("To see valid subcommands use ´/help stalk´")
+        yield from self.bot.say("To see valid subcommands use `/help stalk`")
 
     @stalk.command(pass_context=True, name="addchar", aliases=["char"])
     @checks.is_mod()
@@ -222,23 +222,23 @@ class Mod:
 
         common_worlds = list(set(author_worlds) & set(user_worlds))
         yield from self.bot.send_typing(ctx.message.channel)
-        char = yield from get_character(params[1])
+        character = yield from get_character(params[1])
         if user is None:
             yield from self.bot.say("I don't see any user named **{0}** in the servers you manage.".format(params[0]))
             return
-        if type(char) is not dict:
-            if char == ERROR_NETWORK:
+        if type(character) is not dict:
+            if character == ERROR_NETWORK:
                 yield from self.bot.say("I couldn't fetch the character, please try again.")
-            elif char == ERROR_DOESNTEXIST:
+            elif character == ERROR_DOESNTEXIST:
                 yield from self.bot.say("That character doesn't exists.")
             return
         c = userDatabase.cursor()
         try:
-            chars = char['chars']
+            chars = character['chars']
             # If the char is hidden,we still add the searched character
             if len(chars) == 0:
                 yield from self.bot.say("Character is hidden.")
-                chars = [char]
+                chars = [character]
             skipped = list()
             added = list()
             added_tuples = list()
@@ -251,7 +251,10 @@ class Mod:
                     skipped.append([char["name"], char["world"]])
                     continue
                 name = char["name"]
-                if len(chars) != 1:
+                # If char is the same we already looked up, no need to look him up again
+                if character["name"] == char["name"]:
+                    char = character
+                else:
                     char = yield from get_character(char["name"])
                 if type(char) is not dict:
                     error.append(name)
@@ -348,7 +351,7 @@ class Mod:
             user = get_member(self.bot, result["user_id"])
             username = "unknown" if user is None else user.display_name
             c.execute("DELETE FROM chars WHERE name LIKE ?", (name,))
-            yield from self.bot.say("**{0}** was removed successfully from **@{1}**.".format(name, username))
+            yield from self.bot.say("**{0}** was removed successfully from **@{1}**.".format(result["name"], username))
             if user is not None:
                 for server in get_user_servers(self.bot, user.id):
                     world = tracked_worlds.get(server.id, None)
@@ -411,7 +414,7 @@ class Mod:
                 yield from self.bot.say(reply)
 
                 answer = yield from self.bot.wait_for_message(author=ctx.message.author, channel=ctx.message.channel,
-                                                         timeout=30.0)
+                                                              timeout=30.0)
                 if answer is None:
                     yield from self.bot.say("I will take your silence as a no...")
                 elif answer.content.lower() in ["yes", "y"]:
