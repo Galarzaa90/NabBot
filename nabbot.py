@@ -14,7 +14,8 @@ from discord.ext import commands
 
 from config import *
 from utils import checks
-from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, tracked_worlds_list
+from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, tracked_worlds_list, \
+    reload_welcome_messages, welcome_messages
 from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
     clean_string, get_role_list, get_member_by_name
 from utils.general import command_list, join_list, get_uptime, TimeString, \
@@ -144,9 +145,9 @@ def on_member_join(member: discord.Member):
     log.info("{0.display_name} (ID: {0.id}) joined {0.server.name}".format(member))
     if lite_mode:
         return
-    pm = "Welcome to **{0.server.name}**! I'm **{1.user.name}**, to learn more about my commands type `/help`\n" \
-         "Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking " \
-         "your level ups and deaths!".format(member, bot)
+    server_id = member.server.id
+    server_welcome = welcome_messages.get(server_id, "")
+    pm = (welcome_pm+"\n"+server_welcome).format(member, bot)
     log_message = "{0.mention} joined.".format(member)
 
     # Check if user already has characters registered
@@ -1655,6 +1656,7 @@ def game_update():
 if __name__ == "__main__":
     init_database()
     reload_worlds()
+    reload_welcome_messages()
 
     print("Attempting login...")
 

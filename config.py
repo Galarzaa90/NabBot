@@ -19,6 +19,18 @@ log_channel_name = "server-log"
 # some exclusive features and/or commands on this server only.
 main_server = "159815897052086272"
 
+# The welcome message that is sent to members when they join a discord server with NabBot in it
+# 0 is the member object, examples:
+#       0.name - The joined member's name
+#       0.server.name - The name of the server the member joined
+#       0.server.owner.name - The name of the owner of the server the member joined
+#       0.server.owner.mention - A mention to the owner of the server the member joined
+# 1 is the bot's object, examples:
+#       1.user.name - The bot's name
+welcome_pm = "Welcome to **{0.server.name}**! I'm **{1.user.name}**, to learn more about my commands type `/help`\n" \
+             "Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking " \
+             "your level ups and deaths!"
+
 # It's possible to fetch the database contents on a website to show more entries than what the bot can display
 # If enabled, certain commands will link to the website
 site_enabled = True

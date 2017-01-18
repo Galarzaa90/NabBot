@@ -8,10 +8,14 @@ lootDatabase = sqlite3.connect(LOOTDB)
 
 DB_LASTVERSION = 10
 
-# The list of servers tracked by nabbot
-# The list is popupalated from database
+# Dictionary of worlds tracked by nabbot, key:value = server_id:world
+# Dictionary is populated from database
+# A list version is created from the dictionary
 tracked_worlds = {}
 tracked_worlds_list = []
+
+# Dictionaries of welcome messages per server
+welcome_messages = {}
 
 
 def init_database():
@@ -192,5 +196,20 @@ def reload_worlds():
 
         tracked_worlds.clear()
         tracked_worlds.update(tibia_servers_dict_temp)
+    finally:
+        c.close()
+
+
+def reload_welcome_messages():
+    c = userDatabase.cursor()
+    welcome_messages_temp = {}
+    try:
+        c.execute("SELECT server_id, value FROM server_properties WHERE name = 'welcome'")
+        result = c.fetchall()
+        if len(result) > 0:
+            for row in result:
+                welcome_messages_temp[row["server_id"]] = row["value"]
+        welcome_messages.clear()
+        welcome_messages.update(welcome_messages_temp)
     finally:
         c.close()
