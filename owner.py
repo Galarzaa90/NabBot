@@ -16,7 +16,7 @@ class Owner:
     def __init__(self, bot: discord.Client):
         self.bot = bot
 
-    @commands.command(pass_context=True, aliases=["reset"])
+    @commands.command(pass_context=True, aliases=["reset", "reload"])
     @checks.is_owner()
     @asyncio.coroutine
     def restart(self, ctx: discord.ext.commands.Context):

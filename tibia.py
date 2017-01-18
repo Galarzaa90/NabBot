@@ -328,6 +328,8 @@ class Tibia:
             vocation = "sorcerer"
         elif params[0] in PALADIN:
             vocation = "paladin"
+        elif params[0] in ["any", "all", "everything", "anything"]:
+            vocation = "characters"
         else:
             yield from self.bot.say(invalid_arguments)
             return
@@ -378,7 +380,9 @@ class Tibia:
 
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT name, user_id, ABS(last_level) as level FROM chars "
+            if vocation == "characters":
+                vocation = ""
+            c.execute("SELECT name, user_id, ABS(last_level) as level, vocation FROM chars "
                       "WHERE vocation LIKE ? AND level >= ? AND level <= ? AND world = ?"
                       "ORDER by level DESC", ("%"+vocation, low, high, tracked_world, ))
             count = 0
@@ -398,6 +402,8 @@ class Tibia:
                 player["owner"] = owner.display_name
                 player["online"] = ""
                 line_format = "**{name}** - Level {level} - @**{owner}** {online}"
+                if vocation == "":
+                    line_format = "**{name}** - Level {level} - {vocation} - @**{owner}** {online}"
                 if player["name"] in online_list:
                     player["online"] = EMOJI[":small_blue_diamond:"]
                     online_entries.append(line_format.format(**player))
@@ -413,7 +419,7 @@ class Tibia:
         else:
             description = ""
         pages = Paginator(self.bot, message=ctx.message, entries=online_entries+entries, per_page=per_page,
-                          title=title, numerate=False, description=description)
+                          title=title, description=description)
         try:
             yield from pages.paginate()
         except CannotPaginate as e:
