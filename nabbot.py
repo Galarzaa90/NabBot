@@ -967,16 +967,15 @@ def online(ctx):
 
     This list gets updated based on Tibia.com online list, so it takes a couple minutes
     to be updated."""
-    if lite_mode:
-        return
     tracked_world = tracked_worlds.get(ctx.message.server.id)
     if tracked_world is None:
         yield from bot.say("This server is not tracking any tibia worlds.")
         return
-    discord_online_chars = []
     c = userDatabase.cursor()
     now = datetime.utcnow()
     uptime = (now-start_time).total_seconds()
+    count = 0
+    content = ""
     try:
         for char in global_online_list:
             char = char.split("_", 1)
@@ -984,28 +983,23 @@ def online(ctx):
             name = char[1]
             if world != tracked_world:
                 continue
-            c.execute("SELECT name, user_id, vocation, last_level FROM chars WHERE name LIKE ?", (name,))
-            result = c.fetchone()
-            if result:
-                # This will always be true unless a char is removed from chars in between globalOnlineList updates
-                discord_online_chars.append({"name": result["name"], "id": result["user_id"],
-                                             "vocation": result["vocation"], "level": abs(result["last_level"])})
-        if len(discord_online_chars) == 0:
+            c.execute("SELECT name, user_id, vocation, ABS(last_level) as level FROM chars WHERE name LIKE ?", (name,))
+            row = c.fetchone()
+            owner = get_member(bot, row["user_id"], ctx.message.server)
+            if owner is None:
+                continue
+            row["owner"] = owner.display_name
+            row['vocation'] = get_voc_abb(row['vocation'])
+            content += "\n\t{name} (Lvl {level} {vocation}, **@{owner}**)".format(**row)
+            count += 1
+
+        if count == 0:
             if uptime < 60:
                 yield from bot.say("I just started, give me some time to check online lists..."+EMOJI[":clock2:"])
             else:
                 yield from bot.say("There is no one online from Discord.")
             return
-        reply = "The following discord users are online:"
-        for char in discord_online_chars:
-            user = get_member(bot, char['id'], ctx.message.server)
-
-            char['vocation'] = get_voc_abb(char['vocation'])
-
-            # discordName = user.display_name if (user is not None) else "unknown"
-            if user is not None:
-                discord_name = user.display_name
-                reply += "\n\t{0} (Lvl {1} {2}, **@{3}**)".format(char['name'], char['level'], char['vocation'], discord_name)
+        reply = "The following discord users are online:"+content
         yield from bot.say(reply)
     finally:
         c.close()
