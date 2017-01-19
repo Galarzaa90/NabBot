@@ -62,7 +62,7 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
     url = url_highscores.format(server, category, profession, pagenum)
     # Fetch website
     try:
-        page = yield from aiohttp.get(url)
+        page = yield from aiohttp.get(url.encode('iso-8859-1'))
         content = yield from page.text(encoding='ISO-8859-1')
     except Exception:
         if tries == 0:
@@ -107,7 +107,7 @@ def get_character_deaths(name, single_death=False, tries=5):
     Each list element is a dictionary with the following keys: time, level, killer, byPlayer.
     If single_death is true, it stops looking after fetching the first death.
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly"""
-    url = url_character + urllib.parse.quote(name)
+    url = url_character + urllib.parse.quote(name.encode('iso-8859-1'))
     deathList = []
 
     # Fetch website
@@ -400,8 +400,9 @@ def get_character(name, tries=5):
         *chars is list that contains other characters in the same account (if not hidden).
         Each list element is dictionary with the keys: name, world.
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
-    url = url_character + urllib.parse.quote(name)
+    url = url_character + urllib.parse.quote(name.encode('iso-8859-1'))
     char = dict()
+    print(url)
 
     # Fetch website
     try:
