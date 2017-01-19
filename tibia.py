@@ -204,7 +204,7 @@ class Tibia:
                 else:
                     char_embed = discord.Embed(description=char_string)
                     char_embed.set_author(name=char["name"],
-                                          url=url_character+urllib.parse.quote(char["name"]),
+                                          url=url_character+urllib.parse.quote(char["name"].encode('iso-8859-1')),
                                           icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                           )
                     yield from self.bot.say(embed=embed)
@@ -218,7 +218,7 @@ class Tibia:
                 yield from self.bot.say("I failed to do a character search for some reason " + EMOJI[":astonished:"])
             elif type(char) is dict:
                 embed.set_author(name=char["name"],
-                                 url=url_character + urllib.parse.quote(char["name"]),
+                                 url=url_character + urllib.parse.quote(char["name"].encode('iso-8859-1')),
                                  icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                  )
                 # Char is owned by a discord user
@@ -947,7 +947,7 @@ class Tibia:
         if char['gender'] == "female":
             pronoun = "She"
             pronoun2 = "Her"
-        url = url_character + urllib.parse.quote(char["name"])
+        url = url_character + urllib.parse.quote(char["name"].encode('iso-8859-1'))
         reply_format = "[{1}]({9}) is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}{10}"
         guild_format = "\n{0} is __{1}__ of the [{2}]({3})."
         married_format = "\n{0} is married to [{1}]({2})."
@@ -961,7 +961,7 @@ class Tibia:
             guild_url = url_guild+urllib.parse.quote(char["guild"])
             guild = guild_format.format(pronoun, char['rank'], char['guild'], guild_url)
         if "married" in char:
-            married_url = url_character + urllib.parse.quote(char["married"])
+            married_url = url_character + urllib.parse.quote(char["married"].encode('iso-8859-1'))
             married = married_format.format(pronoun, char['married'], married_url)
         if "house" in char:
             house_url = url_house.format(id=char["house_id"], world=char["world"])
@@ -1022,7 +1022,7 @@ class Tibia:
                     except ValueError:
                         character["level"] = ""
                     character["vocation"] = get_voc_abb(character["vocation"])
-                    character["url"] = url_character + urllib.parse.quote(character["name"])
+                    character["url"] = url_character + urllib.parse.quote(character["name"].encode('iso-8859-1'))
                     charList.append("[{name}]({url}) (Lvl {level} {vocation})".format(**character))
 
                 char_string = "@**{0.display_name}**'s character{1}: {2}"

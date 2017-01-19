@@ -66,7 +66,8 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
         content = yield from page.text(encoding='ISO-8859-1')
     except Exception:
         if tries == 0:
-            log.error("get_highscores: Couldn't fetch {0}, network error.".format(url))
+            log.error("get_highscores: Couldn't fetch {0}, {1}, page {2}, network error.".format(server, category,
+                                                                                                 pagenum))
             return ERROR_NETWORK
         else:
             tries -= 1
@@ -402,7 +403,6 @@ def get_character(name, tries=5):
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
     url = url_character + urllib.parse.quote(name.encode('iso-8859-1'))
     char = dict()
-    print(url)
 
     # Fetch website
     try:
