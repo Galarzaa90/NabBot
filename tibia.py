@@ -598,9 +598,6 @@ class Tibia:
                     entries.append("{name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*".format(**row))
                     if count >= 100:
                         break
-                if count == 0:
-                    yield from self.bot.say("There are no registered deaths.")
-                    return
             else:
                 # TODO: If get_character_deaths gets merged with get_character, get correct name
                 title = "{0} latest deaths:".format(name.title())
@@ -631,6 +628,11 @@ class Tibia:
                     for row in results:
                         row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
                         entries.append("At level **{level}** by {killer} - *{time} ago*".format(**row))
+                        count += 1
+
+            if count == 0:
+                yield from self.bot.say("There are no registered deaths.")
+                return
         finally:
             c.close()
 
