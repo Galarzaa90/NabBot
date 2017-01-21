@@ -447,15 +447,26 @@ class Tibia:
                          icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                          )
         embed.set_thumbnail(url=guild["logo_url"])
+        if guild.get("guildhall") is not None:
+            guildhouse = yield from get_house(guild["guildhall"])
+            if type(guildhouse) is dict:
+                embed.description = "They own the guildhall [{0}]({1}).\n".format(guild["guildhall"],
+                                                                                  url_house.format(id=guildhouse["id"],
+                                                                                                   world=guild["world"])
+                                                                                  )
+            else:
+                # In case there's no match in the houses table, we just show the name.
+                embed.description = "They own the guildhall **{0}**.\n".format(guild["guildhall"])
+
         if len(guild['members']) < 1:
-            embed.description = "Nobody is online."
+            embed.description += "Nobody is online."
             yield from self.bot.say(embed=embed)
             return
 
         plural = ""
         if len(guild['members']) > 1:
             plural = "s"
-        embed.description = "It has {0} player{1} online:".format(len(guild['members']), plural)
+        embed.description += "It has {0} player{1} online:".format(len(guild['members']), plural)
         current_field = ""
         result = ""
         for member in guild['members']:
@@ -466,7 +477,7 @@ class Tibia:
                 result = ""
                 current_field = member['rank']
 
-            member["title"] = ' (' + member['title'] + ')' if member['title'] != '' else ''
+            member["title"] = ' (*' + member['title'] + '*)' if member['title'] != '' else ''
             member["vocation"] = get_voc_abb(member["vocation"])
 
             result += "{name} {title} -- {level} {vocation}\n".format(**member)
@@ -1247,7 +1258,7 @@ class Tibia:
             elif house["status"] == "transferred":
                 house["owner_url"] = get_character_url(house["owner"])
                 house["transferee_url"] = get_character_url(house["transferee"])
-                description += "\nIn **{world}**, this {type} is rented by [{owner}]({owner_url}). " \
+                description += "\nIn **{world}**, this {type} is rented by [{owner}]({owner_url}).\n" \
                                "It will be transferred to [{transferee}]({transferee_url}) for **{transfer_price:,}** " \
                                "gold on **{transfer_date}**".format(**house)
 

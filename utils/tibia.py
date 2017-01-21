@@ -372,10 +372,15 @@ def get_guild_online(guildname, titlecase=True, tries=5):
         else:
             return ERROR_DOESNTEXIST
 
-    # Regex pattern to fetch world and founding date
+    # Regex pattern to fetch world, guildhall and founding date
     m = re.search(r'founded on (\w+) on ([^.]+)', content)
     if m:
         guild['world'] = m.group(1)
+
+    m = re.search(r'Their home on \w+ is ([^\.]+)', content)
+    if m:
+        guild["guildhall"] = m.group(1)
+
 
     # Logo URL
     m = re.search(r'<IMG SRC=\"([^\"]+)\" W', content)
