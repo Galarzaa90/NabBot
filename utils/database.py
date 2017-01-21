@@ -127,7 +127,9 @@ def init_database():
                       );""")
             db_version += 1
         if db_version == 8:
-            # Added 'achievements', 'axe', 'club', 'distance', 'fishing', 'fist', 'loyalty', 'magic', 'shielding', 'sword', 'achievements_rank', 'axe_rank', 'club_rank', 'distance_rank', 'fishing_rank', 'fist_rank', 'loyalty_rank', 'magic_rank', 'shielding_rank', 'sword_rank',  columns to 'chars'
+            # Added 'achievements', 'axe', 'club', 'distance', 'fishing', 'fist', 'loyalty', 'magic', 'shielding',
+            # 'sword', 'achievements_rank', 'axe_rank', 'club_rank', 'distance_rank', 'fishing_rank', 'fist_rank',
+            # 'loyalty_rank', 'magic_rank', 'shielding_rank', 'sword_rank',  columns to 'chars'
             c.execute("ALTER TABLE chars ADD achievements INTEGER")
             c.execute("ALTER TABLE chars ADD axe INTEGER")
             c.execute("ALTER TABLE chars ADD club INTEGER")

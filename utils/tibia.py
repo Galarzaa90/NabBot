@@ -1,4 +1,9 @@
 import asyncio
+
+import io
+
+from PIL import Image
+from PIL import ImageDraw
 from discord import Colour
 import datetime
 import urllib
@@ -54,6 +59,10 @@ tibia_worlds = ["Amera", "Antica", "Astera", "Aurera", "Aurora", "Bellona", "Bel
                 "Veludera", "Verlana", "Xantera", "Xylana", "Yanara", "Zanera", "Zeluna"]
 
 
+def get_character_url(name):
+    """Gets a character's tibia.com URL"""
+    return url_character + urllib.parse.quote(name.encode('iso-8859-1'))
+
 @asyncio.coroutine
 def get_highscores(server,category,pagenum, profession=0, tries=5):
     """Gets a specific page of the highscores
@@ -62,7 +71,7 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
     url = url_highscores.format(server, category, profession, pagenum)
     # Fetch website
     try:
-        page = yield from aiohttp.get(url.encode('iso-8859-1'))
+        page = yield from aiohttp.get(url)
         content = yield from page.text(encoding='ISO-8859-1')
     except Exception:
         if tries == 0:
@@ -823,6 +832,86 @@ def get_spell(name):
         c.close()
 
 
+@asyncio.coroutine
+def get_house(name, world = None):
+    """Returns a formatted string containing a house's info"""
+    c = tibiaDatabase.cursor()
+    try:
+        # Search query
+        c.execute("SELECT * FROM Houses WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
+        result = c.fetchall()
+        if len(result) == 0:
+            return None
+        elif result[0]["name"].lower() == name.lower() or len(result) == 1:
+            house = result[0]
+        else:
+            return [x['name'] for x in result]
+        if world is None or world not in tibia_worlds:
+            house["fetch"] = False
+            return house
+        house["world"] = world
+        house["url"] = url_house.format(id=house["id"], world=world)
+        tries = 5
+        while True:
+            try:
+                page = yield from aiohttp.get(house["url"])
+                content = yield from page.text(encoding='ISO-8859-1')
+            except Exception:
+                if tries == 0:
+                    log.error("get_house: Couldn't fetch {0} (id {1}) in {2}, network error.".format(house["name"],
+                                                                                                     house["id"],
+                                                                                                     world))
+                    house["fetch"] = False
+                    break
+                else:
+                    tries -= 1
+                    yield from asyncio.sleep(network_retry_delay)
+                    continue
+
+            # Trimming content to reduce load
+            try:
+                start_index = content.index("\"BoxContent\"")
+                end_index = content.index("</TD></TR></TABLE>")
+                content = content[start_index:end_index]
+            except ValueError:
+                if tries == 0:
+                    log.error("get_house: Couldn't fetch {0} (id {1}) in {2}, network error.".format(house["name"],
+                                                                                                     house["id"],
+                                                                                                     world))
+                    house["fetch"] = False
+                    break
+                else:
+                    tries -= 1
+                    yield from asyncio.sleep(network_retry_delay)
+                    continue
+            house["fetch"] = True
+            m = re.search(r'monthly rent is <B>(\d+)', content)
+            if m:
+                house['rent'] = int(m.group(1))
+
+            if "rented" in content:
+                house["status"] = "rented"
+                m = re.search(r'rented by <A?.+name=([^\"]+)', content)
+                if m:
+                    house["owner"] = urllib.parse.unquote_plus(m.group(1))
+            elif "auctioned" in content:
+                house["status"] = "auctioned"
+                if ". No bid has" in content:
+                    house["status"] = "empty"
+                    break
+                m = re.search(r'The auction will end at <B>([^\<]+)</B>\. '
+                              r'The highest bid so far is <B>(\d+).+ by .+name=([^\"]+)\"', content)
+                if m:
+                    house["auction_end"] = m.group(1).replace("&#160;", " ").replace(",", "")
+                    house["top_bid"] = int(m.group(2))
+                    house["top_bidder"] = urllib.parse.unquote_plus(m.group(3))
+            break
+        return house
+    finally:
+        c.close()
+
+
+
 def get_tibia_time_zone() -> int:
     """Returns Germany's timezone, considering their daylight saving time dates"""
     # Find date in Germany
@@ -836,7 +925,7 @@ def get_tibia_time_zone() -> int:
 
 
 def get_voc_abb(vocation: str) -> str:
-    """Given a vocation name, it returns an abbreviated string """
+    """Given a vocation name, it returns an abbreviated string"""
     abbrev = {'None': 'N', 'Druid': 'D', 'Sorcerer': 'S', 'Paladin': 'P', 'Knight': 'K', 'Elder Druid': 'ED',
               'Master Sorcerer': 'MS', 'Royal Paladin': 'RP', 'Elite Knight': 'EK'}
     try:
@@ -846,6 +935,7 @@ def get_voc_abb(vocation: str) -> str:
 
 
 def get_pronouns(gender: str):
+    """Gets a list of pronouns based on the gender given. Only binary genders supported, sorry."""
     gender = gender.lower()
     if gender == "female":
         pronoun = ["she", "her", "her"]
@@ -854,3 +944,26 @@ def get_pronouns(gender: str):
     else:
         pronoun = ["it", "its", "it"]
     return pronoun
+
+
+def get_map_area(x, y, z, size=15, scale=8, crosshair=True):
+    """Gets a minimap picture of a map area
+
+    size refers to the radius of the image in actual tibia sqm
+    scale is how much the image will be streched (1 = 1 sqm = 1 pixel)"""
+    c = tibiaDatabase.cursor()
+    c.execute("SELECT * FROM WorldMap WHERE z LIKE ?", (z,))
+    result = c.fetchone()
+    im = Image.open(io.BytesIO(bytearray(result['image'])))
+    im = im.crop((x-size, y-size, x+size, y+size))
+    im = im.resize((size*scale, size*scale))
+    if crosshair:
+        draw = ImageDraw.Draw(im)
+        width, height = im.size
+        draw.line((0, height/2, width, height/2), fill=128)
+        draw.line((width/2, 0, width/2, height), fill=128)
+
+    img_byte_arr = io.BytesIO()
+    im.save(img_byte_arr, format='png')
+    img_byte_arr = img_byte_arr.getvalue()
+    return img_byte_arr

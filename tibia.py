@@ -908,6 +908,44 @@ class Tibia:
                 print("{0} ({1}) - {2}".format(npc['name'],npc['city'],voc))"""
         yield from self.bot.say(reply)
 
+    @commands.command(pass_context=True, aliases=["houses", "guildhall", "gh"])
+    @asyncio.coroutine
+    def house(self, ctx, *, name: str=None):
+        """Shows info for a house or guildhall"""
+        if name is None:
+            yield from self.bot.say("Tell me the name of the house or guildhall you want to check.")
+            return
+        world = None
+        if ctx.message.server is not None:
+            world = tracked_worlds.get(ctx.message.server.id)
+
+        house = yield from get_house(name, world)
+        if house is None:
+            yield from self.bot.say("I couldn't find a house with that name.")
+            return
+
+        if type(house) is list:
+            embed = discord.Embed(title="Suggestions", description="\n".join(house))
+            yield from self.bot.say("I couldn't find that house, maybe you meant one of these?", embed=embed)
+            return
+
+        # Attach image only if the bot has permissions
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if permissions.attach_files:
+            filename = house['name'] + ".png"
+            while os.path.isfile(filename):
+                filename = "_" + filename
+            with open(filename, "w+b") as f:
+                image = get_map_area(house["x"], house["y"], house["z"])
+                f.write(bytearray(image))
+                f.close()
+            # Send image
+            with open(filename, "r+b") as f:
+                yield from self.bot.upload(f)
+                f.close()
+            os.remove(filename)
+        yield from self.bot.say(embed=self.get_house_embed(house))
+
     @commands.command(aliases=['serversave','ss'])
     @asyncio.coroutine
     def time(self):
@@ -1188,6 +1226,36 @@ class Tibia:
             askchannel_string = " or use #" + ask_channel_name if ask_channel_name is not None else ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         return embed
+
+    @staticmethod
+    def get_house_embed(house):
+        """Gets the embed to show in /house command"""
+        if type(house) is not dict:
+            return
+        embed = discord.Embed(title=house["name"])
+        house["type"] = "house" if house["guildhall"] == 0 else "guildhall"
+        house["_beds"] = "bed" if house["beds"] == 1 else "beds"
+        description = "This {type} has **{beds}** {_beds} and has a size of **{sqm}** sqm." \
+                      " This {type} is in **{city}**.".format(**house)
+        # House was fetched correctly
+        if house["fetch"]:
+            embed.url = house["url"]
+            description += " The rent is **{rent:,}** gold per month.".format(**house)
+            if house["status"] == "rented":
+                house["owner_url"] = get_character_url(house["owner"])
+                description += "\nIn **{world}**, this {type} is rented by [{owner}]({owner_url}).".format(**house)
+            elif house["status"] == "empty":
+                description += "\nIn **{world}**, this {type} is unoccupied.".format(**house)
+            elif house["status"] == "auctioned":
+                house["bidder_url"] = get_character_url(house["top_bidder"])
+                description += "\nIn **{world}**, this {type} is being auctioned. " \
+                               "The top bid is **{top_bid:,}** gold, by [{top_bidder}]({bidder_url}).\n" \
+                               "The auction ends at **{auction_end}**".format(**house)
+
+        embed.description = description
+        return embed
+
+
 
 
 def setup(bot):
