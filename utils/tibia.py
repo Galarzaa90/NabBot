@@ -891,9 +891,18 @@ def get_house(name, world = None):
 
             if "rented" in content:
                 house["status"] = "rented"
-                m = re.search(r'rented by <A?.+name=([^\"]+)', content)
+                m = re.search(r'rented by <A?.+name=([^\"]+).+e has paid the rent until <B>([^<]+)</B>', content)
                 if m:
                     house["owner"] = urllib.parse.unquote_plus(m.group(1))
+                    house["until"] = m.group(2).replace("&#160;", " ")
+                if "move out" in content:
+                    house["status"] = "transferred"
+                    m = re.search(r'will move out on <B>([^<]+)</B> \(time of daily server save\) and will pass the '
+                                  r'house to <A.+name=([^\"]+).+ for <B>(\d+) gold', content)
+                    if m:
+                        house["transfer_date"] =house["until"] = m.group(1).replace("&#160;", " ")
+                        house["transferee"] = urllib.parse.unquote_plus(m.group(2))
+                        house["transfer_price"] = int(m.group(3))
             elif "auctioned" in content:
                 house["status"] = "auctioned"
                 if ". No bid has" in content:
@@ -902,7 +911,7 @@ def get_house(name, world = None):
                 m = re.search(r'The auction will end at <B>([^\<]+)</B>\. '
                               r'The highest bid so far is <B>(\d+).+ by .+name=([^\"]+)\"', content)
                 if m:
-                    house["auction_end"] = m.group(1).replace("&#160;", " ").replace(",", "")
+                    house["auction_end"] = m.group(1).replace("&#160;", " ")
                     house["top_bid"] = int(m.group(2))
                     house["top_bidder"] = urllib.parse.unquote_plus(m.group(3))
             break

@@ -1244,6 +1244,13 @@ class Tibia:
             if house["status"] == "rented":
                 house["owner_url"] = get_character_url(house["owner"])
                 description += "\nIn **{world}**, this {type} is rented by [{owner}]({owner_url}).".format(**house)
+            elif house["status"] == "transferred":
+                house["owner_url"] = get_character_url(house["owner"])
+                house["transferee_url"] = get_character_url(house["transferee"])
+                description += "\nIn **{world}**, this {type} is rented by [{owner}]({owner_url}). " \
+                               "It will be transferred to [{transferee}]({transferee_url}) for **{transfer_price:,}** " \
+                               "gold on **{transfer_date}**".format(**house)
+
             elif house["status"] == "empty":
                 description += "\nIn **{world}**, this {type} is unoccupied.".format(**house)
             elif house["status"] == "auctioned":
