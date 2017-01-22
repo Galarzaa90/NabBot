@@ -75,7 +75,7 @@ network_retry_delay = 0.5
 
 # Databases filenames
 USERDB = "users.db"
-TIBIADB = "Database.db"
+TIBIADB = "database.db"
 LOOTDB = "utils/loot.db"
 
 if __name__ == "__main__":

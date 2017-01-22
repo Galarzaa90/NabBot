@@ -556,7 +556,7 @@ class Tibia:
 
         # Attach item's image only if the bot has permissions
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
-        if permissions.attach_files:
+        if permissions.attach_files and monster["image"] != 0:
             filename = monster['name'] + ".png"
             while os.path.isfile(filename):
                 filename = "_" + filename
