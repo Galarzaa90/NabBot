@@ -924,6 +924,21 @@ def get_house(name, world = None):
     finally:
         c.close()
 
+def get_achievement(name):
+    """Returns an achievement (dictionary), a list of possible matches or none"""
+    c = tibiaDatabase.cursor()
+    try:
+        # Search query
+        c.execute("SELECT * FROM Achievements WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
+        result = c.fetchall()
+        if len(result) == 0:
+            return None
+        elif result[0]["name"].lower() == name.lower() or len(result) == 1:
+            return result[0]
+        else:
+            return [x['name'] for x in result]
+    finally:
+        c.close()
 
 
 def get_tibia_time_zone() -> int:

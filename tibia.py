@@ -957,6 +957,36 @@ class Tibia:
             os.remove(filename)
         yield from self.bot.say(embed=self.get_house_embed(house))
 
+    @commands.command(pass_context=True, aliases=["achiev"])
+    @asyncio.coroutine
+    def achievement(self, ctx, *, name: str=None):
+        """Shows an achievement's information
+
+        Spoilers are only shown on ask channel and private messages"""
+        if name is None:
+            yield from self.bot.say("Tell me the name of the achievement you want to check.")
+            return
+        achievement = get_achievement(name)
+
+        if type(achievement) is list:
+            embed = discord.Embed(title="Suggestions", description="\n".join(achievement))
+            yield from self.bot.say("I couldn't find that house, maybe you meant one of these?", embed=embed)
+            return
+
+        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
+        if not (ask_channel == ctx.message.channel or ctx.message.channel.is_private):
+            achievement["spoiler"] = "*To see spoilers, pm me"
+            if ask_channel is not None:
+                achievement["spoiler"] += " or use "+ask_channel.mention
+            achievement["spoiler"] += ".*"
+
+        embed = discord.Embed(title=achievement["name"], description=achievement["description"])
+        embed.add_field(name="Grade", value=EMOJI[":star:"]*int(achievement["grade"]))
+        embed.add_field(name="Points", value=achievement["points"])
+        embed.add_field(name="Spoiler", value=achievement["spoiler"], inline=True)
+
+        yield from self.bot.say(embed=embed)
+
     @commands.command(aliases=['serversave','ss'])
     @asyncio.coroutine
     def time(self):
@@ -1272,7 +1302,6 @@ class Tibia:
 
         embed.description = description
         return embed
-
 
 
 
