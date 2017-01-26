@@ -726,6 +726,13 @@ def get_item(name):
                       "WHERE CreatureDrops.creatureid = Creatures.id AND CreatureDrops.itemid = ? "
                       "ORDER BY percentage DESC", (item["id"],))
             item["dropped_by"] = c.fetchall()
+            # Checking quest rewards:
+            c.execute("SELECT Quests.title FROM Quests, QuestRewards "
+                      "WHERE Quests.id = QuestRewards.questid and itemid = ?", (item["id"],))
+            quests = c.fetchall()
+            item["quests"] = list()
+            for quest in quests:
+                item["quests"].append(quest["title"])
             return item
     finally:
         c.close()

@@ -1401,11 +1401,12 @@ def event_make(ctx):
             yield from bot.say("...You took too long. Try the command again.")
             return
         elif event_description.content.lower().strip() in ["no", "none"]:
-            yield from bot.say("No description then? Alright, now tell me the start time of the event from now.")
+            yield from bot.say("No description then? Alright, now tell me the start time of the event from now. "
+                               "`e.g. 2d1h20m, 2d3h`")
             event_description = ""
         else:
             event_description = event_description.clean_content
-            yield from bot.say("Alright, now tell me the start time of the event from now.")
+            yield from bot.say("Alright, now tell me the start time of the event from now. `e.g. 2d1h20m, 2d3h`")
 
         starts_in = yield from bot.wait_for_message(author=author, channel=ctx.message.channel, timeout=50.0)
         if starts_in is None:

@@ -484,9 +484,9 @@ class Tibia:
         embed.add_field(name=current_field, value=result, inline=False)
         yield from self.bot.say(embed=embed)
 
-    @commands.command(pass_context=True, aliases=['checkprice', 'item'])
+    @commands.command(pass_context=True, aliases=['checkprice', 'itemprice'])
     @asyncio.coroutine
-    def itemprice(self, ctx, *, name: str=None):
+    def item(self, ctx, *, name: str=None):
         """Checks an item's information
 
         Shows name, picture, npcs that buy and sell and creature drops"""
@@ -505,7 +505,7 @@ class Tibia:
 
         # Attach item's image only if the bot has permissions
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
-        if permissions.attach_files:
+        if permissions.attach_files and item["image"] != 0:
             filename = item['name'] + ".png"
             while os.path.isfile(filename):
                 filename = "_" + filename
@@ -1200,12 +1200,12 @@ class Tibia:
 
     @staticmethod
     def get_item_embed(ctx, item, long):
-        """Gets the item embeds to show in /item command
-        The message is split in two embeds, the second contains monster drops only and is only shown if long is True"""
+        """Gets the item embed to show in /item command"""
         short_limit = 5
         long_limit = 40
         npcs_too_long = False
         drops_too_long = False
+        quests_too_long = False
 
         embed = discord.Embed(title=item["title"], description=item["look_text"])
         if "color" in item:
@@ -1238,7 +1238,20 @@ class Tibia:
 
             embed.add_field(name=name, value=value)
 
-        if len(item["dropped_by"]):
+        if item["quests"]:
+            value = ""
+            count = 0
+            name = "Awarded in"
+            for quest in item["quests"]:
+                count += 1
+                value += "\n"+quest
+                if count >= short_limit and not long:
+                    value += "\n*...And {0} others*".format(len(item["dropped_by"]) - short_limit)
+                    quests_too_long = True
+                    break
+            embed.add_field(name=name, value=value)
+
+        if item["dropped_by"]:
             name = "Dropped by"
             count = 0
             value = ""
@@ -1258,7 +1271,7 @@ class Tibia:
 
             embed.add_field(name=name, value=value)
 
-        if npcs_too_long or drops_too_long:
+        if npcs_too_long or drops_too_long or quests_too_long:
             ask_channel = get_channel_by_name(ctx.bot, ask_channel_name, ctx.message.server)
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel.name
@@ -1266,6 +1279,7 @@ class Tibia:
                 askchannel_string = ""
             askchannel_string = " or use #" + ask_channel_name if ask_channel_name is not None else ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
+
         return embed
 
     @staticmethod
