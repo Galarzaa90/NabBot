@@ -820,7 +820,7 @@ def get_share_range(level: int):
 
 # TODO: Improve formatting to match /monster and /item
 def get_spell(name):
-    """Returns a formatted string containing a spell's info."""
+    """Returns a dictionary containing a spell's info, a list of possible matches or None"""
     c = tibiaDatabase.cursor()
     try:
         c.execute("""SELECT * FROM Spells WHERE words LIKE ? OR name LIKE ?""", ("%" + name + "%", "%" + name + "%"))
@@ -846,9 +846,38 @@ def get_spell(name):
         c.close()
 
 
+def get_npc(name):
+    """Returns a dictionary containing a NPC's info, a list of possible matches or None"""
+    c = tibiaDatabase.cursor()
+    try:
+        # search query
+        c.execute("SELECT * FROM NPCs WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%" + name + "%",))
+        result = c.fetchall()
+        if len(result) == 0:
+            return None
+        elif result[0]["title"].lower() == name.lower or len(result) == 1:
+            npc = result[0]
+        else:
+            return [x["title"] for x in result]
+        npc["image"] = 0
+
+        c.execute("SELECT Items.name, Items.category, BuyItems.value FROM BuyItems, Items "
+                  "WHERE Items.id = BuyItems.itemid AND BuyItems.vendorid = ?", (npc["id"],))
+        npc["sell_items"] = c.fetchall()
+
+        c.execute("SELECT Items.name, Items.category, SellItems.value FROM SellItems, Items "
+                  "WHERE Items.id = SellItems.itemid AND SellItems.vendorid = ?", (npc["id"],))
+        npc["buy_items"] = c.fetchall()
+        return npc
+    finally:
+        c.close()
+
+
 @asyncio.coroutine
 def get_house(name, world = None):
-    """Returns a formatted string containing a house's info"""
+    """Returns a dictionary containing a house's info, a list of possible matches or None.
+
+    If world is specified, it will also find the current status of the house in that world."""
     c = tibiaDatabase.cursor()
     try:
         # Search query
