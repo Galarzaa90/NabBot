@@ -232,10 +232,10 @@ def on_message_edit(older_message, message):
 @asyncio.coroutine
 def on_member_update(before: discord.Member, after: discord.Member):
     if before.nick != after.nick:
-        reply = "{1.mention}: Changed his nickname from **{0.nick}** to **{1.nick}**".format(before, after)
+        reply = "{1.mention}: Nickname changed from **{0.nick}** to **{1.nick}**".format(before, after)
         yield from send_log_message(bot, after.server, reply)
     elif before.name != after.name:
-        reply = "{1.mention}: Changed his name from **{0.name}** to **{1.name}**".format(before, after)
+        reply = "{1.mention}: Name changed from **{0.name}** to **{1.name}**".format(before, after)
         yield from send_log_message(bot, after.server, reply)
     return
 

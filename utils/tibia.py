@@ -823,21 +823,23 @@ def get_spell(name):
     """Returns a formatted string containing a spell's info."""
     c = tibiaDatabase.cursor()
     try:
-        c.execute("""SELECT * FROM Spells WHERE words LIKE ? OR name LIKE ?""", (name + "%", name,))
-        spell = c.fetchone()
-        if spell is None:
+        c.execute("""SELECT * FROM Spells WHERE words LIKE ? OR name LIKE ?""", ("%" + name + "%", "%" + name + "%"))
+        result = c.fetchall()
+        if len(result) == 0:
             return None
-        spell["npcs"] = []
+        elif result[0]["name"].lower() == name.lower() or result[0]["words"].lower() == name.lower() or len(result) == 1:
+            spell = result[0]
+        else:
+            return ["{name} ({words})".format(**x) for x in result]
 
+        spell["npcs"] = []
         c.execute("""SELECT NPCs.title as name, NPCs.city, SpellNPCs.knight, SpellNPCs.paladin,
                   SpellNPCs.sorcerer, SpellNPCs.druid FROM NPCs, SpellNPCs
                   WHERE SpellNPCs.spellid = ? AND SpellNPCs.npcid = NPCs.id""", (spell["id"],))
         result = c.fetchall()
-        # This should always be true
-        if result is not None:
-            for npc in result:
-                npc["city"] = npc["city"].title()
-                spell["npcs"].append(npc)
+        for npc in result:
+            npc["city"] = npc["city"].title()
+            spell["npcs"].append(npc)
         return spell
 
     finally:

@@ -877,47 +877,41 @@ class Tibia:
                 "At that level, you will pay **{0:,}** gold coins per blessing for a total of **{1:,}** gold coins.{2}"
                 .format(price, price*5, inquisition))
 
-    @commands.command()
+    @commands.command(pass_context=True)
     @asyncio.coroutine
-    def spell(self, *, name: str= None):
+    def spell(self, ctx, *, name: str= None):
         """Tells you information about a certain spell."""
         if name is None:
             yield from self.bot.say("Tell me the name or words of a spell.")
+
         spell = get_spell(name)
+
         if spell is None:
             yield from self.bot.say("I don't know any spell with that name or words.")
             return
-        mana = spell["manacost"]
-        if mana < 0:
-            mana = "variable"
-        words = spell["words"]
-        if "exani hur" in words:
-            words = "exani hur up/down"
-        vocs = list()
-        if spell['knight']: vocs.append("knights")
-        if spell['paladin']: vocs.append("paladins")
-        if spell['druid']: vocs.append("druids")
-        if spell['sorcerer']: vocs.append("sorcerers")
-        voc = join_list(vocs, ", ", " and ")
-        reply = "**{0}** (*{1}*) is a {2}spell for level **{3}** and up. It uses **{4}** mana."
-        reply = reply.format(spell["name"], words, "premium " if spell["premium"] else "",
-                            spell["levelrequired"], mana)
-        reply += " It can be used by {0}.".format(voc)
-        if spell["goldcost"] == 0:
-            reply += "\nIt can be obtained for free."
-        else:
-            reply += "\nIt can be bought for {0:,} gold coins.".format(spell["goldcost"])
-        # Todo: Show which NPCs sell the spell
-        """if(len(spell['npcs']) > 0):
-            for npc in spell['npcs']:
-                vocs = list()
-                if(npc['knight']): vocs.append("knights")
-                if(npc['paladin']): vocs.append("paladins")
-                if(npc['druid']): vocs.append("druids")
-                if(npc['sorcerer']): vocs.append("sorcerers")
-                voc = ", ".join(vocs)
-                print("{0} ({1}) - {2}".format(npc['name'],npc['city'],voc))"""
-        yield from self.bot.say(reply)
+
+        if type(spell) is list:
+            embed = discord.Embed(title="Suggestions", description="\n".join(spell))
+            yield from self.bot.say("I couldn't find that spell, maybe you meant one of these?", embed=embed)
+            return
+
+        # Attach item's image only if the bot has permissions
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if permissions.attach_files and spell["image"] != 0:
+            filename = spell['name'] + ".png"
+            while os.path.isfile(filename):
+                filename = "_" + filename
+            with open(filename, "w+b") as f:
+                f.write(bytearray(spell['image']))
+                f.close()
+
+            with open(filename, "r+b") as f:
+                yield from self.bot.upload(f)
+                f.close()
+            os.remove(filename)
+        long = ctx.message.channel.is_private or ctx.message.channel.name == ask_channel_name
+        embed = self.get_spell_embed(ctx, spell, long)
+        yield from self.bot.say(embed=embed)
 
     @commands.command(pass_context=True, aliases=["houses", "guildhall", "gh"])
     @asyncio.coroutine
@@ -1277,7 +1271,6 @@ class Tibia:
                 askchannel_string = " or use #" + ask_channel.name
             else:
                 askchannel_string = ""
-            askchannel_string = " or use #" + ask_channel_name if ask_channel_name is not None else ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
 
         return embed
@@ -1317,7 +1310,80 @@ class Tibia:
         embed.description = description
         return embed
 
+    @staticmethod
+    def get_spell_embed(ctx, spell, long):
+        """Gets the embed to show in /spell command"""
+        short_limit = 5
+        too_long = False
 
+        if type(spell) is not dict:
+            return
+        embed = discord.Embed(title="{name} ({words})".format(**spell))
+        spell["premium"] = "**premium** " if spell["premium"] else ""
+        if spell["manacost"] < 0:
+            spell["manacost"] = "variable"
+        if "exani hur" in spell["words"]:
+            spell["words"] = "exani hur up/down"
+        vocs = list()
+        if spell['knight']: vocs.append("knights")
+        if spell['paladin']: vocs.append("paladins")
+        if spell['druid']: vocs.append("druids")
+        if spell['sorcerer']: vocs.append("sorcerers")
+        spell["vocs"] = join_list(vocs, ", ", " and ")
+
+        description = "A {premium}spell for level **{levelrequired}** and up. " \
+                      "It uses **{manacost:,}** mana. It can be used by {vocs}".format(**spell)
+
+        if spell["goldcost"] == 0:
+            description += "\nIt can be obtained for free."
+        else:
+            description += "\nIt can be bought for {0:,} gold coins.".format(spell["goldcost"])
+
+        for voc in vocs:
+            value = ""
+            if len(vocs) == 1:
+                name = "Sold by"
+            else:
+                name = "Sold by ({0})".format(voc.title())
+            count = 0
+            for npc in spell["npcs"]:
+                if not npc[voc[:-1]]:
+                    continue
+                count += 1
+                value += "\n{name} ({city})".format(**npc)
+                if count >= short_limit and not long:
+                    value += "\n*...And more*"
+                    too_long = True
+                    break
+            if value:
+                embed.add_field(name=name, value=value)
+        # Set embed color based on element:
+        if spell["element"] == "Fire":
+            embed.colour = Colour(0xFF9900)
+        if spell["element"] == "Ice":
+            embed.colour = Colour(0x99FFFF)
+        if spell["element"] == "Energy":
+            embed.colour = Colour(0xCC33FF)
+        if spell["element"] == "Earth":
+            embed.colour = Colour(0x00FF00)
+        if spell["element"] == "Holy":
+            embed.colour = Colour(0xFFFF00)
+        if spell["element"] == "Death":
+            embed.colour = Colour(0x990000)
+        if spell["element"] == "Physical" or spell["element"] == "Bleed":
+            embed.colour = Colour(0xF70000)
+
+        embed.description = description
+
+        if too_long:
+            ask_channel = get_channel_by_name(ctx.bot, ask_channel_name, ctx.message.server)
+            if ask_channel:
+                askchannel_string = " or use #" + ask_channel.name
+            else:
+                askchannel_string = ""
+            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
+
+        return embed
 
 def setup(bot):
     bot.add_cog(Tibia(bot))
