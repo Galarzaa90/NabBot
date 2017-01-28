@@ -1063,6 +1063,7 @@ def events(ctx):
     time_threshold = 60 * 30
     now = time.time()
     c = userDatabase.cursor()
+    server = ctx.message.server
     try:
         # If this is used on a PM, show events for all shared servers
         if ctx.message.channel.is_private:
@@ -1089,8 +1090,8 @@ def events(ctx):
             name = "Recent events"
             value = ""
             for event in recent_events:
-                author = get_member(bot, event["creator"])
-                event["author"] = "unknown" if author is None else author.display_name
+                author = get_member(bot, event["creator"], server)
+                event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
                 time_diff = timedelta(seconds=now - event["start"])
                 minutes = round((time_diff.seconds/60) % 60)
                 event["start_str"] = "Started {0} minutes ago".format(minutes)
@@ -1102,7 +1103,7 @@ def events(ctx):
             value = ""
             for event in upcoming_events:
                 author = get_member(bot, event["creator"])
-                event["author"] = "unknown" if author is None else author.display_name
+                event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
                 time_diff = timedelta(seconds=event["start"]-now)
                 days, hours, minutes = time_diff.days, time_diff.seconds // 3600, (time_diff.seconds // 60) % 60
                 if days:
@@ -1126,6 +1127,7 @@ def events(ctx):
 def event_info(ctx, event_id: int):
     """Displays an event's info"""
     c = userDatabase.cursor()
+    server = ctx.message.server
     try:
         # If this is used on a PM, show events for all shared servers
         if ctx.message.channel.is_private:
@@ -1143,11 +1145,15 @@ def event_info(ctx, event_id: int):
             return
         start = datetime.utcfromtimestamp(event["start"])
         embed = discord.Embed(title=event["name"], description=event["description"], timestamp=start)
-        author = get_member(bot, event["creator"])
+        author = get_member(bot, event["creator"], server)
         footer = "Start time"
         footer_icon = ""
         if author is not None:
-            footer = "Created by "+author.display_name+" | Start time"
+            if server is None:
+                author_name = author.name
+            else:
+                author_name = author.display_name
+            footer = "Created by "+author_name+" | Start time"
             footer_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
         embed.set_footer(text=footer, icon_url=footer_icon)
         yield from bot.say(embed=embed)
