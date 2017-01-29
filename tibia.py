@@ -12,7 +12,8 @@ from utils.database import tracked_worlds
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone
 from utils.loot import loot_scan
 from utils.messages import EMOJI, split_message
-from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_servers
+from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_servers, \
+    FIELD_VALUE_LIMIT
 from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import *
 
@@ -197,14 +198,14 @@ class Tibia:
             if type(char) is dict:
                 # If it's owned by the user, we append it to the same embed.
                 if char["owner_id"] == int(user.id):
-                    embed.description += "\n\nThe character "+char_string
+                    embed.add_field(name="Character", value=char_string, inline=False)
                     yield from self.bot.say(embed=embed)
                     return
                 # Not owned by same user, we display a separate embed
                 else:
                     char_embed = discord.Embed(description=char_string)
                     char_embed.set_author(name=char["name"],
-                                          url=url_character+urllib.parse.quote(char["name"].encode('iso-8859-1')),
+                                          url=get_character_url(char["name"]),
                                           icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                           )
                     yield from self.bot.say(embed=embed)
@@ -218,7 +219,7 @@ class Tibia:
                 yield from self.bot.say("I failed to do a character search for some reason " + EMOJI[":astonished:"])
             elif type(char) is dict:
                 embed.set_author(name=char["name"],
-                                 url=url_character + urllib.parse.quote(char["name"].encode('iso-8859-1')),
+                                 url=get_character_url(char["name"]),
                                  icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                  )
                 # Char is owned by a discord user
@@ -1176,7 +1177,7 @@ class Tibia:
                 else:
                     item["count"] = ""
                 loot_string += "{percentage} {name} {count}\n".format(**item)
-            split_loot = split_message(loot_string, 1024)
+            split_loot = split_message(loot_string, FIELD_VALUE_LIMIT)
             for loot in split_loot:
                 if loot == split_loot[0]:
                     name = "Loot"

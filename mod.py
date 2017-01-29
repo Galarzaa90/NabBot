@@ -8,7 +8,7 @@ from utils.messages import split_message
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
 from utils.general import is_numeric
 from utils.discord import get_member, get_member_by_name, get_user_servers, get_user_worlds, send_log_message, \
-    get_user_admin_servers
+    get_user_admin_servers, FIELD_VALUE_LIMIT
 from utils import checks
 
 
@@ -657,7 +657,7 @@ class Mod:
                     embed.add_field(name=server.name, value="There are no unregistered users.", inline=False)
                     continue
                 field_value = "\n{0}".format("\n".join(empty_members))
-                split_value = split_message(field_value, 1024)
+                split_value = split_message(field_value, FIELD_VALUE_LIMIT)
                 for empty_member in split_value:
                     if empty_member == split_value[0]:
                         name = server.name

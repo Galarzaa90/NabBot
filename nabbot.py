@@ -793,6 +793,10 @@ def im(ctx, *, char_name: str):
     # List of Tibia worlds tracked in the servers the user is
     user_tibia_worlds = [world for server, world in tracked_worlds.items() if server in [s.id for s in user_servers]]
 
+    if tracked_worlds.get(ctx.message.server.id) is None and not ctx.message.channel.is_private:
+        yield from bot.say("This server is not tracking any tibia worlds.")
+        return
+
     if len(user_tibia_worlds) == 0:
         return
 

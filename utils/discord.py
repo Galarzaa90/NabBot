@@ -7,6 +7,12 @@ from config import log_channel_name
 from utils.database import tracked_worlds
 from .messages import EMOJI
 
+# Discord length limit
+CONTENT_LIMIT = 2000
+DESCRIPTION_LIMIT = 2048
+FIELD_NAME_LIMIT = 256
+FIELD_VALUE_LIMIT = 1024
+FIELD_AMOUNT = 25
 
 def get_channel_by_name(bot: discord.Client, channel_name: str, server: discord.Server = None,
                         server_id: str = None, server_name: str = None) -> discord.Channel:
