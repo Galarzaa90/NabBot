@@ -100,12 +100,21 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
             ret = yield from get_highscores(server, category, pagenum, profession, tries)
             return ret
     
-    regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
-    pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
-    matches = re.findall(pattern, content)
-    scoreList = []
-    for m in matches:
-        scoreList.append({'rank': m[0], 'name': m[1], 'value': m[2]})
+    if category == "loyalty
+        
+        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
+        pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
+        matches = re.findall(pattern, content)
+        scoreList = []
+        for m in matches:
+            scoreList.append({'rank': m[0], 'name': m[1], 'value': m[2].replace(',', '')})
+    else:
+        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
+        pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
+        matches = re.findall(pattern, content)
+        scoreList = []
+        for m in matches:
+            scoreList.append({'rank': m[0], 'name': m[1], 'value': m[2].replace(',', '')})
     return scoreList
 
 
