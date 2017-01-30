@@ -1092,14 +1092,18 @@ class Tibia:
             result = c.fetchall()
             if result:
                 charList = []
+                online_list = [x.split("_", 1)[1] for x in global_online_list]
                 for character in result:
+                    character["online"] = ""
+                    if character["name"] in online_list:
+                        character["online"] = EMOJI[":small_blue_diamond:"]
                     try:
                         character["level"] = int(character["level"])
                     except ValueError:
                         character["level"] = ""
                     character["vocation"] = get_voc_abb(character["vocation"])
                     character["url"] = url_character + urllib.parse.quote(character["name"].encode('iso-8859-1'))
-                    charList.append("[{name}]({url}) (Lvl {level} {vocation})".format(**character))
+                    charList.append("[{name}]({url}){online} (Lvl {level} {vocation})".format(**character))
 
                 char_string = "@**{0.display_name}**'s character{1}: {2}"
                 plural = "s are" if len(charList) > 1 else " is"
