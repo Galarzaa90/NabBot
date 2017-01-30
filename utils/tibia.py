@@ -100,8 +100,7 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
             ret = yield from get_highscores(server, category, pagenum, profession, tries)
             return ret
     
-    if category == "loyalty
-        
+    if category == "loyalty":
         regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
         pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
         matches = re.findall(pattern, content)
