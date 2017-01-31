@@ -1,5 +1,6 @@
 from discord.ext import commands
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import os
 import re
 import time
@@ -30,7 +31,8 @@ discord_log.addHandler(handler)
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 # Save log to file (info level)
-fileHandler = logging.FileHandler(filename='logs/nabbot.log', encoding='utf-8', mode='a')
+fileHandler = TimedRotatingFileHandler('logs/nabbot', atTime='midnight')
+fileHandler.suffix = "%Y_%m_%d.log"
 fileHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
 fileHandler.setLevel(logging.INFO)
 log.addHandler(fileHandler)
