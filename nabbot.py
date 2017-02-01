@@ -1011,6 +1011,12 @@ def online(ctx):
 
 @bot.command()
 @asyncio.coroutine
+def uptime():
+    """Shows how long the bot has been running"""
+    yield from bot.say("I have been running for {0}.".format(get_uptime(True)))
+
+@bot.command()
+@asyncio.coroutine
 def about():
     """Shows information about the bot"""
     user_count = 0

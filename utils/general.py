@@ -119,7 +119,7 @@ def get_brasilia_time_zone() -> int:
 start_time = datetime.utcnow()
 
 
-def get_uptime() -> str:
+def get_uptime(long=False) -> str:
     """Returns a string with the time the bot has been running for.
 
     Start time is saved when this module is loaded, not when the bot actually logs in,
@@ -130,9 +130,9 @@ def get_uptime() -> str:
     minutes, seconds = divmod(remainder, 60)
     days, hours = divmod(hours, 24)
     if days:
-        fmt = '{d}d {h}h {m}m {s}s'
+        fmt = '{d}d {h}h {m}m {s}s' if not long else '{d} days, {h} hours, {m} minutes, and {s} seconds.'
     else:
-        fmt = '{h}h {m}m {s}s'
+        fmt = '{h}h {m}m {s}s' if not long else '{h} hours, {m} minutes, and {s} seconds.'
 
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 

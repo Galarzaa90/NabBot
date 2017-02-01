@@ -179,37 +179,28 @@ def get_character_deaths(name, single_death=False, tries=5):
     matches = re.findall(pattern, content)
 
     for m in matches:
-        deathTime = ""
-        deathLevel = ""
-        deathKiller = ""
-        deathByPlayer = False
-        regex_deathtime = r'(\w+).+?;(\d+).+?;(\d+).+?;(\d+):(\d+):(\d+).+?;(\w+)'
-        pattern = re.compile(regex_deathtime, re.MULTILINE + re.S)
-        m_deathtime = re.search(pattern, m[0])
-
-        if m_deathtime:
-            deathTime = "{0} {1} {2} {3}:{4}:{5} {6}".format(m_deathtime.group(1), m_deathtime.group(2),
-                                                             m_deathtime.group(3), m_deathtime.group(4),
-                                                             m_deathtime.group(5), m_deathtime.group(6),
-                                                             m_deathtime.group(7))
+        death_time = m[0].replace('&#160;', ' ').replace(",", "")
+        death_level = ""
+        death_killer = ""
+        death_by_player = False
 
         if m[1].find("Died") != -1:
             regex_deathinfo_monster = r'Level (\d+) by ([^.]+)'
             pattern = re.compile(regex_deathinfo_monster, re.MULTILINE + re.S)
             m_deathinfo_monster = re.search(pattern, m[1])
             if m_deathinfo_monster:
-                deathLevel = m_deathinfo_monster.group(1)
-                deathKiller = m_deathinfo_monster.group(2)
+                death_level = m_deathinfo_monster.group(1)
+                death_killer = m_deathinfo_monster.group(2)
         else:
             regex_deathinfo_player = r'Level (\d+) by .+?name=([^"]+)'
             pattern = re.compile(regex_deathinfo_player, re.MULTILINE + re.S)
             m_deathinfo_player = re.search(pattern, m[1])
             if m_deathinfo_player:
-                deathLevel = m_deathinfo_player.group(1)
-                deathKiller = urllib.parse.unquote_plus(m_deathinfo_player.group(2))
-                deathByPlayer = True
+                death_level = m_deathinfo_player.group(1)
+                death_killer = urllib.parse.unquote_plus(m_deathinfo_player.group(2))
+                death_by_player = True
 
-        deathList.append({'time': deathTime, 'level': deathLevel, 'killer': deathKiller, 'byPlayer': deathByPlayer})
+        deathList.append({'time': death_time, 'level': death_level, 'killer': death_killer, 'byPlayer': death_by_player})
         if single_death:
             break
     return deathList
@@ -747,8 +738,9 @@ def get_item(name):
     return
 
 
-def get_local_time(tibia_time) -> datetime:
+def get_local_time(tibia_time: str) -> datetime:
     """Gets a time object from a time string from tibia.com"""
+    tibia_time = tibia_time.replace(",","").replace("&#160;", " ")
     # Getting local time and GMT
     t = time.localtime()
     u = time.gmtime(time.mktime(t))
@@ -816,7 +808,6 @@ def get_stats(level: int, vocation: str):
     exp_tnl = 50*level*level - 150 * level + 200
 
     return {"vocation": vocation, "hp": hp, "mp": mp, "cap": cap, "exp": int(exp), "exp_tnl": exp_tnl}
-
 
 
 def get_share_range(level: int):
@@ -969,6 +960,7 @@ def get_house(name, world = None):
         return house
     finally:
         c.close()
+
 
 def get_achievement(name):
     """Returns an achievement (dictionary), a list of possible matches or none"""
