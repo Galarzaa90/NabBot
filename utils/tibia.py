@@ -134,7 +134,7 @@ def get_character_deaths(name, single_death=False, tries=5):
         content = yield from page.text(encoding='ISO-8859-1')
     except Exception:
         if tries == 0:
-            log.error("getPlayerDeaths: Couldn't fetch {0}, network error.".format(name))
+            log.error("get_character_deaths: Couldn't fetch {0}, network error.".format(name))
             return ERROR_NETWORK
         else:
             tries -= 1
@@ -738,7 +738,7 @@ def get_item(name):
     return
 
 
-def get_local_time(tibia_time: str) -> datetime:
+def parse_tibia_time(tibia_time: str) -> datetime:
     """Gets a time object from a time string from tibia.com"""
     tibia_time = tibia_time.replace(",","").replace("&#160;", " ")
     # Getting local time and GMT
@@ -746,12 +746,15 @@ def get_local_time(tibia_time: str) -> datetime:
     u = time.gmtime(time.mktime(t))
     # UTC Offset
     local_utc_offset = ((timegm(t) - timegm(u)) / 60 / 60)
-
-    # Convert time string to time object
-    # Removing timezone cause CEST and CET are not supported
-    t = datetime.strptime(tibia_time[:-4].strip(), "%b %d %Y %H:%M:%S")
     # Extracting timezone
     tz = tibia_time[-4:].strip()
+    try:
+        # Convert time string to time object
+        # Removing timezone cause CEST and CET are not supported
+        t = datetime.strptime(tibia_time[:-4].strip(), "%b %d %Y %H:%M:%S")
+    except ValueError:
+        log.error("parse_tibia_time: couldn't parse '{0}'".format(tibia_time))
+        return None
 
     # Getting the offset
     if tz == "CET":
@@ -759,6 +762,7 @@ def get_local_time(tibia_time: str) -> datetime:
     elif tz == "CEST":
         utc_offset = 2
     else:
+        log.error("parse_tibia_time: unknown timezone for '{0}'".format(tibia_time))
         return None
     # Add/subtract hours to get the real time
     return t + timedelta(hours=(local_utc_offset - utc_offset))

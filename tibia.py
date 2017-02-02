@@ -622,8 +622,8 @@ class Tibia:
                     return
                 last_time = now
                 for death in deaths:
-                    last_time = time.mktime(get_local_time(death["time"]).timetuple())
-                    death["time"] = get_time_diff(datetime.now() - get_local_time(death['time']))
+                    last_time = parse_tibia_time(death["time"].timestamp())
+                    death["time"] = get_time_diff(datetime.now() - parse_tibia_time(death['time']))
                     entries.append("At level **{level}** by {killer} - *{time} ago*".format(**death))
                     count += 1
 
@@ -1043,7 +1043,7 @@ class Tibia:
             house_url = url_house.format(id=char["house_id"], world=char["world"])
             house = house_format.format(pronoun, char["house"], house_url, char["house_town"])
         if char['last_login'] is not None:
-            last_login = get_local_time(char['last_login'])
+            last_login = parse_tibia_time(char['last_login'])
             now = datetime.now()
             time_diff = now - last_login
             if time_diff.days > last_login_days:

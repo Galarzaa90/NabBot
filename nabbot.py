@@ -25,7 +25,7 @@ from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
     weighedChoice, formatMessage
 from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, get_character_deaths, \
-    get_voc_abb, get_highscores, tibia_worlds, get_pronouns
+    get_voc_abb, get_highscores, tibia_worlds, get_pronouns, parse_tibia_time
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True, formatter=NabHelpFormat())
@@ -601,6 +601,12 @@ def check_death(bot, character):
         result = c.fetchone()
         if result:
             last_death = character_deaths[0]
+            death_time = parse_tibia_time(last_death["time"])
+            # If for some reason date can't be parsed, we use current timestamp
+            if death_time is None:
+                death_time = time.time()
+            else:
+                death_time = death_time.timestamp()
             db_last_death_time = result["last_death_time"]
             # If the db lastDeathTime is None it means this is the first time we're seeing them online
             # so we just update it without announcing deaths
@@ -613,7 +619,7 @@ def check_death(bot, character):
                 # Saving death info in database
                 c.execute(
                     "INSERT INTO char_deaths (char_id,level,killer,byplayer,date) VALUES(?,?,?,?,?)",
-                    (result["id"], int(last_death['level']), last_death['killer'], last_death['byPlayer'], time.time(),)
+                    (result["id"], int(last_death['level']), last_death['killer'], last_death['byPlayer'], death_time,)
                 )
                 # Announce the death
                 yield from announce_death(bot, character, last_death['level'], last_death['killer'], last_death['byPlayer'])
