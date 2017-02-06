@@ -90,6 +90,9 @@ def on_command_error(error, ctx):
         print('In {0.command.qualified_name}:'.format(ctx), file=sys.stderr)
         traceback.print_tb(error.original.__traceback__)
         print('{0.__class__.__name__}: {0}'.format(error.original), file=sys.stderr)
+        # Bot returns error message on discord if an owner called the command
+        if ctx.message.author.id in owner_ids:
+            yield from bot.send_message(ctx.message.channel, '```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
 
 
 @bot.event
@@ -1021,10 +1024,15 @@ def uptime():
     """Shows how long the bot has been running"""
     yield from bot.say("I have been running for {0}.".format(get_uptime(True)))
 
-@bot.command()
+
+@bot.command(pass_context=True)
 @asyncio.coroutine
-def about():
+def about(ctx):
     """Shows information about the bot"""
+    permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.server))
+    if not permissions.embed_links:
+        yield from bot.say("Sorry, I need `Embed Links` permission for this command.")
+        return
     user_count = 0
     char_count = 0
     deaths_count = 0
@@ -1076,6 +1084,10 @@ def about():
 @asyncio.coroutine
 def events(ctx):
     """Shows a list of current active events"""
+    permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.server))
+    if not permissions.embed_links:
+        yield from bot.say("Sorry, I need `Embed Links` permission for this command.")
+        return
     time_threshold = 60 * 30
     now = time.time()
     c = userDatabase.cursor()
@@ -1142,6 +1154,10 @@ def events(ctx):
 @asyncio.coroutine
 def event_info(ctx, event_id: int):
     """Displays an event's info"""
+    permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.server))
+    if not permissions.embed_links:
+        yield from bot.say("Sorry, I need `Embed Links` permission for this command.")
+        return
     c = userDatabase.cursor()
     server = ctx.message.server
     try:
@@ -1551,6 +1567,10 @@ def event_error(error, ctx):
 @asyncio.coroutine
 def info_server(ctx):
     """Shows the server's information."""
+    permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.server))
+    if not permissions.embed_links:
+        yield from bot.say("Sorry, I need `Embed Links` permission for this command.")
+        return
     embed = discord.Embed()
     _server = ctx.message.server  # type: discord.Server
     embed.set_thumbnail(url=_server.icon_url)

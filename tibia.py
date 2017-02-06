@@ -132,6 +132,7 @@ class Tibia:
 
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
     @checks.is_not_lite()
+    @checks.is_main_server()
     @asyncio.coroutine
     def loot_legend(self):
         """Shows the meaning of the overlayed icons."""
@@ -149,6 +150,10 @@ class Tibia:
 
         Note that the bot has no way to know the characters of a member that just joined.
         The bot has to be taught about the character's of an user."""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
         if name is None:
             yield from self.bot.say("Tell me which character or user you want to check.")
             return
@@ -291,6 +296,10 @@ class Tibia:
 
         -Find a character of a certain vocation between a level range
         /find vocation,min_level,max_level"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
 
         invalid_arguments = "Invalid arguments used, examples:\n" \
                             "```/find vocation,charname\n" \
@@ -426,10 +435,14 @@ class Tibia:
         except CannotPaginate as e:
             yield from self.bot.say(e)
 
-    @commands.command(aliases=['guildcheck', 'checkguild'])
+    @commands.command(pass_context=True, aliases=['guildcheck', 'checkguild'])
     @asyncio.coroutine
-    def guild(self, *, name=None):
+    def guild(self, ctx, *, name=None):
         """Checks who is online in a guild"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
         if name is None:
             yield from self.bot.say("Tell me the guild you want me to check.")
             return
@@ -491,6 +504,11 @@ class Tibia:
         """Checks an item's information
 
         Shows name, picture, npcs that buy and sell and creature drops"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
+
         if name is None:
             yield from self.bot.say("Tell me the name of the item you want to search.")
             return
@@ -527,6 +545,11 @@ class Tibia:
     @asyncio.coroutine
     def monster(self, ctx, *, name: str=None):
         """Gives information about a monster"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
+
         if name is None:
             yield from self.bot.say("Tell me the name of the monster you want to search.")
             return
@@ -580,6 +603,10 @@ class Tibia:
     def deaths(self, ctx, *, name: str = None):
         """Shows a player's or everyone's recent deaths"""
         if name is None and lite_mode:
+            return
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
             return
         c = userDatabase.cursor()
         entries = []
@@ -659,6 +686,11 @@ class Tibia:
     @asyncio.coroutine
     def deaths_monsters(self, ctx, *, name: str=None):
         """Returns a list of the latest kills by that monster"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
+
         if name is None:
             yield from self.bot.say("You must tell me a monster's name to look for its kills.")
             return
@@ -715,6 +747,11 @@ class Tibia:
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
+
         c = userDatabase.cursor()
         entries = []
         count = 0
@@ -882,6 +919,11 @@ class Tibia:
     @asyncio.coroutine
     def spell(self, ctx, *, name: str= None):
         """Tells you information about a certain spell."""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
+
         if name is None:
             yield from self.bot.say("Tell me the name or words of a spell.")
 
@@ -918,6 +960,11 @@ class Tibia:
     @asyncio.coroutine
     def house(self, ctx, *, name: str=None):
         """Shows info for a house or guildhall"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
+
         if name is None:
             yield from self.bot.say("Tell me the name of the house or guildhall you want to check.")
             return
@@ -958,6 +1005,11 @@ class Tibia:
         """Shows an achievement's information
 
         Spoilers are only shown on ask channel and private messages"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
+
         if name is None:
             yield from self.bot.say("Tell me the name of the achievement you want to check.")
             return

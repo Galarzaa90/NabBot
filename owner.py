@@ -28,26 +28,12 @@ class Owner:
         yield from self.bot.say('Restarting...')
         self.bot.logout()
         log.warning("Closing NabBot")
+        # If it was run using the restarter, this command still works the same
         if platform.system() == "Linux":
             os.system("python3 restart.py {0}".format(ctx.message.author.id))
         else:
             os.system("python restart.py {0}".format(ctx.message.author.id))
 
-        quit()
-
-    # Shutdown command
-    @commands.command(pass_context=True, aliases=["close"])
-    @checks.is_owner()
-    @asyncio.coroutine
-    def shutdown(self, ctx):
-        """Shutdowns the bot
-
-        This command can only be used on pms"""
-        if not ctx.message.channel.is_private:
-            return True
-        yield from self.bot.say('Shutdown...')
-        self.bot.logout()
-        log.warning("Closing NabBot")
         quit()
 
     @commands.command(pass_context=True)
