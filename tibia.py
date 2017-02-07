@@ -460,17 +460,18 @@ class Tibia:
                          url=url_guild + urllib.parse.quote(guild["name"]),
                          icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                          )
+        embed.description = ""
         embed.set_thumbnail(url=guild["logo_url"])
         if guild.get("guildhall") is not None:
             guildhouse = yield from get_house(guild["guildhall"])
             if type(guildhouse) is dict:
-                embed.description = "They own the guildhall [{0}]({1}).\n".format(guild["guildhall"],
+                embed.description += "They own the guildhall [{0}]({1}).\n".format(guild["guildhall"],
                                                                                   url_house.format(id=guildhouse["id"],
                                                                                                    world=guild["world"])
                                                                                   )
             else:
                 # In case there's no match in the houses table, we just show the name.
-                embed.description = "They own the guildhall **{0}**.\n".format(guild["guildhall"])
+                embed.description += "They own the guildhall **{0}**.\n".format(guild["guildhall"])
 
         if len(guild['members']) < 1:
             embed.description += "Nobody is online."
