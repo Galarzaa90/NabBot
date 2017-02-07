@@ -1,6 +1,4 @@
 import asyncio
-import os
-import platform
 import random
 import re
 import sys
@@ -1724,10 +1722,3 @@ if __name__ == "__main__":
         quit()
     finally:
         bot.session.close()
-
-    log.warning("Emergency restart!")
-    if platform.system() == "Linux":
-        os.system("python3 restart.py")
-    else:
-        os.system("python restart.py")
-    quit()
