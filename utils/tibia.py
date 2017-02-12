@@ -826,7 +826,8 @@ def get_spell(name):
     """Returns a dictionary containing a spell's info, a list of possible matches or None"""
     c = tibiaDatabase.cursor()
     try:
-        c.execute("""SELECT * FROM Spells WHERE words LIKE ? OR name LIKE ?""", ("%" + name + "%", "%" + name + "%"))
+        c.execute("""SELECT * FROM Spells WHERE words LIKE ? OR name LIKE ? ORDER BY LENGTH(name) LIMIT 15""",
+                  ("%" + name + "%", "%" + name + "%"))
         result = c.fetchall()
         if len(result) == 0:
             return None
