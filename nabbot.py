@@ -597,34 +597,32 @@ def check_death(bot, character):
 
     if (type(character_deaths) is list) and len(character_deaths) > 0:
         c = userDatabase.cursor()
-
         c.execute("SELECT name, last_death_time, id FROM chars WHERE name LIKE ?", (character,))
         result = c.fetchone()
         if result:
             last_death = character_deaths[0]
-            death_time = parse_tibia_time(last_death["time"])
-            # If for some reason date can't be parsed, we use current timestamp
-            if death_time is None:
-                death_time = time.time()
-            else:
-                death_time = death_time.timestamp()
-            db_last_death_time = result["last_death_time"]
-            # If the db lastDeathTime is None it means this is the first time we're seeing them online
-            # so we just update it without announcing deaths
-            if db_last_death_time is None:
-                c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?", (last_death['time'], character,))
-            # Else if the last death's time doesn't match the one in the db
-            elif db_last_death_time != last_death['time']:
-                # Update the lastDeathTime for this char in the db
-                c.execute("UPDATE chars SET last_death_time = ? WHERE name LIKE ?", (last_death['time'], character,))
-                # Saving death info in database
-                c.execute(
-                    "INSERT INTO char_deaths (char_id,level,killer,byplayer,date) VALUES(?,?,?,?,?)",
-                    (result["id"], int(last_death['level']), last_death['killer'], last_death['byPlayer'], death_time,)
-                )
-                # Announce the death
-                yield from announce_death(bot, character, last_death['level'], last_death['killer'], last_death['byPlayer'])
+            death_time = parse_tibia_time(last_death["time"]).timestamp()
+            # Check if we have a death that matches the time
+            c.execute("SELECT * FROM char_deaths "
+                      "WHERE char_id = ? AND date >= ? AND date <= ? AND level = ? AND killer LIKE ?",
+                      (result["id"], death_time-200, death_time+200, last_death["level"], last_death["killer"]))
+            last_saved_death = c.fetchone()
+            if last_saved_death is not None:
+                # This death is already saved, so nothing else to do here.
+                return
 
+            c.execute(
+                "INSERT INTO char_deaths (char_id,level,killer,byplayer,date) VALUES(?,?,?,?,?)",
+                (result["id"], int(last_death['level']), last_death['killer'], last_death['byPlayer'], death_time,)
+            )
+
+            # If the death happened more than 1 hour ago, we don't announce it, but it's saved already.
+            if time.time()-death_time >= (1*60*60):
+                log.info("Death detected, but too old to announce: {0}({1}) | {2}".format(character,
+                                                                                          last_death['level'],
+                                                                                          last_death['killer']))
+            else:
+                yield from announce_death(bot, character, last_death['level'], last_death['killer'], last_death['byPlayer'])
         # Close cursor and commit changes
         userDatabase.commit()
         c.close()
