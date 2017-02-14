@@ -655,7 +655,6 @@ class Tibia:
                     death["time"] = get_time_diff(datetime.now() - parse_tibia_time(death['time']))
                     entries.append("At level **{level}** by {killer} - *{time} ago*".format(**death))
                     count += 1
-                    oldest_deth = death
 
                 c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
                 result = c.fetchone()
