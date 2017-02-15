@@ -13,9 +13,9 @@ from discord.ext import commands
 from config import *
 from utils import checks
 from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, tracked_worlds_list, \
-    reload_welcome_messages, welcome_messages
+    reload_welcome_messages, welcome_messages, reload_announce_channels
 from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
-    clean_string, get_role_list, get_member_by_name
+    clean_string, get_role_list, get_member_by_name, get_announce_channel
 from utils.general import command_list, join_list, get_uptime, TimeString, \
     single_line, is_numeric, getLogin, start_time, global_online_list
 from utils.general import log
@@ -669,7 +669,7 @@ def announce_death(bot, char_name, death_level, death_killer, death_by_player):
         server = bot.get_server(server_id)
         if char["world"] == tracked_world and server is not None \
                 and server.get_member(str(char["owner_id"])) is not None:
-            yield from bot.send_message(server, message[:1].upper()+message[1:])
+            yield from bot.send_message(get_announce_channel(bot, server), message[:1].upper()+message[1:])
 
 
 @asyncio.coroutine
@@ -712,7 +712,7 @@ def announce_level(bot, new_level, char_name=None, char=None):
         server = bot.get_server(server_id)
         if char["world"] == tracked_world and server is not None \
                 and server.get_member(str(char["owner_id"])) is not None:
-            yield from bot.send_message(server, message)
+            yield from bot.send_message(get_announce_channel(bot, server), message)
 
 
 # Bot commands
@@ -746,6 +746,7 @@ def help(ctx, *commands: str):
             if command is None:
                 yield from bot.send_message(destination, bot.command_not_found.format(name))
                 return
+            destination = ctx.message.channel if command.no_pm else destination
 
         pages = bot.formatter.format_help_for(ctx, command)
     else:
@@ -976,8 +977,7 @@ def imnot(ctx, *, name):
 def online(ctx):
     """Tells you which users are online on Tibia
 
-    This list gets updated based on Tibia.com online list, so it takes a couple minutes
-    to be updated."""
+    This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated."""
     tracked_world = tracked_worlds.get(ctx.message.server.id)
     if tracked_world is None:
         yield from bot.say("This server is not tracking any tibia worlds.")
@@ -1692,6 +1692,7 @@ if __name__ == "__main__":
     init_database()
     reload_worlds()
     reload_welcome_messages()
+    reload_announce_channels()
 
     print("Attempting login...")
 
@@ -1722,3 +1723,5 @@ if __name__ == "__main__":
         quit()
     finally:
         bot.session.close()
+
+    log.error("NabBot crashed")

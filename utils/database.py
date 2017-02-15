@@ -1,6 +1,9 @@
 import sqlite3
 
-from config import USERDB, TIBIADB, LOOTDB
+# Databases filenames
+USERDB = "users.db"
+TIBIADB = "database.db"
+LOOTDB = "utils/loot.db"
 
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
@@ -16,6 +19,9 @@ tracked_worlds_list = []
 
 # Dictionaries of welcome messages per server
 welcome_messages = {}
+
+# Dictionaries of announce channels per server
+announce_channels = {}
 
 
 def init_database():
@@ -213,5 +219,20 @@ def reload_welcome_messages():
                 welcome_messages_temp[row["server_id"]] = row["value"]
         welcome_messages.clear()
         welcome_messages.update(welcome_messages_temp)
+    finally:
+        c.close()
+
+
+def reload_announce_channels():
+    c = userDatabase.cursor()
+    announce_channels_temp = {}
+    try:
+        c.execute("SELECT server_id, value FROM server_properties WHERE name = 'announce_channel'")
+        result = c.fetchall()
+        if len(result) > 0:
+            for row in result:
+                announce_channels_temp[row["server_id"]] = row["value"]
+        announce_channels.clear()
+        announce_channels.update(announce_channels_temp)
     finally:
         c.close()

@@ -27,7 +27,7 @@ class Owner:
             return True
         yield from self.bot.say('Restarting...')
         self.bot.logout()
-        log.warning("Closing NabBot")
+        log.warning("Restarting NabBot")
         # If it was run using the restarter, this command still works the same
         if platform.system() == "Linux":
             os.system("python3 restart.py {0}".format(ctx.message.author.id))

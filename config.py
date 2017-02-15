@@ -73,10 +73,5 @@ highscores_page_delay = 5
 # Delay between retries when there's a network error in seconds
 network_retry_delay = 0.5
 
-# Databases filenames
-USERDB = "users.db"
-TIBIADB = "database.db"
-LOOTDB = "utils/loot.db"
-
 if __name__ == "__main__":
     input("To run NabBot, run nabbot.py")

@@ -4,7 +4,7 @@ from discord.ext import commands
 import re
 
 from config import log_channel_name
-from utils.database import tracked_worlds
+from utils.database import tracked_worlds, announce_channels
 from .messages import EMOJI
 
 # Discord length limit
@@ -151,6 +151,22 @@ def get_region_string(region: discord.ServerRegion) -> str:
                "brazil": EMOJI[":flag_br:"]+"Brazil"
                }
     return regions.get(str(region), str(region))
+
+
+def get_announce_channel(bot: discord.Client, server: discord.Server) -> discord.Channel:
+    """Returns this world's announcements channel. If no channel is set, the default channel is returned.
+
+    It also checks if the bot has permissions on that channel, if not, it will return the default channel too."""
+    channel_name = announce_channels.get(server.id, None)
+    if channel_name is None:
+        return server.default_channel
+    channel = get_channel_by_name(bot, channel_name, server)
+    if channel is None:
+        return server.default_channel
+    permissions = channel.permissions_for(get_member(bot, bot.user.id, server))
+    if not permissions.read_messages or not permissions.send_messages:
+        return server.default_channel
+    return channel
 
 
 def clean_string(ctx: commands.Context, string: str) -> str:

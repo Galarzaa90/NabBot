@@ -7,6 +7,7 @@ from discord.ext import commands
 from config import lite_mode, welcome_pm
 from utils import checks
 from utils.database import *
+from utils.discord import get_channel_by_name, get_member
 from utils.tibia import tibia_worlds
 
 
@@ -163,6 +164,95 @@ class Admin:
             c.close()
             userDatabase.commit()
             reload_welcome_messages()
+
+    @commands.command(name="setchannel", pass_context=True, no_pm=True)
+    @checks.is_admin()
+    @checks.is_not_lite()
+    @asyncio.coroutine
+    def set_announce_channel(self, ctx: commands.Context, *, name: str = None):
+        """Changes the channel used for the bot's announcements
+
+        If no channel is set, the bot will use the server's default channel."""
+        server = ctx.message.server
+        server_id = ctx.message.server.id
+        if name is None:
+            current_channel = announce_channels.get(server_id, None)
+            if current_channel is None:
+                yield from self.bot.say("This server has no custom channel set, {0} is used."
+                                        .format(server.default_channel.mention))
+            else:
+                channel = get_channel_by_name(self.bot, current_channel, server)
+                if channel is not None:
+                    permissions = channel.permissions_for(get_member(self.bot, self.bot.user.id, server))
+                    if not permissions.read_messages or not permissions.send_messages:
+                        yield from self.bot.say("This server's announce channel is set to #**{0}** but I don't have "
+                                                "permissions to use it. {1.mention} will be used instead."
+                                                .format(current_channel, channel))
+                        return
+                    yield from self.bot.say("This server's announce channel is {0.mention}".format(channel))
+                else:
+                    yield from self.bot.say("This server's announce channel is set to #**{0}** but it doesn't exist. "
+                                            "{1.mention} will be used instead."
+                                            .format(current_channel, server.default_channel))
+            return
+        if name.lower() in ["clear", "none", "delete", "remove"]:
+            yield from self.bot.say("Are you sure you want to delete this server's announce channel? `yes/no`\n"
+                                    "The server's default channel ({0.mention}) will still be used."
+                                    .format(server.default_channel))
+            reply = yield from self.bot.wait_for_message(author=ctx.message.author, channel=ctx.message.channel,
+                                                         timeout=50.0)
+
+            if reply is None:
+                yield from self.bot.say("I guess you changed your mind...")
+                return
+            elif reply.content.lower() not in ["yes", "y"]:
+                yield from self.bot.say("No changes were made then.")
+                return
+            c = userDatabase.cursor()
+            try:
+                c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'announce_channel'", (server_id,))
+            finally:
+                c.close()
+                userDatabase.commit()
+            yield from self.bot.say("This server's announce channel was removed.")
+            reload_welcome_messages()
+            return
+
+        channel = get_channel_by_name(self.bot, name, server)
+        if channel is None:
+            yield from self.bot.say("There is no channel with that name.")
+            return
+
+        permissions = channel.permissions_for(get_member(self.bot, self.bot.user.id, server))
+        if not permissions.read_messages or not permissions.send_messages:
+            yield from self.bot.say("I don't have permission to use {0.mention}.".format(channel))
+            return
+
+        yield from self.bot.say("Are you sure you want {0.mention} as the announcement channel? `yes/no`"
+                                .format(channel))
+        reply = yield from self.bot.wait_for_message(author=ctx.message.author, channel=ctx.message.channel,
+                                                     timeout=120.0)
+        if reply is None:
+            yield from self.bot.say("I guess you changed your mind...")
+            return
+        elif reply.content.lower() not in ["yes", "y"]:
+            yield from self.bot.say("No changes were made then.")
+            return
+
+        c = userDatabase.cursor()
+        try:
+            # Safer to just delete old entry and add new one
+            c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'announce_channel'", (server_id,))
+            c.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'announce_channel', ?)",
+                      (server_id, channel.name,))
+            yield from self.bot.say("This server's announcement channel was changed successfully.\nRemember that if "
+                                    "the channel is renamed, you must set it again using this command.\nIf the channel "
+                                    "becomes unavailable for me in any way, {0.mention} will be used."
+                                    .format(server.default_channel))
+        finally:
+            c.close()
+            userDatabase.commit()
+            reload_announce_channels()
 
 
 def setup(bot):
