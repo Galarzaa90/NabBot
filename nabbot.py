@@ -175,7 +175,7 @@ def on_member_join(member: discord.Member):
 
 @bot.event
 @asyncio.coroutine
-def on_member_remove(member):
+def on_member_remove(member: discord.Member):
     """Called when a member leaves or is kicked from a server."""
     log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.server.name}".format(member))
     yield from send_log_message(bot, member.server, "**{0.name}#{0.discriminator}** left or was kicked.".format(member))
@@ -183,50 +183,56 @@ def on_member_remove(member):
 
 @bot.event
 @asyncio.coroutine
-def on_member_ban(member):
+def on_member_ban(member: discord.Member):
     """Called when a member is banned from a server."""
-    log.info("{0.display_name} (ID:{0.id}) was banned from {0.server.name}".format(member))
+    log.warning("{0.display_name} (ID:{0.id}) was banned from {0.server.name}".format(member))
     yield from send_log_message(bot, member.server, "**{0.name}#{0.discriminator}** was banned.".format(member))
 
 
 @bot.event
 @asyncio.coroutine
-def on_member_unban(server, user):
+def on_member_unban(server: discord.Server, user: discord.User):
     """Called when a member is unbanned from a server"""
-    log.info("{1.name} (ID:{1.id}) was unbanned from {0.name}".format(server, user))
+    log.warning("{1.name} (ID:{1.id}) was unbanned from {0.name}".format(server, user))
     yield from send_log_message(bot, server, "**{0.name}#{0.discriminator}** was unbanned.".format(user))
 
 
 @bot.event
 @asyncio.coroutine
-def on_message_delete(message):
+def on_message_delete(message: discord.Message):
     """Called every time a message is deleted."""
     if message.channel.name == ask_channel_name:
         return
 
-    message_decoded = decode_emoji(message.content)
-    log.info("A message by {0} was deleted. Message: '{1}'".format(message.author.display_name, message_decoded))
-    for attachment in message.attachments:
-        log.info(attachment)
+    message_decoded = decode_emoji(message.clean_content)
+    attachment = ""
+    if message.attachments:
+        attachment = "\n\tAttached file: "+message.attachments[0]['filename']
+    log.info("A message by @{0} was deleted in #{2} ({3}):\n\t'{1}'{4}".format(message.author.display_name,
+                                                                               message_decoded, message.channel.name,
+                                                                               message.server.name, attachment))
 
 
 @bot.event
 @asyncio.coroutine
-def on_message_edit(older_message, message):
+def on_message_edit(before: discord.Message, after: discord.Message):
     """Called every time a message is edited."""
 
-    if older_message.author.id == bot.user.id:
+    if before.channel.is_private:
         return
 
-    older_message_decoded = decode_emoji(older_message.content)
-    log.info("{0} has edited the message: '{1}'".format(older_message.author.display_name, older_message_decoded))
-    for attachment in older_message.attachments:
-        log.info(attachment)
+    if before.author.id == bot.user.id:
+        return
 
-    message_decoded = decode_emoji(message.content)
-    log.info("New message: '{0}'".format(message_decoded))
-    for attachment in message.attachments:
-        log.info(attachment)
+    if before.content == after.content:
+        return
+
+    before_decoded = decode_emoji(before.clean_content)
+    after_decoded = decode_emoji(after.clean_content)
+
+    log.info("@{0} edited a message in #{3} ({4}):\n\t'{1}'\n\t'{2}'".format(before.author.name, before_decoded,
+                                                                                 after_decoded, before.channel,
+                                                                                 before.server))
 
 
 @bot.event

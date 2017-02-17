@@ -29,6 +29,8 @@ class Mod:
         if ctx.message.channel.is_private:
             description_list = []
             channel_list = []
+            prev_server = None
+            num = 1
             for server in self.bot.servers:
                 author = get_member(self.bot, ctx.message.author.id, server)
                 bot_member = get_member(self.bot, self.bot.user.id, server)
@@ -44,14 +46,20 @@ class Mod:
                     bot_permissions = bot_member.permissions_in(channel)  # type: discord.Permissions
                     # Check if both the author and the bot have permissions to send messages and add channel to list
                     if author_permissions.send_messages and bot_permissions.send_messages:
-                        description_list.append("**#{0}** in **{1}**".format(channel.name, server.name))
+                        separator = ""
+                        if prev_server is not server:
+                            separator = "---------------\n\t"
+                        description_list.append("{2}{3}: **#{0}** in **{1}**".format(channel.name, server.name,
+                                                                                     separator, num))
                         channel_list.append(channel)
+                        prev_server = server
+                        num += 1
             if len(description_list) < 1:
                 yield from self.bot.say("We don't have channels in common with permissions.")
                 return
             yield from self.bot.say("Choose a channel for me to send your message (number only):" +
                                     "\n\t0: *Cancel*\n\t" +
-                                    "\n\t".join(["{0}: {1}".format(i+1, j) for i, j in enumerate(description_list)]))
+                                    "\n\t".join(["{0}".format(i) for i in description_list]))
             answer = yield from self.bot.wait_for_message(author=ctx.message.author, channel=ctx.message.channel,
                                                           timeout=30.0)
             if answer is None:
@@ -63,7 +71,8 @@ class Mod:
                     return
                 try:
                     yield from self.bot.send_message(channel_list[answer-1], message)
-                    yield from self.bot.say("Message sent on #"+channel_list[answer-1].name)
+                    yield from self.bot.say("Message sent on {0} ({1})".format(channel_list[answer-1].mention,
+                                                                                channel_list[answer-1].server))
                 except IndexError:
                     yield from self.bot.say("That wasn't in the choices, you ruined it. Start from the beginning.")
             else:
