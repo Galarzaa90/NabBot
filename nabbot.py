@@ -22,7 +22,7 @@ from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
     weighedChoice, formatMessage
-from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, get_character_deaths, \
+from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, \
     get_voc_abb, get_highscores, tibia_worlds, get_pronouns, parse_tibia_time
 
 description = '''Mission: Destroy all humans.'''
@@ -599,9 +599,13 @@ def scan_online_chars():
 @asyncio.coroutine
 def check_death(bot, character):
     """Checks if the player has new deaths"""
-    character_deaths = yield from get_character_deaths(character, True)
+    char = yield from get_character(character)
+    if type(char) is not dict:
+        log.warning("check_death: couldn't fetch {0}".format(character))
+        return
+    character_deaths = char["deaths"]
 
-    if (type(character_deaths) is list) and len(character_deaths) > 0:
+    if character_deaths:
         c = userDatabase.cursor()
         c.execute("SELECT name, last_death_time, id FROM chars WHERE name LIKE ?", (character,))
         result = c.fetchone()
@@ -629,6 +633,13 @@ def check_death(bot, character):
                                                                                           last_death['killer']))
             else:
                 yield from announce_death(bot, character, last_death['level'], last_death['killer'], last_death['byPlayer'])
+            # TODO: Remove this - for testing purposes, deaths will be logged to see if lost levels are reflected at
+            # the moment of death in tibia.com
+            if char["level"] != last_death["level"]:
+                log.warning("Level difference detected: level - {0}, last death level - {1}".format(char["level"],
+                                                                                                    last_death["level"])
+                            )
+
         # Close cursor and commit changes
         userDatabase.commit()
         c.close()

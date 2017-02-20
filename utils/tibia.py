@@ -117,95 +117,6 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
     return scoreList
 
 
-# TODO: Merge this with get_character, with a parameter to skip death parsing
-@asyncio.coroutine
-def get_character_deaths(name, single_death=False, tries=5):
-    """Returns a list with the player's deaths
-
-    Each list element is a dictionary with the following keys: time, level, killer, byPlayer.
-    If single_death is true, it stops looking after fetching the first death.
-    May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly"""
-    url = url_character + urllib.parse.quote(name.encode('iso-8859-1'))
-    deathList = []
-
-    # Fetch website
-    try:
-        page = yield from aiohttp.get(url)
-        content = yield from page.text(encoding='ISO-8859-1')
-    except Exception:
-        if tries == 0:
-            log.error("get_character_deaths: Couldn't fetch {0}, network error.".format(name))
-            return ERROR_NETWORK
-        else:
-            tries -= 1
-            yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_character_deaths(name, single_death, tries)
-            return ret
-
-    if not content:
-        log.error("getPlayerDeaths: Couldn't fetch {0}, network error.".format(name))
-        return ERROR_NETWORK
-
-    # Trimming content to reduce load
-    try:
-        start_index = content.index('<div class="BoxContent"')
-        end_index = content.index("<B>Search Character</B>")
-        content = content[start_index:end_index]
-    except ValueError:
-        # Website fetch was incomplete, due to a network error
-        if tries == 0:
-            log.error("getPlayerDeaths: Couldn't fetch {0}, network error.".format(name))
-            return ERROR_NETWORK
-        else:
-            tries -= 1
-            yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_character_deaths(name, single_death, tries)
-            return ret
-
-    # Check if player exists
-    if "Name:</td><td>" not in content:
-        return ERROR_DOESNTEXIST
-
-    # Check if player has recent deaths, return empty list if not
-    if "<b>Character Deaths</b>" not in content:
-        return deathList
-
-    # Trimming content again once we've checked char exists and has deaths
-    start_index = content.index("<b>Character Deaths</b>")
-    content = content[start_index:]
-
-    regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
-    pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
-    matches = re.findall(pattern, content)
-
-    for m in matches:
-        death_time = m[0].replace('&#160;', ' ').replace(",", "")
-        death_level = ""
-        death_killer = ""
-        death_by_player = False
-
-        if m[1].find("Died") != -1:
-            regex_deathinfo_monster = r'Level (\d+) by ([^.]+)'
-            pattern = re.compile(regex_deathinfo_monster, re.MULTILINE + re.S)
-            m_deathinfo_monster = re.search(pattern, m[1])
-            if m_deathinfo_monster:
-                death_level = m_deathinfo_monster.group(1)
-                death_killer = m_deathinfo_monster.group(2)
-        else:
-            regex_deathinfo_player = r'Level (\d+) by .+?name=([^"]+)'
-            pattern = re.compile(regex_deathinfo_player, re.MULTILINE + re.S)
-            m_deathinfo_player = re.search(pattern, m[1])
-            if m_deathinfo_player:
-                death_level = m_deathinfo_player.group(1)
-                death_killer = urllib.parse.unquote_plus(m_deathinfo_player.group(2))
-                death_by_player = True
-
-        deathList.append({'time': death_time, 'level': death_level, 'killer': death_killer, 'byPlayer': death_by_player})
-        if single_death:
-            break
-    return deathList
-
-
 @asyncio.coroutine
 def get_server_online(server, tries=5):
     """Returns a list of all the online players in current server.
@@ -551,7 +462,7 @@ def get_character(name, tries=5):
             c.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
             log.info("{0} was renamed to {1} during get_character()".format(result["name"], char['name']))
 
-    #S kills from highscores
+    #Skills from highscores
     c = userDatabase.cursor()
     for category in highscores_categories:
         c.execute("SELECT "+category+","+category+"_rank FROM chars WHERE name LIKE ?", (name,))
@@ -560,6 +471,36 @@ def get_character(name, tries=5):
             if result[category] is not None and result[category+'_rank'] is not None:
                 char[category] = result[category]
                 char[category+'_rank'] = result[category+'_rank']
+
+    char["deaths"] = []
+    regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
+    pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
+    matches = re.findall(pattern, content)
+
+    for m in matches:
+        death_time = m[0].replace('&#160;', ' ').replace(",", "")
+        death_level = ""
+        death_killer = ""
+        death_by_player = False
+
+        if m[1].find("Died") != -1:
+            regex_deathinfo_monster = r'Level (\d+) by ([^.]+)'
+            pattern = re.compile(regex_deathinfo_monster, re.MULTILINE + re.S)
+            m_deathinfo_monster = re.search(pattern, m[1])
+            if m_deathinfo_monster:
+                death_level = m_deathinfo_monster.group(1)
+                death_killer = m_deathinfo_monster.group(2)
+        else:
+            regex_deathinfo_player = r'Level (\d+) by .+?name=([^"]+)'
+            pattern = re.compile(regex_deathinfo_player, re.MULTILINE + re.S)
+            m_deathinfo_player = re.search(pattern, m[1])
+            if m_deathinfo_player:
+                death_level = m_deathinfo_player.group(1)
+                death_killer = urllib.parse.unquote_plus(m_deathinfo_player.group(2))
+                death_by_player = True
+
+        char["deaths"].append({'time': death_time, 'level': int(death_level), 'killer': death_killer,
+                               'byPlayer': death_by_player})
     
     # Other chars
     # note that an empty char list means the character is hidden
