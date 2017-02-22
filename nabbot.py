@@ -632,13 +632,8 @@ def check_death(bot, character):
                                                                                           last_death['level'],
                                                                                           last_death['killer']))
             else:
-                yield from announce_death(bot, character, last_death['level'], last_death['killer'], last_death['byPlayer'])
-            # TODO: Remove this - for testing purposes, deaths will be logged to see if lost levels are reflected at
-            # the moment of death in tibia.com
-            if char["level"] != last_death["level"]:
-                log.warning("Level difference detected: level - {0}, last death level - {1}".format(char["level"],
-                                                                                                    last_death["level"])
-                            )
+                yield from announce_death(bot, last_death['level'], last_death['killer'], last_death['byPlayer'],
+                                          max(last_death["level"]-char["level"], 0), char)
 
         # Close cursor and commit changes
         userDatabase.commit()
@@ -646,18 +641,21 @@ def check_death(bot, character):
 
 
 @asyncio.coroutine
-def announce_death(bot, char_name, death_level, death_killer, death_by_player):
+def announce_death(bot, death_level, death_killer, death_by_player, levels_lost=0, char=None, char_name=None):
     """Announces a level up on the corresponding servers"""
+    # Don't announce for low level players
     if int(death_level) < announce_threshold:
-        # Don't announce for low level players
         return
-
-    char = yield from get_character(char_name)
+    if char is None:
+        if char_name is None:
+            log.error("announce_death: no character or character name passed.")
+            return
+        char = yield from get_character(char_name)
     if type(char) is not dict:
         log.warning("announce_death: couldn't fetch character (" + char_name + ")")
         return
 
-    log.info("Announcing death: {0}({1}) | {2}".format(char_name, death_level, death_killer))
+    log.info("Announcing death: {0}({1}) | {2}".format(char["name"], death_level, death_killer))
 
     # Get correct pronouns
     pronoun = get_pronouns(char["gender"])
@@ -671,10 +669,12 @@ def announce_death(bot, char_name, death_level, death_killer, death_by_player):
             death_killer_article = death_killer_article[0]+" "
         else:
             death_killer_article = ""
+
     # Select a message
+    # Todo: Add levels lost to weighedChoice, is always 0 or greater.
     message = weighedChoice(deathmessages_player, char['vocation'], int(death_level)) if death_by_player else weighedChoice(deathmessages_monster, char['vocation'], int(death_level), death_killer)
     # Format message with death information
-    deathInfo = {'charName': char_name, 'deathLevel': death_level, 'deathKiller': death_killer,
+    deathInfo = {'charName': char["name"], 'deathLevel': death_level, 'deathKiller': death_killer,
                  'deathKillerArticle': death_killer_article, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
                  'pronoun3': pronoun[2]}
     message = message.format(**deathInfo)
