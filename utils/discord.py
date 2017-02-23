@@ -54,12 +54,15 @@ def get_member_by_name(bot: discord.Client, name: str, server: discord.Server=No
         return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), bot.get_all_members())
 
 
-def get_member(bot: discord.Client, user_id, server: discord.Server = None) -> discord.Member:
+def get_member(bot: discord.Client, user_id, server: discord.Server = None, server_list=None) -> discord.Member:
     """Returns a member matching the id
 
     If no server_id is specified, the first member matching the id will be returned, meaning that the server he
     belongs to will be unknown, so member-only functions may be inaccurate.
     User functions remain the same, regardless of server"""
+    if server_list is not None and len(server_list) > 0:
+        members = [m for ml in [s.members for s in server_list] for m in ml]
+        return discord.utils.find(lambda m: m.id == str(user_id), members)
     if server is not None:
         return server.get_member(str(user_id))
     else:
@@ -89,7 +92,7 @@ def get_user_worlds(bot: discord.Client, user_id, server_list=None):
     server_list can be passed to search in a specific set of servers. Note that the user may not belong to them."""
     if server_list is None:
         server_list = get_user_servers(bot, user_id)
-    return [world for server, world in tracked_worlds.items() if server in [s.id for s in server_list]]
+    return list(set([world for server, world in tracked_worlds.items() if server in [s.id for s in server_list]]))
 
 
 @asyncio.coroutine

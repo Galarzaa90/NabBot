@@ -16,6 +16,7 @@ import time
 
 from utils.database import userDatabase, tibiaDatabase
 from config import highscores_categories, network_retry_delay
+from utils.messages import EMOJI
 from .general import log, global_online_list, get_local_timezone
 
 # Constants
@@ -939,12 +940,24 @@ def get_tibia_time_zone() -> int:
 
 def get_voc_abb(vocation: str) -> str:
     """Given a vocation name, it returns an abbreviated string"""
-    abbrev = {'None': 'N', 'Druid': 'D', 'Sorcerer': 'S', 'Paladin': 'P', 'Knight': 'K', 'Elder Druid': 'ED',
-              'Master Sorcerer': 'MS', 'Royal Paladin': 'RP', 'Elite Knight': 'EK'}
+    abbrev = {'none': 'N', 'druid': 'D', 'sorcerer': 'S', 'paladin': 'P', 'knight': 'K', 'elder druid': 'ED',
+              'master sorcerer': 'MS', 'royal paladin': 'RP', 'elite knight': 'EK'}
     try:
-        return abbrev[vocation]
+        return abbrev[vocation.lower()]
     except KeyError:
         return 'N'
+
+
+def get_voc_emoji(vocation: str) -> str:
+    """Given a vocation name, returns a emoji representing it"""
+    emoji = {'none': EMOJI[":hatching_chick:"], 'druid': EMOJI[":snowflake:"], 'sorcerer': EMOJI[":flame:"], 'paladin': EMOJI[":archery:"],
+              'knight': EMOJI[":shield:"], 'elder druid': EMOJI[":snowflake:"],
+              'master sorcerer': EMOJI[":flame:"], 'royal paladin': EMOJI[":archery:"],
+              'elite knight': EMOJI[":shield:"]}
+    try:
+        return emoji[vocation.lower()]
+    except KeyError:
+        return EMOJI[":question:"]
 
 
 def get_pronouns(gender: str):

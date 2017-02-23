@@ -15,7 +15,7 @@ from utils import checks
 from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, tracked_worlds_list, \
     reload_welcome_messages, welcome_messages, reload_announce_channels
 from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
-    clean_string, get_role_list, get_member_by_name, get_announce_channel
+    clean_string, get_role_list, get_member_by_name, get_announce_channel, get_user_worlds
 from utils.general import command_list, join_list, get_uptime, TimeString, \
     single_line, is_numeric, getLogin, start_time, global_online_list
 from utils.general import log
@@ -23,7 +23,7 @@ from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
     weighedChoice, formatMessage
 from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, \
-    get_voc_abb, get_highscores, tibia_worlds, get_pronouns, parse_tibia_time
+    get_voc_abb, get_highscores, tibia_worlds, get_pronouns, parse_tibia_time, get_voc_emoji
 
 description = '''Mission: Destroy all humans.'''
 bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True, formatter=NabHelpFormat())
@@ -988,37 +988,47 @@ def imnot(ctx, *, name):
         c.close()
 
 
-@bot.command(pass_context=True, no_pm=True)
+@bot.command(pass_context=True)
 @checks.is_not_lite()
 @asyncio.coroutine
 def online(ctx):
     """Tells you which users are online on Tibia
 
-    This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated."""
-    tracked_world = tracked_worlds.get(ctx.message.server.id)
-    if tracked_world is None:
-        yield from bot.say("This server is not tracking any tibia worlds.")
-        return
+    This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated.
+
+    If used in a server, only characters from users of the server are shown
+    If used on PM, only  characters from users of servers you're in are shown"""
+    if ctx.message.channel.is_private:
+        user_servers = get_user_servers(bot, ctx.message.author.id)
+        user_worlds = get_user_worlds(bot, ctx.message.author.id)
+    else:
+        user_servers = [ctx.message.server]
+        user_worlds = [tracked_worlds.get(ctx.message.server.id)]
+        if user_worlds[0] is None:
+            yield from bot.say("This server is not tracking any tibia worlds.")
+            return
     c = userDatabase.cursor()
     now = datetime.utcnow()
     uptime = (now-start_time).total_seconds()
     count = 0
-    content = ""
+    online_list = {world: "" for world in user_worlds}
     try:
         for char in global_online_list:
             char = char.split("_", 1)
             world = char[0]
             name = char[1]
-            if world != tracked_world:
+            if world not in user_worlds:
                 continue
             c.execute("SELECT name, user_id, vocation, ABS(last_level) as level FROM chars WHERE name LIKE ?", (name,))
             row = c.fetchone()
-            owner = get_member(bot, row["user_id"], ctx.message.server)
+            # Only show members on this server or members visible to author if it's a pm
+            owner = get_member(bot, row["user_id"], server_list=user_servers)
             if owner is None:
                 continue
             row["owner"] = owner.display_name
+            row['emoji'] = get_voc_emoji(row['vocation'])
             row['vocation'] = get_voc_abb(row['vocation'])
-            content += "\n\t{name} (Lvl {level} {vocation}, **@{owner}**)".format(**row)
+            online_list[world] += "\n\t{name} (Lvl {level} {vocation}{emoji}, **@{owner}**)".format(**row)
             count += 1
 
         if count == 0:
@@ -1027,7 +1037,16 @@ def online(ctx):
             else:
                 yield from bot.say("There is no one online from Discord.")
             return
-        reply = "The following discord users are online:"+content
+
+        # Remove worlds with no players online
+        online_list = {k:v for k,v in online_list.items() if v is not ""}
+        reply = "The following discord users are online:"
+        if len(user_worlds) == 1:
+            reply += online_list[user_worlds[0]]
+        else:
+            for world, content in online_list.items():
+                reply += "\n__**{0}**__{1}".format(world, content)
+
         yield from bot.say(reply)
     finally:
         c.close()
