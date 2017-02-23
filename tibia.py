@@ -639,7 +639,6 @@ class Tibia:
                     if count >= 100:
                         break
             else:
-                # TODO: If get_character_deaths gets merged with get_character, get correct name
                 char = yield from get_character(name)
                 if char == ERROR_DOESNTEXIST:
                     yield from self.bot.say("That character doesn't exist.")
@@ -647,9 +646,10 @@ class Tibia:
                 elif char == ERROR_NETWORK:
                     yield from self.bot.say("Sorry, I had trouble checking that character, try it again.")
                     return
-                title = "{0} latest deaths:".format(char["name"])
                 deaths = char["deaths"]
                 last_time = now
+                name = char["name"]
+                title = "{0} latest deaths:".format(name)
                 for death in deaths:
                     last_time = parse_tibia_time(death["time"]).timestamp()
                     death["time"] = get_time_diff(datetime.now() - parse_tibia_time(death['time']))
