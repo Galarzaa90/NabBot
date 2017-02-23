@@ -818,7 +818,7 @@ def im(ctx, *, char_name: str):
     # Remove duplicate entries from list
     user_tibia_worlds = list(set(user_tibia_worlds))
 
-    if tracked_worlds.get(ctx.message.server.id) is None and not ctx.message.channel.is_private:
+    if not ctx.message.channel.is_private and tracked_worlds.get(ctx.message.server.id) is None:
         yield from bot.say("This server is not tracking any tibia worlds.")
         return
 
