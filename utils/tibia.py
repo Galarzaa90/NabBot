@@ -451,7 +451,7 @@ def get_character(name, tries=5):
 
     # Update name, vocation and world for chars in database if necessary
     c = userDatabase.cursor()
-    c.execute("SELECT vocation, name, id FROM chars WHERE name LIKE ?", (name,))
+    c.execute("SELECT vocation, name, id, world FROM chars WHERE name LIKE ?", (name,))
     result = c.fetchone()
     if result:
         if result["vocation"] != char['vocation']:
