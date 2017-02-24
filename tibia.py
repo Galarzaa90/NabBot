@@ -609,6 +609,17 @@ class Tibia:
         if not permissions.embed_links:
             yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
             return
+
+        if ctx.message.channel.is_private:
+            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
+        else:
+            user_servers = [ctx.message.server]
+            user_worlds = [tracked_worlds.get(ctx.message.server.id)]
+            if user_worlds[0] is None:
+                yield from self.bot.say("This server is not tracking any tibia worlds.")
+                return
+
         c = userDatabase.cursor()
         entries = []
         count = 0
@@ -621,7 +632,7 @@ class Tibia:
         try:
             if name is None:
                 title = "Latest deaths"
-                c.execute("SELECT level, date, name, user_id, byplayer, killer "
+                c.execute("SELECT level, date, name, user_id, byplayer, killer, world "
                           "FROM char_deaths, chars "
                           "WHERE char_id = id "
                           "ORDER BY date DESC")
@@ -629,8 +640,10 @@ class Tibia:
                     row = c.fetchone()
                     if row is None:
                         break
-                    user = get_member(self.bot, row["user_id"], ctx.message.server)
+                    user = get_member(self.bot, row["user_id"], user_servers)
                     if user is None:
+                        continue
+                    if row["world"] not in user_worlds:
                         continue
                     count += 1
                     row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
@@ -663,13 +676,17 @@ class Tibia:
                     c.execute("SELECT level, date, byplayer, killer "
                               "FROM char_deaths "
                               "WHERE char_id = ? AND date < ? "
-                              "ORDER BY date DESC LIMIT ?",
-                              (id, last_time, 100-count))
-                    results = c.fetchall()
-                    for row in results:
+                              "ORDER BY date",
+                              (id, last_time))
+                    while True:
+                        row = c.fetchone()
+                        if row is None:
+                            break
+                        count += 1
                         row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
                         entries.append("At level **{level}** by {killer} - *{time} ago*".format(**row))
-                        count += 1
+                        if count >= 100:
+                            break
 
             if count == 0:
                 yield from self.bot.say("There are no registered deaths.")
@@ -824,6 +841,16 @@ class Tibia:
             yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
             return
 
+        if ctx.message.channel.is_private:
+            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
+        else:
+            user_servers = [ctx.message.server]
+            user_worlds = [tracked_worlds.get(ctx.message.server.id)]
+            if user_worlds[0] is None:
+                yield from self.bot.say("This server is not tracking any tibia worlds.")
+                return
+
         c = userDatabase.cursor()
         entries = []
         count = 0
@@ -837,7 +864,7 @@ class Tibia:
         try:
             if name is None:
                 title = "Latest level ups"
-                c.execute("SELECT level, date, name, user_id "
+                c.execute("SELECT level, date, name, user_id, world "
                           "FROM char_levelups, chars "
                           "WHERE char_id = id AND level >= ? "
                           "ORDER BY date DESC", (announce_threshold, ))
@@ -845,8 +872,10 @@ class Tibia:
                     row = c.fetchone()
                     if row is None:
                         break
-                    user = get_member(self.bot, row["user_id"], ctx.message.server)
+                    user = get_member(self.bot, row["user_id"], user_servers)
                     if user is None:
+                        continue
+                    if row["world"] not in user_worlds:
                         continue
                     count += 1
                     row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
@@ -854,30 +883,38 @@ class Tibia:
                     entries.append("Level **{level}** - {name} (**@{user}**) - *{time} ago*".format(**row))
                     if count >= 100:
                         break
-                if count == 0:
-                    yield from self.bot.say("There are no registered level ups.")
-                    return
             else:
-                c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
+                c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (name,))
                 result = c.fetchone()
                 if result is None:
                     yield from self.bot.say("I don't have a character with that name registered.")
                     return
-                # Getting correct capitalization
-                name = result["name"]
-                id = result["id"]
-                c.execute("SELECT level, date FROM char_levelups WHERE char_id = ? ORDER BY date DESC LIMIT 100",
-                          (id,))
-                results = c.fetchall()
-                if not results:
-                    yield from self.bot.say("I haven't seen **{0}** level up.".format(name))
+                # If user doesn't share a server with the owner, don't display it
+                owner = get_member(self.bot, result["user_id"], server_list=user_servers)
+                if owner is None:
+                    yield from self.bot.say("I don't have a character with that name registered.")
                     return
+                name = result["name"]
                 title = "**{0}** latest level ups:".format(name)
-                for row in results:
+                c.execute("SELECT level, date FROM char_levelups, chars "
+                          "WHERE id = char_id AND name LIKE ? "
+                          "ORDER BY date", (name,))
+                while True:
+                    row = c.fetchone()
+                    if row is None:
+                        break
+                    count += 1
                     row["time"] = get_time_diff(timedelta(seconds=now-row["date"]))
                     entries.append("Level **{level}** - *{time} ago*".format(**row))
+                    if count >= 100:
+                        break
         finally:
             c.close()
+
+        if count == 0:
+            yield from self.bot.say("There are no registered levels.")
+            return
+
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
             yield from pages.paginate()
@@ -947,6 +984,194 @@ class Tibia:
             c.close()
 
         title = "@{0} latest level ups".format(user.display_name)
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        try:
+            yield from pages.paginate()
+        except CannotPaginate as e:
+            yield from self.bot.say(e)
+
+    @commands.group(pass_context=True, aliases=["story"], invoke_without_command=True)
+    @checks.is_not_lite()
+    @asyncio.coroutine
+    def timeline(self, ctx, *, name: str = None):
+        """Shows a player's recent level ups and deaths"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        if ctx.message.channel.is_private:
+            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
+        else:
+            user_servers = [ctx.message.server]
+            user_worlds = [tracked_worlds.get(ctx.message.server.id)]
+            if user_worlds[0] is None:
+                yield from self.bot.say("This server is not tracking any tibia worlds.")
+                return
+
+        c = userDatabase.cursor()
+        entries = []
+        count = 0
+        now = time.time()
+        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
+        if ctx.message.channel.is_private or ctx.message.channel == ask_channel:
+            per_page = 20
+        else:
+            per_page = 5
+        yield from self.bot.send_typing(ctx.message.channel)
+        try:
+            if name is None:
+                title = "Timeline"
+                c.execute("SELECT name, user_id, world, level, killer, 'death' AS `type`, date "
+                          "FROM char_deaths, chars WHERE char_id = id AND level >= ? "
+                          "UNION "
+                          "SELECT name, user_id, world, level, null, 'levelup' AS `type`, date "
+                          "FROM char_levelups, chars WHERE char_id = id AND level >= ? "
+                          "ORDER BY date DESC", (announce_threshold, announce_threshold))
+                while True:
+                    row = c.fetchone()
+                    if row is None:
+                        break
+                    user = get_member(self.bot, row["user_id"], server_list=user_servers)
+                    if user is None:
+                        continue
+                    if row["world"] not in user_worlds:
+                        continue
+                    count += 1
+                    row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                    row["user"] = user.display_name
+                    if row["type"] == "death":
+                        row["emoji"] = EMOJI[":skull:"]
+                        entries.append("{emoji} {name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*"
+                                       .format(**row)
+                                       )
+                    else:
+                        row["emoji"] = EMOJI[":star2:"]
+                        entries.append("{emoji} {name} (**@{user}**) - Level **{level}** - *{time} ago*".format(**row))
+                    if count >= 200:
+                        break
+            else:
+                c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (name,))
+                result = c.fetchone()
+                if result is None:
+                    yield from self.bot.say("I don't have a character with that name registered.")
+                    return
+                # If user doesn't share a server with the owner, don't display it
+                owner = get_member(self.bot, result["user_id"], server_list=user_servers)
+                if owner is None:
+                    yield from self.bot.say("I don't have a character with that name registered.")
+                    return
+                name = result["name"]
+                title = "**{0}** timeline".format(name)
+                c.execute("SELECT name, user_id, world, level, killer, 'death' AS `type`, date "
+                          "FROM char_deaths, chars WHERE char_id = id AND level >= ? AND name LIKE ?"
+                          "UNION "
+                          "SELECT name, user_id, world, level, null, 'levelup' AS `type`, date "
+                          "FROM char_levelups, chars WHERE char_id = id AND level >= ? AND name LIKE ? "
+                          "ORDER BY date DESC", (announce_threshold, name, announce_threshold, name))
+                while True:
+                    row = c.fetchone()
+                    if row is None:
+                        break
+                    count += 1
+                    row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                    if row["type"] == "death":
+                        row["emoji"] = EMOJI[":skull:"]
+                        entries.append("{emoji} At level **{level}** by {killer} - *{time} ago*"
+                                       .format(**row)
+                                       )
+                    else:
+                        row["emoji"] = EMOJI[":star2:"]
+                        entries.append("{emoji} Level **{level}** - *{time} ago*".format(**row))
+                    if count >= 200:
+                        break
+        finally:
+            c.close()
+
+        if count == 0:
+            yield from self.bot.say("There are no registered events.")
+            return
+
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        try:
+            yield from pages.paginate()
+        except CannotPaginate as e:
+            yield from self.bot.say(e)
+
+    @timeline.command(pass_context=True, name="user")
+    @checks.is_not_lite()
+    @asyncio.coroutine
+    def timeline_user(self, ctx, *, name: str = None):
+        """Shows an users's recent level ups and deaths on his/her characters"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        if name is None:
+            yield from self.bot.say("You must tell me an user's name to look for his/her story.")
+            return
+
+        if ctx.message.channel.is_private:
+            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
+        else:
+            user_servers = [ctx.message.server]
+            user_worlds = [tracked_worlds.get(ctx.message.server.id)]
+            if user_worlds[0] is None:
+                yield from self.bot.say("This server is not tracking any tibia worlds.")
+                return
+
+        user = get_member_by_name(self.bot, name, server_list=user_servers)
+        if user is None:
+            yield from self.bot.say("I don't see any users with that name.")
+            return
+
+        c = userDatabase.cursor()
+        entries = []
+        count = 0
+        now = time.time()
+
+        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
+        if ctx.message.channel.is_private or ctx.message.channel == ask_channel:
+            per_page = 20
+        else:
+            per_page = 5
+        yield from self.bot.send_typing(ctx.message.channel)
+        try:
+            title = "@{0} timeline".format(user.display_name)
+            c.execute("SELECT name, user_id, world, level, killer, 'death' AS `type`, date "
+                      "FROM char_deaths, chars WHERE char_id = id AND level >= ? AND user_id = ? "
+                      "UNION "
+                      "SELECT name, user_id, world, level, null, 'levelup' AS `type`, date "
+                      "FROM char_levelups, chars WHERE char_id = id AND level >= ? AND user_id = ? "
+                      "ORDER BY date DESC", (announce_threshold, user.id, announce_threshold, user.id))
+            while True:
+                row = c.fetchone()
+                if row is None:
+                    break
+                if row["world"] not in user_worlds:
+                    continue
+                count += 1
+                row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                if row["type"] == "death":
+                    row["emoji"] = EMOJI[":skull:"]
+                    entries.append("{emoji} {name} - At level **{level}** by {killer} - *{time} ago*"
+                                   .format(**row)
+                                   )
+                else:
+                    row["emoji"] = EMOJI[":star2:"]
+                    entries.append("{emoji} {name} - Level **{level}** - *{time} ago*".format(**row))
+                if count >= 200:
+                    break
+        finally:
+            c.close()
+
+        if count == 0:
+            yield from self.bot.say("There are no registered events.")
+            return
+
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
             yield from pages.paginate()
