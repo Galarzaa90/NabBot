@@ -13,7 +13,7 @@ from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_tim
 from utils.loot import loot_scan
 from utils.messages import EMOJI, split_message
 from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_servers, \
-    FIELD_VALUE_LIMIT
+    FIELD_VALUE_LIMIT, get_user_worlds
 from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import *
 
@@ -741,7 +741,77 @@ class Tibia:
         except CannotPaginate as e:
             yield from self.bot.say(e)
 
-    @commands.command(pass_context=True, aliases=['levelups', 'lvl', 'level', 'lvls'])
+    @deaths.command(pass_context=True,name="user")
+    @checks.is_not_lite()
+    @asyncio.coroutine
+    def deaths_user(self, ctx, *, name: str=None):
+        """Shows an user's recent deaths on his/her registered characters"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        if name is None:
+            yield from self.bot.say("You must tell me an user's name to look for his/her deaths.")
+            return
+
+        if ctx.message.channel.is_private:
+            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
+        else:
+            user_servers = [ctx.message.server]
+            user_worlds = [tracked_worlds.get(ctx.message.server.id)]
+            if user_worlds[0] is None:
+                yield from self.bot.say("This server is not tracking any tibia worlds.")
+                return
+
+        user = get_member_by_name(self.bot, name, server_list=user_servers)
+        if user is None:
+            yield from self.bot.say("I don't see any users with that name.")
+            return
+
+        c = userDatabase.cursor()
+        count = 0
+        entries = []
+        now = time.time()
+
+        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
+        if ctx.message.channel.is_private or ctx.message.channel == ask_channel:
+            per_page = 20
+        else:
+            per_page = 5
+
+        try:
+            c.execute("SELECT name, world, level, killer, byplayer, date "
+                      "FROM chars, char_deaths "
+                      "WHERE char_id = id AND user_id = ? "
+                      "ORDER BY date DESC", (user.id,))
+            while True:
+                row = c.fetchone()
+                if row is None:
+                    break
+                if row["world"] not in user_worlds:
+                    continue
+                count += 1
+                row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                entries.append("{name} - At level **{level}** by {killer} - *{time} ago*".format(**row))
+
+                if count >= 100:
+                    break
+            if count == 0:
+                yield from self.bot.say("There are not registered deaths by this user.")
+                return
+        finally:
+            c.close()
+
+        title = "@{0} latest kills".format(user.display_name)
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        try:
+            yield from pages.paginate()
+        except CannotPaginate as e:
+            yield from self.bot.say(e)
+
+    @commands.group(pass_context=True, aliases=['levelups', 'lvl', 'level', 'lvls'], invoke_without_command=True)
     @checks.is_not_lite()
     @asyncio.coroutine
     def levels(self, ctx, *, name: str=None):
@@ -808,6 +878,75 @@ class Tibia:
                     entries.append("Level **{level}** - *{time} ago*".format(**row))
         finally:
             c.close()
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        try:
+            yield from pages.paginate()
+        except CannotPaginate as e:
+            yield from self.bot.say(e)
+
+    @levels.command(pass_context=True, name="user")
+    @checks.is_not_lite()
+    @asyncio.coroutine
+    def levels_user(self, ctx, *, name: str = None):
+        """Shows an user's recent level ups on his/her registered characters"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.server))
+        if not permissions.embed_links:
+            yield from self.bot.say("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        if name is None:
+            yield from self.bot.say("You must tell me an user's name to look for his/her level ups.")
+            return
+
+        if ctx.message.channel.is_private:
+            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
+        else:
+            user_servers = [ctx.message.server]
+            user_worlds = [tracked_worlds.get(ctx.message.server.id)]
+            if user_worlds[0] is None:
+                yield from self.bot.say("This server is not tracking any tibia worlds.")
+                return
+
+        user = get_member_by_name(self.bot, name, server_list=user_servers)
+        if user is None:
+            yield from self.bot.say("I don't see any users with that name.")
+            return
+
+        c = userDatabase.cursor()
+        count = 0
+        entries = []
+        now = time.time()
+
+        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
+        if ctx.message.channel.is_private or ctx.message.channel == ask_channel:
+            per_page = 20
+        else:
+            per_page = 5
+
+        try:
+            c.execute("SELECT name, world, level, date "
+                      "FROM chars, char_deaths "
+                      "WHERE char_id = id AND user_id = ? "
+                      "ORDER BY date DESC", (user.id,))
+            while True:
+                row = c.fetchone()
+                if row is None:
+                    break
+                if row["world"] not in user_worlds:
+                    continue
+                count += 1
+                row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                entries.append("{name} - Level **{level}** - *{time} ago*".format(**row))
+                if count >= 100:
+                    break
+            if count == 0:
+                yield from self.bot.say("There are not registered level ups by this user.")
+                return
+        finally:
+            c.close()
+
+        title = "@{0} latest level ups".format(user.display_name)
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
             yield from pages.paginate()
