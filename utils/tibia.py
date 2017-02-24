@@ -467,7 +467,7 @@ def get_character(name, tries=5):
             c.execute("UPDATE chars SET world = ? WHERE id = ?", (char['world'], result["id"],))
             log.info("{0}'s world was set to {1} from {2} during get_character()".format(char['name'],
                                                                                          char['world'],
-                                                                                         result["word"]))
+                                                                                         result["world"]))
 
     #Skills from highscores
     c = userDatabase.cursor()
