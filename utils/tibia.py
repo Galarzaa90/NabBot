@@ -449,7 +449,7 @@ def get_character(name, tries=5):
     result = c.fetchone()
     char["owner_id"] = None if result is None else result["user_id"]
 
-    # Update name and vocation in chars database if necessary
+    # Update name, vocation and world for chars in database if necessary
     c = userDatabase.cursor()
     c.execute("SELECT vocation, name, id FROM chars WHERE name LIKE ?", (name,))
     result = c.fetchone()
@@ -462,6 +462,12 @@ def get_character(name, tries=5):
         if result["name"] != char["name"]:
             c.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
             log.info("{0} was renamed to {1} during get_character()".format(result["name"], char['name']))
+
+        if result["world"] != char["world"]:
+            c.execute("UPDATE chars SET world = ? WHERE id = ?", (char['world'], result["id"],))
+            log.info("{0}'s world was set to {1} from {2} during get_character()".format(char['name'],
+                                                                                         char['world'],
+                                                                                         result["word"]))
 
     #Skills from highscores
     c = userDatabase.cursor()
