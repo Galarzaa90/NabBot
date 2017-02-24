@@ -616,7 +616,7 @@ class Tibia:
         else:
             user_servers = [ctx.message.server]
             user_worlds = [tracked_worlds.get(ctx.message.server.id)]
-            if user_worlds[0] is None:
+            if user_worlds[0] is None and name is None:
                 yield from self.bot.say("This server is not tracking any tibia worlds.")
                 return
 
