@@ -1383,7 +1383,7 @@ deathmessages_monster = [
      "RIP **{charName}** ({deathLevel}), you died the way you lived- inside {deathKillerArticle}**{deathKiller}**."],
     [100, "**{charName}** ({deathLevel}) was just eaten by {deathKillerArticle}**{deathKiller}**. Yum."],
     [100, "Silly **{charName}** ({deathLevel}), I warned you not to play with {deathKillerArticle}**{deathKiller}**!"],
-    [10000000, "/{deathKillerArticle}**/{deathKiller}** killed **{charName}** at level {deathLevel}. Shame " + EMOJI[
+    [100, "/{deathKillerArticle}**/{deathKiller}** killed **{charName}** at level {deathLevel}. Shame " + EMOJI[
         ":bell:"] + " shame " + EMOJI[":bell:"] + " shame " + EMOJI[":bell:"]],
     [30,
      "**{charName}** ({deathLevel}) is no more! /{pronoun1}/ has ceased to be! /{pronoun1}/'s expired and gone to meet "
