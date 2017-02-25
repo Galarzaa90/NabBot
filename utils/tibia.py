@@ -326,7 +326,10 @@ def get_character(name, tries=5):
         *chars is list that contains other characters in the same account (if not hidden).
         Each list element is dictionary with the keys: name, world.
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
-    url = url_character + urllib.parse.quote(name.encode('iso-8859-1'))
+    try:
+        url = url_character + urllib.parse.quote(name.encode('iso-8859-1'))
+    except UnicodeEncodeError:
+        return ERROR_DOESNTEXIST
     char = dict()
 
     # Fetch website
