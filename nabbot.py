@@ -1021,6 +1021,8 @@ def online(ctx):
                 continue
             c.execute("SELECT name, user_id, vocation, ABS(last_level) as level FROM chars WHERE name LIKE ?", (name,))
             row = c.fetchone()
+            if row is None:
+                continue
             # Only show members on this server or members visible to author if it's a pm
             owner = get_member(bot, row["user_id"], server_list=user_servers)
             if owner is None:
@@ -1039,7 +1041,7 @@ def online(ctx):
             return
 
         # Remove worlds with no players online
-        online_list = {k:v for k,v in online_list.items() if v is not ""}
+        online_list = {k: v for k, v in online_list.items() if v is not ""}
         reply = "The following discord users are online:"
         if len(user_worlds) == 1:
             reply += online_list[user_worlds[0]]
