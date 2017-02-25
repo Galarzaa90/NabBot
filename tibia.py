@@ -640,7 +640,7 @@ class Tibia:
                     row = c.fetchone()
                     if row is None:
                         break
-                    user = get_member(self.bot, row["user_id"], user_servers)
+                    user = get_member(self.bot, row["user_id"], server_list=user_servers)
                     if user is None:
                         continue
                     if row["world"] not in user_worlds:
@@ -872,7 +872,7 @@ class Tibia:
                     row = c.fetchone()
                     if row is None:
                         break
-                    user = get_member(self.bot, row["user_id"], user_servers)
+                    user = get_member(self.bot, row["user_id"], server_list=user_servers)
                     if user is None:
                         continue
                     if row["world"] not in user_worlds:
