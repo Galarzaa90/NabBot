@@ -676,7 +676,7 @@ class Tibia:
                     c.execute("SELECT level, date, byplayer, killer "
                               "FROM char_deaths "
                               "WHERE char_id = ? AND date < ? "
-                              "ORDER BY date",
+                              "ORDER BY date DESC",
                               (id, last_time))
                     while True:
                         row = c.fetchone()
@@ -898,7 +898,7 @@ class Tibia:
                 title = "**{0}** latest level ups:".format(name)
                 c.execute("SELECT level, date FROM char_levelups, chars "
                           "WHERE id = char_id AND name LIKE ? "
-                          "ORDER BY date", (name,))
+                          "ORDER BY date DESC", (name,))
                 while True:
                     row = c.fetchone()
                     if row is None:
