@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 import re
 
-from config import log_channel_name
+from config import log_channel_name, owner_ids
 from utils.database import tracked_worlds, announce_channels
 from .messages import EMOJI
 
@@ -75,7 +75,11 @@ def get_user_servers(bot: discord.Client, user_id):
 
 
 def get_user_admin_servers(bot: discord.Client, user_id):
-    """Returns a list of the servers the user is and admin of and the bot is a member of"""
+    """Returns a list of the servers the user is and admin of and the bot is a member of
+
+    If the user is a bot owner, returns all the servers the bot is in"""
+    if user_id in owner_ids:
+        return list(bot.servers)
     servers = get_user_servers(bot, user_id)
     ret = []
     for server in servers:
