@@ -93,7 +93,8 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
     except ValueError:
         # Website fetch was incomplete, due to a network error
         if tries == 0:
-            log.error("get_highscores: Couldn't fetch {0}, network error.".format(url))
+            log.error("get_highscores: Couldn't fetch {0}, {1}, page {2}, network error.".format(server, category,
+                                                                                                 pagenum))
             return ERROR_NETWORK
         else:
             tries -= 1
