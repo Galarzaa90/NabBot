@@ -39,13 +39,15 @@ def is_admin():
     return commands.check(predicate)
 
 
-# Checks if the user belongs to main_server
+# Checks if the user belongs to main_server and channel is in main_server
 def is_main_server():
     def predicate(ctx):
-        if ctx.message.author.id in owner_ids:
-            return True
+        #if ctx.message.author.id in owner_ids:
+        #   return True
         member = discord.utils.get(ctx.bot.get_all_members(), server__id=main_server)
         if member is None:
+            return False
+        if not ctx.message.channel.is_private and not ctx.message.server.id == main_server:
             return False
         return True
     return commands.check(predicate)
