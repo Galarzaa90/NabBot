@@ -1414,7 +1414,7 @@ deathmessages_monster = [
      "a flood and something broke with like 7200lb falling over the infrastructure of your city's internet, right?"],
     [70, "That's what you get **{charName}** ({deathLevel}), for messing with ^that ^**{deathKiller}**!"],
     [100,
-     "Oh no! **{charName}** died at level {deathLevel}. Well, it's okay, just blame lag, I'm sure ^the^ "
+     "Oh no! **{charName}** died at level {deathLevel}. Well, it's okay, just blame lag, I'm sure ^the ^"
      "**{deathKiller}** had nothing to do with it."],
     [100, "**{charName}** ({deathLevel}) + **{deathKiller}** = dedd."],
     [100, "**{charName}** ({deathLevel}) got killed by a **{deathKiller}**. Another one bites the dust!"],
