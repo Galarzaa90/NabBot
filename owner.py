@@ -17,10 +17,8 @@ class Owner:
     def __init__(self, bot: discord.Client):
         self.bot = bot
 
-    def __local_check(self, ctx):
-        return is_owner_check(ctx)
-
     @commands.command(pass_context=True, aliases=["reset", "reload"])
+    @checks.is_owner()
     @asyncio.coroutine
     def restart(self, ctx: discord.ext.commands.Context):
         """Shutdowns and starts the bot again.
@@ -40,6 +38,7 @@ class Owner:
         quit()
 
     @commands.command(pass_context=True)
+    @checks.is_owner()
     @asyncio.coroutine
     def debug(self, ctx: discord.ext.commands.Context, *, code: str):
         """Evaluates code."""
@@ -71,6 +70,7 @@ class Owner:
         yield from self.bot.say(python.format(result))
 
     @commands.command()
+    @checks.is_owner()
     @asyncio.coroutine
     def servers(self):
         """Lists the servers the bot is in"""
@@ -81,8 +81,10 @@ class Owner:
         yield from self.bot.say(reply)
 
     @commands.command(pass_context=True,aliases=["message_admins", "adminsmessage", "msgadmins", "adminsmsg"])
+    @checks.is_owner()
     @asyncio.coroutine
     def admins_message(self, ctx, *, content: str=None):
+        """Sends a message to all server owners."""
         if content is None:
             yield from self.bot.say("Tell me the message you want to sent to server admins."
                                     "\nReply `cancel/none` to cancel.")

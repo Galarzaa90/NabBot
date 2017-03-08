@@ -793,9 +793,9 @@ def help(ctx, *commands: str):
 @bot.command(pass_context=True, description='For when you wanna settle the score some other way')
 @asyncio.coroutine
 def choose(ctx, *choices: str):
+    """Chooses between multiple choices."""
     if choices is None:
         return
-    """Chooses between multiple choices."""
     user = ctx.message.author
     yield from bot.say('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
