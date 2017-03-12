@@ -141,7 +141,7 @@ class Admin:
         yield from self.bot.say(answer)
         return
 
-    @commands.command(name="setworld", pass_context=True, no_pm=True)
+    @commands.command(name="setworld", pass_context=True)
     @checks.is_admin()
     @checks.is_not_lite()
     @asyncio.coroutine
@@ -149,7 +149,40 @@ class Admin:
         """Sets this server's Tibia world.
 
         If no world is passed, it shows this server's current assigned world."""
-        server_id = ctx.message.server.id
+        admin_servers = get_user_admin_servers(self.bot, ctx.message.author.id)
+
+        if not ctx.message.channel.is_private:
+            if ctx.message.server not in admin_servers:
+                yield from self.bot.say("You don't have permissions to diagnose this server.")
+                return
+            server = ctx.message.server
+        else:
+            if len(admin_servers) == 1:
+                server = admin_servers[0]
+            else:
+                server_list = [str(i+1)+": "+admin_servers[i].name for i in range(len(admin_servers))]
+                yield from self.bot.say("For which server do you want to change the world?\n\t0: *Cancel*\n\t"+"\n\t".join(server_list))
+                answer = yield from self.bot.wait_for_message(timeout=60.0, author=ctx.message.author,
+                                                              channel=ctx.message.channel)
+                if answer is None:
+                    yield from self.bot.say("I guess you changed your mind.")
+                    return
+                elif is_numeric(answer.content):
+                    answer = int(answer.content)
+                    if answer == 0:
+                        yield from self.bot.say("Changed your mind? Typical human.")
+                        return
+                    try:
+                        server = admin_servers[answer-1]
+                    except IndexError:
+                        yield from self.bot.say("That wasn't in the choices, you ruined it. "
+                                                "Start from the beginning.")
+                        return
+                else:
+                    yield from self.bot.say("That's not a valid answer.")
+                    return
+
+        server_id = server.id
         if world is None:
             current_world = tracked_worlds.get(server_id, None)
             if current_world is None:
@@ -205,7 +238,7 @@ class Admin:
             userDatabase.commit()
             reload_worlds()
 
-    @commands.command(name="setwelcome", pass_context=True, no_pm=True)
+    @commands.command(name="setwelcome", pass_context=True)
     @checks.is_admin()
     @checks.is_not_lite()
     @asyncio.coroutine
@@ -222,7 +255,41 @@ class Admin:
         {0.server.owner.name} - The name of the owner of the server the member joined
         {0.server.owner.mention} - A mention to the owner of the server
         {1.user.name} - The name of the bot"""
-        server_id = ctx.message.server.id
+        admin_servers = get_user_admin_servers(self.bot, ctx.message.author.id)
+
+        if not ctx.message.channel.is_private:
+            if ctx.message.server not in admin_servers:
+                yield from self.bot.say("You don't have permissions to diagnose this server.")
+                return
+            server = ctx.message.server
+        else:
+            if len(admin_servers) == 1:
+                server = admin_servers[0]
+            else:
+                server_list = [str(i + 1) + ": " + admin_servers[i].name for i in range(len(admin_servers))]
+                yield from self.bot.say(
+                    "For which server do you want to change the welcome message?\n\t0: *Cancel*\n\t" + "\n\t".join(
+                        server_list))
+                answer = yield from self.bot.wait_for_message(timeout=60.0, author=ctx.message.author,
+                                                              channel=ctx.message.channel)
+                if answer is None:
+                    yield from self.bot.say("I guess you changed your mind.")
+                    return
+                elif is_numeric(answer.content):
+                    answer = int(answer.content)
+                    if answer == 0:
+                        yield from self.bot.say("Changed your mind? Typical human.")
+                        return
+                    try:
+                        server = admin_servers[answer - 1]
+                    except IndexError:
+                        yield from self.bot.say("That wasn't in the choices, you ruined it. "
+                                                "Start from the beginning.")
+                        return
+                else:
+                    yield from self.bot.say("That's not a valid answer.")
+                    return
+        server_id = server
         if message is None:
             current_message = welcome_messages.get(server_id, None)
             if current_message is None:
@@ -290,7 +357,7 @@ class Admin:
             userDatabase.commit()
             reload_welcome_messages()
 
-    @commands.command(name="setchannel", pass_context=True, no_pm=True)
+    @commands.command(name="setchannel", pass_context=True)
     @checks.is_admin()
     @checks.is_not_lite()
     @asyncio.coroutine
@@ -298,8 +365,41 @@ class Admin:
         """Changes the channel used for the bot's announcements
 
         If no channel is set, the bot will use the server's default channel."""
-        server = ctx.message.server
-        server_id = ctx.message.server.id
+        admin_servers = get_user_admin_servers(self.bot, ctx.message.author.id)
+
+        if not ctx.message.channel.is_private:
+            if ctx.message.server not in admin_servers:
+                yield from self.bot.say("You don't have permissions to diagnose this server.")
+                return
+            server = ctx.message.server
+        else:
+            if len(admin_servers) == 1:
+                server = admin_servers[0]
+            else:
+                server_list = [str(i + 1) + ": " + admin_servers[i].name for i in range(len(admin_servers))]
+                yield from self.bot.say(
+                    "For which server do you want to change the announce channel?\n\t0: *Cancel*\n\t" + "\n\t".join(
+                        server_list))
+                answer = yield from self.bot.wait_for_message(timeout=60.0, author=ctx.message.author,
+                                                              channel=ctx.message.channel)
+                if answer is None:
+                    yield from self.bot.say("I guess you changed your mind.")
+                    return
+                elif is_numeric(answer.content):
+                    answer = int(answer.content)
+                    if answer == 0:
+                        yield from self.bot.say("Changed your mind? Typical human.")
+                        return
+                    try:
+                        server = admin_servers[answer - 1]
+                    except IndexError:
+                        yield from self.bot.say("That wasn't in the choices, you ruined it. "
+                                                "Start from the beginning.")
+                        return
+                else:
+                    yield from self.bot.say("That's not a valid answer.")
+                    return
+        server_id = server.id
         if name is None:
             current_channel = announce_channels.get(server_id, None)
             if current_channel is None:
