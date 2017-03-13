@@ -1292,6 +1292,7 @@ class Tibia:
 
         if name is None:
             yield from self.bot.say("Tell me the name or words of a spell.")
+            return
 
         spell = get_spell(name)
 
