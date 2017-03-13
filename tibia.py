@@ -640,7 +640,7 @@ class Tibia:
                     row = c.fetchone()
                     if row is None:
                         break
-                    user = get_member(self.bot, row["user_id"], server_list=user_servers)
+                    user = get_member(self.bot, row["user_id"], guild_list=user_servers)
                     if user is None:
                         continue
                     if row["world"] not in user_worlds:
@@ -782,7 +782,7 @@ class Tibia:
                 yield from self.bot.say("This server is not tracking any tibia worlds.")
                 return
 
-        user = get_member_by_name(self.bot, name, server_list=user_servers)
+        user = get_member_by_name(self.bot, name, guild_list=user_servers)
         if user is None:
             yield from self.bot.say("I don't see any users with that name.")
             return
@@ -872,7 +872,7 @@ class Tibia:
                     row = c.fetchone()
                     if row is None:
                         break
-                    user = get_member(self.bot, row["user_id"], server_list=user_servers)
+                    user = get_member(self.bot, row["user_id"], guild_list=user_servers)
                     if user is None:
                         continue
                     if row["world"] not in user_worlds:
@@ -890,7 +890,7 @@ class Tibia:
                     yield from self.bot.say("I don't have a character with that name registered.")
                     return
                 # If user doesn't share a server with the owner, don't display it
-                owner = get_member(self.bot, result["user_id"], server_list=user_servers)
+                owner = get_member(self.bot, result["user_id"], guild_list=user_servers)
                 if owner is None:
                     yield from self.bot.say("I don't have a character with that name registered.")
                     return
@@ -945,7 +945,7 @@ class Tibia:
                 yield from self.bot.say("This server is not tracking any tibia worlds.")
                 return
 
-        user = get_member_by_name(self.bot, name, server_list=user_servers)
+        user = get_member_by_name(self.bot, name, guild_list=user_servers)
         if user is None:
             yield from self.bot.say("I don't see any users with that name.")
             return
@@ -1033,7 +1033,7 @@ class Tibia:
                     row = c.fetchone()
                     if row is None:
                         break
-                    user = get_member(self.bot, row["user_id"], server_list=user_servers)
+                    user = get_member(self.bot, row["user_id"], guild_list=user_servers)
                     if user is None:
                         continue
                     if row["world"] not in user_worlds:
@@ -1058,7 +1058,7 @@ class Tibia:
                     yield from self.bot.say("I don't have a character with that name registered.")
                     return
                 # If user doesn't share a server with the owner, don't display it
-                owner = get_member(self.bot, result["user_id"], server_list=user_servers)
+                owner = get_member(self.bot, result["user_id"], guild_list=user_servers)
                 if owner is None:
                     yield from self.bot.say("I don't have a character with that name registered.")
                     return
@@ -1123,7 +1123,7 @@ class Tibia:
                 yield from self.bot.say("This server is not tracking any tibia worlds.")
                 return
 
-        user = get_member_by_name(self.bot, name, server_list=user_servers)
+        user = get_member_by_name(self.bot, name, guild_list=user_servers)
         if user is None:
             yield from self.bot.say("I don't see any users with that name.")
             return

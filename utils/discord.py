@@ -14,64 +14,64 @@ FIELD_NAME_LIMIT = 256
 FIELD_VALUE_LIMIT = 1024
 FIELD_AMOUNT = 25
 
-def get_channel_by_name(bot: discord.Client, channel_name: str, server: discord.Server = None,
-                        server_id: str = None, server_name: str = None) -> discord.Channel:
+def get_channel_by_name(bot: discord.Client, channel_name: str, guild: discord.Guild = None,
+                        guild_id: str = None, guild_name: str = None) -> discord.TextChannel:
     """Finds a channel by name on all the channels visible by the bot.
 
     If server, server_id or server_name is specified, only channels in that server will be searched"""
-    if server is None and server_id is not None:
-        server = bot.get_server(server_id)
-    if server is None and server_name is not None:
-        server = get_server_by_name(bot, server_name)
-    if server is None:
+    if guild is None and guild_id is not None:
+        guild = bot.get_guild(guild_id)
+    if guild is None and guild_name is not None:
+        guild = get_server_by_name(bot, guild_name)
+    if guild is None:
         channel = discord.utils.find(lambda m: m.name == channel_name and not m.type == discord.ChannelType.voice,
                                      bot.get_all_channels())
     else:
         channel = discord.utils.find(lambda m: m.name == channel_name and not m.type == discord.ChannelType.voice,
-                                     server.channels)
+                                     guild.channels)
     return channel
 
 
-def get_server_by_name(bot: discord.Client, server_name: str) -> discord.Server:
-    """Returns a server by its name"""
-    server = discord.utils.find(lambda m: m.name.lower() == server_name.lower(), bot.servers)
-    return server
+def get_server_by_name(bot: discord.Client, guild_name: str) -> discord.Guild:
+    """Returns a guild by its name"""
+    guild = discord.utils.find(lambda m: m.name.lower() == guild_name.lower(), bot.guilds)
+    return guild
 
 
-def get_member_by_name(bot: discord.Client, name: str, server: discord.Server=None, server_list=None) -> discord.Member:
+def get_member_by_name(bot: discord.Client, name: str, guild: discord.Guild=None, guild_list=None) -> discord.Member:
     """Returns a member matching the name
 
     If no server is specified, the first member matching the id will be returned, meaning that the server he
     belongs to will be unknown, so member-only functions may be inaccurate.
     If server_list is defined, only members within that server list will be searched for
     User functions remain the same, regardless of server"""
-    if server_list is not None and len(server_list) > 0:
-        members = [m for ml in [s.members for s in server_list] for m in ml]
+    if guild_list is not None and len(guild_list) > 0:
+        members = [m for ml in [g.members for g in guild_list] for m in ml]
         return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), members)
-    if server is not None:
-        return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), server.members)
+    if guild is not None:
+        return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), guild.members)
     else:
         return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), bot.get_all_members())
 
 
-def get_member(bot: discord.Client, user_id, server: discord.Server = None, server_list=None) -> discord.Member:
+def get_member(bot: discord.Client, user_id, guild: discord.Guild = None, guild_list=None) -> discord.Member:
     """Returns a member matching the id
 
     If no server_id is specified, the first member matching the id will be returned, meaning that the server he
     belongs to will be unknown, so member-only functions may be inaccurate.
     User functions remain the same, regardless of server"""
-    if server_list is not None and len(server_list) > 0:
-        members = [m for ml in [s.members for s in server_list] for m in ml]
+    if guild_list is not None and len(guild_list) > 0:
+        members = [m for ml in [g.members for g in guild_list] for m in ml]
         return discord.utils.find(lambda m: m.id == str(user_id), members)
-    if server is not None:
-        return server.get_member(str(user_id))
+    if guild is not None:
+        return guild.get_member(str(user_id))
     else:
         return discord.utils.get(bot.get_all_members(), id=str(user_id))
 
 
 def get_user_servers(bot: discord.Client, user_id):
     """Returns a list of the user's shared servers with the bot"""
-    return [m.server for m in bot.get_all_members() if m.id == str(user_id)]
+    return [m.guild for m in bot.get_all_members() if m.id == str(user_id)]
 
 
 def get_user_admin_servers(bot: discord.Client, user_id):
@@ -79,39 +79,39 @@ def get_user_admin_servers(bot: discord.Client, user_id):
 
     If the user is a bot owner, returns all the servers the bot is in"""
     if user_id in owner_ids:
-        return list(bot.servers)
-    servers = get_user_servers(bot, user_id)
+        return list(bot.guilds)
+    guiilds = get_user_servers(bot, user_id)
     ret = []
-    for server in servers:
-        member = server.get_member(str(user_id))   # type: discord.Member
-        if member.server_permissions.administrator:
-            ret.append(server)
+    for guild in guiilds:
+        member = guild.get_member(str(user_id))   # type: discord.Member
+        if member.guild_permissions.administrator:
+            ret.append(guild)
     return ret
 
 
-def get_user_worlds(bot: discord.Client, user_id, server_list=None):
+def get_user_worlds(bot: discord.Client, user_id, guild_list=None):
     """Returns a list of all the tibia worlds the user is tracked in.
 
     This is based on the tracked world of each server the user belongs to.
     server_list can be passed to search in a specific set of servers. Note that the user may not belong to them."""
-    if server_list is None:
-        server_list = get_user_servers(bot, user_id)
-    return list(set([world for server, world in tracked_worlds.items() if server in [s.id for s in server_list]]))
+    if guild_list is None:
+        guild_list = get_user_servers(bot, user_id)
+    return list(set([world for guild, world in tracked_worlds.items() if guild in [g.id for g in guild_list]]))
 
 
 @asyncio.coroutine
-def send_log_message(bot: discord.Client, server: discord.Server, content=None, embed: discord.Embed = None):
+def send_log_message(bot: discord.Client, guild: discord.Guild, content=None, embed: discord.Embed = None):
     """Sends a message on the server-log channel
 
     If the channel doesn't exist, it doesn't send anything or give of any warnings as it meant to be an optional
     feature"""
-    channel = get_channel_by_name(bot, log_channel_name, server)
+    channel = get_channel_by_name(bot, log_channel_name, guild)
     if channel is None:
         return
-    yield from bot.send_message(channel, content=content, embed=embed)
+    yield from channel.send(content=content, embed=embed)
 
 
-def get_role(server: discord.Server, role_id) -> discord.Role:
+def get_role(server: discord.Guild, role_id) -> discord.Role:
     """Returns a role matching the id in a server"""
     if server is not None:
         for role in server.roles:
@@ -120,7 +120,7 @@ def get_role(server: discord.Server, role_id) -> discord.Role:
     return None
 
 
-def get_role_list(server: discord.Server):
+def get_role_list(server: discord.Guild):
     """Lists all role within the discord server and returns to caller."""
     roles = []
     for role in server.roles:
@@ -131,18 +131,18 @@ def get_role_list(server: discord.Server):
     return roles
 
 
-def get_user_color(user: discord.User, server: discord.Server) -> discord.Colour:
+def get_user_color(user: discord.User, guild: discord.Guild) -> discord.Colour:
     """Gets the user's color based on the highest role with a color"""
     # If it's a PM, server will be none
-    if server is None:
+    if guild is None:
         return discord.Colour.default()
-    member = server.get_member(user.id)  # type: discord.Member
+    member = guild.get_member(user.id)  # type: discord.Member
     if member is not None:
         return member.colour
     return discord.Colour.default()
 
 
-def get_region_string(region: discord.ServerRegion) -> str:
+def get_region_string(region: discord.GuildRegion) -> str:
     """Returns a formatted string for a given ServerRegion"""
     regions = {"us-west": EMOJI[":flag_us:"]+"US West",
                "us-east": EMOJI[":flag_us:"]+"US East",
@@ -160,7 +160,7 @@ def get_region_string(region: discord.ServerRegion) -> str:
     return regions.get(str(region), str(region))
 
 
-def get_announce_channel(bot: discord.Client, server: discord.Server) -> discord.Channel:
+def get_announce_channel(bot: discord.Client, server: discord.Guild) -> discord.TextChannel:
     """Returns this world's announcements channel. If no channel is set, the default channel is returned.
 
     It also checks if the bot has permissions on that channel, if not, it will return the default channel too."""

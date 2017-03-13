@@ -127,7 +127,7 @@ def on_message(message):
 
 @bot.event
 @asyncio.coroutine
-def on_server_join(server: discord.Server):
+def on_server_join(server: discord.Guild):
     log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(server))
     message = "Hello! I'm now in **{0.name}**. To see my available commands, type \help\n" \
               "I will reply to commands from any channel I can see, but if you create a channel called *{1}*, I will " \
@@ -191,7 +191,7 @@ def on_member_ban(member: discord.Member):
 
 @bot.event
 @asyncio.coroutine
-def on_member_unban(server: discord.Server, user: discord.User):
+def on_member_unban(server: discord.Guild, user: discord.User):
     """Called when a member is unbanned from a server"""
     log.warning("{1.name} (ID:{1.id}) was unbanned from {0.name}".format(server, user))
     yield from send_log_message(bot, server, "**{0.name}#{0.discriminator}** was unbanned.".format(user))
@@ -249,7 +249,7 @@ def on_member_update(before: discord.Member, after: discord.Member):
 
 @bot.event
 @asyncio.coroutine
-def on_server_update(before: discord.Server, after: discord.Server):
+def on_server_update(before: discord.Guild, after: discord.Guild):
     if before.name != after.name:
         reply = "Server name changed from **{0.name}** to **{1.name}**".format(before, after)
         yield from send_log_message(bot, after, reply)
@@ -1024,7 +1024,7 @@ def online(ctx):
             if row is None:
                 continue
             # Only show members on this server or members visible to author if it's a pm
-            owner = get_member(bot, row["user_id"], server_list=user_servers)
+            owner = get_member(bot, row["user_id"], guild_list=user_servers)
             if owner is None:
                 continue
             row["owner"] = owner.display_name
@@ -1608,7 +1608,7 @@ def info_server(ctx):
         yield from bot.say("Sorry, I need `Embed Links` permission for this command.")
         return
     embed = discord.Embed()
-    _server = ctx.message.server  # type: discord.Server
+    _server = ctx.message.server  # type: discord.Guild
     embed.set_thumbnail(url=_server.icon_url)
     embed.description = _server.name
     # Check if owner has a nickname

@@ -119,7 +119,7 @@ class Mod:
         author_worlds = get_user_worlds(self.bot, author.id)
 
         # Only search in the servers the command author is
-        user = get_member_by_name(self.bot, params[0], server_list=author_servers)
+        user = get_member_by_name(self.bot, params[0], guild_list=author_servers)
         user_servers = get_user_servers(self.bot, user.id)
         user_worlds = get_user_worlds(self.bot, author.id)
 
@@ -225,7 +225,7 @@ class Mod:
             author_servers = get_user_admin_servers(self.bot, author.id)
         author_worlds = get_user_worlds(self.bot, author.id)
 
-        user = get_member_by_name(self.bot, params[0], server_list=author_servers)
+        user = get_member_by_name(self.bot, params[0], guild_list=author_servers)
         user_servers = get_user_servers(self.bot, user.id)
         user_worlds = get_user_worlds(self.bot, user.id)
 

@@ -7,3 +7,4 @@ __pycache__
 logs/
 /utils/loot.db
 /loot/debug/
+/virtualenv/
