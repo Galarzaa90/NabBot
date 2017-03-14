@@ -1,5 +1,7 @@
 import inspect
 import itertools
+
+import asyncio
 from discord.ext.commands import HelpFormatter, Command, Paginator
 
 
@@ -13,6 +15,7 @@ class NabHelpFormat(HelpFormatter):
             return "Type {0}{1} <command> for more info on a command.\n" \
                "You can also type {0}{1} category for more info on a category.".format(self.clean_prefix, command_name)
 
+    @asyncio.coroutine
     def format(self):
         """Handles the actual behaviour involved with formatting.
         To change the behaviour, this method should be overridden.
@@ -53,18 +56,22 @@ class NabHelpFormat(HelpFormatter):
             # last place sorting position.
             return cog + ':' if cog is not None else '\u200bNo Category:'
 
+        filtered = yield from self.filter_command_list()
         if self.is_bot():
-            data = sorted(self.filter_command_list(), key=category)
+            data = sorted(filtered, key=category)
             for category, commands in itertools.groupby(data, key=category):
                 # there simply is no prettier way of doing this.
-                commands = list(commands)
+                commands = sorted(commands)
                 if len(commands) > 0:
                     self._paginator.add_line(category)
 
                 self._add_subcommands_to_page(max_width, commands)
         else:
-            self._paginator.add_line('Subcommands:' if self.has_subcommands() else 'Commands:')
+            filtered = sorted(filtered)
             self._add_subcommands_to_page(max_width, self.filter_command_list())
+            if filtered:
+                self._paginator.add_line('Subcommands:' if self.has_subcommands() else 'Commands:')
+                self._add_subcommands_to_page(max_width, filtered)
 
         # add the ending note
         self._paginator.add_line()

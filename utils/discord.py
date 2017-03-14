@@ -54,7 +54,7 @@ def get_member_by_name(bot: discord.Client, name: str, guild: discord.Guild=None
         return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), bot.get_all_members())
 
 
-def get_member(bot: discord.Client, user_id, guild: discord.Guild = None, guild_list=None) -> discord.Member:
+def get_member(bot: discord.Client, user_id: int, guild: discord.Guild = None, guild_list=None) -> discord.Member:
     """Returns a member matching the id
 
     If no server_id is specified, the first member matching the id will be returned, meaning that the server he
@@ -62,11 +62,11 @@ def get_member(bot: discord.Client, user_id, guild: discord.Guild = None, guild_
     User functions remain the same, regardless of server"""
     if guild_list is not None and len(guild_list) > 0:
         members = [m for ml in [g.members for g in guild_list] for m in ml]
-        return discord.utils.find(lambda m: m.id == str(user_id), members)
+        return discord.utils.find(lambda m: m.id == user_id, members)
     if guild is not None:
-        return guild.get_member(str(user_id))
+        return guild.get_member(user_id)
     else:
-        return discord.utils.get(bot.get_all_members(), id=str(user_id))
+        return discord.utils.get(bot.get_all_members(), id=user_id)
 
 
 def get_user_servers(bot: discord.Client, user_id):

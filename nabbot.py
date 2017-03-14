@@ -8,6 +8,7 @@ from datetime import timedelta, datetime
 
 import discord
 import psutil
+from discord import abc
 from discord.ext import commands
 
 from config import *
@@ -30,14 +31,13 @@ bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True, 
 # We remove the default help command so we can override it
 bot.remove_command("help")
 
-
 @bot.event
 @asyncio.coroutine
 def on_ready():
-    bot.load_extension("tibia")
-    bot.load_extension("mod")
-    bot.load_extension("owner")
-    bot.load_extension("admin")
+    #bot.load_extension("tibia")
+    #bot.load_extension("mod")
+    #bot.load_extension("owner")
+    #bot.load_extension("admin")
     print('Logged in as')
     print(bot.user)
     print(bot.user.id)
@@ -58,21 +58,21 @@ def on_ready():
             yield from bot.send_message(user, "Restart complete")
 
     # Background tasks
-    bot.loop.create_task(game_update())
-    bot.loop.create_task(events_announce())
-    bot.loop.create_task(scan_deaths())
-    bot.loop.create_task(scan_online_chars())
-    bot.loop.create_task(scan_highscores())
+    # bot.loop.create_task(game_update())
+    # bot.loop.create_task(events_announce())
+    # bot.loop.create_task(scan_deaths())
+    # bot.loop.create_task(scan_online_chars())
+    # bot.loop.create_task(scan_highscores())
 
 
 @bot.event
 @asyncio.coroutine
-def on_command(command, ctx):
+def on_command(ctx):
     """Called when a command is called. Used to log commands on a file."""
-    if ctx.message.channel.is_private:
+    if isinstance(ctx.message.channel, abc.PrivateChannel):
         destination = 'PM'
     else:
-        destination = '#{0.channel.name} ({0.server.name})'.format(ctx.message)
+        destination = '#{0.channel.name} ({0.guild.name})'.format(ctx.message)
     message_decoded = decode_emoji(ctx.message.content)
     log.info('Command by {0} in {1}: {2}'.format(ctx.message.author.display_name, destination, message_decoded))
 
@@ -83,19 +83,19 @@ def on_command_error(error, ctx):
     if isinstance(error, commands.errors.CommandNotFound):
         return
     elif isinstance(error, commands.NoPrivateMessage):
-        yield from bot.send_message(ctx.message.author, "This command cannot be used in private messages.")
+        yield from ctx.send("This command cannot be used in private messages.")
     elif isinstance(error, commands.CommandInvokeError):
         print('In {0.command.qualified_name}:'.format(ctx), file=sys.stderr)
         traceback.print_tb(error.original.__traceback__)
         print('{0.__class__.__name__}: {0}'.format(error.original), file=sys.stderr)
         # Bot returns error message on discord if an owner called the command
         if ctx.message.author.id in owner_ids:
-            yield from bot.send_message(ctx.message.channel, '```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
+            yield from ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
 
 
 @bot.event
 @asyncio.coroutine
-def on_message(message):
+def on_message(message: discord.Message):
     """Called every time a message is sent on a visible channel.
 
     This is used to make commands case insensitive."""
@@ -111,16 +111,15 @@ def on_message(message):
             message.content = message.content.lower()
     if len(split) == 2:
         if message.author.id != bot.user.id and (not split[0].lower()[1:] in command_list or not split[0][:1] == "/")\
-                and not message.channel.is_private and message.channel.name == ask_channel_name:
-            yield from bot.delete_message(message)
+                and not isinstance(message.channel, abc.PrivateChannel) and message.channel.name == ask_channel_name:
+            yield from message.delete()
             return
     elif ask_channel_delete:
         # Delete messages in askchannel
         if message.author.id != bot.user.id \
                 and (not message.content.lower()[1:] in command_list or not message.content[:1] == "/") \
-                and not message.channel.is_private \
-                and message.channel.name == ask_channel_name:
-            yield from bot.delete_message(message)
+                and not isinstance(message.channel, abc.PrivateChannel) and message.channel.name == ask_channel_name:
+            yield from message.delete()
             return
     yield from bot.process_commands(message)
 
@@ -218,10 +217,10 @@ def on_message_delete(message: discord.Message):
 def on_message_edit(before: discord.Message, after: discord.Message):
     """Called every time a message is edited."""
 
-    if before.channel.is_private:
+    if before.author.id == bot.user.id:
         return
 
-    if before.author.id == bot.user.id:
+    if isinstance(before.channel, abc.PrivateChannel):
         return
 
     if before.content == after.content:
@@ -231,8 +230,8 @@ def on_message_edit(before: discord.Message, after: discord.Message):
     after_decoded = decode_emoji(after.clean_content)
 
     log.info("@{0} edited a message in #{3} ({4}):\n\t'{1}'\n\t'{2}'".format(before.author.name, before_decoded,
-                                                                                 after_decoded, before.channel,
-                                                                                 before.server))
+                                                                             after_decoded, before.channel,
+                                                                             before.guild))
 
 
 @bot.event
@@ -240,16 +239,16 @@ def on_message_edit(before: discord.Message, after: discord.Message):
 def on_member_update(before: discord.Member, after: discord.Member):
     if before.nick != after.nick:
         reply = "{1.mention}: Nickname changed from **{0.nick}** to **{1.nick}**".format(before, after)
-        yield from send_log_message(bot, after.server, reply)
+        yield from send_log_message(bot, after.guild, reply)
     elif before.name != after.name:
         reply = "{1.mention}: Name changed from **{0.name}** to **{1.name}**".format(before, after)
-        yield from send_log_message(bot, after.server, reply)
+        yield from send_log_message(bot, after.guild, reply)
     return
 
 
 @bot.event
 @asyncio.coroutine
-def on_server_update(before: discord.Guild, after: discord.Guild):
+def on_guild_update(before: discord.Guild, after: discord.Guild):
     if before.name != after.name:
         reply = "Server name changed from **{0.name}** to **{1.name}**".format(before, after)
         yield from send_log_message(bot, after, reply)
@@ -298,18 +297,18 @@ def events_announce():
                     message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name, author, start, event_id)
                     c.execute("UPDATE events SET status = 3 WHERE id = ?", (event_id,))
                     log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
-                    destination = bot.get_server(str(row["server"]))
+                    destination = bot.get_guild(int(row["server"]))
                     if destination:
-                        yield from bot.send_message(destination, message)
+                        yield from destination.send(message)
                     # Send PM to subscribers:
                     c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
                     subscribers = c.fetchall()
                     if len(subscribers) > 0:
                         for subscriber in subscribers:
-                            user = get_member(bot, subscriber["user_id"])
-                            if user is None:
+                            member = get_member(bot, subscriber["user_id"])
+                            if member is None:
                                 continue
-                            yield from bot.send_message(user, message)
+                            yield from member.send(message)
             # Second announcement
             c.execute("SELECT creator, start, name, id, server "
                       "FROM events "
@@ -333,18 +332,18 @@ def events_announce():
                     message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name, author, start, event_id)
                     c.execute("UPDATE events SET status = 2 WHERE id = ?", (event_id,))
                     log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
-                    destination = bot.get_server(str(row["server"]))
+                    destination = bot.get_guild(int(row["server"]))
                     if destination:
-                        yield from bot.send_message(destination, message)
+                        yield from destination.send(message)
                     # Send PM to subscribers:
                     c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
                     subscribers = c.fetchall()
                     if len(subscribers) > 0:
                         for subscriber in subscribers:
-                            user = get_member(bot, subscriber["user_id"])
-                            if user is None:
+                            member = get_member(bot, subscriber["user_id"])
+                            if member is None:
                                 continue
-                            yield from bot.send_message(user, message)
+                            yield from member.send(message)
             # Third announcement
             c.execute("SELECT creator, start, name, id, server "
                       "FROM events "
@@ -368,18 +367,18 @@ def events_announce():
                     message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}!".format(name, author, start, event_id)
                     c.execute("UPDATE events SET status = 1 WHERE id = ?", (event_id,))
                     log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
-                    destination = bot.get_server(str(row["server"]))
+                    destination = bot.get_guild(int(row["server"]))
                     if destination:
-                        yield from bot.send_message(destination, message)
+                        yield from destination.send(message)
                     # Send PM to subscribers:
                     c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
                     subscribers = c.fetchall()
                     if len(subscribers) > 0:
                         for subscriber in subscribers:
-                            user = get_member(bot, subscriber["user_id"])
-                            if user is None:
+                            member = get_member(bot, subscriber["user_id"])
+                            if member is None:
                                 continue
-                            yield from bot.send_message(user, message)
+                            yield from member.send(message)
             # Last announcement
             c.execute("SELECT creator, start, name, id, server "
                       "FROM events "
@@ -403,18 +402,18 @@ def events_announce():
                     message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting right now!".format(name, author, start, event_id)
                     c.execute("UPDATE events SET status = 0 WHERE id = ?", (event_id,))
                     log.info("Announcing event: {0} (by @{1},ID:{3}) - Starting ({2})".format(name, author, start, event_id))
-                    destination = bot.get_server(str(row["server"]))
+                    destination = bot.get_guild(int(row["server"]))
                     if destination:
-                        yield from bot.send_message(destination, message)
+                        yield from destination.send(message)
                     # Send PM to subscribers:
                     c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
                     subscribers = c.fetchall()
                     if len(subscribers) > 0:
                         for subscriber in subscribers:
-                            user = get_member(bot, subscriber["user_id"])
-                            if user is None:
+                            member = get_member(bot, subscriber["user_id"])
+                            if member is None:
                                 continue
-                            yield from bot.send_message(user, message)
+                            yield from member.send(message)
         except AttributeError:
             pass
         finally:
@@ -733,7 +732,7 @@ def announce_level(bot, new_level, char_name=None, char=None):
 
 
 # Bot commands
-@bot.command(pass_context=True, aliases=["commands"])
+@bot.command(aliases=["commands"])
 @asyncio.coroutine
 def help(ctx, *commands: str):
     """Shows this message."""
@@ -744,14 +743,14 @@ def help(ctx, *commands: str):
     _mention_pattern = re.compile('|'.join(_mentions_transforms.keys()))
 
     bot = ctx.bot
-    destination = ctx.message.channel if ctx.message.channel.name == ask_channel_name else ctx.message.author
+    destination = ctx.message.channel if isinstance(ctx.message.channel, abc.PrivateChannel) or ctx.message.channel.name == ask_channel_name else ctx.message.author
 
     def repl(obj):
         return _mentions_transforms.get(obj.group(0), '')
 
     # help by itself just lists our own commands.
     if len(commands) == 0:
-        pages = bot.formatter.format_help_for(ctx, bot)
+        pages = yield from bot.formatter.format_help_for(ctx, bot)
     elif len(commands) == 1:
         # try to see if it is a cog name
         name = _mention_pattern.sub(repl, commands[0])
@@ -761,16 +760,16 @@ def help(ctx, *commands: str):
         else:
             command = bot.commands.get(name)
             if command is None:
-                yield from bot.send_message(destination, bot.command_not_found.format(name))
+                yield from destination.send(bot.command_not_found.format(name))
                 return
             destination = ctx.message.channel if command.no_pm else destination
 
-        pages = bot.formatter.format_help_for(ctx, command)
+        pages = yield from bot.formatter.format_help_for(ctx, command)
     else:
         name = _mention_pattern.sub(repl, commands[0])
         command = bot.commands.get(name)
         if command is None:
-            yield from bot.send_message(destination, bot.command_not_found.format(name))
+            yield from destination.send(bot.command_not_found.format(name))
             return
 
         for key in commands[1:]:
@@ -778,26 +777,26 @@ def help(ctx, *commands: str):
                 key = _mention_pattern.sub(repl, key)
                 command = command.commands.get(key)
                 if command is None:
-                    yield from bot.send_message(destination, bot.command_not_found.format(key))
+                    yield from destination.send(bot.command_not_found.format(key))
                     return
             except AttributeError:
-                yield from bot.send_message(destination, bot.command_has_no_subcommands.format(command, key))
+                yield from destination.send(bot.command_has_no_subcommands.format(command, key))
                 return
 
-        pages = bot.formatter.format_help_for(ctx, command)
+        pages = yield from bot.formatter.format_help_for(ctx, command)
 
     for page in pages:
-        yield from bot.send_message(destination, page)
+        yield from destination.send(page)
 
 
-@bot.command(pass_context=True, description='For when you wanna settle the score some other way')
+@bot.command()
 @asyncio.coroutine
 def choose(ctx, *choices: str):
     """Chooses between multiple choices."""
     if choices is None:
         return
     user = ctx.message.author
-    yield from bot.say('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
+    yield from ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
 
 @bot.command(pass_context=True, aliases=["i'm", "iam"])
@@ -1056,18 +1055,18 @@ def online(ctx):
 
 @bot.command()
 @asyncio.coroutine
-def uptime():
+def uptime(ctx):
     """Shows how long the bot has been running"""
-    yield from bot.say("I have been running for {0}.".format(get_uptime(True)))
+    yield from ctx.send("I have been running for {0}.".format(get_uptime(True)))
 
 
-@bot.command(pass_context=True)
+@bot.command()
 @asyncio.coroutine
 def about(ctx):
     """Shows information about the bot"""
-    permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.server))
+    permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.guild))
     if not permissions.embed_links:
-        yield from bot.say("Sorry, I need `Embed Links` permission for this command.")
+        yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
         return
     user_count = 0
     char_count = 0
@@ -1101,7 +1100,7 @@ def about(ctx):
     embed.add_field(name="Authors", value="@Galarzaa#8515, @Nezune#2269")
     embed.add_field(name="Platform", value="Python " + EMOJI[":snake:"])
     embed.add_field(name="Created", value="March 30th 2016")
-    embed.add_field(name="Servers", value="{0:,}".format(len(bot.servers)))
+    embed.add_field(name="Servers", value="{0:,}".format(len(bot.guilds)))
     embed.add_field(name="Members", value="{0:,}".format(len(set(bot.get_all_members()))))
     if not lite_mode:
         embed.add_field(name="Tracked users", value="{0:,}".format(user_count))
@@ -1112,7 +1111,7 @@ def about(ctx):
     embed.add_field(name="Uptime", value=get_uptime())
     memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
     embed.add_field(name='Memory Usage', value='{:.2f} MiB'.format(memory_usage))
-    yield from bot.say(embed=embed)
+    yield from ctx.send(embed=embed)
 
 
 @bot.group(pass_context=True, aliases=["event"], invoke_without_command=True)
@@ -1577,15 +1576,6 @@ def event_subscribe(ctx, event_id: int):
         userDatabase.commit()
 
 
-@event_add.error
-@asyncio.coroutine
-def event_error(error, ctx):
-    if isinstance(error, commands.BadArgument):
-        yield from bot.say(str(error))
-    elif isinstance(error, commands.errors.MissingRequiredArgument):
-        yield from bot.say("You're missing a required argument. `Type /help {0}`".format(ctx.invoked_subcommand))
-
-
 @event_edit_name.error
 @event_edit_description.error
 @event_edit_time.error
@@ -1594,48 +1584,42 @@ def event_error(error, ctx):
 @asyncio.coroutine
 def event_error(error, ctx):
     if isinstance(error, commands.BadArgument):
-        yield from bot.say("Invalid arguments used. `Type /help {0}`".format(ctx.invoked_subcommand))
+        yield from ctx.send("Invalid arguments used. `Type /help {0}`".format(ctx.invoked_subcommand))
     elif isinstance(error, commands.errors.MissingRequiredArgument):
-        yield from bot.say("You're missing a required argument. `Type /help {0}`".format(ctx.invoked_subcommand))
+        yield from ctx.send("You're missing a required argument. `Type /help {0}`".format(ctx.invoked_subcommand))
 
 
-@bot.command(pass_context=True, no_pm=True, name="server", aliases=["serverinfo", "server_info"])
+@bot.command(no_pm=True, name="server", aliases=["serverinfo", "server_info"])
 @asyncio.coroutine
 def info_server(ctx):
     """Shows the server's information."""
-    permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.server))
+    print(get_member(bot, bot.user.id))
+    permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.guild))
     if not permissions.embed_links:
-        yield from bot.say("Sorry, I need `Embed Links` permission for this command.")
+        yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
         return
     embed = discord.Embed()
-    _server = ctx.message.server  # type: discord.Guild
-    embed.set_thumbnail(url=_server.icon_url)
-    embed.description = _server.name
+    guild = ctx.message.guild  # type: discord.Guild
+    embed.set_thumbnail(url=guild.icon_url)
+    embed.description = guild.name
     # Check if owner has a nickname
-    if _server.owner.name == _server.owner.display_name:
-        owner = "{0.name}#{0.discriminator}".format(_server.owner)
+    if guild.owner.name == guild.owner.display_name:
+        owner = "{0.name}#{0.discriminator}".format(guild.owner)
     else:
-        owner = "{0.display_name}\n({0.name}#{0.discriminator})".format(_server.owner)
+        owner = "{0.display_name}\n({0.name}#{0.discriminator})".format(guild.owner)
     embed.add_field(name="Owner", value=owner)
-    embed.add_field(name="Created", value=_server.created_at.strftime("%d/%m/%y"))
-    embed.add_field(name="Server Region", value=get_region_string(_server.region))
-
-    # Channels
-    text_channels = 0
-    for channel in _server.channels:
-        if channel.type == discord.ChannelType.text:
-            text_channels += 1
-    voice_channels = len(_server.channels) - text_channels
-    embed.add_field(name="Text channels", value=text_channels)
-    embed.add_field(name="Voice channels", value=voice_channels)
-    embed.add_field(name="Members", value=_server.member_count)
-    embed.add_field(name="Roles", value=len(_server.roles))
-    embed.add_field(name="Emojis", value=len(_server.emojis))
-    embed.add_field(name="Bot joined", value=_server.me.joined_at.strftime("%d/%m/%y"))
-    yield from bot.say(embed=embed)
+    embed.add_field(name="Created", value=guild.created_at.strftime("%d/%m/%y"))
+    embed.add_field(name="Server Region", value=get_region_string(guild.region))
+    embed.add_field(name="Text channels", value=len(guild.text_channels))
+    embed.add_field(name="Voice channels", value=len(guild.voice_channels))
+    embed.add_field(name="Members", value=guild.member_count)
+    embed.add_field(name="Roles", value=len(guild.roles))
+    embed.add_field(name="Emojis", value=len(guild.emojis))
+    embed.add_field(name="Bot joined", value=guild.me.joined_at.strftime("%d/%m/%y"))
+    yield from ctx.send(embed=embed)
 
 
-@bot.command(pass_context=True, no_pm=True)
+@bot.command(no_pm=True)
 @asyncio.coroutine
 def roles(ctx, *userName:str):
     """Shows a list of roles or an user's roles"""
@@ -1645,20 +1629,20 @@ def roles(ctx, *userName:str):
     if not userName:
         msg += "this server:\r\n"
 
-        for role in get_role_list(ctx.message.server):
+        for role in get_role_list(ctx.message.guild):
             msg += role.name + "\r\n"
     else:
-        user = get_member_by_name(bot, userName)
+        member = get_member_by_name(bot, userName)
 
-        if user is None:
+        if member is None:
             msg = "I don't see any user named **" + userName + "**. \r\n"
             msg += "I can only check roles from an username registered on this server."
         else:
-            msg += "**" + user.display_name + "**:\r\n"
+            msg += "**" + member.display_name + "**:\r\n"
             roles = []
 
             # Ignoring "default" roles
-            for role in user.roles:
+            for role in member.roles:
                 if role.name not in ["@everyone", "Nab Bot"]:
                     roles.append(role.name)
 
@@ -1668,13 +1652,13 @@ def roles(ctx, *userName:str):
                 for roleName in roles:
                     msg += roleName + "\r\n"
             else:
-                msg = "There are no active roles for **" + user.display_name + "**."
+                msg = "There are no active roles for **" + member.display_name + "**."
 
-    yield from bot.say(msg)
+    yield from ctx.send(msg)
     return
 
 
-@bot.command(pass_context=True, no_pm=True)
+@bot.command(no_pm=True)
 @asyncio.coroutine
 def role(ctx, *roleName: str):
     """Shows member list within the specified role"""
@@ -1684,14 +1668,14 @@ def role(ctx, *roleName: str):
 
     # Need to get all roles and check all members because there's
     # no API call like role.getMembers
-    for role in get_role_list(ctx.message.server):
+    for role in get_role_list(ctx.message.guild):
         if role.name.lower() == lowerRoleName:
             roleDict[role] = []
 
     if len(roleDict) > 0:
         # Check every member and add to dict for each role he is in
         # In this case, the dict will only have the specific role searched
-        for member in ctx.message.server.members:
+        for member in ctx.message.guild.members:
             for role in member.roles:
                 if role in roleDict:
                     roleDict[role].append(member.display_name)
@@ -1708,9 +1692,9 @@ def role(ctx, *roleName: str):
                 for memberName in roleDict[key]:
                     msg += "\t" + memberName + "\r\n"
 
-        yield from bot.say(msg)
+        yield from ctx.send(msg)
     else:
-        yield from bot.say("I couldn't find a role with that name.")
+        yield from ctx.send("I couldn't find a role with that name.")
 
     return
 
@@ -1760,6 +1744,6 @@ if __name__ == "__main__":
         input("\nPress any key to continue...")
         quit()
     finally:
-        bot.session.close()
+        bot.logout()
 
     log.error("NabBot crashed")
