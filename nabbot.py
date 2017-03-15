@@ -15,7 +15,7 @@ from config import *
 from utils import checks
 from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, tracked_worlds_list, \
     reload_welcome_messages, welcome_messages, reload_announce_channels
-from utils.discord import get_member, send_log_message, get_region_string, get_channel_by_name, get_user_servers, \
+from utils.discord import get_member, send_log_message, get_region_string, get_user_servers, \
     clean_string, get_role_list, get_member_by_name, get_announce_channel, get_user_worlds
 from utils.general import command_list, join_list, get_uptime, TimeString, \
     single_line, is_numeric, getLogin, start_time, global_online_list
@@ -31,13 +31,14 @@ bot = commands.Bot(command_prefix=["/"], description=description, pm_help=True, 
 # We remove the default help command so we can override it
 bot.remove_command("help")
 
+
 @bot.event
 @asyncio.coroutine
 def on_ready():
-    #bot.load_extension("tibia")
-    #bot.load_extension("mod")
-    #bot.load_extension("owner")
-    #bot.load_extension("admin")
+    # bot.load_extension("tibia")
+    # bot.load_extension("mod")
+    # bot.load_extension("owner")
+    # bot.load_extension("admin")
     print('Logged in as')
     print(bot.user)
     print(bot.user.id)
@@ -55,7 +56,7 @@ def on_ready():
         user = get_member(bot, sys.argv[1])
         sys.argv[1] = 0
         if user is not None:
-            yield from bot.send_message(user, "Restart complete")
+            yield from user.send("Restart complete")
 
     # Background tasks
     # bot.loop.create_task(game_update())
@@ -135,7 +136,7 @@ def on_server_join(server: discord.Guild):
               "want to make it private though.\n" \
               "To have all of Nab Bot's features, use `/setworld <tibia_world>`"
     formatted_message = message.format(server, ask_channel_name, log_channel_name)
-    yield from bot.send_message(server.owner, formatted_message)
+    yield from server.owner.send(formatted_message)
 
 
 @bot.event
@@ -168,8 +169,8 @@ def on_member_join(member: discord.Member):
             c.close()
 
     yield from send_log_message(bot, member.server, log_message)
-    yield from bot.send_message(member, pm)
-    yield from bot.send_message(member.server, "Look who just joined! Welcome {0.mention}!".format(member))
+    yield from member.send(pm)
+    yield from member.server.send("Look who just joined! Welcome {0.mention}!".format(member))
 
 
 @bot.event
@@ -209,7 +210,7 @@ def on_message_delete(message: discord.Message):
         attachment = "\n\tAttached file: "+message.attachments[0]['filename']
     log.info("A message by @{0} was deleted in #{2} ({3}):\n\t'{1}'{4}".format(message.author.display_name,
                                                                                message_decoded, message.channel.name,
-                                                                               message.server.name, attachment))
+                                                                               message.guild.name, attachment))
 
 
 @bot.event
@@ -685,7 +686,7 @@ def announce_death(bot, death_level, death_killer, death_by_player, levels_lost=
         server = bot.get_server(server_id)
         if char["world"] == tracked_world and server is not None \
                 and server.get_member(str(char["owner_id"])) is not None:
-            yield from bot.send_message(get_announce_channel(bot, server), message[:1].upper()+message[1:])
+            yield from get_announce_channel(bot, server).send(message[:1].upper()+message[1:])
 
 
 @asyncio.coroutine
@@ -728,7 +729,7 @@ def announce_level(bot, new_level, char_name=None, char=None):
         server = bot.get_server(server_id)
         if char["world"] == tracked_world and server is not None \
                 and server.get_member(str(char["owner_id"])) is not None:
-            yield from bot.send_message(get_announce_channel(bot, server), message)
+            yield from get_announce_channel(bot, server).send(message)
 
 
 # Bot commands
@@ -799,7 +800,7 @@ def choose(ctx, *choices: str):
     yield from ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
 
-@bot.command(pass_context=True, aliases=["i'm", "iam"])
+@bot.command(aliases=["i'm", "iam"])
 @checks.is_not_lite()
 @asyncio.coroutine
 def im(ctx, *, char_name: str):
@@ -813,12 +814,12 @@ def im(ctx, *, char_name: str):
     # List of servers the user shares with the bot
     user_servers = get_user_servers(bot, user.id)
     # List of Tibia worlds tracked in the servers the user is
-    user_tibia_worlds = [world for server, world in tracked_worlds.items() if server in [s.id for s in user_servers]]
+    user_tibia_worlds = [world for guild, world in tracked_worlds.items() if guild in [g.id for g in user_servers]]
     # Remove duplicate entries from list
     user_tibia_worlds = list(set(user_tibia_worlds))
 
-    if not ctx.message.channel.is_private and tracked_worlds.get(ctx.message.server.id) is None:
-        yield from bot.say("This server is not tracking any tibia worlds.")
+    if not isinstance(ctx.message.channel, abc.PrivateChannel) and tracked_worlds.get(ctx.message.guild.id) is None:
+        yield from ctx.send("This server is not tracking any tibia worlds.")
         return
 
     if len(user_tibia_worlds) == 0:
@@ -832,13 +833,13 @@ def im(ctx, *, char_name: str):
             if mod is not None:
                 valid_mods.append(mod.mention)
         admins_message = join_list(valid_mods, ", ", " or ")
-        yield from bot.send_typing(ctx.message.channel)
+        yield from ctx.trigger_typing()
         char = yield from get_character(char_name)
         if type(char) is not dict:
             if char == ERROR_NETWORK:
-                yield from bot.say("I couldn't fetch the character, please try again.")
+                yield from ctx.send("I couldn't fetch the character, please try again.")
             elif char == ERROR_DOESNTEXIST:
-                yield from bot.say("That character doesn't exists.")
+                yield from ctx.send("That character doesn't exists.")
             return
         chars = char['chars']
         # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
@@ -872,14 +873,14 @@ def im(ctx, *, char_name: str):
                     reply = "Sorry, a character in that account ({0}) is already claimed by **{1.mention}**.\n" \
                             "Maybe you made a mistake? Or someone claimed a character of yours? " \
                             "Message {2} if you need help!"
-                    yield from bot.say(reply.format(db_char["name"], owner, admins_message))
+                    yield from ctx.send(reply.format(db_char["name"], owner, admins_message))
                     return
             # If we only have one char, it already contains full data
             if len(chars) > 1:
-                yield from bot.send_typing(ctx.message.channel)
+                yield from ctx.message.channel.trigger_typing()
                 char = yield from get_character(char["name"])
                 if char == ERROR_NETWORK:
-                    yield from bot.reply("I'm having network troubles, please try again.")
+                    yield from ctx.send("I'm having network troubles, please try again.")
                     return
             if char.get("deleted", False):
                 skipped.append(char)
@@ -889,7 +890,7 @@ def im(ctx, *, char_name: str):
 
         if len(skipped) == len(chars):
             reply = "Sorry, I couldn't find any characters from the servers I track ({0})."
-            yield from bot.reply(reply.format(join_list(user_tibia_worlds, ", ", " and ")))
+            yield from ctx.send(reply.format(join_list(user_tibia_worlds, ", ", " and ")))
             return
 
         reply = ""
@@ -931,11 +932,11 @@ def im(ctx, *, char_name: str):
         c.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
         c.execute("UPDATE users SET name = ? WHERE id = ?", (user.display_name, user.id, ))
 
-        yield from bot.reply(reply)
+        yield from ctx.send(reply)
         for server_id, message in log_reply.items():
             if message:
                 message = user.mention + " registered the following characters: " + message
-                yield from send_log_message(bot, bot.get_server(server_id), message)
+                yield from send_log_message(bot, bot.get_guild(server_id), message)
 
     finally:
         c.close()
@@ -955,33 +956,37 @@ def imnot(ctx, *, name):
                   "FROM chars WHERE name LIKE ?", (name, ))
         char = c.fetchone()
         if char is None:
-            yield from bot.say("There's no character registered with that name.")
+            yield from ctx.send("There's no character registered with that name.")
             return
         if str(char["user_id"]) != ctx.message.author.id:
-            yield from bot.say("The character **{0}** is not registered to you.".format(char["name"]))
+            yield from ctx.send("The character **{0}** is not registered to you.".format(char["name"]))
             return
 
-        yield from bot.say("Are you sure you want to unregister **{name}** ({level} {vocation})? `yes/no`"
-                           "\n*All registered level ups and deaths will be lost forever.*"
-                           .format(**char))
-        reply = yield from bot.wait_for_message(timeout=50.0, author=ctx.message.author, channel=ctx.message.channel)
-        if reply is None:
-            yield from bot.say("I guess you changed your mind.")
-            return
-        elif reply.content.lower() not in ["yes", "y"]:
-            yield from bot.say("No then? Ok.")
+        yield from ctx.send("Are you sure you want to unregister **{name}** ({level} {vocation})? `yes/no`"
+                            "\n*All registered level ups and deaths will be lost forever.*"
+                            .format(**char))
+
+        def check(m):
+            return m.channel == ctx.channel and m.author == ctx.author
+        try:
+            reply = yield from bot.wait_for("message", timeout=50.0, check=check)
+            if reply.content.lower() not in ["yes", "y"]:
+                yield from ctx.send("No then? Ok.")
+                return
+        except asyncio.TimeoutError:
+            yield from ctx.send("I guess you changed your mind.")
             return
 
         c.execute("DELETE FROM chars WHERE id = ?", (char["id"], ))
         c.execute("DELETE FROM char_levelups WHERE char_id = ?", (char["id"], ))
         c.execute("DELETE FROM char_deaths WHERE char_id = ?", (char["id"], ))
-        yield from bot.say("**{0}** is no longer registered to you.".format(char["name"]))
+        yield from ctx.send("**{0}** is no longer registered to you.".format(char["name"]))
 
         user_servers = [s.id for s in get_user_servers(bot, ctx.message.author.id)]
         for server_id, world in tracked_worlds.items():
             if char["world"] == world and server_id in user_servers:
                 message = "{0} unregistered **{1}**".format(ctx.message.author.mention, char["name"])
-                yield from send_log_message(bot, bot.get_server(server_id), message)
+                yield from send_log_message(bot, bot.get_guild(server_id), message)
     finally:
         userDatabase.commit()
         c.close()
