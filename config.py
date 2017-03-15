@@ -52,7 +52,7 @@ highscores_categories = ["sword", "axe", "club", "distance", "shielding", "fist"
                          "magic_ek", "magic_rp", "loyalty", "achievements"]
 
 # Max amount of simultaneous images /loot can try to parse
-loot_max = 3
+loot_max = 6
 
 # Level threshold for announces (level < announceLevel)
 announce_threshold = 30
