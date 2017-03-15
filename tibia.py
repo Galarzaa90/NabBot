@@ -26,7 +26,6 @@ class Tibia:
         self.parsing_count = 0
 
     @commands.group(pass_context=True, invoke_without_command=True)
-    @checks.is_main_server()
     @checks.is_not_lite()
     @asyncio.coroutine
     def loot(self, ctx):
@@ -132,7 +131,6 @@ class Tibia:
 
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
     @checks.is_not_lite()
-    @checks.is_main_server()
     @asyncio.coroutine
     def loot_legend(self):
         """Shows the meaning of the overlayed icons."""
