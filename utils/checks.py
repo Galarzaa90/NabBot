@@ -43,7 +43,7 @@ def is_admin():
 def is_main_server():
     def predicate(ctx):
         if ctx.message.author.id in owner_ids:
-           return True
+            return True
         member = discord.utils.get(ctx.bot.get_all_members(), server__id=main_server)
         if member is None:
             return False

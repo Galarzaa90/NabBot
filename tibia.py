@@ -1754,7 +1754,7 @@ class Tibia:
         spell["vocs"] = join_list(vocs, ", ", " and ")
 
         description = "A {premium}spell for level **{levelrequired}** and up. " \
-                      "It uses **{manacost:,}** mana. It can be used by {vocs}".format(**spell)
+                      "It uses **{manacost}** mana. It can be used by {vocs}".format(**spell)
 
         if spell["goldcost"] == 0:
             description += "\nIt can be obtained for free."
