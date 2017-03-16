@@ -12,7 +12,7 @@ from utils.database import tracked_worlds
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone
 from utils.loot import loot_scan
 from utils.messages import EMOJI, split_message
-from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_servers, \
+from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_guilds, \
     FIELD_VALUE_LIMIT, get_user_worlds
 from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import *
@@ -609,7 +609,7 @@ class Tibia:
             return
 
         if ctx.message.channel.is_private:
-            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_servers = get_user_guilds(self.bot, ctx.message.author.id)
             user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
         else:
             user_servers = [ctx.message.server]
@@ -771,7 +771,7 @@ class Tibia:
             return
 
         if ctx.message.channel.is_private:
-            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_servers = get_user_guilds(self.bot, ctx.message.author.id)
             user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
         else:
             user_servers = [ctx.message.server]
@@ -840,7 +840,7 @@ class Tibia:
             return
 
         if ctx.message.channel.is_private:
-            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_servers = get_user_guilds(self.bot, ctx.message.author.id)
             user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
         else:
             user_servers = [ctx.message.server]
@@ -934,7 +934,7 @@ class Tibia:
             return
 
         if ctx.message.channel.is_private:
-            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_servers = get_user_guilds(self.bot, ctx.message.author.id)
             user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
         else:
             user_servers = [ctx.message.server]
@@ -999,7 +999,7 @@ class Tibia:
             return
 
         if ctx.message.channel.is_private:
-            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_servers = get_user_guilds(self.bot, ctx.message.author.id)
             user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
         else:
             user_servers = [ctx.message.server]
@@ -1112,7 +1112,7 @@ class Tibia:
             return
 
         if ctx.message.channel.is_private:
-            user_servers = get_user_servers(self.bot, ctx.message.author.id)
+            user_servers = get_user_guilds(self.bot, ctx.message.author.id)
             user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
         else:
             user_servers = [ctx.message.server]
@@ -1484,7 +1484,7 @@ class Tibia:
         if user is None:
             return ERROR_DOESNTEXIST
         # List of servers the user shares with the bot
-        user_servers = get_user_servers(self.bot, user.id)
+        user_servers = get_user_guilds(self.bot, user.id)
         # List of Tibia worlds tracked in the servers the user is
         if ctx.message.channel.is_private:
             user_tibia_worlds = [world for server, world in tracked_worlds.items() if

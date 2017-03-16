@@ -7,7 +7,7 @@ from discord.ext import commands
 from config import lite_mode, welcome_pm, ask_channel_name, log_channel_name
 from utils import checks
 from utils.database import *
-from utils.discord import get_channel_by_name, get_member, get_server_by_name, get_user_admin_servers
+from utils.discord import get_channel_by_name, get_member, get_guild_by_name, get_user_admin_guilds
 from utils.general import is_numeric
 from utils.messages import EMOJI
 from utils.tibia import tibia_worlds
@@ -24,7 +24,7 @@ class Admin:
     def diagnose(self, ctx: discord.ext.commands.Context, *, server_name=None):
         """Diagnose the bots permissions and channels"""
         # This will always have at least one server, otherwise this command wouldn't pass the is_admin check.
-        admin_servers = get_user_admin_servers(self.bot, ctx.message.author.id)
+        admin_servers = get_user_admin_guilds(self.bot, ctx.message.author.id)
 
         if server_name is None:
             if not ctx.message.channel.is_private:
@@ -59,7 +59,7 @@ class Admin:
                         return
 
         else:
-            server = get_server_by_name(self.bot, server_name)
+            server = get_guild_by_name(self.bot, server_name)
             if server is None:
                 yield from self.bot.say("I couldn't find a server with that name.")
                 return
@@ -149,7 +149,7 @@ class Admin:
         """Sets this server's Tibia world.
 
         If no world is passed, it shows this server's current assigned world."""
-        admin_servers = get_user_admin_servers(self.bot, ctx.message.author.id)
+        admin_servers = get_user_admin_guilds(self.bot, ctx.message.author.id)
 
         if not ctx.message.channel.is_private:
             if ctx.message.server not in admin_servers:
@@ -255,7 +255,7 @@ class Admin:
         {0.server.owner.name} - The name of the owner of the server the member joined
         {0.server.owner.mention} - A mention to the owner of the server
         {1.user.name} - The name of the bot"""
-        admin_servers = get_user_admin_servers(self.bot, ctx.message.author.id)
+        admin_servers = get_user_admin_guilds(self.bot, ctx.message.author.id)
 
         if not ctx.message.channel.is_private:
             if ctx.message.server not in admin_servers:
@@ -365,7 +365,7 @@ class Admin:
         """Changes the channel used for the bot's announcements
 
         If no channel is set, the bot will use the server's default channel."""
-        admin_servers = get_user_admin_servers(self.bot, ctx.message.author.id)
+        admin_servers = get_user_admin_guilds(self.bot, ctx.message.author.id)
 
         if not ctx.message.channel.is_private:
             if ctx.message.server not in admin_servers:

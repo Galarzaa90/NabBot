@@ -7,8 +7,8 @@ from utils.database import userDatabase, tracked_worlds
 from utils.messages import split_message
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
 from utils.general import is_numeric
-from utils.discord import get_member, get_member_by_name, get_user_servers, get_user_worlds, send_log_message, \
-    get_user_admin_servers, FIELD_VALUE_LIMIT
+from utils.discord import get_member, get_member_by_name, get_user_guilds, get_user_worlds, send_log_message, \
+    get_user_admin_guilds, FIELD_VALUE_LIMIT
 from utils import checks
 
 
@@ -113,14 +113,14 @@ class Mod:
 
         author = ctx.message.author
         if author.id in mod_ids+owner_ids:
-            author_servers = get_user_servers(self.bot, author.id)
+            author_servers = get_user_guilds(self.bot, author.id)
         else:
-            author_servers = get_user_admin_servers(self.bot, author.id)
+            author_servers = get_user_admin_guilds(self.bot, author.id)
         author_worlds = get_user_worlds(self.bot, author.id)
 
         # Only search in the servers the command author is
         user = get_member_by_name(self.bot, params[0], guild_list=author_servers)
-        user_servers = get_user_servers(self.bot, user.id)
+        user_servers = get_user_guilds(self.bot, user.id)
         user_worlds = get_user_worlds(self.bot, author.id)
 
         common_worlds = list(set(author_worlds) & set(user_worlds))
@@ -220,13 +220,13 @@ class Mod:
 
         author = ctx.message.author
         if author.id in mod_ids+owner_ids:
-            author_servers = get_user_servers(self.bot, author.id)
+            author_servers = get_user_guilds(self.bot, author.id)
         else:
-            author_servers = get_user_admin_servers(self.bot, author.id)
+            author_servers = get_user_admin_guilds(self.bot, author.id)
         author_worlds = get_user_worlds(self.bot, author.id)
 
         user = get_member_by_name(self.bot, params[0], guild_list=author_servers)
-        user_servers = get_user_servers(self.bot, user.id)
+        user_servers = get_user_guilds(self.bot, user.id)
         user_worlds = get_user_worlds(self.bot, user.id)
 
         common_worlds = list(set(author_worlds) & set(user_worlds))
@@ -362,7 +362,7 @@ class Mod:
             c.execute("DELETE FROM chars WHERE name LIKE ?", (name,))
             yield from self.bot.say("**{0}** was removed successfully from **@{1}**.".format(result["name"], username))
             if user is not None:
-                for server in get_user_servers(self.bot, user.id):
+                for server in get_user_guilds(self.bot, user.id):
                     world = tracked_worlds.get(server.id, None)
                     if world != result["world"]:
                         continue
@@ -637,9 +637,9 @@ class Mod:
 
         author = ctx.message.author
         if author.id in mod_ids+owner_ids:
-            author_servers = get_user_servers(self.bot, author.id)
+            author_servers = get_user_guilds(self.bot, author.id)
         else:
-            author_servers = get_user_admin_servers(self.bot, author.id)
+            author_servers = get_user_admin_guilds(self.bot, author.id)
 
         embed = discord.Embed(description="Members with unregistered users.")
 
