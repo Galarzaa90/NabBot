@@ -1321,7 +1321,7 @@ def event_edit_name(ctx, event_id: int, *, new_name):
     now = time.time()
     new_name = single_line(clean_string(ctx, new_name))
     try:
-        c.execute("SELECT creator FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
+        c.execute("SELECT creator, name FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
         event = c.fetchone()
         if not event:
             yield from bot.say("There are no active events with that ID.")
