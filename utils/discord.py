@@ -26,10 +26,10 @@ def get_channel_by_name(bot: discord.Client, name: str, guild: discord.Guild = N
     if guild is None and guild_name is not None:
         guild = get_guild_by_name(bot, guild_name)
     if guild is None:
-        channel = discord.utils.find(lambda m: m.name == name and not m.type == discord.ChannelType.voice,
+        channel = discord.utils.find(lambda m: m.name == name and not type(m) == discord.ChannelType.voice,
                                      bot.get_all_channels())
     else:
-        channel = discord.utils.find(lambda m: m.name == name and not m.type == discord.ChannelType.voice,
+        channel = discord.utils.find(lambda m: m.name == name and not type(m) == discord.ChannelType.voice,
                                      guild.channels)
     return channel
 

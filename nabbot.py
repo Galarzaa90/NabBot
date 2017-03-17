@@ -37,7 +37,7 @@ bot.remove_command("help")
 def on_ready():
     # bot.load_extension("tibia")
     # bot.load_extension("mod")
-    # bot.load_extension("owner")
+    bot.load_extension("cogs.owner")
     # bot.load_extension("admin")
     print('Logged in as')
     print(bot.user)
@@ -683,7 +683,7 @@ def announce_death(bot, death_level, death_killer, death_by_player, levels_lost=
     message = EMOJI[":skull_crossbones:"] + " " + message
 
     for server_id, tracked_world in tracked_worlds.items():
-        server = bot.get_server(server_id)
+        server = bot.get_guild(server_id)
         if char["world"] == tracked_world and server is not None \
                 and server.get_member(str(char["owner_id"])) is not None:
             yield from get_announce_channel(bot, server).send(message[:1].upper()+message[1:])
@@ -726,7 +726,7 @@ def announce_level(bot, new_level, char_name=None, char=None):
     message = EMOJI[":star2:"]+" "+message
 
     for server_id, tracked_world in tracked_worlds.items():
-        server = bot.get_server(server_id)
+        server = bot.get_guild(server_id)
         if char["world"] == tracked_world and server is not None \
                 and server.get_member(str(char["owner_id"])) is not None:
             yield from get_announce_channel(bot, server).send(message)
