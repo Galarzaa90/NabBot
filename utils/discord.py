@@ -133,7 +133,7 @@ def get_role_list(guild: discord.Guild):
     return roles
 
 
-def get_user_color(user: discord.User, guild: discord.Guild) -> discord.Colour:
+def get_user_color(user: discord.Member, guild: discord.Guild) -> discord.Colour:
     """Gets the user's color based on the highest role with a color"""
     # If it's a PM, server will be none
     if guild is None:

@@ -1,6 +1,8 @@
 import asyncio
 import discord
 
+from utils.discord import is_private
+
 
 class CannotPaginate(Exception):
     pass
@@ -37,7 +39,8 @@ class Paginator:
     permissions: discord.Permissions
         Our permissions for the channel.
     """
-    def __init__(self, bot, *, message, entries, per_page=10, title=None, description="", numerate=True):
+    def __init__(self, bot: discord.Client, *, message: discord.Message, entries, per_page=10, title=None,
+                 description="", numerate=True):
         self.bot = bot
         self.entries = entries
         self.message = message
@@ -58,9 +61,9 @@ class Paginator:
             ('\N{BLACK RIGHT-POINTING TRIANGLE}', self.next_page),
             ('\U000023F9', self.stop_pages)
         ]
-        server = self.message.server
-        if server is not None:
-            self.permissions = self.message.channel.permissions_for(server.me)
+        guild = self.message.guild
+        if guild is not None:
+            self.permissions = self.message.channel.permissions_for(guild.me)
         else:
             self.permissions = self.message.channel.permissions_for(self.bot.user)
 
@@ -88,11 +91,11 @@ class Paginator:
 
         self.embed.description = self.description+"\n"+'\n'.join(p)
         if not self.paginating:
-            ret = yield from self.bot.send_message(self.message.channel, embed=self.embed)
+            ret = yield from self.message.channel.send(embed=self.embed)
             return ret
 
         if not first:
-            yield from self.bot.edit_message(self.message, embed=self.embed)
+            yield from self.message.edit(embed=self.embed)
             return
 
         # verify we can actually use the pagination session
@@ -101,7 +104,7 @@ class Paginator:
         if not self.permissions.read_message_history:
             raise CannotPaginate("Bot does not have read message history permission.")
 
-        self.message = yield from self.bot.send_message(self.message.channel, embed=self.embed)
+        self.message = yield from self.message.channel.send(embed=self.embed)
         for (reaction, _) in self.reaction_emojis:
             if self.maximum_pages == 2 and reaction in ('\u23ed', '\u23ee'):
                 # no |<< or >>| buttons if we only have two pages
@@ -109,7 +112,7 @@ class Paginator:
                 # it from the default set
                 continue
 
-            yield from self.bot.add_reaction(self.message, reaction)
+            yield from self.message.add_reaction(reaction)
 
     @asyncio.coroutine
     def checked_show_page(self, page):
@@ -146,14 +149,14 @@ class Paginator:
         """stops the interactive pagination session"""
         # yield from self.bot.delete_message(self.message)
         try:
-            yield from self.bot.clear_reactions(self.message)
+            yield from self.message.clear_reactions()
         except:
             pass
         yield from self.show_page(1)
         self.paginating = False
 
     def react_check(self, reaction, user):
-        if not self.message.channel.is_private and user.id != self.author.id:
+        if not is_private(self.message.channel) and user.id != self.author.id:
             return False
 
         for (emoji, func) in self.reaction_emojis:
@@ -168,19 +171,21 @@ class Paginator:
         yield from self.show_page(1, first=True)
 
         while self.paginating:
-            react = yield from self.bot.wait_for_reaction(message=self.message, check=self.react_check, timeout=120.0)
-            if react is None:
+            try:
+                react = yield from self.bot.wait_for("reaction_add", check=self.react_check, timeout=120.0)
+                try:
+                    yield from self.message.remove_reaction(react[0].emoji, react[1])
+                except Exception as e:
+                    print(e)
+                    pass  # can't remove it so don't bother doing so
+            except asyncio.TimeoutError:
                 yield from self.first_page()
                 self.paginating = False
                 try:
-                    yield from self.bot.clear_reactions(self.message)
+                    yield from self.message.clear_reactions()
                 except:
                     pass
                 finally:
                     break
-            try:
-                yield from self.bot.remove_reaction(self.message, react.reaction.emoji, react.user)
-            except:
-                pass  # can't remove it so don't bother doing so
 
             yield from self.match()

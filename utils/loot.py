@@ -297,7 +297,7 @@ def slot_scan(slot_item, slot_item_size, item_list, group_list, quality):
 
 
 @asyncio.coroutine
-def find_slots(bot, loot_image, progress_bar):
+def find_slots(loot_image, progress_bar):
     _lootImage = loot_image.copy()
     loot_bytes = loot_image.tobytes()
     slot_list = []
@@ -309,7 +309,7 @@ def find_slots(bot, loot_image, progress_bar):
         percent_message = ""
         percent_message += EMOJI[":black_square_button:"]*progress_percent
         percent_message += EMOJI[":black_large_square:"]*(10-progress_percent)
-        yield from bot.edit_message(progress_bar, percent_message)
+        yield from progress_bar.edit(content=percent_message)
     x = -1
     y = 0
     skip = False
@@ -322,7 +322,7 @@ def find_slots(bot, loot_image, progress_bar):
                     percent_message = ""
                     percent_message += EMOJI[":black_square_button:"]*progress_percent
                     percent_message += EMOJI[":black_large_square:"]*(10-progress_percent)
-                    yield from bot.edit_message(progress_bar, percent_message)
+                    yield from progress_bar.edit(content=percent_message)
             y += 1
             x = 0
             yield from asyncio.sleep(0.0001)
@@ -369,7 +369,7 @@ def find_slots(bot, loot_image, progress_bar):
 
 
 @asyncio.coroutine
-def loot_scan(bot, loot_image, image_name, progress_msg, progress_bar):
+def loot_scan(loot_image, image_name, progress_msg, progress_bar):
     debug_output = image_name
     debug_outputex = 0
     while os.path.exists("loot/debug/"+str(debug_outputex)+"_"+debug_output):
@@ -388,8 +388,8 @@ def loot_scan(bot, loot_image, image_name, progress_msg, progress_bar):
                    'NoValue': Image.open("./images/NoValue.png"),
                    'Unknown': Image.open("./images/Unknown.png")}
 
-    yield from bot.edit_message(progress_msg, "Status: Detecting item slots.")
-    slot_list = yield from find_slots(bot, loot_image, progress_bar)
+    yield from progress_msg.edit(content="Status: Detecting item slots.")
+    slot_list = yield from find_slots(loot_image, progress_bar)
     c = lootDatabase.cursor()
     group_list = {}
     loot_list = {}
@@ -401,8 +401,8 @@ def loot_scan(bot, loot_image, image_name, progress_msg, progress_bar):
     quality_warning = 0
     percent_message += EMOJI[":black_square_button:"]*progress_percent
     percent_message += EMOJI[":black_large_square:"]*(10-progress_percent)
-    yield from bot.edit_message(progress_msg, "Status: Scanning items.")
-    yield from bot.edit_message(progress_bar, percent_message)
+    yield from progress_msg.edit(content="Status: Scanning items.")
+    yield from progress_bar.edit(content=percent_message)
     for found_slot in slot_list:
         found_item_number, found_item, item_number_image = numberScan(found_slot['image'])
         result = "Unknown"
@@ -465,7 +465,10 @@ def loot_scan(bot, loot_image, image_name, progress_msg, progress_bar):
             if quality > 2 and not result in unknown_items_list and not result in lq_items_list:
                 quality_warning += 1
                 if quality_warning == 5:
-                    yield from bot.send_message(progress_bar.channel,"WARNING: You seem to be using a low quality image, or a screenshot taken using Tibia's **software** renderer. Some items may not be recognized correctly, and overall scanning speed will be slower!")
+                    yield from progress_bar.channel.send("WARNING: You seem to be using a low quality image, or a "
+                                                         "screenshot taken using Tibia's **software** renderer. Some "
+                                                         "items may not be recognized correctly, and overall scanning "
+                                                         "speed will be slower!")
                 lq_item = result
                 img_byte_arr = io.BytesIO()
                 qz_item.save(img_byte_arr, format='png')
@@ -502,18 +505,17 @@ def loot_scan(bot, loot_image, image_name, progress_msg, progress_bar):
             
             overlay = Image.alpha_composite(loot_image.crop((found_slot['x'], found_slot['y'], found_slot['x'] + 34, found_slot['y'] + 34)), groupimages.get(result['group'], groupimages['Other']) if result['value'] > 0 or result['group'] == "Unknown" else groupimages['NoValue'])
             loot_image.paste(overlay, (found_slot['x'], found_slot['y']))
-            
-        
+
         progress += 1
         if int(progress/len(slot_list)*100/10) != progress_percent:
             progress_percent = int(progress/len(slot_list)*100/10)
             percent_message = ""
             percent_message += EMOJI[":black_square_button:"] * progress_percent
             percent_message += EMOJI[":black_large_square:"] * (10 - progress_percent)
-            yield from bot.edit_message(progress_msg, "Status: Scanning items (" + str(progress) + "/" + str(len(slot_list)) + ").")
-            yield from bot.edit_message(progress_bar, percent_message)
+            yield from progress_msg.edit(content="Status: Scanning items (" + str(progress) + "/" + str(len(slot_list)) + ").")
+            yield from progress_bar.edit(content=percent_message)
         yield from asyncio.sleep(0.005)
-    yield from bot.edit_message(progress_msg, "Status: Complete!")
+    yield from progress_msg.edit(content="Status: Complete!")
     c.close()
     lootDatabase.commit()
     img_byte_arr = io.BytesIO()
