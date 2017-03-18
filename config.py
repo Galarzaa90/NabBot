@@ -27,7 +27,7 @@ main_server = 159815897052086272
 #       0.server.owner.mention - A mention to the owner of the server the member joined
 # 1 is the bot's object, examples:
 #       1.user.name - The bot's name
-welcome_pm = "Welcome to **{0.server.name}**! I'm **{1.user.name}**, to learn more about my commands type `/help`\n" \
+welcome_pm = "Welcome to **{0.guild.name}**! I'm **{1.user.name}**, to learn more about my commands type `/help`\n" \
              "Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking " \
              "your level ups and deaths!"
 
