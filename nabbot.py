@@ -38,7 +38,7 @@ def on_ready():
     bot.load_extension("cogs.owner")
     bot.load_extension("cogs.admin")
     bot.load_extension("cogs.tibia")
-    # bot.load_extension("mod")
+    bot.load_extension("cogs.mod")
     print('Logged in as')
     print(bot.user)
     print(bot.user.id)
