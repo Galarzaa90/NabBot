@@ -120,7 +120,7 @@ def get_highscores(server,category,pagenum, profession=0, tries=5):
 
 
 @asyncio.coroutine
-def get_server_online(server, tries=5):
+def get_world_online(server, tries=5):
     """Returns a list of all the online players in current server.
 
     Each list element is a dictionary with the following keys: name, level"""
@@ -140,7 +140,7 @@ def get_server_online(server, tries=5):
         else:
             tries -= 1
             yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_server_online(server, tries)
+            ret = yield from get_world_online(server, tries)
             return ret
 
     while not content and tries > 0:
@@ -164,7 +164,7 @@ def get_server_online(server, tries=5):
         else:
             tries -= 1
             yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_server_online(server, tries)
+            ret = yield from get_world_online(server, tries)
             return ret
 
     regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td>'

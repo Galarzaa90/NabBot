@@ -200,7 +200,7 @@ def reload_worlds():
             for row in result:
                 if row["value"] not in tracked_worlds_list:
                     tracked_worlds_list.append(row["value"])
-                tibia_servers_dict_temp[row["server_id"]] = row["value"]
+                tibia_servers_dict_temp[int(row["server_id"])] = row["value"]
 
         tracked_worlds.clear()
         tracked_worlds.update(tibia_servers_dict_temp)
@@ -216,7 +216,7 @@ def reload_welcome_messages():
         result = c.fetchall()
         if len(result) > 0:
             for row in result:
-                welcome_messages_temp[row["server_id"]] = row["value"]
+                welcome_messages_temp[int(row["server_id"])] = row["value"]
         welcome_messages.clear()
         welcome_messages.update(welcome_messages_temp)
     finally:
@@ -231,7 +231,7 @@ def reload_announce_channels():
         result = c.fetchall()
         if len(result) > 0:
             for row in result:
-                announce_channels_temp[row["server_id"]] = row["value"]
+                announce_channels_temp[int(row["server_id"])] = row["value"]
         announce_channels.clear()
         announce_channels.update(announce_channels_temp)
     finally:

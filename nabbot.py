@@ -23,7 +23,7 @@ from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
     weighedChoice, formatMessage
-from utils.tibia import get_server_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, \
+from utils.tibia import get_world_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, \
     get_voc_abb, get_highscores, tibia_worlds, get_pronouns, parse_tibia_time, get_voc_emoji
 
 description = '''Mission: Destroy all humans.'''
@@ -59,11 +59,11 @@ def on_ready():
             yield from user.send("Restart complete")
 
     # Background tasks
-    # bot.loop.create_task(game_update())
-    # bot.loop.create_task(events_announce())
-    # bot.loop.create_task(scan_deaths())
-    # bot.loop.create_task(scan_online_chars())
-    # bot.loop.create_task(scan_highscores())
+    bot.loop.create_task(game_update())
+    bot.loop.create_task(events_announce())
+    bot.loop.create_task(scan_deaths())
+    bot.loop.create_task(scan_online_chars())
+    bot.loop.create_task(scan_highscores())
 
 
 @bot.event
@@ -507,27 +507,27 @@ def scan_online_chars():
     yield from bot.wait_until_ready()
     while not bot.is_closed:
         # Pop last server in queue, reinsert it at the beginning
-        current_server = tibia_worlds.pop()
-        tibia_worlds.insert(0, current_server)
+        current_world = tibia_worlds.pop()
+        tibia_worlds.insert(0, current_world)
 
-        if current_server.capitalize() not in tracked_worlds_list:
+        if current_world.capitalize() not in tracked_worlds_list:
             yield from asyncio.sleep(0.1)
             continue
 
         yield from asyncio.sleep(online_scan_interval)
         # Get online list for this server
-        current_server_online = yield from get_server_online(current_server)
+        curent_world_online = yield from get_world_online(current_world)
 
-        if len(current_server_online) > 0:
+        if len(curent_world_online) > 0:
             # Open connection to users.db
             c = userDatabase.cursor()
 
             # Remove chars that are no longer online from the globalOnlineList
             offline_list = []
             for char in global_online_list:
-                if char.split("_", 1)[0] == current_server:
+                if char.split("_", 1)[0] == current_world:
                     offline = True
-                    for server_char in current_server_online:
+                    for server_char in curent_world_online:
                         if server_char['name'] == char.split("_", 1)[1]:
                             offline = False
                             break
@@ -557,7 +557,7 @@ def scan_online_chars():
                     yield from check_death(bot, now_offline_char['name'])
 
             # Add new online chars and announce level differences
-            for server_char in current_server_online:
+            for server_char in curent_world_online:
                 c.execute("SELECT name, last_level, id, user_id FROM chars WHERE name LIKE ?", (server_char['name'],))
                 result = c.fetchone()
                 if result:
@@ -569,10 +569,10 @@ def scan_online_chars():
                         (server_char['level'], server_char['name'],)
                     )
 
-                    if not (current_server + "_" + server_char['name']) in global_online_list:
+                    if not (current_world + "_" + server_char['name']) in global_online_list:
                         # If the character wasn't in the globalOnlineList we add them
                         # (We insert them at the beginning of the list to avoid messing with the death checks order)
-                        global_online_list.insert(0, (current_server + "_" + server_char['name']))
+                        global_online_list.insert(0, (current_world + "_" + server_char['name']))
                         # Since this is the first time we see them online we flag their last death time
                         # to avoid backlogged death announces
                         c.execute(
@@ -685,7 +685,7 @@ def announce_death(bot, death_level, death_killer, death_by_player, levels_lost=
     for server_id, tracked_world in tracked_worlds.items():
         server = bot.get_guild(server_id)
         if char["world"] == tracked_world and server is not None \
-                and server.get_member(str(char["owner_id"])) is not None:
+                and server.get_member(char["owner_id"]) is not None:
             yield from get_announce_channel(bot, server).send(message[:1].upper()+message[1:])
 
 
@@ -728,7 +728,7 @@ def announce_level(bot, new_level, char_name=None, char=None):
     for server_id, tracked_world in tracked_worlds.items():
         server = bot.get_guild(server_id)
         if char["world"] == tracked_world and server is not None \
-                and server.get_member(str(char["owner_id"])) is not None:
+                and server.get_member(char["owner_id"]) is not None:
             yield from get_announce_channel(bot, server).send(message)
 
 
@@ -744,7 +744,7 @@ def help(ctx, *commands: str):
     _mention_pattern = re.compile('|'.join(_mentions_transforms.keys()))
 
     bot = ctx.bot
-    destination = ctx.message.channel if isinstance(ctx.message.channel, abc.PrivateChannel) or ctx.message.channel.name == ask_channel_name else ctx.message.author
+    destination = ctx.message.channel if is_private(ctx.message.channel) or ctx.message.channel.name == ask_channel_name else ctx.message.author
 
     def repl(obj):
         return _mentions_transforms.get(obj.group(0), '')
@@ -958,7 +958,7 @@ def imnot(ctx, *, name):
         if char is None:
             yield from ctx.send("There's no character registered with that name.")
             return
-        if str(char["user_id"]) != ctx.message.author.id:
+        if char["user_id"] != ctx.message.author.id:
             yield from ctx.send("The character **{0}** is not registered to you.".format(char["name"]))
             return
 
