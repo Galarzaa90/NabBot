@@ -1456,7 +1456,9 @@ deathmessages_monster = [
      False, False, ["midnight asura", "dawnfire asura"]],
     [20000,
      "Watch out for that **{deathKiller}**'s wav... Oh"+EMOJI[":neutral_face:"]+"... Rest in peace **{charName}** ({deathLevel}).",
-     False, False, ["hellhound", "hellfire fighter", "dragon lord", "undead dragon", "dragon", "draken spellweaver"]]
+     False, False, ["hellhound", "hellfire fighter", "dragon lord", "undead dragon", "dragon", "draken spellweaver"]],
+    [10000, "Oh look at that, rest in peace **{charName]**,  ^that ^**{deathKiller}** really got you. Hope you get your"
+            " level back", False, False, False, range(1, 10)]
 ]
 # deaths by player
 deathmessages_player = [[100, "**{charName}** ({deathLevel}) got rekt! **{deathKiller}** ish pekay!"],
@@ -1464,7 +1466,7 @@ deathmessages_player = [[100, "**{charName}** ({deathLevel}) got rekt! **{deathK
                         [100, "Next time stay away from **{deathKiller}**, **{charName}** ({deathLevel})."]]
 
 
-def formatMessage(message) -> str:
+def format_message(message) -> str:
     """##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/"""
     upper = r'\\(.+?)/'
     upper = re.compile(upper, re.MULTILINE + re.S)
@@ -1483,46 +1485,39 @@ def formatMessage(message) -> str:
     return message
 
 
-def weighedChoice(messages, condition1=False, condition2=False, condition3=False, condition4=False) -> str:
+def weighed_choice(choices, level:int, vocation: str = None, killer:str = None, levels_lost:int = 0) -> str:
     """Makes weighed choices from message lists where [0] is a value representing the relative odds
     of picking a message and [1] is the message string"""
 
     # Find the max range by adding up the weigh of every message in the list
     # and purge out messages that dont fulfil the conditions
-    range = 0
+    weight_range = 0
     _messages = []
-    for message in messages:
-        if len(message) == 6:
-            if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]) and (
-                not message[4] or condition3 in message[4]) and (not message[5] or condition4 in message[5]):
-                range = range + (message[0] if not message[1] in lastmessages else message[0] / 10)
-                _messages.append(message)
-        elif len(message) == 5:
-            if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]) and (
-                not message[4] or condition3 in message[4]):
-                range = range + (message[0] if not message[1] in lastmessages else message[0] / 10)
-                _messages.append(message)
-        elif len(message) == 4:
-            if (not message[2] or condition1 in message[2]) and (not message[3] or condition2 in message[3]):
-                range = range + (message[0] if not message[1] in lastmessages else message[0] / 10)
-                _messages.append(message)
-        elif len(message) == 3:
-            if (not message[2] or condition1 in message[2]):
-                range = range + (message[0] if not message[1] in lastmessages else message[0] / 10)
-                _messages.append(message)
-        else:
-            range = range + (message[0] if not message[1] in lastmessages else message[0] / 10)
+    for message in choices:
+        match = True
+        try:
+            if message[2] and vocation not in message[2]:
+                match = False
+            if message[3] and level not in message[3]:
+                match = False
+            if message[4] and killer not in message[4]:
+                match = False
+            if message[5] and levels_lost not in message[5]:
+                match = False
+        except IndexError:
+            pass
+        if match:
+            weight_range = weight_range + (message[0] if not message[1] in lastmessages else message[0] / 10)
             _messages.append(message)
     # Choose a random number
-    rangechoice = random.randint(0, range)
+    rangechoice = random.randint(0, weight_range)
     # Iterate until we find the matching message
-    rangepos = 0
+    range_pos = 0
     for message in _messages:
-        if rangepos <= rangechoice < rangepos + (message[0] if not message[1] in lastmessages else message[0] / 10):
-            currentChar = lastmessages.pop()
+        if range_pos <= rangechoice < range_pos + (message[0] if not message[1] in lastmessages else message[0] / 10):
             lastmessages.insert(0, message[1])
             return message[1]
-        rangepos = rangepos + (message[0] if not message[1] in lastmessages else message[0] / 10)
+        range_pos = range_pos + (message[0] if not message[1] in lastmessages else message[0] / 10)
     # This shouldnt ever happen...
     print("Error in weighedChoice!")
     return _messages[0][1]

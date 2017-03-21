@@ -22,7 +22,7 @@ from utils.general import command_list, join_list, get_uptime, TimeString, \
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
-    weighedChoice, formatMessage
+    weighed_choice, format_message
 from utils.tibia import get_world_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, \
     get_voc_abb, get_highscores, tibia_worlds, get_pronouns, parse_tibia_time, get_voc_emoji
 
@@ -672,14 +672,19 @@ def announce_death(bot, death_level, death_killer, death_by_player, levels_lost=
 
     # Select a message
     # Todo: Add levels lost to weighedChoice, is always 0 or greater.
-    message = weighedChoice(deathmessages_player, char['vocation'], int(death_level)) if death_by_player else weighedChoice(deathmessages_monster, char['vocation'], int(death_level), death_killer)
+    if death_by_player:
+        message = weighed_choice(deathmessages_player, vocation=char['vocation'], level=int(death_level),
+                                 levels_lost=levels_lost)
+    else:
+        message = weighed_choice(deathmessages_monster, vocation=char['vocation'], level=int(death_level),
+                                 levels_lost=levels_lost, killer=death_killer)
     # Format message with death information
     deathInfo = {'charName': char["name"], 'deathLevel': death_level, 'deathKiller': death_killer,
                  'deathKillerArticle': death_killer_article, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
                  'pronoun3': pronoun[2]}
     message = message.format(**deathInfo)
     # Format extra stylization
-    message = formatMessage(message)
+    message = format_message(message)
     message = EMOJI[":skull_crossbones:"] + " " + message
 
     for server_id, tracked_world in tracked_worlds.items():
@@ -716,13 +721,13 @@ def announce_level(bot, new_level, char_name=None, char=None):
     pronoun = get_pronouns(char['gender'])
 
     # Select a message
-    message = weighedChoice(levelmessages, char['vocation'], int(new_level))
+    message = weighed_choice(levelmessages, vocation=char['vocation'], level=int(new_level))
     # Format message with level information
     level_info = {'charName': char["name"], 'newLevel': new_level, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
                  'pronoun3': pronoun[2]}
     message = message.format(**level_info)
     # Format extra stylization
-    message = formatMessage(message)
+    message = format_message(message)
     message = EMOJI[":star2:"]+" "+message
 
     for server_id, tracked_world in tracked_worlds.items():
