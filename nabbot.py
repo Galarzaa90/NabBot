@@ -16,13 +16,15 @@ from utils import checks
 from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, tracked_worlds_list, \
     reload_welcome_messages, welcome_messages, reload_announce_channels
 from utils.discord import get_member, send_log_message, get_region_string, get_user_guilds, \
-    clean_string, get_role_list, get_member_by_name, get_announce_channel, get_user_worlds, is_private
+    clean_string, get_role_list, get_member_by_name, get_announce_channel, get_user_worlds, is_private, get_role, \
+    get_channel_by_name
 from utils.general import command_list, join_list, get_uptime, TimeString, \
     single_line, is_numeric, getLogin, start_time, global_online_list
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
     weighed_choice, format_message
+from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import get_world_online, get_character, ERROR_NETWORK, ERROR_DOESNTEXIST, \
     get_voc_abb, get_highscores, tibia_worlds, get_pronouns, parse_tibia_time, get_voc_emoji
 
@@ -1663,21 +1665,24 @@ def info_server(ctx):
 
 @bot.command(no_pm=True)
 @asyncio.coroutine
-def roles(ctx, *userName:str):
-    """Shows a list of roles or an user's roles"""
-    userName = " ".join(userName).strip()
+def roles(ctx, *user_name:str):
+    """Shows a list of roles or an user's roles
+
+    If no user_name is specified, it shows a list of the server's role.
+    If user_name is specified, it shows a list of that user's roles."""
+    user_name = " ".join(user_name).strip()
     msg = "These are the active roles for "
 
-    if not userName:
+    if not user_name:
         msg += "this server:\r\n"
 
         for role in get_role_list(ctx.message.guild):
             msg += role.name + "\r\n"
     else:
-        member = get_member_by_name(bot, userName)
+        member = get_member_by_name(bot, user_name)
 
         if member is None:
-            msg = "I don't see any user named **" + userName + "**. \r\n"
+            msg = "I don't see any user named **" + user_name + "**. \r\n"
             msg += "I can only check roles from an username registered on this server."
         else:
             msg += "**" + member.display_name + "**:\r\n"
@@ -1702,19 +1707,38 @@ def roles(ctx, *userName:str):
 
 @bot.command(no_pm=True)
 @asyncio.coroutine
-def role(ctx, *roleName: str):
-    """Shows member list within the specified role"""
-    roleName = " ".join(roleName).strip()
-    lowerRoleName = roleName.lower()
-    roleDict = {}
+def role(ctx, *, name: str=None):
+    """Shows a list of members with that role"""
+    if name is None:
+        yield from ctx.send("You must tell me the name of a role.")
+    role = get_role(ctx.message.guild, role_name=name)
+    if role is None:
+        yield from ctx.send("There's no role with that name in here.")
 
-    # Need to get all roles and check all members because there's
-    # no API call like role.getMembers
-    for role in get_role_list(ctx.message.guild):
-        if role.name.lower() == lowerRoleName:
-            roleDict[role] = []
+    role_members = []
+    # Iterate through each member, adding the ones that contain the role to a list
+    for member in ctx.message.guild.members:
+        for r in member.roles:
+            if r == role:
+                role_members.append(member.display_name)
+                break
+    if not role_members:
+        yield from ctx.send("Seems like there are no members with that role.")
 
-    if len(roleDict) > 0:
+    title = "Members with the role '{0.name}'".format(role)
+    ask_channel = get_channel_by_name(bot, ask_channel_name, ctx.message.guild)
+    if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+        per_page = 20
+    else:
+        per_page = 5
+    pages = Paginator(bot, message=ctx.message, entries=role_members, per_page=per_page, title=title, color=role.colour)
+    try:
+        yield from pages.paginate()
+    except CannotPaginate as e:
+        yield from ctx.send(e)
+
+
+    """if len(roleDict) > 0:
         # Check every member and add to dict for each role he is in
         # In this case, the dict will only have the specific role searched
         for member in ctx.message.guild.members:
@@ -1722,10 +1746,10 @@ def role(ctx, *roleName: str):
                 if role in roleDict:
                     roleDict[role].append(member.display_name)
                     # Getting the name directly from server to respect case
-                    roleName = role.name
+                    name = role.name
 
         # Create return message
-        msg = "These are the members from **" + roleName + "**:\r\n"
+        msg = "These are the members from **" + name + "**:\r\n"
 
         for key, value in roleDict.items():
             if len(value) < 1:
@@ -1737,8 +1761,7 @@ def role(ctx, *roleName: str):
         yield from ctx.send(msg)
     else:
         yield from ctx.send("I couldn't find a role with that name.")
-
-    return
+    return"""
 
 
 @asyncio.coroutine

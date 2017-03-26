@@ -40,7 +40,7 @@ class Paginator:
         Our permissions for the channel.
     """
     def __init__(self, bot: discord.Client, *, message: discord.Message, entries, per_page=10, title=None,
-                 description="", numerate=True):
+                 description="", numerate=True, color: discord.Colour=None):
         self.bot = bot
         self.entries = entries
         self.message = message
@@ -55,6 +55,8 @@ class Paginator:
             pages += 1
         self.maximum_pages = pages
         self.embed = discord.Embed()
+        if color is not None:
+            self.embed.colour = color
         self.paginating = len(entries) > per_page
         self.reaction_emojis = [
             ('\N{BLACK LEFT-POINTING TRIANGLE}', self.previous_page),

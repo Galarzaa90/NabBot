@@ -113,12 +113,15 @@ def send_log_message(bot: discord.Client, guild: discord.Guild, content=None, em
     yield from channel.send(content=content, embed=embed)
 
 
-def get_role(server: discord.Guild, role_id) -> discord.Role:
+def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -> discord.Role:
     """Returns a role matching the id in a server"""
-    if server is not None:
-        for role in server.roles:
-            if role.id == role_id:
-                return role
+    if guild is None:
+        raise ValueError("guild is None")
+    if role_id is None and role_name is None:
+        raise ValueError("Either role_id or role_name must be specified")
+    for role in guild.roles:
+        if role.id == role_id or role.name.lower() == role_name.lower():
+            return role
     return None
 
 
@@ -129,8 +132,8 @@ def get_role_list(guild: discord.Guild):
         # Ignore @everyone and NabBot
         if role.name not in ["@everyone", "Nab Bot"]:
             roles.append(role)
-
     return roles
+
 
 
 def get_user_color(user: discord.Member, guild: discord.Guild) -> discord.Colour:
