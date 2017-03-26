@@ -267,7 +267,7 @@ def events_announce():
     if lite_mode:
         return
     yield from bot.wait_until_ready()
-    while not bot.is_closed:
+    while not bot.is_closed():
         """Announces when an event is close to starting."""
         first_announcement = 60*30
         second_announcement = 60*15
@@ -434,7 +434,7 @@ def scan_deaths():
     if lite_mode:
         return
     yield from bot.wait_until_ready()
-    while not bot.is_closed:
+    while not bot.is_closed():
         yield from asyncio.sleep(death_scan_interval)
         if len(global_online_list) == 0:
             continue
@@ -457,7 +457,7 @@ def scan_highscores():
     if lite_mode:
         return
     yield from bot.wait_until_ready()
-    while not bot.is_closed:
+    while not bot.is_closed():
         if len(tracked_worlds_list) == 0:
             # If no worlds are tracked, just sleep, worlds might get registered later
             yield from asyncio.sleep(highscores_delay)
@@ -507,7 +507,7 @@ def scan_online_chars():
     if lite_mode:
         return
     yield from bot.wait_until_ready()
-    while not bot.is_closed:
+    while not bot.is_closed():
         # Pop last server in queue, reinsert it at the beginning
         current_world = tibia_worlds.pop()
         tibia_worlds.insert(0, current_world)
@@ -1583,7 +1583,7 @@ def event_subscribe(ctx, event_id: int):
     now = time.time()
     try:
         # If this is used on a PM, show events for all shared servers
-        if ctx.message.channel.is_private:
+        if is_private(ctx.message.channel):
             guilds = get_user_guilds(bot, ctx.message.author.id)
         else:
             guilds = [ctx.message.guild]
@@ -1665,27 +1665,24 @@ def info_server(ctx):
 
 @bot.command(no_pm=True)
 @asyncio.coroutine
-def roles(ctx, *user_name:str):
+def roles(ctx, *, user_name: str = None):
     """Shows a list of roles or an user's roles
 
     If no user_name is specified, it shows a list of the server's role.
     If user_name is specified, it shows a list of that user's roles."""
-    user_name = " ".join(user_name).strip()
     msg = "These are the active roles for "
 
-    if not user_name:
-        msg += "this server:\r\n"
+    if user_name is None:
+        msg += "this server:\n"
 
         for role in get_role_list(ctx.message.guild):
-            msg += role.name + "\r\n"
+            msg += role.name + "\n"
     else:
-        member = get_member_by_name(bot, user_name)
-
+        member = get_member_by_name(bot, user_name, ctx.message.guild)
         if member is None:
-            msg = "I don't see any user named **" + user_name + "**. \r\n"
-            msg += "I can only check roles from an username registered on this server."
+            yield from ctx.send("I don't see any user named **" + user_name + "**.")
         else:
-            msg += "**" + member.display_name + "**:\r\n"
+            msg += "**"+member.display_name+"**:\n"
             roles = []
 
             # Ignoring "default" roles
@@ -1700,7 +1697,6 @@ def roles(ctx, *user_name:str):
                     msg += roleName + "\r\n"
             else:
                 msg = "There are no active roles for **" + member.display_name + "**."
-
     yield from ctx.send(msg)
     return
 
@@ -1770,7 +1766,7 @@ def game_update():
                  "with my toy humans", "with fire"+EMOJI[":fire:"], "God", "innocent", "the part", "hard to get",
                  "with my human minions", "Singularity", "Portal 3", "Dank Souls"]
     yield from bot.wait_until_ready()
-    while not bot.is_closed:
+    while not bot.is_closed():
         yield from bot.change_presence(game=discord.Game(name=random.choice(game_list)))
         yield from asyncio.sleep(60*20)  # Change game every 20 minutes
 
