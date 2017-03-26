@@ -9,7 +9,7 @@ userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
 lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 10
+DB_LASTVERSION = 11
 
 # Dictionary of worlds tracked by nabbot, key:value = server_id:world
 # Dictionary is populated from database
@@ -163,6 +163,10 @@ def init_database():
             c.execute("ALTER TABLE chars ADD magic_rp INTEGER")
             c.execute("ALTER TABLE chars ADD magic_ek_rank INTEGER")
             c.execute("ALTER TABLE chars ADD magic_rp_rank INTEGER")
+            db_version += 1
+        if db_version == 10:
+            # Added 'guild' column to 'chars'
+            c.execute("ALTER TABLE chars ADD guild TEXT")
             db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))

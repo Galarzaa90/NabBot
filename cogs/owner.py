@@ -1,3 +1,5 @@
+import traceback
+
 from discord.ext import commands
 import platform
 
@@ -62,8 +64,8 @@ class Owner:
             result = eval(code, env)
             if asyncio.iscoroutine(result):
                 result = yield from result
-        except Exception as e:
-            yield from ctx.send(python.format(type(e).__name__ + ': ' + str(e)))
+        except Exception:
+            yield from ctx.send(python.format(traceback.format_exc()))
             return
 
         yield from ctx.send(python.format(result))

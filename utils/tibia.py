@@ -6,8 +6,7 @@ from PIL import Image
 from PIL import ImageDraw
 from discord import Colour
 import datetime
-import urllib
-import urllib.request
+import urllib.parse
 import aiohttp
 import re
 from datetime import datetime, date, timedelta
@@ -349,9 +348,9 @@ def get_character(name, tries=5):
 
     # Trimming content to reduce load
     try:
-        startIndex = content.index('<div class="BoxContent"')
-        endIndex = content.index("<B>Search Character</B>")
-        content = content[startIndex:endIndex]
+        start_index = content.index('<div class="BoxContent"')
+        end_index = content.index("<B>Search Character</B>")
+        content = content[start_index:end_index]
     except ValueError:
         # Website fetch was incomplete, due to a network error
         if tries == 0:
@@ -420,6 +419,7 @@ def get_character(name, tries=5):
         else:
             char['gender'] = 'female'
 
+    char["guild"] = None
     # Guild rank
     m = re.search(r'Membership:</td><td>([^<]+)\sof the', content)
     if m:
@@ -455,7 +455,7 @@ def get_character(name, tries=5):
 
     # Update name, vocation and world for chars in database if necessary
     c = userDatabase.cursor()
-    c.execute("SELECT vocation, name, id, world FROM chars WHERE name LIKE ?", (name,))
+    c.execute("SELECT vocation, name, id, world, guild FROM chars WHERE name LIKE ?", (name,))
     result = c.fetchone()
     if result:
         if result["vocation"] != char['vocation']:
@@ -472,6 +472,11 @@ def get_character(name, tries=5):
             log.info("{0}'s world was set to {1} from {2} during get_character()".format(char['name'],
                                                                                          char['world'],
                                                                                          result["world"]))
+        if result["guild"] != char["guild"]:
+            c.execute("UPDATE chars SET guild = ? WHERE id = ?", (char['guild'], result["id"],))
+            log.info("{0}'s guild was set to {1} from {2} during get_character()".format(char['name'],
+                                                                                         char['guild'],
+                                                                                         result["guild"]))
 
     #Skills from highscores
     c = userDatabase.cursor()
@@ -519,8 +524,8 @@ def get_character(name, tries=5):
     char['chars'] = []
     try:
         # See if there is a character list
-        startIndex = content.index("<B>Characters</B>")
-        content = content[startIndex:]
+        start_index = content.index("<B>Characters</B>")
+        content = content[start_index:]
 
         # Find characters
         regex_chars = r'<TD WIDTH=10%><NOBR>([^<]+)[^?]+.+?VALUE=\"([^\"]+)'

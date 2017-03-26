@@ -159,20 +159,20 @@ def on_member_join(member: discord.Member):
     if world is not None:
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT name, vocation, ABS(last_level) as level "
+            c.execute("SELECT name, vocation, ABS(last_level) as level, guild "
                       "FROM chars WHERE user_id = ? and world = ?", (member.id, world,))
             results = c.fetchall()
             if len(results) > 0:
                 pm += "\nYou already have these characters in {0} registered to you: {1}"\
                     .format(world, join_list([r["name"] for r in results], ", ", " and "))
                 log_message += "\nPreviously registered characters:\n\t"
-                log_message += "\n\t".join("{name} - {level} {vocation}".format(**r) for r in results)
+                log_message += "\n\t".join("{name} - {level} {vocation} - **{guild}**".format(**r) for r in results)
         finally:
             c.close()
 
     yield from send_log_message(bot, member.guild, log_message)
     yield from member.send(pm)
-    yield from member.guild.send("Look who just joined! Welcome {0.mention}!".format(member))
+    yield from member.guild.default_channel.send("Look who just joined! Welcome {0.mention}!".format(member))
 
 
 @bot.event
@@ -689,11 +689,11 @@ def announce_death(bot, death_level, death_killer, death_by_player, levels_lost=
     message = format_message(message)
     message = EMOJI[":skull_crossbones:"] + " " + message
 
-    for server_id, tracked_world in tracked_worlds.items():
-        server = bot.get_guild(server_id)
-        if char["world"] == tracked_world and server is not None \
-                and server.get_member(char["owner_id"]) is not None:
-            yield from get_announce_channel(bot, server).send(message[:1].upper()+message[1:])
+    for guild_id, tracked_world in tracked_worlds.items():
+        guild = bot.get_guild(guild_id)
+        if char["world"] == tracked_world and guild is not None \
+                and guild.get_member(char["owner_id"]) is not None:
+            yield from get_announce_channel(bot, guild).send(message[:1].upper()+message[1:])
 
 
 @asyncio.coroutine
@@ -815,17 +815,15 @@ def im(ctx, *, char_name: str):
 
     If you need to add any more characters or made a mistake, please message an admin."""
     # This is equivalent to someone using /stalk addacc on themselves.
-    # If im_new_only is True it will only work on users who have no characters added to their account.
-
     user = ctx.message.author
     # List of servers the user shares with the bot
-    user_servers = get_user_guilds(bot, user.id)
+    user_guilds = get_user_guilds(bot, user.id)
     # List of Tibia worlds tracked in the servers the user is
-    user_tibia_worlds = [world for guild, world in tracked_worlds.items() if guild in [g.id for g in user_servers]]
+    user_tibia_worlds = [world for guild, world in tracked_worlds.items() if guild in [g.id for g in user_guilds]]
     # Remove duplicate entries from list
     user_tibia_worlds = list(set(user_tibia_worlds))
 
-    if not isinstance(ctx.message.channel, abc.PrivateChannel) and tracked_worlds.get(ctx.message.guild.id) is None:
+    if not is_private(ctx.message.channel) and tracked_worlds.get(ctx.message.guild.id) is None:
         yield from ctx.send("This server is not tracking any tibia worlds.")
         return
 
@@ -859,6 +857,7 @@ def im(ctx, *, char_name: str):
         added = []
         existent = []
         for char in chars:
+            # Skip chars in non-tracked worlds
             if char["world"] not in user_tibia_worlds:
                 skipped.append(char)
                 continue
@@ -892,7 +891,6 @@ def im(ctx, *, char_name: str):
             if char.get("deleted", False):
                 skipped.append(char)
                 continue
-            char["guild"] = char.get("guild", "No guild")
             added.append(char)
 
         if len(skipped) == len(chars):
@@ -901,7 +899,7 @@ def im(ctx, *, char_name: str):
             return
 
         reply = ""
-        log_reply = dict().fromkeys([server.id for server in user_servers], "")
+        log_reply = dict().fromkeys([server.id for server in user_guilds], "")
         if len(existent) > 0:
             reply += "\nThe following characters were already registered to you: {0}" \
                 .format(join_list(existent, ", ", " and "))
@@ -912,10 +910,11 @@ def im(ctx, *, char_name: str):
             for char in added:
                 log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
                 # Announce on server log of each server
-                for server in user_servers:
+                for guild in user_guilds:
                     # Only announce on worlds where the character's world is tracked
-                    if tracked_worlds.get(server.id, None) == char["world"]:
-                        log_reply[server.id] += "\n\t{name} - {level} {vocation} - **{guild}**".format(**char)
+                    if tracked_worlds.get(guild.id, None) == char["world"]:
+                        char["guild"] = "No guild" if char["guild"] is None else char["guild"]
+                        log_reply[guild.id] += "\n\t{name} - {level} {vocation} - **{guild}**".format(**char)
 
         if len(updated) > 0:
             reply += "\nThe following characters were reassigned to you: {0}" \
@@ -923,17 +922,17 @@ def im(ctx, *, char_name: str):
             for char in updated:
                 log.info("Character {0} was reassigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
                 # Announce on server log of each server
-                for server in user_servers:
+                for guild in user_guilds:
                     # Only announce on worlds where the character's world is tracked
-                    if tracked_worlds.get(server.id, None) == char["world"]:
-                        log_reply[server.id] += "\n\t{name} (Reassigned)".format(**char)
+                    if tracked_worlds.get(guild.id, None) == char["world"]:
+                        log_reply[guild.id] += "\n\t{name} (Reassigned)".format(**char)
 
         for char in updated:
             c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
         for char in added:
             c.execute(
-                "INSERT INTO chars (name,last_level,vocation,user_id, world) VALUES (?,?,?,?,?)",
-                (char['name'], char['level']*-1, char['vocation'], user.id, char["world"])
+                "INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?)",
+                (char['name'], char['level']*-1, char['vocation'], user.id, char["world"], char["guild"])
             )
 
         c.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
@@ -1707,9 +1706,11 @@ def role(ctx, *, name: str=None):
     """Shows a list of members with that role"""
     if name is None:
         yield from ctx.send("You must tell me the name of a role.")
+        return
     role = get_role(ctx.message.guild, role_name=name)
     if role is None:
         yield from ctx.send("There's no role with that name in here.")
+        return
 
     role_members = []
     # Iterate through each member, adding the ones that contain the role to a list
@@ -1720,6 +1721,7 @@ def role(ctx, *, name: str=None):
                 break
     if not role_members:
         yield from ctx.send("Seems like there are no members with that role.")
+        return
 
     title = "Members with the role '{0.name}'".format(role)
     ask_channel = get_channel_by_name(bot, ask_channel_name, ctx.message.guild)

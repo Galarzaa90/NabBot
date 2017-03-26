@@ -177,8 +177,8 @@ class Mod:
                     # Registered to current user
                     yield from ctx.send("This character is already registered to this user.")
                     return
-                c.execute("INSERT INTO chars (name,last_level,vocation,user_id, world) VALUES (?,?,?,?,?)",
-                          (char["name"], char["level"] * -1, char["vocation"], user.id, char["world"]))
+                c.execute("INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?)",
+                          (char["name"], char["level"] * -1, char["vocation"], user.id, char["world"], char["guild"]))
                 # Check if user is already registered
                 c.execute("SELECT id from users WHERE id = ?", (user.id,))
                 result = c.fetchone()
@@ -291,13 +291,14 @@ class Mod:
                         existent.append(char)
                         continue
                     added.append(char)
-                    added_tuples.append((char["name"], char["level"]*-1, char["vocation"], user.id, char["world"],))
+                    added_tuples.append((char["name"], char["level"]*-1, char["vocation"], user.id, char["world"],
+                                         char["guild"],))
                 c.execute("SELECT id from users WHERE id = ?", (user.id,))
                 result = c.fetchone()
                 if result is None:
                     c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
 
-                c.executemany("INSERT INTO chars(name,last_level,vocation,user_id, world) VALUES (?,?,?,?,?)",
+                c.executemany("INSERT INTO chars(name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
                               added_tuples)
                 c.executemany("UPDATE chars SET user_id = ? WHERE id = ?", reassigned_tuples)
                 reply = ""
