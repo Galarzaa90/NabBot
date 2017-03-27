@@ -1461,9 +1461,14 @@ deathmessages_monster = [
             " level back", False, False, False, range(1, 10)]
 ]
 # deaths by player
-deathmessages_player = [[100, "**{charName}** ({deathLevel}) got rekt! **{deathKiller}** ish pekay!"],
-                        [100, "HALP **{deathKiller}** is going around killing innocent **{charName}** ({deathLevel})!"],
-                        [100, "Next time stay away from **{deathKiller}**, **{charName}** ({deathLevel})."]]
+deathmessages_player = [
+    [100, "**{charName}** ({deathLevel}) got rekt! **{deathKiller}** ish pekay!"],
+    [100, "HALP **{deathKiller}** is going around killing innocent **{charName}** ({deathLevel})!"],
+    [100, "**{deathKiller}** just put **{charName}** ({deathLevel}) in the ground. Finally someone takes care of that."],
+    [100, "**{deathKiller}** killed **{charName}** ({deathLevel}) and on this day a thousand innocent souls are avenged."],
+    [100, "**{deathKiller}** has killed **{charName}** ({deathLevel}). What? He had it coming!"],
+    [100, "Next time stay away from **{deathKiller}**, **{charName}** ({deathLevel})."]
+]
 
 
 def format_message(message) -> str:
