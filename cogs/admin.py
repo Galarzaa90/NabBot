@@ -3,7 +3,7 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from config import lite_mode, welcome_pm, ask_channel_name, log_channel_name
+from config import welcome_pm, ask_channel_name, log_channel_name
 from utils import checks
 from utils.database import *
 from utils.discord import get_channel_by_name, get_member, get_guild_by_name, get_user_admin_guilds, is_private

@@ -2,7 +2,7 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from config import lite_mode, mod_ids, owner_ids
+from config import mod_ids, owner_ids
 from utils.database import userDatabase, tracked_worlds
 from utils.messages import split_message
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
@@ -717,7 +717,7 @@ class Mod:
     @refresh_names.error
     @asyncio.coroutine
     def stalk_error(self, error, ctx: discord.ext.commands.Context):
-        if not is_private(ctx.message.channel) or lite_mode:
+        if not is_private(ctx.message.channel):
             return
         if isinstance(error, commands.errors.CheckFailure):
             yield from ctx.send("You don't have permission to use this command.")

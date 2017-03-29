@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands
 
-from config import owner_ids, mod_ids, main_server, lite_mode
-from utils.discord import get_user_admin_guilds
+from config import owner_ids, mod_ids, main_server, lite_servers
+from utils.discord import get_user_admin_guilds, is_private
 
 
 # Checks if the user is the owner of the bot
@@ -44,10 +44,10 @@ def is_main_server():
     def predicate(ctx):
         if ctx.message.author.id in owner_ids:
             return True
-        member = discord.utils.get(ctx.bot.get_all_members(), server__id=main_server)
+        member = discord.utils.get(ctx.bot.get_all_members(), guild__id=main_server)
         if member is None:
             return False
-        if not ctx.message.channel.is_private and not ctx.message.server.id == main_server:
+        if not is_private(ctx.message.channel) and not ctx.message.guild.id == main_server:
             return False
         return True
     return commands.check(predicate)
@@ -56,5 +56,5 @@ def is_main_server():
 # Checks if the bot is not ruining in lite mode
 def is_not_lite():
     def predicate(ctx):
-        return not lite_mode
+        return ctx.guild.id not in lite_servers
     return commands.check(predicate)

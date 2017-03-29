@@ -1,11 +1,3 @@
-# Lite mode:
-# If lite is enabled, all user database related functions are disabled.
-# /stalk, /im, /whois /levels are disabled
-# /whois, /deaths have limited functionality
-# Level up and deaths announcements are disabled
-lite_mode = False
-
-
 # Special bot channels
 # ask_channel is a channel where the bot will give longer replies to some commands (like on pms)
 #   If ask_channel_delete is True, any message that is not a command will be deleted, to keep the channel for
@@ -18,6 +10,13 @@ log_channel_name = "server-log"
 # main_server is the ID of the server NabBot is originally made for, meaning there may be
 # some exclusive features and/or commands on this server only.
 main_server = 159815897052086272
+
+# Lite mode:
+# If lite is enabled, all user database related functions are disabled.
+# /stalk, /im, /whois /levels are disabled
+# /whois, /deaths have limited functionality
+# Level up and deaths announcements are disabled
+lite_servers = [253338519143972864]
 
 # The welcome message that is sent to members when they join a discord server with NabBot in it
 # 0 is the member object, examples:

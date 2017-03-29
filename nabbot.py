@@ -44,8 +44,6 @@ def on_ready():
     print('Logged in as')
     print(bot.user)
     print(bot.user.id)
-    if lite_mode:
-        print("Running in Lite mode!")
     print('------')
     log.info('Bot is online and ready')
 
@@ -146,7 +144,7 @@ def on_server_join(server: discord.Guild):
 def on_member_join(member: discord.Member):
     """Called every time a member joins a server visible by the bot."""
     log.info("{0.display_name} (ID: {0.id}) joined {0.guild.name}".format(member))
-    if lite_mode:
+    if member.guild.id in lite_servers:
         return
     guild_id = member.guild.id
     server_welcome = welcome_messages.get(guild_id, "")
@@ -264,8 +262,6 @@ def on_guild_update(before: discord.Guild, after: discord.Guild):
 @asyncio.coroutine
 def events_announce():
     # TODO: This needs some denezunifying
-    if lite_mode:
-        return
     yield from bot.wait_until_ready()
     while not bot.is_closed():
         """Announces when an event is close to starting."""
@@ -431,8 +427,6 @@ def scan_deaths():
     #             Nezune's cave                     #
     # Do not touch anything, enter at your own risk #
     #################################################
-    if lite_mode:
-        return
     yield from bot.wait_until_ready()
     while not bot.is_closed():
         yield from asyncio.sleep(death_scan_interval)
@@ -454,8 +448,6 @@ def scan_highscores():
     #             Nezune's cave                     #
     # Do not touch anything, enter at your own risk #
     #################################################
-    if lite_mode:
-        return
     yield from bot.wait_until_ready()
     while not bot.is_closed():
         if len(tracked_worlds_list) == 0:
@@ -504,8 +496,6 @@ def scan_online_chars():
     #             Nezune's cave                     #
     # Do not touch anything, enter at your own risk #
     #################################################
-    if lite_mode:
-        return
     yield from bot.wait_until_ready()
     while not bot.is_closed():
         # Pop last server in queue, reinsert it at the beginning
@@ -1079,6 +1069,7 @@ def about(ctx):
     if not permissions.embed_links:
         yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
         return
+    lite_mode = ctx.message.guild.id in lite_servers
     user_count = 0
     char_count = 0
     deaths_count = 0
