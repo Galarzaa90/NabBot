@@ -17,7 +17,7 @@ from utils.database import init_database, userDatabase, reload_worlds, tracked_w
     reload_welcome_messages, welcome_messages, reload_announce_channels
 from utils.discord import get_member, send_log_message, get_region_string, get_user_guilds, \
     clean_string, get_role_list, get_member_by_name, get_announce_channel, get_user_worlds, is_private, get_role, \
-    get_channel_by_name
+    get_channel_by_name, is_lite_mode
 from utils.general import command_list, join_list, get_uptime, TimeString, \
     single_line, is_numeric, getLogin, start_time, global_online_list
 from utils.general import log
@@ -1069,7 +1069,7 @@ def about(ctx):
     if not permissions.embed_links:
         yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
         return
-    lite_mode = ctx.message.guild.id in lite_servers
+    lite_mode = is_lite_mode(ctx)
     user_count = 0
     char_count = 0
     deaths_count = 0

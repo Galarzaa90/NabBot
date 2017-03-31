@@ -13,7 +13,7 @@ from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_tim
 from utils.loot import loot_scan
 from utils.messages import EMOJI, split_message
 from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_guilds, \
-    FIELD_VALUE_LIMIT, get_user_worlds, is_private
+    FIELD_VALUE_LIMIT, get_user_worlds, is_private, is_lite_mode
 from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import *
 
@@ -154,7 +154,7 @@ class Tibia:
             yield from ctx.send("Tell me which character or user you want to check.")
             return
 
-        if lite_mode:
+        if ctx.message.guild.id in lite_servers:
             char = yield from get_character(name)
             if char == ERROR_DOESNTEXIST:
                 yield from ctx.send("I couldn't find a character with that name")
@@ -599,7 +599,7 @@ class Tibia:
     @asyncio.coroutine
     def deaths(self, ctx, *, name: str = None):
         """Shows a player's or everyone's recent deaths"""
-        if name is None and lite_mode:
+        if name is None and is_lite_mode(ctx):
             return
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
@@ -667,7 +667,7 @@ class Tibia:
 
                 c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
                 result = c.fetchone()
-                if result is not None and not lite_mode:
+                if result is not None and not is_lite_mode(ctx):
                     id = result["id"]
                     c.execute("SELECT level, date, byplayer, killer "
                               "FROM char_deaths "
@@ -1451,7 +1451,7 @@ class Tibia:
         married = ""
         house = ""
         login = "\n{0} has **never** logged in.".format(pronoun)
-        if "guild" in char:
+        if char["guild"] is not None:
             guild_url = url_guild+urllib.parse.quote(char["guild"])
             guild = guild_format.format(pronoun, char['rank'], char['guild'], guild_url)
         if "married" in char:
@@ -1471,8 +1471,7 @@ class Tibia:
 
         reply = reply_format.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'],
                                     char['world'], guild, married, login, url, house)
-        if lite_mode:
-            return reply
+
         # Insert any highscores this character holds
         for category in highscores_categories:
             if char.get(category, None):

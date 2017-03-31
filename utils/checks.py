@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 from config import owner_ids, mod_ids, main_server, lite_servers
-from utils.discord import get_user_admin_guilds, is_private
+from utils.discord import get_user_admin_guilds, is_private, get_user_guilds, is_lite_mode
 
 
 # Checks if the user is the owner of the bot
@@ -56,5 +56,5 @@ def is_main_server():
 # Checks if the bot is not ruining in lite mode
 def is_not_lite():
     def predicate(ctx):
-        return ctx.guild.id not in lite_servers
+        return not is_lite_mode(ctx)
     return commands.check(predicate)

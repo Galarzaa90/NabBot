@@ -4,7 +4,7 @@ from discord.abc import PrivateChannel, Messageable
 from discord.ext import commands
 import re
 
-from config import log_channel_name, owner_ids
+from config import log_channel_name, owner_ids, lite_servers
 from utils.database import tracked_worlds, announce_channels
 from .messages import EMOJI
 
@@ -212,3 +212,17 @@ def clean_string(ctx: commands.Context, string: str) -> str:
     string = re.sub(r"<@\d+>", repl_user, string)
     # Clean @everyone and @here
     return string.replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
+
+
+def is_lite_mode(ctx: commands.Context) -> bool:
+    """Checks if the current command context is limited to lite mode.
+    
+    If the guild is in the lite_guilds list, the context is in lite mode.
+    If the guild is in private message, and the message author is in at least ONE guild that is not in lite_guilds, 
+    then context is not lite"""
+    if is_private(ctx.message.channel):
+        for g in get_user_guilds(ctx.bot, ctx.message.author.id):
+            if g.id not in lite_servers:
+                return False
+    else:
+        return ctx.message.guild in lite_servers
