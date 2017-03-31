@@ -487,7 +487,7 @@ def scan_highscores():
                 )
                 userDatabase.commit()
                 c.close()
-            yield from asyncio.sleep(10)
+            yield from asyncio.sleep(0.1)
 
 
 @asyncio.coroutine
@@ -921,7 +921,7 @@ def im(ctx, *, char_name: str):
             c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
         for char in added:
             c.execute(
-                "INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?)",
+                "INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
                 (char['name'], char['level']*-1, char['vocation'], user.id, char["world"], char["guild"])
             )
 

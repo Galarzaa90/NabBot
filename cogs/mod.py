@@ -177,7 +177,7 @@ class Mod:
                     # Registered to current user
                     yield from ctx.send("This character is already registered to this user.")
                     return
-                c.execute("INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?)",
+                c.execute("INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
                           (char["name"], char["level"] * -1, char["vocation"], user.id, char["world"], char["guild"]))
                 # Check if user is already registered
                 c.execute("SELECT id from users WHERE id = ?", (user.id,))
