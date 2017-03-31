@@ -509,9 +509,12 @@ def get_character(name, tries=5):
                 death_level = m_deathinfo_player.group(1)
                 death_killer = urllib.parse.unquote_plus(m_deathinfo_player.group(2))
                 death_by_player = True
-
-        char["deaths"].append({'time': death_time, 'level': int(death_level), 'killer': death_killer,
+        try:
+            char["deaths"].append({'time': death_time, 'level': int(death_level), 'killer': death_killer,
                                'byPlayer': death_by_player})
+        except ValueError:
+            # Some pvp deaths have no level, so they are raising a ValueError, they will be ignored for now.
+            continue
     
     # Other chars
     # note that an empty char list means the character is hidden
