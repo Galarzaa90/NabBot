@@ -939,7 +939,7 @@ def im(ctx, *, char_name: str):
         userDatabase.commit()
 
 
-@bot.command(pass_context=True, aliases=["i'mnot"])
+@bot.command(aliases=["i'mnot"])
 @checks.is_not_lite()
 @asyncio.coroutine
 def imnot(ctx, *, name):
@@ -1390,7 +1390,7 @@ def event_edit_description(ctx, event_id: int, *, new_description):
         c.close()
 
 
-@events.command(name="edittime", aliases=["editstart"], pass_context=True)
+@events.command(name="edittime", aliases=["editstart"])
 @checks.is_not_lite()
 @asyncio.coroutine
 def event_edit_time(ctx, event_id: int, starts_in: TimeString):
@@ -1428,7 +1428,7 @@ def event_edit_time(ctx, event_id: int, starts_in: TimeString):
         c.close()
 
 
-@events.command(name="delete", aliases=["remove"], pass_context=True)
+@events.command(name="delete", aliases=["remove"])
 @checks.is_not_lite()
 @asyncio.coroutine
 def event_remove(ctx, event_id: int):
@@ -1465,7 +1465,7 @@ def event_remove(ctx, event_id: int):
         c.close()
 
 
-@events.command(pass_context=True, name="make", aliases=["creator", "maker"])
+@events.command(name="make", aliases=["creator", "maker"])
 @checks.is_not_lite()
 @asyncio.coroutine
 def event_make(ctx):
@@ -1563,7 +1563,7 @@ def event_make(ctx):
         c.close()
 
 
-@events.command(pass_context=True, name="subscribe", aliases=["sub"])
+@events.command(name="subscribe", aliases=["sub"])
 @checks.is_not_lite()
 @asyncio.coroutine
 def event_subscribe(ctx, event_id: int):

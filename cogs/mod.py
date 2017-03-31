@@ -80,7 +80,7 @@ class Mod:
             yield from ctx.message.delete()
             yield from ctx.message.channel.send(message)
 
-    @commands.group(invoke_without_command=True, pass_context=True)
+    @commands.group(invoke_without_command=True)
     @checks.is_mod()
     @checks.is_not_lite()
     @asyncio.coroutine
@@ -93,7 +93,7 @@ class Mod:
             return True
         yield from ctx.send("To see valid subcommands use `/help stalk`")
 
-    @stalk.command(pass_context=True, name="addchar", aliases=["char"])
+    @stalk.command(name="addchar", aliases=["char"])
     @checks.is_mod()
     @checks.is_not_lite()
     @asyncio.coroutine
@@ -199,7 +199,7 @@ class Mod:
                 c.close()
                 userDatabase.commit()
 
-    @stalk.command(pass_context=True, name="addacc", aliases=["account", "addaccount", "acc"])
+    @stalk.command(name="addacc", aliases=["account", "addaccount", "acc"])
     @checks.is_mod()
     @checks.is_not_lite()
     @asyncio.coroutine
@@ -337,7 +337,7 @@ class Mod:
                 c.close()
                 userDatabase.commit()
 
-    @stalk.command(pass_context=True, name="removechar", aliases=["deletechar"])
+    @stalk.command(name="removechar", aliases=["deletechar"])
     @checks.is_owner()
     @checks.is_not_lite()
     @asyncio.coroutine
@@ -377,7 +377,7 @@ class Mod:
                 c.close()
                 userDatabase.commit()
 
-    @stalk.command(name="remove", aliases=["delete", "deleteuser", "removeuser"], pass_context=True)
+    @stalk.command(name="remove", aliases=["delete", "deleteuser", "removeuser"])
     @checks.is_owner()
     @checks.is_not_lite()
     @asyncio.coroutine
@@ -441,7 +441,7 @@ class Mod:
                 userDatabase.commit()
 
     # Todo: Add server-log entry
-    @stalk.command(name="namelock", pass_context=True, aliases=["namechange","rename"])
+    @stalk.command(name="namelock", aliases=["namechange","rename"])
     @checks.is_mod()
     @checks.is_not_lite()
     @asyncio.coroutine
@@ -539,7 +539,7 @@ class Mod:
                 userDatabase.commit()
 
     # Todo: Reduce number of messages
-    @stalk.command(pass_context=True, aliases=["clean"])
+    @stalk.command(aliases=["clean"])
     @checks.is_owner()
     @checks.is_not_lite()
     @asyncio.coroutine
@@ -631,7 +631,7 @@ class Mod:
             userDatabase.commit()
             c.close()
 
-    @stalk.command(pass_context=True)
+    @stalk.command()
     @checks.is_mod()
     @checks.is_not_lite()
     @asyncio.coroutine
@@ -682,7 +682,7 @@ class Mod:
             finally:
                 c.close()
 
-    @stalk.command(pass_context=True, name="refreshnames")
+    @stalk.command(name="refreshnames")
     @checks.is_mod()
     @checks.is_not_lite()
     @asyncio.coroutine
