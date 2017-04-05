@@ -44,7 +44,8 @@ class Mod:
                     author_permissions = author.permissions_in(channel)  # type: discord.Permissions
                     bot_permissions = bot_member.permissions_in(channel)  # type: discord.Permissions
                     # Check if both the author and the bot have permissions to send messages and add channel to list
-                    if author_permissions.send_messages and bot_permissions.send_messages:
+                    if (author_permissions.send_messages and bot_permissions.send_messages) and \
+                            (ctx.message.author.id in owner_ids or author_permissions.administrator):
                         separator = ""
                         if prev_server is not server:
                             separator = "---------------\n\t"
