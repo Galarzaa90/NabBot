@@ -26,8 +26,7 @@ class Tibia:
 
     @commands.group()
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def loot(self, ctx):
+    async def loot(self, ctx):
         """Scans a loot image and returns it's loot value
 
         The bot will return a list of the items found along with their values, grouped by NPC.
@@ -36,17 +35,17 @@ class Tibia:
         The bot can only scan 3 images simultaneously."""
         author = ctx.message.author
         if self.parsing_count >= loot_max:
-            yield from ctx.send("Sorry, I am already parsing too many loot images, "
+            await ctx.send("Sorry, I am already parsing too many loot images, "
                                 "please wait a couple of minutes and try again.")
             return
 
         if len(ctx.message.attachments) == 0:
-            yield from ctx.send("You need to upload a picture of your loot and type the command in the comment.")
+            await ctx.send("You need to upload a picture of your loot and type the command in the comment.")
             return
 
         attachment = ctx.message.attachments[0]
         if attachment['size'] > 2097152:
-            yield from ctx.send("That image was too big! Try splitting it into smaller images, or cropping out anything irrelevant.")
+            await ctx.send("That image was too big! Try splitting it into smaller images, or cropping out anything irrelevant.")
             return
         file_name = attachment['url'].split("/")[len(attachment['url'].split("/"))-1]
         file_url = attachment['url']
@@ -54,16 +53,16 @@ class Tibia:
         try:
             loot_image = Image.open(io.BytesIO(bytearray(r.content))).convert("RGBA")
         except Exception:
-            yield from ctx.send("Either that wasn't an image or I failed to load it, please try again.")
+            await ctx.send("Either that wasn't an image or I failed to load it, please try again.")
             return
 
         self.parsing_count += 1
-        yield from ctx.send("I've begun parsing your image, **@{0.display_name}**. "
+        await ctx.send("I've begun parsing your image, **@{0.display_name}**. "
                             "Please be patient, this may take a few moments.".format(author))
-        progress_msg = yield from ctx.send("Status: ...")
-        progress_bar = yield from ctx.send(EMOJI[":black_large_square:"]*10)
+        progress_msg = await ctx.send("Status: ...")
+        progress_bar = await ctx.send(EMOJI[":black_large_square:"]*10)
 
-        loot_list, loot_image_overlay = yield from loot_scan(loot_image, file_name, progress_msg, progress_bar)
+        loot_list, loot_image_overlay = await loot_scan(loot_image, file_name, progress_msg, progress_bar)
         self.parsing_count -= 1
         embed = discord.Embed()
         long_message = "These are the results for your image: [{0}]({1})".format(file_name, file_url)
@@ -71,7 +70,7 @@ class Tibia:
         if len(loot_list) == 0:
             message = "Sorry {0.mention}, I couldn't find any loot in that image. Loot parsing will only work on " \
                       "high quality images, so make sure your image wasn't compressed."
-            yield from ctx.send(message.format(author))
+            await ctx.send(message.format(author))
             return
 
         total_value = 0
@@ -117,7 +116,7 @@ class Tibia:
         ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
         if not is_private(ctx.message.channel) and ctx.message.channel != ask_channel:
             short_message += "\nI've also sent you a PM with detailed information."
-        yield from ctx.send(short_message.format(author, total_value))
+        await ctx.send(short_message.format(author, total_value))
 
         # Send on ask_channel or PM
         if ctx.message.channel == ask_channel:
@@ -125,20 +124,18 @@ class Tibia:
         else:
             destination = ctx.message.author
 
-        yield from destination.send(file=loot_image_overlay, filename=file_name+".png", embed=embed)
+        await destination.send(file=loot_image_overlay, filename=file_name+".png", embed=embed)
 
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def loot_legend(self, ctx):
+    async def loot_legend(self, ctx):
         """Shows the meaning of the overlayed icons."""
         with open("./images/legend.png", "r+b") as f:
-            yield from ctx.send(file=f)
+            await ctx.send(file=f)
             f.close()
 
     @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'])
-    @asyncio.coroutine
-    def whois(self, ctx, *, name=None):
+    async def whois(self, ctx, *, name=None):
         """Tells you a character's or a discord user's information
 
         If it matches a discord user, it displays its registered users
@@ -148,35 +145,35 @@ class Tibia:
         The bot has to be taught about the character's of an user."""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
         if name is None:
-            yield from ctx.send("Tell me which character or user you want to check.")
+            await ctx.send("Tell me which character or user you want to check.")
             return
 
         if ctx.message.guild.id in lite_servers:
-            char = yield from get_character(name)
+            char = await get_character(name)
             if char == ERROR_DOESNTEXIST:
-                yield from ctx.send("I couldn't find a character with that name")
+                await ctx.send("I couldn't find a character with that name")
             elif char == ERROR_NETWORK:
-                yield from ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
+                await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
             else:
                 embed = discord.Embed(description=self.get_char_string(char))
                 embed.set_author(name=char["name"],
                                  url=url_character + urllib.parse.quote(char["name"]),
                                  icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                  )
-                yield from ctx.send(embed=embed)
+                await ctx.send(embed=embed)
             return
         if is_private(ctx.message.channel):
             bot_member = self.bot.user
         else:
             bot_member = get_member(self.bot, self.bot.user.id, ctx.message.guild)
         if name.lower() == bot_member.display_name.lower():
-            yield from ctx.invoke(self.bot.commands.get('about'))
+            await ctx.invoke(self.bot.all_commands.get('about'))
             return
 
-        char = yield from get_character(name)
+        char = await get_character(name)
         char_string = self.get_char_string(char)
         user = get_member_by_name(self.bot, name, ctx.message.guild)
         user_string = self.get_user_string(ctx, name)
@@ -185,7 +182,7 @@ class Tibia:
 
         # No user or char with that name
         if char == ERROR_DOESNTEXIST and (user is None or user_string == ERROR_DOESNTEXIST):
-            yield from ctx.send("I don't see any user or character with that name.")
+            await ctx.send("I don't see any user or character with that name.")
             return
         # We found an user
         if user is not None and user_string != ERROR_DOESNTEXIST:
@@ -200,7 +197,7 @@ class Tibia:
                 # If it's owned by the user, we append it to the same embed.
                 if char["owner_id"] == int(user.id):
                     embed.add_field(name="Character", value=char_string, inline=False)
-                    yield from ctx.send(embed=embed)
+                    await ctx.send(embed=embed)
                     return
                 # Not owned by same user, we display a separate embed
                 else:
@@ -209,15 +206,15 @@ class Tibia:
                                           url=get_character_url(char["name"]),
                                           icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                           )
-                    yield from ctx.send(embed=embed)
-                    yield from ctx.send(embed=char_embed)
+                    await ctx.send(embed=embed)
+                    await ctx.send(embed=char_embed)
             else:
-                yield from ctx.send(embed=embed)
+                await ctx.send(embed=embed)
                 if char == ERROR_NETWORK:
-                    yield from ctx.send("I failed to do a character search for some reason "+EMOJI[":astonished:"])
+                    await ctx.send("I failed to do a character search for some reason "+EMOJI[":astonished:"])
         else:
             if char == ERROR_NETWORK:
-                yield from ctx.send("I failed to do a character search for some reason " + EMOJI[":astonished:"])
+                await ctx.send("I failed to do a character search for some reason " + EMOJI[":astonished:"])
             elif type(char) is dict:
                 embed.set_author(name=char["name"],
                                  url=get_character_url(char["name"]),
@@ -234,18 +231,17 @@ class Tibia:
 
                 embed.description += char_string
 
-            yield from ctx.send(embed=embed)
+            await ctx.send(embed=embed)
 
     @commands.command(aliases=['expshare', 'party'])
-    @asyncio.coroutine
-    def share(self, ctx, *, param: str=None):
+    async def share(self, ctx, *, param: str=None):
         """Shows the sharing range for that level or character
 
         There's two ways to use this command:
         /share level
         /share char_name"""
         if param is None:
-            yield from ctx.send("You need to tell me a level or a character's name.")
+            await ctx.send("You need to tell me a level or a character's name.")
             return
         name = ""
         # Check if param is numeric
@@ -253,12 +249,12 @@ class Tibia:
             level = int(param)
         # If it's not numeric, then it must be a char's name
         except ValueError:
-            char = yield from get_character(param)
+            char = await get_character(param)
             if type(char) is dict:
                 level = int(char['level'])
                 name = char['name']
             else:
-                yield from ctx.send('There is no character with that name.')
+                await ctx.send('There is no character with that name.')
                 return
         if level <= 0:
             replies = ["Invalid level.",
@@ -267,19 +263,18 @@ class Tibia:
                        "Nope, you can't share with anyone.",
                        "You probably need a couple more levels"
                        ]
-            yield from ctx.send(random.choice(replies))
+            await ctx.send(random.choice(replies))
             return
         low, high = get_share_range(level)
         if name == "":
             reply = "A level {0} can share experience with levels **{1}** to **{2}**.".format(level, low, high)
         else:
             reply = "**{0}** ({1}) can share experience with levels **{2}** to **{3}**.".format(name, level, low, high)
-        yield from ctx.send(reply)
+        await ctx.send(reply)
 
     @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"], no_pm=True)
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def find_team(self, ctx, *, params=None):
+    async def find_team(self, ctx, *, params=None):
         """Searches for a registered character that meets the criteria
 
         There are 3 ways to use this command:
@@ -293,7 +288,7 @@ class Tibia:
         /find vocation,min_level,max_level"""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         invalid_arguments = "Invalid arguments used, examples:\n" \
@@ -303,11 +298,11 @@ class Tibia:
 
         tracked_world = tracked_worlds.get(ctx.message.guild.id)
         if tracked_world is None:
-            yield from ctx.send("This server is not tracking any tibia worlds.")
+            await ctx.send("This server is not tracking any tibia worlds.")
             return
 
         if params is None:
-            yield from ctx.send(invalid_arguments)
+            await ctx.send(invalid_arguments)
             return
 
         entries = []
@@ -322,7 +317,7 @@ class Tibia:
         char = None
         params = params.split(",")
         if len(params) < 2 or len(params) > 3:
-            yield from ctx.send(invalid_arguments)
+            await ctx.send(invalid_arguments)
             return
         params[0] = params[0].lower()
         if params[0] in KNIGHT:
@@ -336,7 +331,7 @@ class Tibia:
         elif params[0] in ["any", "all", "everything", "anything"]:
             vocation = "characters"
         else:
-            yield from ctx.send(invalid_arguments)
+            await ctx.send(invalid_arguments)
             return
 
         # params[1] could be a character's name, a character's level or one of the level ranges
@@ -344,11 +339,11 @@ class Tibia:
         if not is_numeric(params[1]):
             # We shouldn't have another parameter if a character name was specified
             if len(params) == 3:
-                yield from ctx.send(invalid_arguments)
+                await ctx.send(invalid_arguments)
                 return
-            char = yield from get_character(params[1])
+            char = await get_character(params[1])
             if type(char) is not dict:
-                yield from ctx.send("I couldn't find a character with that name.")
+                await ctx.send("I couldn't find a character with that name.")
                 return
             low, high = get_share_range(char["level"])
             title = "I found the following {0}s in share range with {1} ({2}-{3}):".format(vocation, char["name"],
@@ -362,10 +357,10 @@ class Tibia:
                     level1 = int(params[1])
                     level2 = int(params[2])
                 except ValueError:
-                    yield from ctx.send(invalid_arguments)
+                    await ctx.send(invalid_arguments)
                     return
                 if level1 <= 0 or level2 <= 0:
-                    yield from ctx.send("You entered an invalid level.")
+                    await ctx.send("You entered an invalid level.")
                     return
                 low = min(level1, level2)
                 high = max(level1, level2)
@@ -374,7 +369,7 @@ class Tibia:
             # We only got a level, so we get the share range for it
             else:
                 if int(params[1]) <= 0:
-                    yield from ctx.send("You entered an invalid level.")
+                    await ctx.send("You entered an invalid level.")
                     return
                 low, high = get_share_range(int(params[1]))
                 title = "I found the following {0}s in share range with level {1} ({2}-{3})".format(vocation, params[1],
@@ -415,7 +410,7 @@ class Tibia:
                 else:
                     entries.append(line_format.format(**player))
             if count < 1:
-                yield from ctx.send(empty)
+                await ctx.send(empty)
                 return
         finally:
             c.close()
@@ -426,28 +421,27 @@ class Tibia:
         pages = Paginator(self.bot, message=ctx.message, entries=online_entries+entries, per_page=per_page,
                           title=title, description=description)
         try:
-            yield from pages.paginate()
+            await pages.paginate()
         except CannotPaginate as e:
-            yield from ctx.send(e)
+            await ctx.send(e)
 
     @commands.command(aliases=['guildcheck', 'checkguild'])
-    @asyncio.coroutine
-    def guild(self, ctx, *, name=None):
+    async def guild(self, ctx, *, name=None):
         """Checks who is online in a guild"""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
         if name is None:
-            yield from ctx.send("Tell me the guild you want me to check.")
+            await ctx.send("Tell me the guild you want me to check.")
             return
 
-        guild = yield from get_guild_online(name)
+        guild = await get_guild_online(name)
         if guild == ERROR_DOESNTEXIST:
-            yield from ctx.send("The guild {0} doesn't exist.".format(name))
+            await ctx.send("The guild {0} doesn't exist.".format(name))
             return
         if guild == ERROR_NETWORK:
-            yield from ctx.send("Can you repeat that? I had some trouble communicating.")
+            await ctx.send("Can you repeat that? I had some trouble communicating.")
             return
 
         embed = discord.Embed()
@@ -458,7 +452,7 @@ class Tibia:
         embed.description = ""
         embed.set_thumbnail(url=guild["logo_url"])
         if guild.get("guildhall") is not None:
-            guildhouse = yield from get_house(guild["guildhall"])
+            guildhouse = await get_house(guild["guildhall"])
             if type(guildhouse) is dict:
                 embed.description += "They own the guildhall [{0}]({1}).\n".format(guild["guildhall"],
                                                                                    url_house.format(id=guildhouse["id"],
@@ -470,7 +464,7 @@ class Tibia:
 
         if len(guild['members']) < 1:
             embed.description += "Nobody is online."
-            yield from ctx.send(embed=embed)
+            await ctx.send(embed=embed)
             return
 
         plural = ""
@@ -492,30 +486,29 @@ class Tibia:
 
             result += "{name} {title} -- {level} {vocation}\n".format(**member)
         embed.add_field(name=current_field, value=result, inline=False)
-        yield from ctx.send(embed=embed)
+        await ctx.send(embed=embed)
 
     @commands.command(aliases=['checkprice', 'itemprice'])
-    @asyncio.coroutine
-    def item(self, ctx, *, name: str=None):
+    async def item(self, ctx, *, name: str=None):
         """Checks an item's information
 
         Shows name, picture, npcs that buy and sell and creature drops"""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            yield from ctx.send("Tell me the name of the item you want to search.")
+            await ctx.send("Tell me the name of the item you want to search.")
             return
         item = get_item(name)
         if item is None:
-            yield from ctx.send("I couldn't find an item with that name.")
+            await ctx.send("I couldn't find an item with that name.")
             return
 
         if type(item) is list:
             embed = discord.Embed(title="Suggestions", description="\n".join(item))
-            yield from ctx.send("I couldn't find that item, maybe you meant one of these?", embed=embed)
+            await ctx.send("I couldn't find that item, maybe you meant one of these?", embed=embed)
             return
 
         long = is_private(ctx.message.channel) or ctx.message.channel.name == ask_channel_name
@@ -532,30 +525,29 @@ class Tibia:
                 f.close()
 
             with open(filename, "r+b") as f:
-                yield from ctx.send(file=f, embed=embed)
+                await ctx.send(file=f, embed=embed)
                 f.close()
             os.remove(filename)
         else:
             ctx.send(embed=embed)
 
     @commands.command(aliases=['mon', 'mob', 'creature'])
-    @asyncio.coroutine
-    def monster(self, ctx, *, name: str=None):
+    async def monster(self, ctx, *, name: str=None):
         """Gives information about a monster"""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            yield from ctx.send("Tell me the name of the monster you want to search.")
+            await ctx.send("Tell me the name of the monster you want to search.")
             return
         if is_private(ctx.message.channel):
             bot_member = self.bot.user
         else:
             bot_member = get_member(self.bot, self.bot.user.id, ctx.message.guild)
         if name.lower() == bot_member.display_name.lower():
-            yield from ctx.send(random.choice(["**"+bot_member.display_name+"** is too strong for you to hunt!",
+            await ctx.send(random.choice(["**"+bot_member.display_name+"** is too strong for you to hunt!",
                                                "Sure, you kill *one* child and suddenly you're a monster!",
                                                "I'M NOT A MONSTER",
                                                "I'm a monster, huh? I'll remember that, human..."+EMOJI[":flame:"],
@@ -567,12 +559,12 @@ class Tibia:
             return
         monster = get_monster(name)
         if monster is None:
-            yield from ctx.send("I couldn't find a monster with that name.")
+            await ctx.send("I couldn't find a monster with that name.")
             return
 
         if type(monster) is list:
             embed = discord.Embed(title="Suggestions", description="\n".join(monster))
-            yield from ctx.send("I couldn't find that creature, maybe you meant one of these?", embed=embed)
+            await ctx.send("I couldn't find that creature, maybe you meant one of these?", embed=embed)
             return
 
         long = is_private(ctx.message.channel) or ctx.message.channel.name == ask_channel_name
@@ -589,21 +581,20 @@ class Tibia:
                 f.close()
             # Send monster's image
             with open(filename, "r+b") as f:
-                yield from ctx.send(file=f, embed=embed)
+                await ctx.send(file=f, embed=embed)
                 f.close()
             os.remove(filename)
         else:
-            yield from ctx.send(embed=embed)
+            await ctx.send(embed=embed)
 
     @commands.group(aliases=['deathlist', 'death'], invoke_without_command=True)
-    @asyncio.coroutine
-    def deaths(self, ctx, *, name: str = None):
+    async def deaths(self, ctx, *, name: str = None):
         """Shows a player's or everyone's recent deaths"""
         if name is None and is_lite_mode(ctx):
             return
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if is_private(ctx.message.channel):
@@ -613,7 +604,7 @@ class Tibia:
             user_guilds = [ctx.message.guild]
             user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
             if user_worlds[0] is None and name is None:
-                yield from ctx.send("This server is not tracking any tibia worlds.")
+                await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
         c = userDatabase.cursor()
@@ -648,12 +639,12 @@ class Tibia:
                     if count >= 100:
                         break
             else:
-                char = yield from get_character(name)
+                char = await get_character(name)
                 if char == ERROR_DOESNTEXIST:
-                    yield from ctx.send("That character doesn't exist.")
+                    await ctx.send("That character doesn't exist.")
                     return
                 elif char == ERROR_NETWORK:
-                    yield from ctx.send("Sorry, I had trouble checking that character, try it again.")
+                    await ctx.send("Sorry, I had trouble checking that character, try it again.")
                     return
                 deaths = char["deaths"]
                 last_time = now
@@ -685,29 +676,28 @@ class Tibia:
                             break
 
             if count == 0:
-                yield from ctx.send("There are no registered deaths.")
+                await ctx.send("There are no registered deaths.")
                 return
         finally:
             c.close()
 
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
-            yield from pages.paginate()
+            await pages.paginate()
         except CannotPaginate as e:
-            yield from ctx.send(e)
+            await ctx.send(e)
 
     @deaths.command(name="monster", aliases=["mob", "killer"])
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def deaths_monsters(self, ctx, *, name: str=None):
+    async def deaths_monsters(self, ctx, *, name: str=None):
         """Returns a list of the latest kills by that monster"""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            yield from ctx.send("You must tell me a monster's name to look for its kills.")
+            await ctx.send("You must tell me a monster's name to look for its kills.")
             return
         c = userDatabase.cursor()
         count = 0
@@ -742,7 +732,7 @@ class Tibia:
                 if count >= 100:
                     break
             if count == 0:
-                yield from ctx.send("There are no registered deaths by that killer.")
+                await ctx.send("There are no registered deaths by that killer.")
                 return
         finally:
             c.close()
@@ -750,22 +740,21 @@ class Tibia:
         title = "{0} latest kills".format(name.title())
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
-            yield from pages.paginate()
+            await pages.paginate()
         except CannotPaginate as e:
-            yield from ctx.send(e)
+            await ctx.send(e)
 
     @deaths.command(name="user")
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def deaths_user(self, ctx, *, name: str=None):
+    async def deaths_user(self, ctx, *, name: str=None):
         """Shows an user's recent deaths on his/her registered characters"""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            yield from ctx.send("You must tell me an user's name to look for his/her deaths.")
+            await ctx.send("You must tell me an user's name to look for his/her deaths.")
             return
 
         if is_private(ctx.message.channel):
@@ -775,12 +764,12 @@ class Tibia:
             user_servers = [ctx.message.guild]
             user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
             if user_worlds[0] is None:
-                yield from ctx.send("This server is not tracking any tibia worlds.")
+                await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
         user = get_member_by_name(self.bot, name, guild_list=user_servers)
         if user is None:
-            yield from ctx.send("I don't see any users with that name.")
+            await ctx.send("I don't see any users with that name.")
             return
 
         c = userDatabase.cursor()
@@ -812,7 +801,7 @@ class Tibia:
                 if count >= 100:
                     break
             if count == 0:
-                yield from ctx.send("There are not registered deaths by this user.")
+                await ctx.send("There are not registered deaths by this user.")
                 return
         finally:
             c.close()
@@ -820,21 +809,20 @@ class Tibia:
         title = "@{0} latest kills".format(user.display_name)
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
-            yield from pages.paginate()
+            await pages.paginate()
         except CannotPaginate as e:
-            yield from ctx.send(e)
+            await ctx.send(e)
 
     @commands.group(aliases=['levelups', 'lvl', 'level', 'lvls'], invoke_without_command=True)
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def levels(self, ctx, *, name: str=None):
+    async def levels(self, ctx, *, name: str=None):
         """Shows a player's or everoyne's recent level ups
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if is_private(ctx.message.channel):
@@ -844,7 +832,7 @@ class Tibia:
             user_guilds = [ctx.message.guild]
             user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
             if user_worlds[0] is None:
-                yield from ctx.send("This server is not tracking any tibia worlds.")
+                await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
         c = userDatabase.cursor()
@@ -856,7 +844,7 @@ class Tibia:
             per_page = 20
         else:
             per_page = 5
-        yield from ctx.message.channel.trigger_typing()
+        await ctx.message.channel.trigger_typing()
         try:
             if name is None:
                 title = "Latest level ups"
@@ -883,12 +871,12 @@ class Tibia:
                 c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (name,))
                 result = c.fetchone()
                 if result is None:
-                    yield from ctx.send("I don't have a character with that name registered.")
+                    await ctx.send("I don't have a character with that name registered.")
                     return
                 # If user doesn't share a server with the owner, don't display it
                 owner = get_member(self.bot, result["user_id"], guild_list=user_guilds)
                 if owner is None:
-                    yield from ctx.send("I don't have a character with that name registered.")
+                    await ctx.send("I don't have a character with that name registered.")
                     return
                 name = result["name"]
                 title = "**{0}** latest level ups:".format(name)
@@ -908,27 +896,26 @@ class Tibia:
             c.close()
 
         if count == 0:
-            yield from ctx.send("There are no registered levels.")
+            await ctx.send("There are no registered levels.")
             return
 
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
-            yield from pages.paginate()
+            await pages.paginate()
         except CannotPaginate as e:
-            yield from ctx.send(e)
+            await ctx.send(e)
 
     @levels.command(name="user")
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def levels_user(self, ctx, *, name: str = None):
+    async def levels_user(self, ctx, *, name: str = None):
         """Shows an user's recent level ups on his/her registered characters"""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            yield from ctx.send("You must tell me an user's name to look for his/her level ups.")
+            await ctx.send("You must tell me an user's name to look for his/her level ups.")
             return
 
         if is_private(ctx.message.channel):
@@ -938,12 +925,12 @@ class Tibia:
             user_servers = [ctx.message.guild]
             user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
             if user_worlds[0] is None:
-                yield from ctx.send("This server is not tracking any tibia worlds.")
+                await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
         user = get_member_by_name(self.bot, name, guild_list=user_servers)
         if user is None:
-            yield from ctx.send("I don't see any users with that name.")
+            await ctx.send("I don't see any users with that name.")
             return
 
         c = userDatabase.cursor()
@@ -974,7 +961,7 @@ class Tibia:
                 if count >= 100:
                     break
             if count == 0:
-                yield from ctx.send("There are not registered level ups by this user.")
+                await ctx.send("There are not registered level ups by this user.")
                 return
         finally:
             c.close()
@@ -982,18 +969,17 @@ class Tibia:
         title = "@{0} latest level ups".format(user.display_name)
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
-            yield from pages.paginate()
+            await pages.paginate()
         except CannotPaginate as e:
-            yield from ctx.send(e)
+            await ctx.send(e)
 
     @commands.group(aliases=["story"], invoke_without_command=True)
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def timeline(self, ctx, *, name: str = None):
+    async def timeline(self, ctx, *, name: str = None):
         """Shows a player's recent level ups and deaths"""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if is_private(ctx.message.channel):
@@ -1003,7 +989,7 @@ class Tibia:
             user_servers = [ctx.message.guild]
             user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
             if user_worlds[0] is None:
-                yield from ctx.send("This server is not tracking any tibia worlds.")
+                await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
         c = userDatabase.cursor()
@@ -1015,7 +1001,7 @@ class Tibia:
             per_page = 20
         else:
             per_page = 5
-        yield from ctx.message.channel.trigger_typing()
+        await ctx.message.channel.trigger_typing()
         try:
             if name is None:
                 title = "Timeline"
@@ -1051,12 +1037,12 @@ class Tibia:
                 c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (name,))
                 result = c.fetchone()
                 if result is None:
-                    yield from ctx.send("I don't have a character with that name registered.")
+                    await ctx.send("I don't have a character with that name registered.")
                     return
                 # If user doesn't share a server with the owner, don't display it
                 owner = get_member(self.bot, result["user_id"], guild_list=user_servers)
                 if owner is None:
-                    yield from ctx.send("I don't have a character with that name registered.")
+                    await ctx.send("I don't have a character with that name registered.")
                     return
                 name = result["name"]
                 title = "**{0}** timeline".format(name)
@@ -1086,27 +1072,26 @@ class Tibia:
             c.close()
 
         if count == 0:
-            yield from ctx.send("There are no registered events.")
+            await ctx.send("There are no registered events.")
             return
 
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
-            yield from pages.paginate()
+            await pages.paginate()
         except CannotPaginate as e:
-            yield from ctx.send(e)
+            await ctx.send(e)
 
     @timeline.command(name="user")
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def timeline_user(self, ctx, *, name: str = None):
+    async def timeline_user(self, ctx, *, name: str = None):
         """Shows an users's recent level ups and deaths on his/her characters"""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            yield from ctx.send("You must tell me an user's name to look for his/her story.")
+            await ctx.send("You must tell me an user's name to look for his/her story.")
             return
 
         if is_private(ctx.message.channel):
@@ -1116,12 +1101,12 @@ class Tibia:
             user_servers = [ctx.message.guild]
             user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
             if user_worlds[0] is None:
-                yield from ctx.send("This server is not tracking any tibia worlds.")
+                await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
         user = get_member_by_name(self.bot, name, guild_list=user_servers)
         if user is None:
-            yield from ctx.send("I don't see any users with that name.")
+            await ctx.send("I don't see any users with that name.")
             return
 
         c = userDatabase.cursor()
@@ -1134,7 +1119,7 @@ class Tibia:
             per_page = 20
         else:
             per_page = 5
-        yield from ctx.message.channel.trigger_typing()
+        await ctx.message.channel.trigger_typing()
         try:
             title = "@{0} timeline".format(user.display_name)
             c.execute("SELECT name, user_id, world, level, killer, 'death' AS `type`, date "
@@ -1165,18 +1150,17 @@ class Tibia:
             c.close()
 
         if count == 0:
-            yield from ctx.send("There are no registered events.")
+            await ctx.send("There are no registered events.")
             return
 
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
-            yield from pages.paginate()
+            await pages.paginate()
         except CannotPaginate as e:
-            yield from ctx.send(e)
+            await ctx.send(e)
 
     @commands.command()
-    @asyncio.coroutine
-    def stats(self, ctx, *, params: str=None):
+    async def stats(self, ctx, *, params: str=None):
         """Calculates character stats
 
         There are 3 ways to use this command:
@@ -1188,22 +1172,22 @@ class Tibia:
                             "/stats level,vocation\n" \
                             "/stats vocation,level```"
         if params is None:
-            yield from ctx.send(invalid_arguments)
+            await ctx.send(invalid_arguments)
             return
         params = params.split(",")
         char = None
         if len(params) == 1:
             _digits = re.compile('\d')
             if _digits.search(params[0]) is not None:
-                yield from ctx.send(invalid_arguments)
+                await ctx.send(invalid_arguments)
                 return
             else:
-                char = yield from get_character(params[0])
+                char = await get_character(params[0])
                 if char == ERROR_NETWORK:
-                    yield from ctx.send("Sorry, can you try it again?")
+                    await ctx.send("Sorry, can you try it again?")
                     return
                 if char == ERROR_DOESNTEXIST:
-                    yield from ctx.send("Character **{0}** doesn't exist!".format(params[0]))
+                    await ctx.send("Character **{0}** doesn't exist!".format(params[0]))
                     return
                 level = int(char['level'])
                 vocation = char['vocation']
@@ -1216,26 +1200,26 @@ class Tibia:
                     level = int(params[1])
                     vocation = params[0]
                 except ValueError:
-                    yield from ctx.send(invalid_arguments)
+                    await ctx.send(invalid_arguments)
                     return
         else:
-            yield from ctx.send(invalid_arguments)
+            await ctx.send(invalid_arguments)
             return
         stats = get_stats(level, vocation)
         if stats == "low level":
-            yield from ctx.send("Not even *you* can go down so low!")
+            await ctx.send("Not even *you* can go down so low!")
         elif stats == "high level":
-            yield from ctx.send("Why do you care? You will __**never**__ reach this level "+str(chr(0x1f644)))
+            await ctx.send("Why do you care? You will __**never**__ reach this level "+str(chr(0x1f644)))
         elif stats == "bad vocation":
-            yield from ctx.send("I don't know what vocation that is...")
+            await ctx.send("I don't know what vocation that is...")
         elif stats == "bad level":
-            yield from ctx.send("Level needs to be a number!")
+            await ctx.send("Level needs to be a number!")
         elif isinstance(stats, dict):
             if stats["vocation"] == "no vocation":
                 stats["vocation"] = "with no vocation"
             if char:
                 pronoun = "he" if char['gender'] == "male" else "she"
-                yield from ctx.send("**{5}** is a level **{0}** {1}, {6} has:"
+                await ctx.send("**{5}** is a level **{0}** {1}, {6} has:"
                                     "\n\t**{2:,}** HP"
                                     "\n\t**{3:,}** MP"
                                     "\n\t**{4:,}** Capacity"
@@ -1244,7 +1228,7 @@ class Tibia:
                                     .format(level, char["vocation"].lower(), stats["hp"], stats["mp"], stats["cap"],
                                             char['name'], pronoun, stats["exp"], stats["exp_tnl"]))
             else:
-                yield from ctx.send("A level **{0}** {1} has:"
+                await ctx.send("A level **{0}** {1} has:"
                                     "\n\t**{2:,}** HP"
                                     "\n\t**{3:,}** MP"
                                     "\n\t**{4:,}** Capacity"
@@ -1253,17 +1237,16 @@ class Tibia:
                                     .format(level, stats["vocation"], stats["hp"], stats["mp"], stats["cap"],
                                             stats["exp"], stats["exp_tnl"]))
         else:
-            yield from ctx.send("Are you sure that is correct?")
+            await ctx.send("Are you sure that is correct?")
 
     @commands.command(aliases=['bless'])
-    @asyncio.coroutine
-    def blessings(self, ctx, level: int = None):
+    async def blessings(self, ctx, level: int = None):
         """Calculates the price of blessings at a specific level"""
         if level is None:
-            yield from ctx.send("I need a level to tell you blessings's prices")
+            await ctx.send("I need a level to tell you blessings's prices")
             return
         if level < 1:
-            yield from ctx.send("Very funny... Now tell me a valid level.")
+            await ctx.send("Very funny... Now tell me a valid level.")
             return
         price = 200 * (level - 20)
         if level <= 30:
@@ -1273,32 +1256,31 @@ class Tibia:
         inquisition = ""
         if level >= 100:
             inquisition = "\nBlessing of the Inquisition costs **{0:,}** gold coins.".format(int(price*5*1.1))
-        yield from ctx.send(
+        await ctx.send(
                 "At that level, you will pay **{0:,}** gold coins per blessing for a total of **{1:,}** gold coins.{2}"
                 .format(price, price*5, inquisition))
 
     @commands.command()
-    @asyncio.coroutine
-    def spell(self, ctx, *, name: str= None):
+    async def spell(self, ctx, *, name: str= None):
         """Tells you information about a certain spell."""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            yield from ctx.send("Tell me the name or words of a spell.")
+            await ctx.send("Tell me the name or words of a spell.")
             return
 
         spell = get_spell(name)
 
         if spell is None:
-            yield from ctx.send("I don't know any spell with that name or words.")
+            await ctx.send("I don't know any spell with that name or words.")
             return
 
         if type(spell) is list:
             embed = discord.Embed(title="Suggestions", description="\n".join(spell))
-            yield from ctx.send("I couldn't find that spell, maybe you meant one of these?", embed=embed)
+            await ctx.send("I couldn't find that spell, maybe you meant one of these?", embed=embed)
             return
 
         long = is_private(ctx.message.channel) or ctx.message.channel.name == ask_channel_name
@@ -1315,36 +1297,35 @@ class Tibia:
                 f.close()
 
             with open(filename, "r+b") as f:
-                yield from ctx.send(file=f, embed=embed)
+                await ctx.send(file=f, embed=embed)
                 f.close()
             os.remove(filename)
         else:
-            yield from ctx.send(embed=embed)
+            await ctx.send(embed=embed)
 
     @commands.command(aliases=["houses", "guildhall", "gh"])
-    @asyncio.coroutine
-    def house(self, ctx, *, name: str=None):
+    async def house(self, ctx, *, name: str=None):
         """Shows info for a house or guildhall"""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            yield from ctx.send("Tell me the name of the house or guildhall you want to check.")
+            await ctx.send("Tell me the name of the house or guildhall you want to check.")
             return
         world = None
         if ctx.message.guild is not None:
             world = tracked_worlds.get(ctx.message.guild.id)
 
-        house = yield from get_house(name, world)
+        house = await get_house(name, world)
         if house is None:
-            yield from ctx.send("I couldn't find a house with that name.")
+            await ctx.send("I couldn't find a house with that name.")
             return
 
         if type(house) is list:
             embed = discord.Embed(title="Suggestions", description="\n".join(house))
-            yield from ctx.send("I couldn't find that house, maybe you meant one of these?", embed=embed)
+            await ctx.send("I couldn't find that house, maybe you meant one of these?", embed=embed)
             return
 
         # Attach image only if the bot has permissions
@@ -1359,31 +1340,30 @@ class Tibia:
                 f.close()
             # Send image
             with open(filename, "r+b") as f:
-                yield from ctx.send(file=f,embed=self.get_house_embed(house))
+                await ctx.send(file=f,embed=self.get_house_embed(house))
                 f.close()
             os.remove(filename)
         else:
-            yield from ctx.send(embed=self.get_house_embed(house))
+            await ctx.send(embed=self.get_house_embed(house))
 
     @commands.command(aliases=["achiev"])
-    @asyncio.coroutine
-    def achievement(self, ctx, *, name: str=None):
+    async def achievement(self, ctx, *, name: str=None):
         """Shows an achievement's information
 
         Spoilers are only shown on ask channel and private messages"""
         permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
-            yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            yield from ctx.send("Tell me the name of the achievement you want to check.")
+            await ctx.send("Tell me the name of the achievement you want to check.")
             return
         achievement = get_achievement(name)
 
         if type(achievement) is list:
             embed = discord.Embed(title="Suggestions", description="\n".join(achievement))
-            yield from ctx.send("I couldn't find that house, maybe you meant one of these?", embed=embed)
+            await ctx.send("I couldn't find that house, maybe you meant one of these?", embed=embed)
             return
 
         ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
@@ -1398,11 +1378,10 @@ class Tibia:
         embed.add_field(name="Points", value=achievement["points"])
         embed.add_field(name="Spoiler", value=achievement["spoiler"], inline=True)
 
-        yield from ctx.send(embed=embed)
+        await ctx.send(embed=embed)
 
     @commands.command(aliases=['serversave','ss'])
-    @asyncio.coroutine
-    def time(self, ctx):
+    async def time(self, ctx):
         """Displays tibia server's time and time until server save"""
         offset = get_tibia_time_zone() - get_local_timezone()
         tibia_time = datetime.now()+timedelta(hours=offset)
@@ -1429,7 +1408,7 @@ class Tibia:
             timestrsonora = sonora_time.strftime("%H:%M")
             reply += "\n**{0}** in Mexico (Sonora).".format(timestrsonora)
         reply += "\nServer save is in {0}.\nRashid is in **{1}** today.".format(server_save_str, get_rashid_city())
-        yield from ctx.send(reply)
+        await ctx.send(reply)
 
     @staticmethod
     def get_char_string(char) -> str:

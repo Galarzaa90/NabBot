@@ -1552,12 +1552,12 @@ def split_message(message: str, limit: int=2000):
         return message_list
 
 
-def send_messageEx(bot,dest,message,embed=False):
+async def send_messageEx(bot,dest,message,embed=False):
     message = split_message(message)
     for msg in message:
         if embed:
             msg_embed = discord.Embed()
             msg_embed.description = msg
-            yield from bot.send_message(dest,embed=msg_embed)
+            await bot.send_message(dest,embed=msg_embed)
         else:
-            yield from bot.send_message(dest,msg)
+            await bot.send_message(dest,msg)

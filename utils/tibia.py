@@ -63,91 +63,71 @@ def get_character_url(name):
     """Gets a character's tibia.com URL"""
     return url_character + urllib.parse.quote(name.encode('iso-8859-1'))
 
-@asyncio.coroutine
-def get_highscores(server,category,pagenum, profession=0, tries=5):
+async def get_highscores(world, category, pagenum, profession=0, tries=5):
     """Gets a specific page of the highscores
     Each list element is a dictionary with the following keys: rank, name, value.
     May return ERROR_NETWORK"""
-    url = url_highscores.format(server, category, profession, pagenum)
+    url = url_highscores.format(world, category, profession, pagenum)
+
+    if tries == 0:
+        log.error("get_highscores: Couldn't fetch {0}, {1}, page {2}, network error.".format(world, category, pagenum))
+        return ERROR_NETWORK
+
     # Fetch website
     try:
-        page = yield from aiohttp.get(url)
-        content = yield from page.text(encoding='ISO-8859-1')
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
     except Exception:
-        if tries == 0:
-            log.error("get_highscores: Couldn't fetch {0}, {1}, page {2}, network error.".format(server, category,
-                                                                                                 pagenum))
-            return ERROR_NETWORK
-        else:
-            tries -= 1
-            yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_highscores(server, category, pagenum, profession, tries)
-            return ret
-    
+        await asyncio.sleep(network_retry_delay)
+        return await get_highscores(world, category, pagenum, profession, tries - 1)
+
     # Trimming content to reduce load
     try:
         start_index = content.index('<td style="width: 20%;" >Vocation</td>')
         end_index = content.index('<div style="float: left;"><b>&raquo; Pages:')
         content = content[start_index:end_index]
     except ValueError:
-        # Website fetch was incomplete, due to a network error
-        if tries == 0:
-            log.error("get_highscores: Couldn't fetch {0}, {1}, page {2}, network error.".format(server, category,
-                                                                                                 pagenum))
-            return ERROR_NETWORK
-        else:
-            tries -= 1
-            yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_highscores(server, category, pagenum, profession, tries)
-            return ret
+        await asyncio.sleep(network_retry_delay)
+        return await get_highscores(world, category, pagenum, profession, tries - 1)
     
     if category == "loyalty":
         regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
         pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
         matches = re.findall(pattern, content)
-        scoreList = []
+        score_list = []
         for m in matches:
-            scoreList.append({'rank': m[0], 'name': m[1], 'value': m[2].replace(',', '')})
+            score_list.append({'rank': m[0], 'name': m[1], 'value': m[2].replace(',', '')})
     else:
         regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
         pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
         matches = re.findall(pattern, content)
-        scoreList = []
+        score_list = []
         for m in matches:
-            scoreList.append({'rank': m[0], 'name': m[1], 'value': m[2].replace(',', '')})
-    return scoreList
+            score_list.append({'rank': m[0], 'name': m[1], 'value': m[2].replace(',', '')})
+    return score_list
 
 
-@asyncio.coroutine
-def get_world_online(server, tries=5):
+async def get_world_online(world, tries=5):
     """Returns a list of all the online players in current server.
 
     Each list element is a dictionary with the following keys: name, level"""
-    server = server.capitalize()
-    url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + server
-    onlineList = []
+    world = world.capitalize()
+    url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + world
+    online_list = []
+
+    if tries == 0:
+        log.error("get_world_online: Couldn't fetch {0}, network error.".format(world))
+        return online_list
 
     # Fetch website
     try:
-        page = yield from aiohttp.get(url)
-        content = yield from page.text(encoding='ISO-8859-1')
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
     except Exception:
-        if tries == 0:
-            log.error("getServerOnline: Couldn't fetch {0}, network error.".format(server))
-            # This should return ERROR_NETWORK, but requires error handling where this function is used
-            return onlineList
-        else:
-            tries -= 1
-            yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_world_online(server, tries)
-            return ret
-
-    while not content and tries > 0:
-        try:
-            page = yield from aiohttp.get(url)
-            content = yield from page.text(encoding='ISO-8859-1')
-        except Exception:
-            tries -= 1
+        await asyncio.sleep(network_retry_delay)
+        return await get_world_online(world, tries - 1)
 
     # Trimming content to reduce load
     try:
@@ -155,16 +135,8 @@ def get_world_online(server, tries=5):
         end_index = content.index('<div id="ThemeboxesColumn" >')
         content = content[start_index:end_index]
     except ValueError:
-        # Website fetch was incomplete due to a network error
-        if tries == 0:
-            log.error("getServerOnline: Couldn't fetch {0}, network error.".format(server))
-            # This should return ERROR_NETWORK, but requires error handling where this function is used
-            return onlineList
-        else:
-            tries -= 1
-            yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_world_online(server, tries)
-            return ret
+        await asyncio.sleep(network_retry_delay)
+        return await get_world_online(world, tries - 1)
 
     regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td>'
     pattern = re.compile(regex_members, re.MULTILINE + re.S)
@@ -174,12 +146,11 @@ def get_world_online(server, tries=5):
         # Building dictionary list from online players
         for (name, level) in m:
             name = urllib.parse.unquote_plus(name)
-            onlineList.append({'name': name, 'level': int(level)})
-    return onlineList
+            online_list.append({'name': name, 'level': int(level)})
+    return online_list
 
 
-@asyncio.coroutine
-def get_guild_online(guildname, titlecase=True, tries=5):
+async def get_guild_online(name, title_case=True, tries=5):
     """Returns a guild's world and online member list in a dictionary.
 
     The dictionary contains the following keys: name, logo_url, world and members.
@@ -187,38 +158,30 @@ def get_guild_online(guildname, titlecase=True, tries=5):
         rank, name, title, vocation, level, joined.
     Guilds are case sensitive on tibia.com so guildstats.eu is checked for correct case.
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
-    gstats_url = 'http://guildstats.eu/guild?guild=' + urllib.parse.quote(guildname)
+    guildstats_url = 'http://guildstats.eu/guild?guild=' + urllib.parse.quote(name)
     guild = {}
+
+    if tries == 0:
+        log.error("get_guild_online: Couldn't fetch {0}, network error.".format(name))
+        return ERROR_NETWORK
+
     # Fix casing using guildstats.eu if needed
     # Sorry guildstats.eu :D
-    if not titlecase:
-        # Fetch website
+    if not title_case:
         try:
-            page = yield from aiohttp.get(gstats_url)
-            content = yield from page.text(encoding='ISO-8859-1')
+            async with aiohttp.ClientSession() as session:
+                async with session.get(guildstats_url) as resp:
+                    content = await resp.text(encoding='ISO-8859-1')
         except Exception:
-            if tries == 0:
-                log.error("getGuildOnline: Couldn't fetch {0} from guildstats.eu, network error.".format(guildname))
-                return ERROR_NETWORK
-            else:
-                tries -= 1
-                yield from asyncio.sleep(network_retry_delay)
-                ret = yield from get_guild_online(guildname, titlecase, tries)
-                return ret
+            await asyncio.sleep(network_retry_delay)
+            return await get_guild_online(name, title_case, tries - 1)
 
         # Make sure we got a healthy fetch
         try:
             content.index('<div class="footer">')
         except ValueError:
-            # Website fetch was incomplete, due to a network error
-            if tries == 0:
-                log.error("getGuildOnline: Couldn't fetch {0} from guildstats.eu, network error.".format(guildname))
-                return ERROR_NETWORK
-            else:
-                tries -= 1
-                yield from asyncio.sleep(network_retry_delay)
-                ret = yield from get_guild_online(guildname, titlecase, tries)
-                return ret
+            await asyncio.sleep(network_retry_delay)
+            return await get_guild_online(name, title_case, tries - 1)
 
         # Check if the guild doesn't exist
         if "<div>Sorry!" in content:
@@ -229,57 +192,45 @@ def get_guild_online(guildname, titlecase=True, tries=5):
             content.index("General info")
             content.index("Recruitment")
         except Exception:
-            log.error("getGuildOnline: -IMPORTANT- guildstats.eu seems to have changed their websites format.")
+            log.error("get_guild_online: -IMPORTANT- guildstats.eu seems to have changed their websites format.")
             return ERROR_NETWORK
 
-        startIndex = content.index("General info")
-        endIndex = content.index("Recruitment")
-        content = content[startIndex:endIndex]
+        start_index = content.index("General info")
+        end_index = content.index("Recruitment")
+        content = content[start_index:end_index]
         m = re.search(r'<a href="set=(.+?)"', content)
         if m:
-            guildname = urllib.parse.unquote_plus(m.group(1))
+            name = urllib.parse.unquote_plus(m.group(1))
     else:
-        guildname = guildname.title()
+        name = name.title()
 
     tibia_url = 'https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName=' + urllib.parse.quote(
-        guildname) + '&onlyshowonline=1'
+        name) + '&onlyshowonline=1'
     # Fetch website
     try:
-        page = yield from aiohttp.get(tibia_url)
-        content = yield from page.text(encoding='ISO-8859-1')
+        async with aiohttp.ClientSession() as session:
+            async with session.get(tibia_url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
     except Exception:
-        if tries == 0:
-            log.error("getGuildOnline: Couldn't fetch {0}, network error.".format(guildname))
-            return ERROR_NETWORK
-        else:
-            tries -= 1
-            yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_guild_online(guildname, titlecase, tries)
-            return ret
+        await asyncio.sleep(network_retry_delay)
+        return await get_guild_online(name, title_case, tries - 1)
 
     # Trimming content to reduce load and making sure we got a healthy fetch
     try:
-        startIndex = content.index('<div class="BoxContent"')
-        endIndex = content.index('<div id="ThemeboxesColumn" >')
-        content = content[startIndex:endIndex]
+        start_index = content.index('<div class="BoxContent"')
+        end_index = content.index('<div id="ThemeboxesColumn" >')
+        content = content[start_index:end_index]
     except ValueError:
         # Website fetch was incomplete, due to a network error
-        if tries == 0:
-            log.error("getGuildOnline: Couldn't fetch {0}, network error.".format(guildname))
-            return ERROR_NETWORK
-        else:
-            tries -= 1
-            yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_guild_online(guildname, titlecase, tries)
-            return ret
+        await asyncio.sleep(network_retry_delay)
+        return await get_guild_online(name, title_case, tries - 1)
 
     # Check if the guild doesn't exist
     # Tibia.com has no search function, so there's no guild doesn't exist page cause you're not supposed to get to a
     # guild that doesn't exists. So the message displayed is "An internal error has ocurred. Please try again later!".
     if '<div class="Text" >Error</div>' in content:
-        if titlecase:
-            ret = yield from get_guild_online(guildname, False)
-            return ret
+        if title_case:
+            return await get_guild_online(name, False)
         else:
             return ERROR_DOESNTEXIST
 
@@ -291,7 +242,6 @@ def get_guild_online(guildname, titlecase=True, tries=5):
     m = re.search(r'Their home on \w+ is ([^\.]+)', content)
     if m:
         guild["guildhall"] = m.group(1)
-
 
     # Logo URL
     m = re.search(r'<IMG SRC=\"([^\"]+)\" W', content)
@@ -313,12 +263,11 @@ def get_guild_online(guildname, titlecase=True, tries=5):
             joined = joined.replace('&#160;', '-')
             guild['members'].append({'rank': rank, 'name': name, 'title': title,
                                      'vocation': vocation, 'level': level, 'joined': joined})
-    guild['name'] = guildname
+    guild['name'] = name
     return guild
 
 
-@asyncio.coroutine
-def get_character(name, tries=5):
+async def get_character(name, tries=5):
     """Returns a dictionary with a player's info
 
     The dictionary contains the following keys: name, deleted, level, vocation, world, residence,
@@ -326,6 +275,9 @@ def get_character(name, tries=5):
         *chars is list that contains other characters in the same account (if not hidden).
         Each list element is dictionary with the keys: name, world.
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
+    if tries == 0:
+        log.error("get_character: Couldn't fetch {0}, network error.".format(name))
+        return ERROR_NETWORK
     try:
         url = url_character + urllib.parse.quote(name.encode('iso-8859-1'))
     except UnicodeEncodeError:
@@ -334,17 +286,12 @@ def get_character(name, tries=5):
 
     # Fetch website
     try:
-        page = yield from aiohttp.get(url)
-        content = yield from page.text(encoding='ISO-8859-1')
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
     except Exception:
-        if tries == 0:
-            log.error("getPlayer: Couldn't fetch {0}, network error.".format(name))
-            return ERROR_NETWORK
-        else:
-            tries -= 1
-            yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_character(name, tries)
-            return ret
+        await asyncio.sleep(network_retry_delay)
+        return await get_character(name, tries-1)
 
     # Trimming content to reduce load
     try:
@@ -353,14 +300,9 @@ def get_character(name, tries=5):
         content = content[start_index:end_index]
     except ValueError:
         # Website fetch was incomplete, due to a network error
-        if tries == 0:
-            log.error("getPlayer: Couldn't fetch {0}, network error.".format(name))
-            return ERROR_NETWORK
-        else:
-            tries -= 1
-            yield from asyncio.sleep(network_retry_delay)
-            ret = yield from get_character(name, tries)
-            return ret
+        await asyncio.sleep(network_retry_delay)
+        return await get_character(name, tries - 1)
+
     # Check if player exists
     if "Name:</td><td>" not in content:
         return ERROR_DOESNTEXIST
@@ -837,8 +779,7 @@ def get_npc(name):
         c.close()
 
 
-@asyncio.coroutine
-def get_house(name, world = None):
+async def get_house(name, world = None):
     """Returns a dictionary containing a house's info, a list of possible matches or None.
 
     If world is specified, it will also find the current status of the house in that world."""
@@ -861,8 +802,8 @@ def get_house(name, world = None):
         tries = 5
         while True:
             try:
-                page = yield from aiohttp.get(house["url"])
-                content = yield from page.text(encoding='ISO-8859-1')
+                page = await aiohttp.get(house["url"])
+                content = await page.text(encoding='ISO-8859-1')
             except Exception:
                 if tries == 0:
                     log.error("get_house: Couldn't fetch {0} (id {1}) in {2}, network error.".format(house["name"],
@@ -872,7 +813,7 @@ def get_house(name, world = None):
                     break
                 else:
                     tries -= 1
-                    yield from asyncio.sleep(network_retry_delay)
+                    await asyncio.sleep(network_retry_delay)
                     continue
 
             # Trimming content to reduce load
@@ -889,7 +830,7 @@ def get_house(name, world = None):
                     break
                 else:
                     tries -= 1
-                    yield from asyncio.sleep(network_retry_delay)
+                    await asyncio.sleep(network_retry_delay)
                     continue
             house["fetch"] = True
             m = re.search(r'monthly rent is <B>(\d+)', content)

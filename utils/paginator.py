@@ -76,8 +76,7 @@ class Paginator:
         base = (page - 1) * self.per_page
         return self.entries[base:base + self.per_page]
 
-    @asyncio.coroutine
-    def show_page(self, page, *, first=False):
+    async def show_page(self, page, *, first=False):
         self.current_page = page
         entries = self.get_page(page)
         p = []
@@ -93,12 +92,10 @@ class Paginator:
 
         self.embed.description = self.description+"\n"+'\n'.join(p)
         if not self.paginating:
-            ret = yield from self.message.channel.send(embed=self.embed)
-            return ret
-
+            return await self.message.channel.send(embed=self.embed)
+            
         if not first:
-            yield from self.message.edit(embed=self.embed)
-            return
+            return await self.message.edit(embed=self.embed)
 
         # verify we can actually use the pagination session
         if not self.permissions.add_reactions:
@@ -106,7 +103,7 @@ class Paginator:
         if not self.permissions.read_message_history:
             raise CannotPaginate("Bot does not have read message history permission.")
 
-        self.message = yield from self.message.channel.send(embed=self.embed)
+        self.message = await self.message.channel.send(embed=self.embed)
         for (reaction, _) in self.reaction_emojis:
             if self.maximum_pages == 2 and reaction in ('\u23ed', '\u23ee'):
                 # no |<< or >>| buttons if we only have two pages
@@ -114,47 +111,40 @@ class Paginator:
                 # it from the default set
                 continue
 
-            yield from self.message.add_reaction(reaction)
+            await self.message.add_reaction(reaction)
 
-    @asyncio.coroutine
-    def checked_show_page(self, page):
+    async def checked_show_page(self, page):
         if page != 0 and page <= self.maximum_pages:
-            yield from self.show_page(page)
+            await self.show_page(page)
 
-    @asyncio.coroutine
-    def first_page(self):
+    async def first_page(self):
         """goes to the first page"""
-        yield from self.show_page(1)
+        await self.show_page(1)
 
-    @asyncio.coroutine
-    def last_page(self):
+    async def last_page(self):
         """goes to the last page"""
-        yield from self.show_page(self.maximum_pages)
+        await self.show_page(self.maximum_pages)
 
-    @asyncio.coroutine
-    def next_page(self):
+    async def next_page(self):
         """goes to the next page"""
-        yield from self.checked_show_page(self.current_page + 1)
+        await self.checked_show_page(self.current_page + 1)
 
-    @asyncio.coroutine
-    def previous_page(self):
+    async def previous_page(self):
         """goes to the previous page"""
-        yield from self.checked_show_page(self.current_page - 1)
+        await self.checked_show_page(self.current_page - 1)
 
-    @asyncio.coroutine
-    def show_current_page(self):
+    async def show_current_page(self):
         if self.paginating:
-            yield from self.show_page(self.current_page)
+            await self.show_page(self.current_page)
 
-    @asyncio.coroutine
-    def stop_pages(self):
+    async def stop_pages(self):
         """stops the interactive pagination session"""
-        # yield from self.bot.delete_message(self.message)
+        # await self.bot.delete_message(self.message)
         try:
-            yield from self.message.clear_reactions()
+            await self.message.clear_reactions()
         except:
             pass
-        yield from self.show_page(1)
+        await self.show_page(1)
         self.paginating = False
 
     def react_check(self, reaction, user):
@@ -167,27 +157,26 @@ class Paginator:
                 return True
         return False
 
-    @asyncio.coroutine
-    def paginate(self):
+    async def paginate(self):
         """Actually paginate the entries and run the interactive loop if necessary."""
-        yield from self.show_page(1, first=True)
+        await self.show_page(1, first=True)
 
         while self.paginating:
             try:
-                react = yield from self.bot.wait_for("reaction_add", check=self.react_check, timeout=120.0)
+                react = await self.bot.wait_for("reaction_add", check=self.react_check, timeout=120.0)
                 try:
-                    yield from self.message.remove_reaction(react[0].emoji, react[1])
+                    await self.message.remove_reaction(react[0].emoji, react[1])
                 except Exception as e:
                     print(e)
                     pass  # can't remove it so don't bother doing so
             except asyncio.TimeoutError:
-                yield from self.first_page()
+                await self.first_page()
                 self.paginating = False
                 try:
-                    yield from self.message.clear_reactions()
+                    await self.message.clear_reactions()
                 except:
                     pass
                 finally:
                     break
 
-            yield from self.match()
+            await self.match()

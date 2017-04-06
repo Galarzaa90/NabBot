@@ -18,8 +18,7 @@ class Admin:
 
     @commands.command()
     @checks.is_admin()
-    @asyncio.coroutine
-    def diagnose(self, ctx: discord.ext.commands.Context, *, server_name=None):
+    async def diagnose(self, ctx: discord.ext.commands.Context, *, server_name=None):
         """Diagnose the bots permissions and channels"""
         # This will always have at least one server, otherwise this command wouldn't pass the is_admin check.
         admin_guilds = get_user_admin_guilds(self.bot, ctx.message.author.id)
@@ -27,7 +26,7 @@ class Admin:
         if server_name is None:
             if not is_private(ctx.message.channel):
                 if ctx.message.guild not in admin_guilds:
-                    yield from ctx.send("You don't have permissions to diagnose this server.")
+                    await ctx.send("You don't have permissions to diagnose this server.")
                     return
                 guild = ctx.message.guild
             else:
@@ -35,33 +34,33 @@ class Admin:
                     guild = admin_guilds[0]
                 else:
                     guild_list = [str(i+1)+": "+admin_guilds[i].name for i in range(len(admin_guilds))]
-                    yield from ctx.send("Which server do you want to check?\n\t0: *Cancel*\n\t"+"\n\t".join(guild_list))
+                    await ctx.send("Which server do you want to check?\n\t0: *Cancel*\n\t"+"\n\t".join(guild_list))
 
                     def check(m):
                         return m.author == ctx.author and m.channel == ctx.channel
                     try:
-                        answer = yield from self.bot.wait_for("message", timeout=60.0, check=check)
+                        answer = await self.bot.wait_for("message", timeout=60.0, check=check)
                         answer = int(answer.content)
                         if answer == 0:
-                            yield from ctx.send("Changed your mind? Typical human.")
+                            await ctx.send("Changed your mind? Typical human.")
                             return
                         guild = admin_guilds[answer-1]
                     except IndexError:
-                        yield from ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
+                        await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
                         return
                     except ValueError:
-                        yield from ctx.send("That's not a number!")
+                        await ctx.send("That's not a number!")
                         return
                     except asyncio.TimeoutError:
-                        yield from ctx.send("I guess you changed your mind.")
+                        await ctx.send("I guess you changed your mind.")
                         return
         else:
             guild = get_guild_by_name(self.bot, server_name)
             if guild is None:
-                yield from ctx.send("I couldn't find a server with that name.")
+                await ctx.send("I couldn't find a server with that name.")
                 return
             if guild not in admin_guilds:
-                yield from ctx.send("You don't have permissions to diagnose **{0}**.".format(guild.name))
+                await ctx.send("You don't have permissions to diagnose **{0}**.".format(guild.name))
                 return
 
         if guild is None:
@@ -135,14 +134,13 @@ class Admin:
             answer += "{0} Enabled: {1.mention}".format(get_check_emoji(True), log_channel)
         else:
             answer += "{0} Not enabled".format(get_check_emoji(False))
-        yield from ctx.send(answer)
+        await ctx.send(answer)
         return
 
     @commands.command(name="setworld")
     @checks.is_admin()
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def set_world(self, ctx: commands.Context, *, world: str = None):
+    async def set_world(self, ctx: commands.Context, *, world: str = None):
         """Sets this server's Tibia world.
 
         If no world is passed, it shows this server's current assigned world."""
@@ -153,7 +151,7 @@ class Admin:
 
         if not is_private(ctx.message.channel):
             if ctx.message.guild not in admin_guilds:
-                yield from ctx.send("You don't have permissions to diagnose this server.")
+                await ctx.send("You don't have permissions to diagnose this server.")
                 return
             guild = ctx.message.guild
         else:
@@ -161,43 +159,43 @@ class Admin:
                 guild = admin_guilds[0]
             else:
                 guild_list = [str(i+1)+": "+admin_guilds[i].name for i in range(len(admin_guilds))]
-                yield from ctx.send("For which server do you want to change the world?\n\t0: *Cancel*\n\t"+"\n\t".join(guild_list))
+                await ctx.send("For which server do you want to change the world?\n\t0: *Cancel*\n\t"+"\n\t".join(guild_list))
 
                 try:
-                    answer = yield from self.bot.wait_for("message", timeout=60.0)
+                    answer = await self.bot.wait_for("message", timeout=60.0)
                     answer = int(answer.content)
                     if answer == 0:
-                        yield from ctx.send("Changed your mind? Typical human.")
+                        await ctx.send("Changed your mind? Typical human.")
                         return
                     guild = admin_guilds[answer-1]
                 except IndexError:
-                    yield from ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
+                    await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
                     return
                 except ValueError:
-                    yield from ctx.send("That's not a valid answer.")
+                    await ctx.send("That's not a valid answer.")
                     return
                 except asyncio.TimeoutError:
-                    yield from ctx.send("I guess you changed your mind.")
+                    await ctx.send("I guess you changed your mind.")
                     return
 
         guild_id = guild.id
         if world is None:
             current_world = tracked_worlds.get(guild_id, None)
             if current_world is None:
-                yield from ctx.send("This server has no tibia world assigned.")
+                await ctx.send("This server has no tibia world assigned.")
             else:
-                yield from ctx.send("This server has **{0}** assigned.".format(current_world))
+                await ctx.send("This server has **{0}** assigned.".format(current_world))
             return
 
         if world.lower() in ["clear", "none", "delete", "remove"]:
-            yield from ctx.send("Are you sure you want to delete this server's tracked world? `yes/no`")
+            await ctx.send("Are you sure you want to delete this server's tracked world? `yes/no`")
             try:
-                reply = yield from self.bot.wait_for("message", timeout=50.0, check=check)
+                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
                 if reply.content.lower() not in ["yes", "y"]:
-                    yield from ctx.send("No changes were made then.")
+                    await ctx.send("No changes were made then.")
                     return
             except asyncio.TimeoutError:
-                yield from ctx.send("I guess you changed your mind...")
+                await ctx.send("I guess you changed your mind...")
                 return
 
             c = userDatabase.cursor()
@@ -206,24 +204,24 @@ class Admin:
             finally:
                 c.close()
                 userDatabase.commit()
-            yield from ctx.send("This server's tracked world has been removed.")
+            await ctx.send("This server's tracked world has been removed.")
             reload_worlds()
             return
 
         world = world.strip().capitalize()
         if world not in tibia_worlds:
-            yield from ctx.send("There's no world with that name.")
+            await ctx.send("There's no world with that name.")
             return
-        yield from ctx.send("Are you sure you want to assign **{0}** to this server? Previous worlds will be replaced."
+        await ctx.send("Are you sure you want to assign **{0}** to this server? Previous worlds will be replaced."
                             .format(world))
 
         try:
-            reply = yield from self.bot.wait_for("message", timeout=50.0, check=check)
+            reply = await self.bot.wait_for("message", timeout=50.0, check=check)
             if reply.content.lower() not in ["yes", "y"]:
-                yield from ctx.send("No changes were made then.")
+                await ctx.send("No changes were made then.")
                 return
         except asyncio.TimeoutError:
-            yield from ctx.send("I guess you changed your mind...")
+            await ctx.send("I guess you changed your mind...")
             return
 
         c = userDatabase.cursor()
@@ -232,7 +230,7 @@ class Admin:
             c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'world'", (guild_id,))
             c.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'world', ?)",
                       (guild_id, world,))
-            yield from ctx.send("This server's world has been changed successfully.")
+            await ctx.send("This server's world has been changed successfully.")
         finally:
             c.close()
             userDatabase.commit()
@@ -241,8 +239,7 @@ class Admin:
     @commands.command(name="setwelcome")
     @checks.is_admin()
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def set_welcome(self, ctx, *, message: str = None):
+    async def set_welcome(self, ctx, *, message: str = None):
         """Changes the messages members get pmed when joining
 
         A part of the message is already fixed and cannot be changed, but the message can be extended
@@ -262,7 +259,7 @@ class Admin:
 
         if not is_private(ctx.message.channel):
             if ctx.message.guild not in admin_guilds:
-                yield from ctx.send("You don't have permissions to diagnose this server.")
+                await ctx.send("You don't have permissions to diagnose this server.")
                 return
             guild = ctx.message.guild
         else:
@@ -270,46 +267,46 @@ class Admin:
                 guild = admin_guilds[0]
             else:
                 guild_list = [str(i + 1) + ": " + admin_guilds[i].name for i in range(len(admin_guilds))]
-                yield from ctx.send("For which server do you want to change the welcome message?\n\t0: *Cancel*\n\t"
+                await ctx.send("For which server do you want to change the welcome message?\n\t0: *Cancel*\n\t"
                                     +"\n\t".join(guild_list))
                 try:
-                    answer = yield from self.bot.wait_for("message", timeout=60.0, check=check)
+                    answer = await self.bot.wait_for("message", timeout=60.0, check=check)
                     answer = int(answer.content)
                     if answer == 0:
-                        yield from ctx.send("Changed your mind? Typical human.")
+                        await ctx.send("Changed your mind? Typical human.")
                         return
                     guild = admin_guilds[answer - 1]
                 except IndexError:
-                    yield from ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
+                    await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
                     return
                 except ValueError:
-                    yield from ctx.send("That's not a valid answer.")
+                    await ctx.send("That's not a valid answer.")
                     return
                 except asyncio.TimeoutError:
-                    yield from ctx.send("I guess you changed your mind.")
+                    await ctx.send("I guess you changed your mind.")
                     return
         if message is None:
             current_message = welcome_messages.get(guild.id, None)
             if current_message is None:
                 current_message = welcome_pm.format(ctx.message.author, self.bot)
-                yield from ctx.send("This server has no custom message, joining members get the default message:\n"
+                await ctx.send("This server has no custom message, joining members get the default message:\n"
                                     "----------\n{0}".format(current_message))
             else:
                 current_message = (welcome_pm + "\n" + current_message).format(ctx.message.author, self.bot)
-                yield from ctx.send("This server has the following welcome message:\n"
+                await ctx.send("This server has the following welcome message:\n"
                                     "----------\n``The first two lines can't be changed``\n{0}"
                                     .format(current_message))
             return
         if message.lower() in ["clear", "none", "delete", "remove"]:
-            yield from ctx.send("Are you sure you want to delete this server's welcome message? `yes/no`\n"
+            await ctx.send("Are you sure you want to delete this server's welcome message? `yes/no`\n"
                                 "The default welcome message will still be shown.")
             try:
-                reply = yield from self.bot.wait_for("message", timeout=50.0, check=check)
+                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
                 if reply.content.lower() not in ["yes", "y"]:
-                    yield from ctx.send("No changes were made then.")
+                    await ctx.send("No changes were made then.")
                     return
             except asyncio.TimeoutError:
-                yield from ctx.send("I guess you changed your mind...")
+                await ctx.send("I guess you changed your mind...")
                 return
 
             c = userDatabase.cursor()
@@ -318,29 +315,29 @@ class Admin:
             finally:
                 c.close()
                 userDatabase.commit()
-            yield from ctx.send("This server's welcome message was removed.")
+            await ctx.send("This server's welcome message was removed.")
             reload_welcome_messages()
             return
 
         if len(message) > 1200:
-            yield from ctx.send("This message exceeds the character limit! ({0}/{1}".format(len(message), 1200))
+            await ctx.send("This message exceeds the character limit! ({0}/{1}".format(len(message), 1200))
             return
         try:
             complete_message = (welcome_pm+"\n"+message).format(ctx.message.author, self.bot)
         except Exception as e:
-            yield from ctx.send("There is something wrong with your message.\n```{0}```".format(e))
+            await ctx.send("There is something wrong with your message.\n```{0}```".format(e))
             return
 
-        yield from ctx.send("Are you sure you want this as your private welcome message?\n"
+        await ctx.send("Are you sure you want this as your private welcome message?\n"
                             "----------\n``The first two lines can't be changed``\n{0}"
                             .format(complete_message))
         try:
-            reply = yield from self.bot.wait_for("message", timeout=120.0, check=check)
+            reply = await self.bot.wait_for("message", timeout=120.0, check=check)
             if reply.content.lower() not in ["yes", "y"]:
-                yield from ctx.send("No changes were made then.")
+                await ctx.send("No changes were made then.")
                 return
         except asyncio.TimeoutError:
-            yield from ctx.send("I guess you changed your mind...")
+            await ctx.send("I guess you changed your mind...")
             return
 
         c = userDatabase.cursor()
@@ -349,7 +346,7 @@ class Admin:
             c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'welcome'", (guild.id,))
             c.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'welcome', ?)",
                       (guild.id, message,))
-            yield from ctx.send("This server's welcome message has been changed successfully.")
+            await ctx.send("This server's welcome message has been changed successfully.")
         finally:
             c.close()
             userDatabase.commit()
@@ -358,8 +355,7 @@ class Admin:
     @commands.command(name="setchannel")
     @checks.is_admin()
     @checks.is_not_lite()
-    @asyncio.coroutine
-    def set_announce_channel(self, ctx: commands.Context, *, name: str = None):
+    async def set_announce_channel(self, ctx: commands.Context, *, name: str = None):
         """Changes the channel used for the bot's announcements
 
         If no channel is set, the bot will use the server's default channel."""
@@ -370,7 +366,7 @@ class Admin:
 
         if not is_private(ctx.message.channel):
             if ctx.message.guild not in admin_guilds:
-                yield from ctx.send("You don't have permissions to diagnose this server.")
+                await ctx.send("You don't have permissions to diagnose this server.")
                 return
             guild = ctx.message.guild
         else:
@@ -378,57 +374,57 @@ class Admin:
                 guild = admin_guilds[0]
             else:
                 server_list = [str(i + 1) + ": " + admin_guilds[i].name for i in range(len(admin_guilds))]
-                yield from ctx.send(
+                await ctx.send(
                     "For which server do you want to change the announce channel?\n\t0: *Cancel*\n\t" + "\n\t"
                     .join(server_list))
                 try:
-                    answer = yield from self.bot.wait_for("message",timeout=60.0, check=check)
+                    answer = await self.bot.wait_for("message",timeout=60.0, check=check)
                     answer = int(answer.content)
                     if answer == 0:
-                        yield from ctx.send("Changed your mind? Typical human.")
+                        await ctx.send("Changed your mind? Typical human.")
                         return
                     guild = admin_guilds[answer - 1]
                 except ValueError:
-                    yield from ctx.send("That's not a valid answer.")
+                    await ctx.send("That's not a valid answer.")
                     return
                 except IndexError:
-                    yield from ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
+                    await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
                     return
                 except asyncio.TimeoutError:
-                    yield from ctx.send("I guess you changed your mind.")
+                    await ctx.send("I guess you changed your mind.")
                     return
 
         if name is None:
             current_channel = announce_channels.get(guild.id, None)
             if current_channel is None:
-                yield from ctx.send("This server has no custom channel set, {0} is used."
+                await ctx.send("This server has no custom channel set, {0} is used."
                                     .format(guild.default_channel.mention))
             else:
                 channel = get_channel_by_name(self.bot, current_channel, guild)
                 if channel is not None:
                     permissions = channel.permissions_for(get_member(self.bot, self.bot.user.id, guild))
                     if not permissions.read_messages or not permissions.send_messages:
-                        yield from ctx.send("This server's announce channel is set to #**{0}** but I don't have "
+                        await ctx.send("This server's announce channel is set to #**{0}** but I don't have "
                                             "permissions to use it. {1.mention} will be used instead."
                                             .format(current_channel, channel))
                         return
-                    yield from ctx.send("This server's announce channel is {0.mention}".format(channel))
+                    await ctx.send("This server's announce channel is {0.mention}".format(channel))
                 else:
-                    yield from ctx.send("This server's announce channel is set to #**{0}** but it doesn't exist. "
+                    await ctx.send("This server's announce channel is set to #**{0}** but it doesn't exist. "
                                         "{1.mention} will be used instead."
                                         .format(current_channel, guild.default_channel))
             return
         if name.lower() in ["clear", "none", "delete", "remove"]:
-            yield from ctx.send("Are you sure you want to delete this server's announce channel? `yes/no`\n"
+            await ctx.send("Are you sure you want to delete this server's announce channel? `yes/no`\n"
                                 "The server's default channel ({0.mention}) will still be used."
                                 .format(guild.default_channel))
             try:
-                reply = yield from self.bot.wait_for("message", timeout=50.0, check=check)
+                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
                 if reply.content.lower() not in ["yes", "y"]:
-                    yield from ctx.send("No changes were made then.")
+                    await ctx.send("No changes were made then.")
                     return
             except asyncio.TimeoutError:
-                yield from ctx.send("I guess you changed your mind...")
+                await ctx.send("I guess you changed your mind...")
                 return
 
             c = userDatabase.cursor()
@@ -437,29 +433,29 @@ class Admin:
             finally:
                 c.close()
                 userDatabase.commit()
-            yield from ctx.send("This server's announce channel was removed.")
+            await ctx.send("This server's announce channel was removed.")
             reload_welcome_messages()
             return
 
         channel = get_channel_by_name(self.bot, name, guild)
         if channel is None:
-            yield from ctx.send("There is no channel with that name.")
+            await ctx.send("There is no channel with that name.")
             return
 
         permissions = channel.permissions_for(get_member(self.bot, self.bot.user.id, guild))
         if not permissions.read_messages or not permissions.send_messages:
-            yield from ctx.send("I don't have permission to use {0.mention}.".format(channel))
+            await ctx.send("I don't have permission to use {0.mention}.".format(channel))
             return
 
-        yield from ctx.send("Are you sure you want {0.mention} as the announcement channel? `yes/no`"
+        await ctx.send("Are you sure you want {0.mention} as the announcement channel? `yes/no`"
                                 .format(channel))
         try:
-            reply = yield from self.bot.wait_for("message", timeout=120.0, check=check)
+            reply = await self.bot.wait_for("message", timeout=120.0, check=check)
             if reply.content.lower() not in ["yes", "y"]:
-                yield from ctx.send("No changes were made then.")
+                await ctx.send("No changes were made then.")
                 return
         except asyncio.TimeoutError:
-            yield from ctx.send("I guess you changed your mind...")
+            await ctx.send("I guess you changed your mind...")
             return
 
         c = userDatabase.cursor()
@@ -468,7 +464,7 @@ class Admin:
             c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'announce_channel'", (guild.id,))
             c.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'announce_channel', ?)",
                       (guild.id, channel.name,))
-            yield from ctx.send("This server's announcement channel was changed successfully.\nRemember that if "
+            await ctx.send("This server's announcement channel was changed successfully.\nRemember that if "
                                 "the channel is renamed, you must set it again using this command.\nIf the channel "
                                 "becomes unavailable for me in any way, {0.mention} will be used."
                                 .format(guild.default_channel))

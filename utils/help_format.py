@@ -1,7 +1,6 @@
 import inspect
 import itertools
 
-import asyncio
 from discord.ext.commands import HelpFormatter, Command, Paginator
 
 
@@ -15,8 +14,7 @@ class NabHelpFormat(HelpFormatter):
             return "Type {0}{1} <command> for more info on a command.\n" \
                "You can also type {0}{1} category for more info on a category.".format(self.clean_prefix, command_name)
 
-    @asyncio.coroutine
-    def format(self):
+    async def format(self):
         """Handles the actual behaviour involved with formatting.
         To change the behaviour, this method should be overridden.
         Returns
@@ -56,7 +54,7 @@ class NabHelpFormat(HelpFormatter):
             # last place sorting position.
             return cog + ':' if cog is not None else '\u200bNo Category:'
 
-        filtered = yield from self.filter_command_list()
+        filtered = await self.filter_command_list()
         if self.is_bot():
             data = sorted(filtered, key=category)
             for category, commands in itertools.groupby(data, key=category):

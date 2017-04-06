@@ -1,4 +1,3 @@
-import asyncio
 import discord
 from discord.abc import PrivateChannel, Messageable
 from discord.ext import commands
@@ -101,8 +100,7 @@ def get_user_worlds(bot: discord.Client, user_id: int, guild_list=None):
     return list(set([world for guild, world in tracked_worlds.items() if guild in [g.id for g in guild_list]]))
 
 
-@asyncio.coroutine
-def send_log_message(bot: discord.Client, guild: discord.Guild, content=None, embed: discord.Embed = None):
+async def send_log_message(bot: discord.Client, guild: discord.Guild, content=None, embed: discord.Embed = None):
     """Sends a message on the server-log channel
 
     If the channel doesn't exist, it doesn't send anything or give of any warnings as it meant to be an optional
@@ -110,7 +108,7 @@ def send_log_message(bot: discord.Client, guild: discord.Guild, content=None, em
     channel = get_channel_by_name(bot, log_channel_name, guild)
     if channel is None:
         return
-    yield from channel.send(content=content, embed=embed)
+    await channel.send(content=content, embed=embed)
 
 
 def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -> discord.Role:

@@ -6,6 +6,7 @@ import time
 import traceback
 from datetime import timedelta, datetime
 
+import aiohttp
 import discord
 import psutil
 from discord import abc
@@ -35,8 +36,8 @@ bot.remove_command("help")
 
 
 @bot.event
-@asyncio.coroutine
-def on_ready():
+async def on_ready():
+    bot.session = aiohttp.ClientSession(loop=bot.loop)
     bot.load_extension("cogs.owner")
     bot.load_extension("cogs.admin")
     bot.load_extension("cogs.tibia")
@@ -48,15 +49,16 @@ def on_ready():
     log.info('Bot is online and ready')
 
     # Populate command_list
-    for command_name, command in bot.commands.items():
-        command_list.append(command_name)
+    for command in bot.commands:
+        command_list.append(command.name)
+        command_list.extend(command.aliases)
 
     # Notify reset author
     if len(sys.argv) > 1:
         user = get_member(bot, sys.argv[1])
         sys.argv[1] = 0
         if user is not None:
-            yield from user.send("Restart complete")
+            await user.send("Restart complete")
 
     # Background tasks
     bot.loop.create_task(game_update())
@@ -67,8 +69,7 @@ def on_ready():
 
 
 @bot.event
-@asyncio.coroutine
-def on_command(ctx):
+async def on_command(ctx):
     """Called when a command is called. Used to log commands on a file."""
     if isinstance(ctx.message.channel, abc.PrivateChannel):
         destination = 'PM'
@@ -79,24 +80,22 @@ def on_command(ctx):
 
 
 @bot.event
-@asyncio.coroutine
-def on_command_error(error, ctx):
+async def on_command_error(error, ctx):
     if isinstance(error, commands.errors.CommandNotFound):
         return
     elif isinstance(error, commands.NoPrivateMessage):
-        yield from ctx.send("This command cannot be used in private messages.")
+        await ctx.send("This command cannot be used in private messages.")
     elif isinstance(error, commands.CommandInvokeError):
         print('In {0.command.qualified_name}:'.format(ctx), file=sys.stderr)
         traceback.print_tb(error.original.__traceback__)
         print('{0.__class__.__name__}: {0}'.format(error.original), file=sys.stderr)
         # Bot returns error message on discord if an owner called the command
         if ctx.message.author.id in owner_ids:
-            yield from ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
+            await ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
 
 
 @bot.event
-@asyncio.coroutine
-def on_message(message: discord.Message):
+async def on_message(message: discord.Message):
     """Called every time a message is sent on a visible channel.
 
     This is used to make commands case insensitive."""
@@ -113,21 +112,20 @@ def on_message(message: discord.Message):
     if len(split) == 2:
         if message.author.id != bot.user.id and (not split[0].lower()[1:] in command_list or not split[0][:1] == "/")\
                 and not isinstance(message.channel, abc.PrivateChannel) and message.channel.name == ask_channel_name:
-            yield from message.delete()
+            await message.delete()
             return
     elif ask_channel_delete:
         # Delete messages in askchannel
         if message.author.id != bot.user.id \
                 and (not message.content.lower()[1:] in command_list or not message.content[:1] == "/") \
                 and not isinstance(message.channel, abc.PrivateChannel) and message.channel.name == ask_channel_name:
-            yield from message.delete()
+            await message.delete()
             return
-    yield from bot.process_commands(message)
+    await bot.process_commands(message)
 
 
 @bot.event
-@asyncio.coroutine
-def on_server_join(server: discord.Guild):
+async def on_server_join(server: discord.Guild):
     log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(server))
     message = "Hello! I'm now in **{0.name}**. To see my available commands, type \help\n" \
               "I will reply to commands from any channel I can see, but if you create a channel called *{1}*, I will " \
@@ -136,12 +134,11 @@ def on_server_join(server: discord.Guild):
               "want to make it private though.\n" \
               "To have all of Nab Bot's features, use `/setworld <tibia_world>`"
     formatted_message = message.format(server, ask_channel_name, log_channel_name)
-    yield from server.owner.send(formatted_message)
+    await server.owner.send(formatted_message)
 
 
 @bot.event
-@asyncio.coroutine
-def on_member_join(member: discord.Member):
+async def on_member_join(member: discord.Member):
     """Called every time a member joins a server visible by the bot."""
     log.info("{0.display_name} (ID: {0.id}) joined {0.guild.name}".format(member))
     if member.guild.id in lite_servers:
@@ -168,38 +165,34 @@ def on_member_join(member: discord.Member):
         finally:
             c.close()
 
-    yield from send_log_message(bot, member.guild, log_message)
-    yield from member.send(pm)
-    yield from member.guild.default_channel.send("Look who just joined! Welcome {0.mention}!".format(member))
+    await send_log_message(bot, member.guild, log_message)
+    await member.send(pm)
+    await member.guild.default_channel.send("Look who just joined! Welcome {0.mention}!".format(member))
 
 
 @bot.event
-@asyncio.coroutine
-def on_member_remove(member: discord.Member):
+async def on_member_remove(member: discord.Member):
     """Called when a member leaves or is kicked from a guild."""
     log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.guild.name}".format(member))
-    yield from send_log_message(bot, member.guild, "**{0.name}#{0.discriminator}** left or was kicked.".format(member))
+    await send_log_message(bot, member.guild, "**{0.name}#{0.discriminator}** left or was kicked.".format(member))
 
 
 @bot.event
-@asyncio.coroutine
-def on_member_ban(member: discord.Member):
+async def on_member_ban(member: discord.Member):
     """Called when a member is banned from a guild."""
     log.warning("{0.display_name} (ID:{0.id}) was banned from {0.guild.name}".format(member))
-    yield from send_log_message(bot, member.guild, "**{0.name}#{0.discriminator}** was banned.".format(member))
+    await send_log_message(bot, member.guild, "**{0.name}#{0.discriminator}** was banned.".format(member))
 
 
 @bot.event
-@asyncio.coroutine
-def on_member_unban(guild: discord.Guild, user: discord.User):
+async def on_member_unban(guild: discord.Guild, user: discord.User):
     """Called when a member is unbanned from a guild"""
     log.warning("{1.name} (ID:{1.id}) was unbanned from {0.name}".format(guild, user))
-    yield from send_log_message(bot, guild, "**{0.name}#{0.discriminator}** was unbanned.".format(user))
+    await send_log_message(bot, guild, "**{0.name}#{0.discriminator}** was unbanned.".format(user))
 
 
 @bot.event
-@asyncio.coroutine
-def on_message_delete(message: discord.Message):
+async def on_message_delete(message: discord.Message):
     """Called every time a message is deleted."""
     if message.channel.name == ask_channel_name:
         return
@@ -214,8 +207,7 @@ def on_message_delete(message: discord.Message):
 
 
 @bot.event
-@asyncio.coroutine
-def on_message_edit(before: discord.Message, after: discord.Message):
+async def on_message_edit(before: discord.Message, after: discord.Message):
     """Called every time a message is edited."""
 
     if before.author.id == bot.user.id:
@@ -236,32 +228,29 @@ def on_message_edit(before: discord.Message, after: discord.Message):
 
 
 @bot.event
-@asyncio.coroutine
-def on_member_update(before: discord.Member, after: discord.Member):
+async def on_member_update(before: discord.Member, after: discord.Member):
     if before.nick != after.nick:
         reply = "{1.mention}: Nickname changed from **{0.nick}** to **{1.nick}**".format(before, after)
-        yield from send_log_message(bot, after.guild, reply)
+        await send_log_message(bot, after.guild, reply)
     elif before.name != after.name:
         reply = "{1.mention}: Name changed from **{0.name}** to **{1.name}**".format(before, after)
-        yield from send_log_message(bot, after.guild, reply)
+        await send_log_message(bot, after.guild, reply)
     return
 
 
 @bot.event
-@asyncio.coroutine
-def on_guild_update(before: discord.Guild, after: discord.Guild):
+async def on_guild_update(before: discord.Guild, after: discord.Guild):
     if before.name != after.name:
         reply = "Server name changed from **{0.name}** to **{1.name}**".format(before, after)
-        yield from send_log_message(bot, after, reply)
+        await send_log_message(bot, after, reply)
     elif before.region != after.region:
         reply = "Server region changed from {0} to {1}".format(get_region_string(before.region),
                                                                get_region_string(after.region))
-        yield from send_log_message(bot, after, reply)
+        await send_log_message(bot, after, reply)
 
 
-@asyncio.coroutine
-def events_announce():
-    yield from bot.wait_until_ready()
+async def events_announce():
+    await bot.wait_until_ready()
     while not bot.is_closed():
         """Announces when an event is close to starting."""
         first_announce = 60*30
@@ -277,10 +266,10 @@ def events_announce():
                       "ORDER by start ASC", (date,))
             events = c.fetchall()
             if not events:
-                yield from asyncio.sleep(20)
+                await asyncio.sleep(20)
                 continue
             for event in events:
-                yield from asyncio.sleep(0.1)
+                await asyncio.sleep(0.1)
                 if date+first_announce+60 > event["start"] > date+first_announce and event["status"] > 3:
                     new_status = 3
                 elif date+second_announce+60 > event["start"] > date+second_announce and event["status"] > 2:
@@ -310,7 +299,7 @@ def events_announce():
                     event["start"] = 'now'
                 message = "**{name}** (by **@{author}**,*ID:{id}*) - Is starting {start}!".format(**event)
                 c.execute("UPDATE events SET status = ? WHERE id = ?", (new_status, event["id"],))
-                yield from guild.default_channel.send(message)
+                await guild.default_channel.send(message)
                 # Fetch list of subscribers
                 c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event["id"],))
                 subscribers = c.fetchall()
@@ -320,22 +309,21 @@ def events_announce():
                     member = get_member(bot, subscriber["user_id"])
                     if member is None:
                         continue
-                    yield from member.send(message)
+                    await member.send(message)
         finally:
             userDatabase.commit()
             c.close()
-        yield from asyncio.sleep(20)
+        await asyncio.sleep(20)
 
 
-@asyncio.coroutine
-def scan_deaths():
+async def scan_deaths():
     #################################################
     #             Nezune's cave                     #
     # Do not touch anything, enter at your own risk #
     #################################################
-    yield from bot.wait_until_ready()
+    await bot.wait_until_ready()
     while not bot.is_closed():
-        yield from asyncio.sleep(death_scan_interval)
+        await asyncio.sleep(death_scan_interval)
         if len(global_online_list) == 0:
             continue
         # Pop last char in queue, reinsert it at the beginning
@@ -345,20 +333,19 @@ def scan_deaths():
         # Get rid of server name
         current_char = current_char.split("_", 1)[1]
         # Check for new death
-        yield from check_death(bot, current_char)
+        await check_death(bot, current_char)
 
 
-@asyncio.coroutine
-def scan_highscores():
+async def scan_highscores():
     #################################################
     #             Nezune's cave                     #
     # Do not touch anything, enter at your own risk #
     #################################################
-    yield from bot.wait_until_ready()
+    await bot.wait_until_ready()
     while not bot.is_closed():
         if len(tracked_worlds_list) == 0:
             # If no worlds are tracked, just sleep, worlds might get registered later
-            yield from asyncio.sleep(highscores_delay)
+            await asyncio.sleep(highscores_delay)
             continue
         for server in tracked_worlds_list:
             for category in highscores_categories:
@@ -366,14 +353,14 @@ def scan_highscores():
                 for pagenum in range(1, 13):
                     # Special cases (ek/rp mls)
                     if category == "magic_ek":
-                        scores = yield from get_highscores(server, "magic", pagenum, 3)
+                        scores = await get_highscores(server, "magic", pagenum, 3)
                     elif category == "magic_rp":
-                        scores = yield from get_highscores(server, "magic", pagenum, 4)
+                        scores = await get_highscores(server, "magic", pagenum, 4)
                     else:
-                        scores = yield from get_highscores(server, category, pagenum)
+                        scores = await get_highscores(server, category, pagenum)
                     if not (scores == ERROR_NETWORK):
                         highscores += scores
-                    yield from asyncio.sleep(highscores_page_delay)
+                    await asyncio.sleep(highscores_page_delay)
                 # Open connection to users.db
                 c = userDatabase.cursor()
                 scores_tuple = []
@@ -393,28 +380,27 @@ def scan_highscores():
                 )
                 userDatabase.commit()
                 c.close()
-            yield from asyncio.sleep(0.1)
+            await asyncio.sleep(0.1)
 
 
-@asyncio.coroutine
-def scan_online_chars():
+async def scan_online_chars():
     #################################################
     #             Nezune's cave                     #
     # Do not touch anything, enter at your own risk #
     #################################################
-    yield from bot.wait_until_ready()
+    await bot.wait_until_ready()
     while not bot.is_closed():
         # Pop last server in queue, reinsert it at the beginning
         current_world = tibia_worlds.pop()
         tibia_worlds.insert(0, current_world)
 
         if current_world.capitalize() not in tracked_worlds_list:
-            yield from asyncio.sleep(0.1)
+            await asyncio.sleep(0.1)
             continue
 
-        yield from asyncio.sleep(online_scan_interval)
+        await asyncio.sleep(online_scan_interval)
         # Get online list for this server
-        curent_world_online = yield from get_world_online(current_world)
+        curent_world_online = await get_world_online(current_world)
 
         if len(curent_world_online) > 0:
             # Open connection to users.db
@@ -434,7 +420,7 @@ def scan_online_chars():
             for now_offline_char in offline_list:
                 global_online_list.remove(now_offline_char)
                 # Check for deaths and level ups when removing from online list
-                now_offline_char = yield from get_character(now_offline_char.split("_", 1)[1])
+                now_offline_char = await get_character(now_offline_char.split("_", 1)[1])
                 if not (now_offline_char == ERROR_NETWORK or now_offline_char == ERROR_DOESNTEXIST):
                     c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (now_offline_char['name'],))
                     result = c.fetchone()
@@ -451,8 +437,8 @@ def scan_online_chars():
                                 (result["id"], now_offline_char['level'], time.time(),)
                             )
                             # Announce the level up
-                            yield from announce_level(bot, now_offline_char['level'], char=now_offline_char)
-                    yield from check_death(bot, now_offline_char['name'])
+                            await announce_level(bot, now_offline_char['level'], char=now_offline_char)
+                    await check_death(bot, now_offline_char['name'])
 
             # Add new online chars and announce level differences
             for server_char in curent_world_online:
@@ -477,7 +463,7 @@ def scan_online_chars():
                             "UPDATE chars SET last_death_time = ? WHERE name LIKE ?",
                             (None, server_char['name'],)
                         )
-                        yield from check_death(bot, server_char['name'])
+                        await check_death(bot, server_char['name'])
 
                     # Else we check for levelup
                     elif server_char['level'] > last_level > 0:
@@ -487,17 +473,16 @@ def scan_online_chars():
                             (result["id"], server_char['level'], time.time(),)
                         )
                         # Announce the level up
-                        yield from announce_level(bot, server_char['level'], char_name=server_char["name"])
+                        await announce_level(bot, server_char['level'], char_name=server_char["name"])
 
             # Close cursor and commit changes
             userDatabase.commit()
             c.close()
 
 
-@asyncio.coroutine
-def check_death(bot, character):
+async def check_death(bot, character):
     """Checks if the player has new deaths"""
-    char = yield from get_character(character)
+    char = await get_character(character)
     if type(char) is not dict:
         log.warning("check_death: couldn't fetch {0}".format(character))
         return
@@ -530,7 +515,7 @@ def check_death(bot, character):
                                                                                           last_death['level'],
                                                                                           last_death['killer']))
             else:
-                yield from announce_death(bot, last_death['level'], last_death['killer'], last_death['byPlayer'],
+                await announce_death(bot, last_death['level'], last_death['killer'], last_death['byPlayer'],
                                           max(last_death["level"]-char["level"], 0), char)
 
         # Close cursor and commit changes
@@ -538,8 +523,7 @@ def check_death(bot, character):
         c.close()
 
 
-@asyncio.coroutine
-def announce_death(bot, death_level, death_killer, death_by_player, levels_lost=0, char=None, char_name=None):
+async def announce_death(bot, death_level, death_killer, death_by_player, levels_lost=0, char=None, char_name=None):
     """Announces a level up on the corresponding servers"""
     # Don't announce for low level players
     if int(death_level) < announce_threshold:
@@ -548,7 +532,7 @@ def announce_death(bot, death_level, death_killer, death_by_player, levels_lost=
         if char_name is None:
             log.error("announce_death: no character or character name passed.")
             return
-        char = yield from get_character(char_name)
+        char = await get_character(char_name)
     if type(char) is not dict:
         log.warning("announce_death: couldn't fetch character (" + char_name + ")")
         return
@@ -589,11 +573,10 @@ def announce_death(bot, death_level, death_killer, death_by_player, levels_lost=
         guild = bot.get_guild(guild_id)
         if char["world"] == tracked_world and guild is not None \
                 and guild.get_member(char["owner_id"]) is not None:
-            yield from get_announce_channel(bot, guild).send(message[:1].upper()+message[1:])
+            await get_announce_channel(bot, guild).send(message[:1].upper()+message[1:])
 
 
-@asyncio.coroutine
-def announce_level(bot, new_level, char_name=None, char=None):
+async def announce_level(bot, new_level, char_name=None, char=None):
     """Announces a level up on corresponding servers
 
     One of these must be passed:
@@ -608,7 +591,7 @@ def announce_level(bot, new_level, char_name=None, char=None):
         if char_name is None:
             log.error("announce_level: no character or character name passed.")
             return
-        char = yield from get_character(char_name)
+        char = await get_character(char_name)
     if type(char) is not dict:
         log.warning("announce_level: couldn't fetch character (" + char_name + ")")
         return
@@ -632,13 +615,12 @@ def announce_level(bot, new_level, char_name=None, char=None):
         server = bot.get_guild(server_id)
         if char["world"] == tracked_world and server is not None \
                 and server.get_member(char["owner_id"]) is not None:
-            yield from get_announce_channel(bot, server).send(message)
+            await get_announce_channel(bot, server).send(message)
 
 
 # Bot commands
 @bot.command(aliases=["commands"])
-@asyncio.coroutine
-def help(ctx, *commands: str):
+async def help(ctx, *commands: str):
     """Shows this message."""
     _mentions_transforms = {
         '@everyone': '@\u200beveryone',
@@ -654,7 +636,7 @@ def help(ctx, *commands: str):
 
     # help by itself just lists our own commands.
     if len(commands) == 0:
-        pages = yield from bot.formatter.format_help_for(ctx, bot)
+        pages = await bot.formatter.format_help_for(ctx, bot)
     elif len(commands) == 1:
         # try to see if it is a cog name
         name = _mention_pattern.sub(repl, commands[0])
@@ -664,16 +646,16 @@ def help(ctx, *commands: str):
         else:
             command = bot.commands.get(name)
             if command is None:
-                yield from destination.send(bot.command_not_found.format(name))
+                await destination.send(bot.command_not_found.format(name))
                 return
             destination = ctx.message.channel if command.no_pm else destination
 
-        pages = yield from bot.formatter.format_help_for(ctx, command)
+        pages = await bot.formatter.format_help_for(ctx, command)
     else:
         name = _mention_pattern.sub(repl, commands[0])
         command = bot.commands.get(name)
         if command is None:
-            yield from destination.send(bot.command_not_found.format(name))
+            await destination.send(bot.command_not_found.format(name))
             return
 
         for key in commands[1:]:
@@ -681,32 +663,30 @@ def help(ctx, *commands: str):
                 key = _mention_pattern.sub(repl, key)
                 command = command.commands.get(key)
                 if command is None:
-                    yield from destination.send(bot.command_not_found.format(key))
+                    await destination.send(bot.command_not_found.format(key))
                     return
             except AttributeError:
-                yield from destination.send(bot.command_has_no_subcommands.format(command, key))
+                await destination.send(bot.command_has_no_subcommands.format(command, key))
                 return
 
-        pages = yield from bot.formatter.format_help_for(ctx, command)
+        pages = await bot.formatter.format_help_for(ctx, command)
 
     for page in pages:
-        yield from destination.send(page)
+        await destination.send(page)
 
 
 @bot.command()
-@asyncio.coroutine
-def choose(ctx, *choices: str):
+async def choose(ctx, *choices: str):
     """Chooses between multiple choices."""
     if choices is None:
         return
     user = ctx.message.author
-    yield from ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
+    await ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
 
 @bot.command(aliases=["i'm", "iam"])
 @checks.is_not_lite()
-@asyncio.coroutine
-def im(ctx, *, char_name: str):
+async def im(ctx, *, char_name: str):
     """Lets you add your tibia character(s) for the bot to track.
 
     If you need to add any more characters or made a mistake, please message an admin."""
@@ -720,7 +700,7 @@ def im(ctx, *, char_name: str):
     user_tibia_worlds = list(set(user_tibia_worlds))
 
     if not is_private(ctx.message.channel) and tracked_worlds.get(ctx.message.guild.id) is None:
-        yield from ctx.send("This server is not tracking any tibia worlds.")
+        await ctx.send("This server is not tracking any tibia worlds.")
         return
 
     if len(user_tibia_worlds) == 0:
@@ -734,13 +714,13 @@ def im(ctx, *, char_name: str):
             if mod is not None:
                 valid_mods.append(mod.mention)
         admins_message = join_list(valid_mods, ", ", " or ")
-        yield from ctx.trigger_typing()
-        char = yield from get_character(char_name)
+        await ctx.trigger_typing()
+        char = await get_character(char_name)
         if type(char) is not dict:
             if char == ERROR_NETWORK:
-                yield from ctx.send("I couldn't fetch the character, please try again.")
+                await ctx.send("I couldn't fetch the character, please try again.")
             elif char == ERROR_DOESNTEXIST:
-                yield from ctx.send("That character doesn't exists.")
+                await ctx.send("That character doesn't exists.")
             return
         chars = char['chars']
         # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
@@ -775,14 +755,14 @@ def im(ctx, *, char_name: str):
                     reply = "Sorry, a character in that account ({0}) is already claimed by **{1.mention}**.\n" \
                             "Maybe you made a mistake? Or someone claimed a character of yours? " \
                             "Message {2} if you need help!"
-                    yield from ctx.send(reply.format(db_char["name"], owner, admins_message))
+                    await ctx.send(reply.format(db_char["name"], owner, admins_message))
                     return
             # If we only have one char, it already contains full data
             if len(chars) > 1:
-                yield from ctx.message.channel.trigger_typing()
-                char = yield from get_character(char["name"])
+                await ctx.message.channel.trigger_typing()
+                char = await get_character(char["name"])
                 if char == ERROR_NETWORK:
-                    yield from ctx.send("I'm having network troubles, please try again.")
+                    await ctx.send("I'm having network troubles, please try again.")
                     return
             if char.get("deleted", False):
                 skipped.append(char)
@@ -791,7 +771,7 @@ def im(ctx, *, char_name: str):
 
         if len(skipped) == len(chars):
             reply = "Sorry, I couldn't find any characters from the servers I track ({0})."
-            yield from ctx.send(reply.format(join_list(user_tibia_worlds, ", ", " and ")))
+            await ctx.send(reply.format(join_list(user_tibia_worlds, ", ", " and ")))
             return
 
         reply = ""
@@ -834,11 +814,11 @@ def im(ctx, *, char_name: str):
         c.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
         c.execute("UPDATE users SET name = ? WHERE id = ?", (user.display_name, user.id, ))
 
-        yield from ctx.send(reply)
+        await ctx.send(reply)
         for server_id, message in log_reply.items():
             if message:
                 message = user.mention + " registered the following characters: " + message
-                yield from send_log_message(bot, bot.get_guild(server_id), message)
+                await send_log_message(bot, bot.get_guild(server_id), message)
 
     finally:
         c.close()
@@ -847,8 +827,7 @@ def im(ctx, *, char_name: str):
 
 @bot.command(aliases=["i'mnot"])
 @checks.is_not_lite()
-@asyncio.coroutine
-def imnot(ctx, *, name):
+async def imnot(ctx, *, name):
     """Removes a character assigned to you
 
     All registered level ups and deaths will be lost forever."""
@@ -858,37 +837,37 @@ def imnot(ctx, *, name):
                   "FROM chars WHERE name LIKE ?", (name, ))
         char = c.fetchone()
         if char is None:
-            yield from ctx.send("There's no character registered with that name.")
+            await ctx.send("There's no character registered with that name.")
             return
         if char["user_id"] != ctx.message.author.id:
-            yield from ctx.send("The character **{0}** is not registered to you.".format(char["name"]))
+            await ctx.send("The character **{0}** is not registered to you.".format(char["name"]))
             return
 
-        yield from ctx.send("Are you sure you want to unregister **{name}** ({level} {vocation})? `yes/no`"
+        await ctx.send("Are you sure you want to unregister **{name}** ({level} {vocation})? `yes/no`"
                             "\n*All registered level ups and deaths will be lost forever.*"
                             .format(**char))
 
         def check(m):
             return m.channel == ctx.channel and m.author == ctx.author
         try:
-            reply = yield from bot.wait_for("message", timeout=50.0, check=check)
+            reply = await bot.wait_for("message", timeout=50.0, check=check)
             if reply.content.lower() not in ["yes", "y"]:
-                yield from ctx.send("No then? Ok.")
+                await ctx.send("No then? Ok.")
                 return
         except asyncio.TimeoutError:
-            yield from ctx.send("I guess you changed your mind.")
+            await ctx.send("I guess you changed your mind.")
             return
 
         c.execute("DELETE FROM chars WHERE id = ?", (char["id"], ))
         c.execute("DELETE FROM char_levelups WHERE char_id = ?", (char["id"], ))
         c.execute("DELETE FROM char_deaths WHERE char_id = ?", (char["id"], ))
-        yield from ctx.send("**{0}** is no longer registered to you.".format(char["name"]))
+        await ctx.send("**{0}** is no longer registered to you.".format(char["name"]))
 
         user_servers = [s.id for s in get_user_guilds(bot, ctx.message.author.id)]
         for server_id, world in tracked_worlds.items():
             if char["world"] == world and server_id in user_servers:
                 message = "{0} unregistered **{1}**".format(ctx.message.author.mention, char["name"])
-                yield from send_log_message(bot, bot.get_guild(server_id), message)
+                await send_log_message(bot, bot.get_guild(server_id), message)
     finally:
         userDatabase.commit()
         c.close()
@@ -896,8 +875,7 @@ def imnot(ctx, *, name):
 
 @bot.command()
 @checks.is_not_lite()
-@asyncio.coroutine
-def online(ctx):
+async def online(ctx):
     """Tells you which users are online on Tibia
 
     This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated.
@@ -911,7 +889,7 @@ def online(ctx):
         user_guilds = [ctx.message.guild]
         user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
         if user_worlds[0] is None:
-            yield from ctx.send("This server is not tracking any tibia worlds.")
+            await ctx.send("This server is not tracking any tibia worlds.")
             return
     c = userDatabase.cursor()
     now = datetime.utcnow()
@@ -941,9 +919,9 @@ def online(ctx):
 
         if count == 0:
             if uptime < 60:
-                yield from ctx.send("I just started, give me some time to check online lists..."+EMOJI[":clock2:"])
+                await ctx.send("I just started, give me some time to check online lists..."+EMOJI[":clock2:"])
             else:
-                yield from ctx.send("There is no one online from Discord.")
+                await ctx.send("There is no one online from Discord.")
             return
 
         # Remove worlds with no players online
@@ -955,25 +933,23 @@ def online(ctx):
             for world, content in online_list.items():
                 reply += "\n__**{0}**__{1}".format(world, content)
 
-        yield from ctx.send(reply)
+        await ctx.send(reply)
     finally:
         c.close()
 
 
 @bot.command()
-@asyncio.coroutine
-def uptime(ctx):
+async def uptime(ctx):
     """Shows how long the bot has been running"""
-    yield from ctx.send("I have been running for {0}.".format(get_uptime(True)))
+    await ctx.send("I have been running for {0}.".format(get_uptime(True)))
 
 
 @bot.command()
-@asyncio.coroutine
-def about(ctx):
+async def about(ctx):
     """Shows information about the bot"""
     permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.guild))
     if not permissions.embed_links:
-        yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+        await ctx.send("Sorry, I need `Embed Links` permission for this command.")
         return
     lite_mode = is_lite_mode(ctx)
     user_count = 0
@@ -1019,17 +995,16 @@ def about(ctx):
     embed.add_field(name="Uptime", value=get_uptime())
     memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
     embed.add_field(name='Memory Usage', value='{:.2f} MiB'.format(memory_usage))
-    yield from ctx.send(embed=embed)
+    await ctx.send(embed=embed)
 
 
 @bot.group(aliases=["event"], invoke_without_command=True)
 @checks.is_not_lite()
-@asyncio.coroutine
-def events(ctx):
+async def events(ctx):
     """Shows a list of current active events"""
     permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.guild))
     if not permissions.embed_links:
-        yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+        await ctx.send("Sorry, I need `Embed Links` permission for this command.")
         return
     time_threshold = 60 * 30
     now = time.time()
@@ -1054,7 +1029,7 @@ def events(ctx):
                   "ORDER BY start ASC".format(now, placeholders), tuple(servers_ids))
         upcoming_events = c.fetchall()
         if len(recent_events) + len(upcoming_events) == 0:
-            yield from ctx.send("There are no upcoming events.")
+            await ctx.send("There are no upcoming events.")
             return
         # Recent events
         if recent_events:
@@ -1087,19 +1062,18 @@ def events(ctx):
                     event["start_str"] = 'Starting now!'
                 value += "\n**{name}** (by **@{author}**,*ID:{id}*) - {start_str}".format(**event)
             embed.add_field(name=name, value=value, inline=False)
-        yield from ctx.send(embed=embed)
+        await ctx.send(embed=embed)
     finally:
         c.close()
 
 
 @events.command(name="info", aliases=["show", "details"])
 @checks.is_not_lite()
-@asyncio.coroutine
-def event_info(ctx, event_id: int):
+async def event_info(ctx, event_id: int):
     """Displays an event's info"""
     permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.guild))
     if not permissions.embed_links:
-        yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+        await ctx.send("Sorry, I need `Embed Links` permission for this command.")
         return
     c = userDatabase.cursor()
     guild = ctx.message.guild
@@ -1116,7 +1090,7 @@ def event_info(ctx, event_id: int):
                   "WHERE id = {0} AND active = 1 and server IN ({1})".format(event_id, placeholders), tuple(servers_ids))
         event = c.fetchone()
         if not event:
-            yield from ctx.send("There's no event with that id.")
+            await ctx.send("There's no event with that id.")
             return
         start = datetime.utcfromtimestamp(event["start"])
         embed = discord.Embed(title=event["name"], description=event["description"], timestamp=start)
@@ -1131,15 +1105,14 @@ def event_info(ctx, event_id: int):
             footer = "Created by "+author_name+" | Start time"
             footer_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
         embed.set_footer(text=footer, icon_url=footer_icon)
-        yield from ctx.send(embed=embed)
+        await ctx.send(embed=embed)
     finally:
         c.close()
 
 
 @events.command(name="add")
 @checks.is_not_lite()
-@asyncio.coroutine
-def event_add(ctx, starts_in: TimeString, *, params):
+async def event_add(ctx, starts_in: TimeString, *, params):
     """Adds an event
 
     The syntax is:
@@ -1164,7 +1137,7 @@ def event_add(ctx, starts_in: TimeString, *, params):
         c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
         result = c.fetchall()
         if len(result) > 1 and creator not in owner_ids+mod_ids:
-            yield from ctx.send("You can only have two running events simultaneously. Delete or edit an active event")
+            await ctx.send("You can only have two running events simultaneously. Delete or edit an active event")
             return
 
         guilds = get_user_guilds(bot, creator)
@@ -1176,36 +1149,36 @@ def event_add(ctx, starts_in: TimeString, *, params):
             guild = ctx.message.guild
         # PM and user shares multiple servers, we must ask him for which server is the event
         else:
-            yield from ctx.say("For which server is this event? Choose one (number only)" +
+            await ctx.say("For which server is this event? Choose one (number only)" +
                                "\n\t0: *Cancel*\n\t" +
                                "\n\t".join(["{0}: **{1.name}**".format(i+1, j) for i, j in enumerate(guilds)]))
 
             def check(m):
                 return m.channel == ctx.channel and m.author == ctx.author
             try:
-                reply = yield from bot.wait_for("message", timeout=50.0, check=check)
+                reply = await bot.wait_for("message", timeout=50.0, check=check)
                 if is_numeric(reply.content):
                     answer = int(reply.content)
                     if answer == 0:
-                        yield from ctx.send("Changed your mind? Typical human.")
+                        await ctx.send("Changed your mind? Typical human.")
                         return
                     try:
                         guild = guilds[answer-1]
                     except IndexError:
-                        yield from ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
+                        await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
                         return
                 else:
-                    yield from ctx.send("That's not a valid answer, try the command again.")
+                    await ctx.send("That's not a valid answer, try the command again.")
                     return
             except asyncio.TimeoutError:
-                yield from ctx.send("Nothing? Forget it then.")
+                await ctx.send("Nothing? Forget it then.")
                 return
 
         c.execute("INSERT INTO events (creator,server,start,name,description) VALUES(?,?,?,?,?)",
                   (creator, guild.id, start, name, event_description))
         event_id = c.lastrowid
         reply = "Event registered successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
-        yield from ctx.send(reply.format(name, starts_in.original, event_id))
+        await ctx.send(reply.format(name, starts_in.original, event_id))
     finally:
         userDatabase.commit()
         c.close()
@@ -1213,16 +1186,14 @@ def event_add(ctx, starts_in: TimeString, *, params):
 
 @event_add.error
 @checks.is_not_lite()
-@asyncio.coroutine
-def event_add_error(error, ctx):
+async def event_add_error(error, ctx):
     if isinstance(error, commands.BadArgument):
-        yield from ctx.send(str(error))
+        await ctx.send(str(error))
 
 
 @events.command(name="editname")
 @checks.is_not_lite()
-@asyncio.coroutine
-def event_edit_name(ctx, event_id: int, *, new_name):
+async def event_edit_name(ctx, event_id: int, *, new_name):
     """Changes an event's name
 
     Only the creator of the event or mods can edit an event's name
@@ -1234,24 +1205,24 @@ def event_edit_name(ctx, event_id: int, *, new_name):
         c.execute("SELECT creator, name FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
         event = c.fetchone()
         if not event:
-            yield from ctx.send("There are no active events with that ID.")
+            await ctx.send("There are no active events with that ID.")
             return
         if event["creator"] != int(ctx.message.author.id) and ctx.message.author.id not in mod_ids+owner_ids:
-            yield from ctx.send("You can only edit your own events.")
+            await ctx.send("You can only edit your own events.")
             return
-        yield from ctx.send("Do you want to change the name of **{0}**? `(yes/no)`".format(event["name"]))
+        await ctx.send("Do you want to change the name of **{0}**? `(yes/no)`".format(event["name"]))
 
         def check(m):
             return m.channel == ctx.channel and m.author == ctx.author
         try:
-            answer = yield from bot.wait_for("message", timeout=30.0, check=check)
+            answer = await bot.wait_for("message", timeout=30.0, check=check)
             if answer.content.lower() in ["yes", "y"]:
                 c.execute("UPDATE events SET name = ? WHERE id = ?", (new_name, event_id,))
-                yield from ctx.send("Your event was renamed successfully to **{0}**.".format(new_name))
+                await ctx.send("Your event was renamed successfully to **{0}**.".format(new_name))
             else:
-                yield from ctx.send("Ok, nevermind.")
+                await ctx.send("Ok, nevermind.")
         except asyncio.TimeoutError:
-            yield from ctx.send("I will take your silence as a no...")
+            await ctx.send("I will take your silence as a no...")
     finally:
         userDatabase.commit()
         c.close()
@@ -1259,8 +1230,7 @@ def event_edit_name(ctx, event_id: int, *, new_name):
 
 @events.command(name="editdesc", aliases=["editdescription"])
 @checks.is_not_lite()
-@asyncio.coroutine
-def event_edit_description(ctx, event_id: int, *, new_description):
+async def event_edit_description(ctx, event_id: int, *, new_description):
     """Changes an event's description
 
     Only the creator of the event or mods can edit an event's description
@@ -1272,24 +1242,24 @@ def event_edit_description(ctx, event_id: int, *, new_description):
         c.execute("SELECT creator FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
         event = c.fetchone()
         if not event:
-            yield from ctx.send("There are no active events with that ID.")
+            await ctx.send("There are no active events with that ID.")
             return
         if event["creator"] != int(ctx.message.author.id) and ctx.message.author.id not in mod_ids+owner_ids:
-            yield from ctx.send("You can only edit your own events.")
+            await ctx.send("You can only edit your own events.")
             return
-        yield from ctx.send("Do you want to change the description of **{0}**? `(yes/no)`")
+        await ctx.send("Do you want to change the description of **{0}**? `(yes/no)`")
 
         def check(m):
             return m.channel == ctx.channel and m.author == ctx.author
         try:
-            answer = yield from bot.wait_for("message", timeout=60.0, check=check)
+            answer = await bot.wait_for("message", timeout=60.0, check=check)
             if answer.content.lower() in ["yes", "y"]:
                 c.execute("UPDATE events SET description = ? WHERE id = ?", (new_description, event_id,))
-                yield from ctx.send("Your event's description was changed successfully to **{0}**.".format(new_description))
+                await ctx.send("Your event's description was changed successfully to **{0}**.".format(new_description))
             else:
-                yield from ctx.send("Ok, nevermind.")
+                await ctx.send("Ok, nevermind.")
         except asyncio.TimeoutError:
-            yield from ctx.send("I will take your silence as a no...")
+            await ctx.send("I will take your silence as a no...")
 
     finally:
         userDatabase.commit()
@@ -1298,8 +1268,7 @@ def event_edit_description(ctx, event_id: int, *, new_description):
 
 @events.command(name="edittime", aliases=["editstart"])
 @checks.is_not_lite()
-@asyncio.coroutine
-def event_edit_time(ctx, event_id: int, starts_in: TimeString):
+async def event_edit_time(ctx, event_id: int, starts_in: TimeString):
     """Changes an event's time
 
     Only the creator of the event or mods can edit an event's time
@@ -1310,25 +1279,25 @@ def event_edit_time(ctx, event_id: int, starts_in: TimeString):
         c.execute("SELECT creator, name FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
         event = c.fetchone()
         if not event:
-            yield from ctx.send("There are no active events with that ID.")
+            await ctx.send("There are no active events with that ID.")
             return
         if event["creator"] != int(ctx.message.author.id) and ctx.message.author.id not in mod_ids+owner_ids:
-            yield from ctx.send("You can only edit your own events.")
+            await ctx.send("You can only edit your own events.")
             return
-        yield from ctx.send("Do you want to change the start time of '**{0}**'? `(yes/no)`".format(event["name"]))
+        await ctx.send("Do you want to change the start time of '**{0}**'? `(yes/no)`".format(event["name"]))
 
         def check(m):
             return m.channel == ctx.channel and m.author == ctx.author
         try:
-            answer = yield from bot.wait_for("message", timeout=30.0, check=check)
+            answer = await bot.wait_for("message", timeout=30.0, check=check)
             if answer.content.lower() in ["yes", "y"]:
                 c.execute("UPDATE events SET start = ? WHERE id = ?", (now+starts_in.seconds, event_id,))
-                yield from ctx.send(
+                await ctx.send(
                     "Your event's start time was changed successfully to **{0}**.".format(starts_in.original))
             else:
-                yield from ctx.send("Ok, nevermind.")
+                await ctx.send("Ok, nevermind.")
         except asyncio.TimeoutError:
-            yield from ctx.send("I will take your silence as a no...")
+            await ctx.send("I will take your silence as a no...")
     finally:
         userDatabase.commit()
         c.close()
@@ -1336,8 +1305,7 @@ def event_edit_time(ctx, event_id: int, starts_in: TimeString):
 
 @events.command(name="delete", aliases=["remove"])
 @checks.is_not_lite()
-@asyncio.coroutine
-def event_remove(ctx, event_id: int):
+async def event_remove(ctx, event_id: int):
     """Deletes an event
 
     Only the creator of the event or mods can delete an event
@@ -1348,24 +1316,24 @@ def event_remove(ctx, event_id: int):
         c.execute("SELECT creator,name FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
         event = c.fetchone()
         if not event:
-            yield from ctx.send("There are no active events with that ID.")
+            await ctx.send("There are no active events with that ID.")
             return
         if event["creator"] != int(ctx.message.author.id) and ctx.message.author.id not in mod_ids+owner_ids:
-            yield from ctx.send("You can only delete your own events.")
+            await ctx.send("You can only delete your own events.")
             return
-        yield from ctx.send("Do you want to delete the event '**{0}**'? `(yes/no)`".format(event["name"]))
+        await ctx.send("Do you want to delete the event '**{0}**'? `(yes/no)`".format(event["name"]))
 
         def check(m):
             return m.channel == ctx.channel and m.author == ctx.author
         try:
-            answer = yield from bot.wait_for("message",timeout=60.0, check=check)
+            answer = await bot.wait_for("message",timeout=60.0, check=check)
             if answer.content.lower() in ["yes", "y"]:
                 c.execute("UPDATE events SET active = 0 WHERE id = ?", (event_id,))
-                yield from ctx.send("Your event was deleted successfully.")
+                await ctx.send("Your event was deleted successfully.")
             else:
-                yield from ctx.send("Ok, nevermind.")
+                await ctx.send("Ok, nevermind.")
         except asyncio.TimeoutError:
-            yield from ctx.send("I will take your silence as a no...")
+            await ctx.send("I will take your silence as a no...")
     finally:
         userDatabase.commit()
         c.close()
@@ -1373,8 +1341,7 @@ def event_remove(ctx, event_id: int):
 
 @events.command(name="make", aliases=["creator", "maker"])
 @checks.is_not_lite()
-@asyncio.coroutine
-def event_make(ctx):
+async def event_make(ctx):
     """Creates an event guiding you step by step
 
     Instead of using confusing parameters, commas and spaces, this commands has the bot ask you step by step."""
@@ -1391,38 +1358,38 @@ def event_make(ctx):
         event = c.fetchall()
         if len(event) > 1 and creator not in owner_ids + mod_ids:
             return
-        yield from ctx.send("Let's create an event. What would you like the name to be?")
+        await ctx.send("Let's create an event. What would you like the name to be?")
 
         try:
-            name = yield from bot.wait_for("message", timeout=50.0, check=check)
+            name = await bot.wait_for("message", timeout=50.0, check=check)
             name = single_line(name.clean_content)
         except asyncio.TimeoutError:
-            yield from ctx.send("...You took to long. Try the command again.")
+            await ctx.send("...You took to long. Try the command again.")
             return
 
-        yield from ctx.send("Alright, what description would you like the event to have? `(no/none = no description)`")
+        await ctx.send("Alright, what description would you like the event to have? `(no/none = no description)`")
 
         try:
-            event_description = yield from bot.wait_for("message", timeout=50.0, check=check)
+            event_description = await bot.wait_for("message", timeout=50.0, check=check)
             if event_description.content.lower().strip() in ["no", "none"]:
-                yield from ctx.send("No description then? Alright, now tell me the start time of the event from now. "
+                await ctx.send("No description then? Alright, now tell me the start time of the event from now. "
                                     "`e.g. 2d1h20m, 2d3h`")
                 event_description = ""
             else:
                 event_description = event_description.clean_content
-                yield from ctx.send("Alright, now tell me the start time of the event from now. `e.g. 2d1h20m, 2d3h`")
+                await ctx.send("Alright, now tell me the start time of the event from now. `e.g. 2d1h20m, 2d3h`")
         except asyncio.TimeoutError:
-            yield from ctx.send("...You took too long. Try the command again.")
+            await ctx.send("...You took too long. Try the command again.")
             return
 
-        starts_in = yield from bot.wait_for("message", timeout=50.0,check=check)
+        starts_in = await bot.wait_for("message", timeout=50.0,check=check)
         if starts_in is None:
-            yield from ctx.send("...You took too long. Try the command again.")
+            await ctx.send("...You took too long. Try the command again.")
             return
         try:
             starts_in = TimeString(starts_in.content)
         except commands.BadArgument:
-            yield from ctx.send("Invalid time. Try  the command again. `Time examples: 1h2m, 2d30m, 40m, 5h`")
+            await ctx.send("Invalid time. Try  the command again. `Time examples: 1h2m, 2d30m, 40m, 5h`")
             return
 
         guilds = get_user_guilds(bot, creator)
@@ -1434,28 +1401,28 @@ def event_make(ctx):
             guild = ctx.message.guild
         # PM and user shares multiple servers, we must ask him for which server is the event
         else:
-            yield from ctx.send("One more question...for which server is this event? Choose one (number only)" +
+            await ctx.send("One more question...for which server is this event? Choose one (number only)" +
                                 "\n\t0: *Cancel*\n\t" +
                                 "\n\t".join(["{0}: **{1.name}**".format(i+1, j) for i, j in enumerate(guilds)]))
             try:
-                reply = yield from bot.wait_for("message", timeout=50.0, check=check)
+                reply = await bot.wait_for("message", timeout=50.0, check=check)
                 if is_numeric(reply.content):
                     answer = int(reply.content)
                     if answer == 0:
-                        yield from ctx.send("Changed your mind? Typical human.")
+                        await ctx.send("Changed your mind? Typical human.")
                         return
                     guild = guilds[answer-1]
                 else:
-                    yield from ctx.send("That's not a valid answer, try the command again.")
+                    await ctx.send("That's not a valid answer, try the command again.")
                     return
             except asyncio.TimeoutError:
-                yield from ctx.send("Nothing? Forget it then.")
+                await ctx.send("Nothing? Forget it then.")
                 return
             except ValueError:
-                yield from ctx.send("That isn't even a number!")
+                await ctx.send("That isn't even a number!")
                 return
             except IndexError:
-                yield from ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
+                await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
                 return
 
         now = time.time()
@@ -1463,7 +1430,7 @@ def event_make(ctx):
                   (creator, guild.id, now+starts_in.seconds, name, event_description))
         event_id = c.lastrowid
         reply = "Event registered successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
-        yield from ctx.send(reply.format(name, starts_in.original, event_id))
+        await ctx.send(reply.format(name, starts_in.original, event_id))
     finally:
         userDatabase.commit()
         c.close()
@@ -1471,8 +1438,7 @@ def event_make(ctx):
 
 @events.command(name="subscribe", aliases=["sub"])
 @checks.is_not_lite()
-@asyncio.coroutine
-def event_subscribe(ctx, event_id: int):
+async def event_subscribe(ctx, event_id: int):
     """Subscribe to receive a PM when an event is happening."""
     c = userDatabase.cursor()
     author = ctx.message.author
@@ -1490,27 +1456,27 @@ def event_subscribe(ctx, event_id: int):
                   , tuple(guild_ids))
         event = c.fetchone()
         if event is None:
-            yield from ctx.send("There are no active events with that id.")
+            await ctx.send("There are no active events with that id.")
             return
 
         c.execute("SELECT * FROM event_subscribers WHERE event_id = ? AND user_id = ?", (event_id, author.id))
         subscription = c.fetchone()
         if subscription is not None:
-            yield from ctx.send("You're already subscribed to this event.")
+            await ctx.send("You're already subscribed to this event.")
             return
-        yield from ctx.send("Do you want to subscribe to **{0}**? `(yes/no)`".format(event["name"]))
+        await ctx.send("Do you want to subscribe to **{0}**? `(yes/no)`".format(event["name"]))
 
         def check(m):
             return m.channel == ctx.channel and m.author == ctx.author
         try:
-            reply = yield from bot.wait_for("message", timeout=30.0)
+            reply = await bot.wait_for("message", timeout=30.0)
             if reply.content.lower() in ["yes", "y"]:
                 c.execute("INSERT INTO event_subscribers (event_id, user_id) VALUES(?,?)", (event_id, author.id))
-                yield from ctx.send("You have subscribed successfully to this event. I'll let you know when it's happening.")
+                await ctx.send("You have subscribed successfully to this event. I'll let you know when it's happening.")
             else:
-                yield from ctx.send("No? Alright then...")
+                await ctx.send("No? Alright then...")
         except asyncio.TimeoutError:
-            yield from ctx.send("No answer? Nevermind then.")
+            await ctx.send("No answer? Nevermind then.")
     finally:
         c.close()
         userDatabase.commit()
@@ -1521,22 +1487,20 @@ def event_subscribe(ctx, event_id: int):
 @event_edit_time.error
 @event_remove.error
 @event_subscribe.error
-@asyncio.coroutine
-def event_error(error, ctx):
+async def event_error(error, ctx):
     if isinstance(error, commands.BadArgument):
-        yield from ctx.send("Invalid arguments used. `Type /help {0}`".format(ctx.invoked_subcommand))
+        await ctx.send("Invalid arguments used. `Type /help {0}`".format(ctx.invoked_subcommand))
     elif isinstance(error, commands.errors.MissingRequiredArgument):
-        yield from ctx.send("You're missing a required argument. `Type /help {0}`".format(ctx.invoked_subcommand))
+        await ctx.send("You're missing a required argument. `Type /help {0}`".format(ctx.invoked_subcommand))
 
 
 @bot.command(no_pm=True, name="server", aliases=["serverinfo", "server_info"])
-@asyncio.coroutine
-def info_server(ctx):
+async def info_server(ctx):
     """Shows the server's information."""
     print(get_member(bot, bot.user.id))
     permissions = ctx.message.channel.permissions_for(get_member(bot, bot.user.id, ctx.message.guild))
     if not permissions.embed_links:
-        yield from ctx.send("Sorry, I need `Embed Links` permission for this command.")
+        await ctx.send("Sorry, I need `Embed Links` permission for this command.")
         return
     embed = discord.Embed()
     guild = ctx.message.guild  # type: discord.Guild
@@ -1556,12 +1520,11 @@ def info_server(ctx):
     embed.add_field(name="Roles", value=len(guild.roles))
     embed.add_field(name="Emojis", value=len(guild.emojis))
     embed.add_field(name="Bot joined", value=guild.me.joined_at.strftime("%d/%m/%y"))
-    yield from ctx.send(embed=embed)
+    await ctx.send(embed=embed)
 
 
 @bot.command(no_pm=True)
-@asyncio.coroutine
-def roles(ctx, *, user_name: str = None):
+async def roles(ctx, *, user_name: str = None):
     """Shows a list of roles or an user's roles
 
     If no user_name is specified, it shows a list of the server's role.
@@ -1576,7 +1539,7 @@ def roles(ctx, *, user_name: str = None):
     else:
         member = get_member_by_name(bot, user_name, ctx.message.guild)
         if member is None:
-            yield from ctx.send("I don't see any user named **" + user_name + "**.")
+            await ctx.send("I don't see any user named **" + user_name + "**.")
         else:
             msg += "**"+member.display_name+"**:\n"
             roles = []
@@ -1593,20 +1556,19 @@ def roles(ctx, *, user_name: str = None):
                     msg += roleName + "\r\n"
             else:
                 msg = "There are no active roles for **" + member.display_name + "**."
-    yield from ctx.send(msg)
+    await ctx.send(msg)
     return
 
 
 @bot.command(no_pm=True)
-@asyncio.coroutine
-def role(ctx, *, name: str=None):
+async def role(ctx, *, name: str=None):
     """Shows a list of members with that role"""
     if name is None:
-        yield from ctx.send("You must tell me the name of a role.")
+        await ctx.send("You must tell me the name of a role.")
         return
     role = get_role(ctx.message.guild, role_name=name)
     if role is None:
-        yield from ctx.send("There's no role with that name in here.")
+        await ctx.send("There's no role with that name in here.")
         return
 
     role_members = []
@@ -1617,7 +1579,7 @@ def role(ctx, *, name: str=None):
                 role_members.append(member.display_name)
                 break
     if not role_members:
-        yield from ctx.send("Seems like there are no members with that role.")
+        await ctx.send("Seems like there are no members with that role.")
         return
 
     title = "Members with the role '{0.name}'".format(role)
@@ -1628,46 +1590,19 @@ def role(ctx, *, name: str=None):
         per_page = 5
     pages = Paginator(bot, message=ctx.message, entries=role_members, per_page=per_page, title=title, color=role.colour)
     try:
-        yield from pages.paginate()
+        await pages.paginate()
     except CannotPaginate as e:
-        yield from ctx.send(e)
+        await ctx.send(e)
 
 
-    """if len(roleDict) > 0:
-        # Check every member and add to dict for each role he is in
-        # In this case, the dict will only have the specific role searched
-        for member in ctx.message.guild.members:
-            for role in member.roles:
-                if role in roleDict:
-                    roleDict[role].append(member.display_name)
-                    # Getting the name directly from server to respect case
-                    name = role.name
-
-        # Create return message
-        msg = "These are the members from **" + name + "**:\r\n"
-
-        for key, value in roleDict.items():
-            if len(value) < 1:
-                msg = "There are no members for this role yet."
-            else:
-                for memberName in roleDict[key]:
-                    msg += "\t" + memberName + "\r\n"
-
-        yield from ctx.send(msg)
-    else:
-        yield from ctx.send("I couldn't find a role with that name.")
-    return"""
-
-
-@asyncio.coroutine
-def game_update():
+async def game_update():
     game_list = ["Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2017", "Russian Roulette",
                  "with my toy humans", "with fire"+EMOJI[":fire:"], "God", "innocent", "the part", "hard to get",
                  "with my human minions", "Singularity", "Portal 3", "Dank Souls"]
-    yield from bot.wait_until_ready()
+    await bot.wait_until_ready()
     while not bot.is_closed():
-        yield from bot.change_presence(game=discord.Game(name=random.choice(game_list)))
-        yield from asyncio.sleep(60*20)  # Change game every 20 minutes
+        await bot.change_presence(game=discord.Game(name=random.choice(game_list)))
+        await asyncio.sleep(60*20)  # Change game every 20 minutes
 
 
 if __name__ == "__main__":
