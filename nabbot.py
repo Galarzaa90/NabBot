@@ -261,160 +261,66 @@ def on_guild_update(before: discord.Guild, after: discord.Guild):
 
 @asyncio.coroutine
 def events_announce():
-    # TODO: This needs some denezunifying
     yield from bot.wait_until_ready()
     while not bot.is_closed():
         """Announces when an event is close to starting."""
-        first_announcement = 60*30
-        second_announcement = 60*15
-        third_announcement = 60*5
+        first_announce = 60*30
+        second_announce = 60*15
+        third_announce = 60*5
         c = userDatabase.cursor()
         try:
             # Current time
             date = time.time()
-            # Find incoming events
-            # First announcement
-            c.execute("SELECT creator, start, name, id, server "
+            c.execute("SELECT creator, start, name, id, server, status "
                       "FROM events "
-                      "WHERE start < ? AND start > ? AND active = 1 AND status > 3 "
-                      "ORDER by start ASC", (date+first_announcement+60, date+first_announcement,))
-            results = c.fetchall()
-            if len(results) > 0:
-                for row in results:
-                    author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
-                    name = row["name"]
-                    event_id = row["id"]
-                    time_diff = timedelta(seconds=row["start"]-date)
-                    days, hours, minutes = time_diff.days, time_diff.seconds//3600, (time_diff.seconds//60)%60
-                    if days:
-                        start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
-                    elif hours:
-                        start = '{0} hours and {1} minutes'.format(hours, minutes)
-                    else:
-                        start = '{0} minutes'.format(minutes)
-
-                    message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name, author, start, event_id)
-                    c.execute("UPDATE events SET status = 3 WHERE id = ?", (event_id,))
-                    log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
-                    destination = bot.get_guild(int(row["server"]))
-                    if destination:
-                        yield from destination.send(message)
-                    # Send PM to subscribers:
-                    c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
-                    subscribers = c.fetchall()
-                    if len(subscribers) > 0:
-                        for subscriber in subscribers:
-                            member = get_member(bot, subscriber["user_id"])
-                            if member is None:
-                                continue
-                            yield from member.send(message)
-            # Second announcement
-            c.execute("SELECT creator, start, name, id, server "
-                      "FROM events "
-                      "WHERE start < ? AND start > ? AND active = 1 AND status > 2 "
-                      "ORDER by start ASC", (date+second_announcement+60, date+second_announcement,))
-            results = c.fetchall()
-            if len(results) > 0:
-                for row in results:
-                    author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
-                    name = row["name"]
-                    event_id = row["id"]
-                    time_diff = timedelta(seconds=row["start"]-date)
-                    days, hours, minutes = time_diff.days, time_diff.seconds//3600, (time_diff.seconds//60) % 60
-                    if days:
-                        start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
-                    elif hours:
-                        start = '{0} hours and {1} minutes'.format(hours, minutes)
-                    else:
-                        start = '{0} minutes'.format(minutes)
-
-                    message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}.".format(name, author, start, event_id)
-                    c.execute("UPDATE events SET status = 2 WHERE id = ?", (event_id,))
-                    log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
-                    destination = bot.get_guild(int(row["server"]))
-                    if destination:
-                        yield from destination.send(message)
-                    # Send PM to subscribers:
-                    c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
-                    subscribers = c.fetchall()
-                    if len(subscribers) > 0:
-                        for subscriber in subscribers:
-                            member = get_member(bot, subscriber["user_id"])
-                            if member is None:
-                                continue
-                            yield from member.send(message)
-            # Third announcement
-            c.execute("SELECT creator, start, name, id, server "
-                      "FROM events "
-                      "WHERE start < ? AND start > ? AND active = 1 AND status > 1 "
-                      "ORDER by start ASC", (date+third_announcement+60, date+third_announcement,))
-            results = c.fetchall()
-            if len(results) > 0:
-                for row in results:
-                    author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
-                    name = row["name"]
-                    event_id = row["id"]
-                    time_diff = timedelta(seconds=row["start"]-date)
-                    days, hours, minutes = time_diff.days, time_diff.seconds//3600, (time_diff.seconds//60) % 60
-                    if days:
-                        start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
-                    elif hours:
-                        start = '{0} hours and {1} minutes'.format(hours, minutes)
-                    else:
-                        start = '{0} minutes'.format(minutes)
-
-                    message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting in {2}!".format(name, author, start, event_id)
-                    c.execute("UPDATE events SET status = 1 WHERE id = ?", (event_id,))
-                    log.info("Announcing event: {0} (by @{1},ID:{3}) - In {2}".format(name, author, start, event_id))
-                    destination = bot.get_guild(int(row["server"]))
-                    if destination:
-                        yield from destination.send(message)
-                    # Send PM to subscribers:
-                    c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
-                    subscribers = c.fetchall()
-                    if len(subscribers) > 0:
-                        for subscriber in subscribers:
-                            member = get_member(bot, subscriber["user_id"])
-                            if member is None:
-                                continue
-                            yield from member.send(message)
-            # Last announcement
-            c.execute("SELECT creator, start, name, id, server "
-                      "FROM events "
-                      "WHERE start < ? AND start > ? AND active = 1 AND status > 0 "
-                      "ORDER by start ASC", (date+60, date,))
-            results = c.fetchall()
-            if len(results) > 0:
-                for row in results:
-                    author = "unknown" if get_member(bot, row["creator"]) is None else get_member(bot, row["creator"]).display_name
-                    name = row["name"]
-                    event_id = row["id"]
-                    time_diff = timedelta(seconds=row["start"]-date)
-                    days, hours, minutes = time_diff.days, time_diff.seconds//3600, (time_diff.seconds//60) % 60
-                    if days:
-                        start = '{0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
-                    elif hours:
-                        start = '{0} hours and {1} minutes'.format(hours, minutes)
-                    else:
-                        start = '{0} minutes'.format(minutes)
-
-                    message = "**{0}** (by **@{1}**,*ID:{3}*) - Is starting right now!".format(name, author, start, event_id)
-                    c.execute("UPDATE events SET status = 0 WHERE id = ?", (event_id,))
-                    log.info("Announcing event: {0} (by @{1},ID:{3}) - Starting ({2})".format(name, author, start, event_id))
-                    destination = bot.get_guild(int(row["server"]))
-                    if destination:
-                        yield from destination.send(message)
-                    # Send PM to subscribers:
-                    c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
-                    subscribers = c.fetchall()
-                    if len(subscribers) > 0:
-                        for subscriber in subscribers:
-                            member = get_member(bot, subscriber["user_id"])
-                            if member is None:
-                                continue
-                            yield from member.send(message)
-        except AttributeError:
-            pass
+                      "WHERE start >= ? AND active = 1 AND status != 0 "
+                      "ORDER by start ASC", (date,))
+            events = c.fetchall()
+            if not events:
+                yield from asyncio.sleep(20)
+                continue
+            for event in events:
+                yield from asyncio.sleep(0.1)
+                if date+first_announce+60 > event["start"] > date+first_announce and event["status"] > 3:
+                    new_status = 3
+                elif date+second_announce+60 > event["start"] > date+second_announce and event["status"] > 2:
+                    new_status = 2
+                elif date+third_announce+60 > event["start"] > date+third_announce and event["status"] > 1:
+                    new_status = 1
+                elif date+60 > event["start"] > date and event["status"] > 0:
+                    new_status = 0
+                else:
+                    continue
+                guild = bot.get_guild(event["server"])
+                if guild is None:
+                    continue
+                author = get_member(bot, event["creator"], guild)
+                if author is None:
+                    continue
+                event["author"] = author.display_name
+                time_diff = timedelta(seconds=event["start"] - date)
+                days, hours, minutes = time_diff.days, time_diff.seconds // 3600, (time_diff.seconds // 60) % 60
+                if days:
+                    event["start"] = 'in {0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
+                elif hours:
+                    event["start"] = 'in {0} hours and {1} minutes'.format(hours, minutes)
+                elif minutes > 1:
+                    event["start"] = 'in {0} minutes'.format(minutes)
+                else:
+                    event["start"] = 'now'
+                message = "**{name}** (by **@{author}**,*ID:{id}*) - Is starting {start}!".format(**event)
+                c.execute("UPDATE events SET status = ? WHERE id = ?", (new_status, event["id"],))
+                yield from guild.default_channel.send(message)
+                # Fetch list of subscribers
+                c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event["id"],))
+                subscribers = c.fetchall()
+                if not subscribers:
+                    continue
+                for subscriber in subscribers:
+                    member = get_member(bot, subscriber["user_id"])
+                    if member is None:
+                        continue
+                    yield from member.send(message)
         finally:
             userDatabase.commit()
             c.close()
@@ -1410,7 +1316,7 @@ def event_edit_time(ctx, event_id: int, starts_in: TimeString):
             yield from ctx.send("You can only edit your own events.")
             return
         yield from ctx.send("Do you want to change the start time of '**{0}**'? `(yes/no)`".format(event["name"]))
-        
+
         def check(m):
             return m.channel == ctx.channel and m.author == ctx.author
         try:
@@ -1448,7 +1354,7 @@ def event_remove(ctx, event_id: int):
             yield from ctx.send("You can only delete your own events.")
             return
         yield from ctx.send("Do you want to delete the event '**{0}**'? `(yes/no)`".format(event["name"]))
-        
+
         def check(m):
             return m.channel == ctx.channel and m.author == ctx.author
         try:

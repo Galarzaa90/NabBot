@@ -1490,7 +1490,7 @@ def format_message(message) -> str:
     return message
 
 
-def weighed_choice(choices, level:int, vocation: str = None, killer:str = None, levels_lost:int = 0) -> str:
+def weighed_choice(choices, level:int, vocation: str = None, killer:str = None, levels_lost: int = 0) -> str:
     """Makes weighed choices from message lists where [0] is a value representing the relative odds
     of picking a message and [1] is the message string"""
 
