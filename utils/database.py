@@ -1,6 +1,8 @@
 import sqlite3
 
 # Databases filenames
+from typing import Dict
+
 USERDB = "users.db"
 TIBIADB = "database.db"
 LOOTDB = "utils/loot.db"
@@ -198,7 +200,7 @@ def reload_worlds():
     tibia_servers_dict_temp = {}
     try:
         c.execute("SELECT server_id, value FROM server_properties WHERE name = 'world' ORDER BY value ASC")
-        result = c.fetchall()
+        result = c.fetchall()  # type: Dict
         del tracked_worlds_list[:]
         if len(result) > 0:
             for row in result:
@@ -217,7 +219,7 @@ def reload_welcome_messages():
     welcome_messages_temp = {}
     try:
         c.execute("SELECT server_id, value FROM server_properties WHERE name = 'welcome'")
-        result = c.fetchall()
+        result = c.fetchall()  # type: Dict
         if len(result) > 0:
             for row in result:
                 welcome_messages_temp[int(row["server_id"])] = row["value"]
@@ -232,7 +234,7 @@ def reload_announce_channels():
     announce_channels_temp = {}
     try:
         c.execute("SELECT server_id, value FROM server_properties WHERE name = 'announce_channel'")
-        result = c.fetchall()
+        result = c.fetchall()  # type: Dict
         if len(result) > 0:
             for row in result:
                 announce_channels_temp[int(row["server_id"])] = row["value"]

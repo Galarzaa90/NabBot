@@ -9,18 +9,18 @@ under development and include breaking changes, so this branch is not recommende
 Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapptz/discord.py). It features commands related to the MMORPG [Tibia](http://www.tibia.com/news/?subtopic=latestnews).
 
 ## Requirements
-* Python 3.4.2+
+* Python 3.6.1
 * psutil module
 * Python Imaging Library
-* discord.py
+* discord.py **rewrite branch**
 * Tested on Windows and Raspbian
 
 ## Installing and running
 To install discord.py simply run the following on the command line:
 
 ```
-pip3 install -U git+https://github.com/Rapptz/discord.py@rewrite
-pip3 install pillow psutil requests
+python -m pip install -U git+https://github.com/Rapptz/discord.py@rewrite
+python -m pip install pillow psutil requests
 ```
 
 Create a bot token on Discord
