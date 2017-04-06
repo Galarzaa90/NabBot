@@ -2,14 +2,14 @@
 # NabBot
 Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapptz/discord.py). It features commands related to the MMORPG [Tibia](http://www.tibia.com/news/?subtopic=latestnews).
 
-##Requirements
+## Requirements
 * Python 3.4.2+
 * psutil module
 * Python Imaging Library
 * discord.py
 * Tested on Windows and Raspbian
 
-##Installing and running
+## Installing and running
 To install discord.py simply run the following on the command line:
 
 ```
@@ -45,7 +45,7 @@ python nabbot.py
 
 For more detailed instructions, read the [wiki article](https://github.com/Galarzaa90/NabBot/wiki/Creating-a-Discord-Bot).
 
-##Current features
+## Current features
 * Character database to keep track of the member's characters
 * Level up and deaths are announced by the bot
 * Events can be created by users and announced by the bot
