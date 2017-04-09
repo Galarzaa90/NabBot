@@ -1,10 +1,7 @@
 import discord
 from discord.ext import commands
-from PIL import Image
 import os
 import random
-import requests
-import io
 
 from config import *
 from utils import checks
@@ -24,7 +21,7 @@ class Tibia:
         self.bot = bot
         self.parsing_count = 0
 
-    @commands.group()
+    @commands.group(invoke_without_command=True)
     @checks.is_not_lite()
     async def loot(self, ctx):
         """Scans a loot image and returns it's loot value
@@ -36,7 +33,7 @@ class Tibia:
         author = ctx.message.author
         if self.parsing_count >= loot_max:
             await ctx.send("Sorry, I am already parsing too many loot images, "
-                                "please wait a couple of minutes and try again.")
+                           "please wait a couple of minutes and try again.")
             return
 
         if len(ctx.message.attachments) == 0:
@@ -45,20 +42,23 @@ class Tibia:
 
         attachment = ctx.message.attachments[0]
         if attachment['size'] > 2097152:
-            await ctx.send("That image was too big! Try splitting it into smaller images, or cropping out anything irrelevant.")
+            await ctx.send("That image was too big! Try splitting it into smaller images, or cropping out anything "
+                           "irrelevant.")
             return
         file_name = attachment['url'].split("/")[len(attachment['url'].split("/"))-1]
         file_url = attachment['url']
-        r = requests.get(attachment['url'])
         try:
-            loot_image = Image.open(io.BytesIO(bytearray(r.content))).convert("RGBA")
+            with aiohttp.ClientSession() as session:
+                async with session.get(attachment['url']) as resp:
+                    original_image = await resp.read()
+            loot_image = Image.open(io.BytesIO(bytearray(original_image))).convert("RGBA")
         except Exception:
             await ctx.send("Either that wasn't an image or I failed to load it, please try again.")
             return
 
         self.parsing_count += 1
         await ctx.send("I've begun parsing your image, **@{0.display_name}**. "
-                            "Please be patient, this may take a few moments.".format(author))
+                       "Please be patient, this may take a few moments.".format(author))
         progress_msg = await ctx.send("Status: ...")
         progress_bar = await ctx.send(EMOJI[":black_large_square:"]*10)
 
@@ -124,14 +124,14 @@ class Tibia:
         else:
             destination = ctx.message.author
 
-        await destination.send(file=loot_image_overlay, filename=file_name+".png", embed=embed)
+        await destination.send(file=discord.File(loot_image_overlay,"results.png"), embed=embed)
 
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
     @checks.is_not_lite()
     async def loot_legend(self, ctx):
         """Shows the meaning of the overlayed icons."""
         with open("./images/legend.png", "r+b") as f:
-            await ctx.send(file=f)
+            await ctx.send(file=discord.File(f))
             f.close()
 
     @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'])
@@ -525,7 +525,7 @@ class Tibia:
                 f.close()
 
             with open(filename, "r+b") as f:
-                await ctx.send(file=f, embed=embed)
+                await ctx.send(file=discord.File(f), embed=embed)
                 f.close()
             os.remove(filename)
         else:
@@ -581,7 +581,7 @@ class Tibia:
                 f.close()
             # Send monster's image
             with open(filename, "r+b") as f:
-                await ctx.send(file=f, embed=embed)
+                await ctx.send(file=discord.File(f), embed=embed)
                 f.close()
             os.remove(filename)
         else:
@@ -1297,7 +1297,7 @@ class Tibia:
                 f.close()
 
             with open(filename, "r+b") as f:
-                await ctx.send(file=f, embed=embed)
+                await ctx.send(file=discord.File(f), embed=embed)
                 f.close()
             os.remove(filename)
         else:
@@ -1340,7 +1340,7 @@ class Tibia:
                 f.close()
             # Send image
             with open(filename, "r+b") as f:
-                await ctx.send(file=f,embed=self.get_house_embed(house))
+                await ctx.send(file=discord.File(f), embed=self.get_house_embed(house))
                 f.close()
             os.remove(filename)
         else:
