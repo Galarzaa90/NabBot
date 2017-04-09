@@ -272,7 +272,8 @@ class Tibia:
             reply = "**{0}** ({1}) can share experience with levels **{2}** to **{3}**.".format(name, level, low, high)
         await ctx.send(reply)
 
-    @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"], no_pm=True)
+    @commands.guild_only()
+    @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"])
     @checks.is_not_lite()
     async def find_team(self, ctx, *, params=None):
         """Searches for a registered character that meets the criteria

@@ -1494,7 +1494,8 @@ async def event_error(error, ctx):
         await ctx.send("You're missing a required argument. `Type /help {0}`".format(ctx.invoked_subcommand))
 
 
-@bot.command(no_pm=True, name="server", aliases=["serverinfo", "server_info"])
+@commands.guild_only()
+@bot.command(name="server", aliases=["serverinfo", "server_info"])
 async def info_server(ctx):
     """Shows the server's information."""
     print(get_member(bot, bot.user.id))
@@ -1523,7 +1524,8 @@ async def info_server(ctx):
     await ctx.send(embed=embed)
 
 
-@bot.command(no_pm=True)
+@commands.guild_only()
+@bot.command()
 async def roles(ctx, *, user_name: str = None):
     """Shows a list of roles or an user's roles
 
@@ -1560,7 +1562,8 @@ async def roles(ctx, *, user_name: str = None):
     return
 
 
-@bot.command(no_pm=True)
+@commands.guild_only()
+@bot.command()
 async def role(ctx, *, name: str=None):
     """Shows a list of members with that role"""
     if name is None:
