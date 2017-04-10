@@ -36,10 +36,7 @@ class Mod:
                 if author is None:
                     continue
                 # Check for every channel
-                for channel in server.channels:
-                    # Skip voice channels
-                    if channel.type != discord.ChannelType.text:
-                        continue
+                for channel in server.text_channels:
                     author_permissions = author.permissions_in(channel)  # type: discord.Permissions
                     bot_permissions = bot_member.permissions_in(channel)  # type: discord.Permissions
                     # Check if both the author and the bot have permissions to send messages and add channel to list
