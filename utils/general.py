@@ -43,35 +43,26 @@ consoleHandler.setLevel(logging.DEBUG)
 log.addHandler(consoleHandler)
 
 
-def getLogin():
+def get_token():
     """When the bot is run without a login.py file, it prompts the user for login info"""
-    if not os.path.isfile("login.py"):
-        print("This seems to be the first time NabBot is ran (or login.py is missing)")
+    if not os.path.isfile("token.txt"):
+        print("This seems to be the first time NabBot is ran (or token.txt is missing)")
         print("To run your own instance of NabBot you need to create a new bot account to get a bot token")
         print("https://discordapp.com/developers/applications/me")
-        print("Alternatively, you can use a regular discord account for your bot, although this is not recommended")
-        print("Insert a bot token OR an e-mail address for a regular account to be used as a bot")
-        login = input(">>")
-        email = ""
-        password = ""
-        token = ""
-        if "@" in login:
-            email = login
-            password = input("Enter password: >>")
-        elif len(login) >= 50:
-            token = login
-        else:
-            input("What you entered isn't a token or an e-mail. Restart NabBot to retry.")
+        print("Enter the token:")
+        token = input(">>")
+        if len(token) < 50:
+            input("What you entered isn't a token. Restart NabBot to retry.")
             quit()
-        f = open("login.py", "w+")
-        f.write("#Token always has priority, if token is defined it will always attempt to login using a token\n")
-        f.write("#Comment the token line or set it empty to use email login\n")
-        f.write("token = '{0}'\nemail = '{1}'\npassword = '{2}'\n".format(token, email, password))
+        f = open("token.txt", "w+")
+        f.write(token)
         f.close()
-        print("Login data has been saved correctly. You can change this later by editing login.py")
+        print("Token has been saved to token.txt, you can edit this file later to change it.")
         input("Press any key to start NabBot now...")
-        quit()
-    return __import__("login")
+        return token
+    else:
+        with open("token.txt") as f:
+            return f.read()
 
 
 def get_time_diff(time_diff: timedelta) -> str:

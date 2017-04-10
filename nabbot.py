@@ -20,7 +20,7 @@ from utils.discord import get_member, send_log_message, get_region_string, get_u
     clean_string, get_role_list, get_member_by_name, get_announce_channel, get_user_worlds, is_private, get_role, \
     get_channel_by_name, is_lite_mode
 from utils.general import command_list, join_list, get_uptime, TimeString, \
-    single_line, is_numeric, getLogin, start_time, global_online_list
+    single_line, is_numeric, get_token, start_time, global_online_list
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, deathmessages_player, deathmessages_monster, EMOJI, levelmessages, \
@@ -1616,29 +1616,12 @@ if __name__ == "__main__":
 
     print("Attempting login...")
 
-    login = getLogin()
-    try:
-        token = login.token
-    except NameError:
-        token = ""
+    token = get_token()
 
     try:
-        email = login.email
-        password = login.password
-    except NameError:
-        email = ""
-        password = ""
-    try:
-        if token:
-            bot.run(token)
-        elif email and password:
-            bot.run(login.email, login.password)
-        else:
-            print("No login data found. Edit or delete login.py and restart.")
-            input("\nPress any key to continue...")
-            quit()
+        bot.run(token)
     except discord.errors.LoginFailure:
-        print("Incorrect login data. Edit or delete login.py and restart.")
+        print("Invalid token. Edit token.txt to fix it.")
         input("\nPress any key to continue...")
         quit()
     finally:
