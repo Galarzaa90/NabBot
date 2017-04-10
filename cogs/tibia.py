@@ -293,7 +293,7 @@ class Tibia:
                 lowest_level = sorted_chars[0]['level']
                 highest_name = sorted_chars[1]['name']
                 highest_level = sorted_chars[1]['level']
-                if low >= sorted_chars[0]["level"]:
+                if low > sorted_chars[0]["level"]:
                     await ctx.send(f"**{lowest_name}** ({lowest_level}) needs {low-lowest_level} more level"
                                    f"{'s' if low-lowest_level > 1 else ''} to share experience with **{highest_name}** "
                                    f"({highest_level}).")
