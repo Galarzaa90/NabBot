@@ -4,7 +4,6 @@ from discord.ext import commands
 import platform
 
 # Everything is imported to put it in /debug scope
-from nabbot import announce_death, announce_level
 from utils import checks
 from utils.discord import *
 from utils.database import *
@@ -15,10 +14,10 @@ from utils.tibia import *
 
 class Owner:
     """Commands exclusive to bot owners"""
-    def __init__(self, bot: discord.Client):
+    def __init__(self, bot: discord.ext.commands.Bot):
         self.bot = bot
 
-    @commands.command(aliases=["reset", "reload"])
+    @commands.command(aliases=["reset"])
     @checks.is_owner()
     async def restart(self, ctx: discord.ext.commands.Context):
         """Shutdowns and starts the bot again.
@@ -35,6 +34,26 @@ class Owner:
         else:
             os.system("python restart.py {0}".format(ctx.message.author.id))
         quit()
+
+    @commands.command(name="load")
+    @checks.is_owner()
+    async def load_cog(self, ctx, cog : str):
+        """Loads a cog"""
+        try:
+            self.bot.load_extension(cog)
+            await ctx.send("Cog loaded successfully.")
+        except Exception as e:
+            await ctx.send('{}: {}'.format(type(e).__name__, e))
+
+    @commands.command(name="unload")
+    @checks.is_owner()
+    async def unload_cog(self, ctx, cog: str):
+        """Loads a cog"""
+        try:
+            self.bot.unload_extension(cog)
+            await ctx.send("Cog unloaded successfully.")
+        except Exception as e:
+            await ctx.send('{}: {}'.format(type(e).__name__, e))
 
     @commands.command()
     @checks.is_owner()
