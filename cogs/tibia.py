@@ -239,38 +239,67 @@ class Tibia:
 
         There's two ways to use this command:
         /share level
-        /share char_name"""
+        /share char_name
+        /share char_name1,char_nam2"""
+        invalid_level = ["Invalid level.",
+                         "I don't think that's a valid level.",
+                         "You're doing it wrong!",
+                         "Nope, you can't share with anyone.",
+                         "You probably need a couple more levels"
+                         ]
         if param is None:
-            await ctx.send("You need to tell me a level or a character's name.")
+            await ctx.send("You need to tell me a level, a character's name, or two character's names.")
             return
-        name = ""
         # Check if param is numeric
         try:
             level = int(param)
-        # If it's not numeric, then it must be a char's name
-        except ValueError:
-            char = await get_character(param)
-            if type(char) is dict:
-                level = int(char['level'])
-                name = char['name']
-            else:
-                await ctx.send('There is no character with that name.')
+            if level < 1:
+                await ctx.send(random.choice(invalid_level))
                 return
-        if level <= 0:
-            replies = ["Invalid level.",
-                       "I don't think that's a valid level.",
-                       "You're doing it wrong!",
-                       "Nope, you can't share with anyone.",
-                       "You probably need a couple more levels"
-                       ]
-            await ctx.send(random.choice(replies))
+            low, high = get_share_range(level)
+            await ctx.send(f"A level {level} can share experience with levels **{low}** to **{high}**.")
             return
-        low, high = get_share_range(level)
-        if name == "":
-            reply = "A level {0} can share experience with levels **{1}** to **{2}**.".format(level, low, high)
-        else:
-            reply = "**{0}** ({1}) can share experience with levels **{2}** to **{3}**.".format(name, level, low, high)
-        await ctx.send(reply)
+        except ValueError:
+            with ctx.typing():
+                chars = param.split(",")
+                if len(chars) > 2:
+                    await ctx.send("For the moment I can only check for 2 characters.")
+                    return
+                if len(chars) == 1:
+                    char = await get_character(chars[0])
+                    if type(char) is not dict:
+                        await ctx.send('There is no character with that name.')
+                        return
+                    name = char["name"]
+                    level = char["level"]
+                    low, high = get_share_range(char["level"])
+                    await ctx.send(f"**{name}** ({level}) can share experience with levels **{low}** to **{high}**.")
+                    return
+                unsorted_chars = []
+                unsorted_chars.append(await get_character(chars[0]))
+                unsorted_chars.append(await get_character(chars[1]))
+                if type(unsorted_chars[0]) is not dict:
+                    await ctx.send(f"There is no character named **{chars[0]}**.")
+                    return
+                if type(unsorted_chars[1]) is not dict:
+                    await ctx.send(f"There is no character named **{chars[1]}**.")
+                    return
+                if chars[0].lower() == chars[1].lower():
+                    await ctx.send("I'm not sure if sharing with yourself counts as sharing, but yes, you can share.")
+                    return
+                sorted_chars = sorted(unsorted_chars, key=lambda k: k["level"])
+                low, high = get_share_range(sorted_chars[1]["level"])
+                lowest_name = sorted_chars[0]['name']
+                lowest_level = sorted_chars[0]['level']
+                highest_name = sorted_chars[1]['name']
+                highest_level = sorted_chars[1]['level']
+                if low >= sorted_chars[0]["level"]:
+                    await ctx.send(f"**{lowest_name}** ({lowest_level}) needs {low-lowest_level} more level"
+                                   f"{'s' if low-lowest_level > 1 else ''} to share experience with **{highest_name}** "
+                                   f"({highest_level}).")
+                    return
+                await ctx.send(f"**{lowest_name}** ({lowest_level}) and **{highest_name}** ({highest_level}) can share "
+                               f"experience.")
 
     @commands.guild_only()
     @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"])
