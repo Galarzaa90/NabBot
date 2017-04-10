@@ -1,16 +1,17 @@
-import discord
-from discord.ext import commands
 import os
 import random
+
+import discord
+from discord.ext import commands
 
 from config import *
 from utils import checks
 from utils.database import tracked_worlds
-from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone
-from utils.loot import loot_scan
-from utils.messages import EMOJI, split_message
 from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_guilds, \
     FIELD_VALUE_LIMIT, get_user_worlds, is_private, is_lite_mode
+from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, start_time
+from utils.loot import loot_scan
+from utils.messages import split_message
 from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import *
 
@@ -1410,7 +1411,7 @@ class Tibia:
 
         await ctx.send(embed=embed)
 
-    @commands.command(aliases=['serversave','ss'])
+    @commands.command(aliases=['serversave', 'ss'])
     async def time(self, ctx):
         """Displays tibia server's time and time until server save"""
         offset = get_tibia_time_zone() - get_local_timezone()
@@ -1439,6 +1440,71 @@ class Tibia:
             reply += "\n**{0}** in Mexico (Sonora).".format(timestrsonora)
         reply += "\nServer save is in {0}.\nRashid is in **{1}** today.".format(server_save_str, get_rashid_city())
         await ctx.send(reply)
+
+    @commands.command()
+    @checks.is_not_lite()
+    async def online(self, ctx):
+        """Tells you which users are online on Tibia
+
+        This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated.
+
+        If used in a server, only characters from users of the server are shown
+        If used on PM, only  characters from users of servers you're in are shown"""
+        if is_private(ctx.message.channel):
+            user_guilds = get_user_guilds(self.bot, ctx.message.author.id)
+            user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
+        else:
+            user_guilds = [ctx.message.guild]
+            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
+            if user_worlds[0] is None:
+                await ctx.send("This server is not tracking any tibia worlds.")
+                return
+        c = userDatabase.cursor()
+        now = datetime.utcnow()
+        uptime = (now - start_time).total_seconds()
+        count = 0
+        online_list = {world: "" for world in user_worlds}
+        try:
+            for char in global_online_list:
+                char = char.split("_", 1)
+                world = char[0]
+                name = char[1]
+                if world not in user_worlds:
+                    continue
+                c.execute("SELECT name, user_id, vocation, ABS(last_level) as level FROM chars WHERE name LIKE ?",
+                          (name,))
+                row = c.fetchone()
+                if row is None:
+                    continue
+                # Only show members on this server or members visible to author if it's a pm
+                owner = get_member(self.bot, row["user_id"], guild_list=user_guilds)
+                if owner is None:
+                    continue
+                row["owner"] = owner.display_name
+                row['emoji'] = get_voc_emoji(row['vocation'])
+                row['vocation'] = get_voc_abb(row['vocation'])
+                online_list[world] += "\n\t{name} (Lvl {level} {vocation}{emoji}, **@{owner}**)".format(**row)
+                count += 1
+
+            if count == 0:
+                if uptime < 60:
+                    await ctx.send("I just started, give me some time to check online lists..." + EMOJI[":clock2:"])
+                else:
+                    await ctx.send("There is no one online from Discord.")
+                return
+
+            # Remove worlds with no players online
+            online_list = {k: v for k, v in online_list.items() if v is not ""}
+            reply = "The following discord users are online:"
+            if len(user_worlds) == 1:
+                reply += online_list[user_worlds[0]]
+            else:
+                for world, content in online_list.items():
+                    reply += "\n__**{0}**__{1}".format(world, content)
+
+            await ctx.send(reply)
+        finally:
+            c.close()
 
     @staticmethod
     def get_char_string(char) -> str:

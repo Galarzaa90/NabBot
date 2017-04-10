@@ -1,12 +1,14 @@
 import discord
+from discord.ext import commands
 import asyncio
 import time
 
 from config import death_scan_interval, highscores_delay, highscores_categories, highscores_page_delay, \
-    online_scan_interval, announce_threshold
+    online_scan_interval, announce_threshold, owner_ids, mod_ids
+from utils import checks
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
-from utils.discord import get_announce_channel
-from utils.general import global_online_list, log
+from utils.discord import get_announce_channel, get_user_guilds, is_private, get_member, send_log_message
+from utils.general import global_online_list, log, join_list
 from utils.messages import weighed_choice, deathmessages_player, deathmessages_monster, format_message, EMOJI, \
     levelmessages
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world_online, get_character, ERROR_DOESNTEXIST, \
@@ -73,7 +75,8 @@ class Tracking:
                         ranks_tuple.append((score['rank'], server))
                     # Clear out old rankings
                     c.executemany(
-                        "UPDATE chars SET " + category + " = NULL, " + category + "_rank" + " = NULL WHERE " + category + "_rank" + " LIKE ? AND world LIKE ?",
+                        "UPDATE chars SET " + category + " = NULL, " + category + "_rank" + " = NULL WHERE " + category
+                        + "_rank" + " LIKE ? AND world LIKE ?",
                         ranks_tuple
                     )
                     # Add new rankings
@@ -219,13 +222,14 @@ class Tracking:
                                                                                               last_death['killer']))
                 else:
                     await self.announce_death(last_death['level'], last_death['killer'], last_death['byPlayer'],
-                                         max(last_death["level"] - char["level"], 0), char)
+                                              max(last_death["level"] - char["level"], 0), char)
 
             # Close cursor and commit changes
             userDatabase.commit()
             c.close()
 
-    async def announce_death(self, death_level, death_killer, death_by_player, levels_lost=0, char=None, char_name=None):
+    async def announce_death(self, death_level, death_killer, death_by_player, levels_lost=0, char=None,
+                             char_name=None):
         """Announces a level up on the corresponding servers"""
         # Don't announce for low level players
         if int(death_level) < announce_threshold:
@@ -262,10 +266,10 @@ class Tracking:
             message = weighed_choice(deathmessages_monster, vocation=char['vocation'], level=int(death_level),
                                      levels_lost=levels_lost, killer=death_killer)
         # Format message with death information
-        deathInfo = {'charName': char["name"], 'deathLevel': death_level, 'deathKiller': death_killer,
-                     'deathKillerArticle': death_killer_article, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
-                     'pronoun3': pronoun[2]}
-        message = message.format(**deathInfo)
+        death_info = {'charName': char["name"], 'deathLevel': death_level, 'deathKiller': death_killer,
+                      'deathKillerArticle': death_killer_article, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
+                      'pronoun3': pronoun[2]}
+        message = message.format(**death_info)
         # Format extra stylization
         message = format_message(message)
         message = EMOJI[":skull_crossbones:"] + " " + message
@@ -316,6 +320,194 @@ class Tracking:
             if char["world"] == tracked_world and server is not None \
                     and server.get_member(char["owner_id"]) is not None:
                 await get_announce_channel(self.bot, server).send(message)
+
+    @checks.is_not_lite()
+    @commands.command(aliases=["i'm", "iam"])
+    async def im(self, ctx, *, char_name: str):
+        """Lets you add your tibia character(s) for the self.bot to track.
+
+        If you need to add any more characters or made a mistake, please message an admin."""
+        # This is equivalent to someone using /stalk addacc on themselves.
+        user = ctx.message.author
+        # List of servers the user shares with the self.bot
+        user_guilds = get_user_guilds(self.bot, user.id)
+        # List of Tibia worlds tracked in the servers the user is
+        user_tibia_worlds = [world for guild, world in tracked_worlds.items() if guild in [g.id for g in user_guilds]]
+        # Remove duplicate entries from list
+        user_tibia_worlds = list(set(user_tibia_worlds))
+
+        if not is_private(ctx.message.channel) and tracked_worlds.get(ctx.message.guild.id) is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+
+        if len(user_tibia_worlds) == 0:
+            return
+
+        c = userDatabase.cursor()
+        try:
+            valid_mods = []
+            for id in (owner_ids + mod_ids):
+                mod = get_member(self.bot, id, ctx.message.guild)
+                if mod is not None:
+                    valid_mods.append(mod.mention)
+            admins_message = join_list(valid_mods, ", ", " or ")
+            await ctx.trigger_typing()
+            char = await get_character(char_name)
+            if type(char) is not dict:
+                if char == ERROR_NETWORK:
+                    await ctx.send("I couldn't fetch the character, please try again.")
+                elif char == ERROR_DOESNTEXIST:
+                    await ctx.send("That character doesn't exists.")
+                return
+            chars = char['chars']
+            # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
+            # searched char, so we don't have to look him up again
+            if len(chars) == 0 or len(chars) == 1:
+                chars = [char]
+
+            skipped = []
+            updated = []
+            added = []
+            existent = []
+            for char in chars:
+                # Skip chars in non-tracked worlds
+                if char["world"] not in user_tibia_worlds:
+                    skipped.append(char)
+                    continue
+                c.execute("SELECT name, user_id as owner FROM chars WHERE name LIKE ?", (char["name"],))
+                db_char = c.fetchone()
+                if db_char is not None:
+                    owner = get_member(self.bot, db_char["owner"])
+                    # Previous owner doesn't exist anymore
+                    if owner is None:
+                        updated.append({'name': char['name'], 'world': char['world'], 'prevowner': db_char["owner"],
+                                        'guild': char.get("guild", "No guild")})
+                        continue
+                    # Char already registered to this user
+                    elif owner.id == user.id:
+                        existent.append("{name} ({world})".format(**char))
+                        continue
+                    # Character is registered to another user
+                    else:
+                        reply = "Sorry, a character in that account ({0}) is already claimed by **{1.mention}**.\n" \
+                                "Maybe you made a mistake? Or someone claimed a character of yours? " \
+                                "Message {2} if you need help!"
+                        await ctx.send(reply.format(db_char["name"], owner, admins_message))
+                        return
+                # If we only have one char, it already contains full data
+                if len(chars) > 1:
+                    await ctx.message.channel.trigger_typing()
+                    char = await get_character(char["name"])
+                    if char == ERROR_NETWORK:
+                        await ctx.send("I'm having network troubles, please try again.")
+                        return
+                if char.get("deleted", False):
+                    skipped.append(char)
+                    continue
+                added.append(char)
+
+            if len(skipped) == len(chars):
+                reply = "Sorry, I couldn't find any characters from the servers I track ({0})."
+                await ctx.send(reply.format(join_list(user_tibia_worlds, ", ", " and ")))
+                return
+
+            reply = ""
+            log_reply = dict().fromkeys([server.id for server in user_guilds], "")
+            if len(existent) > 0:
+                reply += "\nThe following characters were already registered to you: {0}" \
+                    .format(join_list(existent, ", ", " and "))
+
+            if len(added) > 0:
+                reply += "\nThe following characters were added to your account: {0}" \
+                    .format(join_list(["{name} ({world})".format(**c) for c in added], ", ", " and "))
+                for char in added:
+                    log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
+                    # Announce on server log of each server
+                    for guild in user_guilds:
+                        # Only announce on worlds where the character's world is tracked
+                        if tracked_worlds.get(guild.id, None) == char["world"]:
+                            char["guild"] = "No guild" if char["guild"] is None else char["guild"]
+                            log_reply[guild.id] += "\n\t{name} - {level} {vocation} - **{guild}**".format(**char)
+
+            if len(updated) > 0:
+                reply += "\nThe following characters were reassigned to you: {0}" \
+                    .format(join_list(["{name} ({world})".format(**c) for c in updated], ", ", " and "))
+                for char in updated:
+                    log.info("Character {0} was reassigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
+                    # Announce on server log of each server
+                    for guild in user_guilds:
+                        # Only announce on worlds where the character's world is tracked
+                        if tracked_worlds.get(guild.id, None) == char["world"]:
+                            log_reply[guild.id] += "\n\t{name} (Reassigned)".format(**char)
+
+            for char in updated:
+                c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
+            for char in added:
+                c.execute(
+                    "INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
+                    (char['name'], char['level'] * -1, char['vocation'], user.id, char["world"], char["guild"])
+                )
+
+            c.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
+            c.execute("UPDATE users SET name = ? WHERE id = ?", (user.display_name, user.id,))
+
+            await ctx.send(reply)
+            for server_id, message in log_reply.items():
+                if message:
+                    message = user.mention + " registered the following characters: " + message
+                    await send_log_message(self.bot, self.bot.get_guild(server_id), message)
+
+        finally:
+            c.close()
+            userDatabase.commit()
+
+    @checks.is_not_lite()
+    @commands.command(aliases=["i'mnot"])
+    async def imnot(self, ctx, *, name):
+        """Removes a character assigned to you
+
+        All registered level ups and deaths will be lost forever."""
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT id, name, ABS(last_level) as level, user_id, vocation, world "
+                      "FROM chars WHERE name LIKE ?", (name,))
+            char = c.fetchone()
+            if char is None:
+                await ctx.send("There's no character registered with that name.")
+                return
+            if char["user_id"] != ctx.message.author.id:
+                await ctx.send("The character **{0}** is not registered to you.".format(char["name"]))
+                return
+
+            await ctx.send("Are you sure you want to unregister **{name}** ({level} {vocation})? `yes/no`"
+                           "\n*All registered level ups and deaths will be lost forever.*"
+                           .format(**char))
+
+            def check(m):
+                return m.channel == ctx.channel and m.author == ctx.author
+
+            try:
+                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
+                if reply.content.lower() not in ["yes", "y"]:
+                    await ctx.send("No then? Ok.")
+                    return
+            except asyncio.TimeoutError:
+                await ctx.send("I guess you changed your mind.")
+                return
+
+            c.execute("DELETE FROM chars WHERE id = ?", (char["id"],))
+            c.execute("DELETE FROM char_levelups WHERE char_id = ?", (char["id"],))
+            c.execute("DELETE FROM char_deaths WHERE char_id = ?", (char["id"],))
+            await ctx.send("**{0}** is no longer registered to you.".format(char["name"]))
+
+            user_servers = [s.id for s in get_user_guilds(self.bot, ctx.message.author.id)]
+            for server_id, world in tracked_worlds.items():
+                if char["world"] == world and server_id in user_servers:
+                    message = "{0} unregistered **{1}**".format(ctx.message.author.mention, char["name"])
+                    await send_log_message(self.bot, self.bot.get_guild(server_id), message)
+        finally:
+            userDatabase.commit()
+            c.close()
 
 
 def setup(bot):

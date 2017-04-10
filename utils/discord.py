@@ -1,3 +1,5 @@
+from typing import List, Optional, Dict
+
 import discord
 from discord.abc import PrivateChannel, Messageable
 from discord.ext import commands
@@ -70,7 +72,7 @@ def get_member(bot: discord.Client, user_id: int, guild: discord.Guild = None, g
         return discord.utils.get(bot.get_all_members(), id=user_id)
 
 
-def get_user_guilds(bot: discord.Client, user_id: int):
+def get_user_guilds(bot: discord.Client, user_id: int) -> List[discord.Guild]:
     """Returns a list of the user's shared guilds with the bot"""
     return [m.guild for m in bot.get_all_members() if m.id == user_id]
 
@@ -90,7 +92,7 @@ def get_user_admin_guilds(bot: discord.Client, user_id):
     return ret
 
 
-def get_user_worlds(bot: discord.Client, user_id: int, guild_list=None):
+def get_user_worlds(bot: discord.Client, user_id: int, guild_list=None) -> List[Dict[int, str]]:
     """Returns a list of all the tibia worlds the user is tracked in.
 
     This is based on the tracked world of each guild the user belongs to.
@@ -111,7 +113,7 @@ async def send_log_message(bot: discord.Client, guild: discord.Guild, content=No
     await channel.send(content=content, embed=embed)
 
 
-def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -> discord.Role:
+def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -> Optional[discord.Role]:
     """Returns a role matching the id in a server"""
     if guild is None:
         raise ValueError("guild is None")
@@ -123,7 +125,7 @@ def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -
     return None
 
 
-def get_role_list(guild: discord.Guild):
+def get_role_list(guild: discord.Guild) -> List[discord.Role]:
     """Lists all role within the discord server and returns to caller."""
     roles = []
     for role in guild.roles:
@@ -131,7 +133,6 @@ def get_role_list(guild: discord.Guild):
         if role.name not in ["@everyone", "Nab Bot"]:
             roles.append(role)
     return roles
-
 
 
 def get_user_color(user: discord.Member, guild: discord.Guild) -> discord.Colour:
