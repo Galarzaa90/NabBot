@@ -151,7 +151,7 @@ class Tibia:
             await ctx.send("Tell me which character or user you want to check.")
             return
 
-        if ctx.message.guild.id in lite_servers:
+        if is_lite_mode(ctx):
             char = await get_character(name)
             if char == ERROR_DOESNTEXIST:
                 await ctx.send("I couldn't find a character with that name")
