@@ -802,19 +802,19 @@ async def get_house(name, world = None):
         tries = 5
         while True:
             try:
-                page = await aiohttp.get(house["url"])
-                content = await page.text(encoding='ISO-8859-1')
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(house["url"]) as resp:
+                        content = await resp.text(encoding='ISO-8859-1')
             except Exception:
+                tries -= 1
                 if tries == 0:
                     log.error("get_house: Couldn't fetch {0} (id {1}) in {2}, network error.".format(house["name"],
                                                                                                      house["id"],
                                                                                                      world))
                     house["fetch"] = False
                     break
-                else:
-                    tries -= 1
-                    await asyncio.sleep(network_retry_delay)
-                    continue
+                await asyncio.sleep(network_retry_delay)
+                continue
 
             # Trimming content to reduce load
             try:
