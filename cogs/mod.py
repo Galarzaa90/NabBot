@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 
 from config import mod_ids, owner_ids
+from nabbot import NabBot
 from utils.database import userDatabase, tracked_worlds
 from utils.messages import split_message
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
@@ -13,7 +14,7 @@ from utils import checks
 
 class Mod:
     """Commands for bot/server moderators."""
-    def __init__(self, bot: discord.Client):
+    def __init__(self, bot: NabBot):
         self.bot = bot
 
     # Admin only commands #

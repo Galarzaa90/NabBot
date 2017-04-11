@@ -9,6 +9,7 @@ import random
 import time
 
 from config import ask_channel_name, owner_ids, mod_ids
+from nabbot import NabBot
 from utils import checks
 from utils.database import userDatabase
 from utils.discord import get_member, is_lite_mode, get_region_string, get_role_list, get_member_by_name, get_role, \
@@ -19,7 +20,7 @@ from utils.paginator import Paginator, CannotPaginate
 
 
 class General:
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: NabBot):
         self.bot = bot
         self.bot.loop.create_task(self.events_announce())
 

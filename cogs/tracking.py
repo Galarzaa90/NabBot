@@ -5,6 +5,7 @@ import time
 
 from config import death_scan_interval, highscores_delay, highscores_categories, highscores_page_delay, \
     online_scan_interval, announce_threshold, owner_ids, mod_ids
+from nabbot import NabBot
 from utils import checks
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
 from utils.discord import get_announce_channel, get_user_guilds, is_private, get_member, send_log_message
@@ -16,7 +17,7 @@ from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world_o
 
 
 class Tracking:
-    def __init__(self, bot: discord.Client):
+    def __init__(self, bot: NabBot):
         self.bot = bot
         self.bot.loop.create_task(self.scan_deaths())
         self.bot.loop.create_task(self.scan_online_chars())

@@ -4,6 +4,7 @@ from discord.ext import commands
 import platform
 
 # Everything is imported to put it in /debug scope
+from nabbot import NabBot
 from utils import checks
 from utils.discord import *
 from utils.database import *
@@ -14,7 +15,7 @@ from utils.tibia import *
 
 class Owner:
     """Commands exclusive to bot owners"""
-    def __init__(self, bot: discord.ext.commands.Bot):
+    def __init__(self, bot: NabBot):
         self.bot = bot
 
     @commands.command(aliases=["reset"])

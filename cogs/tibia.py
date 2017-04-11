@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 
 from config import *
+from nabbot import NabBot
 from utils import checks
 from utils.database import tracked_worlds
 from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_guilds, \
@@ -18,7 +19,7 @@ from utils.tibia import *
 
 class Tibia:
     """Tibia related commands."""
-    def __init__(self, bot: discord.Client):
+    def __init__(self, bot: NabBot):
         self.bot = bot
         self.parsing_count = 0
 
