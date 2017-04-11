@@ -233,7 +233,7 @@ async def get_guild_online(name, title_case=True, tries=5):
             return await get_guild_online(name, False)
         else:
             return ERROR_DOESNTEXIST
-
+    guild['name'] = name
     # Regex pattern to fetch world, guildhall and founding date
     m = re.search(r'founded on (\w+) on ([^.]+)', content)
     if m:
@@ -263,7 +263,6 @@ async def get_guild_online(name, title_case=True, tries=5):
             joined = joined.replace('&#160;', '-')
             guild['members'].append({'rank': rank, 'name': name, 'title': title,
                                      'vocation': vocation, 'level': level, 'joined': joined})
-    guild['name'] = name
     return guild
 
 
