@@ -845,6 +845,81 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
+    @deaths.command(name="stats")
+    @checks.is_not_lite()
+    async def deaths_stats(self, ctx, *, period: str = None):
+        """Stats"""
+        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        if is_private(ctx.message.channel):
+            user_worlds = get_user_worlds(self.bot, ctx.message.author.id)
+        else:
+            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
+            if user_worlds[0] is None:
+                await ctx.send("This server is not tracking any tibia worlds.")
+                return
+        placeholders = ", ".join("?" for w in user_worlds)
+        c = userDatabase.cursor()
+        now = time.time()
+        embed = discord.Embed(title="Death statistics")
+        if period in ["week", "weekly"]:
+            start_date = now - (1 * 60 * 60 * 24 * 7)
+            description_suffix = " in the last 7 days"
+        elif period in ["month", "monthly"]:
+            start_date = now - (1 * 60 * 60 * 24 * 30)
+            description_suffix = " in the last 7 days"
+        else:
+            start_date = 0
+            description_suffix = ""
+            embed.set_footer(text="For a shorter period, try /death stats week or /deaths stats month")
+        try:
+            c.execute("SELECT COUNT() AS total FROM char_deaths WHERE date >= ?", (start_date,))
+            total = c.fetchone()["total"]
+            embed.description = f"There are {total:,} deaths registered{description_suffix}."
+            c.execute("SELECT COUNT() as count, chars.name FROM char_deaths, chars "
+                      f"WHERE id = char_id AND world IN ({placeholders}) AND date >= {start_date} "
+                      "GROUP BY char_id ORDER BY count DESC LIMIT 3", tuple(user_worlds))
+            total_per_char = c.fetchall()
+            content = ""
+            for row in total_per_char:
+                content += f"**{row['name']}** \U00002014 {row['count']}\n"
+            embed.add_field(name="Most deaths per character", value=content, inline=False)
+
+            c.execute("SELECT COUNT() as count, chars.user_id FROM char_deaths, chars "
+                      f"WHERE id = char_id AND world IN ({placeholders}) AND date >= {start_date} "
+                      "GROUP BY user_id ORDER BY count DESC", tuple(user_worlds))
+            content = ""
+            count = 0
+            while True:
+                row = c.fetchone()
+                if row is None:
+                    break
+                user = get_member(self.bot, row["user_id"], ctx.guild)
+                if user is None:
+                    continue
+                count += 1
+                content += f"@**{user.display_name}** \U00002014 {row['count']}\n"
+                if count >= 3:
+                    break
+            if count > 0:
+                embed.add_field(name="Most deaths per user", value=content, inline=False)
+
+            c.execute("SELECT COUNT() as count, killer FROM char_deaths, chars "
+                      f"WHERE id = char_id and world IN ({placeholders}) AND date >= {start_date} "
+                      "GROUP BY killer ORDER BY count DESC LIMIT 3", tuple(user_worlds))
+            total_per_killer = c.fetchall()
+            content = ""
+            for row in total_per_killer:
+                killer = re.sub(r"(a|an)(\s+)", " ", row["killer"]).title()
+                content += f"**{killer}** \U00002014 {row['count']}\n"
+            embed.add_field(name="Most deaths per killer", value=content, inline=False)
+            await ctx.send(embed=embed)
+        finally:
+            c.close()
+
     @commands.group(aliases=['levelups', 'lvl', 'level', 'lvls'], invoke_without_command=True)
     @checks.is_not_lite()
     async def levels(self, ctx, *, name: str=None):
