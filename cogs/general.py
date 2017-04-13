@@ -191,39 +191,43 @@ class General:
 
     @commands.guild_only()
     @commands.command()
-    async def roles(self, ctx, *, user_name: str = None):
+    async def roles(self, ctx: commands.Context, *, user_name: str = None):
         """Shows a list of roles or an user's roles
 
         If no user_name is specified, it shows a list of the server's role.
         If user_name is specified, it shows a list of that user's roles."""
-        msg = "These are the active roles for "
 
         if user_name is None:
-            msg += "this server:\n"
-
-            for role in get_role_list(ctx.message.guild):
-                msg += role.name + "\n"
+            title = "Roles in this server"
+            entries = [r.name for r in get_role_list(ctx.message.guild)]
         else:
             member = get_member_by_name(self.bot, user_name, ctx.message.guild)
             if member is None:
                 await ctx.send("I don't see any user named **" + user_name + "**.")
-            else:
-                msg += "**" + member.display_name + "**:\n"
-                roles = []
+                return
+            title = f"Roles for @{member.display_name}"
+            entries = []
+            # Ignoring "default" roles
+            for role in member.roles:
+                if role.name not in ["@everyone", "Nab Bot"]:
+                    entries.append(role.name)
 
-                # Ignoring "default" roles
-                for role in member.roles:
-                    if role.name not in ["@everyone", "Nab Bot"]:
-                        roles.append(role.name)
+            # There shouldn't be anyone without active roles, but since people can check for NabBot,
+            # might as well show a specific message.
+            if not entries:
+                await ctx.send(f"There are no active roles for **{member.display_name}**.")
+                return
 
-                # There shouldn't be anyone without active roles, but since people can check for NabBot,
-                # might as well show a specific message.
-                if roles:
-                    for roleName in roles:
-                        msg += roleName + "\r\n"
-                else:
-                    msg = "There are no active roles for **" + member.display_name + "**."
-        await ctx.send(msg)
+        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+            per_page = 20
+        else:
+            per_page = 5
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
         return
 
     @commands.guild_only()
