@@ -1457,8 +1457,8 @@ deathmessages_monster = [
     [20000,
      "Watch out for that **{deathKiller}**'s wav... Oh"+EMOJI[":neutral_face:"]+"... Rest in peace **{charName}** ({deathLevel}).",
      False, False, ["hellhound", "hellfire fighter", "dragon lord", "undead dragon", "dragon", "draken spellweaver"]],
-    [200, "Oh look at that, rest in peace **{charName}**,  ^that ^**{deathKiller}** really got you. Hope you get your"
-            " level back", False, False, False, range(1, 10)]
+    [200, "Oh look at that, rest in peace **{charName}** (deathLevel},  ^that ^**{deathKiller}** really got you. "
+          "Hope you get your level back.", False, False, False, range(1, 10)]
 ]
 # deaths by player
 deathmessages_player = [
