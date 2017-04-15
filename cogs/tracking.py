@@ -17,6 +17,7 @@ from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world_o
 
 
 class Tracking:
+    """Commands related to Nab Bot's tracking system."""
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.bot.loop.create_task(self.scan_deaths())
@@ -325,7 +326,7 @@ class Tracking:
     @checks.is_not_lite()
     @commands.command(aliases=["i'm", "iam"])
     async def im(self, ctx, *, char_name: str):
-        """Lets you add your tibia character(s) for the self.bot to track.
+        """Lets you add your tibia character(s) for the bot to track.
 
         If you need to add any more characters or made a mistake, please message an admin."""
         # This is equivalent to someone using /stalk addacc on themselves.

@@ -49,7 +49,7 @@ class Owner:
     @commands.command(name="unload")
     @checks.is_owner()
     async def unload_cog(self, ctx, cog: str):
-        """Loads a cog"""
+        """Unloads a cog"""
         try:
             self.bot.unload_extension(cog)
             await ctx.send("Cog unloaded successfully.")

@@ -91,7 +91,7 @@ class General:
             await asyncio.sleep(20)
 
     # Bot commands
-    @commands.command(aliases=["commands"])
+    @commands.command(aliases=["commands"], hidden=True)
     async def help(self, ctx, *commands: str):
         """Shows this message."""
         _mentions_transforms = {
@@ -117,16 +117,15 @@ class General:
             if name in bot.cogs:
                 command = bot.cogs[name]
             else:
-                command = bot.commands.get(name)
+                command = bot.all_commands.get(name)
                 if command is None:
                     await destination.send(bot.command_not_found.format(name))
                     return
-                destination = ctx.message.channel if command.no_pm else destination
 
             pages = await bot.formatter.format_help_for(ctx, command)
         else:
             name = _mention_pattern.sub(repl, commands[0])
-            command = bot.commands.get(name)
+            command = bot.all_commands.get(name)
             if command is None:
                 await destination.send(bot.command_not_found.format(name))
                 return
@@ -134,7 +133,7 @@ class General:
             for key in commands[1:]:
                 try:
                     key = _mention_pattern.sub(repl, key)
-                    command = command.commands.get(key)
+                    command = command.all_commands.get(key)
                     if command is None:
                         await destination.send(bot.command_not_found.format(key))
                         return
