@@ -468,9 +468,9 @@ class General:
                 guild = ctx.message.guild
             # PM and user shares multiple servers, we must ask him for which server is the event
             else:
-                await ctx.say("For which server is this event? Choose one (number only)" +
-                              "\n\t0: *Cancel*\n\t" +
-                              "\n\t".join(["{0}: **{1.name}**".format(i + 1, j) for i, j in enumerate(guilds)]))
+                await ctx.send("For which server is this event? Choose one (number only)" +
+                               "\n\t0: *Cancel*\n\t" +
+                               "\n\t".join(["{0}: **{1.name}**".format(i + 1, j) for i, j in enumerate(guilds)]))
 
                 def check(m):
                     return m.channel == ctx.channel and m.author == ctx.author
