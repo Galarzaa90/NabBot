@@ -2,9 +2,7 @@ import asyncio
 import random
 import sys
 import traceback
-from typing import List
 
-import aiohttp
 import discord
 from discord import abc
 from discord.ext import commands
@@ -45,7 +43,7 @@ class NabBot(commands.Bot):
 
         # Notify reset author
         if len(sys.argv) > 1:
-            user = get_member(self, sys.argv[1])
+            user = self.get_member(self, sys.argv[1])
             sys.argv[1] = 0
             if user is not None:
                 await user.send("Restart complete")
