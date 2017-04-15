@@ -6,6 +6,7 @@ from discord.ext import commands
 import re
 
 from config import log_channel_name, owner_ids, lite_servers
+from nabbot import NabBot
 from utils.database import tracked_worlds, announce_channels
 from .messages import EMOJI
 
@@ -72,9 +73,9 @@ def get_member(bot: discord.Client, user_id: int, guild: discord.Guild = None, g
         return discord.utils.get(bot.get_all_members(), id=user_id)
 
 
-def get_user_guilds(bot: discord.Client, user_id: int) -> List[discord.Guild]:
+def get_user_guilds(bot: NabBot, user_id: int) -> List[discord.Guild]:
     """Returns a list of the user's shared guilds with the bot"""
-    return [m.guild for m in bot.get_all_members() if m.id == user_id]
+    return [bot.get_guild(gid) for gid in bot.members[user_id]]
 
 
 def get_user_admin_guilds(bot: discord.Client, user_id):

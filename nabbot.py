@@ -2,6 +2,7 @@ import asyncio
 import random
 import sys
 import traceback
+from typing import List
 
 import aiohttp
 import discord
@@ -11,7 +12,6 @@ from discord.ext import commands
 from config import *
 from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, reload_welcome_messages, \
     welcome_messages, reload_announce_channels
-from utils.discord import get_member, send_log_message, get_region_string
 from utils.general import command_list, join_list, get_token
 from utils.general import log
 from utils.help_format import NabHelpFormat
@@ -23,7 +23,7 @@ class NabBot(commands.Bot):
         super().__init__(command_prefix=["/"], description='Mission: Destroy all humans.', pm_help=True,
                          formatter=NabHelpFormat())
         self.remove_command("help")
-        self.a = 4
+        self.members = {}
 
     async def on_ready(self):
         self.load_extension("cogs.owner")
@@ -52,6 +52,13 @@ class NabBot(commands.Bot):
 
         # Background tasks
         self.loop.create_task(self.game_update())
+
+        for guild in self.guilds:
+            for member in guild.members:
+                if member.id in self.members:
+                    self.members[member.id].append(guild.id)
+                else:
+                    self.members[member.id] = [guild.id]
 
     async def on_command(self, ctx):
         """Called when a command is called. Used to log commands on a file."""
@@ -114,10 +121,14 @@ class NabBot(commands.Bot):
         formatted_message = message.format(server, ask_channel_name, log_channel_name)
         await server.owner.send(formatted_message)
 
-
     async def on_member_join(self, member: discord.Member):
         """Called every time a member joins a server visible by the bot."""
         log.info("{0.display_name} (ID: {0.id}) joined {0.guild.name}".format(member))
+        if member.id in self.members:
+            self.members[member.id].append(member.guild.id)
+        else:
+            self.members[member.id] = [member.guild.id]
+
         if member.guild.id in lite_servers:
             return
         guild_id = member.guild.id
@@ -148,6 +159,7 @@ class NabBot(commands.Bot):
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
+        self.members[member.id].remove(member.guild.id)
         log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.guild.name}".format(member))
         await send_log_message(self, member.guild, "**{0.name}#{0.discriminator}** left or was kicked.".format(member))
 
@@ -219,6 +231,7 @@ class NabBot(commands.Bot):
         while not self.is_closed():
             await self.change_presence(game=discord.Game(name=random.choice(game_list)))
             await asyncio.sleep(60*20)  # Change game every 20 minutes
+
 
 nabbot = NabBot()
 
