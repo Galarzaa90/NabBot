@@ -8,7 +8,7 @@ from config import death_scan_interval, highscores_delay, highscores_categories,
 from nabbot import NabBot
 from utils import checks
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
-from utils.discord import get_announce_channel, get_user_guilds, is_private, get_member, send_log_message
+from utils.discord import get_announce_channel, get_user_guilds, is_private, get_member
 from utils.general import global_online_list, log, join_list
 from utils.messages import weighed_choice, deathmessages_player, deathmessages_monster, format_message, EMOJI, \
     levelmessages
@@ -457,7 +457,7 @@ class Tracking:
             for server_id, message in log_reply.items():
                 if message:
                     message = user.mention + " registered the following characters: " + message
-                    await send_log_message(self.bot, self.bot.get_guild(server_id), message)
+                    await self.bot.send_log_message(self.bot.get_guild(server_id), message)
 
         finally:
             c.close()
@@ -506,7 +506,7 @@ class Tracking:
             for server_id, world in tracked_worlds.items():
                 if char["world"] == world and server_id in user_servers:
                     message = "{0} unregistered **{1}**".format(ctx.message.author.mention, char["name"])
-                    await send_log_message(self.bot, self.bot.get_guild(server_id), message)
+                    await self.bot.send_log_message(self.bot.get_guild(server_id), message)
         finally:
             userDatabase.commit()
             c.close()

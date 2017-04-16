@@ -8,7 +8,7 @@ from config import *
 from nabbot import NabBot
 from utils import checks
 from utils.database import tracked_worlds
-from utils.discord import get_member_by_name, get_user_color, get_member, get_channel_by_name, get_user_guilds, \
+from utils.discord import get_member_by_name, get_user_color, get_member, get_user_guilds, \
     FIELD_VALUE_LIMIT, get_user_worlds, is_private, is_lite_mode
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, start_time
 from utils.loot import loot_scan
@@ -340,7 +340,7 @@ class Tibia:
         entries = []
         online_entries = []
 
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
             per_page = 20
         else:
@@ -643,7 +643,7 @@ class Tibia:
         entries = []
         count = 0
         now = time.time()
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
             per_page = 20
         else:
@@ -735,7 +735,7 @@ class Tibia:
         count = 0
         entries = []
         now = time.time()
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
             per_page = 20
         else:
@@ -809,7 +809,7 @@ class Tibia:
         entries = []
         now = time.time()
 
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
             per_page = 20
         else:
@@ -946,7 +946,7 @@ class Tibia:
         entries = []
         count = 0
         now = time.time()
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
             per_page = 20
         else:
@@ -1045,7 +1045,7 @@ class Tibia:
         entries = []
         now = time.time()
 
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
             per_page = 20
         else:
@@ -1103,7 +1103,7 @@ class Tibia:
         entries = []
         count = 0
         now = time.time()
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
             per_page = 20
         else:
@@ -1221,7 +1221,7 @@ class Tibia:
         count = 0
         now = time.time()
 
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
             per_page = 20
         else:
@@ -1473,7 +1473,7 @@ class Tibia:
             await ctx.send("I couldn't find that house, maybe you meant one of these?", embed=embed)
             return
 
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if not (ask_channel == ctx.message.channel or is_private(ctx.message.channel)):
             achievement["spoiler"] = "*To see spoilers, pm me"
             if ask_channel is not None:
@@ -1757,7 +1757,7 @@ class Tibia:
                     name = "\u200F"
                 embed.add_field(name=name, value="`"+loot+"`")
         if monster["loot"] and not long:
-            ask_channel = get_channel_by_name(ctx.bot, ask_channel_name, ctx.message.guild)
+            ask_channel = ctx.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel.name
             else:
@@ -1839,7 +1839,7 @@ class Tibia:
             embed.add_field(name=name, value=value)
 
         if npcs_too_long or drops_too_long or quests_too_long:
-            ask_channel = get_channel_by_name(ctx.bot, ask_channel_name, ctx.message.guild)
+            ask_channel = ctx.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel.name
             else:
@@ -1949,7 +1949,7 @@ class Tibia:
         embed.description = description
 
         if too_long:
-            ask_channel = get_channel_by_name(ctx.bot, ask_channel_name, ctx.message.guild)
+            ask_channel = ctx.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel.name
             else:

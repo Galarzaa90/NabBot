@@ -43,7 +43,7 @@ class NabBot(commands.Bot):
 
         # Notify reset author
         if len(sys.argv) > 1:
-            user = self.get_member(self, sys.argv[1])
+            user = self.get_member(sys.argv[1])
             sys.argv[1] = 0
             if user is not None:
                 await user.send("Restart complete")
@@ -151,7 +151,7 @@ class NabBot(commands.Bot):
             finally:
                 c.close()
 
-        await send_log_message(self, member.guild, log_message)
+        await self.send_log_message(member.guild, log_message)
         await member.send(pm)
         await member.guild.default_channel.send("Look who just joined! Welcome {0.mention}!".format(member))
 
@@ -159,17 +159,17 @@ class NabBot(commands.Bot):
         """Called when a member leaves or is kicked from a guild."""
         self.members[member.id].remove(member.guild.id)
         log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.guild.name}".format(member))
-        await send_log_message(self, member.guild, "**{0.name}#{0.discriminator}** left or was kicked.".format(member))
+        await self.send_log_message(member.guild, "**{0.name}#{0.discriminator}** left or was kicked.".format(member))
 
     async def on_member_ban(self, member: discord.Member):
         """Called when a member is banned from a guild."""
         log.warning("{0.display_name} (ID:{0.id}) was banned from {0.guild.name}".format(member))
-        await send_log_message(self, member.guild, "**{0.name}#{0.discriminator}** was banned.".format(member))
+        await self.send_log_message(member.guild, "**{0.name}#{0.discriminator}** was banned.".format(member))
 
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
         log.warning("{1.name} (ID:{1.id}) was unbanned from {0.name}".format(guild, user))
-        await send_log_message(self, guild, "**{0.name}#{0.discriminator}** was unbanned.".format(user))
+        await self.send_log_message(guild, "**{0.name}#{0.discriminator}** was unbanned.".format(user))
 
     async def on_message_delete(self, message: discord.Message):
         """Called every time a message is deleted."""
@@ -206,20 +206,20 @@ class NabBot(commands.Bot):
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         if before.nick != after.nick:
             reply = "{1.mention}: Nickname changed from **{0.nick}** to **{1.nick}**".format(before, after)
-            await send_log_message(self, after.guild, reply)
+            await self.send_log_message(after.guild, reply)
         elif before.name != after.name:
             reply = "{1.mention}: Name changed from **{0.name}** to **{1.name}**".format(before, after)
-            await send_log_message(self, after.guild, reply)
+            await self.send_log_message(after.guild, reply)
         return
 
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
         if before.name != after.name:
             reply = "Server name changed from **{0.name}** to **{1.name}**".format(before, after)
-            await send_log_message(self, after, reply)
+            await self.send_log_message(after, reply)
         elif before.region != after.region:
             reply = "Server region changed from {0} to {1}".format(get_region_string(before.region),
                                                                    get_region_string(after.region))
-            await send_log_message(self, after, reply)
+            await self.send_log_message(after, reply)
 
     async def game_update(self):
         game_list = ["Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2017", "Russian Roulette",
@@ -230,6 +230,37 @@ class NabBot(commands.Bot):
             await self.change_presence(game=discord.Game(name=random.choice(game_list)))
             await asyncio.sleep(60*20)  # Change game every 20 minutes
 
+    async def send_log_message(self, guild: discord.Guild, content=None, embed: discord.Embed = None):
+        """Sends a message on the server-log channel
+
+        If the channel doesn't exist, it doesn't send anything or give of any warnings as it meant to be an optional
+        feature"""
+        channel = self.get_channel_by_name(log_channel_name, guild)
+        if channel is None:
+            return
+        await channel.send(content=content, embed=embed)
+
+    def get_channel_by_name(self, name: str, guild: discord.Guild = None,
+                            guild_id: int = 0, guild_name: str = None) -> discord.TextChannel:
+        """Finds a channel by name on all the channels visible by the bot.
+
+        If server, server_id or server_name is specified, only channels in that server will be searched"""
+        if guild is None and guild_id != 0:
+            guild = bot.get_guild(guild_id)
+        if guild is None and guild_name is not None:
+            guild = get_guild_by_name(bot, guild_name)
+        if guild is None:
+            channel = discord.utils.find(lambda m: m.name == name and not type(m) == discord.ChannelType.voice,
+                                         bot.get_all_channels())
+        else:
+            channel = discord.utils.find(lambda m: m.name == name and not type(m) == discord.ChannelType.voice,
+                                         guild.channels)
+        return channel
+
+    def get_guild_by_name(self, name: str) -> discord.Guild:
+        """Returns a guild by its name"""
+        guild = discord.utils.find(lambda m: m.name.lower() == name.lower(), self.guilds)
+        return guild
 
 nabbot = NabBot()
 

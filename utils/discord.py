@@ -18,30 +18,6 @@ FIELD_VALUE_LIMIT = 1024
 FIELD_AMOUNT = 25
 
 
-def get_channel_by_name(bot: discord.Client, name: str, guild: discord.Guild = None,
-                        guild_id: int = 0, guild_name: str = None) -> discord.TextChannel:
-    """Finds a channel by name on all the channels visible by the bot.
-
-    If server, server_id or server_name is specified, only channels in that server will be searched"""
-    if guild is None and guild_id != 0:
-        guild = bot.get_guild(guild_id)
-    if guild is None and guild_name is not None:
-        guild = get_guild_by_name(bot, guild_name)
-    if guild is None:
-        channel = discord.utils.find(lambda m: m.name == name and not type(m) == discord.ChannelType.voice,
-                                     bot.get_all_channels())
-    else:
-        channel = discord.utils.find(lambda m: m.name == name and not type(m) == discord.ChannelType.voice,
-                                     guild.channels)
-    return channel
-
-
-def get_guild_by_name(bot: discord.Client, name: str) -> discord.Guild:
-    """Returns a guild by its name"""
-    guild = discord.utils.find(lambda m: m.name.lower() == name.lower(), bot.guilds)
-    return guild
-
-
 def get_member_by_name(bot: discord.Client, name: str, guild: discord.Guild=None, guild_list=None) -> discord.Member:
     """Returns a member matching the name
 
@@ -101,17 +77,6 @@ def get_user_worlds(bot: discord.Client, user_id: int, guild_list=None) -> List[
     if guild_list is None:
         guild_list = get_user_guilds(bot, user_id)
     return list(set([world for guild, world in tracked_worlds.items() if guild in [g.id for g in guild_list]]))
-
-
-async def send_log_message(bot: discord.Client, guild: discord.Guild, content=None, embed: discord.Embed = None):
-    """Sends a message on the server-log channel
-
-    If the channel doesn't exist, it doesn't send anything or give of any warnings as it meant to be an optional
-    feature"""
-    channel = get_channel_by_name(bot, log_channel_name, guild)
-    if channel is None:
-        return
-    await channel.send(content=content, embed=embed)
 
 
 def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -> Optional[discord.Role]:
@@ -176,7 +141,7 @@ def get_announce_channel(bot: discord.Client, guild: discord.Guild) -> discord.T
     channel_name = announce_channels.get(guild.id, None)
     if channel_name is None:
         return guild.default_channel
-    channel = get_channel_by_name(bot, channel_name, guild)
+    channel = bot.get_channel_by_name(channel_name, guild)
     if channel is None:
         return guild.default_channel
     permissions = channel.permissions_for(get_member(bot, bot.user.id, guild))

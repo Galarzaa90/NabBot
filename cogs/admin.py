@@ -7,7 +7,7 @@ from config import welcome_pm, ask_channel_name, log_channel_name
 from nabbot import NabBot
 from utils import checks
 from utils.database import *
-from utils.discord import get_channel_by_name, get_member, get_guild_by_name, get_user_admin_guilds, is_private
+from utils.discord import get_member, get_user_admin_guilds, is_private
 from utils.messages import EMOJI
 from utils.tibia import tibia_worlds
 
@@ -56,7 +56,7 @@ class Admin:
                         await ctx.send("I guess you changed your mind.")
                         return
         else:
-            guild = get_guild_by_name(self.bot, server_name)
+            guild = self.bot.get_guild_by_name(server_name)
             if guild is None:
                 await ctx.send("I couldn't find a server with that name.")
                 return
@@ -122,14 +122,14 @@ class Admin:
                 answer += "\n\t{0} Not in: {1}\n".format(get_check_emoji(False), ",".join(channel_list))
             i += 1
 
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, guild)
         answer += "\nAsk channel:\n\t"
         if ask_channel is not None:
             answer += "{0} Enabled: {1.mention}".format(get_check_emoji(True), ask_channel)
         else:
             answer += "{0} Not enabled".format(get_check_emoji(False))
 
-        log_channel = get_channel_by_name(self.bot, log_channel_name, guild)
+        log_channel = self.bot.get_channel_by_name(log_channel_name, guild)
         answer += "\nLog channel:\n\t"
         if log_channel is not None:
             answer += "{0} Enabled: {1.mention}".format(get_check_emoji(True), log_channel)
@@ -401,7 +401,7 @@ class Admin:
                 await ctx.send("This server has no custom channel set, {0} is used."
                                     .format(guild.default_channel.mention))
             else:
-                channel = get_channel_by_name(self.bot, current_channel, guild)
+                channel = self.bot.get_channel_by_name(current_channel, guild)
                 if channel is not None:
                     permissions = channel.permissions_for(get_member(self.bot, self.bot.user.id, guild))
                     if not permissions.read_messages or not permissions.send_messages:
@@ -438,7 +438,7 @@ class Admin:
             reload_welcome_messages()
             return
 
-        channel = get_channel_by_name(self.bot, name, guild)
+        channel = self.bot.get_channel_by_name(name, guild)
         if channel is None:
             await ctx.send("There is no channel with that name.")
             return

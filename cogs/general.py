@@ -13,7 +13,7 @@ from nabbot import NabBot
 from utils import checks
 from utils.database import userDatabase
 from utils.discord import get_member, is_lite_mode, get_region_string, get_role_list, get_member_by_name, get_role, \
-    get_channel_by_name, is_private, get_user_guilds, clean_string
+    is_private, get_user_guilds, clean_string
 from utils.general import get_uptime, TimeString, single_line, is_numeric
 from utils.messages import EMOJI
 from utils.paginator import Paginator, CannotPaginate
@@ -217,7 +217,7 @@ class General:
                 await ctx.send(f"There are no active roles for **{member.display_name}**.")
                 return
 
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
             per_page = 20
         else:
@@ -253,7 +253,7 @@ class General:
             return
 
         title = "Members with the role '{0.name}'".format(role)
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
             per_page = 20
         else:

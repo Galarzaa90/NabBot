@@ -7,7 +7,7 @@ from nabbot import NabBot
 from utils.database import userDatabase, tracked_worlds
 from utils.messages import split_message
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
-from utils.discord import get_member, get_member_by_name, get_user_guilds, get_user_worlds, send_log_message, \
+from utils.discord import get_member, get_member_by_name, get_user_guilds, get_user_worlds,  \
     get_user_admin_guilds, FIELD_VALUE_LIMIT, is_private
 from utils import checks
 
@@ -155,16 +155,16 @@ class Mod:
                         if current_user is None:
                             c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
                             await ctx.send("This character was registered to a user no longer in server. "
-                                                "It was assigned to this user successfully.")
+                                           "It was assigned to this user successfully.")
                             # Log on relevant servers
                             for server in user_servers:
                                 world = tracked_worlds.get(server.id, None)
                                 if world == char["world"]:
                                     log_msg = "{0.mention} registered **{1}** ({2} {3}) to {4.mention}."
-                                    await send_log_message(self.bot, server, log_msg.format(author, char["name"],
-                                                                                                 char["level"],
-                                                                                                 char["vocation"],
-                                                                                                 user))
+                                    await self.bot.send_log_message(server, log_msg.format(author, char["name"],
+                                                                                           char["level"],
+                                                                                           char["vocation"],
+                                                                                           user))
                         else:
                             await ctx.send("This character is already registered to **@{0}**".format(
                                 current_user.display_name)
@@ -187,9 +187,8 @@ class Mod:
                     if world == char["world"]:
                         char["guild"] = char.get("guild", "No guild")
                         log_msg = "{0.mention} registered **{1}** ({2} {3}, {4}) to {5.mention}."
-                        await send_log_message(self.bot, server, log_msg.format(author, char["name"],
-                                                                                     char["level"], char["vocation"],
-                                                                                     char["guild"], user))
+                        await self.bot.send_log_message(server, log_msg.format(author, char["name"],char["level"],
+                                                                               char["vocation"], char["guild"], user))
                 return
             finally:
                 c.close()
@@ -326,7 +325,7 @@ class Mod:
                         message = "{0.mention} registered the following characters to {1.mention}: {2}".format(author,
                                                                                                                user,
                                                                                                                message)
-                        await send_log_message(self.bot, self.bot.get_guild(guild_id), message)
+                        await self.bot.send_log_message(self.bot.get_guild(guild_id), message)
                 return
             finally:
                 c.close()
@@ -364,7 +363,7 @@ class Mod:
                             continue
                         log_msg = "{0.mention} removed **{1}** ({2} {3}) from {4.mention}.".\
                             format(ctx.message.author, result["name"], result["level"], result["vocation"], user)
-                        await send_log_message(self.bot, server, log_msg)
+                        await self.bot.send_log_message(server, log_msg)
 
                 return
             finally:
