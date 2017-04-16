@@ -1,7 +1,6 @@
 import traceback
 
 from discord.ext import commands
-import platform
 
 # Everything is imported to put it in /debug scope
 from nabbot import NabBot

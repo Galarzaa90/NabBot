@@ -9,8 +9,7 @@ from datetime import datetime, date, timedelta
 
 from config import *
 
-# Command list (populated automatically, used to check if a message is(n't) a command invocation)
-command_list = []
+
 
 # This is the global online list
 # don't look at it too closely or you'll go blind!

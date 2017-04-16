@@ -12,10 +12,12 @@ from config import *
 from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, reload_welcome_messages, \
     welcome_messages, reload_announce_channels, announce_channels
 from utils.discord import get_region_string
-from utils.general import command_list, join_list, get_token
+from utils.general import join_list, get_token
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, EMOJI
+
+initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general"}
 
 
 class NabBot(commands.Bot):
@@ -23,25 +25,27 @@ class NabBot(commands.Bot):
         super().__init__(command_prefix=["/"], description='Mission: Destroy all humans.', pm_help=True,
                          formatter=NabHelpFormat())
         self.remove_command("help")
+        self.command_list = []
         self.members = {}
 
     async def on_ready(self):
-        self.load_extension("cogs.owner")
-        self.load_extension("cogs.admin")
-        self.load_extension("cogs.tibia")
-        self.load_extension("cogs.mod")
-        self.load_extension("cogs.tracking")
-        self.load_extension("cogs.general")
         print('Logged in as')
         print(self.user)
         print(self.user.id)
         print('------')
-        log.info('Bot is online and ready')
+
+        for cog in initial_cogs:
+            try:
+                self.load_extension(cog)
+                print(f"Cog {cog} loaded successfully.")
+            except Exception as e:
+                print(f'Cog {cog} failed to load:')
+                traceback.print_exc(limit=-1)
 
         # Populate command_list
         for command in self.commands:
-            command_list.append(command.name)
-            command_list.extend(command.aliases)
+            self.command_list.append(command.name)
+            self.command_list.extend(command.aliases)
 
         # Notify reset author
         if len(sys.argv) > 1:
@@ -53,12 +57,15 @@ class NabBot(commands.Bot):
         # Background tasks
         self.loop.create_task(self.game_update())
 
+        # Populating members's guild list
         for guild in self.guilds:
             for member in guild.members:
                 if member.id in self.members:
                     self.members[member.id].append(guild.id)
                 else:
                     self.members[member.id] = [guild.id]
+
+        log.info('Bot is online and ready')
 
     async def on_command(self, ctx):
         """Called when a command is called. Used to log commands on a file."""
@@ -91,20 +98,20 @@ class NabBot(commands.Bot):
             return
 
         split = message.content.split(" ", 1)
-        if split[0][:1] == "/" and split[0].lower()[1:] in command_list:
+        if split[0][:1] == "/" and split[0].lower()[1:] in self.command_list:
             if len(split) > 1:
                 message.content = split[0].lower()+" "+split[1]
             else:
                 message.content = message.content.lower()
         if len(split) == 2:
-            if message.author.id != self.user.id and (not split[0].lower()[1:] in command_list or not split[0][:1] == "/")\
+            if message.author.id != self.user.id and (not split[0].lower()[1:] in self.command_list or not split[0][:1] == "/")\
                     and not isinstance(message.channel, abc.PrivateChannel) and message.channel.name == ask_channel_name:
                 await message.delete()
                 return
         elif ask_channel_delete:
             # Delete messages in askchannel
             if message.author.id != self.user.id \
-                    and (not message.content.lower()[1:] in command_list or not message.content[:1] == "/") \
+                    and (not message.content.lower()[1:] in self.command_list or not message.content[:1] == "/") \
                     and not isinstance(message.channel, abc.PrivateChannel) and message.channel.name == ask_channel_name:
                 await message.delete()
                 return
@@ -113,10 +120,10 @@ class NabBot(commands.Bot):
     async def on_server_join(self, server: discord.Guild):
         log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(server))
         message = "Hello! I'm now in **{0.name}**. To see my available commands, type \help\n" \
-                  "I will reply to commands from any channel I can see, but if you create a channel called *{1}*, I will " \
-                  "give longer replies and more information there.\n" \
-                  "If you want a server log channel, create a channel called *{2}*, I will post logs in there. You might " \
-                  "want to make it private though.\n" \
+                  "I will reply to commands from any channel I can see, but if you create a channel called *{1}*," \
+                  "I will give longer replies and more information there.\n" \
+                  "If you want a server log channel, create a channel called *{2}*, I will post logs in there." \
+                  "You might want to make it private though.\n" \
                   "To have all of Nab Bot's features, use `/setworld <tibia_world>`"
         formatted_message = message.format(server, ask_channel_name, log_channel_name)
         await server.owner.send(formatted_message)
@@ -124,19 +131,21 @@ class NabBot(commands.Bot):
     async def on_member_join(self, member: discord.Member):
         """Called every time a member joins a server visible by the bot."""
         log.info("{0.display_name} (ID: {0.id}) joined {0.guild.name}".format(member))
+        # Updating member list
         if member.id in self.members:
             self.members[member.id].append(member.guild.id)
         else:
             self.members[member.id] = [member.guild.id]
 
-        if member.guild.id in lite_servers:
+        # No welcome message for lite servers and servers not tracking worlds
+        if member.guild.id in lite_servers or tracked_worlds.get(member.guild.id) is None:
             return
-        guild_id = member.guild.id
-        server_welcome = welcome_messages.get(guild_id, "")
+
+        server_welcome = welcome_messages.get(member.guild.id, "")
         pm = (welcome_pm+"\n"+server_welcome).format(member, self)
         log_message = "{0.mention} joined.".format(member)
 
-        # Check if user already has characters registered
+        # Check if user already has characters registered and announce them on log_channel
         # This could be because he rejoined the server or is in another server tracking the same worlds
         world = tracked_worlds.get(member.guild.id)
         if world is not None:
@@ -189,12 +198,15 @@ class NabBot(commands.Bot):
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
         """Called every time a message is edited."""
 
+        # Ignore bot messages
         if before.author.id == self.user.id:
             return
 
+        # Ignore private messages
         if isinstance(before.channel, abc.PrivateChannel):
             return
 
+        # Ignore if content didn't change (usually fired when attaching files)
         if before.content == after.content:
             return
 
@@ -262,7 +274,7 @@ class NabBot(commands.Bot):
         """Returns a list of the user's shared guilds with the bot"""
         return [self.get_guild(gid) for gid in self.members[user_id]]
 
-    def get_user_admin_guilds(self, user_id):
+    def get_user_admin_guilds(self, user_id: int) -> List[discord.Guild]:
         """Returns a list of the guilds the user is and admin of and the bot is a member of
 
         If the user is a bot owner, returns all the guilds the bot is in"""
@@ -276,7 +288,7 @@ class NabBot(commands.Bot):
                 ret.append(guild)
         return ret
 
-    def get_user_worlds(self, user_id: int, guild_list=None) -> List[Dict[int, str]]:
+    def get_user_worlds(self, user_id: int, guild_list=None) -> List[str]:
         """Returns a list of all the tibia worlds the user is tracked in.
 
         This is based on the tracked world of each guild the user belongs to.
@@ -310,15 +322,10 @@ class NabBot(commands.Bot):
             return
         await channel.send(content=content, embed=embed)
 
-    def get_channel_by_name(self, name: str, guild: discord.Guild = None, guild_id: int = 0,
-                            guild_name: str = None) -> discord.TextChannel:
+    def get_channel_by_name(self, name: str, guild: discord.Guild) -> discord.TextChannel:
         """Finds a channel by name on all the channels visible by the bot.
 
         If server, server_id or server_name is specified, only channels in that server will be searched"""
-        if guild is None and guild_id != 0:
-            guild = self.get_guild(guild_id)
-        if guild is None and guild_name is not None:
-            guild = self.get_guild_by_name(guild_name)
         if guild is None:
             channel = discord.utils.find(lambda m: m.name == name and not type(m) == discord.ChannelType.voice,
                                          self.get_all_channels())
@@ -329,6 +336,7 @@ class NabBot(commands.Bot):
 
     def get_guild_by_name(self, name: str) -> discord.Guild:
         """Returns a guild by its name"""
+
         guild = discord.utils.find(lambda m: m.name.lower() == name.lower(), self.guilds)
         return guild
 
