@@ -2,6 +2,7 @@ import asyncio
 import random
 import sys
 import traceback
+from typing import Union, List, Dict
 
 import discord
 from discord import abc
@@ -9,7 +10,8 @@ from discord.ext import commands
 
 from config import *
 from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, reload_welcome_messages, \
-    welcome_messages, reload_announce_channels
+    welcome_messages, reload_announce_channels, announce_channels
+from utils.discord import get_region_string
 from utils.general import command_list, join_list, get_token
 from utils.general import log
 from utils.help_format import NabHelpFormat
@@ -230,6 +232,74 @@ class NabBot(commands.Bot):
             await self.change_presence(game=discord.Game(name=random.choice(game_list)))
             await asyncio.sleep(60*20)  # Change game every 20 minutes
 
+    # ------------ Utility methods ------------
+
+    def get_member(self, member_id: int, guild: Union[discord.Guild, List[discord.Guild]] = None) -> discord.Member:
+        """Returns a member matching the id
+        
+        If a guild or guild list is specified, then only members from those guilds will be searched. If no guild is
+        specified, the first member instance will be returned."""
+        if guild is None:
+            return discord.utils.get(self.get_all_members(), id=member_id)
+        if type(guild) is list and len(guild) > 0:
+            members = [m for ml in [g.members for g in guild] for m in ml]
+            return discord.utils.find(lambda m: m.id == member_id, members)
+        return guild.get_member(member_id)
+
+    def get_member_by_name(self, name: str, guild: Union[discord.Guild, List[discord.Guild]] = None) -> discord.Member:
+        """Returns a member matching the name
+
+        If a guild or guild list is specified, then only members from those guilds will be searched. If no guild is
+        specified, the first member instance will be returned."""
+        if guild is None:
+            return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), self.get_all_members())
+        if type(guild) is list and len(guild) > 0:
+            members = [m for ml in [g.members for g in guild] for m in ml]
+            return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), members)
+        return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), guild.members)
+
+    def get_user_guilds(self, user_id: int) -> List[discord.Guild]:
+        """Returns a list of the user's shared guilds with the bot"""
+        return [self.get_guild(gid) for gid in self.members[user_id]]
+
+    def get_user_admin_guilds(self, user_id):
+        """Returns a list of the guilds the user is and admin of and the bot is a member of
+
+        If the user is a bot owner, returns all the guilds the bot is in"""
+        if user_id in owner_ids:
+            return list(self.guilds)
+        guilds = self.get_user_guilds(user_id)
+        ret = []
+        for guild in guilds:
+            member = guild.get_member(user_id)  # type: discord.Member
+            if member.guild_permissions.administrator:
+                ret.append(guild)
+        return ret
+
+    def get_user_worlds(self, user_id: int, guild_list=None) -> List[Dict[int, str]]:
+        """Returns a list of all the tibia worlds the user is tracked in.
+
+        This is based on the tracked world of each guild the user belongs to.
+        guild_list can be passed to search in a specific set of guilds. Note that the user may not belong to them."""
+        if guild_list is None:
+            guild_list = self.get_user_guilds(user_id)
+        return list(set([world for guild, world in tracked_worlds.items() if guild in [g.id for g in guild_list]]))
+
+    def get_announce_channel(self, guild: discord.Guild) -> discord.TextChannel:
+        """Returns this world's announcements channel. If no channel is set, the default channel is returned.
+
+        It also checks if the bot has permissions on that channel, if not, it will return the default channel too."""
+        channel_name = announce_channels.get(guild.id, None)
+        if channel_name is None:
+            return guild.default_channel
+        channel = self.get_channel_by_name(channel_name, guild)
+        if channel is None:
+            return guild.default_channel
+        permissions = channel.permissions_for(self.get_member(self.user.id, guild))
+        if not permissions.read_messages or not permissions.send_messages:
+            return guild.default_channel
+        return channel
+
     async def send_log_message(self, guild: discord.Guild, content=None, embed: discord.Embed = None):
         """Sends a message on the server-log channel
 
@@ -240,18 +310,18 @@ class NabBot(commands.Bot):
             return
         await channel.send(content=content, embed=embed)
 
-    def get_channel_by_name(self, name: str, guild: discord.Guild = None,
-                            guild_id: int = 0, guild_name: str = None) -> discord.TextChannel:
+    def get_channel_by_name(self, name: str, guild: discord.Guild = None, guild_id: int = 0,
+                            guild_name: str = None) -> discord.TextChannel:
         """Finds a channel by name on all the channels visible by the bot.
 
         If server, server_id or server_name is specified, only channels in that server will be searched"""
         if guild is None and guild_id != 0:
-            guild = bot.get_guild(guild_id)
+            guild = self.get_guild(guild_id)
         if guild is None and guild_name is not None:
-            guild = get_guild_by_name(bot, guild_name)
+            guild = self.get_guild_by_name(guild_name)
         if guild is None:
             channel = discord.utils.find(lambda m: m.name == name and not type(m) == discord.ChannelType.voice,
-                                         bot.get_all_channels())
+                                         self.get_all_channels())
         else:
             channel = discord.utils.find(lambda m: m.name == name and not type(m) == discord.ChannelType.voice,
                                          guild.channels)

@@ -12,8 +12,7 @@ from config import ask_channel_name, owner_ids, mod_ids
 from nabbot import NabBot
 from utils import checks
 from utils.database import userDatabase
-from utils.discord import get_member, is_lite_mode, get_region_string, get_role_list, get_member_by_name, get_role, \
-    is_private, get_user_guilds, clean_string
+from utils.discord import is_lite_mode, get_region_string, get_role_list, get_role, is_private, clean_string
 from utils.general import get_uptime, TimeString, single_line, is_numeric
 from utils.messages import EMOJI
 from utils.paginator import Paginator, CannotPaginate
@@ -58,7 +57,7 @@ class General:
                     guild = self.bot.get_guild(event["server"])
                     if guild is None:
                         continue
-                    author = get_member(self.bot, event["creator"], guild)
+                    author = self.bot.get_member(event["creator"], guild)
                     if author is None:
                         continue
                     event["author"] = author.display_name
@@ -81,7 +80,7 @@ class General:
                     if not subscribers:
                         continue
                     for subscriber in subscribers:
-                        member = get_member(self.bot, subscriber["user_id"])
+                        member = self.bot.get_member(subscriber["user_id"])
                         if member is None:
                             continue
                         await member.send(message)
@@ -163,8 +162,7 @@ class General:
     @commands.command(name="server", aliases=["serverinfo", "server_info"])
     async def info_server(self, ctx):
         """Shows the server's information."""
-        print(get_member(self.bot, self.bot.user.id))
-        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
+        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -200,7 +198,7 @@ class General:
             title = "Roles in this server"
             entries = [r.name for r in get_role_list(ctx.message.guild)]
         else:
-            member = get_member_by_name(self.bot, user_name, ctx.message.guild)
+            member = self.bot.get_member_by_name(user_name, ctx.message.guild)
             if member is None:
                 await ctx.send("I don't see any user named **" + user_name + "**.")
                 return
@@ -268,7 +266,7 @@ class General:
     @commands.command()
     async def about(self, ctx):
         """Shows information about the bot"""
-        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
+        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -322,7 +320,7 @@ class General:
     @checks.is_not_lite()
     async def events(self, ctx):
         """Shows a list of current active events"""
-        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
+        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -333,7 +331,7 @@ class General:
         try:
             # If this is used on a PM, show events for all shared servers
             if is_private(ctx.message.channel):
-                guilds = get_user_guilds(self.bot, ctx.message.author.id)
+                guilds = self.bot.get_user_guilds(ctx.message.author.id)
             else:
                 guilds = [ctx.message.guild]
             servers_ids = [g.id for g in guilds]
@@ -356,7 +354,7 @@ class General:
                 name = "Recent events"
                 value = ""
                 for event in recent_events:
-                    author = get_member(self.bot, event["creator"], server)
+                    author = self.bot.get_member(event["creator"], server)
                     event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
                     time_diff = timedelta(seconds=now - event["start"])
                     minutes = round((time_diff.seconds / 60) % 60)
@@ -368,7 +366,7 @@ class General:
                 name = "Upcoming events"
                 value = ""
                 for event in upcoming_events:
-                    author = get_member(self.bot, event["creator"])
+                    author = self.bot.get_member(event["creator"], server)
                     event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
                     time_diff = timedelta(seconds=event["start"] - now)
                     days, hours, minutes = time_diff.days, time_diff.seconds // 3600, (time_diff.seconds // 60) % 60
@@ -390,7 +388,7 @@ class General:
     @events.command(name="info", aliases=["show", "details"])
     async def event_info(self, ctx, event_id: int):
         """Displays an event's info"""
-        permissions = ctx.message.channel.permissions_for(get_member(self.bot, self.bot.user.id, ctx.message.guild))
+        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -399,7 +397,7 @@ class General:
         try:
             # If this is used on a PM, show events for all shared servers
             if is_private(ctx.message.channel):
-                guilds = get_user_guilds(self.bot, ctx.message.author.id)
+                guilds = self.bot.get_user_guilds(ctx.message.author.id)
             else:
                 guilds = [ctx.message.guild]
             servers_ids = [g.id for g in guilds]
@@ -414,7 +412,7 @@ class General:
                 return
             start = datetime.utcfromtimestamp(event["start"])
             embed = discord.Embed(title=event["name"], description=event["description"], timestamp=start)
-            author = get_member(self.bot, event["creator"], guild)
+            author = self.bot.get_member(event["creator"], guild)
             footer = "Start time"
             footer_icon = ""
             if author is not None:
@@ -459,7 +457,7 @@ class General:
                 await ctx.send("You can only have two running events simultaneously. Delete or edit an active event")
                 return
 
-            guilds = get_user_guilds(self.bot, creator)
+            guilds = self.bot.get_user_guilds(creator)
             # If message is via PM, but user only shares one server, we just consider that server
             if is_private(ctx.message.channel) and len(guilds) == 1:
                 guild = guilds[0]
@@ -709,7 +707,7 @@ class General:
                 await ctx.send("Invalid time. Try  the command again. `Time examples: 1h2m, 2d30m, 40m, 5h`")
                 return
 
-            guilds = get_user_guilds(self.bot, creator)
+            guilds = self.bot.get_user_guilds(creator)
             # If message is via PM, but user only shares one server, we just consider that server
             if is_private(ctx.message.channel) and len(guilds) == 1:
                 guild = guilds[0]
@@ -762,7 +760,7 @@ class General:
         try:
             # If this is used on a PM, show events for all shared servers
             if is_private(ctx.message.channel):
-                guilds = get_user_guilds(self.bot, ctx.message.author.id)
+                guilds = self.bot.get_user_guilds(ctx.message.author.id)
             else:
                 guilds = [ctx.message.guild]
             guild_ids = [s.id for s in guilds]

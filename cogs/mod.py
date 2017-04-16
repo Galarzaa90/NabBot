@@ -7,8 +7,7 @@ from nabbot import NabBot
 from utils.database import userDatabase, tracked_worlds
 from utils.messages import split_message
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
-from utils.discord import get_member, get_member_by_name, get_user_guilds, get_user_worlds,  \
-    get_user_admin_guilds, FIELD_VALUE_LIMIT, is_private
+from utils.discord import FIELD_VALUE_LIMIT, is_private
 from utils import checks
 
 
@@ -31,8 +30,8 @@ class Mod:
             prev_server = None
             num = 1
             for server in self.bot.guilds:
-                author = get_member(self.bot, ctx.message.author.id, server)
-                bot_member = get_member(self.bot, self.bot.user.id, server)
+                author = self.bot.get_member(ctx.message.author.id, server)
+                bot_member = self.bot.get_member(self.bot.user.id, server)
                 # Skip servers where the command user is not in
                 if author is None:
                     continue
@@ -107,15 +106,15 @@ class Mod:
 
         author = ctx.message.author
         if author.id in mod_ids+owner_ids:
-            author_servers = get_user_guilds(self.bot, author.id)
+            author_servers = self.bot.get_user_guilds(author.id)
         else:
-            author_servers = get_user_admin_guilds(self.bot, author.id)
-        author_worlds = get_user_worlds(self.bot, author.id)
+            author_servers = self.bot.get_user_admin_guilds(author.id)
+        author_worlds = self.bot.get_user_worlds(author.id)
 
         # Only search in the servers the command author is
-        user = get_member_by_name(self.bot, params[0], guild_list=author_servers)
-        user_servers = get_user_guilds(self.bot, user.id)
-        user_worlds = get_user_worlds(self.bot, author.id)
+        user = self.bot.get_member_by_name(params[0], author_servers)
+        user_servers = self.bot.get_user_guilds(user.id)
+        user_worlds = self.bot.get_user_worlds(author.id)
 
         common_worlds = list(set(author_worlds) & set(user_worlds))
 
@@ -150,7 +149,7 @@ class Mod:
                         )
                     # Registered to a different user
                     if result["user_id"] != user.id:
-                        current_user = get_member(self.bot, result["user_id"])
+                        current_user = self.bot.get_member(result["user_id"])
                         # User no longer in server
                         if current_user is None:
                             c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
@@ -213,14 +212,14 @@ class Mod:
 
         author = ctx.message.author
         if author.id in mod_ids+owner_ids:
-            author_guilds = get_user_guilds(self.bot, author.id)
+            author_guilds = self.bot.get_user_guilds(author.id)
         else:
-            author_guilds = get_user_admin_guilds(self.bot, author.id)
-        author_worlds = get_user_worlds(self.bot, author.id)
+            author_guilds = self.bot.get_user_admin_guilds(author.id)
+        author_worlds = self.bot.get_user_worlds(author.id)
 
-        user = get_member_by_name(self.bot, params[0], guild_list=author_guilds)
-        user_servers = get_user_guilds(self.bot, user.id)
-        user_worlds = get_user_worlds(self.bot, user.id)
+        user = self.bot.get_member_by_name(params[0], author_guilds)
+        user_servers = self.bot.get_user_guilds(user.id)
+        user_worlds = self.bot.get_user_worlds(user.id)
 
         common_worlds = list(set(author_worlds) & set(user_worlds))
         with ctx.typing():
@@ -271,7 +270,7 @@ class Mod:
                     if result is not None:
                         # Registered to different user
                         if result["user_id"] != user.id:
-                            current_user = get_member(self.bot, result["user_id"])
+                            current_user = self.bot.get_member(result["user_id"])
                             # Char is registered to user no longer in server
                             if current_user is None:
                                 added.append(char)
@@ -352,12 +351,12 @@ class Mod:
                 if result is None:
                     await ctx.send("There's no character with that name registered.")
                     return
-                user = get_member(self.bot, result["user_id"])
+                user = self.bot.get_member(result["user_id"])
                 username = "unknown" if user is None else user.display_name
                 c.execute("DELETE FROM chars WHERE name LIKE ?", (name,))
                 await ctx.send("**{0}** was removed successfully from **@{1}**.".format(result["name"], username))
                 if user is not None:
-                    for server in get_user_guilds(self.bot, user.id):
+                    for server in self.bot.get_user_guilds(user.id):
                         world = tracked_worlds.get(server.id, None)
                         if world != result["world"]:
                             continue
@@ -383,13 +382,13 @@ class Mod:
         c = userDatabase.cursor()
         with ctx.typing():
             # Searching users in server
-            user = get_member_by_name(self.bot, name)
+            user = self.bot.get_member_by_name(name)
             # Searching users in database
             try:
                 c.execute("SELECT id, name from users WHERE name LIKE ?", (name,))
                 result = c.fetchone()
                 # Users in database and not in servers
-                if result is not None and get_member(self.bot, result['id']) is None:
+                if result is not None and self.bot.get_member(result['id']) is None:
                     await ctx.send(
                         "**@{0}** was no longer in server and was removed successfully.".format(result["name"]))
                     delete_id = result["id"]
@@ -550,7 +549,7 @@ class Mod:
             await ctx.send("Initiating purge...")
             # Deleting users no longer in server
             for row in result:
-                user = get_member(self.bot, row["id"])
+                user = self.bot.get_member(row["id"])
                 if user is None:
                     delete_users.append((row["id"],))
             if len(delete_users) > 0:
@@ -631,9 +630,9 @@ class Mod:
 
         author = ctx.message.author
         if author.id in mod_ids+owner_ids:
-            author_servers = get_user_guilds(self.bot, author.id)
+            author_servers = self.bot.get_user_guilds(author.id)
         else:
-            author_servers = get_user_admin_guilds(self.bot, author.id)
+            author_servers = self.bot.get_user_admin_guilds(author.id)
 
         embed = discord.Embed(description="Members with unregistered users.")
 
@@ -688,7 +687,7 @@ class Mod:
             update_users = list()
             for user in result:
                 update_users.append(
-                    ("unknown" if get_member(self.bot, user[0]) is None else get_member(self.bot, user[0]).display_name,
+                    ("unknown" if self.bot.get_member(user[0]) is None else self.bot.get_member(user[0]).display_name,
                      user["id"]))
             c.executemany("UPDATE users SET name = ? WHERE id LIKE ?", update_users)
             await ctx.send("Usernames updated successfully.")

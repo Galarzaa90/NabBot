@@ -7,7 +7,7 @@ from config import welcome_pm, ask_channel_name, log_channel_name
 from nabbot import NabBot
 from utils import checks
 from utils.database import *
-from utils.discord import get_member, get_user_admin_guilds, is_private
+from utils.discord import is_private
 from utils.messages import EMOJI
 from utils.tibia import tibia_worlds
 
@@ -22,7 +22,7 @@ class Admin:
     async def diagnose(self, ctx: discord.ext.commands.Context, *, server_name=None):
         """Diagnose the bots permissions and channels"""
         # This will always have at least one server, otherwise this command wouldn't pass the is_admin check.
-        admin_guilds = get_user_admin_guilds(self.bot, ctx.message.author.id)
+        admin_guilds = self.bot.get_user_admin_guilds(ctx.message.author.id)
 
         if server_name is None:
             if not is_private(ctx.message.channel):
@@ -66,7 +66,7 @@ class Admin:
 
         if guild is None:
             return
-        member = get_member(self.bot, self.bot.user.id, guild)
+        member = self.bot.get_member(self.bot.user.id, guild)
         server_perms = member.guild_permissions
 
         channels = guild.channels
@@ -148,7 +148,7 @@ class Admin:
         def check(m):
             return m.channel == ctx.message.channel and m.author == ctx.message.author
 
-        admin_guilds = get_user_admin_guilds(self.bot, ctx.message.author.id)
+        admin_guilds = self.bot.get_user_admin_guilds(ctx.message.author.id)
 
         if not is_private(ctx.message.channel):
             if ctx.message.guild not in admin_guilds:
@@ -256,7 +256,7 @@ class Admin:
         def check(m):
             return m.author == ctx.message.author and m.channel == ctx.message.channel
 
-        admin_guilds = get_user_admin_guilds(self.bot, ctx.message.author.id)
+        admin_guilds = self.bot.get_user_admin_guilds(ctx.message.author.id)
 
         if not is_private(ctx.message.channel):
             if ctx.message.guild not in admin_guilds:
@@ -363,7 +363,7 @@ class Admin:
         def check(m):
             return m.author == ctx.message.author and m.channel == ctx.message.channel
 
-        admin_guilds = get_user_admin_guilds(self.bot, ctx.message.author.id)
+        admin_guilds = self.bot.get_user_admin_guilds(ctx.message.author.id)
 
         if not is_private(ctx.message.channel):
             if ctx.message.guild not in admin_guilds:
@@ -403,7 +403,7 @@ class Admin:
             else:
                 channel = self.bot.get_channel_by_name(current_channel, guild)
                 if channel is not None:
-                    permissions = channel.permissions_for(get_member(self.bot, self.bot.user.id, guild))
+                    permissions = channel.permissions_for(self.bot.get_member(self.bot.user.id, guild))
                     if not permissions.read_messages or not permissions.send_messages:
                         await ctx.send("This server's announce channel is set to #**{0}** but I don't have "
                                             "permissions to use it. {1.mention} will be used instead."
@@ -443,7 +443,7 @@ class Admin:
             await ctx.send("There is no channel with that name.")
             return
 
-        permissions = channel.permissions_for(get_member(self.bot, self.bot.user.id, guild))
+        permissions = channel.permissions_for(self.bot.get_member(self.bot.user.id, guild))
         if not permissions.read_messages or not permissions.send_messages:
             await ctx.send("I don't have permission to use {0.mention}.".format(channel))
             return

@@ -1,8 +1,8 @@
 import sqlite3
-
-# Databases filenames
 from typing import Dict
 
+
+# Databases filenames
 USERDB = "users.db"
 TIBIADB = "database.db"
 LOOTDB = "utils/loot.db"

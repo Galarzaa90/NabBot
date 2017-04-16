@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands
 
-from config import owner_ids, mod_ids, main_server, lite_servers
-from utils.discord import get_user_admin_guilds, is_private, get_user_guilds, is_lite_mode
+from config import owner_ids, mod_ids, main_server
+from utils.discord import is_private, is_lite_mode
 
 
 # Checks if the user is the owner of the bot
@@ -29,7 +29,7 @@ def is_mod():
 
 def is_admin_check(ctx):
     author = ctx.message.author
-    return len(get_user_admin_guilds(ctx.bot, author.id)) > 0 or is_owner_check(ctx)
+    return len(ctx.bot.get_user_admin_guilds(author.id)) > 0 or is_owner_check(ctx)
 
 
 # Checks if the user is a server admin

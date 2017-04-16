@@ -30,10 +30,7 @@ class Owner:
         self.bot.logout()
         log.warning("Restarting NabBot")
         # If it was run using the restarter, this command still works the same
-        if platform.system() == "Linux":
-            os.system("python3 restart.py {0}".format(ctx.message.author.id))
-        else:
-            os.system("python restart.py {0}".format(ctx.message.author.id))
+        os.system("python restart.py {0}".format(ctx.message.author.id))
         quit()
 
     @commands.command(name="load")
@@ -103,8 +100,7 @@ class Owner:
     async def admins_message(self, ctx, *, content: str=None):
         """Sends a message to all server owners."""
         if content is None:
-            await ctx.send("Tell me the message you want to sent to server admins."
-                                "\nReply `cancel/none` to cancel.")
+            await ctx.send("Tell me the message you want to sent to server admins.\nReply `cancel/none` to cancel.")
 
             def check(m):
                 return m.channel == ctx.channel and m.author == ctx.author

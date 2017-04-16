@@ -8,7 +8,7 @@ from config import death_scan_interval, highscores_delay, highscores_categories,
 from nabbot import NabBot
 from utils import checks
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
-from utils.discord import get_announce_channel, get_user_guilds, is_private, get_member
+from utils.discord import is_private
 from utils.general import global_online_list, log, join_list
 from utils.messages import weighed_choice, deathmessages_player, deathmessages_monster, format_message, EMOJI, \
     levelmessages
@@ -280,7 +280,7 @@ class Tracking:
             guild = self.bot.get_guild(guild_id)
             if char["world"] == tracked_world and guild is not None \
                     and guild.get_member(char["owner_id"]) is not None:
-                await get_announce_channel(self.bot, guild).send(message[:1].upper() + message[1:])
+                await self.bot.get_announce_channel(guild).send(message[:1].upper() + message[1:])
 
     async def announce_level(self, new_level, char_name=None, char=None):
         """Announces a level up on corresponding servers
@@ -321,7 +321,7 @@ class Tracking:
             server = self.bot.get_guild(server_id)
             if char["world"] == tracked_world and server is not None \
                     and server.get_member(char["owner_id"]) is not None:
-                await get_announce_channel(self.bot, server).send(message)
+                await self.bot.get_announce_channel(server).send(message)
 
     @checks.is_not_lite()
     @commands.command(aliases=["i'm", "iam"])
@@ -332,7 +332,7 @@ class Tracking:
         # This is equivalent to someone using /stalk addacc on themselves.
         user = ctx.message.author
         # List of servers the user shares with the self.bot
-        user_guilds = get_user_guilds(self.bot, user.id)
+        user_guilds = self.bot.get_user_guilds(user.id)
         # List of Tibia worlds tracked in the servers the user is
         user_tibia_worlds = [world for guild, world in tracked_worlds.items() if guild in [g.id for g in user_guilds]]
         # Remove duplicate entries from list
@@ -349,7 +349,7 @@ class Tracking:
         try:
             valid_mods = []
             for id in (owner_ids + mod_ids):
-                mod = get_member(self.bot, id, ctx.message.guild)
+                mod = self.bot.get_member(id, ctx.message.guild)
                 if mod is not None:
                     valid_mods.append(mod.mention)
             admins_message = join_list(valid_mods, ", ", " or ")
@@ -379,7 +379,7 @@ class Tracking:
                 c.execute("SELECT name, user_id as owner FROM chars WHERE name LIKE ?", (char["name"],))
                 db_char = c.fetchone()
                 if db_char is not None:
-                    owner = get_member(self.bot, db_char["owner"])
+                    owner = self.bot.get_member(db_char["owner"])
                     # Previous owner doesn't exist anymore
                     if owner is None:
                         updated.append({'name': char['name'], 'world': char['world'], 'prevowner': db_char["owner"],
@@ -502,7 +502,7 @@ class Tracking:
             c.execute("DELETE FROM char_deaths WHERE char_id = ?", (char["id"],))
             await ctx.send("**{0}** is no longer registered to you.".format(char["name"]))
 
-            user_servers = [s.id for s in get_user_guilds(self.bot, ctx.message.author.id)]
+            user_servers = [s.id for s in self.bot.get_user_guilds(ctx.message.author.id)]
             for server_id, world in tracked_worlds.items():
                 if char["world"] == world and server_id in user_servers:
                     message = "{0} unregistered **{1}**".format(ctx.message.author.mention, char["name"])
