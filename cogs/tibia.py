@@ -115,7 +115,7 @@ class Tibia:
 
         # Short message
         short_message = "I've finished parsing your image {0.mention}.\nThe total value is {1:,} gold coins."
-        ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if not is_private(ctx.message.channel) and ctx.message.channel != ask_channel:
             short_message += "\nI've also sent you a PM with detailed information."
         await ctx.send(short_message.format(author, total_value))
