@@ -443,7 +443,6 @@ class Tracking:
             for char in updated:
                 c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
             for char in added:
-                print(char)
                 c.execute(
                     "INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
                     (char['name'], char['level'] * -1, char['vocation'], user.id, char["world"], char["guild"])
