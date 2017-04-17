@@ -376,14 +376,13 @@ class Tracking:
                 if char["world"] not in user_tibia_worlds:
                     skipped.append(char)
                     continue
-                c.execute("SELECT name, user_id as owner FROM chars WHERE name LIKE ?", (char["name"],))
+                c.execute("SELECT name, user_id, guild as owner FROM chars WHERE name LIKE ?", (char["name"],))
                 db_char = c.fetchone()
                 if db_char is not None:
                     owner = self.bot.get_member(db_char["owner"])
                     # Previous owner doesn't exist anymore
                     if owner is None:
-                        updated.append({'name': char['name'], 'world': char['world'], 'prevowner': db_char["owner"],
-                                        'guild': char.get("guild", "No guild")})
+                        updated.append({'name': char['name'], 'world': char['world'], 'prevowner': db_char["owner"]})
                         continue
                     # Char already registered to this user
                     elif owner.id == user.id:
@@ -392,8 +391,7 @@ class Tracking:
                     # Character is registered to another user
                     else:
                         reply = "Sorry, a character in that account ({0}) is already claimed by **{1.mention}**.\n" \
-                                "Maybe you made a mistake? Or someone claimed a character of yours? " \
-                                "Message {2} if you need help!"
+                                "Maybe you made a mistake? Or someone claimed a character of yours?"
                         await ctx.send(reply.format(db_char["name"], owner, admins_message))
                         return
                 # If we only have one char, it already contains full data
@@ -428,8 +426,8 @@ class Tracking:
                     for guild in user_guilds:
                         # Only announce on worlds where the character's world is tracked
                         if tracked_worlds.get(guild.id, None) == char["world"]:
-                            char["guild"] = "No guild" if char["guild"] is None else char["guild"]
-                            log_reply[guild.id] += "\n\t{name} - {level} {vocation} - **{guild}**".format(**char)
+                            _guild = "No guild" if char["guild"] is None else char["guild"]
+                            log_reply[guild.id] += "\n\t{name} - {level} {vocation} - **{0}**".format(_guild, **char)
 
             if len(updated) > 0:
                 reply += "\nThe following characters were reassigned to you: {0}" \
@@ -445,6 +443,7 @@ class Tracking:
             for char in updated:
                 c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
             for char in added:
+                print(char)
                 c.execute(
                     "INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
                     (char['name'], char['level'] * -1, char['vocation'], user.id, char["world"], char["guild"])
