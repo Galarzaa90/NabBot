@@ -238,10 +238,10 @@ class Tibia:
     async def share(self, ctx, *, param: str=None):
         """Shows the sharing range for that level or character
 
-        There's two ways to use this command:
+        There's three ways to use this command:
         /share level
         /share char_name
-        /share char_name1,char_nam2"""
+        /share char_name1,char_name2...char_name5"""
         invalid_level = ["Invalid level.",
                          "I don't think that's a valid level.",
                          "You're doing it wrong!",
@@ -261,12 +261,12 @@ class Tibia:
             await ctx.send(f"A level {level} can share experience with levels **{low}** to **{high}**.")
             return
         except ValueError:
-            with ctx.typing():
-                chars = param.split(",")
-                if len(chars) > 2:
-                    await ctx.send("For the moment I can only check for 2 characters.")
-                    return
-                if len(chars) == 1:
+            chars = param.split(",")
+            if len(chars) > 5:
+                await ctx.send("I can only check up to 5 characters at a time.")
+                return
+            if len(chars) == 1:
+                with ctx.typing():
                     char = await get_character(chars[0])
                     if type(char) is not dict:
                         await ctx.send('There is no character with that name.')
@@ -276,28 +276,36 @@ class Tibia:
                     low, high = get_share_range(char["level"])
                     await ctx.send(f"**{name}** ({level}) can share experience with levels **{low}** to **{high}**.")
                     return
-                unsorted_chars = []
-                unsorted_chars.append(await get_character(chars[0]))
-                unsorted_chars.append(await get_character(chars[1]))
-                if type(unsorted_chars[0]) is not dict:
-                    await ctx.send(f"There is no character named **{chars[0]}**.")
-                    return
-                if type(unsorted_chars[1]) is not dict:
-                    await ctx.send(f"There is no character named **{chars[1]}**.")
-                    return
-                if chars[0].lower() == chars[1].lower():
-                    await ctx.send("I'm not sure if sharing with yourself counts as sharing, but yes, you can share.")
-                    return
-                sorted_chars = sorted(unsorted_chars, key=lambda k: k["level"])
-                low, high = get_share_range(sorted_chars[1]["level"])
-                lowest_name = sorted_chars[0]['name']
-                lowest_level = sorted_chars[0]['level']
-                highest_name = sorted_chars[1]['name']
-                highest_level = sorted_chars[1]['level']
-                if low > sorted_chars[0]["level"]:
+            char_data = []
+            # Check if all characters are the same.
+            if all(x.lower() == chars[0].lower() for x in chars):
+                await ctx.send("I'm not sure if sharing with yourself counts as sharing, but yes, you can share.")
+                return
+            with ctx.typing():
+                for char in chars:
+                    fetched_char = await get_character(char)
+                    if fetched_char == ERROR_DOESNTEXIST:
+                        await ctx.send(f"There is no character named **{char}**.")
+                        return
+                    elif fetched_char == ERROR_NETWORK:
+                        await ctx.send("I'm having connection issues, please try again in a bit.")
+                        return
+                    char_data.append(fetched_char)
+                # Sort character list by level ascending
+                char_data = sorted(char_data, key=lambda k: k["level"])
+                low, high = get_share_range(char_data[-1]["level"])
+                lowest_name = char_data[0]['name']
+                lowest_level = char_data[0]['level']
+                highest_name = char_data[-1]['name']
+                highest_level = char_data[-1]['level']
+                if low > char_data[0]["level"]:
                     await ctx.send(f"**{lowest_name}** ({lowest_level}) needs {low-lowest_level} more level"
                                    f"{'s' if low-lowest_level > 1 else ''} to share experience with **{highest_name}** "
                                    f"({highest_level}).")
+                    return
+                # If it's more than two, just say they can all share
+                if len(chars) > 2:
+                    await ctx.send(f"They can all share experience with each other.")
                     return
                 await ctx.send(f"**{lowest_name}** ({lowest_level}) and **{highest_name}** ({highest_level}) can share "
                                f"experience.")
