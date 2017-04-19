@@ -1319,39 +1319,39 @@ class Tibia:
         else:
             await ctx.send(invalid_arguments)
             return
-        stats = get_stats(level, vocation)
-        if stats == "low level":
+        if level <= 0:
             await ctx.send("Not even *you* can go down so low!")
-        elif stats == "high level":
-            await ctx.send("Why do you care? You will __**never**__ reach this level "+str(chr(0x1f644)))
-        elif stats == "bad vocation":
-            await ctx.send("I don't know what vocation that is...")
-        elif stats == "bad level":
-            await ctx.send("Level needs to be a number!")
-        elif isinstance(stats, dict):
-            if stats["vocation"] == "no vocation":
-                stats["vocation"] = "with no vocation"
-            if char:
-                pronoun = "he" if char['gender'] == "male" else "she"
-                await ctx.send("**{5}** is a level **{0}** {1}, {6} has:"
-                                    "\n\t**{2:,}** HP"
-                                    "\n\t**{3:,}** MP"
-                                    "\n\t**{4:,}** Capacity"
-                                    "\n\t**{7:,}** Total experience"
-                                    "\n\t**{8:,}** to next level"
-                                    .format(level, char["vocation"].lower(), stats["hp"], stats["mp"], stats["cap"],
-                                            char['name'], pronoun, stats["exp"], stats["exp_tnl"]))
-            else:
-                await ctx.send("A level **{0}** {1} has:"
-                                    "\n\t**{2:,}** HP"
-                                    "\n\t**{3:,}** MP"
-                                    "\n\t**{4:,}** Capacity"
-                                    "\n\t**{5:,}** Experience"
-                                    "\n\t**{6:,}** to next level"
-                                    .format(level, stats["vocation"], stats["hp"], stats["mp"], stats["cap"],
-                                            stats["exp"], stats["exp_tnl"]))
+            return
+        if level >= 2000:
+            await ctx.send("Why do you care? You will __**never**__ reach this level " + str(chr(0x1f644)))
+            return
+        try:
+            stats = get_stats(level, vocation)
+        except ValueError as e:
+            await ctx.send(e)
+            return
+
+        if stats["vocation"] == "no vocation":
+            stats["vocation"] = "with no vocation"
+        if char:
+            pronoun = "he" if char['gender'] == "male" else "she"
+            await ctx.send("**{5}** is a level **{0}** {1}, {6} has:"
+                           "\n\t**{2:,}** HP"
+                           "\n\t**{3:,}** MP"
+                           "\n\t**{4:,}** Capacity"
+                           "\n\t**{7:,}** Total experience"
+                           "\n\t**{8:,}** to next level"
+                           .format(level, char["vocation"].lower(), stats["hp"], stats["mp"], stats["cap"],
+                                   char['name'], pronoun, stats["exp"], stats["exp_tnl"]))
         else:
-            await ctx.send("Are you sure that is correct?")
+            await ctx.send("A level **{0}** {1} has:"
+                           "\n\t**{2:,}** HP"
+                           "\n\t**{3:,}** MP"
+                           "\n\t**{4:,}** Capacity"
+                           "\n\t**{5:,}** Experience"
+                           "\n\t**{6:,}** to next level"
+                           .format(level, stats["vocation"], stats["hp"], stats["mp"], stats["cap"],
+                                   stats["exp"], stats["exp_tnl"]))
 
     @commands.command(aliases=['bless'])
     async def blessings(self, ctx, level: int = None):

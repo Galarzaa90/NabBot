@@ -388,47 +388,7 @@ async def get_character(name, tries=5):
         else:
             char['last_login'] = lastLogin
 
-    # Discord owner
-    c = userDatabase.cursor()
-    c.execute("SELECT user_id FROM chars WHERE name LIKE ?", (char["name"],))
-    result = c.fetchone()
-    char["owner_id"] = None if result is None else result["user_id"]
-
-    # Update name, vocation and world for chars in database if necessary
-    c = userDatabase.cursor()
-    c.execute("SELECT vocation, name, id, world, guild FROM chars WHERE name LIKE ?", (name,))
-    result = c.fetchone()
-    if result:
-        if result["vocation"] != char['vocation']:
-            c.execute("UPDATE chars SET vocation = ? WHERE id = ?", (char['vocation'], result["id"],))
-            log.info("{0}'s vocation was set to {1} from {2} during get_character()".format(char['name'],
-                                                                                            char['vocation'],
-                                                                                            result["vocation"]))
-        if result["name"] != char["name"]:
-            c.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
-            log.info("{0} was renamed to {1} during get_character()".format(result["name"], char['name']))
-
-        if result["world"] != char["world"]:
-            c.execute("UPDATE chars SET world = ? WHERE id = ?", (char['world'], result["id"],))
-            log.info("{0}'s world was set to {1} from {2} during get_character()".format(char['name'],
-                                                                                         char['world'],
-                                                                                         result["world"]))
-        if result["guild"] != char["guild"]:
-            c.execute("UPDATE chars SET guild = ? WHERE id = ?", (char['guild'], result["id"],))
-            log.info("{0}'s guild was set to {1} from {2} during get_character()".format(char['name'],
-                                                                                         char['guild'],
-                                                                                         result["guild"]))
-
-    #Skills from highscores
-    c = userDatabase.cursor()
-    for category in highscores_categories:
-        c.execute("SELECT "+category+","+category+"_rank FROM chars WHERE name LIKE ?", (name,))
-        result = c.fetchone()
-        if result:
-            if result[category] is not None and result[category+'_rank'] is not None:
-                char[category] = result[category]
-                char[category+'_rank'] = result[category+'_rank']
-
+    # Character deaths
     char["deaths"] = []
     regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
     pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
@@ -461,7 +421,7 @@ async def get_character(name, tries=5):
         except ValueError:
             # Some pvp deaths have no level, so they are raising a ValueError, they will be ignored for now.
             continue
-    
+
     # Other chars
     # note that an empty char list means the character is hidden
     # otherwise you'd have at least the same char in the list
@@ -482,7 +442,48 @@ async def get_character(name, tries=5):
                 char['chars'].append({'name': name, 'world': world})
     except Exception:
         pass
-    return char
+
+    # Database information:
+    c = userDatabase.cursor()
+    try:
+        # Discord owner
+        c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ?", (char["name"],))
+        result = c.fetchone()
+        char["owner_id"] = None if result is None else result["user_id"]
+        if result is None:
+            # Untracked character, so there's nothing else to check past here
+            return
+        if result["vocation"] != char['vocation']:
+            c.execute("UPDATE chars SET vocation = ? WHERE id = ?", (char['vocation'], result["id"],))
+            log.info("{0}'s vocation was set to {1} from {2} during get_character()".format(char['name'],
+                                                                                            char['vocation'],
+                                                                                            result["vocation"]))
+        if result["name"] != char["name"]:
+            c.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
+            log.info("{0} was renamed to {1} during get_character()".format(result["name"], char['name']))
+
+        if result["world"] != char["world"]:
+            c.execute("UPDATE chars SET world = ? WHERE id = ?", (char['world'], result["id"],))
+            log.info("{0}'s world was set to {1} from {2} during get_character()".format(char['name'],
+                                                                                         char['world'],
+                                                                                         result["world"]))
+        if result["guild"] != char["guild"]:
+            c.execute("UPDATE chars SET guild = ? WHERE id = ?", (char['guild'], result["id"],))
+            log.info("{0}'s guild was set to {1} from {2} during get_character()".format(char['name'],
+                                                                                         char['guild'],
+                                                                                         result["guild"]))
+        # Skills from highscores
+        for category in highscores_categories:
+            c.execute("SELECT " + category + "," + category + "_rank FROM chars WHERE name LIKE ?", (char["name"],))
+            result = c.fetchone()
+            if result:
+                if result[category] is not None and result[category + '_rank'] is not None:
+                    char[category] = result[category]
+                    char[category + '_rank'] = result[category + '_rank']
+    finally:
+        userDatabase.commit()
+        c.close()
+        return char
 
 
 def get_rashid_city() -> str:
@@ -672,15 +673,13 @@ def parse_tibia_time(tibia_time: str) -> datetime:
 def get_stats(level: int, vocation: str):
     """Returns a dictionary with the stats for a character of a certain vocation and level.
 
-    The dictionary has the following keys: vocation, hp, mp, cap."""
+    The dictionary has the following keys: vocation, hp, mp, cap, exp, exp_tnl."""
     try:
         level = int(level)
     except ValueError:
-        return "bad level"
+        raise ValueError("That's not a valid level.")
     if level <= 0:
-        return "low level"
-    elif level > 2000:
-        return "high level"
+        raise ValueError("Level must be higher than 0.")
 
     vocation = vocation.lower().strip()
     if vocation in KNIGHT:
@@ -698,16 +697,14 @@ def get_stats(level: int, vocation: str):
         mp = (level - 8) * 30 + 90
         cap = (level - 0) * 10 + 390
         vocation = "mage"
-    elif vocation in NO_VOCATION:
-        vocation = "no vocation"
-    else:
-        return "bad vocation"
-
-    if level < 8 or vocation == "no vocation":
+    elif vocation in NO_VOCATION or level < 8:
+        if vocation in NO_VOCATION:
+            vocation = "no vocation"
         hp = (level - 0) * 5 + 145
         mp = (level - 0) * 5 + 50
-
         cap = (level - 0) * 10 + 390
+    else:
+        raise ValueError("That's not a valid vocation!")
 
     exp = (50*pow(level, 3)/3) - 100*pow(level, 2) + (850*level/3) - 200
     exp_tnl = 50*level*level - 150 * level + 200
