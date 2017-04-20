@@ -58,11 +58,6 @@ tibia_worlds = ["Amera", "Antica", "Astera", "Aurera", "Aurora", "Bellona", "Bel
                 "Rowana", "Secura", "Serdebra", "Shivera", "Silvera", "Solera", "Tavara", "Thera", "Umera", "Unitera",
                 "Veludera", "Verlana", "Xantera", "Xylana", "Yanara", "Zanera", "Zeluna", "Honbra", "Noctera", "Vita"]
 
-
-def get_character_url(name):
-    """Gets a character's tibia.com URL"""
-    return url_character + urllib.parse.quote(name.encode('iso-8859-1'))
-
 async def get_highscores(world, category, pagenum, profession=0, tries=5):
     """Gets a specific page of the highscores
     Each list element is a dictionary with the following keys: rank, name, value.
@@ -266,6 +261,11 @@ async def get_guild_online(name, title_case=True, tries=5):
     return guild
 
 
+def get_character_url(name):
+    """Gets a character's tibia.com URL"""
+    return url_character + urllib.parse.quote(name.encode('iso-8859-1'))
+
+
 async def get_character(name, tries=5):
     """Returns a dictionary with a player's info
 
@@ -277,10 +277,7 @@ async def get_character(name, tries=5):
     if tries == 0:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
         return ERROR_NETWORK
-    try:
-        url = url_character + urllib.parse.quote(name.encode('iso-8859-1'))
-    except UnicodeEncodeError:
-        return ERROR_DOESNTEXIST
+    url = get_character_url(name)
     char = dict()
 
     # Fetch website

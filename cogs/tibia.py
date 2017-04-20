@@ -1594,46 +1594,34 @@ class Tibia:
         """Returns a formatted string containing a character's info."""
         if char == ERROR_NETWORK or char == ERROR_DOESNTEXIST:
             return char
-        pronoun = "He"
-        pronoun2 = "His"
+        char["he_she"] = "He"
+        char["his_her"] = "His"
         if char['gender'] == "female":
-            pronoun = "She"
-            pronoun2 = "Her"
-        url = url_character + urllib.parse.quote(char["name"].encode('iso-8859-1'))
-        reply_format = "[{1}]({9}) is a level {2} __{3}__. {0} resides in __{4}__ in the world __{5}__.{6}{7}{8}{10}"
-        guild_format = "\n{0} is __{1}__ of the [{2}]({3})."
-        married_format = "\n{0} is married to [{1}]({2})."
-        login_format = "\n{0} hasn't logged in for **{1}**."
-        house_format = "\n{0} owns [{1}]({2}) in {3}."
-        guild = ""
-        married = ""
-        house = ""
-        login = "\n{0} has **never** logged in.".format(pronoun)
+            char["he_she"] = "She"
+            char["his_her"] = "Her"
+        char["url"] = get_character_url(char["name"])
+        reply = "[{name}]({url}) is a level {level} __{vocation}__. " \
+                "{he_she} resides in __{residence}__ in the world of __{world}__.".format(**char)
         if char["guild"] is not None:
-            guild_url = url_guild+urllib.parse.quote(char["guild"])
-            guild = guild_format.format(pronoun, char['rank'], char['guild'], guild_url)
+            char["guild_url"] = url_guild+urllib.parse.quote(char["guild"])
+            reply += "\n{he_she} is __{rank}__ of the [{guild}]({guild_url}).".format(**char)
         if "married" in char:
-            married_url = url_character + urllib.parse.quote(char["married"].encode('iso-8859-1'))
-            married = married_format.format(pronoun, char['married'], married_url)
+            char["married_url"] = url_character + urllib.parse.quote(char["married"].encode('iso-8859-1'))
+            reply += "\n{he_she} is married to [{married}]({married_url}).".format(**char)
         if "house" in char:
-            house_url = url_house.format(id=char["house_id"], world=char["world"])
-            house = house_format.format(pronoun, char["house"], house_url, char["house_town"])
+            char["house_url"] = url_house.format(id=char["house_id"], world=char["world"])
+            reply += "\n{he_she} owns [{house}]({house_url}) in {house_town}.".format(**char)
         if char['last_login'] is not None:
             last_login = parse_tibia_time(char['last_login'])
             now = datetime.now()
             time_diff = now - last_login
             if time_diff.days > last_login_days:
-                login = login_format.format(pronoun, get_time_diff(time_diff))
-            else:
-                login = ""
-
-        reply = reply_format.format(pronoun, char['name'], char['level'], char['vocation'], char['residence'],
-                                    char['world'], guild, married, login, url, house)
+                reply += "\n{he_she} hasn't logged in for **{0}**.".format(get_time_diff(time_diff), **char)
 
         # Insert any highscores this character holds
         for category in highscores_categories:
             if char.get(category, None):
-                highscore_string = highscore_format[category].format(pronoun2, char[category], char[category+'_rank'])
+                highscore_string = highscore_format[category].format(char["his_her"], char[category], char[category+'_rank'])
                 reply += "\n"+EMOJI[":trophy:"]+" {0}".format(highscore_string)
         return reply
 
