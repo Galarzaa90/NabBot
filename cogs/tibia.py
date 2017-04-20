@@ -1,5 +1,6 @@
 import os
 import random
+from typing import Optional
 
 import discord
 from discord.ext import commands
@@ -177,22 +178,14 @@ class Tibia:
         char = await get_character(name)
         char_string = self.get_char_string(char)
         user = self.bot.get_member_by_name(name, ctx.message.guild)
-        user_string = self.get_user_string(ctx, name)
-        embed = discord.Embed()
-        embed.description = ""
+        embed = self.get_user_embed(ctx, user)
 
         # No user or char with that name
-        if char == ERROR_DOESNTEXIST and (user is None or user_string == ERROR_DOESNTEXIST):
+        if char == ERROR_DOESNTEXIST and user is None:
             await ctx.send("I don't see any user or character with that name.")
             return
         # We found an user
-        if user is not None and user_string != ERROR_DOESNTEXIST:
-            embed.description = user_string
-            color = get_user_color(user, ctx.message.guild)
-            if color is not discord.Colour.default():
-                embed.colour = color
-            if "I don't know" not in user_string:
-                embed.set_thumbnail(url=user.avatar_url)
+        if embed is not None:
             # Check if we found a char too
             if type(char) is dict:
                 # If it's owned by the user, we append it to the same embed.
@@ -209,6 +202,7 @@ class Tibia:
                                           )
                     await ctx.send(embed=embed)
                     await ctx.send(embed=char_embed)
+                    return
             else:
                 await ctx.send(embed=embed)
                 if char == ERROR_NETWORK:
@@ -216,7 +210,8 @@ class Tibia:
         else:
             if char == ERROR_NETWORK:
                 await ctx.send("I failed to do a character search for some reason " + EMOJI[":astonished:"])
-            elif type(char) is dict:
+            embed = discord.Embed(description="")
+            if type(char) is dict:
                 embed.set_author(name=char["name"],
                                  url=get_character_url(char["name"]),
                                  icon_url="http://static.tibia.com/images/global/general/favicon.ico"
@@ -224,12 +219,12 @@ class Tibia:
                 # Char is owned by a discord user
                 owner = self.bot.get_member(char["owner_id"], ctx.message.guild)
                 if owner is not None:
+                    display_name = owner.display_name if ctx.message.guild is not None else owner.display_name
                     embed.set_thumbnail(url=owner.avatar_url)
                     color = get_user_color(owner, ctx.message.guild)
                     if color is not discord.Colour.default():
                         embed.colour = color
-                    embed.description += "A character of @**{1.display_name}**\n".format(char["name"], owner)
-
+                    embed.description += f"A character of @**{display_name}**\n"
                 embed.description += char_string
 
             await ctx.send(embed=embed)
@@ -1625,57 +1620,53 @@ class Tibia:
                 reply += "\n"+EMOJI[":trophy:"]+" {0}".format(highscore_string)
         return reply
 
-    def get_user_string(self, ctx, username: str) -> str:
-        user = self.bot.get_member_by_name(username, ctx.message.guild)
+    def get_user_embed(self, ctx, user: discord.Member) -> Optional[discord.Embed]:
         if user is None:
-            return ERROR_DOESNTEXIST
-        # List of servers the user shares with the bot
-        user_guilds = self.bot.get_user_guilds(user.id)
-        # List of Tibia worlds tracked in the servers the user is
+            return None
+        embed = discord.Embed()
         if is_private(ctx.message.channel):
+            display_name = '@'+user.name
+            user_guilds = self.bot.get_user_guilds(ctx.author.id)
             user_tibia_worlds = [world for server, world in tracked_worlds.items() if
                                  server in [s.id for s in user_guilds]]
         else:
+            display_name = '@'+user.display_name
+            embed.colour = user.colour
             if tracked_worlds.get(ctx.message.guild.id) is None:
                 user_tibia_worlds = []
             else:
                 user_tibia_worlds = [tracked_worlds[ctx.message.guild.id]]
-        # If server tracks no worlds, do not display owned chars
         if len(user_tibia_worlds) == 0:
-            return "I don't know who @**{0.display_name}** is...".format(user)
+            return None
+        embed.set_thumbnail(url=user.avatar_url)
 
         placeholders = ", ".join("?" for w in user_tibia_worlds)
-
         c = userDatabase.cursor()
         try:
             c.execute("SELECT name, ABS(last_level) as level, vocation "
                       "FROM chars "
                       "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
                       tuple(user_tibia_worlds))
-            result = c.fetchall()
-            if result:
-                charList = []
-                online_list = [x.split("_", 1)[1] for x in global_online_list]
-                for character in result:
-                    character["online"] = ""
-                    if character["name"] in online_list:
-                        character["online"] = EMOJI[":small_blue_diamond:"]
-                    try:
-                        character["level"] = int(character["level"])
-                    except ValueError:
-                        character["level"] = ""
-                    character["vocation"] = get_voc_abb(character["vocation"])
-                    character["url"] = url_character + urllib.parse.quote(character["name"].encode('iso-8859-1'))
-                    charList.append("[{name}]({url}){online} (Lvl {level} {vocation})".format(**character))
-
+            characters = c.fetchall()
+            if not characters:
+                embed.description = f"I don't know who **{display_name}** is..."
+                return embed
+            online_list = [x.split("_", 1)[1] for x in global_online_list]
+            char_list = []
+            for char in characters:
+                char["online"] = EMOJI[":small_blue_diamond:"] if char["name"] in online_list else ""
+                char["vocation"] = get_voc_abb(char["vocation"])
+                char["url"] = url_character + urllib.parse.quote(char["name"].encode('iso-8859-1'))
+                if len(characters) <= 10:
+                    char_list.append("[{name}]({url}){online} (Lvl {level} {vocation})".format(**char))
+                else:
+                    char_list.append("**{name}**{online} (Lvl {level} {vocation})".format(**char))
                 char_string = "@**{0.display_name}**'s character{1}: {2}"
-                plural = "s are" if len(charList) > 1 else " is"
-                reply = char_string.format(user, plural, join_list(charList, ", ", " and "))
-            else:
-                reply = "I don't know who @**{0.display_name}** is...".format(user)
-            return reply
+                plural = "s are" if len(char_list) > 1 else " is"
+                embed.description = char_string.format(user, plural, join_list(char_list, ", ", " and "))
         finally:
             c.close()
+        return embed
 
     @staticmethod
     def get_monster_embed(ctx, monster, long):
