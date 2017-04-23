@@ -102,6 +102,84 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
             score_list.append({'rank': m[0], 'name': m[1], 'value': m[2].replace(',', '')})
     return score_list
 
+async def get_world_info(name, tries = 5):
+    """Returns a dictionary with a world's information"""
+    name = name.capitalize()
+    url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + name
+    world = {}
+
+    if tries == 0:
+        log.error(f"get_world_info: Couldn't fetch {name}, network error.")
+        return ERROR_NETWORK
+
+    # Fetch website
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
+    except Exception:
+        await asyncio.sleep(network_retry_delay)
+        return await get_world_info(name, tries - 1)
+
+    # Trimming content to reduce load
+    try:
+        start_index = content.index('<div class="InnerTableContainer"')
+        end_index = content.index('<div id="ThemeboxesColumn" >')
+        content = content[start_index:end_index]
+    except ValueError:
+        await asyncio.sleep(network_retry_delay)
+        return await get_world_online(world, tries - 1)
+
+    if "World with this name doesn't exist!" in content:
+        return None
+
+    # Players online
+    m = re.search(r'Players Online:</td><td>(\d+)</td>', content)
+    if m:
+        try:
+            world["online"] = int(m.group(1))
+        except ValueError:
+            world["online"] = 0
+
+    # Online record
+    m = re.search(r'Online Record:</td><td>(\d+) players \(on ([^)]+)', content)
+    if m:
+        try:
+            world["record_date"] = m.group(2).replace('&#160;', ' ')
+            world["record_online"] = int(m.group(1))
+        except ValueError:
+            world["record_online"] = 0
+
+    # Creation Date
+    m = re.search(r'Creation Date:</td><td>([^<]+)', content)
+    if m:
+        world["created"] = m.group(1)
+
+    # Location
+    m = re.search(r'Location:</td><td>([^<]+)', content)
+    if m:
+        world["location"] = m.group(1).replace('&#160;', ' ')
+
+    # PvP
+    m = re.search(r'PvP Type:</td><td>([^<]+)', content)
+    if m:
+        world["pvp"] = m.group(1).replace('&#160;', ' ')
+
+    # Premium
+    m = re.search(r'Premium Type:</td><td>(\w+)', content)
+    if m:
+        world["premium"] = m.group(1).replace('&#160;', ' ')
+
+    # Transfer type
+    m = re.search(r'Transfer Type:</td><td>([\w\s]+)', content)
+    if m:
+        world["transfer"] = m.group(1).replace('&#160;', ' ')
+
+    return world
+
+
+
+
 
 async def get_world_online(world, tries=5):
     """Returns a list of all the online players in current server.

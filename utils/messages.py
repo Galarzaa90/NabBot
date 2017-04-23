@@ -481,6 +481,8 @@ EMOJI = {":grinning:": "\U0001F600",  # People
          ":bow_and_arrow:": "\U0001F3F9",
          ":archery:": "\U0001F3F9",
 
+         ":crossed_swords:": "\U00002694", # Objects
+
          ":shield:" : "\U0001F6E1",
 
          ":_hotdog:": chr(0x1F32D),

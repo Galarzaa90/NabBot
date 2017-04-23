@@ -1,3 +1,4 @@
+import calendar
 import os
 import random
 from typing import Optional
@@ -1583,6 +1584,48 @@ class Tibia:
             await ctx.send(reply)
         finally:
             c.close()
+
+    @commands.command(name="world")
+    async def world_info(self, ctx, name: str = None):
+        """Shows basic information about a Tibia world"""
+        if name is None:
+            await ctx.send("You must tell me the name of the world you want to check.")
+            return
+
+        world = await get_world_info(name)
+        if world is None:
+            await ctx.send("There's no world with that name.")
+            return
+
+        flags = {"North America": EMOJI[":flag_us:"], "South America": EMOJI[":flag_br:"], "Europe": EMOJI[":flag_de:"]}
+        pvp = {"Optional PvP": EMOJI[":dove:"], "Hardcore PvP": EMOJI[":skull:"], "Open PvP": EMOJI[":crossed_swords:"],
+               "Retro Open PvP": EMOJI[":crossed_swords:"]}
+        transfers = {"locked": EMOJI[":lock:"], "blocked": EMOJI[":no_entry_sign:"]}
+
+        url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
+        embed = discord.Embed(url=url, title=name.capitalize())
+        embed.add_field(name="Players online", value=str(world["online"]))
+        embed.add_field(name="Online record", value="{record_online} online on {record_date}".format(**world))
+        created = world["created"].split("/")
+        try:
+            month = calendar.month_name[int(created[0])]
+            year = int(created[1])
+            if year > 90:
+                year += 1900
+            else:
+                year += 2000
+            embed.add_field(name="Created", value=f"{month} {year}")
+        except (IndexError, ValueError):
+            pass
+
+        embed.add_field(name="Location", value=f"{flags.get(world['location'],'')} {world['location']}")
+        embed.add_field(name="PvP Type", value=f"{pvp.get(world['pvp'],'')} {world['pvp']}")
+        if "premium" in world:
+            embed.add_field(name="Premium restricted",value=EMOJI[":white_check_mark:"])
+        if "transfer" in world:
+            embed.add_field(name="Transfers", value=f"{transfers.get(world['transfer'],'')} {world['transfer']}")
+
+        await ctx.send(embed=embed)
 
     @staticmethod
     def get_char_string(char) -> str:
