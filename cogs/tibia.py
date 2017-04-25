@@ -289,7 +289,8 @@ class Tibia:
                     char_data.append(fetched_char)
                 # Sort character list by level ascending
                 char_data = sorted(char_data, key=lambda k: k["level"])
-                low, high = get_share_range(char_data[-1]["level"])
+                low, _ = get_share_range(char_data[-1]["level"])
+                _, high = get_share_range(char_data[0]["level"])
                 lowest_name = char_data[0]['name']
                 lowest_level = char_data[0]['level']
                 highest_name = char_data[-1]['name']
@@ -300,11 +301,13 @@ class Tibia:
                                    f"({highest_level}).")
                     return
                 # If it's more than two, just say they can all share
+                reply = ""
                 if len(chars) > 2:
-                    await ctx.send(f"They can all share experience with each other.")
-                    return
-                await ctx.send(f"**{lowest_name}** ({lowest_level}) and **{highest_name}** ({highest_level}) can share "
-                               f"experience.")
+                    reply = f"They can all share experience with each other."
+                else:
+                    reply = f"**{lowest_name}** ({lowest_level}) and **{highest_name}** ({highest_level}) can " \
+                            f"share experience."
+                await ctx.send(reply+f"\nTheir share range is from level **{low}** to **{high}**.")
 
     @commands.guild_only()
     @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"])
