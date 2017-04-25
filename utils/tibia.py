@@ -133,6 +133,10 @@ async def get_world_info(name, tries = 5):
     if "World with this name doesn't exist!" in content:
         return None
 
+    # Status
+    m = re.search(r'alt=\"Server PVP Type\" /></div>(\w+)<', content)
+    if m:
+        world["status"] = m.group(1)
     # Players online
     m = re.search(r'Players Online:</td><td>(\d+)</td>', content)
     if m:

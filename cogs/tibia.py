@@ -1607,7 +1607,13 @@ class Tibia:
 
         url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
         embed = discord.Embed(url=url, title=name.capitalize())
-        embed.add_field(name="Players online", value=str(world["online"]))
+        if world["status"] == "Offline":
+            embed.description = "This world is offline."
+            embed.colour = discord.Colour.red()
+        else:
+            embed.colour = discord.Colour.green()
+        if "online" in world:
+            embed.add_field(name="Players online", value=str(world["online"]))
         embed.add_field(name="Online record", value="{record_online} online on {record_date}".format(**world))
         created = world["created"].split("/")
         try:
