@@ -1600,7 +1600,7 @@ class Tibia:
             await ctx.send("There's no world with that name.")
             return
 
-        flags = {"North America": EMOJI[":flag_us:"], "South America": EMOJI[":flag_br:"], "Europe": EMOJI[":flag_de:"]}
+        flags = {"North America": EMOJI[":flag_us:"], "South America": EMOJI[":flag_br:"], "Europe": EMOJI[":flag_gb:"]}
         pvp = {"Optional PvP": EMOJI[":dove:"], "Hardcore PvP": EMOJI[":skull:"], "Open PvP": EMOJI[":crossed_swords:"],
                "Retro Open PvP": EMOJI[":crossed_swords:"]}
         transfers = {"locked": EMOJI[":lock:"], "blocked": EMOJI[":no_entry_sign:"]}
