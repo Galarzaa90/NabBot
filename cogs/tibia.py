@@ -1472,11 +1472,16 @@ class Tibia:
         if name is None:
             await ctx.send("Tell me the name of the achievement you want to check.")
             return
+
         achievement = get_achievement(name)
+
+        if achievement is None:
+            await ctx.send("I couldn't find an achievement with that name.")
+            return
 
         if type(achievement) is list:
             embed = discord.Embed(title="Suggestions", description="\n".join(achievement))
-            await ctx.send("I couldn't find that house, maybe you meant one of these?", embed=embed)
+            await ctx.send("I couldn't find that achievement, maybe you meant one of these?", embed=embed)
             return
 
         ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
