@@ -182,9 +182,6 @@ async def get_world_info(name, tries = 5):
     return world
 
 
-
-
-
 async def get_world_online(world, tries=5):
     """Returns a list of all the online players in current server.
 
@@ -516,9 +513,9 @@ async def get_character(name, tries=5):
         m = re.findall(pattern, content)
 
         if m:
-            for (world, name) in m:
-                name = urllib.parse.unquote_plus(name)
-                char['chars'].append({'name': name, 'world': world})
+            for (world, _name) in m:
+                _name = urllib.parse.unquote_plus(_name)
+                char['chars'].append({'name': _name, 'world': world})
     except Exception:
         pass
 
@@ -526,7 +523,7 @@ async def get_character(name, tries=5):
     c = userDatabase.cursor()
     try:
         # Discord owner
-        c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ?", (char["name"],))
+        c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ?", (name,))
         result = c.fetchone()
         char["owner_id"] = None if result is None else result["user_id"]
         if result is None:
