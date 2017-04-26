@@ -1380,9 +1380,13 @@ class Tibia:
             return
         achievement = get_achievement(name)
 
+        if achievement is None:
+            yield from self.bot.say("I couldn't find an achievement with that name.")
+            return
+
         if type(achievement) is list:
             embed = discord.Embed(title="Suggestions", description="\n".join(achievement))
-            yield from self.bot.say("I couldn't find that house, maybe you meant one of these?", embed=embed)
+            yield from self.bot.say("I couldn't find that achievement, maybe you meant one of these?", embed=embed)
             return
 
         ask_channel = get_channel_by_name(self.bot, ask_channel_name, ctx.message.server)
