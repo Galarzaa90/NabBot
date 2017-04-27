@@ -1407,17 +1407,15 @@ class Tibia:
         if level < 1:
             await ctx.send("Very funny... Now tell me a valid level.")
             return
-        price = 200 * (level - 20)
-        if level <= 30:
-            price = 2000
-        if level >= 120:
-            price = 20000
+        bless_price = max(2000, 200 * (min(level, 120) - 20))
+        mountain_bless_price = max(2000, 200 * (min(level, 150) - 20))
         inquisition = ""
         if level >= 100:
-            inquisition = "\nBlessing of the Inquisition costs **{0:,}** gold coins.".format(int(price*5*1.1))
-        await ctx.send(
-                "At that level, you will pay **{0:,}** gold coins per blessing for a total of **{1:,}** gold coins.{2}"
-                .format(price, price*5, inquisition))
+            inquisition = f"\nBlessing of the Inquisition costs **{int(bless_price*5*1.1):,}** gold coins."
+        await ctx.send(f"At that level you will pay **{bless_price:,}** gold coins per blessing for a total of "
+                       f"**{bless_price*5:,}** gold coins.{inquisition}"
+                       f"\nMountain blessings cost **{mountain_bless_price:,}** each, for a total of "
+                       f"**{int(mountain_bless_price*2):,}**.")
 
     @commands.command()
     async def spell(self, ctx, *, name: str= None):
