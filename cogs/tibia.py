@@ -13,6 +13,8 @@ from utils.database import tracked_worlds
 from utils.discord import get_user_color, FIELD_VALUE_LIMIT, is_private, is_lite_mode
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, start_time
 from utils.loot import loot_scan
+from utils.loot import item_show
+from utils.loot import item_add
 from utils.messages import split_message
 from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import *
@@ -129,6 +131,50 @@ class Tibia:
 
         await destination.send(file=discord.File(loot_image_overlay,"results.png"), embed=embed)
 
+    @loot.command(name="show")
+    @checks.is_mod()
+    @checks.is_not_lite()
+    async def loot_show(self, ctx, *, item=None):
+        """Shows the meaning of the overlayed icons."""
+        result = await item_show(item)
+        if result is not None:
+            await ctx.send(file=discord.File(result,"results.png"))
+            
+    @loot.command(name="add")
+    @checks.is_mod()
+    @checks.is_not_lite()
+    async def loot_add(self, ctx, *, item=None):
+        """Shows the meaning of the overlayed icons."""
+        if len(ctx.message.attachments) == 0:
+            await ctx.send("You need to upload the image you want to add to this item.")
+            return
+
+        attachment = ctx.message.attachments[0]
+        if attachment['width'] != 32 or attachment['height'] != 32:
+            await ctx.send("Image size has to be 32x32.")
+            return
+
+        file_name = attachment['url'].split("/")[len(attachment['url'].split("/"))-1]
+        file_url = attachment['url']
+        try:
+            with aiohttp.ClientSession() as session:
+                async with session.get(attachment['url']) as resp:
+                    original_image = await resp.read()
+            frame_image = Image.open(io.BytesIO(bytearray(original_image))).convert("RGBA")
+        except Exception:
+            await ctx.send("Either that wasn't an image or I failed to load it, please try again.")
+            return
+
+        result = await item_add(item,frame_image)
+        if result is None:
+            await ctx.send("Couldn't find an item with that name.")
+            return
+        else:
+            await ctx.send("Image added to item.")
+            result = await item_show(item)
+            if result is not None:
+                await ctx.send(file=discord.File(result,"results.png"))
+            return
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
     @checks.is_not_lite()
     async def loot_legend(self, ctx):
