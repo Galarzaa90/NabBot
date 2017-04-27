@@ -399,13 +399,14 @@ async def item_add(item,frame):
     item_list = c.fetchall()
     if len(item_list) == 0:
         return None
+    frame_crop = crop_item(frame)
     frame_color = get_item_color(frame)
-    frame_size = get_item_size(frame)
+    frame_size = get_item_size(frame_crop)
     frame_ByteArr = io.BytesIO()
     frame.save(frame_ByteArr, format='PNG')
     frame_ByteArr = frame_ByteArr.getvalue() 
     frameStr = pickle.dumps(frame_ByteArr)
-    c.execute("INSERT INTO Items(name,`group`,priority,value,frame,sizeX,sizeY,size,red,green,blue) VALUES (?,?,?,?,?,?,?,?,?,?,?)",(item_list[0]["name"],item_list[0]["group"],item_list[0]["priority"],item_list[0]["value"],frameStr,frame.size[0],frame.size[1],frame_size,frame_color[0],frame_color[1],frame_color[2]))
+    c.execute("INSERT INTO Items(name,`group`,priority,value,frame,sizeX,sizeY,size,red,green,blue) VALUES (?,?,?,?,?,?,?,?,?,?,?)",(item_list[0]["name"],item_list[0]["group"],item_list[0]["priority"],item_list[0]["value"],frameStr,frame_crop.size[0],frame_crop.size[1],frame_size,frame_color[0],frame_color[1],frame_color[2]))
     
     c.execute("SELECT * FROM Items "
               "WHERE name LIKE ?",
