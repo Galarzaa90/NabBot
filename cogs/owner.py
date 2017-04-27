@@ -99,7 +99,7 @@ class Owner:
     async def admins_message(self, ctx, *, content: str=None):
         """Sends a message to all server owners."""
         if content is None:
-            await ctx.send("Tell me the message you want to sent to server admins.\nReply `cancel/none` to cancel.")
+            await ctx.send("Tell me the message you want to send to server admins.\nReply `cancel/none` to cancel.")
 
             def check(m):
                 return m.channel == ctx.channel and m.author == ctx.author
