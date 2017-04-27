@@ -366,6 +366,64 @@ async def find_slots(loot_image, progress_bar):
     return slot_list
 
 
+async def item_show(item):
+    if item is None:
+        return None
+    c = lootDatabase.cursor()
+    c.execute("SELECT * FROM Items "
+              "WHERE name LIKE ?",
+              (item,))
+    item_list = c.fetchall()
+    if len(item_list) == 0:
+        return None
+    output_image = Image.new("RGBA", (33*len(item_list)-1, 32), (255, 255, 255, 255))
+    x = 0
+    for i in item_list:
+        i_image = pickle.loads(i['frame'])
+        i_image = Image.open(io.BytesIO(bytearray(i_image)))
+        output_image.paste(i_image, (x*33, 0))
+        x +=1
+    img_byte_arr = io.BytesIO()
+    output_image.save(img_byte_arr, format='png')
+    img_byte_arr = img_byte_arr.getvalue()
+    return img_byte_arr
+
+
+async def item_add(item,frame):
+    if item is None:
+        return None
+    c = lootDatabase.cursor()
+    c.execute("SELECT * FROM Items "
+              "WHERE name LIKE ?",
+              (item,))
+    item_list = c.fetchall()
+    if len(item_list) == 0:
+        return None
+    frame_color = get_item_color(frame)
+    frame_size = get_item_size(frame)
+    frame_ByteArr = io.BytesIO()
+    frame.save(frame_ByteArr, format='PNG')
+    frame_ByteArr = frame_ByteArr.getvalue() 
+    frameStr = pickle.dumps(frame_ByteArr)
+    c.execute("INSERT INTO Items(name,`group`,priority,value,frame,sizeX,sizeY,size,red,green,blue) VALUES (?,?,?,?,?,?,?,?,?,?,?)",(item_list[0]["name"],item_list[0]["group"],item_list[0]["priority"],item_list[0]["value"],frameStr,frame.size[0],frame.size[1],frame_size,frame_color[0],frame_color[1],frame_color[2]))
+    
+    c.execute("SELECT * FROM Items "
+              "WHERE name LIKE ?",
+              (item,))
+    item_list = c.fetchall()
+    output_image = Image.new("RGBA", (33*len(item_list)-1, 32), (255, 255, 255, 255))
+    x = 0
+    for i in item_list:
+        i_image = pickle.loads(i['frame'])
+        i_image = Image.open(io.BytesIO(bytearray(i_image)))
+        output_image.paste(i_image, (x*33, 0))
+        x +=1
+    img_byte_arr = io.BytesIO()
+    output_image.save(img_byte_arr, format='png')
+    img_byte_arr = img_byte_arr.getvalue()
+    return img_byte_arr
+
+
 async def loot_scan(loot_image, image_name, progress_msg, progress_bar):
     debug_output = image_name
     debug_outputex = 0
