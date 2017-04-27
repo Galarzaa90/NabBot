@@ -356,7 +356,10 @@ async def get_character(name, tries=5):
     if tries == 0:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
         return ERROR_NETWORK
-    url = get_character_url(name)
+    try:
+        url = get_character_url(name)
+    except UnicodeEncodeError:
+        return ERROR_DOESNTEXIST
     char = dict()
 
     # Fetch website
