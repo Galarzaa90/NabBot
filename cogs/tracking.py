@@ -376,10 +376,11 @@ class Tracking:
                 if char["world"] not in user_tibia_worlds:
                     skipped.append(char)
                     continue
-                c.execute("SELECT name, user_id, guild as owner FROM chars WHERE name LIKE ?", (char["name"],))
+                c.execute("SELECT name, guild, user_id as owner FROM chars WHERE name LIKE ?", (char["name"],))
                 db_char = c.fetchone()
                 if db_char is not None:
                     owner = self.bot.get_member(db_char["owner"])
+                    print(owner)
                     # Previous owner doesn't exist anymore
                     if owner is None:
                         updated.append({'name': char['name'], 'world': char['world'], 'prevowner': db_char["owner"]})
