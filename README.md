@@ -14,7 +14,7 @@ Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapp
 To install discord.py simply run the following on the command line:
 
 ```
-python -m pip install -U https://github.com/Rapptz/discord.py/archive/master.zip#egg=discord.py[voice] install pillow psutil requests  
+python -m pip install -U https://github.com/Rapptz/discord.py/archive/master.zip#egg=discord.py[voice] pillow psutil requests  
 ```
 
 Create a bot token on Discord
