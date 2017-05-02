@@ -900,7 +900,9 @@ class Tibia:
     @deaths.command(name="stats")
     @checks.is_not_lite()
     async def deaths_stats(self, ctx, *, period: str = None):
-        """Stats"""
+        """Shows death statistic
+        
+        A shorter period can be shown by adding week or month"""
         permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -931,14 +933,24 @@ class Tibia:
             c.execute("SELECT COUNT() AS total FROM char_deaths WHERE date >= ?", (start_date,))
             total = c.fetchone()["total"]
             embed.description = f"There are {total:,} deaths registered{description_suffix}."
-            c.execute("SELECT COUNT() as count, chars.name FROM char_deaths, chars "
+            c.execute("SELECT COUNT() as count, chars.name, chars.user_id FROM char_deaths, chars "
                       f"WHERE id = char_id AND world IN ({placeholders}) AND date >= {start_date} "
                       "GROUP BY char_id ORDER BY count DESC LIMIT 3", tuple(user_worlds))
-            total_per_char = c.fetchall()
             content = ""
-            for row in total_per_char:
+            count = 0
+            while True:
+                row = c.fetchone()
+                if row is None:
+                    break
+                user = self.bot.get_member(row["user_id"], ctx.guild)
+                if user is None:
+                    continue
+                count += 1
                 content += f"**{row['name']}** \U00002014 {row['count']}\n"
-            embed.add_field(name="Most deaths per character", value=content, inline=False)
+                if count >= 3:
+                    break
+            if count > 0:
+                embed.add_field(name="Most deaths per character", value=content, inline=False)
 
             c.execute("SELECT COUNT() as count, chars.user_id FROM char_deaths, chars "
                       f"WHERE id = char_id AND world IN ({placeholders}) AND date >= {start_date} "
@@ -965,7 +977,7 @@ class Tibia:
             total_per_killer = c.fetchall()
             content = ""
             for row in total_per_killer:
-                killer = re.sub(r"(a|an)(\s+)", " ", row["killer"]).title()
+                killer = re.sub(r"(a|an)(\s+)", " ", row["killer"]).title().strip()
                 content += f"**{killer}** \U00002014 {row['count']}\n"
             embed.add_field(name="Most deaths per killer", value=content, inline=False)
             await ctx.send(embed=embed)
