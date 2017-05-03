@@ -10,8 +10,8 @@ from utils import checks
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
 from utils.discord import is_private
 from utils.general import global_online_list, log, join_list
-from utils.messages import weighed_choice, deathmessages_player, deathmessages_monster, format_message, EMOJI, \
-    levelmessages
+from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
+    level_messages
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world_online, get_character, ERROR_DOESNTEXIST, \
     parse_tibia_time, get_pronouns
 
@@ -230,11 +230,10 @@ class Tracking:
             userDatabase.commit()
             c.close()
 
-    async def announce_death(self, death_level, death_killer, death_by_player, levels_lost=0, char=None,
-                             char_name=None):
+    async def announce_death(self, level, killer, by_player, levels_lost=0, char=None, char_name=None):
         """Announces a level up on the corresponding servers"""
         # Don't announce for low level players
-        if int(death_level) < announce_threshold:
+        if int(level) < announce_threshold:
             return
         if char is None:
             if char_name is None:
@@ -245,32 +244,31 @@ class Tracking:
             log.warning("announce_death: couldn't fetch character (" + char_name + ")")
             return
 
-        log.info("Announcing death: {0}({1}) | {2}".format(char["name"], death_level, death_killer))
+        log.info("Announcing death: {0}({1}) | {2}".format(char["name"], level, killer))
 
         # Get correct pronouns
         pronoun = get_pronouns(char["gender"])
 
         # Find killer article (a/an)
-        death_killer_article = ""
-        if not death_by_player:
-            death_killer_article = death_killer.split(" ", 1)
-            if death_killer_article[0] in ["a", "an"] and len(death_killer_article) > 1:
-                death_killer = death_killer_article[1]
-                death_killer_article = death_killer_article[0] + " "
+        killer_article = ""
+        if not by_player:
+            killer_article = killer.split(" ", 1)
+            if killer_article[0] in ["a", "an"] and len(killer_article) > 1:
+                killer = killer_article[1]
+                killer_article = killer_article[0] + " "
             else:
-                death_killer_article = ""
+                killer_article = ""
 
         # Select a message
-        if death_by_player:
-            message = weighed_choice(deathmessages_player, vocation=char['vocation'], level=int(death_level),
+        if by_player:
+            message = weighed_choice(death_messages_player, vocation=char['vocation'], level=int(level),
                                      levels_lost=levels_lost)
         else:
-            message = weighed_choice(deathmessages_monster, vocation=char['vocation'], level=int(death_level),
-                                     levels_lost=levels_lost, killer=death_killer)
+            message = weighed_choice(death_messages_monster, vocation=char['vocation'], level=int(level),
+                                     levels_lost=levels_lost, killer=killer)
         # Format message with death information
-        death_info = {'charName': char["name"], 'deathLevel': death_level, 'deathKiller': death_killer,
-                      'deathKillerArticle': death_killer_article, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
-                      'pronoun3': pronoun[2]}
+        death_info = {'name': char["name"], 'level': level, 'killer': killer, 'killer_article': killer_article,
+                      'he_she': pronoun[0], 'his_her': pronoun[1], 'him_her': pronoun[2]}
         message = message.format(**death_info)
         # Format extra stylization
         message = format_message(message)
@@ -282,7 +280,7 @@ class Tracking:
                     and guild.get_member(char["owner_id"]) is not None:
                 await self.bot.get_announce_channel(guild).send(message[:1].upper() + message[1:])
 
-    async def announce_level(self, new_level, char_name=None, char=None):
+    async def announce_level(self, level, char_name=None, char=None):
         """Announces a level up on corresponding servers
 
         One of these must be passed:
@@ -291,7 +289,7 @@ class Tracking:
 
         If char_name is passed, the character is fetched here."""
         # Don't announce low level players
-        if int(new_level) < announce_threshold:
+        if int(level) < announce_threshold:
             return
         if char is None:
             if char_name is None:
@@ -302,16 +300,16 @@ class Tracking:
             log.warning("announce_level: couldn't fetch character (" + char_name + ")")
             return
 
-        log.info("Announcing level up: {0} ({1})".format(char["name"], new_level))
+        log.info("Announcing level up: {0} ({1})".format(char["name"], level))
 
         # Get pronouns based on gender
         pronoun = get_pronouns(char['gender'])
 
         # Select a message
-        message = weighed_choice(levelmessages, vocation=char['vocation'], level=int(new_level))
+        message = weighed_choice(level_messages, vocation=char['vocation'], level=int(level))
         # Format message with level information
-        level_info = {'charName': char["name"], 'newLevel': new_level, 'pronoun1': pronoun[0], 'pronoun2': pronoun[1],
-                      'pronoun3': pronoun[2]}
+        level_info = {'name': char["name"], 'level': level, 'he_she': pronoun[0], 'his_her': pronoun[1],
+                      'him_her': pronoun[2]}
         message = message.format(**level_info)
         # Format extra stylization
         message = format_message(message)

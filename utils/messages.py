@@ -1292,184 +1292,185 @@ EMOJI = {":grinning:": "\U0001F600",  # People
          ":flag_zw:": "\U0001F1FF\U0001F1FC"}
 
 
-
 def decode_emoji(message):
     """Replaces unicode emojis with shortnames for logging"""
     for shortname_emoji, u_emoji in EMOJI.items():
         message = message.replace(u_emoji, shortname_emoji)
     return message
 
+# We save the last messages so they are not repeated so often
+last_messages = ["", "", "", "", "", "", "", "", "", ""]
 
-lastmessages = ["", "", "", "", "", "", "", "", "", ""]
-
-# Message list for announceLevel ({charName}, {newLevel} , {pronoun1} (he/she), {pronoun2} (his/her), {pronoun3} (him/her))
-# Values are: relative chance(int), message(str), valid vocations(iterable or False to ignore), valid levels(iterable or False to ignore)
-levelmessages = [
-    [100, "Congratulations to **{charName}** on reaching level {newLevel}!"],
-    [100, "**{charName}** is level {newLevel} now, congrats!"],
-    [80, "**{charName}** has reached level {newLevel}, die and lose it, noob!"],
-    [100, "Well, look at **{charName}** with {pronoun2} new fancy level {newLevel}."],
-    [80, "**{charName}** is level {newLevel}, watch out world..."],
-    [100, "**{charName}** is level {newLevel} now. Noice."],
-    [100, "**{charName}** has finally made it to level {newLevel}, yay!"],
-    [80, "**{charName}** reached level {newLevel}! What a time to be alive..." + EMOJI[":rolling_eyes:"]],
-    [70, "**{charName}** got level {newLevel}! So stronk now!" + EMOJI[":muscle:"]],
-    [30, "**{charName}** is level {newLevel}" + EMOJI[":cake:"] + "\r\n" +
+# Message list for announce_level
+# Parameters: {name}, {level} , {he_she}, {his_her}, {him_her}
+# Values in each list element are:
+# Only relative chance and message are mandatory.
+level_messages = [
+    [100, "Congratulations to **{name}** on reaching level {level}!"],
+    [100, "**{name}** is level {level} now, congrats!"],
+    [80, "**{name}** has reached level {level}, die and lose it, noob!"],
+    [100, "Well, look at **{name}** with {his_her} new fancy level {level}."],
+    [80, "**{name}** is level {level}, watch out world..."],
+    [100, "**{name}** is level {level} now. Noice."],
+    [100, "**{name}** has finally made it to level {level}, yay!"],
+    [80, "**{name}** reached level {level}! What a time to be alive..." + EMOJI[":rolling_eyes:"]],
+    [70, "**{name}** got level {level}! So stronk now!" + EMOJI[":muscle:"]],
+    [30, "**{name}** is level {level}" + EMOJI[":cake:"] + "\r\n" +
      "I'm making a note here:" + EMOJI[":notes:"] + "\r\n" +
      "Huge success!" + EMOJI[":notes:"] + "\r\n" +
      "It's hard to overstate my" + EMOJI[":notes:"] + "\r\n" +
      "Satisfaction" + EMOJI[":robot:"]],
-    [100, "**{charName}**, you reached level {newLevel}? Here, have a cookie " + EMOJI[":cookie:"]],
-    [80, "**{charName}** got level {newLevel}. I guess this justifies all those creatures {pronoun1} murdered."],
-    [90, "**{charName}** is level {newLevel}. Better than {pronoun1} was. Better, stronger, faster."],
-    [70, "Congrats **{charName}** on getting level {newLevel}! Maybe you can solo rats now?"],
-    [70, "**{charName}** is level {newLevel} now! And we all thought {pronoun1}'d never achieve anything in life."],
+    [100, "**{name}**, you reached level {level}? Here, have a cookie " + EMOJI[":cookie:"]],
+    [80, "**{name}** got level {level}. I guess this justifies all those creatures {he_she} murdered."],
+    [90, "**{name}** is level {level}. Better than {he_she} was. Better, stronger, faster."],
+    [70, "Congrats **{name}** on getting level {level}! Maybe you can solo rats now?"],
+    [70, "**{name}** is level {level} now! And we all thought {he_she}'d never achieve anything in life."],
     # EK Only
-    [50, "**{charName}** has reached level {newLevel}. That's 9 more mana potions you can carry now!",
+    [50, "**{name}** has reached level {level}. That's 9 more mana potions you can carry now!",
      ["Knight", "Elite Knight"], range(100, 999)],
-    [200, "**{charName}** is level {newLevel}. Stick them with the pointy end! " + EMOJI[":_dagger:"],
+    [200, "**{name}** is level {level}. Stick them with the pointy end! " + EMOJI[":_dagger:"],
      ["Knight", "Elite Knight"], range(100, 999)],
-    [200, "**{charName}** is a fat level {newLevel} meatwall now. BLOCK FOR ME SENPAI.", ["Knight", "Elite Knight"],
+    [200, "**{name}** is a fat level {level} meatwall now. BLOCK FOR ME SENPAI.", ["Knight", "Elite Knight"],
      range(100, 999)],
     # RP Only
-    [50, "**{charName}** has reached level {newLevel}. But {pronoun1} still misses arrows...",
+    [50, "**{name}** has reached level {level}. But {he_she} still misses arrows...",
      ["Paladin", "Royal Paladin"], range(100, 999)],
-    [150, "Congrats on level {newLevel}, **{charName}**. You can stop running around now.",
+    [150, "Congrats on level {level}, **{name}**. You can stop running around now.",
      ["Paladin", "Royal Paladin"], range(100, 999)],
-    [150, "**{charName}** is level {newLevel}. Bullseye!" + EMOJI[":dart:"], ["Paladin", "Royal Paladin"],
+    [150, "**{name}** is level {level}. Bullseye!" + EMOJI[":dart:"], ["Paladin", "Royal Paladin"],
      range(100, 999)],
     # MS Only
-    [50, "Level {newLevel}, **{charName}**? Nice. Don't you wish you were a druid though?",
+    [50, "Level {level}, **{name}**? Nice. Don't you wish you were a druid though?",
      ["Sorcerer", "Master Sorcerer"], range(100, 999)],
-    [150, "**{charName}** is level {newLevel}. Watch out for {pronoun2} SDs!", ["Sorcerer", "Master Sorcerer"],
+    [150, "**{name}** is level {level}. Watch out for {his_her} SDs!", ["Sorcerer", "Master Sorcerer"],
      range(100, 999)],
     [150,
-     "**{charName}** is level {newLevel}. " + EMOJI[":fire:"] + EMOJI[":fire:"] + "BURN THEM ALL" + EMOJI[":fire:"] +
+     "**{name}** is level {level}. " + EMOJI[":fire:"] + EMOJI[":fire:"] + "BURN THEM ALL" + EMOJI[":fire:"] +
      EMOJI[":fire:"] + EMOJI[":fire:"], ["Sorcerer", "Master Sorcerer"], range(100, 999)],
     # ED Only
-    [50, "**{charName}** has reached level {newLevel}. Flower power!" + EMOJI[":blossom:"], ["Druid", "Elder Druid"],
+    [50, "**{name}** has reached level {level}. Flower power!" + EMOJI[":blossom:"], ["Druid", "Elder Druid"],
      range(100, 999)],
-    [150, "Congrats on level {newLevel}, **{charName}**. Sio plz.", ["Druid", "Elder Druid"], range(100, 999)],
-    [150, "**{charName}** is level {newLevel}. " + EMOJI[":fire:"] + EMOJI[
+    [150, "Congrats on level {level}, **{name}**. Sio plz.", ["Druid", "Elder Druid"], range(100, 999)],
+    [150, "**{name}** is level {level}. " + EMOJI[":fire:"] + EMOJI[
         ":fire:"] + "BURN THEM ALL... Or... Give them frostbite...?" + EMOJI[":_snowflake:"] + EMOJI[":_snowflake:"] +
      EMOJI[":_snowflake:"], ["Druid", "Elder Druid"], range(100, 999)],
     # Level specific
-    [20000, "**{charName}** is level {newLevel}! UMPs so good " + EMOJI[":wine_glass:"],
+    [20000, "**{name}** is level {level}! UMPs so good " + EMOJI[":wine_glass:"],
      ["Druid", "Elder Druid", "Sorcerer", "Master Sorcerer"], [130]],
-    [20000, "**{charName}** is now level {newLevel}. Don't forget to buy a Gearwheel Chain!" + EMOJI[":_necklace:"],
+    [20000, "**{name}** is now level {level}. Don't forget to buy a Gearwheel Chain!" + EMOJI[":_necklace:"],
      False, [75]],
-    [30000, "**{charName}** is level {newLevel}! You can become a ninja now!" + EMOJI[":bust_in_silhouette:"],
+    [30000, "**{name}** is level {level}! You can become a ninja now!" + EMOJI[":bust_in_silhouette:"],
      ["Paladin", "Royal Paladin"], [80]],
-    [20000, "Level {newLevel}, **{charName}**? You're finally important enough for me to notice!", False,
+    [20000, "Level {level}, **{name}**? You're finally important enough for me to notice!", False,
      [announce_threshold]],
-    [20000, "**{charName}** is now level {newLevel}! Time to go berserk! " + EMOJI[":anger:"],
+    [20000, "**{name}** is now level {level}! Time to go berserk! " + EMOJI[":anger:"],
      ["Knight", "Elite Knight"], [35]],
-    [30000, "**{charName}** is level {newLevel}!!!!\r\n" +
+    [30000, "**{name}** is level {level}!!!!\r\n" +
      "Sweet, sweet triple digits!", False, [100]],
-    [20000, "**{charName}** is level {newLevel}!!!!\r\n" +
+    [20000, "**{name}** is level {level}!!!!\r\n" +
      "WOOO", False, [100, 200, 300, 400]],
-    [20000, "**{charName}** is level {newLevel}!!!!\r\n" +
+    [20000, "**{name}** is level {level}!!!!\r\n" +
      "yaaaay milestone!", False, [100, 200, 300, 400]],
-    [20000, "**{charName}** is level {newLevel}!!!!\r\n" +
+    [20000, "**{name}** is level {level}!!!!\r\n" +
      "holy crap!", False, [200, 300, 400]]]
 
-###message list for announceDeath ({charName},{deathTime},{deathLevel},{deathKiller},{deathKillerArticle},{pronoun1} (he/she),{pronoun2} (his/her),{pronoun3} (him/her))
-##additionally, words surrounded by \WORD/ are uppercased, /word\ are lowercased, /Word/ are title cased
-##              words surrounded by ^WORD^ are ignored if the next letter found is uppercase (useful for dealing with proper nouns)
-##values are: relative chance(int), message(str)   (conditions aren't being used yet (see: weighedChoice in general.py))
-##values are: relative chance(int), message(str), valid vocations(iterable or False to ignore), valid levels(iterable or False to ignore),valid killers(iterable or False to ignore, only for monster deaths)
-
-# deaths by monster
-deathmessages_monster = [
-    [100,
-     "RIP **{charName}** ({deathLevel}), you died the way you lived- inside {deathKillerArticle}**{deathKiller}**."],
-    [100, "**{charName}** ({deathLevel}) was just eaten by {deathKillerArticle}**{deathKiller}**. Yum."],
-    [100, "Silly **{charName}** ({deathLevel}), I warned you not to play with {deathKillerArticle}**{deathKiller}**!"],
-    [100, "/{deathKillerArticle}**/{deathKiller}** killed **{charName}** at level {deathLevel}. Shame " + EMOJI[
+# Message list for announce death.
+# Parameters: ({name},{deathTime},{level},{killer},{killer_article},{he_she}, {his_her},{him_her}
+# Additionally, words surrounded by \WORD/ are upper cased, /word\ are lower cased, /Word/ are title cased
+# words surrounded by ^WORD^ are ignored if the next letter found is uppercase (useful for dealing with proper nouns)
+# Values in each list element are:
+# Relative chance, message, vocations filter, levels filters, monsters filter, levels lost filter
+# Only relative chance and message are mandatory.
+death_messages_monster = [
+    [100, "RIP **{name}** ({level}), you died the way you lived- inside {killer_article}**{killer}**."],
+    [100, "**{name}** ({level}) was just eaten by {killer_article}**{killer}**. Yum."],
+    [100, "Silly **{name}** ({level}), I warned you not to play with {killer_article}**{killer}**!"],
+    [100, "/{killer_article}**/{killer}** killed **{name}** at level {level}. Shame " + EMOJI[
         ":bell:"] + " shame " + EMOJI[":bell:"] + " shame " + EMOJI[":bell:"]],
     [30,
-     "**{charName}** ({deathLevel}) is no more! /{pronoun1}/ has ceased to be! /{pronoun1}/'s expired and gone to meet "
-     "{pronoun2} maker! /{pronoun1}/'s a stiff! Bereft of life, {pronoun1} rests in peace! If {pronoun1} hadn't "
-     "respawned {pronoun1}'d be pushing up the daisies! /{pronoun2}/ metabolic processes are now history! "
-     "/{pronoun1}/'s off the server! /{pronoun1}/'s kicked the bucket, {pronoun1}'s shuffled off {pronoun2} mortal "
-     "coil, kissed {deathKillerArticle}**{deathKiller}**'s butt, run down the curtain and joined the bleeding choir "
-     "invisible!! THIS IS AN EX-**\{charName}/**."],
+     "**{name}** ({level}) is no more! /{he_she}/ has ceased to be! /{he_she}/'s expired and gone to meet "
+     "{his_her} maker! /{he_she}/'s a stiff! Bereft of life, {he_she} rests in peace! If {he_she} hadn't "
+     "respawned {he_she}'d be pushing up the daisies! /{his_her}/ metabolic processes are now history! "
+     "/{he_she}/'s off the server! /{he_she}/'s kicked the bucket, {he_she}'s shuffled off {his_her} mortal "
+     "coil, kissed {killer_article}**{killer}**'s butt, run down the curtain and joined the bleeding choir "
+     "invisible!! THIS IS AN EX-**\{name}/**."],
     [100,
-     "RIP **{charName}** ({deathLevel}), we hardly knew you! (^That ^**{deathKiller}** got to know you pretty well "
+     "RIP **{name}** ({level}), we hardly knew you! (^That ^**{killer}** got to know you pretty well "
      "though " + EMOJI[":wink:"] + ")"],
-    [80, "A priest, {deathKillerArticle}**{deathKiller}** and **{charName}** ({deathLevel}) walk into a bar. " + EMOJI[
+    [80, "A priest, {killer_article}**{killer}** and **{name}** ({level}) walk into a bar. " + EMOJI[
         ":skull:"] + "ONLY ONE WALKS OUT." + EMOJI[":skull:"]],
-    [90, "RIP **{charName}** ({deathLevel}), you were strong. ^The ^**{deathKiller}** was stronger."],
+    [90, "RIP **{name}** ({level}), you were strong. ^The ^**{killer}** was stronger."],
     [80,
-     "Oh, there goes **{charName}** ({deathLevel}), killed by {deathKillerArticle}**{deathKiller}**. So young, so full "
-     "of life. /{pronoun1}/ will be miss... oh nevermind, {pronoun1} respawned already."],
+     "Oh, there goes **{name}** ({level}), killed by {killer_article}**{killer}**. So young, so full "
+     "of life. /{he_she}/ will be miss... oh nevermind, {he_she} respawned already."],
     [60,
-     "Oh look! **{charName}** ({deathLevel}) died by {deathKillerArticle}**{deathKiller}**! What a surprise..." + EMOJI[
+     "Oh look! **{name}** ({level}) died by {killer_article}**{killer}**! What a surprise..." + EMOJI[
          ":rolling_eyes:"]],
     [100,
-     "**{charName}** ({deathLevel}) was killed by {deathKillerArticle}**{deathKiller}**, but we all saw that coming."],
+     "**{name}** ({level}) was killed by {killer_article}**{killer}**, but we all saw that coming."],
     [100,
-     "**{charName}** ({deathLevel}) tried sneaking around {deathKillerArticle}**{deathKiller}**. I could hear Colonel "
+     "**{name}** ({level}) tried sneaking around {killer_article}**{killer}**. I could hear Colonel "
      "Campbell's voice over codec: *Snake? Snake!? SNAAAAAAAAAKE!!?*"],
     [50,
-     "**{charName}** ({deathLevel}) died to {deathKillerArticle}**{deathKiller}**. But I bet it was because there was "
+     "**{name}** ({level}) died to {killer_article}**{killer}**. But I bet it was because there was "
      "a flood and something broke with like 7200lb falling over the infrastructure of your city's internet, right?"],
-    [70, "That's what you get **{charName}** ({deathLevel}), for messing with ^that ^**{deathKiller}**!"],
+    [70, "That's what you get **{name}** ({level}), for messing with ^that ^**{killer}**!"],
     [100,
-     "Oh no! **{charName}** died at level {deathLevel}. Well, it's okay, just blame lag, I'm sure ^the ^"
-     "**{deathKiller}** had nothing to do with it."],
-    [100, "**{charName}** ({deathLevel}) + **{deathKiller}** = dedd."],
-    [100, "**{charName}** ({deathLevel}) got killed by a **{deathKiller}**. Another one bites the dust!"],
+     "Oh no! **{name}** died at level {level}. Well, it's okay, just blame lag, I'm sure ^the ^"
+     "**{killer}** had nothing to do with it."],
+    [100, "**{name}** ({level}) + **{killer}** = dedd."],
+    [100, "**{name}** ({level}) got killed by a **{killer}**. Another one bites the dust!"],
     [100,
-     "**{charName}** ({deathLevel}) just kicked the bucket. And by kicked the bucket I mean a **{deathKiller}** beat "
-     "the crap out of {pronoun3}."],
+     "**{name}** ({level}) just kicked the bucket. And by kicked the bucket I mean a **{killer}** beat "
+     "the crap out of {him_her}."],
     [100,
-     "Alas, poor **{charName}** ({deathLevel}), I knew {pronoun3} Horatio; a fellow of infinite jest, of most "
-     "excellent fancy; {pronoun1} hath borne me on {pronoun2} back a thousand times; and now, {pronoun1} got rekt "
-     "by {deathKillerArticle}**{deathKiller}**."],
-    [70, "To be or not to be " + EMOJI[":skull:"] + ", that is the-- Well I guess **{charName}** ({deathLevel}) made "
-                                                    "his choice, or ^that ^**{deathKiller}** chose for him..."],
+     "Alas, poor **{name}** ({level}), I knew {him_her} Horatio; a fellow of infinite jest, of most "
+     "excellent fancy; {he_she} hath borne me on {his_her} back a thousand times; and now, {he_she} got rekt "
+     "by {killer_article}**{killer}**."],
+    [70, "To be or not to be " + EMOJI[":skull:"] + ", that is the-- Well I guess **{name}** ({level}) made "
+                                                    "his choice, or ^that ^**{killer}** chose for him..."],
     [500,
-     "**{charName}** ({deathLevel}) just died to {deathKillerArticle}**{deathKiller}**, why did nobody sio {pronoun3}!?",
+     "**{name}** ({level}) just died to {killer_article}**{killer}**, why did nobody sio {him_her}!?",
      ["Knight", "Elite Knight"]],
     [500,
-     "Poor **{charName}** ({deathLevel}) has died. Killed by {deathKillerArticle}**{deathKiller}**. I bet it was your "
-     "blocker's fault though, eh **{charName}**?",
+     "Poor **{name}** ({level}) has died. Killed by {killer_article}**{killer}**. I bet it was your "
+     "blocker's fault though, eh **{name}**?",
      ["Druid", "Elder Druid", "Sorcerer", "Master Sorcerer"]],
     [500,
-     "**{charName}** ({deathLevel}) tried running away from {deathKillerArticle}**{deathKiller}**. /{pronoun1}/ "
+     "**{name}** ({level}) tried running away from {killer_article}**{killer}**. /{he_she}/ "
      "didn't run fast enough...",
      ["Paladin", "Royal Paladin"]],
     [500,
-     "What happened to **{charName}** ({deathLevel})!? Talk about sudden death! I guess ^that ^**{deathKiller}** was "
-     "too much for {pronoun3}...",
+     "What happened to **{name}** ({level})!? Talk about sudden death! I guess ^that ^**{killer}** was "
+     "too much for {him_her}...",
      ["Sorcerer", "Master Sorcerer"]],
     [500,
-     "**{charName}** ({deathLevel}) was killed by {deathKillerArticle}**{deathKiller}**. I guess {pronoun1} couldn't "
-     "sio {pronoun3}self.",
+     "**{name}** ({level}) was killed by {killer_article}**{killer}**. I guess {he_she} couldn't "
+     "sio {him_her}self.",
      ["Druid", "Elder Druid"]],
-    [20000, "**{charName}** ({deathLevel}) got killed by ***{deathKiller}***. How spooky is that! " + EMOJI[":ghost:"],
+    [20000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! " + EMOJI[":ghost:"],
      False, False, ["something evil"]],
-    [20000, "**{charName}** ({deathLevel}) died from **{deathKiller}**. Yeah, no shit.", False, False, ["death"]],
-    [20000, "They did warn you **{charName}** ({deathLevel}), you *did* burn " + EMOJI[":fire:"] + EMOJI[
+    [20000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.", False, False, ["death"]],
+    [20000, "They did warn you **{name}** ({level}), you *did* burn " + EMOJI[":fire:"] + EMOJI[
         ":dragon_face:"] + ".", False, False, ["dragon", "dragon lord"]],
     [20000,
-     "Asian chicks are no joke **{charName}** ({deathLevel}) " + EMOJI[":hocho:"] + EMOJI[":broken_heart:"] + ".",
+     "Asian chicks are no joke **{name}** ({level}) " + EMOJI[":hocho:"] + EMOJI[":broken_heart:"] + ".",
      False, False, ["midnight asura", "dawnfire asura"]],
     [20000,
-     "Watch out for that **{deathKiller}**'s wav... Oh"+EMOJI[":neutral_face:"]+"... Rest in peace **{charName}** ({deathLevel}).",
+     "Watch out for that **{killer}**'s wav... Oh"+EMOJI[":neutral_face:"]+"... Rest in peace **{name}** ({level}).",
      False, False, ["hellhound", "hellfire fighter", "dragon lord", "undead dragon", "dragon", "draken spellweaver"]],
-    [200, "Oh look at that, rest in peace **{charName}** ({deathLevel}),  ^that ^**{deathKiller}** really got you. "
+    [200, "Oh look at that, rest in peace **{name}** ({level}),  ^that ^**{killer}** really got you. "
           "Hope you get your level back.", False, False, False, range(1, 10)]
 ]
-# deaths by player
-deathmessages_player = [
-    [100, "**{charName}** ({deathLevel}) got rekt! **{deathKiller}** ish pekay!"],
-    [100, "HALP **{deathKiller}** is going around killing innocent **{charName}** ({deathLevel})!"],
-    [100, "**{deathKiller}** just put **{charName}** ({deathLevel}) in the ground. Finally someone takes care of that."],
-    [100, "**{deathKiller}** killed **{charName}** ({deathLevel}) and on this day a thousand innocent souls are avenged."],
-    [100, "**{deathKiller}** has killed **{charName}** ({deathLevel}). What? He had it coming!"],
-    [100, "Next time stay away from **{deathKiller}**, **{charName}** ({deathLevel})."]
+
+# Deaths by players
+death_messages_player = [
+    [100, "**{name}** ({level}) got rekt! **{killer}** ish pekay!"],
+    [100, "HALP **{killer}** is going around killing innocent **{name}** ({level})!"],
+    [100, "**{killer}** just put **{name}** ({level}) in the ground. Finally someone takes care of that."],
+    [100, "**{killer}** killed **{name}** ({level}) and on this day a thousand innocent souls are avenged."],
+    [100, "**{killer}** has killed **{name}** ({level}). What? He had it coming!"],
+    [100, "Next time stay away from **{killer}**, **{name}** ({level})."]
 ]
 
 
@@ -1492,7 +1493,7 @@ def format_message(message) -> str:
     return message
 
 
-def weighed_choice(choices, level:int, vocation: str = None, killer:str = None, levels_lost: int = 0) -> str:
+def weighed_choice(choices, level: int, vocation: str = None, killer: str = None, levels_lost: int = 0) -> str:
     """Makes weighed choices from message lists where [0] is a value representing the relative odds
     of picking a message and [1] is the message string"""
 
@@ -1514,19 +1515,19 @@ def weighed_choice(choices, level:int, vocation: str = None, killer:str = None, 
         except IndexError:
             pass
         if match:
-            weight_range = weight_range + (message[0] if not message[1] in lastmessages else message[0] / 10)
+            weight_range = weight_range + (message[0] if not message[1] in last_messages else message[0] / 10)
             _messages.append(message)
     # Choose a random number
-    rangechoice = random.randint(0, weight_range)
+    range_choice = random.randint(0, weight_range)
     # Iterate until we find the matching message
     range_pos = 0
     for message in _messages:
-        if range_pos <= rangechoice < range_pos + (message[0] if not message[1] in lastmessages else message[0] / 10):
-            lastmessages.insert(0, message[1])
+        if range_pos <= range_choice < range_pos + (message[0] if not message[1] in last_messages else message[0] / 10):
+            last_messages.insert(0, message[1])
             return message[1]
-        range_pos = range_pos + (message[0] if not message[1] in lastmessages else message[0] / 10)
-    # This shouldnt ever happen...
-    print("Error in weighedChoice!")
+        range_pos = range_pos + (message[0] if not message[1] in last_messages else message[0] / 10)
+    # This shouldn't ever happen...
+    print("Error in weighed_choice!")
     return _messages[0][1]
 
 
