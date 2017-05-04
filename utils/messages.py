@@ -482,12 +482,12 @@ EMOJI = {":grinning:": "\U0001F600",  # People
          ":archery:": "\U0001F3F9",
 
          ":crossed_swords:": "\U00002694", # Objects
+         ":hole:": "\U0001f573",
 
          ":shield:" : "\U0001F6E1",
 
          ":_hotdog:": chr(0x1F32D),
          ":_necklace:": chr(0x1F4FF),
-         ":_snowflake:": chr(0x2744),
          ":_dagger:": chr(0x1F5E1),
          ":100:": chr(0x1F4AF),
          ":1234:": chr(0x1F522),
@@ -1352,19 +1352,27 @@ level_messages = [
      range(100, 999)],
     [150, "Congrats on level {level}, **{name}**. Sio plz.", ["Druid", "Elder Druid"], range(100, 999)],
     [150, "**{name}** is level {level}. " + EMOJI[":fire:"] + EMOJI[
-        ":fire:"] + "BURN THEM ALL... Or... Give them frostbite...?" + EMOJI[":_snowflake:"] + EMOJI[":_snowflake:"] +
-     EMOJI[":_snowflake:"], ["Druid", "Elder Druid"], range(100, 999)],
+        ":fire:"] + "BURN THEM ALL... Or... Give them frostbite...?" + EMOJI[":snowflake:"] + EMOJI[":snowflake:"] +
+     EMOJI[":snowflake:"], ["Druid", "Elder Druid"], range(100, 999)],
     # Level specific
     [20000, "**{name}** is level {level}! UMPs so good " + EMOJI[":wine_glass:"],
      ["Druid", "Elder Druid", "Sorcerer", "Master Sorcerer"], [130]],
+    [2000, "**{name}** is level {level} now! Eternal Winter is coming!"+EMOJI[":snowflake:"],
+     ["Druid", "Elder Druid"], [60]],
+    [2000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature"+EMOJI[":leaves:"]+"... just look at "
+           "wrath.", ["Druid", "Elder Druid"], [55]],
     [20000, "**{name}** is now level {level}. Don't forget to buy a Gearwheel Chain!" + EMOJI[":_necklace:"],
      False, [75]],
     [30000, "**{name}** is level {level}! You can become a ninja now!" + EMOJI[":bust_in_silhouette:"],
      ["Paladin", "Royal Paladin"], [80]],
+    [30000, "**{name}** is level {level}! Time to get some crystalline arrows!" + EMOJI[":bow_and_arrow:"],
+     ["Paladin", "Royal Paladin"], [90]],
     [20000, "Level {level}, **{name}**? You're finally important enough for me to notice!", False,
      [announce_threshold]],
     [20000, "**{name}** is now level {level}! Time to go berserk! " + EMOJI[":anger:"],
      ["Knight", "Elite Knight"], [35]],
+    [20000, "**Congratulations on level {level} **{name}**! Now you are ready to become an *umbral master*? But is your"
+            " bank account ready?"+EMOJI[":money_with_wings:"], False, [250]],
     [30000, "**{name}** is level {level}!!!!\r\n" +
      "Sweet, sweet triple digits!", False, [100]],
     [20000, "**{name}** is level {level}!!!!\r\n" +
@@ -1448,6 +1456,8 @@ death_messages_monster = [
      "**{name}** ({level}) was killed by {killer_article}**{killer}**. I guess {he_she} couldn't "
      "sio {him_her}self.",
      ["Druid", "Elder Druid"]],
+    [20000, "Another paladin bites the dust! **{killer}** strikes again! Rest in peace **{name}** ({level}).",
+     ["Paladin", "Royal Paladin"], False, ["Lady Tenebris"]],
     [20000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! " + EMOJI[":ghost:"],
      False, False, ["something evil"]],
     [20000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.", False, False, ["death"]],
@@ -1456,6 +1466,9 @@ death_messages_monster = [
     [20000,
      "Asian chicks are no joke **{name}** ({level}) " + EMOJI[":hocho:"] + EMOJI[":broken_heart:"] + ".",
      False, False, ["midnight asura", "dawnfire asura"]],
+    [2000, "**{name}** ({level}) got destroyed by {killer_article}**{killer}**. I bet {he_she} regrets going down"
+           "that hole "+EMOJI[":hole:"], False, range(1, 120), ["breach brood", "dread intruder", "reality reaver",
+                                                                "spark of destruction", "sparkion"]],
     [20000,
      "Watch out for that **{killer}**'s wav... Oh"+EMOJI[":neutral_face:"]+"... Rest in peace **{name}** ({level}).",
      False, False, ["hellhound", "hellfire fighter", "dragon lord", "undead dragon", "dragon", "draken spellweaver"]],
