@@ -49,7 +49,7 @@ class NabBot(commands.Bot):
 
         # Notify reset author
         if len(sys.argv) > 1:
-            user = self.get_member(sys.argv[1])
+            user = self.get_member(int(sys.argv[1]))
             sys.argv[1] = 0
             if user is not None:
                 await user.send("Restart complete")
