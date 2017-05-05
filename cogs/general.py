@@ -207,7 +207,7 @@ class General:
             # Ignoring "default" roles
             for role in member.roles:
                 if role.name not in ["@everyone", "Nab Bot"]:
-                    entries.append(role.name)
+                    entries.append(role.mention)
 
             # There shouldn't be anyone without active roles, but since people can check for NabBot,
             # might as well show a specific message.
@@ -244,7 +244,7 @@ class General:
         for member in ctx.message.guild.members:
             for r in member.roles:
                 if r == role:
-                    role_members.append(member.display_name)
+                    role_members.append(member.mention)
                     break
         if not role_members:
             await ctx.send("Seems like there are no members with that role.")
