@@ -196,7 +196,7 @@ class General:
 
         if user_name is None:
             title = "Roles in this server"
-            entries = [r.name for r in get_role_list(ctx.message.guild)]
+            entries = [r.mention for r in get_role_list(ctx.message.guild)]
         else:
             member = self.bot.get_member_by_name(user_name, ctx.message.guild)
             if member is None:
