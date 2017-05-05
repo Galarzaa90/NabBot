@@ -117,16 +117,21 @@ class NabBot(commands.Bot):
                 return
         await self.process_commands(message)
 
-    async def on_server_join(self, server: discord.Guild):
-        log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(server))
+    async def on_guild_join(self, guild: discord.Guild):
+        log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(guild))
         message = "Hello! I'm now in **{0.name}**. To see my available commands, type \help\n" \
                   "I will reply to commands from any channel I can see, but if you create a channel called *{1}*," \
                   "I will give longer replies and more information there.\n" \
                   "If you want a server log channel, create a channel called *{2}*, I will post logs in there." \
                   "You might want to make it private though.\n" \
                   "To have all of Nab Bot's features, use `/setworld <tibia_world>`"
-        formatted_message = message.format(server, ask_channel_name, log_channel_name)
-        await server.owner.send(formatted_message)
+        formatted_message = message.format(guild, ask_channel_name, log_channel_name)
+        await guild.owner.send(formatted_message)
+        for member in guild.members:
+            if member.id in self.members:
+                self.members[member.id].append(guild.id)
+            else:
+                self.members[member.id] = [guild.id]
 
     async def on_member_join(self, member: discord.Member):
         """Called every time a member joins a server visible by the bot."""
