@@ -1,0 +1,16 @@
+language: python
+python:
+  - "3.4"
+install:
+  - pip install discord.py pillow psutil requests
+
+"script":
+- python -m compileall ./nabbot.py
+- python -m compileall ./admin.py
+- python -m compileall ./config.py
+- python -m compileall ./login.py
+- python -m compileall ./mod.py
+- python -m compileall ./owner.py
+- python -m compileall ./restart.py
+- python -m compileall ./tibia.py
+- python -m compileall ./utils
