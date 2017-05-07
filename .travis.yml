@@ -6,5 +6,8 @@ install:
 
 "script":
 - python -m compileall ./nabbot.py
+- python -m compileall ./login.py
+- python -m compileall ./config.py
+- python -m compileall ./restart.py
 - python -m compileall ./cogs
 - python -m compileall ./utils
