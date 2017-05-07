@@ -1357,9 +1357,9 @@ level_messages = [
     # Level specific
     [20000, "**{name}** is level {level}! UMPs so good " + EMOJI[":wine_glass:"],
      ["Druid", "Elder Druid", "Sorcerer", "Master Sorcerer"], [130]],
-    [2000, "**{name}** is level {level} now! Eternal Winter is coming!"+EMOJI[":snowflake:"],
+    [20000, "**{name}** is level {level} now! Eternal Winter is coming!"+EMOJI[":snowflake:"],
      ["Druid", "Elder Druid"], [60]],
-    [2000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature"+EMOJI[":leaves:"]+"... just look at "
+    [20000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature"+EMOJI[":leaves:"]+"... just look at "
            "wrath.", ["Druid", "Elder Druid"], [55]],
     [20000, "**{name}** is now level {level}. Don't forget to buy a Gearwheel Chain!" + EMOJI[":_necklace:"],
      False, [75]],
@@ -1371,7 +1371,7 @@ level_messages = [
      [announce_threshold]],
     [20000, "**{name}** is now level {level}! Time to go berserk! " + EMOJI[":anger:"],
      ["Knight", "Elite Knight"], [35]],
-    [20000, "**Congratulations on level {level} **{name}**! Now you are ready to become an *umbral master*? But is your"
+    [20000, "Congratulations on level {level} **{name}**! Now you are ready to become an *umbral master*? But is your"
             " bank account ready?"+EMOJI[":money_with_wings:"], False, [250]],
     [30000, "**{name}** is level {level}!!!!\r\n" +
      "Sweet, sweet triple digits!", False, [100]],
