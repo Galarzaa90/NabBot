@@ -82,6 +82,10 @@ class NabBot(commands.Bot):
         elif isinstance(error, commands.NoPrivateMessage):
             await ctx.send("This command cannot be used in private messages.")
         elif isinstance(error, commands.CommandInvokeError):
+            if isinstance(error.original, discord.HTTPException):
+                log.error(f"Reply to '{ctx.message.clean_content}' was too long.")
+                await ctx.send("Sorry, the message was too long to send.")
+                return
             print('In {0.command.qualified_name}:'.format(ctx), file=sys.stderr)
             traceback.print_tb(error.original.__traceback__)
             print('{0.__class__.__name__}: {0}'.format(error.original), file=sys.stderr)

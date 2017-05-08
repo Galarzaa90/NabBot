@@ -108,7 +108,12 @@ class Tibia:
                 name = group
             else:
                 name = "{0} - {1:,} gold".format(group, group_value)
-            embed.add_field(name=name, value=value, inline=False)
+            # Split into multiple fields if they exceed field max length
+            split_group = split_message(value, FIELD_VALUE_LIMIT)
+            for subgroup in split_group:
+                if subgroup != split_group[0]:
+                    name = "\u200F"
+                embed.add_field(name=name, value=subgroup, inline=False)
 
         if unknown:
             long_message += "\n*There were {0} unknown items.*\n".format(unknown['count'])
@@ -139,7 +144,7 @@ class Tibia:
         result = await item_show(item)
         if result is not None:
             await ctx.send(file=discord.File(result,"results.png"))
-            
+
     @loot.command(name="add")
     @checks.is_mod()
     @checks.is_not_lite()
