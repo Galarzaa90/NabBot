@@ -1,4 +1,7 @@
+import os
 import sqlite3
+
+import shutil
 from typing import Dict
 
 
@@ -9,7 +12,12 @@ LOOTDB = "utils/loot.db"
 
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
-lootDatabase = sqlite3.connect(LOOTDB)
+
+if os.path.isfile(LOOTDB):
+    lootDatabase = sqlite3.connect(LOOTDB)
+else:
+    shutil.copyfile("utils/loot_template.db", LOOTDB)
+    lootDatabase = sqlite3.connect(LOOTDB)
 
 DB_LASTVERSION = 12
 
