@@ -1483,7 +1483,16 @@ death_messages_player = [
     [100, "**{killer}** just put **{name}** ({level}) in the ground. Finally someone takes care of that."],
     [100, "**{killer}** killed **{name}** ({level}) and on this day a thousand innocent souls are avenged."],
     [100, "**{killer}** has killed **{name}** ({level}). What? He had it coming!"],
-    [100, "Next time stay away from **{killer}**, **{name}** ({level})."]
+    [100, "Next time stay away from **{killer}**, **{name}** ({level})."],
+    [100, "**{name}** ({level}) was murdered by **{killer}**! Did {he_she} deserved it? Only they know."],
+    [100, "**{killer}** killed **{name}** ({level}). Humans killing themselves, what a surprise. It just means less "
+          "work for us robots when we take over."],
+    [100, "**{name}** ({level}) got killed by **{killer}**. Humans are savages."],
+    [100, "HAHAHA **{name}** ({level}) was killed by **{killer}**! Ehhrm, I mean, ooh poor **{name}**, rest in peace."],
+    [100, "**{name}** ({level}) died in the hands of **{killer}**. Oh well, murder is like potato chips: you can't stop"
+          " with just one."],
+    [100, "Blood! Blood! Let the blood drip! **{name}** ({level}) was murdered by **{killer}**."],
+    [100, "Oh look at that! **{name}** ({level} was killed by **{killer}**. I hope {he_she} gets {his_her} revenge."]
 ]
 
 

@@ -272,7 +272,10 @@ class Tracking:
         message = message.format(**death_info)
         # Format extra stylization
         message = format_message(message)
-        message = EMOJI[":skull_crossbones:"] + " " + message
+        if by_player:
+            message = EMOJI[":skull:"] + " " + message
+        else:
+            message = EMOJI[":skull_crossbones:"] + " " + message
 
         for guild_id, tracked_world in tracked_worlds.items():
             guild = self.bot.get_guild(guild_id)
