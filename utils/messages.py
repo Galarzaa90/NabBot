@@ -1492,7 +1492,7 @@ death_messages_player = [
     [100, "**{name}** ({level}) died in the hands of **{killer}**. Oh well, murder is like potato chips: you can't stop"
           " with just one."],
     [100, "Blood! Blood! Let the blood drip! **{name}** ({level}) was murdered by **{killer}**."],
-    [100, "Oh look at that! **{name}** ({level} was killed by **{killer}**. I hope {he_she} gets {his_her} revenge."]
+    [100, "Oh look at that! **{name}** ({level}) was killed by **{killer}**. I hope {he_she} gets {his_her} revenge."]
 ]
 
 
