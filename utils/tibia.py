@@ -920,12 +920,13 @@ async def get_house(name, world = None):
                     house["until"] = m.group(2).replace("&#160;", " ")
                 if "move out" in content:
                     house["status"] = "transferred"
-                    m = re.search(r'will move out on <B>([^<]+)</B> \(time of daily server save\) and will pass the '
-                                  r'house to <A.+name=([^\"]+).+ for <B>(\d+) gold', content)
+                    m = re.search(r'will move out on <B>([^<]+)</B> \(time of daily server save\) and (?:will|wants to)'
+                                  r' pass the house to <A.+name=([^\"]+).+ for <B>(\d+) gold', content)
                     if m:
                         house["transfer_date"] =house["until"] = m.group(1).replace("&#160;", " ")
                         house["transferee"] = urllib.parse.unquote_plus(m.group(2))
                         house["transfer_price"] = int(m.group(3))
+                        house["accepted"] = ("will pass " in m.group(0))
             elif "auctioned" in content:
                 house["status"] = "auctioned"
                 if ". No bid has" in content:

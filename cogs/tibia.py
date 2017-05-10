@@ -1974,8 +1974,9 @@ class Tibia:
                 house["transferee_url"] = get_character_url(house["transferee"])
                 description += "\nIn **{world}**, this {type} is rented by [{owner}]({owner_url}).\n" \
                                "It will be transferred to [{transferee}]({transferee_url}) for **{transfer_price:,}** " \
-                               "gold on **{transfer_date}**".format(**house)
-
+                               "gold on **{transfer_date}**.".format(**house)
+                if not house["accepted"]:
+                    description += "\nThe transfer hasn't been accepted."
             elif house["status"] == "empty":
                 description += "\nIn **{world}**, this {type} is unoccupied.".format(**house)
             elif house["status"] == "auctioned":
@@ -1984,6 +1985,7 @@ class Tibia:
                                "The top bid is **{top_bid:,}** gold, by [{top_bidder}]({bidder_url}).\n" \
                                "The auction ends at **{auction_end}**".format(**house)
 
+        description += f"\n*[TibiaWiki article](https://tibia.wikia.com/wiki/{urllib.parse.quote(house['name'])})*"
         embed.description = description
         return embed
 
