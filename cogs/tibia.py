@@ -271,11 +271,12 @@ class Tibia:
                 # Char is owned by a discord user
                 owner = self.bot.get_member(char["owner_id"], ctx.message.guild)
                 if owner is not None:
+                    display_name = owner.display_name if ctx.message.guild is not None else owner.display_name
                     embed.set_thumbnail(url=owner.avatar_url)
                     color = get_user_color(owner, ctx.message.guild)
                     if color is not discord.Colour.default():
                         embed.colour = color
-                    embed.description += f"A character of {owner.mention}\n"
+                    embed.description += f"A character of @**{display_name}**\n"
                 embed.description += char_string
 
             await ctx.send(embed=embed)
@@ -487,11 +488,11 @@ class Tibia:
                 if owner is None:
                     continue
                 count += 1
-                player["owner"] = owner.mention
+                player["owner"] = owner.display_name
                 player["online"] = ""
-                line_format = "**{name}** - Level {level} - {owner} {online}"
+                line_format = "**{name}** - Level {level} - @**{owner}** {online}"
                 if vocation == "":
-                    line_format = "**{name}** - Level {level} - {vocation} - {owner} {online}"
+                    line_format = "**{name}** - Level {level} - {vocation} - @**{owner}** {online}"
                 if player["name"] in online_list:
                     player["online"] = EMOJI[":small_blue_diamond:"]
                     online_entries.append(line_format.format(**player))
@@ -722,8 +723,8 @@ class Tibia:
                         continue
                     count += 1
                     row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
-                    row["user"] = user.mention
-                    entries.append("{name} ({user}) - At level **{level}** by {killer} - *{time} ago*".format(**row))
+                    row["user"] = user.display_name
+                    entries.append("{name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*".format(**row))
                     if count >= 100:
                         break
             else:
@@ -815,8 +816,8 @@ class Tibia:
                     continue
                 count += 1
                 row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
-                row["user"] = user.mention
-                entries.append("{name} ({user}) - At level **{level}** - *{time} ago*".format(**row))
+                row["user"] = user.display_name
+                entries.append("{name} (**@{user}**) - At level **{level}** - *{time} ago*".format(**row))
                 if count >= 100:
                     break
             if count == 0:
@@ -894,7 +895,7 @@ class Tibia:
         finally:
             c.close()
 
-        title = "@{0} latest deaths".format(user.display_name)
+        title = "@{0} latest kills".format(user.display_name)
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
             await pages.paginate()
@@ -933,18 +934,13 @@ class Tibia:
             start_date = 0
             description_suffix = ""
             embed.set_footer(text="For a shorter period, try /death stats week or /deaths stats month")
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
-        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
-            number_of_results = 10
-        else:
-            number_of_results = 3
         try:
             c.execute("SELECT COUNT() AS total FROM char_deaths WHERE date >= ?", (start_date,))
             total = c.fetchone()["total"]
             embed.description = f"There are {total:,} deaths registered{description_suffix}."
             c.execute("SELECT COUNT() as count, chars.name, chars.user_id FROM char_deaths, chars "
                       f"WHERE id = char_id AND world IN ({placeholders}) AND date >= {start_date} "
-                      "GROUP BY char_id ORDER BY count DESC", tuple(user_worlds))
+                      "GROUP BY char_id ORDER BY count DESC LIMIT 3", tuple(user_worlds))
             content = ""
             count = 0
             while True:
@@ -955,8 +951,8 @@ class Tibia:
                 if user is None:
                     continue
                 count += 1
-                content += f"{row['name']} \U00002014 {row['count']}\n"
-                if count >= number_of_results:
+                content += f"**{row['name']}** \U00002014 {row['count']}\n"
+                if count >= 3:
                     break
             if count > 0:
                 embed.add_field(name="Most deaths per character", value=content, inline=False)
@@ -974,20 +970,20 @@ class Tibia:
                 if user is None:
                     continue
                 count += 1
-                content += f"{user.mention} \U00002014 {row['count']}\n"
-                if count >= number_of_results:
+                content += f"@**{user.display_name}** \U00002014 {row['count']}\n"
+                if count >= 3:
                     break
             if count > 0:
                 embed.add_field(name="Most deaths per user", value=content, inline=False)
 
             c.execute("SELECT COUNT() as count, killer FROM char_deaths, chars "
                       f"WHERE id = char_id and world IN ({placeholders}) AND date >= {start_date} "
-                      f"GROUP BY killer ORDER BY count DESC LIMIT {number_of_results}", tuple(user_worlds))
+                      "GROUP BY killer ORDER BY count DESC LIMIT 3", tuple(user_worlds))
             total_per_killer = c.fetchall()
             content = ""
             for row in total_per_killer:
                 killer = re.sub(r"(a|an)(\s+)", " ", row["killer"]).title().strip()
-                content += f"{killer} \U00002014 {row['count']}\n"
+                content += f"**{killer}** \U00002014 {row['count']}\n"
             embed.add_field(name="Most deaths per killer", value=content, inline=False)
             await ctx.send(embed=embed)
         finally:
@@ -1043,8 +1039,8 @@ class Tibia:
                         continue
                     count += 1
                     row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
-                    row["user"] = user.mention
-                    entries.append("Level **{level}** - {name} ({user}) - *{time} ago*".format(**row))
+                    row["user"] = user.display_name
+                    entries.append("Level **{level}** - {name} (**@{user}**) - *{time} ago*".format(**row))
                     if count >= 100:
                         break
             else:
@@ -1202,15 +1198,15 @@ class Tibia:
                         continue
                     count += 1
                     row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
-                    row["user"] = user.mention
+                    row["user"] = user.display_name
                     if row["type"] == "death":
                         row["emoji"] = EMOJI[":skull:"]
-                        entries.append("{emoji} {name} ({user}) - At level **{level}** by {killer} - *{time} ago*"
+                        entries.append("{emoji} {name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*"
                                        .format(**row)
                                        )
                     else:
                         row["emoji"] = EMOJI[":star2:"]
-                        entries.append("{emoji} {name} ({user}) - Level **{level}** - *{time} ago*".format(**row))
+                        entries.append("{emoji} {name} (**@{user}**) - Level **{level}** - *{time} ago*".format(**row))
                     if count >= 200:
                         break
             else:
