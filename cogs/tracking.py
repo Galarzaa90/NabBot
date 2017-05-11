@@ -20,9 +20,9 @@ class Tracking:
     """Commands related to Nab Bot's tracking system."""
     def __init__(self, bot: NabBot):
         self.bot = bot
-        self.bot.loop.create_task(self.scan_deaths())
-        self.bot.loop.create_task(self.scan_online_chars())
-        self.bot.loop.create_task(self.scan_highscores())
+        self.scan_deaths_task = self.bot.loop.create_task(self.scan_deaths())
+        self.scan_online_chars_task = bot.loop.create_task(self.scan_online_chars())
+        self.scan_highscores_task = bot.loop.create_task(self.scan_highscores())
 
     async def scan_deaths(self):
         #################################################
@@ -510,6 +510,12 @@ class Tracking:
         finally:
             userDatabase.commit()
             c.close()
+
+    def __unload(self):
+        print("cogs.tracking: Cancelling pending tasks...")
+        self.scan_deaths_task.cancel()
+        self.scan_highscores_task.cancel()
+        self.scan_online_chars_task.cancel()
 
 
 def setup(bot):

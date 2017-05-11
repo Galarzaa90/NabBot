@@ -9,6 +9,8 @@ if len(sys.argv) > 1:
     resetid = sys.argv[1]
 else:
     resetid = 0
-
-os.system("python nabbot.py {0}".format(resetid))
+try:
+    os.system("python nabbot.py {0}".format(resetid))
+except KeyboardInterrupt:
+    pass
 
