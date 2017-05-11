@@ -410,7 +410,7 @@ class General:
             if not event:
                 await ctx.send("There's no event with that id.")
                 return
-            start = datetime.utcfromtimestamp(event["start"])
+            start = datetime.fromtimestamp(event["start"])
             embed = discord.Embed(title=event["name"], description=event["description"], timestamp=start)
             author = self.bot.get_member(event["creator"], guild)
             footer = "Start time"
