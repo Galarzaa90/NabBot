@@ -76,7 +76,7 @@ class NabBot(commands.Bot):
         message_decoded = decode_emoji(ctx.message.content)
         log.info('Command by {0} in {1}: {2}'.format(ctx.message.author.display_name, destination, message_decoded))
 
-    async def on_command_error(self, error, ctx):
+    async def on_command_error(self, ctx, error):
         if isinstance(error, commands.errors.CommandNotFound):
             return
         elif isinstance(error, commands.NoPrivateMessage):
@@ -181,14 +181,14 @@ class NabBot(commands.Bot):
         log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.guild.name}".format(member))
         await self.send_log_message(member.guild, "**{0.name}#{0.discriminator}** left or was kicked.".format(member))
 
-    async def on_member_ban(self, member: discord.Member):
+    async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
-        log.warning("{0.display_name} (ID:{0.id}) was banned from {0.guild.name}".format(member))
-        await self.send_log_message(member.guild, "**{0.name}#{0.discriminator}** was banned.".format(member))
+        log.warning("{1.name}#[1.discriminator] (ID:{1.id}) was unbanned from {0.name}".format(guild, user))
+        await self.send_log_message(guild, "**{0.name}#{0.discriminator}** was banned.".format(user))
 
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
-        log.warning("{1.name} (ID:{1.id}) was unbanned from {0.name}".format(guild, user))
+        log.warning("{1.name}#[1.discriminator] (ID:{1.id}) was unbanned from {0.name}".format(guild, user))
         await self.send_log_message(guild, "**{0.name}#{0.discriminator}** was unbanned.".format(user))
 
     async def on_message_delete(self, message: discord.Message):
@@ -367,7 +367,5 @@ if __name__ == "__main__":
         print("Invalid token. Edit token.txt to fix it.")
         input("\nPress any key to continue...")
         quit()
-    finally:
-        nabbot.logout()
 
     log.error("NabBot crashed")

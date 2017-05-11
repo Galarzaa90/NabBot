@@ -501,7 +501,7 @@ class General:
 
     @event_add.error
     @checks.is_not_lite()
-    async def event_add_error(self, error, ctx):
+    async def event_add_error(self, ctx, error):
         if isinstance(error, commands.BadArgument):
             await ctx.send(str(error))
 
@@ -803,7 +803,7 @@ class General:
     @event_edit_time.error
     @event_remove.error
     @event_subscribe.error
-    async def event_error(self, error, ctx):
+    async def event_error(self, ctx, error):
         if isinstance(error, commands.BadArgument):
             await ctx.send("Invalid arguments used. `Type /help {0}`".format(ctx.invoked_subcommand))
         elif isinstance(error, commands.errors.MissingRequiredArgument):

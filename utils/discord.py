@@ -49,8 +49,8 @@ def get_user_color(user: discord.Member, guild: discord.Guild) -> discord.Colour
     return discord.Colour.default()
 
 
-def get_region_string(region: discord.GuildRegion) -> str:
-    """Returns a formatted string for a given GuildRegion"""
+def get_region_string(region: discord.VoiceRegion) -> str:
+    """Returns a formatted string for a given VoiceRegion"""
     regions = {"us-west": EMOJI[":flag_us:"]+"US West",
                "us-east": EMOJI[":flag_us:"]+"US East",
                "us-central": EMOJI[":flag_us:"]+"US Central",

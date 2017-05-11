@@ -702,14 +702,13 @@ class Mod:
     @purge.error
     @check.error
     @refresh_names.error
-    async def stalk_error(self, error, ctx: discord.ext.commands.Context):
+    async def stalk_error(self, ctx, error):
         if not is_private(ctx.message.channel):
             return
         if isinstance(error, commands.errors.CheckFailure):
             await ctx.send("You don't have permission to use this command.")
         elif isinstance(error, commands.errors.MissingRequiredArgument):
-            await ctx.send("You're missing a required argument. "
-                                "`Type /help {0}`".format(ctx.invoked_subcommand))
+            await ctx.send("You're missing a required argument. `Type /help {0}`".format(ctx.invoked_subcommand))
 
 
 def setup(bot):
