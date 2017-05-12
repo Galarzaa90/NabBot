@@ -67,10 +67,16 @@ class Paginator:
         if guild is not None:
             self.permissions = self.message.channel.permissions_for(guild.me)
         else:
-            self.permissions = self.message.channel.permissions_for(self.bot.user)
+            self.permissions = discord.Permissions.all()
 
         if not self.permissions.embed_links:
             raise CannotPaginate('Bot does not have embed links permission.')
+
+        if not self.permissions.add_reactions:
+            raise CannotPaginate('Bot does not have add reactions permission.')
+
+        if not self.permissions.read_message_history:
+            raise CannotPaginate('Bot does not have read message history permission.')
 
     def get_page(self, page):
         base = (page - 1) * self.per_page
@@ -110,7 +116,9 @@ class Paginator:
                 # we can't forbid it if someone ends up using it but remove
                 # it from the default set
                 continue
-
+            # Stop reaction doesn't work on PMs so do not add it
+            if is_private(self.message.channel) and reaction == '\U000023F9':
+                continue
             await self.message.add_reaction(reaction)
 
     async def checked_show_page(self, page):
@@ -141,14 +149,16 @@ class Paginator:
         """stops the interactive pagination session"""
         # await self.bot.delete_message(self.message)
         try:
-            await self.message.clear_reactions()
+            # Can't remove reactions in DMs, so don't even try
+            if not is_private(self.message.channel):
+                await self.message.clear_reactions()
         except:
             pass
         await self.show_page(1)
         self.paginating = False
 
     def react_check(self, reaction, user):
-        if not is_private(self.message.channel) and user.id != self.author.id:
+        if (not is_private(self.message.channel) and user.id != self.author.id) or user.id == self.bot.user.id:
             return False
 
         for (emoji, func) in self.reaction_emojis:
@@ -165,15 +175,18 @@ class Paginator:
             try:
                 react = await self.bot.wait_for("reaction_add", check=self.react_check, timeout=120.0)
                 try:
-                    await self.message.remove_reaction(react[0].emoji, react[1])
+                    # Can't remove other users reactions in DMs
+                    if not is_private(self.message.channel):
+                        await self.message.remove_reaction(react[0].emoji, react[1])
                 except Exception as e:
-                    print(e)
-                    pass  # can't remove it so don't bother doing so
+                    pass
             except asyncio.TimeoutError:
                 await self.first_page()
                 self.paginating = False
                 try:
-                    await self.message.clear_reactions()
+                    # Can't remove other users reactions in DMs
+                    if not is_private(self.message.channel):
+                        await self.message.clear_reactions()
                 except:
                     pass
                 finally:
