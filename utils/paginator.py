@@ -1,5 +1,7 @@
 import asyncio
+
 import discord
+from discord import Message, Colour, Client, User, Reaction
 
 from utils.discord import is_private
 
@@ -39,8 +41,8 @@ class Paginator:
     permissions: discord.Permissions
         Our permissions for the channel.
     """
-    def __init__(self, bot: discord.Client, *, message: discord.Message, entries, per_page=10, title=None,
-                 description="", numerate=True, color: discord.Colour=None):
+    def __init__(self, bot: Client, *, message: Message, entries, per_page=10, title=None,
+                 description="", numerate=True, color: Colour=None):
         self.bot = bot
         self.entries = entries
         self.message = message
@@ -157,7 +159,10 @@ class Paginator:
         await self.show_page(1)
         self.paginating = False
 
-    def react_check(self, reaction, user):
+    def react_check(self, reaction: Reaction, user: User):
+        if reaction.message.id != self.message.id:
+            return False
+
         if (not is_private(self.message.channel) and user.id != self.author.id) or user.id == self.bot.user.id:
             return False
 
