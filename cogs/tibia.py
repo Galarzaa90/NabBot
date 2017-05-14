@@ -1,5 +1,4 @@
 import calendar
-import os
 import random
 from typing import Optional
 
@@ -180,6 +179,7 @@ class Tibia:
             if result is not None:
                 await ctx.send(file=discord.File(result,"results.png"))
             return
+
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
     @checks.is_not_lite()
     async def loot_legend(self, ctx):
@@ -606,17 +606,7 @@ class Tibia:
         # Attach item's image only if the bot has permissions
         permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if permissions.attach_files and item["image"] != 0:
-            filename = item['name'] + ".png"
-            while os.path.isfile(filename):
-                filename = "_" + filename
-            with open(filename, "w+b") as f:
-                f.write(bytearray(item['image']))
-                f.close()
-
-            with open(filename, "r+b") as f:
-                await ctx.send(file=discord.File(f), embed=embed)
-                f.close()
-            os.remove(filename)
+            await ctx.send(file=discord.File(item["image"], filename=f"{item['name']}.png"), embed=embed)
         else:
             ctx.send(embed=embed)
 
@@ -662,17 +652,7 @@ class Tibia:
         # Attach item's image only if the bot has permissions
         permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if permissions.attach_files and monster["image"] != 0:
-            filename = monster['name'] + ".png"
-            while os.path.isfile(filename):
-                filename = "_" + filename
-            with open(filename, "w+b") as f:
-                f.write(bytearray(monster['image']))
-                f.close()
-            # Send monster's image
-            with open(filename, "r+b") as f:
-                await ctx.send(file=discord.File(f), embed=embed)
-                f.close()
-            os.remove(filename)
+            await ctx.send(file=discord.File(monster["image"], filename=f"{monster['name']}.png"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
@@ -1463,17 +1443,7 @@ class Tibia:
         # Attach item's image only if the bot has permissions
         permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if permissions.attach_files and spell["image"] != 0:
-            filename = spell['name'] + ".png"
-            while os.path.isfile(filename):
-                filename = "_" + filename
-            with open(filename, "w+b") as f:
-                f.write(bytearray(spell['image']))
-                f.close()
-
-            with open(filename, "r+b") as f:
-                await ctx.send(file=discord.File(f), embed=embed)
-                f.close()
-            os.remove(filename)
+            await ctx.send(file=discord.File(spell["image"], filename=f"{spell['name']}.png"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
@@ -1506,17 +1476,9 @@ class Tibia:
         permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if permissions.attach_files:
             filename = house['name'] + ".png"
-            while os.path.isfile(filename):
-                filename = "_" + filename
-            with open(filename, "w+b") as f:
-                image = get_map_area(house["x"], house["y"], house["z"])
-                f.write(bytearray(image))
-                f.close()
-            # Send image
-            with open(filename, "r+b") as f:
-                await ctx.send(file=discord.File(f), embed=self.get_house_embed(house))
-                f.close()
-            os.remove(filename)
+            await ctx.send(file=discord.File(get_map_area(house["x"], house["y"], house["z"]),
+                                             filename=f"{house['name']}.png"),
+                           embed=self.get_house_embed(house))
         else:
             await ctx.send(embed=self.get_house_embed(house))
 
