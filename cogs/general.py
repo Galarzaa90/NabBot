@@ -245,13 +245,7 @@ class General:
             await ctx.send("There's no role with that name in here.")
             return
 
-        role_members = []
-        # Iterate through each member, adding the ones that contain the role to a list
-        for member in ctx.guild.members:
-            for r in member.roles:
-                if r == role:
-                    role_members.append(member.mention)
-                    break
+        role_members = [m.mention for m in role.members]
         if not role_members:
             await ctx.send("Seems like there are no members with that role.")
             return
