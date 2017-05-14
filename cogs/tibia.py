@@ -929,7 +929,7 @@ class Tibia:
             description_suffix = " in the last 7 days"
         elif period in ["month", "monthly"]:
             start_date = now - (1 * 60 * 60 * 24 * 30)
-            description_suffix = " in the last 7 days"
+            description_suffix = " in the last 30 days"
         else:
             start_date = 0
             description_suffix = ""
