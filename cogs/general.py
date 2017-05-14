@@ -517,6 +517,9 @@ class General:
 
     @events.group(name="edit", invoke_without_command=True)
     async def event_edit(self, ctx):
+        """Edits an event's name, description or time
+        
+        This command by itself does nothing, you must use one of its subcommands."""
         await ctx.send("To edit an event try:\n```"
                        "/event edit name <id> [new_name]\n"
                        "/event edit description <id> [new_description]\n"
