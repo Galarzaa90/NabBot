@@ -18,7 +18,7 @@ else:
     shutil.copyfile("utils/loot_template.db", LOOTDB)
     lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 13
+DB_LASTVERSION = 14
 
 # Dictionary of worlds tracked by nabbot, key:value = server_id:world
 # Dictionary is populated from database
@@ -188,6 +188,12 @@ def init_database():
                 is_guild BOOLEAN DEFAULT 0,
                 server_id INTEGER
             );""")
+            db_version += 1
+        if db_version == 13:
+            # Renamed table hunted_list to watched_list and related server properties
+            c.execute("ALTER TABLE hunted_list RENAME TO watched_list")
+            c.execute("UPDATE server_properties SET name = 'watched_channel' WHERE name LIKE 'hunted_channel'")
+            c.execute("UPDATE server_properties SET name = 'watched_message' WHERE name LIKE 'hunted_message'")
             db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
