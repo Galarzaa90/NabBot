@@ -633,6 +633,7 @@ class Tracking:
     @commands.guild_only()
     @checks.is_admin()
     async def watched_add(self, ctx, *, name=None):
+        """Adds a character to the watched list"""
         if name is None:
             ctx.send("You need to tell me the name of the person you want to add to the list.")
 
@@ -678,6 +679,7 @@ class Tracking:
     @commands.guild_only()
     @checks.is_admin()
     async def watched_remove(self, ctx, *, name=None):
+        """Removes a character from the watched list"""
         if name is None:
             ctx.send("You need to tell me the name of the person you want to remove from the list.")
 
@@ -711,6 +713,11 @@ class Tracking:
     @commands.guild_only()
     @checks.is_admin()
     async def watched_addguild(self, ctx, *, name=None):
+        """Adds an entire guild to the watched list
+        
+        Guilds are displayed in the watched list as a group.
+        If a new member joins, he will automatically displayed here,
+        on the other hand, if a member leaves, it won't be shown anymore."""
         if name is None:
             ctx.send("You need to tell me the name of the guild you want to add.")
 
@@ -756,6 +763,7 @@ class Tracking:
     @commands.guild_only()
     @checks.is_admin()
     async def watched_removeguild(self, ctx, *, name=None):
+        """Removes a guild from the watched list."""
         if name is None:
             ctx.send("You need to tell me the name of the guild you want to remove from the list.")
 
