@@ -5,13 +5,14 @@ import traceback
 from typing import Union, List, Dict
 
 import discord
-from discord import abc
+from discord import abc, Reaction, User, Message
 from discord.ext import commands
+from discord.ext.commands import Context
 
 from config import *
 from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, reload_welcome_messages, \
     welcome_messages, reload_announce_channels, announce_channels
-from utils.discord import get_region_string
+from utils.discord import get_region_string, is_private
 from utils.general import join_list, get_token
 from utils.general import log
 from utils.help_format import NabHelpFormat
@@ -348,6 +349,35 @@ class NabBot(commands.Bot):
 
         guild = discord.utils.find(lambda m: m.name.lower() == name.lower(), self.guilds)
         return guild
+
+    async def wait_for_confirmation_reaction(self, ctx: Context, message: Message, deny_message: str) -> bool:
+        await message.add_reaction('\U0001f1fe')
+        await message.add_reaction('\U0001f1f3')
+
+        def check_react(reaction: Reaction, user: User):
+            if reaction.message.id != message.id:
+                return False
+            if user.id != ctx.author.id:
+                return False
+            if reaction.emoji not in ['\U0001f1f3', '\U0001f1fe']:
+                return False
+            return True
+
+        try:
+            react = await self.wait_for("reaction_add", timeout=120, check=check_react)
+            if react[0].emoji == '\U0001f1f3':
+                await ctx.send(deny_message)
+                return False
+        except asyncio.TimeoutError:
+            await ctx.send("You took too long!")
+            return False
+        finally:
+            if not is_private(ctx.channel):
+                try:
+                    await message.clear_reactions()
+                except:
+                    pass
+        return True
 
 nabbot = NabBot()
 

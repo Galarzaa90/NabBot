@@ -7,13 +7,13 @@ from config import death_scan_interval, highscores_delay, highscores_categories,
     online_scan_interval, announce_threshold, owner_ids, mod_ids
 from nabbot import NabBot
 from utils import checks
-from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
+from utils.database import tracked_worlds_list, userDatabase, tracked_worlds, hunted_channels
 from utils.discord import is_private
 from utils.general import global_online_list, log, join_list
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
     level_messages
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world_online, get_character, ERROR_DOESNTEXIST, \
-    parse_tibia_time, get_pronouns
+    parse_tibia_time, get_pronouns, get_voc_emoji, get_guild_online
 
 
 class Tracking:
@@ -23,6 +23,10 @@ class Tracking:
         self.scan_deaths_task = self.bot.loop.create_task(self.scan_deaths())
         self.scan_online_chars_task = bot.loop.create_task(self.scan_online_chars())
         self.scan_highscores_task = bot.loop.create_task(self.scan_highscores())
+
+        self.hunted_channels = dict()
+        self.hunted_messages = dict()
+        self.reload_hunted()
 
     async def scan_deaths(self):
         #################################################
@@ -108,7 +112,6 @@ class Tracking:
             await asyncio.sleep(online_scan_interval)
             # Get online list for this server
             curent_world_online = await get_world_online(current_world)
-
             if len(curent_world_online) > 0:
                 # Open connection to users.db
                 c = userDatabase.cursor()
@@ -183,7 +186,54 @@ class Tracking:
                             )
                             # Announce the level up
                             await self.announce_level(server_char['level'], char_name=server_char["name"])
-
+                # Iterate through servers with tracked world to find one that matches the current world
+                for server, world in tracked_worlds.items():
+                    if world == current_world:
+                        hunted_channel_id = self.hunted_channels.get(server, None)
+                        hunted_channel = self.bot.get_channel(hunted_channel_id)  # type: discord.abc.Messageable
+                        if hunted_channel is None:
+                            continue
+                        c.execute("SELECT * FROM hunted_list WHERE server_id = ?", (server,))
+                        results = c.fetchall()
+                        if not results:
+                            continue
+                        currently_online = []
+                        guild_online = dict()
+                        for hunted in results:
+                            if hunted["is_guild"]:
+                                guild = await get_guild_online(hunted["name"])
+                                if guild == ERROR_NETWORK or guild == ERROR_DOESNTEXIST:
+                                    continue
+                                if len(guild["members"]):
+                                    guild_online[guild["name"]] = guild["members"]
+                            for online_char in curent_world_online:
+                                if online_char["name"] == hunted["name"]:
+                                    currently_online.append(online_char)
+                        hunted_message_id = self.hunted_messages.get(server, None)
+                        try:
+                            hunted_message = await hunted_channel.get_message(hunted_message_id)
+                        except (discord.NotFound, discord.HTTPException, discord.Forbidden):
+                            hunted_message = None
+                        list = [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
+                                for x in currently_online]
+                        if len(list) > 0 or len(guild_online.keys()) > 0:
+                            content = "These hunted characters are online:\n"
+                            content += "\n".join(list)
+                            for guild, members in guild_online.items():
+                                content += f"\nGuild: **{guild}**\n"
+                                content += "\n".join([f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
+                                                      for x in members])
+                        else:
+                            content = "There are no hunted characters online."
+                        if hunted_message is None:
+                            new_hunted_message = await hunted_channel.send(content)
+                            c.execute("DELETE FROM server_properties WHERE server_id = ? "
+                                      "AND name LIKE ?", (server, "hunted_message",))
+                            c.execute("INSERT INTO server_properties(server_id, name, value) VALUES(?,?,?)",
+                                      (server, "hunted_message", new_hunted_message.id))
+                            self.hunted_messages[server] = new_hunted_message.id
+                        else:
+                            await hunted_message.edit(content=content)
                 # Close cursor and commit changes
                 userDatabase.commit()
                 c.close()
@@ -509,6 +559,242 @@ class Tracking:
                     await self.bot.send_log_message(self.bot.get_guild(server_id), message)
         finally:
             userDatabase.commit()
+            c.close()
+
+    @commands.group(invoke_without_command=True)
+    @checks.is_admin()
+    @commands.guild_only()
+    async def hunted(self, ctx, *, name="hunted-list"):
+        """Sets the hunted list channel for this server
+
+        Creates a new channel with the specified name.
+        If no name is specified, the default name "hunted-list" is used."""
+
+        guild = ctx.message.guild  # type: discord.Guild
+        hunted_channel_id = hunted_channels.get(ctx.message.guild.id)
+        hunted_channel = self.bot.get_channel(hunted_channel_id)
+
+        world = tracked_worlds.get(ctx.guild.id, None)
+        if world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+
+        if hunted_channel is not None:
+            await ctx.send(f"This server already has a hunted list channel: {hunted_channel.mention}")
+            return
+        permissions = ctx.message.channel.permissions_for(ctx.me) # type: discord.Permissions
+        if not permissions.manage_channels and not permissions.manage_roles:
+            await ctx.send("I need to have `Manage Channels` and `Manage Roles` permissions to use this command.")
+            return
+        c = userDatabase.cursor()
+        try:
+            overwrites = {
+                guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                guild.me: discord.PermissionOverwrite(read_messages=True)
+            }
+            channel = await guild.create_text_channel(name, overwrites=overwrites)
+        except discord.Forbidden:
+            await ctx.send("Sorry, I don't have permissions to create channels. Either you give me `Manage Channels`")
+        except discord.HTTPException:
+            await ctx.send("Something went wrong, the channel name you chose is probably unvalid.")
+        else:
+            await ctx.send(f"Channel created successfully: {channel.mention}")
+            await channel.send("This is where I will post a list of online hunted characters. Right now only **admins**"
+                               " are able to read this.\n"
+                               "Edit this channel's permissions to allow the roles you want.\n"
+                               "**It is important to not allow anyone to write in here**\n"
+                               "*This message can be deleted now.*")
+            c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'hunted_channel'", (guild.id,))
+            c.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'hunted_channel', ?)",
+                      (guild.id, channel.id,))
+            self.reload_hunted()
+        finally:
+            userDatabase.commit()
+            c.close()
+
+    @hunted.command(name="add")
+    @commands.guild_only()
+    @checks.is_admin()
+    async def hunted_add(self, ctx, *, name=None):
+        if name is None:
+            ctx.send("You need to tell me the name of the person you want to add to the list.")
+
+        world = tracked_worlds.get(ctx.guild.id, None)
+        if world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+
+        char = await get_character(name)
+        if char == ERROR_DOESNTEXIST:
+            await ctx.send("There's no character with that name.")
+            return
+        elif char == ERROR_NETWORK:
+            await ctx.send("I couldn't fetch that character right now, please try again.")
+            return
+
+        if char["world"] != world:
+            await ctx.send(f"This character is not in **{world}**.")
+            return
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM hunted_list WHERE server_id = ? AND name LIKE ? and is_guild = 0",
+                      (ctx.guild.id, char["name"]))
+            result = c.fetchone()
+            if result is not None:
+                await ctx.send("This character is already in the hunted list.")
+                return
+
+            message = await ctx.send("Do you want to add **{name}** (Level {level} {vocation}) to the hunted list? "
+                                     .format(**char))
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message,
+                                                                    "Ok then, guess you changed your mind.")
+            if not confirm:
+                return
+
+            c.execute("INSERT INTO hunted_list(name, server_id) VALUES(?, ?)", (char["name"], ctx.guild.id,))
+            await ctx.send("Character added to the hunted list.")
+        finally:
+            userDatabase.commit()
+            c.close()
+
+    @hunted.command(name="remove")
+    @commands.guild_only()
+    @checks.is_admin()
+    async def hunted_remove(self, ctx, *, name=None):
+        if name is None:
+            ctx.send("You need to tell me the name of the person you want to remove to the list.")
+
+        world = tracked_worlds.get(ctx.guild.id, None)
+        if world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM hunted_list WHERE server_id = ? AND name LIKE ? and is_guild = 0",
+                      (ctx.guild.id, name))
+            result = c.fetchone()
+            if result is None:
+                await ctx.send("This character is not in the hunted list.")
+                return
+
+            message = await ctx.send(f"Do you want to remove **{name}** from the hunted list?")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message,
+                                                                    "Ok then, guess you changed your mind.")
+            if not confirm:
+                return
+
+            c.execute("DELETE FROM hunted_list WHERE server_id = ? AND name LIKE ?", (ctx.guild.id, name,))
+            await ctx.send("Character removed from the hunted list.")
+        finally:
+            userDatabase.commit()
+            c.close()
+
+    @hunted.command(name="addguild")
+    @commands.guild_only()
+    @checks.is_admin()
+    async def hunted_addguild(self, ctx, *, name=None):
+        if name is None:
+            ctx.send("You need to tell me the name of the guild you want to add.")
+
+        world = tracked_worlds.get(ctx.guild.id, None)
+        if world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+
+        guild = await get_guild_online(name)
+        if guild == ERROR_DOESNTEXIST:
+            await ctx.send("There's no character with that name.")
+            return
+        elif guild == ERROR_NETWORK:
+            await ctx.send("I couldn't fetch that guild right now, please try again.")
+            return
+
+        if guild["world"] != world:
+            await ctx.send(f"This guild is not in **{world}**.")
+            return
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM hunted_list WHERE server_id = ? AND name LIKE ? and is_guild = 1",
+                      (ctx.guild.id, guild["name"]))
+            result = c.fetchone()
+            if result is not None:
+                await ctx.send("This guild is already in the hunted list.")
+                return
+
+            message = await ctx.send("Do you want to add the guild **{name}** to the hunted list?".format(**guild))
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message,
+                                                                    "Ok then, guess you changed your mind.")
+            if not confirm:
+                return
+
+            c.execute("INSERT INTO hunted_list(name, server_id, is_guild) VALUES(?, ?, 1)",
+                      (guild["name"], ctx.guild.id,))
+            await ctx.send("Guild added to the hunted list.")
+        finally:
+            userDatabase.commit()
+            c.close()
+
+    @hunted.command(name="removeguild")
+    @commands.guild_only()
+    @checks.is_admin()
+    async def hunted_removeguild(self, ctx, *, name=None):
+        if name is None:
+            ctx.send("You need to tell me the name of the guild you want to remove to the list.")
+
+        world = tracked_worlds.get(ctx.guild.id, None)
+        if world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM hunted_list WHERE server_id = ? AND name LIKE ? and is_guild = 1",
+                      (ctx.guild.id, name))
+            result = c.fetchone()
+            if result is None:
+                await ctx.send("This guild is not in the hunted list.")
+                return
+
+            message = await ctx.send(f"Do you want to remove **{name}** from the hunted list?")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message,
+                                                                    "Ok then, guess you changed your mind.")
+            if not confirm:
+                return
+
+            c.execute("DELETE FROM hunted_list WHERE server_id = ? AND name LIKE ? AND is_guild = 1",
+                      (ctx.guild.id, name,))
+            await ctx.send("Character removed from the hunted list.")
+        finally:
+            userDatabase.commit()
+            c.close()
+
+    def reload_hunted(self):
+        c = userDatabase.cursor()
+        hunted_channels_temp = {}
+        hunted_messages_temp = {}
+        try:
+            c.execute("SELECT server_id, value FROM server_properties WHERE name = 'hunted_channel'")
+            result = c.fetchall()
+            if len(result) > 0:
+                for row in result:
+                    try:
+                        hunted_channels_temp[int(row["server_id"])] = int(row["value"])
+                    except ValueError:
+                        continue
+                self.hunted_channels.clear()
+                self.hunted_channels.update(hunted_channels_temp)
+            c.execute("SELECT server_id, value FROM server_properties WHERE name = 'hunted_message'")
+            result = c.fetchall()
+            if len(result) > 0:
+                for row in result:
+                    try:
+                        hunted_messages_temp[int(row["server_id"])] = int(row["value"])
+                    except ValueError:
+                        continue
+                self.hunted_messages.clear()
+                self.hunted_messages.update(hunted_messages_temp)
+        finally:
             c.close()
 
     def __unload(self):

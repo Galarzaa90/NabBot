@@ -2,8 +2,7 @@ import os
 import sqlite3
 
 import shutil
-from typing import Dict
-
+from typing import Dict, List
 
 # Databases filenames
 USERDB = "users.db"
@@ -19,7 +18,7 @@ else:
     shutil.copyfile("utils/loot_template.db", LOOTDB)
     lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 12
+DB_LASTVERSION = 13
 
 # Dictionary of worlds tracked by nabbot, key:value = server_id:world
 # Dictionary is populated from database
@@ -32,6 +31,8 @@ welcome_messages = {}
 
 # Dictionaries of announce channels per server
 announce_channels = {}
+
+hunted_channels = {}
 
 
 def init_database():
@@ -137,7 +138,7 @@ def init_database():
         if db_version == 7:
             # Created 'server_properties' table
             c.execute("""CREATE TABLE server_properties (
-                      server_id TEXT,
+                      server_id INTEGER,
                       name TEXT,
                       value TEXT
                       );""")
@@ -181,6 +182,14 @@ def init_database():
         if db_version == 11:
             # Added 'deleted' column to 'chars'
             c.execute("ALTER TABLE chars ADD deleted INTEGER DEFAULT 0")
+            db_version += 1
+        if db_version == 12:
+            # Added 'hunted' table
+            c.execute("""CREATE TABLE hunted_list (
+                name TEXT,
+                is_guild BOOLEAN DEFAULT 0,
+                server_id INTEGER
+            );""")
             db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
@@ -246,7 +255,7 @@ def reload_announce_channels():
     announce_channels_temp = {}
     try:
         c.execute("SELECT server_id, value FROM server_properties WHERE name = 'announce_channel'")
-        result = c.fetchall()  # type: Dict
+        result = c.fetchall()  # type: List[Dict[str,str]]
         if len(result) > 0:
             for row in result:
                 announce_channels_temp[int(row["server_id"])] = row["value"]

@@ -496,7 +496,7 @@ class General:
             embed.set_footer(text="Start time")
 
             message = await ctx.send("Is this correct?", embed=embed)
-            confirm = await self.wait_for_confirmation_reaction(ctx, message, "Alright, no event for you.")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no event for you.")
             if not confirm:
                 return
 
@@ -566,7 +566,7 @@ class General:
 
             new_name = single_line(clean_string(ctx, new_name))
             message = await ctx.send(f"Do you want to change the name of **{event['name']}** to **{new_name}**?")
-            confirmed = await self.wait_for_confirmation_reaction(ctx, message, "Alright, name remains the same.")
+            confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, name remains the same.")
             if not confirmed:
                 return
 
@@ -624,7 +624,7 @@ class General:
                                   timestamp=datetime.fromtimestamp(event["start"]))
             embed.set_footer(text="Start time")
             message = await ctx.send("Do you want this to be the new description?", embed=embed)
-            confirmed = await self.wait_for_confirmation_reaction(ctx, message, "Alright, no changes will be done.")
+            confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no changes will be done.")
             if not confirmed:
                 return
 
@@ -681,7 +681,7 @@ class General:
             embed.set_footer(text="Start time")
             message = await ctx.send(f"This will be the time of your new event in your local time. Is this correct?",
                                      embed=embed)
-            confirmed = await self.wait_for_confirmation_reaction(ctx, message, "Alright, event remains the same.")
+            confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, event remains the same.")
             if not confirmed:
                 return
 
@@ -711,7 +711,7 @@ class General:
                 return
 
             message = await ctx.send("Do you want to delete the event **{0}**?".format(event["name"]))
-            confirmed = await self.wait_for_confirmation_reaction(ctx, message, "Alright, event remains active.")
+            confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, event remains active.")
             if not confirmed:
                 return
 
@@ -822,7 +822,7 @@ class General:
                                   timestamp=datetime.fromtimestamp(now+starts_in.seconds))
             embed.set_footer(text="Start time")
             message = await ctx.send("Ok, so this will be your new event. Is this correct?", embed=embed)
-            comfirm = await self.wait_for_confirmation_reaction(ctx, message, "Alright, no event will be made.")
+            comfirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no event will be made.")
             if not comfirm:
                 return
 
@@ -867,7 +867,7 @@ class General:
                 return
 
             message = await ctx.send(f"Do you want to subscribe to **{event['name']}**")
-            confirm = await self.wait_for_confirmation_reaction(ctx, message, "Ok then.")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Ok then.")
             if not confirm:
                 return
 
@@ -909,7 +909,7 @@ class General:
                 return
 
             message = await ctx.send(f"Do you want to unsubscribe to **{event['name']}**")
-            confirm = await self.wait_for_confirmation_reaction(ctx, message, "Ok then.")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Ok then.")
             if not confirm:
                 return
 
@@ -930,35 +930,6 @@ class General:
             await ctx.send("Invalid arguments used. `Type /help {0}`".format(ctx.invoked_subcommand))
         elif isinstance(error, commands.errors.MissingRequiredArgument):
             await ctx.send("You're missing a required argument. `Type /help {0}`".format(ctx.invoked_subcommand))
-
-    async def wait_for_confirmation_reaction(self, ctx: Context, message: Message, deny_message: str) -> bool:
-        await message.add_reaction('\U0001f1fe')
-        await message.add_reaction('\U0001f1f3')
-
-        def check_react(reaction: Reaction, user: User):
-            if reaction.message.id != message.id:
-                return False
-            if user.id != ctx.author.id:
-                return False
-            if reaction.emoji not in ['\U0001f1f3', '\U0001f1fe']:
-                return False
-            return True
-
-        try:
-            react = await self.bot.wait_for("reaction_add", timeout=120, check=check_react)
-            if react[0].emoji == '\U0001f1f3':
-                await ctx.send(deny_message)
-                return False
-        except asyncio.TimeoutError:
-            await ctx.send("You took too long!")
-            return False
-        finally:
-            if not is_private(ctx.channel):
-                try:
-                    await message.clear_reactions()
-                except:
-                    pass
-        return True
 
     def __unload(self):
         self.events_announce_task.cancel()

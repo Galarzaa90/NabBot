@@ -212,15 +212,16 @@ async def get_world_online(world, tries=5):
         await asyncio.sleep(network_retry_delay)
         return await get_world_online(world, tries - 1)
 
-    regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td>'
+    regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td><td style="width:20%;" >([^<]+)'
     pattern = re.compile(regex_members, re.MULTILINE + re.S)
     m = re.findall(pattern, content)
     # Check if list is empty
     if m:
         # Building dictionary list from online players
-        for (name, level) in m:
+        for (name, level,vocation) in m:
             name = urllib.parse.unquote_plus(name)
-            online_list.append({'name': name, 'level': int(level)})
+            vocation = vocation.replace('&#160;',' ')
+            online_list.append({'name': name, 'level': int(level), 'vocation': vocation})
     return online_list
 
 
