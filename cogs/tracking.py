@@ -572,9 +572,7 @@ class Tracking:
 
         guild = ctx.message.guild  # type: discord.Guild
         hunted_channel_id = self.hunted_channels.get(guild.id)
-        print(hunted_channel_id)
         hunted_channel = self.bot.get_channel(hunted_channel_id)
-        print(hunted_channel)
 
         world = tracked_worlds.get(ctx.guild.id, None)
         if world is None:
