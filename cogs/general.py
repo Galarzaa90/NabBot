@@ -297,7 +297,7 @@ class General:
             finally:
                 c.close()
 
-        embed = discord.Embed(description="*Beep boop beep boop*. I'm just a bot!")
+        embed = discord.Embed(description="*Beep bop beep bop*. I'm just a bot!")
         embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
                          icon_url="https://assets-cdn.github.com/favicon.ico")
         embed.add_field(name="Authors", value="@Galarzaa#8515, @Nezune#2269")
