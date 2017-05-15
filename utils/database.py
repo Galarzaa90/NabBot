@@ -32,8 +32,6 @@ welcome_messages = {}
 # Dictionaries of announce channels per server
 announce_channels = {}
 
-hunted_channels = {}
-
 
 def init_database():
     """Initializes and/or updates the database to the current version"""

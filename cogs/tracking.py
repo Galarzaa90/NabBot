@@ -7,7 +7,7 @@ from config import death_scan_interval, highscores_delay, highscores_categories,
     online_scan_interval, announce_threshold, owner_ids, mod_ids
 from nabbot import NabBot
 from utils import checks
-from utils.database import tracked_worlds_list, userDatabase, tracked_worlds, hunted_channels
+from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
 from utils.discord import is_private
 from utils.general import global_online_list, log, join_list
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
@@ -571,8 +571,10 @@ class Tracking:
         If no name is specified, the default name "hunted-list" is used."""
 
         guild = ctx.message.guild  # type: discord.Guild
-        hunted_channel_id = hunted_channels.get(ctx.message.guild.id)
+        hunted_channel_id = self.hunted_channels.get(guild.id)
+        print(hunted_channel_id)
         hunted_channel = self.bot.get_channel(hunted_channel_id)
+        print(hunted_channel)
 
         world = tracked_worlds.get(ctx.guild.id, None)
         if world is None:
