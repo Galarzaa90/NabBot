@@ -1664,6 +1664,49 @@ class Tibia:
 
         await ctx.send(embed=embed)
 
+    @commands.command()
+    async def bosses(self, ctx, world=None):
+        """Shows predictions for bosses"""
+        bosses = await get_world_bosses("Fidera")
+        ask_channel = ctx.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+
+        if world is None and not is_private(ctx.channel) and tracked_worlds.get(ctx.guild.id) is not None:
+            world = tracked_worlds.get(ctx.guild.id)
+        elif world is None:
+            await ctx.send("You need to tell me a world's name.")
+            return
+        world = world.title()
+        if world not in tibia_worlds:
+            await ctx.send("That world doesn't exist.")
+            return
+
+        if type(bosses) is not dict:
+            await ctx.send("Something went wrong")
+        fields = {"High Chance": "", "Low Chance": "", "No Chance": "", "Unpredicted": ""}
+        for boss, info in bosses.items():
+            try:
+                info["name"] = boss.title()
+                fields[info["chance"]] += "{name} - {days:,} days.\n".format(**info)
+            except KeyError:
+                continue
+        embed = discord.Embed(title=f"Bosses for {world}")
+        if fields["High Chance"]:
+            embed.add_field(name="High Chance - Last seen", value=fields["High Chance"])
+        if fields["Low Chance"]:
+            embed.add_field(name="Low Chance - Last seen", value=fields["Low Chance"])
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
+            if fields["No Chance"]:
+                embed.add_field(name="No Chance - Expect in", value=fields["No Chance"])
+            if fields["Unpredicted"]:
+                embed.add_field(name="Unpredicted - Last seen", value=fields["Unpredicted"])
+        else:
+            if ask_channel:
+                askchannel_string = " or use #" + ask_channel.name
+            else:
+                askchannel_string = ""
+            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
+        await ctx.send(embed=embed)
+
     @staticmethod
     def get_char_string(char) -> str:
         """Returns a formatted string containing a character's info."""

@@ -1,9 +1,11 @@
 import asyncio
 
 import io
+from html.parser import HTMLParser
 
 from PIL import Image
 from PIL import ImageDraw
+from bs4 import BeautifulSoup
 from discord import Colour
 import datetime
 import urllib.parse
@@ -854,6 +856,44 @@ def get_npc(name):
         return npc
     finally:
         c.close()
+
+async def get_world_bosses(world):
+    url = f"http://www.tibiabosses.com/{world}/"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
+    except Exception as e:
+        return ERROR_NETWORK
+
+    try:
+        soup = BeautifulSoup(content, 'html.parser')
+        entry = soup.find('div', class_='entry')
+        sections = entry.find_all('div', class_="execphpwidget")
+    except HTMLParser.HTMLParseError:
+        print("parse error")
+        return
+    if sections is None:
+        print("section was none")
+        return
+    bosses = {}
+    for section in sections:
+        regex = r'<i style="color:\w+;">[\n\s]+([^<]+)</i> <a href="([^"]+)"><img src="([^"]+)"/></a>[\n\s]+(Expect in|Last seen)\s:\s(\d+)'
+        m = re.findall(regex, str(section))
+        if m:
+            for (chance, link, image, expect_last, days) in m:
+                name = link.split("/")[-1].replace("-"," ").lower()
+                bosses[name] = {"chance": chance.strip(), "url": link, "image": image, "type": expect_last,
+                                "days": int(days)}
+        else:
+            # This regex is for bosses without prediction
+            regex = r'<a href="([^"]+)"><img src="([^"]+)"/></a>[\n\s]+(Expect in|Last seen)\s:\s(\d+)'
+            m = re.findall(regex, str(section))
+            for (link, image, expect_last, days) in m:
+                name = link.split("/")[-1].replace("-", " ").lower()
+                bosses[name] = {"chance": "Unpredicted", "url": link, "image": image, "type": expect_last,
+                                "days": int(days)}
+    return bosses
 
 
 async def get_house(name, world = None):
