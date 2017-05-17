@@ -17,7 +17,7 @@ from nabbot import NabBot
 from utils import checks
 from utils.database import userDatabase
 from utils.discord import is_lite_mode, get_region_string, get_role_list, get_role, is_private, clean_string
-from utils.general import get_uptime, TimeString, single_line, is_numeric
+from utils.general import get_uptime, TimeString, single_line, is_numeric, log
 from utils.messages import EMOJI
 from utils.paginator import Paginator, CannotPaginate
 
@@ -88,6 +88,11 @@ class General:
                         if member is None:
                             continue
                         await member.send(message)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                log.exception("Task: events_announce")
+                continue
             finally:
                 userDatabase.commit()
                 c.close()

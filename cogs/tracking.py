@@ -35,17 +35,24 @@ class Tracking:
         #################################################
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
-            await asyncio.sleep(death_scan_interval)
-            if len(global_online_list) == 0:
-                continue
-            # Pop last char in queue, reinsert it at the beginning
-            current_char = global_online_list.pop()
-            global_online_list.insert(0, current_char)
+            try:
+                await asyncio.sleep(death_scan_interval)
+                if len(global_online_list) == 0:
+                    continue
+                # Pop last char in queue, reinsert it at the beginning
+                current_char = global_online_list.pop()
+                global_online_list.insert(0, current_char)
 
-            # Get rid of server name
-            current_char = current_char.split("_", 1)[1]
-            # Check for new death
-            await self.check_death(current_char)
+                # Get rid of server name
+                current_char = current_char.split("_", 1)[1]
+                # Check for new death
+                await self.check_death(current_char)
+            except asyncio.CancelledError:
+                # Task was cancelled, so this is fine
+                break
+            except Exception as e:
+                log.exception("Task: scan_deaths")
+                continue
 
     async def scan_highscores(self):
         #################################################
@@ -59,37 +66,46 @@ class Tracking:
                 await asyncio.sleep(highscores_delay)
                 continue
             for server in tracked_worlds_list:
-                for category in highscores_categories:
-                    highscores = []
-                    for pagenum in range(1, 13):
-                        # Special cases (ek/rp mls)
-                        if category == "magic_ek":
-                            scores = await get_highscores(server, "magic", pagenum, 3)
-                        elif category == "magic_rp":
-                            scores = await get_highscores(server, "magic", pagenum, 4)
-                        else:
-                            scores = await get_highscores(server, category, pagenum)
-                        if not (scores == ERROR_NETWORK):
-                            highscores += scores
-                        await asyncio.sleep(highscores_page_delay)
-                    # Open connection to users.db
-                    c = userDatabase.cursor()
-                    scores_tuple = []
-                    ranks_tuple = []
-                    for score in highscores:
-                        scores_tuple.append((score['rank'], score['value'], score['name']))
-                        ranks_tuple.append((score['rank'], server))
-                    # Clear out old rankings
-                    c.executemany(
-                        "UPDATE chars SET " + category + " = NULL, " + category + "_rank" + " = NULL WHERE " + category
-                        + "_rank" + " LIKE ? AND world LIKE ?",
-                        ranks_tuple
-                    )
-                    # Add new rankings
-                    c.executemany(
-                        "UPDATE chars SET " + category + "_rank" + " = ?, " + category + " = ? WHERE name LIKE ?",
-                        scores_tuple
-                    )
+                c = userDatabase.cursor()
+                try:
+                    for category in highscores_categories:
+                        highscores = []
+                        for pagenum in range(1, 13):
+                            # Special cases (ek/rp mls)
+                            if category == "magic_ek":
+                                scores = await get_highscores(server, "magic", pagenum, 3)
+                            elif category == "magic_rp":
+                                scores = await get_highscores(server, "magic", pagenum, 4)
+                            else:
+                                scores = await get_highscores(server, category, pagenum)
+                            if not (scores == ERROR_NETWORK):
+                                highscores += scores
+                            await asyncio.sleep(highscores_page_delay)
+                        # Open connection to users.db
+                        c = userDatabase.cursor()
+                        scores_tuple = []
+                        ranks_tuple = []
+                        for score in highscores:
+                            scores_tuple.append((score['rank'], score['value'], score['name']))
+                            ranks_tuple.append((score['rank'], server))
+                        # Clear out old rankings
+                        c.executemany(
+                            "UPDATE chars SET " + category + " = NULL, " + category + "_rank" + " = NULL WHERE " + category
+                            + "_rank" + " LIKE ? AND world LIKE ?",
+                            ranks_tuple
+                        )
+                        # Add new rankings
+                        c.executemany(
+                            "UPDATE chars SET " + category + "_rank" + " = ?, " + category + " = ? WHERE name LIKE ?",
+                            scores_tuple
+                        )
+                except asyncio.CancelledError:
+                    # Task was cancelled, so this is fine
+                    break
+                except Exception as e:
+                    log.exception("Task: scan_highscores")
+                    continue
+                finally:
                     userDatabase.commit()
                     c.close()
                 await asyncio.sleep(0.1)
@@ -101,92 +117,166 @@ class Tracking:
         #################################################
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
-            # Pop last server in queue, reinsert it at the beginning
-            current_world = tibia_worlds.pop()
-            tibia_worlds.insert(0, current_world)
+            # Open connection to users.db
+            c = userDatabase.cursor()
+            try:
+                # Pop last server in queue, reinsert it at the beginning
+                current_world = tibia_worlds.pop()
+                tibia_worlds.insert(0, current_world)
 
-            if current_world.capitalize() not in tracked_worlds_list:
-                await asyncio.sleep(0.1)
-                continue
+                if current_world.capitalize() not in tracked_worlds_list:
+                    await asyncio.sleep(0.1)
+                    continue
 
-            await asyncio.sleep(online_scan_interval)
-            # Get online list for this server
-            curent_world_online = await get_world_online(current_world)
-            if len(curent_world_online) > 0:
-                # Open connection to users.db
-                c = userDatabase.cursor()
+                await asyncio.sleep(online_scan_interval)
+                # Get online list for this server
+                curent_world_online = await get_world_online(current_world)
+                if len(curent_world_online) > 0:
+                    # Remove chars that are no longer online from the globalOnlineList
+                    offline_list = []
+                    for char in global_online_list:
+                        if char.split("_", 1)[0] == current_world:
+                            offline = True
+                            for server_char in curent_world_online:
+                                if server_char['name'] == char.split("_", 1)[1]:
+                                    offline = False
+                                    break
+                            if offline:
+                                offline_list.append(char)
+                    for now_offline_char in offline_list:
+                        global_online_list.remove(now_offline_char)
+                        # Check for deaths and level ups when removing from online list
+                        now_offline_char = await get_character(now_offline_char.split("_", 1)[1])
+                        if not (now_offline_char == ERROR_NETWORK or now_offline_char == ERROR_DOESNTEXIST):
+                            c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",
+                                      (now_offline_char['name'],))
+                            result = c.fetchone()
+                            if result:
+                                last_level = result["last_level"]
+                                c.execute(
+                                    "UPDATE chars SET last_level = ? WHERE name LIKE ?",
+                                    (now_offline_char['level'], now_offline_char['name'],)
+                                )
+                                if now_offline_char['level'] > last_level > 0:
+                                    # Saving level up date in database
+                                    c.execute(
+                                        "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
+                                        (result["id"], now_offline_char['level'], time.time(),)
+                                    )
+                                    # Announce the level up
+                                    await self.announce_level(now_offline_char['level'], char=now_offline_char)
+                            await self.check_death(now_offline_char['name'])
 
-                # Remove chars that are no longer online from the globalOnlineList
-                offline_list = []
-                for char in global_online_list:
-                    if char.split("_", 1)[0] == current_world:
-                        offline = True
-                        for server_char in curent_world_online:
-                            if server_char['name'] == char.split("_", 1)[1]:
-                                offline = False
-                                break
-                        if offline:
-                            offline_list.append(char)
-                for now_offline_char in offline_list:
-                    global_online_list.remove(now_offline_char)
-                    # Check for deaths and level ups when removing from online list
-                    now_offline_char = await get_character(now_offline_char.split("_", 1)[1])
-                    if not (now_offline_char == ERROR_NETWORK or now_offline_char == ERROR_DOESNTEXIST):
-                        c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",
-                                  (now_offline_char['name'],))
+                    # Add new online chars and announce level differences
+                    for server_char in curent_world_online:
+                        c.execute("SELECT name, last_level, id, user_id FROM chars WHERE name LIKE ?",
+                                  (server_char['name'],))
                         result = c.fetchone()
                         if result:
+                            # If its a stalked character
                             last_level = result["last_level"]
+                            # We update their last level in the db
                             c.execute(
                                 "UPDATE chars SET last_level = ? WHERE name LIKE ?",
-                                (now_offline_char['level'], now_offline_char['name'],)
+                                (server_char['level'], server_char['name'],)
                             )
-                            if now_offline_char['level'] > last_level > 0:
+
+                            if not (current_world + "_" + server_char['name']) in global_online_list:
+                                # If the character wasn't in the globalOnlineList we add them
+                                # (We insert them at the beginning of the list to avoid messing with the death checks order)
+                                global_online_list.insert(0, (current_world + "_" + server_char['name']))
+                                # Since this is the first time we see them online we flag their last death time
+                                # to avoid backlogged death announces
+                                c.execute(
+                                    "UPDATE chars SET last_death_time = ? WHERE name LIKE ?",
+                                    (None, server_char['name'],)
+                                )
+                                await self.check_death(server_char['name'])
+
+                            # Else we check for levelup
+                            elif server_char['level'] > last_level > 0:
                                 # Saving level up date in database
                                 c.execute(
                                     "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                    (result["id"], now_offline_char['level'], time.time(),)
+                                    (result["id"], server_char['level'], time.time(),)
                                 )
                                 # Announce the level up
-                                await self.announce_level(now_offline_char['level'], char=now_offline_char)
-                        await self.check_death(now_offline_char['name'])
-
-                # Add new online chars and announce level differences
-                for server_char in curent_world_online:
-                    c.execute("SELECT name, last_level, id, user_id FROM chars WHERE name LIKE ?",
-                              (server_char['name'],))
-                    result = c.fetchone()
-                    if result:
-                        # If its a stalked character
-                        last_level = result["last_level"]
-                        # We update their last level in the db
-                        c.execute(
-                            "UPDATE chars SET last_level = ? WHERE name LIKE ?",
-                            (server_char['level'], server_char['name'],)
-                        )
-
-                        if not (current_world + "_" + server_char['name']) in global_online_list:
-                            # If the character wasn't in the globalOnlineList we add them
-                            # (We insert them at the beginning of the list to avoid messing with the death checks order)
-                            global_online_list.insert(0, (current_world + "_" + server_char['name']))
-                            # Since this is the first time we see them online we flag their last death time
-                            # to avoid backlogged death announces
-                            c.execute(
-                                "UPDATE chars SET last_death_time = ? WHERE name LIKE ?",
-                                (None, server_char['name'],)
-                            )
-                            await self.check_death(server_char['name'])
-
-                        # Else we check for levelup
-                        elif server_char['level'] > last_level > 0:
-                            # Saving level up date in database
-                            c.execute(
-                                "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                (result["id"], server_char['level'], time.time(),)
-                            )
-                            # Announce the level up
-                            await self.announce_level(server_char['level'], char_name=server_char["name"])
-                # Close cursor and commit changes
+                                await self.announce_level(server_char['level'], char_name=server_char["name"])
+                    # Watched List checking
+                    # Iterate through servers with tracked world to find one that matches the current world
+                    for server, world in tracked_worlds.items():
+                        if world == current_world:
+                            watched_channel_id = self.watched_channels.get(server, None)
+                            if watched_channel_id is None:
+                                # This server doesn't have watch list enabled
+                                continue
+                            watched_channel = self.bot.get_channel(watched_channel_id)  # type: discord.abc.Messageable
+                            if watched_channel is None:
+                                # This server's watched channel is not available to the bot anymore.
+                                continue
+                            # Get watched list
+                            c.execute("SELECT * FROM watched_list WHERE server_id = ?", (server,))
+                            results = c.fetchall()
+                            if not results:
+                                # List is empty
+                                continue
+                            # Online watched characters
+                            currently_online = []
+                            # Watched guilds
+                            guild_online = dict()
+                            for watched in results:
+                                if watched["is_guild"]:
+                                    guild = await get_guild_online(watched["name"])
+                                    # Todo: Remove deleted guilds from list to avoid unnecessary checks, notify
+                                    if guild == ERROR_NETWORK or guild == ERROR_DOESNTEXIST:
+                                        continue
+                                    # If there's at least one member online, add guild to list
+                                    if len(guild["members"]):
+                                        guild_online[guild["name"]] = guild["members"]
+                                # If it is a character, check if he's in the online list
+                                for online_char in curent_world_online:
+                                    if online_char["name"] == watched["name"]:
+                                        # Add to online list
+                                        currently_online.append(online_char)
+                            watched_message_id = self.watched_messages.get(server, None)
+                            # We try to get the watched message, if the bot can't find it, we just create a new one
+                            # This may be because the old message was deleted or this is the first time the list is checked
+                            try:
+                                watched_message = await watched_channel.get_message(watched_message_id)
+                            except (discord.NotFound, discord.HTTPException, discord.Forbidden):
+                                watched_message = None
+                            items = [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
+                                     for x in currently_online]
+                            if len(items) > 0 or len(guild_online.keys()) > 0:
+                                content = "These watched characters are online:\n"
+                                content += "\n".join(items)
+                                for guild, members in guild_online.items():
+                                    content += f"\nGuild: **{guild}**\n"
+                                    content += "\n".join(
+                                        [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
+                                         for x in members])
+                            else:
+                                content = "There are no watched characters online."
+                            # Send new watched message or edit last one
+                            try:
+                                if watched_message is None:
+                                    new_watched_message = await watched_channel.send(content)
+                                    c.execute("DELETE FROM server_properties WHERE server_id = ? "
+                                              "AND name LIKE ?", (server, "watched_message",))
+                                    c.execute("INSERT INTO server_properties(server_id, name, value) VALUES(?,?,?)",
+                                              (server, "watched_message", new_watched_message.id))
+                                    self.watched_messages[server] = new_watched_message.id
+                                else:
+                                    await watched_message.edit(content=content)
+                            except discord.HTTPException:
+                                pass
+            except asyncio.CancelledError:
+                # Task was cancelled, so this is fine
+                break
+            except Exception as e:
+                log.exception("scan_online_chars")
+                continue
+            finally:
                 userDatabase.commit()
                 c.close()
 
