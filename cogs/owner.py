@@ -44,7 +44,7 @@ class Owner:
         if not is_private(ctx.message.channel):
             return True
         await ctx.send('Restarting...')
-        self.bot.logout()
+        await self.bot.logout()
         log.warning("Restarting NabBot")
         # If it was run using the restarter, this command still works the same
         os.system("python restart.py {0}".format(ctx.message.author.id))
