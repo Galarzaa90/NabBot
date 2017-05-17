@@ -256,28 +256,63 @@ class Tibia:
                     await ctx.send(embed=char_embed)
                     return
             else:
-                await ctx.send(embed=embed)
                 if char == ERROR_NETWORK:
+                    await ctx.send(embed=embed)
                     await ctx.send("I failed to do a character search for some reason "+EMOJI[":astonished:"])
+                else:
+                    #Tries to display user's highest level character since there is no character match
+                    if is_private(ctx.message.channel):
+                        display_name = '@'+user.name
+                        user_guilds = self.bot.get_user_guilds(ctx.author.id)
+                        user_tibia_worlds = [world for server, world in tracked_worlds.items() if
+                                             server in [s.id for s in user_guilds]]
+                    else:
+                        if tracked_worlds.get(ctx.message.guild.id) is None:
+                            user_tibia_worlds = []
+                        else:
+                            user_tibia_worlds = [tracked_worlds[ctx.message.guild.id]]
+                    if len(user_tibia_worlds) != 0:
+                        placeholders = ", ".join("?" for w in user_tibia_worlds)
+                        c = userDatabase.cursor()
+                        try:
+                            c.execute("SELECT name, ABS(last_level) as level "
+                                      "FROM chars "
+                                      "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
+                                      tuple(user_tibia_worlds))
+                            character = c.fetchone()
+                        finally:
+                            c.close()
+                        if character:
+                            char = await get_character(character["name"])
+                            char_string = self.get_char_string(char)
+                            if type(char) is dict:
+                                char_embed = discord.Embed(description=char_string)
+                                char_embed.set_author(name=char["name"],
+                                                      url=get_character_url(char["name"]),
+                                                      icon_url="http://static.tibia.com/images/global/general/favicon.ico"
+                                                      )
+                                embed.add_field(name="Character", value=char_string, inline=False)
+                    await ctx.send(embed=embed)
         else:
             if char == ERROR_NETWORK:
                 await ctx.send("I failed to do a character search for some reason " + EMOJI[":astonished:"])
             embed = discord.Embed(description="")
             if type(char) is dict:
-                embed.set_author(name=char["name"],
-                                 url=get_character_url(char["name"]),
-                                 icon_url="http://static.tibia.com/images/global/general/favicon.ico"
-                                 )
-                # Char is owned by a discord user
                 owner = self.bot.get_member(char["owner_id"], ctx.message.guild)
                 if owner is not None:
-                    display_name = owner.display_name if ctx.message.guild is not None else owner.display_name
-                    embed.set_thumbnail(url=owner.avatar_url)
-                    color = get_user_color(owner, ctx.message.guild)
-                    if color is not discord.Colour.default():
-                        embed.colour = color
-                    embed.description += f"A character of @**{display_name}**\n"
-                embed.description += char_string
+                # Char is owned by a discord user
+                    embed = self.get_user_embed(ctx, owner)
+                    if embed is None:
+                        embed = discord.Embed(description="")
+                    embed.add_field(name="Character", value=char_string, inline=False)
+                    await ctx.send(embed=embed)
+                    return
+                else:
+                    embed.set_author(name=char["name"],
+                                     url=get_character_url(char["name"]),
+                                     icon_url="http://static.tibia.com/images/global/general/favicon.ico"
+                                     )
+                    embed.description += char_string
 
             await ctx.send(embed=embed)
 
