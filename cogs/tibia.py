@@ -1667,7 +1667,6 @@ class Tibia:
     @commands.command()
     async def bosses(self, ctx, world=None):
         """Shows predictions for bosses"""
-        bosses = await get_world_bosses("Fidera")
         ask_channel = ctx.bot.get_channel_by_name(ask_channel_name, ctx.guild)
 
         if world is None and not is_private(ctx.channel) and tracked_worlds.get(ctx.guild.id) is not None:
@@ -1679,7 +1678,7 @@ class Tibia:
         if world not in tibia_worlds:
             await ctx.send("That world doesn't exist.")
             return
-
+        bosses = await get_world_bosses(world)
         if type(bosses) is not dict:
             await ctx.send("Something went wrong")
         fields = {"High Chance": "", "Low Chance": "", "No Chance": "", "Unpredicted": ""}
