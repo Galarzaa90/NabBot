@@ -1371,7 +1371,7 @@ level_messages = [
      [announce_threshold]],
     [20000, "**{name}** is now level {level}! Time to go berserk! " + EMOJI[":anger:"],
      ["Knight", "Elite Knight"], [35]],
-    [20000, "Congratulations on level {level} **{name}**! Now you are ready to become an *umbral master*? But is your"
+    [20000, "Congratulations on level {level} **{name}**! Now you can become an umbral master, but is your"
             " bank account ready?"+EMOJI[":money_with_wings:"], False, [250]],
     [30000, "**{name}** is level {level}!!!!\r\n" +
      "Sweet, sweet triple digits!", False, [100]],
