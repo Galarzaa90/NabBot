@@ -33,7 +33,7 @@ class Tibia:
         The bot will return a list of the items found along with their values, grouped by NPC.
         If the image is compressed or was taken using Tibia's software render, the bot might struggle finding matches.
 
-        The bot can only scan 3 images simultaneously."""
+        The bot can only scan 6 images simultaneously."""
         author = ctx.message.author
         if self.parsing_count >= loot_max:
             await ctx.send("Sorry, I am already parsing too many loot images, "
@@ -197,7 +197,7 @@ class Tibia:
 
         Note that the bot has no way to know the characters of a member that just joined.
         The bot has to be taught about the character's of an user."""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -219,17 +219,14 @@ class Tibia:
                                  )
                 await ctx.send(embed=embed)
             return
-        if is_private(ctx.message.channel):
-            bot_member = self.bot.user
-        else:
-            bot_member = self.bot.get_member(self.bot.user.id, ctx.message.guild)
-        if name.lower() == bot_member.display_name.lower():
+
+        if name.lower() == ctx.me.display_name.lower():
             await ctx.invoke(self.bot.all_commands.get('about'))
             return
 
         char = await get_character(name)
         char_string = self.get_char_string(char)
-        user = self.bot.get_member_by_name(name, ctx.message.guild)
+        user = self.bot.get_member_by_name(name, ctx.guild)
         embed = self.get_user_embed(ctx, user)
 
         # No user or char with that name
@@ -243,6 +240,9 @@ class Tibia:
                 # If it's owned by the user, we append it to the same embed.
                 if char["owner_id"] == int(user.id):
                     embed.add_field(name="Character", value=char_string, inline=False)
+                    if char['last_login'] is not None:
+                        embed.set_footer(text="Last login")
+                        embed.timestamp = parse_tibia_time(char["last_login"])
                     await ctx.send(embed=embed)
                     return
                 # Not owned by same user, we display a separate embed
@@ -252,6 +252,9 @@ class Tibia:
                                           url=get_character_url(char["name"]),
                                           icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                           )
+                    if char['last_login'] is not None:
+                        char_embed.set_footer(text="Last login")
+                        char_embed.timestamp = parse_tibia_time(char["last_login"])
                     await ctx.send(embed=embed)
                     await ctx.send(embed=char_embed)
                     return
@@ -260,7 +263,7 @@ class Tibia:
                     await ctx.send(embed=embed)
                     await ctx.send("I failed to do a character search for some reason "+EMOJI[":astonished:"])
                 else:
-                    #Tries to display user's highest level character since there is no character match
+                    # Tries to display user's highest level character since there is no character match
                     if is_private(ctx.message.channel):
                         display_name = '@'+user.name
                         user_guilds = self.bot.get_user_guilds(ctx.author.id)
@@ -291,7 +294,10 @@ class Tibia:
                                                       url=get_character_url(char["name"]),
                                                       icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                                       )
-                                embed.add_field(name="Character", value=char_string, inline=False)
+                                embed.add_field(name="Highest character", value=char_string, inline=False)
+                                if char['last_login'] is not None:
+                                    embed.set_footer(text="Last login")
+                                    embed.timestamp = parse_tibia_time(char["last_login"])
                     await ctx.send(embed=embed)
         else:
             if char == ERROR_NETWORK:
@@ -300,11 +306,14 @@ class Tibia:
             if type(char) is dict:
                 owner = self.bot.get_member(char["owner_id"], ctx.message.guild)
                 if owner is not None:
-                # Char is owned by a discord user
+                    # Char is owned by a discord user
                     embed = self.get_user_embed(ctx, owner)
                     if embed is None:
                         embed = discord.Embed(description="")
                     embed.add_field(name="Character", value=char_string, inline=False)
+                    if char['last_login'] is not None:
+                        embed.set_footer(text="Last login")
+                        embed.timestamp = parse_tibia_time(char["last_login"])
                     await ctx.send(embed=embed)
                     return
                 else:
@@ -313,6 +322,9 @@ class Tibia:
                                      icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                      )
                     embed.description += char_string
+                    if char['last_login'] is not None:
+                        embed.set_footer(text="Last login")
+                        embed.timestamp = parse_tibia_time(char["last_login"])
 
             await ctx.send(embed=embed)
 
@@ -1586,71 +1598,6 @@ class Tibia:
         reply += "\nServer save is in {0}.\nRashid is in **{1}** today.".format(server_save_str, get_rashid_city())
         await ctx.send(reply)
 
-    @commands.command()
-    @checks.is_not_lite()
-    async def online(self, ctx):
-        """Tells you which users are online on Tibia
-
-        This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated.
-
-        If used in a server, only characters from users of the server are shown
-        If used on PM, only  characters from users of servers you're in are shown"""
-        if is_private(ctx.message.channel):
-            user_guilds = self.bot.get_user_guilds(ctx.message.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.message.author.id)
-        else:
-            user_guilds = [ctx.message.guild]
-            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-        c = userDatabase.cursor()
-        now = datetime.utcnow()
-        uptime = (now - start_time).total_seconds()
-        count = 0
-        online_list = {world: "" for world in user_worlds}
-        try:
-            for char in global_online_list:
-                char = char.split("_", 1)
-                world = char[0]
-                name = char[1]
-                if world not in user_worlds:
-                    continue
-                c.execute("SELECT name, user_id, vocation, ABS(last_level) as level FROM chars WHERE name LIKE ?",
-                          (name,))
-                row = c.fetchone()
-                if row is None:
-                    continue
-                # Only show members on this server or members visible to author if it's a pm
-                owner = self.bot.get_member(row["user_id"], user_guilds)
-                if owner is None:
-                    continue
-                row["owner"] = owner.display_name
-                row['emoji'] = get_voc_emoji(row['vocation'])
-                row['vocation'] = get_voc_abb(row['vocation'])
-                online_list[world] += "\n\t{name} (Lvl {level} {vocation}{emoji}, **@{owner}**)".format(**row)
-                count += 1
-
-            if count == 0:
-                if uptime < 60:
-                    await ctx.send("I just started, give me some time to check online lists..." + EMOJI[":clock2:"])
-                else:
-                    await ctx.send("There is no one online from Discord.")
-                return
-
-            # Remove worlds with no players online
-            online_list = {k: v for k, v in online_list.items() if v is not ""}
-            reply = "The following discord users are online:"
-            if len(user_worlds) == 1:
-                reply += online_list[user_worlds[0]]
-            else:
-                for world, content in online_list.items():
-                    reply += "\n__**{0}**__{1}".format(world, content)
-
-            await ctx.send(reply)
-        finally:
-            c.close()
-
     @commands.command(name="world")
     async def world_info(self, ctx, name: str = None):
         """Shows basic information about a Tibia world"""
@@ -1769,6 +1716,8 @@ class Tibia:
             time_diff = now - last_login
             if time_diff.days > last_login_days:
                 reply += "\n{he_she} hasn't logged in for **{0}**.".format(get_time_diff(time_diff), **char)
+        else:
+            reply += "\n{he_she} has never logged in."
 
         # Insert any highscores this character holds
         for category in highscores_categories:

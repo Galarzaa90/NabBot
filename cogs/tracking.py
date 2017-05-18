@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import discord
 from discord.ext import commands
 import asyncio
@@ -9,11 +11,11 @@ from nabbot import NabBot
 from utils import checks
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
 from utils.discord import is_private
-from utils.general import global_online_list, log, join_list
+from utils.general import global_online_list, log, join_list, start_time
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
     level_messages
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world_online, get_character, ERROR_DOESNTEXIST, \
-    parse_tibia_time, get_pronouns, get_voc_emoji, get_guild_online
+    parse_tibia_time, get_pronouns, get_voc_emoji, get_guild_online, get_voc_abb
 
 
 class Tracking:
@@ -611,6 +613,71 @@ class Tracking:
                     await self.bot.send_log_message(self.bot.get_guild(server_id), message)
         finally:
             userDatabase.commit()
+            c.close()
+
+    @commands.command()
+    @checks.is_not_lite()
+    async def online(self, ctx):
+        """Tells you which users are online on Tibia
+
+        This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated.
+
+        If used in a server, only characters from users of the server are shown
+        If used on PM, only  characters from users of servers you're in are shown"""
+        if is_private(ctx.message.channel):
+            user_guilds = self.bot.get_user_guilds(ctx.message.author.id)
+            user_worlds = self.bot.get_user_worlds(ctx.message.author.id)
+        else:
+            user_guilds = [ctx.message.guild]
+            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
+            if user_worlds[0] is None:
+                await ctx.send("This server is not tracking any tibia worlds.")
+                return
+        c = userDatabase.cursor()
+        now = datetime.utcnow()
+        uptime = (now - start_time).total_seconds()
+        count = 0
+        online_list = {world: "" for world in user_worlds}
+        try:
+            for char in global_online_list:
+                char = char.split("_", 1)
+                world = char[0]
+                name = char[1]
+                if world not in user_worlds:
+                    continue
+                c.execute("SELECT name, user_id, vocation, ABS(last_level) as level FROM chars WHERE name LIKE ?",
+                          (name,))
+                row = c.fetchone()
+                if row is None:
+                    continue
+                # Only show members on this server or members visible to author if it's a pm
+                owner = self.bot.get_member(row["user_id"], user_guilds)
+                if owner is None:
+                    continue
+                row["owner"] = owner.display_name
+                row['emoji'] = get_voc_emoji(row['vocation'])
+                row['vocation'] = get_voc_abb(row['vocation'])
+                online_list[world] += "\n\t{name} (Lvl {level} {vocation}{emoji}, **@{owner}**)".format(**row)
+                count += 1
+
+            if count == 0:
+                if uptime < 60:
+                    await ctx.send("I just started, give me some time to check online lists..." + EMOJI[":clock2:"])
+                else:
+                    await ctx.send("There is no one online from Discord.")
+                return
+
+            # Remove worlds with no players online
+            online_list = {k: v for k, v in online_list.items() if v is not ""}
+            reply = "The following discord users are online:"
+            if len(user_worlds) == 1:
+                reply += online_list[user_worlds[0]]
+            else:
+                for world, content in online_list.items():
+                    reply += "\n__**{0}**__{1}".format(world, content)
+
+            await ctx.send(reply)
+        finally:
             c.close()
 
     @commands.group(invoke_without_command=True, aliases=["watchlist", "hunted", "huntedlist"])
