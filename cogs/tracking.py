@@ -373,7 +373,12 @@ class Tracking:
             guild = self.bot.get_guild(guild_id)
             if char["world"] == tracked_world and guild is not None \
                     and guild.get_member(char["owner_id"]) is not None:
-                await self.bot.get_announce_channel(guild).send(message[:1].upper() + message[1:])
+                try:
+                    await self.bot.get_announce_channel(guild).send(message[:1].upper() + message[1:])
+                except discord.Forbidden:
+                    log.warning("announce_death: Missing permissions.")
+                except discord.HTTPException:
+                    log.warning("announce_death: Malformed message.")
 
     async def announce_level(self, level, char_name=None, char=None):
         """Announces a level up on corresponding servers
@@ -414,7 +419,12 @@ class Tracking:
             server = self.bot.get_guild(server_id)
             if char["world"] == tracked_world and server is not None \
                     and server.get_member(char["owner_id"]) is not None:
-                await self.bot.get_announce_channel(server).send(message)
+                try:
+                    await self.bot.get_announce_channel(server).send(message)
+                except discord.Forbidden:
+                    log.warning("announce_level: Missing permissions.")
+                except discord.HTTPException:
+                    log.warning("announce_level: Malformed message.")
 
     @checks.is_not_lite()
     @commands.command(aliases=["i'm", "iam"])
