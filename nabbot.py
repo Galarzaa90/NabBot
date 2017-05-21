@@ -184,12 +184,12 @@ class NabBot(commands.Bot):
 
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
-        log.warning("{1.name}#[1.discriminator] (ID:{1.id}) was unbanned from {0.name}".format(guild, user))
+        log.warning("{1.name}#{1.discriminator} (ID:{1.id}) was banned from {0.name}".format(guild, user))
         await self.send_log_message(guild, "**{0.name}#{0.discriminator}** was banned.".format(user))
 
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
-        log.warning("{1.name}#[1.discriminator] (ID:{1.id}) was unbanned from {0.name}".format(guild, user))
+        log.warning("{1.name}#{1.discriminator} (ID:{1.id}) was unbanned from {0.name}".format(guild, user))
         await self.send_log_message(guild, "**{0.name}#{0.discriminator}** was unbanned.".format(user))
 
     async def on_message_delete(self, message: discord.Message):
