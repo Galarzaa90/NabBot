@@ -1,8 +1,8 @@
-from datetime import datetime
-
 import discord
 from discord.ext import commands
 import asyncio
+import urllib.parse
+from datetime import datetime
 import time
 
 from config import death_scan_interval, highscores_delay, highscores_categories, highscores_page_delay, \
@@ -14,8 +14,9 @@ from utils.discord import is_private
 from utils.general import global_online_list, log, join_list, start_time
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
     level_messages
+from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world_online, get_character, ERROR_DOESNTEXIST, \
-    parse_tibia_time, get_pronouns, get_voc_emoji, get_guild_online, get_voc_abb
+    parse_tibia_time, get_pronouns, get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild
 
 
 class Tracking:
@@ -738,7 +739,8 @@ class Tracking:
     async def watched_add(self, ctx, *, name=None):
         """Adds a character to the watched list"""
         if name is None:
-            ctx.send("You need to tell me the name of the person you want to add to the list.")
+            await ctx.send("You need to tell me the name of the person you want to add to the list.")
+            return
 
         world = tracked_worlds.get(ctx.guild.id, None)
         if world is None:
@@ -772,7 +774,8 @@ class Tracking:
             if not confirm:
                 return
 
-            c.execute("INSERT INTO watched_list(name, server_id) VALUES(?, ?)", (char["name"], ctx.guild.id,))
+            c.execute("INSERT INTO watched_list(name, server_id, is_guild) VALUES(?, ?, 0)",
+                      (char["name"], ctx.guild.id,))
             await ctx.send("Character added to the watched list.")
         finally:
             userDatabase.commit()
@@ -806,7 +809,8 @@ class Tracking:
             if not confirm:
                 return
 
-            c.execute("DELETE FROM watched_list WHERE server_id = ? AND name LIKE ?", (ctx.guild.id, name,))
+            c.execute("DELETE FROM watched_list WHERE server_id = ? AND name LIKE ? AND is_guild = 0",
+                      (ctx.guild.id, name,))
             await ctx.send("Character removed from the watched list.")
         finally:
             userDatabase.commit()
@@ -866,7 +870,7 @@ class Tracking:
     @commands.guild_only()
     @checks.is_admin()
     async def watched_removeguild(self, ctx, *, name=None):
-        """Removes a guild from the watched list."""
+        """Removes a guild from the watched list"""
         if name is None:
             ctx.send("You need to tell me the name of the guild you want to remove from the list.")
 
@@ -896,6 +900,62 @@ class Tracking:
         finally:
             userDatabase.commit()
             c.close()
+
+    @watched.command(name="list")
+    @commands.guild_only()
+    @checks.is_admin()
+    async def hunted_list(self, ctx):
+        """Shows a list of all watched characters
+        
+        Note that this lists all characters, not just online characters."""
+        world = tracked_worlds.get(ctx.guild.id, None)
+        if world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 0 ORDER BY name ASC",
+                      (ctx.guild.id,))
+            results = c.fetchall()
+            if not results:
+                await ctx.send("There are no characters in the watched list.")
+                return
+            entries = [f"[{r['name']}]({get_character_url(r['name'])})" for r in results]
+        finally:
+            c.close()
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, title="Watched Characters")
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+    @watched.command(name="guildlist", aliases=["listguild", "guilds"])
+    @commands.guild_only()
+    @checks.is_admin()
+    async def hunted_list_guild(self, ctx):
+        """Shows a list of all watched characters
+
+        Note that this lists all characters, not just online characters."""
+        world = tracked_worlds.get(ctx.guild.id, None)
+        if world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 1 ORDER BY name ASC",
+                      (ctx.guild.id,))
+            results = c.fetchall()
+            if not results:
+                await ctx.send("There are no guilds in the watched list.")
+                return
+            entries = [f"[{r['name']}]({url_guild+urllib.parse.quote(r['name'])})" for r in results]
+        finally:
+            c.close()
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, title="Watched Guilds")
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
 
     def reload_watched(self):
         c = userDatabase.cursor()
