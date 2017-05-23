@@ -12,6 +12,7 @@ Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapp
 * Python 3.6.1 with modules:
     * psutil
     * pillow (Python Imaging Library)
+    * BeautifulSoup
 * discord.py **rewrite branch**
 * Tested on Windows and Raspbian
 
@@ -19,7 +20,7 @@ Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapp
 To install discord.py simply run the following on the command line:
 
 ```
-python -m pip install -U git+https://github.com/Rapptz/discord.py@rewrite pillow psutil
+python -m pip install -U git+https://github.com/Rapptz/discord.py@rewrite pillow psutil bs4
 ```
 
 Create a bot token on Discord
