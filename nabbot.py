@@ -138,6 +138,13 @@ class NabBot(commands.Bot):
             else:
                 self.members[member.id] = [guild.id]
 
+    async def on_guild_remove(self, guild):
+        """Called when the bot leaves a server"""
+        log.info("Nab Bot left server: {0.name} (ID: {0.id})".format(guild))
+        for member in guild.members:
+            if member.id in self.members:
+                self.members[member.id].remove(guild.id)
+
     async def on_member_join(self, member: discord.Member):
         """Called every time a member joins a server visible by the bot."""
         log.info("{0.display_name} (ID: {0.id}) joined {0.guild.name}".format(member))

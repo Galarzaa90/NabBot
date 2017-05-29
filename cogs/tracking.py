@@ -436,7 +436,7 @@ class Tracking:
 
         If you need to add any more characters or made a mistake, please message an admin."""
         # This is equivalent to someone using /stalk addacc on themselves.
-        user = ctx.message.author
+        user = ctx.author
         # List of servers the user shares with the self.bot
         user_guilds = self.bot.get_user_guilds(user.id)
         # List of Tibia worlds tracked in the servers the user is
@@ -444,7 +444,7 @@ class Tracking:
         # Remove duplicate entries from list
         user_tibia_worlds = list(set(user_tibia_worlds))
 
-        if not is_private(ctx.message.channel) and tracked_worlds.get(ctx.message.guild.id) is None:
+        if not is_private(ctx.channel) and tracked_worlds.get(ctx.guild.id) is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
 
@@ -453,12 +453,6 @@ class Tracking:
 
         c = userDatabase.cursor()
         try:
-            valid_mods = []
-            for id in (owner_ids + mod_ids):
-                mod = self.bot.get_member(id, ctx.message.guild)
-                if mod is not None:
-                    valid_mods.append(mod.mention)
-            admins_message = join_list(valid_mods, ", ", " or ")
             await ctx.trigger_typing()
             char = await get_character(char_name)
             if type(char) is not dict:
@@ -486,7 +480,6 @@ class Tracking:
                 db_char = c.fetchone()
                 if db_char is not None:
                     owner = self.bot.get_member(db_char["owner"])
-                    print(owner)
                     # Previous owner doesn't exist anymore
                     if owner is None:
                         updated.append({'name': char['name'], 'world': char['world'], 'prevowner': db_char["owner"]})
@@ -495,11 +488,11 @@ class Tracking:
                     elif owner.id == user.id:
                         existent.append("{name} ({world})".format(**char))
                         continue
-                    # Character is registered to another user
+                    # Character is registered to another user, we stop the whole process
                     else:
                         reply = "Sorry, a character in that account ({0}) is already claimed by **{1.mention}**.\n" \
                                 "Maybe you made a mistake? Or someone claimed a character of yours?"
-                        await ctx.send(reply.format(db_char["name"], owner, admins_message))
+                        await ctx.send(reply.format(db_char["name"], owner))
                         return
                 # If we only have one char, it already contains full data
                 if len(chars) > 1:
