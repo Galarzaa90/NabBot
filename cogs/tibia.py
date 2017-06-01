@@ -1666,6 +1666,8 @@ class Tibia:
         fields = {"High Chance": "", "Low Chance": "", "No Chance": "", "Unpredicted": ""}
         for boss, info in bosses.items():
             try:
+                if info["days"] > 1000:
+                    continue
                 info["name"] = boss.title()
                 fields[info["chance"]] += "{name} - {days:,} days.\n".format(**info)
             except KeyError:
