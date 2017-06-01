@@ -44,16 +44,16 @@ class Tibia:
             await ctx.send("You need to upload a picture of your loot and type the command in the comment.")
             return
 
-        attachment = ctx.message.attachments[0]
-        if attachment['size'] > 2097152:
+        attachment = ctx.message.attachments[0]  # type: discord.Attachment
+        if attachment.size > 2097152:
             await ctx.send("That image was too big! Try splitting it into smaller images, or cropping out anything "
                            "irrelevant.")
             return
-        file_name = attachment['url'].split("/")[len(attachment['url'].split("/"))-1]
-        file_url = attachment['url']
+        file_name = attachment.url.split("/")[len(attachment.url.split("/"))-1]
+        file_url = attachment.url
         try:
             with aiohttp.ClientSession() as session:
-                async with session.get(attachment['url']) as resp:
+                async with session.get(attachment.url) as resp:
                     original_image = await resp.read()
             loot_image = Image.open(io.BytesIO(bytearray(original_image))).convert("RGBA")
         except Exception:
@@ -133,7 +133,7 @@ class Tibia:
         else:
             destination = ctx.message.author
 
-        await destination.send(file=discord.File(loot_image_overlay,"results.png"), embed=embed)
+        await destination.send(file=discord.File(loot_image_overlay, "results.png"), embed=embed)
 
     @loot.command(name="show")
     @checks.is_mod()
