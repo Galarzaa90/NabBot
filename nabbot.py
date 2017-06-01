@@ -59,6 +59,7 @@ class NabBot(commands.Bot):
         self.loop.create_task(self.game_update())
 
         # Populating members's guild list
+        self.members = {}
         for guild in self.guilds:
             for member in guild.members:
                 if member.id in self.members:
