@@ -64,3 +64,9 @@ For more detailed instructions, read the [wiki article](https://github.com/Galar
 * And others, like **/levels**, **/events**, **/roles**, etc
 
 <img align="center" src="https://cloud.githubusercontent.com/assets/12865379/14549417/86905512-0274-11e6-87f0-ccbab911c820.png" alt="An example of the /check command">
+
+## Donate
+If you like Nab Bot, you can donate to this project. Nab Bot and the developers will appreciate it :)
+
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)
