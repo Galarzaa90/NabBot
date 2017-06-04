@@ -949,37 +949,50 @@ async def get_house(name, world = None):
                     tries -= 1
                     await asyncio.sleep(network_retry_delay)
                     continue
+            m = re.search(r'<BR>(.+)<BR><BR>(.+)', content)
+            if not m:
+                return house
             house["fetch"] = True
-            m = re.search(r'monthly rent is <B>(\d+)', content)
+            house_info = m.group(1)
+            house_status = m.group(2)
+            m = re.search(r'monthly rent is <B>(\d+)', house_info)
             if m:
-                house['rent'] = int(m.group(1))
-
-            if "rented" in content:
+                house["rent"] = int(m.group(1))
+            if "rented" in house_status:
                 house["status"] = "rented"
-                m = re.search(r'rented by <A?.+name=([^\"]+).+e has paid the rent until <B>([^<]+)</B>', content)
+                m = re.search(r'rented by <A?.+name=([^\"]+).+(He|She) has paid the rent until <B>([^<]+)</B>',
+                              house_status)
                 if m:
                     house["owner"] = urllib.parse.unquote_plus(m.group(1))
-                    house["until"] = m.group(2).replace("&#160;", " ")
-                if "move out" in content:
-                    house["status"] = "transferred"
-                    m = re.search(r'will move out on <B>([^<]+)</B> \(time of daily server save\) and (?:will|wants to)'
-                                  r' pass the house to <A.+name=([^\"]+).+ for <B>(\d+) gold', content)
+                    house["owner_pronoun"] = m.group(2)
+                    house["until"] = m.group(3).replace("&#160;", " ")
+                if "move out" in house_status:
+                    house["status"] = "moving"
+                    m = re.search(r'will move out on <B>([^<]+)</B> \(time of daily server save\)', house_status)
                     if m:
-                        house["transfer_date"] =house["until"] = m.group(1).replace("&#160;", " ")
-                        house["transferee"] = urllib.parse.unquote_plus(m.group(2))
-                        house["transfer_price"] = int(m.group(3))
+                        house["move_date"] = m.group(1).replace("&#160;", " ")
+                    else:
+                        break
+                    m = re.search(r' and (?:will|wants to) pass the house to <A.+name=([^\"]+).+ for <B>(\d+) gold',
+                                  house_status)
+                    if m:
+                        house["status"] = "transfering"
+                        house["transferee"] = urllib.parse.unquote_plus(m.group(1))
+                        house["transfer_price"] = int(m.group(2))
                         house["accepted"] = ("will pass " in m.group(0))
-            elif "auctioned" in content:
+            elif "auctioned" in house_status:
                 house["status"] = "auctioned"
                 if ". No bid has" in content:
                     house["status"] = "empty"
                     break
-                m = re.search(r'The auction will end at <B>([^\<]+)</B>\. '
-                              r'The highest bid so far is <B>(\d+).+ by .+name=([^\"]+)\"', content)
+                m = re.search(r'The auction (?:has ended|will end) at <B>([^\<]+)</B>\. '
+                              r'The highest bid so far is <B>(\d+).+ by .+name=([^\"]+)\"', house_status)
                 if m:
                     house["auction_end"] = m.group(1).replace("&#160;", " ")
                     house["top_bid"] = int(m.group(2))
                     house["top_bidder"] = urllib.parse.unquote_plus(m.group(3))
+                    break
+                pass
             break
         return house
     finally:

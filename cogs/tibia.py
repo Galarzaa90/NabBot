@@ -1496,18 +1496,33 @@ class Tibia:
 
     @commands.command(aliases=["houses", "guildhall", "gh"])
     async def house(self, ctx, *, name: str=None):
-        """Shows info for a house or guildhall"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        """Shows info for a house or guildhall
+
+        By default, it shows the current status of a house for the current tracked world (if any).
+        If used on private messages, no world is looked up unless specified.
+
+        To specify a world, add the world at the end separated with '/'.
+
+        Example:
+        /house The Tibianic/Antica
+        """
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
-
+        params = name.split("/", 2)
+        name = params[0]
         if name is None:
             await ctx.send("Tell me the name of the house or guildhall you want to check.")
             return
         world = None
-        if ctx.message.guild is not None:
-            world = tracked_worlds.get(ctx.message.guild.id)
+        if ctx.guild is not None and len(params) == 1:
+            world = tracked_worlds.get(ctx.guild.id)
+        elif len(params) == 2:
+            world = params[1].title()
+            if world not in tibia_worlds:
+                await ctx.send("That's not a valid world.")
+                return
 
         house = await get_house(name, world)
         if house is None:
@@ -1956,19 +1971,19 @@ class Tibia:
         if house["fetch"]:
             embed.url = house["url"]
             description += " The rent is **{rent:,}** gold per month.".format(**house)
-            if house["status"] == "rented":
+            if house["status"] == "empty":
+                description += "\nIn **{world}**, this {type} is unoccupied.".format(**house)
+            elif house["status"] in ["rented", "moving", "transfering"]:
                 house["owner_url"] = get_character_url(house["owner"])
                 description += "\nIn **{world}**, this {type} is rented by [{owner}]({owner_url}).".format(**house)
-            elif house["status"] == "transferred":
-                house["owner_url"] = get_character_url(house["owner"])
-                house["transferee_url"] = get_character_url(house["transferee"])
-                description += "\nIn **{world}**, this {type} is rented by [{owner}]({owner_url}).\n" \
-                               "It will be transferred to [{transferee}]({transferee_url}) for **{transfer_price:,}** " \
-                               "gold on **{transfer_date}**.".format(**house)
-                if not house["accepted"]:
-                    description += "\nThe transfer hasn't been accepted."
-            elif house["status"] == "empty":
-                description += "\nIn **{world}**, this {type} is unoccupied.".format(**house)
+                if house["status"] == "moving":
+                    description += "\n{owner_pronoun} is moving out on **{move_date}**."
+                if house["status"] == "transfering":
+                    house["transferee_url"] = get_character_url(house["transferee"])
+                    description += "\nIt will be transferred to [{transferee}]({transferee_url}) for **{transfer_price:,}** " \
+                                   "gold on **{move_date}**.".format(**house)
+                    if not house["accepted"]:
+                        description += "\nThe transfer hasn't been accepted."
             elif house["status"] == "auctioned":
                 house["bidder_url"] = get_character_url(house["top_bidder"])
                 description += "\nIn **{world}**, this {type} is being auctioned. " \
