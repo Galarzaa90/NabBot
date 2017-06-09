@@ -227,6 +227,98 @@ class Owner:
             except discord.HTTPException as e:
                 await msg.channel.send('Unexpected error: `{}`'.format(e))
 
+    # Todo: Reduce number of messages
+
+    @commands.command(aliases=["clean"])
+    @checks.is_owner()
+    @checks.is_not_lite()
+    async def purge(self, ctx):
+        """Performs a database cleanup
+
+        Removes characters that have been deleted and users with no characters or no longer in server."""
+        if not is_private(ctx.message.channel):
+            return True
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT id FROM users")
+            result = c.fetchall()
+            if result is None:
+                await ctx.send("There are no users registered.")
+                return
+            delete_users = list()
+            await ctx.send("Initiating purge...")
+            # Deleting users no longer in server
+            for row in result:
+                user = self.bot.get_member(row["id"])
+                if user is None:
+                    delete_users.append((row["id"],))
+            if len(delete_users) > 0:
+                c.executemany("DELETE FROM users WHERE id = ?", delete_users)
+                await ctx.send("{0} user(s) no longer in the server were removed.".format(c.rowcount))
+
+            # Deleting chars with non-existent user
+            c.execute("SELECT name FROM chars WHERE user_id NOT IN (SELECT id FROM users)")
+            result = c.fetchall()
+            if len(result) >= 1:
+                chars = ["**" + i["name"] + "**" for i in result]
+                reply = "{0} char(s) were assigned to a non-existent user and were deleted:\n\t".format(len(result))
+                reply += "\n\t".join(chars)
+                await ctx.send(reply)
+                c.execute("DELETE FROM chars WHERE user_id NOT IN (SELECT id FROM users)")
+
+            # Removing deleted chars
+            c.execute("SELECT name,last_level,vocation FROM chars")
+            result = c.fetchall()
+            if result is None:
+                return
+            delete_chars = list()
+            rename_chars = list()
+            # revoc_chars = list()
+            for row in result:
+                char = await get_character(row["name"])
+                if char == ERROR_NETWORK:
+                    await ctx.send("Couldn't fetch **{0}**, skipping...".format(row["name"]))
+                    continue
+                # Char was deleted
+                if char == ERROR_DOESNTEXIST:
+                    delete_chars.append((row["name"],))
+                    await ctx.send("**{0}** doesn't exists, deleting...".format(row["name"]))
+                    continue
+                # Char was renamed
+                if char['name'] != row["name"]:
+                    rename_chars.append((char['name'], row["name"],))
+                    await ctx.send(
+                        "**{0}** was renamed to **{1}**, updating...".format(row["name"], char['name']))
+
+            # No need to check if user exists cause those were removed already
+            if len(delete_chars) > 0:
+                c.executemany("DELETE FROM chars WHERE name LIKE ?", delete_chars)
+                await ctx.send("{0} char(s) were removed.".format(c.rowcount))
+            if len(rename_chars) > 0:
+                c.executemany("UPDATE chars SET name = ? WHERE name LIKE ?", rename_chars)
+                await ctx.send("{0} char(s) were renamed.".format(c.rowcount))
+
+            # Remove users with no chars
+            c.execute("SELECT id FROM users WHERE id NOT IN (SELECT user_id FROM chars)")
+            result = c.fetchall()
+            if len(result) >= 1:
+                c.execute("DELETE FROM users WHERE id NOT IN (SELECT user_id FROM chars)")
+                await ctx.send("{0} user(s) with no characters were removed.".format(c.rowcount))
+
+            # Remove level ups of removed characters
+            c.execute("DELETE FROM char_levelups WHERE char_id NOT IN (SELECT id FROM chars)")
+            if c.rowcount > 0:
+                await ctx.send(
+                    "{0} level up registries from removed characters were deleted.".format(c.rowcount))
+            c.execute("DELETE FROM char_deaths WHERE char_id NOT IN (SELECT id FROM chars)")
+            # Remove deaths of removed characters
+            if c.rowcount > 0:
+                await ctx.send("{0} death registries from removed characters were deleted.".format(c.rowcount))
+            await ctx.send("Purge done.")
+            return
+        finally:
+            userDatabase.commit()
+            c.close()
 
 def setup(bot):
     bot.add_cog(Owner(bot))

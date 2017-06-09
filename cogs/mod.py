@@ -1,4 +1,6 @@
 import asyncio
+from typing import List, Dict
+
 import discord
 from discord.ext import commands
 
@@ -6,6 +8,7 @@ from config import mod_ids, owner_ids
 from nabbot import NabBot
 from utils.database import userDatabase, tracked_worlds
 from utils.messages import split_message
+from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
 from utils.discord import FIELD_VALUE_LIMIT, is_private
 from utils import checks
@@ -15,6 +18,11 @@ class Mod:
     """Commands for bot/server moderators."""
     def __init__(self, bot: NabBot):
         self.bot = bot
+        self.ignored = {}
+        self.reload_ignored()
+
+    def __global_check(self, ctx):
+        return ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_admin_check(ctx)
 
     # Admin only commands #
     @commands.command()
@@ -528,98 +536,6 @@ class Mod:
                 c.close()
                 userDatabase.commit()
 
-    # Todo: Reduce number of messages
-    @stalk.command(aliases=["clean"])
-    @checks.is_owner()
-    @checks.is_not_lite()
-    async def purge(self, ctx):
-        """Performs a database cleanup
-
-        Removes characters that have been deleted and users with no characters or no longer in server."""
-        if not is_private(ctx.message.channel):
-            return True
-        c = userDatabase.cursor()
-        try:
-            c.execute("SELECT id FROM users")
-            result = c.fetchall()
-            if result is None:
-                await ctx.send("There are no users registered.")
-                return
-            delete_users = list()
-            await ctx.send("Initiating purge...")
-            # Deleting users no longer in server
-            for row in result:
-                user = self.bot.get_member(row["id"])
-                if user is None:
-                    delete_users.append((row["id"],))
-            if len(delete_users) > 0:
-                c.executemany("DELETE FROM users WHERE id = ?", delete_users)
-                await ctx.send("{0} user(s) no longer in the server were removed.".format(c.rowcount))
-
-            # Deleting chars with non-existent user
-            c.execute("SELECT name FROM chars WHERE user_id NOT IN (SELECT id FROM users)")
-            result = c.fetchall()
-            if len(result) >= 1:
-                chars = ["**" + i["name"] + "**" for i in result]
-                reply = "{0} char(s) were assigned to a non-existent user and were deleted:\n\t".format(len(result))
-                reply += "\n\t".join(chars)
-                await ctx.send(reply)
-                c.execute("DELETE FROM chars WHERE user_id NOT IN (SELECT id FROM users)")
-
-            # Removing deleted chars
-            c.execute("SELECT name,last_level,vocation FROM chars")
-            result = c.fetchall()
-            if result is None:
-                return
-            delete_chars = list()
-            rename_chars = list()
-            # revoc_chars = list()
-            for row in result:
-                char = await get_character(row["name"])
-                if char == ERROR_NETWORK:
-                    await ctx.send("Couldn't fetch **{0}**, skipping...".format(row["name"]))
-                    continue
-                # Char was deleted
-                if char == ERROR_DOESNTEXIST:
-                    delete_chars.append((row["name"],))
-                    await ctx.send("**{0}** doesn't exists, deleting...".format(row["name"]))
-                    continue
-                # Char was renamed
-                if char['name'] != row["name"]:
-                    rename_chars.append((char['name'], row["name"],))
-                    await ctx.send(
-                        "**{0}** was renamed to **{1}**, updating...".format(row["name"], char['name']))
-
-            # No need to check if user exists cause those were removed already
-            if len(delete_chars) > 0:
-                c.executemany("DELETE FROM chars WHERE name LIKE ?", delete_chars)
-                await ctx.send("{0} char(s) were removed.".format(c.rowcount))
-            if len(rename_chars) > 0:
-                c.executemany("UPDATE chars SET name = ? WHERE name LIKE ?", rename_chars)
-                await ctx.send("{0} char(s) were renamed.".format(c.rowcount))
-
-            # Remove users with no chars
-            c.execute("SELECT id FROM users WHERE id NOT IN (SELECT user_id FROM chars)")
-            result = c.fetchall()
-            if len(result) >= 1:
-                c.execute("DELETE FROM users WHERE id NOT IN (SELECT user_id FROM chars)")
-                await ctx.send("{0} user(s) with no characters were removed.".format(c.rowcount))
-
-            # Remove level ups of removed characters
-            c.execute("DELETE FROM char_levelups WHERE char_id NOT IN (SELECT id FROM chars)")
-            if c.rowcount > 0:
-                await ctx.send(
-                    "{0} level up registries from removed characters were deleted.".format(c.rowcount))
-            c.execute("DELETE FROM char_deaths WHERE char_id NOT IN (SELECT id FROM chars)")
-            # Remove deaths of removed characters
-            if c.rowcount > 0:
-                await ctx.send("{0} death registries from removed characters were deleted.".format(c.rowcount))
-            await ctx.send("Purge done.")
-            return
-        finally:
-            userDatabase.commit()
-            c.close()
-
     @stalk.command()
     @checks.is_mod()
     @checks.is_not_lite()
@@ -699,7 +615,6 @@ class Mod:
     @add_account.error
     @remove_char.error
     @remove_user.error
-    @purge.error
     @check.error
     @refresh_names.error
     async def stalk_error(self, ctx, error):
@@ -710,6 +625,93 @@ class Mod:
         elif isinstance(error, commands.errors.MissingRequiredArgument):
             await ctx.send("You're missing a required argument. `Type /help {0}`".format(ctx.invoked_subcommand))
 
+    @commands.guild_only()
+    @checks.is_mod()
+    @commands.group(invoke_without_command=True)
+    async def ignore(self, ctx, *, channel: discord.TextChannel = None):
+        """Ignores a channel
+
+        Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
+
+        If the parameter is used with no parameters, it ignores the current channel.
+
+        Note that server administrators can bypass this."""
+        if channel is None:
+            channel = ctx.channel
+
+        if channel.id in self.ignored.get(ctx.guild.id, []):
+            await ctx.send(f"{channel.mention} is already ignored.")
+            return
+
+        with userDatabase:
+            userDatabase.execute("INSERT INTO ignored_channels(server_id, channel_id) VALUES(?, ?)",
+                                 (ctx.guild.id, channel.id))
+            await ctx.send(f"{channel.mention} is now ignored.")
+            self.reload_ignored()
+
+    @commands.guild_only()
+    @checks.is_mod()
+    @ignore.command(name="list")
+    async def ignore_list(self, ctx):
+        """Shows a list of ignored channels"""
+        entries = [ctx.guild.get_channel(c).name for c in self.ignored.get(ctx.guild.id, []) if ctx.guild.get_channel(c) is not None]
+        if not entries:
+            await ctx.send("There are no ignored channels in this server.")
+            return
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, title="Ignored channels")
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+    @commands.guild_only()
+    @checks.is_mod()
+    @commands.command()
+    async def unignore(self, ctx, *, channel: discord.TextChannel = None):
+        """Unignores a channel
+
+        Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
+
+        If the parameter is used with no parameters, it ignores the current channel."""
+        if channel is None:
+            channel = ctx.channel
+
+        if channel.id not in self.ignored.get(ctx.guild.id, []):
+            await ctx.send(f"{channel.mention} is not ignored.")
+            return
+
+        with userDatabase:
+            userDatabase.execute("DELETE FROM ignored_channels WHERE channel_id = ?", (channel.id,))
+            await ctx.send(f"{channel.mention} is not ignored anymore.")
+            self.reload_ignored()
+
+    @ignore.error
+    @unignore.error
+    async def ignore_error(self, ctx, error):
+        if isinstance(error, commands.errors.BadArgument):
+            await ctx.send(error)
+
+    def reload_ignored(self):
+        """Refresh the world list from the database
+
+        This is used to avoid reading the database everytime the world list is needed.
+        A global variable holding the world list is loaded on startup and refreshed only when worlds are modified"""
+        c = userDatabase.cursor()
+        ignored_dict_temp = {}  # type: Dict[int, List[int]]
+        try:
+            c.execute("SELECT server_id, channel_id FROM ignored_channels")
+            result = c.fetchall()  # type: Dict
+            if len(result) > 0:
+                for row in result:
+                    if not ignored_dict_temp.get(row["server_id"]):
+                        ignored_dict_temp[row["server_id"]] = []
+
+                    ignored_dict_temp[row["server_id"]].append(row["channel_id"])
+
+            self.ignored.clear()
+            self.ignored.update(ignored_dict_temp)
+        finally:
+            c.close()
 
 def setup(bot):
     bot.add_cog(Mod(bot))
