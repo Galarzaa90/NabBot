@@ -22,7 +22,9 @@ class Mod:
         self.reload_ignored()
 
     def __global_check(self, ctx):
-        return ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_admin_check(ctx)
+        return is_private(ctx.channel) or \
+               ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or\
+               checks.is_admin_check(ctx)
 
     # Admin only commands #
     @commands.command()
