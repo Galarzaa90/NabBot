@@ -394,20 +394,21 @@ class General:
     @events.command(name="info", aliases=["show", "details"])
     async def event_info(self, ctx, event_id: int):
         """Displays an event's info"""
-        permissions = ctx.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
+
+        # If this is used on a PM, show events for all shared servers
+        if is_private(ctx.channel):
+            guilds = self.bot.get_user_guilds(ctx.author.id)
+        else:
+            guilds = [ctx.guild]
+        servers_ids = [g.id for g in guilds]
+        placeholders = ", ".join("?" for g in guilds)
+
         c = userDatabase.cursor()
         try:
-            # If this is used on a PM, show events for all shared servers
-            if is_private(ctx.channel):
-                guilds = self.bot.get_user_guilds(ctx.author.id)
-            else:
-                guilds = [ctx.guild]
-            servers_ids = [g.id for g in guilds]
-            placeholders = ", ".join("?" for g in guilds)
-
             c.execute("SELECT * FROM events "
                       "WHERE id = {0} AND active = 1 and server IN ({1})".format(event_id, placeholders),
                       tuple(servers_ids))
@@ -417,18 +418,16 @@ class General:
                 return
             guild = self.bot.get_guild(event["server"])
             start = datetime.fromtimestamp(event["start"])
-            embed = discord.Embed(title=event["name"], description=event["description"], timestamp=start)
             author = self.bot.get_member(event["creator"], guild)
-            footer = "Start time"
-            footer_icon = ""
+            embed = discord.Embed(title=event["name"], description=event["description"], timestamp=start)
             if author is not None:
                 if guild is None:
                     author_name = author.name
                 else:
                     author_name = author.display_name
-                footer = "Created by " + author_name + " | Start time"
-                footer_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
-            embed.set_footer(text=footer, icon_url=footer_icon)
+                author_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
+                embed.set_author(name=author_name, icon_url=author_icon)
+            embed.set_footer(text="Start time")
             await ctx.send(embed=embed)
         finally:
             c.close()
