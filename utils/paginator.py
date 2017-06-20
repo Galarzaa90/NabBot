@@ -41,8 +41,10 @@ class Paginator:
     permissions: discord.Permissions
         Our permissions for the channel.
     """
-    def __init__(self, bot: Client, *, message: Message, entries, per_page=10, title=None,
-                 description="", numerate=True, color: Colour=None):
+    Empty = discord.Embed.Empty
+
+    def __init__(self, bot: Client, *, message: Message, entries, per_page=10, title=None, description="",
+                 numerate=True, color: Colour=None, author=None, author_icon=discord.Embed.Empty):
         self.bot = bot
         self.entries = entries
         self.message = message
@@ -57,6 +59,8 @@ class Paginator:
             pages += 1
         self.maximum_pages = pages
         self.embed = discord.Embed()
+        if author is not None:
+            self.embed.set_author(name=author, icon_url=author_icon)
         if color is not None:
             self.embed.colour = color
         self.paginating = len(entries) > per_page

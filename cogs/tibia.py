@@ -705,40 +705,45 @@ class Tibia:
 
     @commands.group(aliases=['deathlist', 'death'], invoke_without_command=True)
     async def deaths(self, ctx, *, name: str = None):
-        """Shows a player's or everyone's recent deaths"""
+        """Shows a player's or everyone's recent deaths
+
+        If the character is not tracked (owned by someone), only deaths on tibia.com are shown.
+        Tracked characters show all their saved deaths"""
         if name is None and is_lite_mode(ctx):
             return
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if is_private(ctx.message.channel):
-            user_guilds = self.bot.get_user_guilds(ctx.message.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.message.author.id)
+        if is_private(ctx.channel):
+            user_guilds = self.bot.get_user_guilds(ctx.author.id)
+            user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
-            user_guilds = [ctx.message.guild]
-            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
+            user_guilds = [ctx.guild]
+            user_worlds = [tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None and name is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
         c = userDatabase.cursor()
         entries = []
+        author = None
+        author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
-        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
             per_page = 5
         try:
             if name is None:
                 title = "Latest deaths"
-                c.execute("SELECT level, date, name, user_id, byplayer, killer, world "
+                c.execute("SELECT level, date, name, user_id, byplayer, killer, world, vocation "
                           "FROM char_deaths, chars "
-                          "WHERE char_id = id "
-                          "ORDER BY date DESC")
+                          "WHERE char_id = id AND level > ? "
+                          "ORDER BY date DESC", (announce_threshold,))
                 while True:
                     row = c.fetchone()
                     if row is None:
@@ -751,7 +756,9 @@ class Tibia:
                     count += 1
                     row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
                     row["user"] = user.display_name
-                    entries.append("{name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*".format(**row))
+                    row["emoji"] = get_voc_emoji(row["vocation"])
+                    entries.append("{emoji} {name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*"
+                                   .format(**row))
                     if count >= 100:
                         break
             else:
@@ -765,7 +772,13 @@ class Tibia:
                 deaths = char["deaths"]
                 last_time = now
                 name = char["name"]
-                title = "{0} latest deaths:".format(name)
+                voc_emoji = get_voc_emoji(char["vocation"])
+                title = "{1} {0} latest deaths:".format(name, voc_emoji)
+                if ctx.guild is not None and char["owner_id"]:
+                    owner = ctx.guild.get_member(char["owner_id"])  # type: discord.Member
+                    if owner is not None:
+                        author = owner.display_name
+                        author_icon = owner.avatar_url
                 for death in deaths:
                     last_time = parse_tibia_time(death["time"]).timestamp()
                     death["time"] = get_time_diff(datetime.now() - parse_tibia_time(death['time']))
@@ -797,7 +810,8 @@ class Tibia:
         finally:
             c.close()
 
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title, author=author,
+                          author_icon=author_icon)
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -807,7 +821,7 @@ class Tibia:
     @checks.is_not_lite()
     async def deaths_monsters(self, ctx, *, name: str=None):
         """Returns a list of the latest kills by that monster"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -819,8 +833,8 @@ class Tibia:
         count = 0
         entries = []
         now = time.time()
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
-        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
             per_page = 5
@@ -830,7 +844,7 @@ class Tibia:
         else:
             name_with_article = "a "+name
         try:
-            c.execute("SELECT level, date, name, user_id, byplayer, killer "
+            c.execute("SELECT level, date, name, user_id, byplayer, killer, vocation "
                       "FROM char_deaths, chars "
                       "WHERE char_id = id AND (killer LIKE ? OR killer LIKE ?) "
                       "ORDER BY date DESC", (name, name_with_article))
@@ -844,7 +858,8 @@ class Tibia:
                 count += 1
                 row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
                 row["user"] = user.display_name
-                entries.append("{name} (**@{user}**) - At level **{level}** - *{time} ago*".format(**row))
+                row["emoji"] = get_voc_emoji(row["vocation"])
+                entries.append("{emoji} {name} (**@{user}**) - At level **{level}** - *{time} ago*".format(**row))
                 if count >= 100:
                     break
             if count == 0:
@@ -864,7 +879,7 @@ class Tibia:
     @checks.is_not_lite()
     async def deaths_user(self, ctx, *, name: str=None):
         """Shows an user's recent deaths on his/her registered characters"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -874,11 +889,11 @@ class Tibia:
             return
 
         if is_private(ctx.message.channel):
-            user_servers = self.bot.get_user_guilds(ctx.message.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.message.author.id)
+            user_servers = self.bot.get_user_guilds(ctx.author.id)
+            user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
-            user_servers = [ctx.message.guild]
-            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
+            user_servers = [ctx.guild]
+            user_worlds = [tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
@@ -893,14 +908,14 @@ class Tibia:
         entries = []
         now = time.time()
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
-        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
             per_page = 5
 
         try:
-            c.execute("SELECT name, world, level, killer, byplayer, date "
+            c.execute("SELECT name, world, level, killer, byplayer, date, vocation "
                       "FROM chars, char_deaths "
                       "WHERE char_id = id AND user_id = ? "
                       "ORDER BY date DESC", (user.id,))
@@ -912,7 +927,8 @@ class Tibia:
                     continue
                 count += 1
                 row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
-                entries.append("{name} - At level **{level}** by {killer} - *{time} ago*".format(**row))
+                row["emoji"] = get_voc_emoji(row["vocation"])
+                entries.append("{emoji} {name} - At level **{level}** by {killer} - *{time} ago*".format(**row))
 
                 if count >= 100:
                     break
@@ -922,8 +938,10 @@ class Tibia:
         finally:
             c.close()
 
-        title = "@{0} latest kills".format(user.display_name)
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        title = "{0} latest kills".format(user.display_name)
+        icon_url = user.avatar_url
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, author=title,
+                          author_icon=icon_url)
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -935,15 +953,15 @@ class Tibia:
         """Shows death statistic
         
         A shorter period can be shown by adding week or month"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.message.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if is_private(ctx.message.channel):
-            user_worlds = self.bot.get_user_worlds(ctx.message.author.id)
+        if is_private(ctx.channel):
+            user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
-            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
+            user_worlds = [tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
@@ -1023,35 +1041,37 @@ class Tibia:
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if is_private(ctx.message.channel):
-            user_guilds = self.bot.get_user_guilds(ctx.message.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.message.author.id)
+        if is_private(ctx.channel):
+            user_guilds = self.bot.get_user_guilds(ctx.author.id)
+            user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
             user_guilds = [ctx.message.guild]
-            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
+            user_worlds = [tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
         c = userDatabase.cursor()
         entries = []
+        author = None
+        author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
-        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
             per_page = 5
-        await ctx.message.channel.trigger_typing()
+        await ctx.channel.trigger_typing()
         try:
             if name is None:
                 title = "Latest level ups"
-                c.execute("SELECT level, date, name, user_id, world "
+                c.execute("SELECT level, date, name, user_id, world, vocation "
                           "FROM char_levelups, chars "
                           "WHERE char_id = id AND level >= ? "
                           "ORDER BY date DESC", (announce_threshold, ))
@@ -1067,11 +1087,12 @@ class Tibia:
                     count += 1
                     row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
                     row["user"] = user.display_name
-                    entries.append("Level **{level}** - {name} (**@{user}**) - *{time} ago*".format(**row))
+                    row["emoji"] = get_voc_emoji(row["vocation"])
+                    entries.append("{emoji} {name} - Level **{level}** - (**@{user}**) - *{time} ago*".format(**row))
                     if count >= 100:
                         break
             else:
-                c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (name,))
+                c.execute("SELECT id, name, user_id, vocation FROM chars WHERE name LIKE ?", (name,))
                 result = c.fetchone()
                 if result is None:
                     await ctx.send("I don't have a character with that name registered.")
@@ -1081,8 +1102,11 @@ class Tibia:
                 if owner is None:
                     await ctx.send("I don't have a character with that name registered.")
                     return
+                author = owner.display_name
+                author_icon = owner.avatar_url
                 name = result["name"]
-                title = "**{0}** latest level ups:".format(name)
+                emoji = get_voc_emoji(result["vocation"])
+                title = f"{emoji} {name} latest level ups"
                 c.execute("SELECT level, date FROM char_levelups, chars "
                           "WHERE id = char_id AND name LIKE ? "
                           "ORDER BY date DESC", (name,))
@@ -1102,7 +1126,8 @@ class Tibia:
             await ctx.send("There are no registered levels.")
             return
 
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title, author=author,
+                          author_icon=author_icon)
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -1112,7 +1137,7 @@ class Tibia:
     @checks.is_not_lite()
     async def levels_user(self, ctx, *, name: str = None):
         """Shows an user's recent level ups on his/her registered characters"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -1121,12 +1146,12 @@ class Tibia:
             await ctx.send("You must tell me an user's name to look for his/her level ups.")
             return
 
-        if is_private(ctx.message.channel):
-            user_servers = self.bot.get_user_guilds(ctx.message.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.message.author.id)
+        if is_private(ctx.channel):
+            user_servers = self.bot.get_user_guilds(ctx.author.id)
+            user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
-            user_servers = [ctx.message.guild]
-            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
+            user_servers = [ctx.guild]
+            user_worlds = [tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
@@ -1141,8 +1166,8 @@ class Tibia:
         entries = []
         now = time.time()
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
-        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
             per_page = 5
@@ -1160,7 +1185,8 @@ class Tibia:
                     continue
                 count += 1
                 row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
-                entries.append("{name} - Level **{level}** - *{time} ago*".format(**row))
+                row["emoji"] = get_voc_emoji(row["vocation"])
+                entries.append("{emoji} {name} - Level **{level}** - *{time} ago*".format(**row))
                 if count >= 100:
                     break
             if count == 0:
@@ -1169,8 +1195,9 @@ class Tibia:
         finally:
             c.close()
 
-        title = "@{0} latest level ups".format(user.display_name)
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        title = f"{user.display_name} latest level ups"
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, author=title,
+                          author_icon=user.avatar_url)
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -1180,38 +1207,40 @@ class Tibia:
     @checks.is_not_lite()
     async def timeline(self, ctx, *, name: str = None):
         """Shows a player's recent level ups and deaths"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if is_private(ctx.message.channel):
-            user_servers = self.bot.get_user_guilds(ctx.message.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.message.author.id)
+        if is_private(ctx.channel):
+            user_servers = self.bot.get_user_guilds(ctx.author.id)
+            user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
-            user_servers = [ctx.message.guild]
-            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
+            user_servers = [ctx.guild]
+            user_worlds = [tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
         c = userDatabase.cursor()
         entries = []
+        author = None
+        author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
-        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
             per_page = 5
-        await ctx.message.channel.trigger_typing()
+        await ctx.channel.trigger_typing()
         try:
             if name is None:
                 title = "Timeline"
-                c.execute("SELECT name, user_id, world, level, killer, 'death' AS `type`, date "
+                c.execute("SELECT name, user_id, world, level, killer, 'death' AS `type`, date, vocation "
                           "FROM char_deaths, chars WHERE char_id = id AND level >= ? "
                           "UNION "
-                          "SELECT name, user_id, world, level, null, 'levelup' AS `type`, date "
+                          "SELECT name, user_id, world, level, null, 'levelup' AS `type`, date, vocation "
                           "FROM char_levelups, chars WHERE char_id = id AND level >= ? "
                           "ORDER BY date DESC", (announce_threshold, announce_threshold))
                 while True:
@@ -1226,18 +1255,19 @@ class Tibia:
                     count += 1
                     row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
                     row["user"] = user.display_name
+                    row["voc_emoji"] = get_voc_emoji(row["vocation"])
                     if row["type"] == "death":
                         row["emoji"] = EMOJI[":skull:"]
-                        entries.append("{emoji} {name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*"
-                                       .format(**row)
-                                       )
+                        entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - At level **{level}** by {killer} - "
+                                       "*{time} ago*".format(**row))
                     else:
                         row["emoji"] = EMOJI[":star2:"]
-                        entries.append("{emoji} {name} (**@{user}**) - Level **{level}** - *{time} ago*".format(**row))
+                        entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - Level **{level}** - *{time} ago*"
+                                       .format(**row))
                     if count >= 200:
                         break
             else:
-                c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (name,))
+                c.execute("SELECT id, name, user_id, vocation FROM chars WHERE name LIKE ?", (name,))
                 result = c.fetchone()
                 if result is None:
                     await ctx.send("I don't have a character with that name registered.")
@@ -1247,12 +1277,15 @@ class Tibia:
                 if owner is None:
                     await ctx.send("I don't have a character with that name registered.")
                     return
+                author = owner.display_name
+                author_icon = owner.avatar_url
                 name = result["name"]
-                title = "**{0}** timeline".format(name)
-                c.execute("SELECT name, user_id, world, level, killer, 'death' AS `type`, date "
+                emoji = get_voc_emoji(result["vocation"])
+                title = f"{emoji} {name} timeline"
+                c.execute("SELECT name, user_id, world, level, killer, 'death' AS `type`, date, vocation "
                           "FROM char_deaths, chars WHERE char_id = id AND level >= ? AND name LIKE ?"
                           "UNION "
-                          "SELECT name, user_id, world, level, null, 'levelup' AS `type`, date "
+                          "SELECT name, user_id, world, level, null, 'levelup' AS `type`, date, vocation "
                           "FROM char_levelups, chars WHERE char_id = id AND level >= ? AND name LIKE ? "
                           "ORDER BY date DESC", (announce_threshold, name, announce_threshold, name))
                 while True:
@@ -1278,7 +1311,8 @@ class Tibia:
             await ctx.send("There are no registered events.")
             return
 
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title, author=author,
+                          author_icon=author_icon)
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -1288,7 +1322,7 @@ class Tibia:
     @checks.is_not_lite()
     async def timeline_user(self, ctx, *, name: str = None):
         """Shows an users's recent level ups and deaths on his/her characters"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.message.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -1297,12 +1331,12 @@ class Tibia:
             await ctx.send("You must tell me an user's name to look for his/her story.")
             return
 
-        if is_private(ctx.message.channel):
-            user_servers = self.bot.get_user_guilds(ctx.message.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.message.author.id)
+        if is_private(ctx.channel):
+            user_servers = self.bot.get_user_guilds(ctx.author.id)
+            user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
-            user_servers = [ctx.message.guild]
-            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
+            user_servers = [ctx.guild]
+            user_worlds = [tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
@@ -1317,18 +1351,18 @@ class Tibia:
         count = 0
         now = time.time()
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
-        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
             per_page = 5
-        await ctx.message.channel.trigger_typing()
+        await ctx.channel.trigger_typing()
         try:
-            title = "@{0} timeline".format(user.display_name)
-            c.execute("SELECT name, user_id, world, level, killer, 'death' AS `type`, date "
+            title = f"{user.display_name} timeline"
+            c.execute("SELECT name, user_id, world, level, killer, 'death' AS `type`, date, vocation "
                       "FROM char_deaths, chars WHERE char_id = id AND level >= ? AND user_id = ? "
                       "UNION "
-                      "SELECT name, user_id, world, level, null, 'levelup' AS `type`, date "
+                      "SELECT name, user_id, world, level, null, 'levelup' AS `type`, date, vocation "
                       "FROM char_levelups, chars WHERE char_id = id AND level >= ? AND user_id = ? "
                       "ORDER BY date DESC", (announce_threshold, user.id, announce_threshold, user.id))
             while True:
@@ -1339,14 +1373,15 @@ class Tibia:
                     continue
                 count += 1
                 row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                row["voc_emoji"] = get_voc_emoji(row["vocation"])
                 if row["type"] == "death":
                     row["emoji"] = EMOJI[":skull:"]
-                    entries.append("{emoji} {name} - At level **{level}** by {killer} - *{time} ago*"
+                    entries.append("{emoji}{voc_emoji} {name} - At level **{level}** by {killer} - *{time} ago*"
                                    .format(**row)
                                    )
                 else:
                     row["emoji"] = EMOJI[":star2:"]
-                    entries.append("{emoji} {name} - Level **{level}** - *{time} ago*".format(**row))
+                    entries.append("{emoji}{voc_emoji} {name} - Level **{level}** - *{time} ago*".format(**row))
                 if count >= 200:
                     break
         finally:
@@ -1355,8 +1390,9 @@ class Tibia:
         if count == 0:
             await ctx.send("There are no registered events.")
             return
-
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        author_icon = user.avatar_url
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, author=title,
+                          author_icon=author_icon)
         try:
             await pages.paginate()
         except CannotPaginate as e:
