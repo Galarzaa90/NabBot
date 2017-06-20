@@ -35,14 +35,6 @@ class NabBot(commands.Bot):
         print(self.user.id)
         print('------')
 
-        for cog in initial_cogs:
-            try:
-                self.load_extension(cog)
-                print(f"Cog {cog} loaded successfully.")
-            except Exception as e:
-                print(f'Cog {cog} failed to load:')
-                traceback.print_exc(limit=-1)
-
         # Populate command_list
         for command in self.commands:
             self.command_list.append(command.name)
@@ -395,11 +387,19 @@ if __name__ == "__main__":
     reload_welcome_messages()
     reload_announce_channels()
 
-    print("Attempting login...")
-
     token = get_token()
 
+    print("Loading cogs...")
+    for cog in initial_cogs:
+        try:
+            nabbot.load_extension(cog)
+            print(f"Cog {cog} loaded successfully.")
+        except Exception as e:
+            print(f'Cog {cog} failed to load:')
+            traceback.print_exc(limit=-1)
+
     try:
+        print("Attempting login...")
         nabbot.run(token)
     except discord.errors.LoginFailure:
         print("Invalid token. Edit token.txt to fix it.")
