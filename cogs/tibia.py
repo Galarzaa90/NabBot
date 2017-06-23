@@ -1,4 +1,5 @@
 import calendar
+import os
 import random
 from typing import Optional
 
@@ -177,7 +178,7 @@ class Tibia:
             await ctx.send("Image added to item.")
             result = await item_show(item)
             if result is not None:
-                await ctx.send(file=discord.File(result,"results.png"))
+                await ctx.send(file=discord.Filex(result,"results.png"))
             return
 
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
@@ -629,7 +630,7 @@ class Tibia:
         """Checks an item's information
 
         Shows name, picture, npcs that buy and sell and creature drops"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -647,20 +648,26 @@ class Tibia:
             await ctx.send("I couldn't find that item, maybe you meant one of these?", embed=embed)
             return
 
-        long = is_private(ctx.message.channel) or ctx.message.channel.name == ask_channel_name
+        long = is_private(ctx.channel) or ctx.channel.name == ask_channel_name
         embed = self.get_item_embed(ctx, item, long)
 
         # Attach item's image only if the bot has permissions
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if permissions.attach_files and item["image"] != 0:
-            await ctx.send(file=discord.File(item["image"], filename=f"{item['name']}.png"), embed=embed)
+            filename = item["name"].replace(" ", "") + ".gif"
+            with open(filename, "w+b") as f:
+                f.write(bytearray(item['image']))
+                f.close()
+                embed.set_thumbnail(url=f"attachment://{filename}")
+                await ctx.send(file=discord.File(f"{filename}"), embed=embed)
+            os.remove(filename)
         else:
-            ctx.send(embed=embed)
+            await ctx.send(embed=embed)
 
     @commands.command(aliases=['mon', 'mob', 'creature'])
     async def monster(self, ctx, *, name: str=None):
         """Gives information about a monster"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -668,20 +675,20 @@ class Tibia:
         if name is None:
             await ctx.send("Tell me the name of the monster you want to search.")
             return
-        if is_private(ctx.message.channel):
+        if is_private(ctx.channel):
             bot_member = self.bot.user
         else:
-            bot_member = self.bot.get_member(self.bot.user.id, ctx.message.guild)
+            bot_member = self.bot.get_member(self.bot.user.id, ctx.guild)
         if name.lower() == bot_member.display_name.lower():
             await ctx.send(random.choice(["**"+bot_member.display_name+"** is too strong for you to hunt!",
-                                               "Sure, you kill *one* child and suddenly you're a monster!",
-                                               "I'M NOT A MONSTER",
-                                               "I'm a monster, huh? I'll remember that, human..."+EMOJI[":flame:"],
-                                               "You misspelled *future ruler of the world*.",
-                                               "You're not a good person. You know that, right?",
-                                               "I guess we both know that isn't going to happen.",
-                                               "You can't hunt me.",
-                                               "That's funny... If only I was programmed to laugh."]))
+                                          "Sure, you kill *one* child and suddenly you're a monster!",
+                                          "I'M NOT A MONSTER",
+                                          "I'm a monster, huh? I'll remember that, human..."+EMOJI[":flame:"],
+                                          "You misspelled *future ruler of the world*.",
+                                          "You're not a good person. You know that, right?",
+                                          "I guess we both know that isn't going to happen.",
+                                          "You can't hunt me.",
+                                          "That's funny... If only I was programmed to laugh."]))
             return
         monster = get_monster(name)
         if monster is None:
@@ -693,13 +700,18 @@ class Tibia:
             await ctx.send("I couldn't find that creature, maybe you meant one of these?", embed=embed)
             return
 
-        long = is_private(ctx.message.channel) or ctx.message.channel.name == ask_channel_name
+        long = is_private(ctx.channel) or ctx.channel.name == ask_channel_name
         embed = self.get_monster_embed(ctx, monster, long)
 
-        # Attach item's image only if the bot has permissions
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        # Attach monster's image only if the bot has permissions
         if permissions.attach_files and monster["image"] != 0:
-            await ctx.send(file=discord.File(monster["image"], filename=f"{monster['name']}.png"), embed=embed)
+            filename = monster["name"].replace(" ", "") + ".gif"
+            with open(filename, "w+b") as f:
+                f.write(bytearray(monster['image']))
+                f.close()
+                embed.set_thumbnail(url=f"attachment://{filename}")
+                await ctx.send(file=discord.File(f"{filename}"), embed=embed)
+            os.remove(filename)
         else:
             await ctx.send(embed=embed)
 
@@ -1500,7 +1512,7 @@ class Tibia:
     @commands.command()
     async def spell(self, ctx, *, name: str= None):
         """Tells you information about a certain spell."""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -1520,13 +1532,18 @@ class Tibia:
             await ctx.send("I couldn't find that spell, maybe you meant one of these?", embed=embed)
             return
 
-        long = is_private(ctx.message.channel) or ctx.message.channel.name == ask_channel_name
+        long = is_private(ctx.channel) or ctx.channel.name == ask_channel_name
         embed = self.get_spell_embed(ctx, spell, long)
 
-        # Attach item's image only if the bot has permissions
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        # Attach spell's image only if the bot has permissions
         if permissions.attach_files and spell["image"] != 0:
-            await ctx.send(file=discord.File(spell["image"], filename=f"{spell['name']}.png"), embed=embed)
+            filename = spell["name"].replace(" ", "") + ".gif"
+            with open(filename, "w+b") as f:
+                f.write(bytearray(spell['image']))
+                f.close()
+                embed.set_thumbnail(url=f"attachment://{filename}")
+                await ctx.send(file=discord.File(f"{filename}"), embed=embed)
+            os.remove(filename)
         else:
             await ctx.send(embed=embed)
 
@@ -1571,12 +1588,15 @@ class Tibia:
             return
 
         # Attach image only if the bot has permissions
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if permissions.attach_files:
-            filename = house['name'] + ".png"
-            await ctx.send(file=discord.File(get_map_area(house["x"], house["y"], house["z"]),
-                                             filename=f"{house['name']}.png"),
-                           embed=self.get_house_embed(house))
+            filename = house["name"].replace(" ", "") + ".png"
+            with open(filename, "w+b") as f:
+                f.write(bytearray(get_map_area(house["x"], house["y"], house["z"])))
+                f.close()
+                embed = self.get_house_embed(house)
+                embed.set_image(url=f"attachment://{filename}")
+                await ctx.send(file=discord.File(f"{filename}"), embed=embed)
+            os.remove(filename)
         else:
             await ctx.send(embed=self.get_house_embed(house))
 
