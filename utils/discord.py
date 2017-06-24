@@ -23,7 +23,7 @@ def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -
     if role_id is None and role_name is None:
         raise ValueError("Either role_id or role_name must be specified")
     for role in guild.roles:
-        if role.id == role_id or role.name.lower() == role_name.lower():
+        if role.id == role_id or (role_name is not None and role.name.lower() == role_name.lower()):
             return role
     return None
 
@@ -77,18 +77,18 @@ def clean_string(ctx: commands.Context, string: str) -> str:
     For message object, there's already a property that odes this: message.clean_content"""
     def repl_channel(match):
         channel_id = match.group(0).replace("<", "").replace("#", "").replace(">", "")
-        channel = ctx.message.guild.get_channel(channel_id)
+        channel = ctx.message.guild.get_channel(int(channel_id))
         return "#deleted_channel" if channel is None else "#"+channel.name
 
     def repl_role(match):
         role_id = match.group(0).replace("<", "").replace("@", "").replace("&", "").replace(">", "")
-        role = get_role(ctx.message.guild, role_id)
+        role = get_role(ctx.message.guild, int(role_id))
         return "@deleted_role" if role is None else "@"+role.name
 
     def repl_user(match):
         user_id = match.group(0).replace("<", "").replace("@", "").replace("!", "").replace(">", "")
-        user = ctx.message.guild.get_member(user_id)
-        return "@deleted_role" if user is None else "@" + user.display_name
+        user = ctx.message.guild.get_member(int(user_id))
+        return "@deleted_user" if user is None else "@" + user.display_name
     # Find channel mentions:
     string = re.sub(r"<#\d+>", repl_channel, string)
     # Find role mentions

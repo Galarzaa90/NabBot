@@ -1,5 +1,6 @@
 import asyncio
 import re
+from contextlib import closing
 
 import discord
 from datetime import timedelta, datetime
@@ -29,7 +30,7 @@ class General:
 
     async def events_announce(self):
         await self.bot.wait_until_ready()
-        while not self.bot.is_closed():
+        while not self.bot .is_closed():
             """Announces when an event is close to starting."""
             first_announce = 60 * 30
             second_announce = 60 * 15
@@ -78,16 +79,7 @@ class General:
                     message = "**{name}** (by **@{author}**,*ID:{id}*) - Is starting {start}!".format(**event)
                     c.execute("UPDATE events SET status = ? WHERE id = ?", (new_status, event["id"],))
                     await guild.default_channel.send(message)
-                    # Fetch list of subscribers
-                    c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event["id"],))
-                    subscribers = c.fetchall()
-                    if not subscribers:
-                        continue
-                    for subscriber in subscribers:
-                        member = self.bot.get_member(subscriber["user_id"])
-                        if member is None:
-                            continue
-                        await member.send(message)
+                    await self.notify_subscribers(event["id"], message)
             except asyncio.CancelledError:
                 break
             except Exception:
@@ -173,7 +165,7 @@ class General:
     @commands.command(name="server", aliases=["serverinfo", "server_info"])
     async def info_server(self, ctx):
         """Shows the server's information."""
-        permissions = ctx.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -271,7 +263,7 @@ class General:
     @commands.command()
     async def about(self, ctx):
         """Shows information about the bot"""
-        permissions = ctx.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -281,8 +273,7 @@ class General:
         deaths_count = 0
         levels_count = 0
         if not lite_mode:
-            c = userDatabase.cursor()
-            try:
+            with closing(userDatabase.cursor()) as c:
                 c.execute("SELECT COUNT(*) as count FROM users")
                 result = c.fetchone()
                 if result is not None:
@@ -299,8 +290,6 @@ class General:
                 result = c.fetchone()
                 if result is not None:
                     levels_count = result["count"]
-            finally:
-                c.close()
 
         embed = discord.Embed(description="*Beep bop beep bop*. I'm just a bot!")
         embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
@@ -323,27 +312,26 @@ class General:
 
     @commands.group(aliases=["event"], invoke_without_command=True)
     @checks.is_not_lite()
-    async def events(self, ctx, event_id:int=None):
+    async def events(self, ctx):
         """Shows a list of current active events"""
-        permissions = ctx.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links and not is_private(ctx.channel):
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
         # Time in seconds the bot will show past events
         time_threshold = 60 * 30
         now = time.time()
-        c = userDatabase.cursor()
         server = ctx.guild
-        try:
-            # If this is used on a PM, show events for all shared servers
-            if is_private(ctx.channel):
-                guilds = self.bot.get_user_guilds(ctx.author.id)
-            else:
-                guilds = [ctx.guild]
-            servers_ids = [g.id for g in guilds]
-            placeholders = ", ".join("?" for g in guilds)
-            embed = discord.Embed(description="For more info about an event, use `/event info (id)`"
-                                              "\nTo receive notifications for an event, use `/event sub (id)`")
+        # If this is used on a PM, show events for all shared servers
+        if is_private(ctx.channel):
+            guilds = self.bot.get_user_guilds(ctx.author.id)
+        else:
+            guilds = [ctx.guild]
+        servers_ids = [g.id for g in guilds]
+        placeholders = ", ".join("?" for g in guilds)
+        embed = discord.Embed(description="For more info about an event, use `/event info (id)`"
+                                          "\nTo receive notifications for an event, use `/event sub (id)`")
+        with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator, start, name, id, server FROM events "
                       "WHERE start < {0} AND start > {1} AND active = 1 AND server IN ({2}) "
                       "ORDER by start ASC".format(now, now - time_threshold, placeholders), tuple(servers_ids))
@@ -352,43 +340,41 @@ class General:
                       "WHERE start > {0} AND active = 1 AND server IN ({1})"
                       "ORDER BY start ASC".format(now, placeholders), tuple(servers_ids))
             upcoming_events = c.fetchall()
-            if len(recent_events) + len(upcoming_events) == 0:
-                await ctx.send("There are no upcoming events.")
-                return
-            # Recent events
-            if recent_events:
-                name = "Recent events"
-                value = ""
-                for event in recent_events:
-                    author = self.bot.get_member(event["creator"], server)
-                    event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
-                    time_diff = timedelta(seconds=now - event["start"])
-                    minutes = round((time_diff.seconds / 60) % 60)
-                    event["start_str"] = "Started {0} minutes ago".format(minutes)
-                    value += "\n**{name}** (by **@{author}**,*ID:{id}*) - {start_str}".format(**event)
-                embed.add_field(name=name, value=value, inline=False)
-            # Upcoming events
-            if upcoming_events:
-                name = "Upcoming events"
-                value = ""
-                for event in upcoming_events:
-                    author = self.bot.get_member(event["creator"], server)
-                    event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
-                    time_diff = timedelta(seconds=event["start"] - now)
-                    days, hours, minutes = time_diff.days, time_diff.seconds // 3600, (time_diff.seconds // 60) % 60
-                    if days:
-                        event["start_str"] = 'In {0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
-                    elif hours:
-                        event["start_str"] = 'In {0} hours and {1} minutes'.format(hours, minutes)
-                    elif minutes > 0:
-                        event["start_str"] = 'In {0} minutes'.format(minutes)
-                    else:
-                        event["start_str"] = 'Starting now!'
-                    value += "\n**{name}** (by **@{author}**,*ID:{id}*) - {start_str}".format(**event)
-                embed.add_field(name=name, value=value, inline=False)
-            await ctx.send(embed=embed)
-        finally:
-            c.close()
+        if len(recent_events) + len(upcoming_events) == 0:
+            await ctx.send("There are no upcoming events.")
+            return
+        # Recent events
+        if recent_events:
+            name = "Recent events"
+            value = ""
+            for event in recent_events:
+                author = self.bot.get_member(event["creator"], server)
+                event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
+                time_diff = timedelta(seconds=now - event["start"])
+                minutes = round((time_diff.seconds / 60) % 60)
+                event["start_str"] = "Started {0} minutes ago".format(minutes)
+                value += "\n**{name}** (by **@{author}**,*ID:{id}*) - {start_str}".format(**event)
+            embed.add_field(name=name, value=value, inline=False)
+        # Upcoming events
+        if upcoming_events:
+            name = "Upcoming events"
+            value = ""
+            for event in upcoming_events:
+                author = self.bot.get_member(event["creator"], server)
+                event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
+                time_diff = timedelta(seconds=event["start"] - now)
+                days, hours, minutes = time_diff.days, time_diff.seconds // 3600, (time_diff.seconds // 60) % 60
+                if days:
+                    event["start_str"] = 'In {0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
+                elif hours:
+                    event["start_str"] = 'In {0} hours and {1} minutes'.format(hours, minutes)
+                elif minutes > 0:
+                    event["start_str"] = 'In {0} minutes'.format(minutes)
+                else:
+                    event["start_str"] = 'Starting now!'
+                value += "\n**{name}** (by **@{author}**,*ID:{id}*) - {start_str}".format(**event)
+            embed.add_field(name=name, value=value, inline=False)
+        await ctx.send(embed=embed)
 
     @checks.is_not_lite()
     @events.command(name="info", aliases=["show", "details"])
@@ -407,30 +393,27 @@ class General:
         servers_ids = [g.id for g in guilds]
         placeholders = ", ".join("?" for g in guilds)
 
-        c = userDatabase.cursor()
-        try:
+        with closing(userDatabase.cursor()) as c:
             c.execute("SELECT * FROM events "
                       "WHERE id = {0} AND active = 1 and server IN ({1})".format(event_id, placeholders),
                       tuple(servers_ids))
             event = c.fetchone()
-            if not event:
-                await ctx.send("There's no event with that id.")
-                return
-            guild = self.bot.get_guild(event["server"])
-            start = datetime.fromtimestamp(event["start"])
-            author = self.bot.get_member(event["creator"], guild)
-            embed = discord.Embed(title=event["name"], description=event["description"], timestamp=start)
-            if author is not None:
-                if guild is None:
-                    author_name = author.name
-                else:
-                    author_name = author.display_name
-                author_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
-                embed.set_author(name=author_name, icon_url=author_icon)
-            embed.set_footer(text="Start time")
-            await ctx.send(embed=embed)
-        finally:
-            c.close()
+        if not event:
+            await ctx.send("There's no event with that id.")
+            return
+        guild = self.bot.get_guild(event["server"])
+        start = datetime.fromtimestamp(event["start"])
+        author = self.bot.get_member(event["creator"], guild)
+        embed = discord.Embed(title=event["name"], description=event["description"], timestamp=start)
+        if author is not None:
+            if guild is None:
+                author_name = author.name
+            else:
+                author_name = author.display_name
+            author_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
+            embed.set_author(name=author_name, icon_url=author_icon)
+        embed.set_footer(text="Start time")
+        await ctx.send(embed=embed)
 
     @checks.is_not_lite()
     @events.command(name="add")
@@ -455,63 +438,61 @@ class General:
         if len(params) > 1:
             event_description = clean_string(ctx, params[1])
 
-        c = userDatabase.cursor()
-        try:
+        with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
             result = c.fetchall()
-            if len(result) > 1 and creator not in owner_ids + mod_ids:
-                await ctx.send("You can only have two running events simultaneously. Delete or edit an active event")
+        if len(result) > 1 and creator not in owner_ids + mod_ids:
+            await ctx.send("You can only have two running events simultaneously. Delete or edit an active event")
+            return
+
+        guilds = self.bot.get_user_guilds(creator)
+        # If message is via PM, but user only shares one server, we just consider that server
+        if is_private(ctx.channel) and len(guilds) == 1:
+            guild = guilds[0]
+        # Not a private message, so we just take current guild
+        elif not is_private(ctx.channel):
+            guild = ctx.guild
+        # PM and user shares multiple servers, we must ask him for which server is the event
+        else:
+            await ctx.send("For which server is this event? Choose one (number only)" +
+                           "\n\t0: *Cancel*\n\t" +
+                           "\n\t".join(["{0}: **{1.name}**".format(i + 1, j) for i, j in enumerate(guilds)]))
+
+            def check(m):
+                return m.channel == ctx.channel and m.author == ctx.author
+
+            try:
+                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
+                answer = int(reply.content)
+                if answer == 0:
+                    await ctx.send("Changed your mind? Typical human.")
+                    return
+                guild = guilds[answer - 1]
+            except IndexError:
+                await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
+                return
+            except ValueError:
+                await ctx.send("That's not a valid answer, try the command again.")
+                return
+            except asyncio.TimeoutError:
+                await ctx.send("Nothing? Forget it then.")
                 return
 
-            guilds = self.bot.get_user_guilds(creator)
-            # If message is via PM, but user only shares one server, we just consider that server
-            if is_private(ctx.channel) and len(guilds) == 1:
-                guild = guilds[0]
-            # Not a private message, so we just take current guild
-            elif not is_private(ctx.channel):
-                guild = ctx.guild
-            # PM and user shares multiple servers, we must ask him for which server is the event
-            else:
-                await ctx.send("For which server is this event? Choose one (number only)" +
-                               "\n\t0: *Cancel*\n\t" +
-                               "\n\t".join(["{0}: **{1.name}**".format(i + 1, j) for i, j in enumerate(guilds)]))
+        embed = discord.Embed(title=name, description=event_description, timestamp=datetime.fromtimestamp(start))
+        embed.set_footer(text="Start time")
 
-                def check(m):
-                    return m.channel == ctx.channel and m.author == ctx.author
-
-                try:
-                    reply = await self.bot.wait_for("message", timeout=50.0, check=check)
-                    answer = int(reply.content)
-                    if answer == 0:
-                        await ctx.send("Changed your mind? Typical human.")
-                        return
-                    guild = guilds[answer - 1]
-                except IndexError:
-                    await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
-                    return
-                except ValueError:
-                    await ctx.send("That's not a valid answer, try the command again.")
-                    return
-                except asyncio.TimeoutError:
-                    await ctx.send("Nothing? Forget it then.")
-                    return
-
-            embed = discord.Embed(title=name, description=event_description, timestamp=datetime.fromtimestamp(start))
-            embed.set_footer(text="Start time")
-
-            message = await ctx.send("Is this correct?", embed=embed)
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no event for you.")
-            if not confirm:
-                return
-
+        message = await ctx.send("Is this correct?", embed=embed)
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no event for you.")
+        if not confirm:
+            return
+        with closing(userDatabase.cursor()) as c:
             c.execute("INSERT INTO events (creator,server,start,name,description) VALUES(?,?,?,?,?)",
                       (creator, guild.id, start, name, event_description))
             event_id = c.lastrowid
-            reply = "Event created successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
-            await ctx.send(reply.format(name, starts_in.original, event_id))
-        finally:
             userDatabase.commit()
-            c.close()
+
+        reply = "Event created successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
+        await ctx.send(reply.format(name, starts_in.original, event_id))
 
     @event_add.error
     @checks.is_not_lite()
@@ -541,45 +522,51 @@ class General:
             await ctx.send(f"You need to tell me the id of the event you want to edit."
                            f"\nLike this: `{ctx.message.content} 50` or `{ctx.message.content} 50 new_name`")
             return
-        c = userDatabase.cursor()
         now = time.time()
-        try:
+        with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator, name FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
             event = c.fetchone()
-            if not event:
-                await ctx.send("There are no active events with that ID.")
-                return
-            if event["creator"] != int(ctx.author.id) and ctx.author.id not in mod_ids + owner_ids:
-                await ctx.send("You can only edit your own events.")
-                return
+        if not event:
+            await ctx.send("There are no active events with that ID.")
+            return
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in mod_ids + owner_ids:
+            await ctx.send("You can only edit your own events.")
+            return
 
-            def check(m):
-                return ctx.channel == m.channel and ctx.author == m.author
+        def check(m):
+            return ctx.channel == m.channel and ctx.author == m.author
 
-            if new_name is None:
-                await ctx.send(f"What would you like to be the new name of **{event['name']}**? You can `cancel` this.")
-                try:
-                    reply = await self.bot.wait_for("message", check=check, timeout=120)
-                    new_name = reply.content
-                    if new_name.strip().lower() == "cancel":
-                        await ctx.send("Alright, operation cancelled.")
-                        return
-                except asyncio.TimeoutError:
-                    await ctx.send("Guess you don't want to change the name...")
+        if new_name is None:
+            await ctx.send(f"What would you like to be the new name of **{event['name']}**? You can `cancel` this.")
+            try:
+                reply = await self.bot.wait_for("message", check=check, timeout=120)
+                new_name = reply.content
+                if new_name.strip().lower() == "cancel":
+                    await ctx.send("Alright, operation cancelled.")
                     return
-
-            new_name = single_line(clean_string(ctx, new_name))
-            message = await ctx.send(f"Do you want to change the name of **{event['name']}** to **{new_name}**?")
-            confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, name remains the same.")
-            if not confirmed:
+            except asyncio.TimeoutError:
+                await ctx.send("Guess you don't want to change the name...")
                 return
 
-            c.execute("UPDATE events SET name = ? WHERE id = ?", (new_name, event_id,))
-            await ctx.send("Your event was renamed successfully to **{0}**.".format(new_name))
+        new_name = single_line(clean_string(ctx, new_name))
+        message = await ctx.send(f"Do you want to change the name of **{event['name']}** to **{new_name}**?")
+        confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, name remains the same.")
+        if not confirmed:
+            return
 
-        finally:
-            userDatabase.commit()
-            c.close()
+        with userDatabase as conn:
+            conn.execute("UPDATE events SET name = ? WHERE id = ?", (new_name, event_id,))
+
+        if event["creator"] == ctx.author.id:
+            await ctx.send(f"Your event was renamed successfully to **{new_name}**.")
+        else:
+            await ctx.send(f"Event renamed successfully to **{new_name}**.")
+            creator = self.bot.get_member(event["creator"])
+            if creator is not None:
+                await creator.send(f"Your event **{event['name']}** was renamed to **{new_name}** by "
+                                   f"{ctx.author.mention}")
+        await self.notify_subscribers(event_id, f"The event **{event['name']}** was renamed to **{new_name}**.",
+                                      skip_creator=True)
 
     @event_edit.command(name="description", aliases=["desc", "details"])
     @checks.is_not_lite()
@@ -592,52 +579,58 @@ class General:
             await ctx.send(f"You need to tell me the id of the event you want to edit."
                            f"\nLike this: `{ctx.message.content} 50` or `{ctx.message.content} 50 new_description`")
             return
-        c = userDatabase.cursor()
         now = time.time()
-        try:
+        with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator, name, start FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
             event = c.fetchone()
-            if not event:
-                await ctx.send("There are no active events with that ID.")
-                return
-            if event["creator"] != int(ctx.author.id) and ctx.author.id not in mod_ids + owner_ids:
-                await ctx.send("You can only edit your own events.")
-                return
+        if not event:
+            await ctx.send("There are no active events with that ID.")
+            return
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in mod_ids + owner_ids:
+            await ctx.send("You can only edit your own events.")
+            return
 
-            def check(m):
-                return ctx.channel == m.channel and ctx.author == m.author
+        def check(m):
+            return ctx.channel == m.channel and ctx.author == m.author
 
-            if new_description is None:
-                await ctx.send(f"What would you like to be the new description of **{event['name']}**?"
-                               f"You can `cancel` this or set a `blank` description.")
-                try:
-                    reply = await self.bot.wait_for("message", check=check, timeout=120)
-                    new_description = reply.content
-                    if new_description.strip().lower() == "cancel":
-                        await ctx.send("Alright, operation cancelled.")
-                        return
-                except asyncio.TimeoutError:
-                    await ctx.send("Guess you don't want to change the description...")
+        if new_description is None:
+            await ctx.send(f"What would you like to be the new description of **{event['name']}**?"
+                           f"You can `cancel` this or set a `blank` description.")
+            try:
+                reply = await self.bot.wait_for("message", check=check, timeout=120)
+                new_description = reply.content
+                if new_description.strip().lower() == "cancel":
+                    await ctx.send("Alright, operation cancelled.")
                     return
-
-            if new_description.strip().lower() == "blank":
-                new_description = ""
-            new_description = clean_string(ctx, new_description)
-
-            embed = discord.Embed(title=event["name"], description=new_description,
-                                  timestamp=datetime.fromtimestamp(event["start"]))
-            embed.set_footer(text="Start time")
-            message = await ctx.send("Do you want this to be the new description?", embed=embed)
-            confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no changes will be done.")
-            if not confirmed:
+            except asyncio.TimeoutError:
+                await ctx.send("Guess you don't want to change the description...")
                 return
 
-            c.execute("UPDATE events SET description = ? WHERE id = ?", (new_description, event_id,))
-            await ctx.send("Your event's description was changed successfully..")
+        if new_description.strip().lower() == "blank":
+            new_description = ""
+        new_description = clean_string(ctx, new_description)
 
-        finally:
-            userDatabase.commit()
-            c.close()
+        embed = discord.Embed(title=event["name"], description=new_description,
+                              timestamp=datetime.fromtimestamp(event["start"]))
+        embed.set_footer(text="Start time")
+        message = await ctx.send("Do you want this to be the new description?", embed=embed)
+        confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no changes will be done.")
+        if not confirmed:
+            return
+
+        with userDatabase as conn:
+            conn.execute("UPDATE events SET description = ? WHERE id = ?", (new_description, event_id,))
+
+        if event["creator"] == ctx.author.id:
+            await ctx.send("Your event's description was changed successfully..")
+        else:
+            await ctx.send("Event's description changed successfully..")
+            creator = self.bot.get_member(event["creator"])
+            if creator is not None:
+                await creator.send(f"Your event **{event['name']}** had its description changed by {ctx.author.mention}",
+                                   embed=embed)
+        await self.notify_subscribers(event_id, f"The description of event **{event['name']}** was changed.",
+                                      embed=embed, skip_creator=True)
 
     @event_edit.command(name="time", aliases=["date", "start"])
     @checks.is_not_lite()
@@ -650,50 +643,56 @@ class General:
             await ctx.send(f"You need to tell me the id of the event you want to edit."
                            f"\nLike this: `{ctx.message.content} 50` or `{ctx.message.content} 50 new_time`")
             return
-        c = userDatabase.cursor()
         now = time.time()
-        try:
+        with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator, name, start FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
             event = c.fetchone()
-            if not event:
-                await ctx.send("There are no active events with that ID.")
-                return
-            if event["creator"] != int(ctx.author.id) and ctx.author.id not in mod_ids + owner_ids:
-                await ctx.send("You can only edit your own events.")
-                return
+        if not event:
+            await ctx.send("There are no active events with that ID.")
+            return
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in mod_ids + owner_ids:
+            await ctx.send("You can only edit your own events.")
+            return
 
-            def check(m):
-                return ctx.channel == m.channel and ctx.author == m.author
+        def check(m):
+            return ctx.channel == m.channel and ctx.author == m.author
 
-            if starts_in is None:
-                await ctx.send(f"When would you like the new start time of **{event['name']}** be?"
-                               f"You can `cancel` this.\n Examples: `1h20m`, `2d10m`")
-                try:
-                    reply = await self.bot.wait_for("message", check=check, timeout=120)
-                    new_time = reply.content
-                    if new_time.strip().lower() == "cancel":
-                        await ctx.send("Alright, operation cancelled.")
-                        return
-                    starts_in = TimeString(new_time)
-                except commands.BadArgument as e:
-                    await ctx.send(str(e))
+        if starts_in is None:
+            await ctx.send(f"When would you like the new start time of **{event['name']}** be?"
+                           f"You can `cancel` this.\n Examples: `1h20m`, `2d10m`")
+            try:
+                reply = await self.bot.wait_for("message", check=check, timeout=120)
+                new_time = reply.content
+                if new_time.strip().lower() == "cancel":
+                    await ctx.send("Alright, operation cancelled.")
                     return
-                except asyncio.TimeoutError:
-                    await ctx.send("Guess you don't want to change the time...")
-                    return
-            embed = discord.Embed(title=event["name"], timestamp=datetime.fromtimestamp(now+starts_in.seconds))
-            embed.set_footer(text="Start time")
-            message = await ctx.send(f"This will be the time of your new event in your local time. Is this correct?",
-                                     embed=embed)
-            confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, event remains the same.")
-            if not confirmed:
+                starts_in = TimeString(new_time)
+            except commands.BadArgument as e:
+                await ctx.send(str(e))
                 return
+            except asyncio.TimeoutError:
+                await ctx.send("Guess you don't want to change the time...")
+                return
+        embed = discord.Embed(title=event["name"], timestamp=datetime.fromtimestamp(now+starts_in.seconds))
+        embed.set_footer(text="Start time")
+        message = await ctx.send(f"This will be the time of your new event in your local time. Is this correct?",
+                                 embed=embed)
+        confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, event remains the same.")
+        if not confirmed:
+            return
+        with userDatabase as conn:
+            conn.execute("UPDATE events SET start = ? WHERE id = ?", (now + starts_in.seconds, event_id,))
 
-            c.execute("UPDATE events SET start = ? WHERE id = ?", (now + starts_in.seconds, event_id,))
+        if event["creator"] == ctx.author.id:
             await ctx.send("Your event's start time was changed successfully to **{0}**.".format(starts_in.original))
-        finally:
-            userDatabase.commit()
-            c.close()
+        else:
+            await ctx.send("Event's time changed successfully.")
+            creator = self.bot.get_member(event["creator"])
+            if creator is not None:
+                await creator.send(f"The start time of your event **{event['name']}** was changed to "
+                                   f"**{starts_in.original}** by {ctx.author.mention}.")
+        await self.notify_subscribers(event_id, f"The start time of **{event['name']}** was changed:", embed=embed,
+                                      skip_creator=True)
 
     @checks.is_not_lite()
     @events.command(name="delete", aliases=["remove", "cancel"])
@@ -704,26 +703,32 @@ class General:
         Only upcoming events can be edited"""
         c = userDatabase.cursor()
         now = time.time()
-        try:
+        with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator,name FROM events WHERE id = ? AND active = 1 AND start > ?", (event_id, now,))
             event = c.fetchone()
-            if not event:
-                await ctx.send("There are no active events with that ID.")
-                return
-            if event["creator"] != int(ctx.author.id) and ctx.author.id not in mod_ids + owner_ids:
-                await ctx.send("You can only delete your own events.")
-                return
+        if not event:
+            await ctx.send("There are no active events with that ID.")
+            return
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in mod_ids + owner_ids:
+            await ctx.send("You can only delete your own events.")
+            return
 
-            message = await ctx.send("Do you want to delete the event **{0}**?".format(event["name"]))
-            confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, event remains active.")
-            if not confirmed:
-                return
+        message = await ctx.send("Do you want to delete the event **{0}**?".format(event["name"]))
+        confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, event remains active.")
+        if not confirmed:
+            return
 
-            c.execute("UPDATE events SET active = 0 WHERE id = ?", (event_id,))
+        with userDatabase as conn:
+            conn.execute("UPDATE events SET active = 0 WHERE id = ?", (event_id,))
+        if event["creator"] == ctx.author.id:
             await ctx.send("Your event was deleted successfully.")
-        finally:
-            userDatabase.commit()
-            c.close()
+        else:
+            await ctx.send("Event deleted successfully.")
+            creator = self.bot.get_member(event["creator"])
+            if creator is not None:
+                await creator.send(f"Your event **{event['name']}** was deleted by {ctx.author.mention}.")
+        await self.notify_subscribers(event_id, f"The event **{event['name']}** was deleted by {ctx.author.mention}.",
+                                      skip_creator=True)
 
     @checks.is_not_lite()
     @events.command(name="make", aliases=["creator", "maker"])
@@ -738,107 +743,105 @@ class General:
         author = ctx.author
         creator = author.id
         now = time.time()
-        c = userDatabase.cursor()
-        try:
+        with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
             event = c.fetchall()
-            if len(event) > 1 and creator not in owner_ids + mod_ids:
-                return
-            await ctx.send("Let's create an event. What would you like the name to be? You can `cancel` at any time.")
+        if len(event) > 1 and creator not in owner_ids + mod_ids:
+            return
+        await ctx.send("Let's create an event. What would you like the name to be? You can `cancel` at any time.")
 
+        try:
+            name = await self.bot.wait_for("message", timeout=120.0, check=check)
+            name = single_line(name.clean_content)
+            if name.strip().lower() == "cancel":
+                await ctx.send("Event making cancelled.")
+                return
+        except asyncio.TimeoutError:
+            await ctx.send("...You took to long. Event making cancelled.")
+            return
+
+        await ctx.send("Alright, what description would you like the event to have? "
+                       "`no/none/blank` to leave it empty.")
+
+        try:
+            event_description = await self.bot.wait_for("message", timeout=120.0, check=check)
+            if event_description.content.strip().lower() == "cancel":
+                await ctx.send("Event making cancelled.")
+                return
+            if event_description.content.lower().strip() in ["no", "none","blank"]:
+                await ctx.send("No description then? Alright, now tell me the start time of the event from now. "
+                               "`e.g. 2d1h20m, 2d3h`")
+                event_description = ""
+            else:
+                event_description = event_description.clean_content
+                await ctx.send("Alright, now tell me the start time of the event from now. `e.g. 2d1h20m, 2d3h`")
+        except asyncio.TimeoutError:
+            await ctx.send("...You took too long. Event making cancelled.")
+            return
+
+        while True:
             try:
-                name = await self.bot.wait_for("message", timeout=120.0, check=check)
-                name = single_line(name.clean_content)
-                if name.strip().lower() == "cancel":
+                starts_in = await self.bot.wait_for("message", timeout=120.0, check=check)
+                if starts_in.content.strip().lower() == "cancel":
                     await ctx.send("Event making cancelled.")
                     return
-            except asyncio.TimeoutError:
-                await ctx.send("...You took to long. Event making cancelled.")
-                return
-
-            await ctx.send("Alright, what description would you like the event to have? "
-                           "`no/none/blank` to leave it empty.")
-
-            try:
-                event_description = await self.bot.wait_for("message", timeout=120.0, check=check)
-                if event_description.content.strip().lower() == "cancel":
-                    await ctx.send("Event making cancelled.")
-                    return
-                if event_description.content.lower().strip() in ["no", "none","blank"]:
-                    await ctx.send("No description then? Alright, now tell me the start time of the event from now. "
-                                   "`e.g. 2d1h20m, 2d3h`")
-                    event_description = ""
-                else:
-                    event_description = event_description.clean_content
-                    await ctx.send("Alright, now tell me the start time of the event from now. `e.g. 2d1h20m, 2d3h`")
+                starts_in = TimeString(starts_in.content)
+                break
+            except commands.BadArgument as e:
+                await ctx.send(f'{e}\nAgain, tell me the start time of the event from now')
             except asyncio.TimeoutError:
                 await ctx.send("...You took too long. Event making cancelled.")
                 return
 
-            while True:
-                try:
-                    starts_in = await self.bot.wait_for("message", timeout=120.0, check=check)
-                    if starts_in.content.strip().lower() == "cancel":
-                        await ctx.send("Event making cancelled.")
+        guilds = self.bot.get_user_guilds(creator)
+        # If message is via PM, but user only shares one server, we just consider that server
+        if is_private(ctx.channel) and len(guilds) == 1:
+            guild = guilds[0]
+        # Not a private message, so we just take current server
+        elif not is_private(ctx.channel):
+            guild = ctx.guild
+        # PM and user shares multiple servers, we must ask him for which server is the event
+        else:
+            await ctx.send("One more question...for which server is this event? Choose one (number only)" +
+                           "\n\t0: *Cancel*\n\t" +
+                           "\n\t".join(["{0}: **{1.name}**".format(i + 1, j) for i, j in enumerate(guilds)]))
+            try:
+                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
+                if is_numeric(reply.content):
+                    answer = int(reply.content)
+                    if answer == 0:
+                        await ctx.send("Changed your mind? Typical human.")
                         return
-                    starts_in = TimeString(starts_in.content)
-                    break
-                except commands.BadArgument as e:
-                    await ctx.send(f'{e}\nAgain, tell me the start time of the event from now')
-                except asyncio.TimeoutError:
-                    await ctx.send("...You took too long. Event making cancelled.")
+                    guild = guilds[answer - 1]
+                else:
+                    await ctx.send("That's not a valid answer, try the command again.")
                     return
-
-            guilds = self.bot.get_user_guilds(creator)
-            # If message is via PM, but user only shares one server, we just consider that server
-            if is_private(ctx.channel) and len(guilds) == 1:
-                guild = guilds[0]
-            # Not a private message, so we just take current server
-            elif not is_private(ctx.channel):
-                guild = ctx.guild
-            # PM and user shares multiple servers, we must ask him for which server is the event
-            else:
-                await ctx.send("One more question...for which server is this event? Choose one (number only)" +
-                               "\n\t0: *Cancel*\n\t" +
-                               "\n\t".join(["{0}: **{1.name}**".format(i + 1, j) for i, j in enumerate(guilds)]))
-                try:
-                    reply = await self.bot.wait_for("message", timeout=50.0, check=check)
-                    if is_numeric(reply.content):
-                        answer = int(reply.content)
-                        if answer == 0:
-                            await ctx.send("Changed your mind? Typical human.")
-                            return
-                        guild = guilds[answer - 1]
-                    else:
-                        await ctx.send("That's not a valid answer, try the command again.")
-                        return
-                except asyncio.TimeoutError:
-                    await ctx.send("Nothing? Forget it then.")
-                    return
-                except ValueError:
-                    await ctx.send("That isn't even a number!")
-                    return
-                except IndexError:
-                    await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
-                    return
-
-            embed = discord.Embed(title=name, description=event_description,
-                                  timestamp=datetime.fromtimestamp(now+starts_in.seconds))
-            embed.set_footer(text="Start time")
-            message = await ctx.send("Ok, so this will be your new event. Is this correct?", embed=embed)
-            comfirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no event will be made.")
-            if not comfirm:
+            except asyncio.TimeoutError:
+                await ctx.send("Nothing? Forget it then.")
+                return
+            except ValueError:
+                await ctx.send("That isn't even a number!")
+                return
+            except IndexError:
+                await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
                 return
 
-            now = time.time()
+        embed = discord.Embed(title=name, description=event_description,
+                              timestamp=datetime.fromtimestamp(now+starts_in.seconds))
+        embed.set_footer(text="Start time")
+        message = await ctx.send("Ok, so this will be your new event. Is this correct?", embed=embed)
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no event will be made.")
+        if not confirm:
+            return
+
+        now = time.time()
+        with closing(userDatabase.cursor()) as c:
             c.execute("INSERT INTO events (creator,server,start,name,description) VALUES(?,?,?,?,?)",
                       (creator, guild.id, now + starts_in.seconds, name, event_description))
             event_id = c.lastrowid
-            reply = "Event registered successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
-            await ctx.send(reply.format(name, starts_in.original, event_id))
-        finally:
             userDatabase.commit()
-            c.close()
+        reply = "Event registered successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
+        await ctx.send(reply.format(name, starts_in.original, event_id))
 
     @checks.is_not_lite()
     @events.command(name="subscribe", aliases=["sub"])
@@ -934,6 +937,23 @@ class General:
             await ctx.send("Invalid arguments used. `Type /help {0}`".format(ctx.invoked_subcommand))
         elif isinstance(error, commands.errors.MissingRequiredArgument):
             await ctx.send("You're missing a required argument. `Type /help {0}`".format(ctx.invoked_subcommand))
+
+    async def notify_subscribers(self, event_id: int, content, *, embed: discord.Embed=None, skip_creator=False):
+        """Sends a message to all users subscribed to an event"""
+        with closing(userDatabase.cursor()) as c:
+            c.execute("SELECT * FROM events WHERE id = ?", (event_id,))
+            creator = c.fetchone()["creator"]
+            c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
+            subscribers = c.fetchall()
+        if not subscribers:
+            return
+        for subscriber in subscribers:
+            if subscriber == creator and skip_creator:
+                continue
+            member = self.bot.get_member(subscriber["user_id"])
+            if member is None:
+                continue
+            await member.send(content, embed=embed)
 
     def __unload(self):
         self.events_announce_task.cancel()
