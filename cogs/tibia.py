@@ -654,7 +654,7 @@ class Tibia:
         # Attach item's image only if the bot has permissions
         permissions = ctx.channel.permissions_for(ctx.me)
         if permissions.attach_files and item["image"] != 0:
-            filename = item["name"].replace(" ", "") + ".gif"
+            filename = re.sub(r"[^A-Za-z0-9]", "", item["name"]) + ".gif"
             with open(filename, "w+b") as f:
                 f.write(bytearray(item['image']))
                 f.close()
@@ -705,7 +705,7 @@ class Tibia:
 
         # Attach monster's image only if the bot has permissions
         if permissions.attach_files and monster["image"] != 0:
-            filename = monster["name"].replace(" ", "") + ".gif"
+            filename = re.sub(r"[^A-Za-z0-9]", "", monster["name"]) + ".gif"
             with open(filename, "w+b") as f:
                 f.write(bytearray(monster['image']))
                 f.close()
@@ -1537,7 +1537,7 @@ class Tibia:
 
         # Attach spell's image only if the bot has permissions
         if permissions.attach_files and spell["image"] != 0:
-            filename = spell["name"].replace(" ", "") + ".gif"
+            filename = re.sub(r"[^A-Za-z0-9]", "", spell["name"]) + ".gif"
             with open(filename, "w+b") as f:
                 f.write(bytearray(spell['image']))
                 f.close()
@@ -1589,7 +1589,7 @@ class Tibia:
 
         # Attach image only if the bot has permissions
         if permissions.attach_files:
-            filename = house["name"].replace(" ", "") + ".png"
+            filename = re.sub(r"[^A-Za-z0-9]", "", house["name"]) + ".png"
             with open(filename, "w+b") as f:
                 f.write(bytearray(get_map_area(house["x"], house["y"], house["z"])))
                 f.close()
