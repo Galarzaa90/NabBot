@@ -1,3 +1,5 @@
+from contextlib import closing
+
 import discord
 from discord.ext import commands
 import asyncio
@@ -41,6 +43,7 @@ class Tracking:
             try:
                 await asyncio.sleep(death_scan_interval)
                 if len(global_online_list) == 0:
+                    await asyncio.sleep(0.5)
                     continue
                 # Pop last char in queue, reinsert it at the beginning
                 current_char = global_online_list.pop()
@@ -69,7 +72,6 @@ class Tracking:
                 await asyncio.sleep(highscores_delay)
                 continue
             for server in tracked_worlds_list:
-                c = userDatabase.cursor()
                 try:
                     for category in highscores_categories:
                         highscores = []
@@ -84,33 +86,24 @@ class Tracking:
                             if not (scores == ERROR_NETWORK):
                                 highscores += scores
                             await asyncio.sleep(highscores_page_delay)
-                        # Open connection to users.db
-                        c = userDatabase.cursor()
                         scores_tuple = []
                         ranks_tuple = []
                         for score in highscores:
                             scores_tuple.append((score['rank'], score['value'], score['name']))
                             ranks_tuple.append((score['rank'], server))
                         # Clear out old rankings
-                        c.executemany(
-                            "UPDATE chars SET " + category + " = NULL, " + category + "_rank" + " = NULL WHERE " + category
-                            + "_rank" + " LIKE ? AND world LIKE ?",
-                            ranks_tuple
-                        )
-                        # Add new rankings
-                        c.executemany(
-                            "UPDATE chars SET " + category + "_rank" + " = ?, " + category + " = ? WHERE name LIKE ?",
-                            scores_tuple
-                        )
+                        with userDatabase as conn:
+                            conn.executemany(f"UPDATE chars SET {category} = NULL, {category}_rank = NULL "
+                                             f"WHERE {category}_rank LIKE ? AND world LIKE ?", ranks_tuple)
+                            # Add new rankings
+                            conn.executemany(f"UPDATE chars SET {category}_rank = ?, {category} = ? "
+                                             f"WHERE name LIKE ?", scores_tuple)
                 except asyncio.CancelledError:
                     # Task was cancelled, so this is fine
                     break
                 except Exception as e:
                     log.exception("Task: scan_highscores")
                     continue
-                finally:
-                    userDatabase.commit()
-                    c.close()
                 await asyncio.sleep(0.1)
 
     async def scan_online_chars(self):
@@ -451,115 +444,112 @@ class Tracking:
         if len(user_tibia_worlds) == 0:
             return
 
-        c = userDatabase.cursor()
-        try:
-            await ctx.trigger_typing()
-            char = await get_character(char_name)
-            if type(char) is not dict:
-                if char == ERROR_NETWORK:
-                    await ctx.send("I couldn't fetch the character, please try again.")
-                elif char == ERROR_DOESNTEXIST:
-                    await ctx.send("That character doesn't exists.")
-                return
-            chars = char['chars']
-            # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
-            # searched char, so we don't have to look him up again
-            if len(chars) == 0 or len(chars) == 1:
-                chars = [char]
+        await ctx.trigger_typing()
+        char = await get_character(char_name)
+        if type(char) is not dict:
+            if char == ERROR_NETWORK:
+                await ctx.send("I couldn't fetch the character, please try again.")
+            elif char == ERROR_DOESNTEXIST:
+                await ctx.send("That character doesn't exists.")
+            return
+        chars = char['chars']
+        # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
+        # searched char, so we don't have to look him up again
+        if len(chars) == 0 or len(chars) == 1:
+            chars = [char]
 
-            skipped = []
-            updated = []
-            added = []
-            existent = []
-            for char in chars:
-                # Skip chars in non-tracked worlds
-                if char["world"] not in user_tibia_worlds:
-                    skipped.append(char)
-                    continue
+        skipped = []
+        updated = []
+        added = []
+        existent = []
+        for char in chars:
+            # Skip chars in non-tracked worlds
+            if char["world"] not in user_tibia_worlds:
+                skipped.append(char)
+                continue
+            with closing(userDatabase.cursor()) as c:
                 c.execute("SELECT name, guild, user_id as owner FROM chars WHERE name LIKE ?", (char["name"],))
                 db_char = c.fetchone()
-                if db_char is not None:
-                    owner = self.bot.get_member(db_char["owner"])
-                    # Previous owner doesn't exist anymore
-                    if owner is None:
-                        updated.append({'name': char['name'], 'world': char['world'], 'prevowner': db_char["owner"]})
-                        continue
-                    # Char already registered to this user
-                    elif owner.id == user.id:
-                        existent.append("{name} ({world})".format(**char))
-                        continue
-                    # Character is registered to another user, we stop the whole process
-                    else:
-                        reply = "Sorry, a character in that account ({0}) is already claimed by **{1.mention}**.\n" \
-                                "Maybe you made a mistake? Or someone claimed a character of yours?"
-                        await ctx.send(reply.format(db_char["name"], owner))
-                        return
-                # If we only have one char, it already contains full data
-                if len(chars) > 1:
-                    await ctx.message.channel.trigger_typing()
-                    char = await get_character(char["name"])
-                    if char == ERROR_NETWORK:
-                        await ctx.send("I'm having network troubles, please try again.")
-                        return
-                if char.get("deleted", False):
-                    skipped.append(char)
+            if db_char is not None:
+                owner = self.bot.get_member(db_char["owner"])
+                # Previous owner doesn't exist anymore
+                if owner is None:
+                    updated.append({'name': char['name'], 'world': char['world'], 'prevowner': db_char["owner"]})
                     continue
-                added.append(char)
+                # Char already registered to this user
+                elif owner.id == user.id:
+                    existent.append("{name} ({world})".format(**char))
+                    continue
+                # Character is registered to another user, we stop the whole process
+                else:
+                    reply = "Sorry, a character in that account ({0}) is already claimed by **{1.mention}**.\n" \
+                            "Maybe you made a mistake? Or someone claimed a character of yours?"
+                    await ctx.send(reply.format(db_char["name"], owner))
+                    return
+            # If we only have one char, it already contains full data
+            if len(chars) > 1:
+                await ctx.message.channel.trigger_typing()
+                char = await get_character(char["name"])
+                if char == ERROR_NETWORK:
+                    await ctx.send("I'm having network troubles, please try again.")
+                    return
+            if char.get("deleted", False):
+                skipped.append(char)
+                continue
+            added.append(char)
 
-            if len(skipped) == len(chars):
-                reply = "Sorry, I couldn't find any characters from the servers I track ({0})."
-                await ctx.send(reply.format(join_list(user_tibia_worlds, ", ", " and ")))
-                return
+        if len(skipped) == len(chars):
+            reply = "Sorry, I couldn't find any characters from the servers I track ({0})."
+            await ctx.send(reply.format(join_list(user_tibia_worlds, ", ", " and ")))
+            return
 
-            reply = ""
-            log_reply = dict().fromkeys([server.id for server in user_guilds], "")
-            if len(existent) > 0:
-                reply += "\nThe following characters were already registered to you: {0}" \
-                    .format(join_list(existent, ", ", " and "))
+        reply = ""
+        log_reply = dict().fromkeys([server.id for server in user_guilds], "")
+        if len(existent) > 0:
+            reply += "\nThe following characters were already registered to you: {0}" \
+                .format(join_list(existent, ", ", " and "))
 
-            if len(added) > 0:
-                reply += "\nThe following characters were added to your account: {0}" \
-                    .format(join_list(["{name} ({world})".format(**c) for c in added], ", ", " and "))
-                for char in added:
-                    log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
-                    # Announce on server log of each server
-                    for guild in user_guilds:
-                        # Only announce on worlds where the character's world is tracked
-                        if tracked_worlds.get(guild.id, None) == char["world"]:
-                            _guild = "No guild" if char["guild"] is None else char["guild"]
-                            log_reply[guild.id] += "\n\t{name} - {level} {vocation} - **{0}**".format(_guild, **char)
-
-            if len(updated) > 0:
-                reply += "\nThe following characters were reassigned to you: {0}" \
-                    .format(join_list(["{name} ({world})".format(**c) for c in updated], ", ", " and "))
-                for char in updated:
-                    log.info("Character {0} was reassigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
-                    # Announce on server log of each server
-                    for guild in user_guilds:
-                        # Only announce on worlds where the character's world is tracked
-                        if tracked_worlds.get(guild.id, None) == char["world"]:
-                            log_reply[guild.id] += "\n\t{name} (Reassigned)".format(**char)
-
-            for char in updated:
-                c.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
+        if len(added) > 0:
+            reply += "\nThe following characters were added to your account: {0}" \
+                .format(join_list(["{name} ({world})".format(**c) for c in added], ", ", " and "))
             for char in added:
-                c.execute(
-                    "INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
-                    (char['name'], char['level'] * -1, char['vocation'], user.id, char["world"], char["guild"])
-                )
+                log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
+                # Announce on server log of each server
+                for guild in user_guilds:
+                    # Only announce on worlds where the character's world is tracked
+                    if tracked_worlds.get(guild.id, None) == char["world"]:
+                        _guild = "No guild" if char["guild"] is None else char["guild"]
+                        log_reply[guild.id] += "\n\t{name} - {level} {vocation} - **{0}**".format(_guild, **char)
 
-            c.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
-            c.execute("UPDATE users SET name = ? WHERE id = ?", (user.display_name, user.id,))
+        if len(updated) > 0:
+            reply += "\nThe following characters were reassigned to you: {0}" \
+                .format(join_list(["{name} ({world})".format(**c) for c in updated], ", ", " and "))
+            for char in updated:
+                log.info("Character {0} was reassigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
+                # Announce on server log of each server
+                for guild in user_guilds:
+                    # Only announce on worlds where the character's world is tracked
+                    if tracked_worlds.get(guild.id, None) == char["world"]:
+                        log_reply[guild.id] += "\n\t{name} (Reassigned)".format(**char)
 
-            await ctx.send(reply)
-            for server_id, message in log_reply.items():
-                if message:
-                    message = user.mention + " registered the following characters: " + message
-                    await self.bot.send_log_message(self.bot.get_guild(server_id), message)
+        for char in updated:
+            with userDatabase as conn:
+                conn.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
+        for char in added:
+            with userDatabase as conn:
+                conn.execute("INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
+                             (char['name'], char['level'] * -1, char['vocation'], user.id, char["world"], char["guild"])
+                             )
 
-        finally:
-            c.close()
-            userDatabase.commit()
+        with userDatabase as conn:
+            conn.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
+            conn.execute("UPDATE users SET name = ? WHERE id = ?", (user.display_name, user.id,))
+
+        await ctx.send(reply)
+        for server_id, message in log_reply.items():
+            if message:
+                message = user.mention + " registered the following characters: " + message
+                await self.bot.send_log_message(self.bot.get_guild(server_id), message)
 
     @checks.is_not_lite()
     @commands.command(aliases=["i'mnot"])
