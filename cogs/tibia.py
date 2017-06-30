@@ -1940,6 +1940,10 @@ class Tibia:
         embed = discord.Embed(title=item["title"], description=item["look_text"])
         if "color" in item:
             embed.colour = item["color"]
+        if "ImbueSlots" in item["properties"]:
+            embed.add_field(name="Imbuement slots", value=item["properties"]["ImbueSlots"])
+        if "imbuements" in item["properties"] and len(item["properties"]["imbuements"]) > 0:
+            embed.add_field(name="Used for", value="\n".join(item["properties"]["imbuements"]))
         if 'npcs_bought' in item and len(item['npcs_bought']) > 0:
             name = "Bought for {0:,} gold coins from".format(item['value_buy'])
             value = ""

@@ -712,11 +712,22 @@ def get_item(name):
             item["dropped_by"] = c.fetchall()
             # Checking quest rewards:
             c.execute("SELECT Quests.title FROM Quests, QuestRewards "
-                      "WHERE Quests.id = QuestRewards.questid and itemid = ?", (item["id"],))
+                      "WHERE Quests.id = QuestRewards.questid AND itemid = ?", (item["id"],))
             quests = c.fetchall()
             item["quests"] = list()
             for quest in quests:
                 item["quests"].append(quest["title"])
+            # Get item's properties:
+            c.execute("SELECT * FROM ItemProperties WHERE itemid = ?", (item["id"],))
+            results = c.fetchall()
+            item["properties"] = {}
+            for row in results:
+                if row["property"] == "Imbuement":
+                    temp = item["properties"].get("imbuements", list())
+                    temp.append(row["value"])
+                    item["properties"]["imbuements"] = temp
+                else:
+                    item["properties"][row["property"]] = row["value"]
             return item
     finally:
         c.close()
