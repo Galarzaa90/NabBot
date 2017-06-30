@@ -155,15 +155,15 @@ class Tibia:
             return
 
         attachment = ctx.message.attachments[0]
-        if attachment['width'] != 32 or attachment['height'] != 32:
+        if attachment.width != 32 or attachment.height != 32:
             await ctx.send("Image size has to be 32x32.")
             return
 
-        file_name = attachment['url'].split("/")[len(attachment['url'].split("/"))-1]
-        file_url = attachment['url']
+        file_name = attachment.url.split("/")[len(attachment.url.split("/"))-1]
+        file_url = attachment.url
         try:
             with aiohttp.ClientSession() as session:
-                async with session.get(attachment['url']) as resp:
+                async with session.get(attachment.url) as resp:
                     original_image = await resp.read()
             frame_image = Image.open(io.BytesIO(bytearray(original_image))).convert("RGBA")
         except Exception:
