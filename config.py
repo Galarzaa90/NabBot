@@ -31,14 +31,6 @@ welcome_pm = "Welcome to **{0.server.name}**! I'm **{1.user.name}**, to learn mo
              "Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking " \
              "your level ups and deaths!"
 
-# It's possible to fetch the database contents on a website to show more entries than what the bot can display
-# If enabled, certain commands will link to the website
-site_enabled = True
-baseUrl = "http://galarzaa.no-ip.org:7005/ReddAlliance/"
-charactersPage = "characters.php"
-deathsPage = "deaths.php"
-levelsPage = "levels.php"
-
 # Owners can use mods commands and more sensible commands like /shutdown and restart
 # Mods can register chars and users and use makesay
 owner_ids = ["162060569803751424", "162070610556616705"]
