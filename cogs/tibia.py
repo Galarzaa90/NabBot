@@ -1,6 +1,7 @@
 import calendar
 import os
 import random
+from contextlib import closing
 from typing import Optional
 
 import discord
@@ -90,7 +91,7 @@ class Tibia:
         for item in loot_list:
             if not loot_list[item]['group'] in groups and loot_list[item]['group'] != "Unknown":
                 groups.append(loot_list[item]['group'])
-
+        has_marketable = False
         for group in groups:
             value = ""
             group_value = 0
@@ -99,8 +100,21 @@ class Tibia:
                     if group == "No Value":
                         value += "x{1} {0}\n".format(item, loot_list[item]['count'])
                     else:
-                        value += "x{1} {0} \u2192 {2:,}gp total.\n".format(
-                            item, loot_list[item]['count'], loot_list[item]['count']*loot_list[item]['value'])
+                        with closing(tibiaDatabase.cursor()) as c:
+                            c.execute("SELECT name FROM Items, ItemProperties "
+                                      "WHERE name LIKE ? AND id = itemid AND property LIKE 'Imbuement'"
+                                      " LIMIT 1", (item, ))
+                            result = c.fetchone()
+                        if result:
+                            has_marketable = True
+                            emoji = EMOJI[":gem:"]
+                        else:
+                            emoji = ""
+                        value += "x{1} {0}{3} \u2192 {2:,}gp total.\n".format(
+                            item,
+                            loot_list[item]['count'],
+                            loot_list[item]['count']*loot_list[item]['value'],
+                            emoji)
 
                     total_value += loot_list[item]['count']*loot_list[item]['value']
                     group_value += loot_list[item]['count']*loot_list[item]['value']
@@ -119,22 +133,26 @@ class Tibia:
             long_message += "\n*There were {0} unknown items.*\n".format(unknown['count'])
 
         long_message += "\nThe total loot value is: **{0:,}** gold coins.".format(total_value)
+        if has_marketable:
+            long_message += f"\n{EMOJI[':gem:']} Items marked with this are used in imbuements and might be worth " \
+                            f"more in the market."
         embed.description = long_message
+        embed.set_image(url="attachment://results.png")
 
         # Short message
-        short_message = "I've finished parsing your image {0.mention}.\nThe total value is {1:,} gold coins."
+        short_message = f"I've finished parsing your image {author.mention}." \
+                        f"\nThe total value is {total_value:,} gold coins."
         ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
         if not is_private(ctx.message.channel) and ctx.message.channel != ask_channel:
             short_message += "\nI've also sent you a PM with detailed information."
-        await ctx.send(short_message.format(author, total_value))
 
         # Send on ask_channel or PM
         if ctx.message.channel == ask_channel:
-            destination = ctx.message.channel
+            await ctx.send(short_message, embed=embed, file=discord.File(loot_image_overlay, "results.png"))
         else:
-            destination = ctx.message.author
+            await ctx.send(short_message)
+            await ctx.author.send(file=discord.File(loot_image_overlay, "results.png"), embed=embed)
 
-        await destination.send(file=discord.File(loot_image_overlay, "results.png"), embed=embed)
 
     @loot.command(name="show")
     @checks.is_mod()
@@ -651,14 +669,10 @@ class Tibia:
 
         # Attach item's image only if the bot has permissions
         permissions = ctx.channel.permissions_for(ctx.me)
-        if permissions.attach_files and item["image"] != 0:
+        if permissions.attach_files or item["image"] != 0:
             filename = re.sub(r"[^A-Za-z0-9]", "", item["name"]) + ".gif"
-            with open(filename, "w+b") as f:
-                f.write(bytearray(item['image']))
-                f.close()
-                embed.set_thumbnail(url=f"attachment://{filename}")
-                await ctx.send(file=discord.File(f"{filename}"), embed=embed)
-            os.remove(filename)
+            embed.set_thumbnail(url=f"attachment://{filename}")
+            await ctx.send(file=discord.File(item["image"], f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
@@ -704,12 +718,8 @@ class Tibia:
         # Attach monster's image only if the bot has permissions
         if permissions.attach_files and monster["image"] != 0:
             filename = re.sub(r"[^A-Za-z0-9]", "", monster["name"]) + ".gif"
-            with open(filename, "w+b") as f:
-                f.write(bytearray(monster['image']))
-                f.close()
-                embed.set_thumbnail(url=f"attachment://{filename}")
-                await ctx.send(file=discord.File(f"{filename}"), embed=embed)
-            os.remove(filename)
+            embed.set_thumbnail(url=f"attachment://{filename}")
+            await ctx.send(file=discord.File(monster["image"], f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
@@ -1536,12 +1546,8 @@ class Tibia:
         # Attach spell's image only if the bot has permissions
         if permissions.attach_files and spell["image"] != 0:
             filename = re.sub(r"[^A-Za-z0-9]", "", spell["name"]) + ".gif"
-            with open(filename, "w+b") as f:
-                f.write(bytearray(spell['image']))
-                f.close()
-                embed.set_thumbnail(url=f"attachment://{filename}")
-                await ctx.send(file=discord.File(f"{filename}"), embed=embed)
-            os.remove(filename)
+            embed.set_thumbnail(url=f"attachment://{filename}")
+            await ctx.send(file=discord.File(spell["image"], f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
@@ -1588,13 +1594,10 @@ class Tibia:
         # Attach image only if the bot has permissions
         if permissions.attach_files:
             filename = re.sub(r"[^A-Za-z0-9]", "", house["name"]) + ".png"
-            with open(filename, "w+b") as f:
-                f.write(bytearray(get_map_area(house["x"], house["y"], house["z"])))
-                f.close()
-                embed = self.get_house_embed(house)
-                embed.set_image(url=f"attachment://{filename}")
-                await ctx.send(file=discord.File(f"{filename}"), embed=embed)
-            os.remove(filename)
+            mapimage = get_map_area(house["x"], house["y"], house["z"])
+            embed = self.get_house_embed(house)
+            embed.set_image(url=f"attachment://{filename}")
+            await ctx.send(file=discord.File(mapimage, f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=self.get_house_embed(house))
 
@@ -1709,7 +1712,7 @@ class Tibia:
         embed.add_field(name="Location", value=f"{flags.get(world['location'],'')} {world['location']}")
         embed.add_field(name="PvP Type", value=f"{pvp.get(world['pvp'],'')} {world['pvp']}")
         if "premium" in world:
-            embed.add_field(name="Premium restricted",value=EMOJI[":white_check_mark:"])
+            embed.add_field(name="Premium restricted", value=EMOJI[":white_check_mark:"])
         if "transfer" in world:
             embed.add_field(name="Transfers", value=f"{transfers.get(world['transfer'],'')} {world['transfer']}")
 
