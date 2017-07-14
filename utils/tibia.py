@@ -411,7 +411,7 @@ def get_character(name, tries=5):
     # Marriage
     m = re.search(r'Married To:</td><td>?.+name=([^"]+)', content)
     if m:
-        char['married'] = urllib.parse.unquote_plus(m.group(1))
+        char['married'] = urllib.parse.unquote_plus(m.group(1), encoding='ISO-8859-1')
 
     # Sex
     m = re.search(r'Sex:</td><td>([^<]+)', content)
