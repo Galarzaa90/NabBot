@@ -433,7 +433,7 @@ async def get_character(name, tries=5):
     # Marriage
     m = re.search(r'Married To:</td><td>?.+name=([^"]+)', content)
     if m:
-        char['married'] = urllib.parse.unquote_plus(m.group(1))
+        char['married'] = urllib.parse.unquote_plus(m.group(1), encoding='ISO-8859-1')
 
     # Sex
     m = re.search(r'Sex:</td><td>([^<]+)', content)
@@ -813,7 +813,6 @@ def get_share_range(level: int):
     return int(round(level * 2 / 3, 0)), int(round(level * 3 / 2, 0))
 
 
-# TODO: Improve formatting to match /monster and /item
 def get_spell(name):
     """Returns a dictionary containing a spell's info, a list of possible matches or None"""
     c = tibiaDatabase.cursor()
