@@ -1983,7 +1983,7 @@ class Tibia:
                 count += 1
                 value += "\n"+quest
                 if count >= short_limit and not long:
-                    value += "\n*...And {0} others*".format(len(item["dropped_by"]) - short_limit)
+                    value += "\n*...And {0} others*".format(len(item["quests"]) - short_limit)
                     quests_too_long = True
                     break
             embed.add_field(name=name, value=value)
