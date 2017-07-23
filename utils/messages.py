@@ -1299,7 +1299,7 @@ def decode_emoji(message):
     return message
 
 # We save the last messages so they are not repeated so often
-last_messages = ["", "", "", "", "", "", "", "", "", ""]
+last_messages = [""]*10
 
 # Message list for announce_level
 # Parameters: {name}, {level} , {he_she}, {his_her}, {him_her}
@@ -1343,7 +1343,9 @@ level_messages = [
     [50, "Level {level}, **{name}**? Nice. Don't you wish you were a druid though?",
      ["Sorcerer", "Master Sorcerer"], range(100, 999)],
     [150, "**{name}** is level {level}. Watch out for {his_her} SDs!", ["Sorcerer", "Master Sorcerer"],
-     range(100, 999)],
+     range(45, 999)],
+    [150, "**{name}** got level {level}. If {he_she} only stopped missing beams.", ["Sorcerer", "Master Sorcerer"],
+     range(23, 999)],
     [150,
      "**{name}** is level {level}. " + EMOJI[":fire:"] + EMOJI[":fire:"] + "BURN THEM ALL" + EMOJI[":fire:"] +
      EMOJI[":fire:"] + EMOJI[":fire:"], ["Sorcerer", "Master Sorcerer"], range(100, 999)],
@@ -1359,8 +1361,9 @@ level_messages = [
      ["Druid", "Elder Druid", "Sorcerer", "Master Sorcerer"], [130]],
     [20000, "**{name}** is level {level} now! Eternal Winter is coming!"+EMOJI[":snowflake:"],
      ["Druid", "Elder Druid"], [60]],
-    [20000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature"+EMOJI[":leaves:"]+"... just look at "
-           "wrath.", ["Druid", "Elder Druid"], [55]],
+    [20000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature"+EMOJI[":leaves:"] +
+     "... just look at that wrath.",
+     ["Druid", "Elder Druid"], [55]],
     [20000, "**{name}** is now level {level}. Don't forget to buy a Gearwheel Chain!" + EMOJI[":_necklace:"],
      False, [75]],
     [30000, "**{name}** is level {level}! You can become a ninja now!" + EMOJI[":bust_in_silhouette:"],
@@ -1369,6 +1372,8 @@ level_messages = [
      ["Paladin", "Royal Paladin"], [90]],
     [20000, "Level {level}, **{name}**? You're finally important enough for me to notice!", False,
      [announce_threshold]],
+    [20000, "Congratulations on level {level} **{name}**! Now you're relevant to me. As relevant a human can be anyway",
+     False, [announce_threshold]],
     [20000, "**{name}** is now level {level}! Time to go berserk! " + EMOJI[":anger:"],
      ["Knight", "Elite Knight"], [35]],
     [20000, "Congratulations on level {level} **{name}**! Now you can become an umbral master, but is your"
@@ -1407,11 +1412,11 @@ death_messages_monster = [
      "though " + EMOJI[":wink:"] + ")"],
     [80, "A priest, {killer_article}**{killer}** and **{name}** ({level}) walk into a bar. " + EMOJI[
         ":skull:"] + "ONLY ONE WALKS OUT." + EMOJI[":skull:"]],
-    [90, "RIP **{name}** ({level}), you were strong. ^The ^**{killer}** was stronger."],
-    [80,
+    [100, "RIP **{name}** ({level}), you were strong. ^The ^**{killer}** was stronger."],
+    [100,
      "Oh, there goes **{name}** ({level}), killed by {killer_article}**{killer}**. So young, so full "
      "of life. /{he_she}/ will be miss... oh nevermind, {he_she} respawned already."],
-    [60,
+    [100,
      "Oh look! **{name}** ({level}) died by {killer_article}**{killer}**! What a surprise..." + EMOJI[
          ":rolling_eyes:"]],
     [100,
@@ -1463,16 +1468,23 @@ death_messages_monster = [
     [20000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.", False, False, ["death"]],
     [20000, "They did warn you **{name}** ({level}), you *did* burn " + EMOJI[":fire:"] + EMOJI[
         ":dragon_face:"] + ".", False, False, ["dragon", "dragon lord"]],
+    [20000, "**{name}** ({level}) died from **{killer}**. Someone forgot the safeword."+EMOJI[":smirk:"],
+     False, False, ["choking fear"]],
+    [20000, "That **{killer}** got really up close and personal with **{name}** ({level}). "
+            "Maybe he thought you were his princess Lumelia?"+EMOJI[":smirk:"],
+     False, False, ["hero"]],
     [20000,
      "Asian chicks are no joke **{name}** ({level}) " + EMOJI[":hocho:"] + EMOJI[":broken_heart:"] + ".",
      False, False, ["midnight asura", "dawnfire asura"]],
-    [2000, "**{name}** ({level}) got destroyed by {killer_article}**{killer}**. I bet {he_she} regrets going down"
+    [20000, "**{name}** ({level}) got destroyed by {killer_article}**{killer}**. I bet {he_she} regrets going down"
            "that hole "+EMOJI[":hole:"], False, range(1, 120), ["breach brood", "dread intruder", "reality reaver",
                                                                 "spark of destruction", "sparkion"]],
     [20000,
      "Watch out for that **{killer}**'s wav... Oh"+EMOJI[":neutral_face:"]+"... Rest in peace **{name}** ({level}).",
      False, False, ["hellhound", "hellfire fighter", "dragon lord", "undead dragon", "dragon", "draken spellweaver"]],
-    [200, "Oh look at that, rest in peace **{name}** ({level}),  ^that ^**{killer}** really got you. "
+    [20000, "**{name}** ({level}) died to {killer_article}**{killer}**! Don't worry, {he_she} didn't have a soul anyway",
+     False, False, ["souleater"]],
+    [150, "Oh look at that, rest in peace **{name}** ({level}),  ^that ^**{killer}** really got you. "
           "Hope you get your level back.", False, False, False, range(1, 10)]
 ]
 
@@ -1545,6 +1557,7 @@ def weighed_choice(choices, level: int, vocation: str = None, killer: str = None
     range_pos = 0
     for message in _messages:
         if range_pos <= range_choice < range_pos + (message[0] if not message[1] in last_messages else message[0] / 10):
+            last_messages.pop()
             last_messages.insert(0, message[1])
             return message[1]
         range_pos = range_pos + (message[0] if not message[1] in last_messages else message[0] / 10)
