@@ -195,8 +195,8 @@ class Tibia:
             await ctx.send("Couldn't find an item with that name.")
             return
         else:
-            result = await item_show(item)
             await ctx.send("Image added to item.", file=discord.File(result, "results.png"))
+            await item_show(item)
             return
 
     @loot.command(name="new")
@@ -245,8 +245,8 @@ class Tibia:
             await ctx.send("Couldn't find an item with that name.")
             return
         else:
-            result = await item_show(item['title'])
             await ctx.send("Image added to item.", file=discord.File(result, "results.png"))
+            await item_show(item['title'])
             return
 
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
