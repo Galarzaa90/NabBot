@@ -422,11 +422,12 @@ async def item_add(item,frame):
     img_byte_arr = io.BytesIO()
     output_image.save(img_byte_arr, format='png')
     img_byte_arr = img_byte_arr.getvalue()
+    c.close()
+    lootDatabase.commit()
     return img_byte_arr
 
 async def item_new(item,frame,group,value):
     if item is None or group is None:
-        print("here")
         return None
         
     c = lootDatabase.cursor()
@@ -435,7 +436,6 @@ async def item_new(item,frame,group,value):
               (item,))
     item_list = c.fetchall()
     if not len(item_list) == 0:
-        print("no, here")
         return None
 
     frame_crop = crop_item(frame)
@@ -461,6 +461,8 @@ async def item_new(item,frame,group,value):
     img_byte_arr = io.BytesIO()
     output_image.save(img_byte_arr, format='png')
     img_byte_arr = img_byte_arr.getvalue()
+    c.close()
+    lootDatabase.commit()
     return img_byte_arr
 
 async def loot_scan(loot_image, image_name, progress_msg, progress_bar):
