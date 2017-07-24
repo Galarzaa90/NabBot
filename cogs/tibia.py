@@ -169,7 +169,7 @@ class Tibia:
     @checks.is_mod()
     @checks.is_not_lite()
     async def loot_add(self, ctx, *, item=None):
-        """Shows the meaning of the overlayed icons."""
+        """Adds an image to an existing loot item in the database."""
         if len(ctx.message.attachments) == 0:
             await ctx.send("You need to upload the image you want to add to this item.")
             return
@@ -196,14 +196,17 @@ class Tibia:
             return
         else:
             await ctx.send("Image added to item.", file=discord.File(result, "results.png"))
-            await item_show(item)
+            result,item = await item_show(item)
+            if result is not None:
+                await ctx.send(file=discord.File(result,"results.png"))
+                await ctx.send("Name: {0}, Group: {1}, Priority: {2},Value: {3}".format(item['name'],item['group'],item['priority'],item['value']))
             return
 
     @loot.command(name="new")
     @checks.is_mod()
     @checks.is_not_lite()
     async def loot_new(self, ctx, *, params=None):
-        """Shows the meaning of the overlayed icons."""
+        """Adds a new item to the loot database."""
         if len(ctx.message.attachments) == 0:
             await ctx.send("You need to upload the image you want to add to this item.")
             return
@@ -246,7 +249,10 @@ class Tibia:
             return
         else:
             await ctx.send("Image added to item.", file=discord.File(result, "results.png"))
-            await item_show(item['title'])
+            result,item = await item_show(item)
+            if result is not None:
+                await ctx.send(file=discord.File(result,"results.png"))
+                await ctx.send("Name: {0}, Group: {1}, Priority: {2},Value: {3}".format(item['name'],item['group'],item['priority'],item['value']))
             return
 
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
