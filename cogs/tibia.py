@@ -249,7 +249,7 @@ class Tibia:
             return
         else:
             await ctx.send("Image added to item.", file=discord.File(result, "results.png"))
-            result,item = await item_show(item)
+            result,item = await item_show(item['title'])
             if result is not None:
                 await ctx.send(file=discord.File(result,"results.png"))
                 await ctx.send("Name: {0}, Group: {1}, Priority: {2},Value: {3}".format(item['name'],item['group'],item['priority'],item['value']))
