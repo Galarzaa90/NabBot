@@ -16,6 +16,7 @@ from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_tim
 from utils.loot import loot_scan
 from utils.loot import item_show
 from utils.loot import item_add
+from utils.loot import item_new
 from utils.messages import split_message
 from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import *
@@ -158,10 +159,11 @@ class Tibia:
     @checks.is_mod()
     @checks.is_not_lite()
     async def loot_show(self, ctx, *, item=None):
-        """Shows the meaning of the overlayed icons."""
-        result = await item_show(item)
+        """Shows item info from loot database."""
+        result,item = await item_show(item)
         if result is not None:
             await ctx.send(file=discord.File(result,"results.png"))
+            await ctx.send("Name: {0}, Group: {1}, Priority: {2},Value: {3}".format(item['name'],item['group'],item['priority'],item['value']))
 
     @loot.command(name="add")
     @checks.is_mod()
@@ -194,6 +196,56 @@ class Tibia:
             return
         else:
             result = await item_show(item)
+            await ctx.send("Image added to item.", file=discord.File(result, "results.png"))
+            return
+
+    @loot.command(name="new")
+    @checks.is_mod()
+    @checks.is_not_lite()
+    async def loot_new(self, ctx, *, params=None):
+        """Shows the meaning of the overlayed icons."""
+        if len(ctx.message.attachments) == 0:
+            await ctx.send("You need to upload the image you want to add to this item.")
+            return
+        if params is None:
+            await ctx.send("Missing parameters (item name,group)")
+            return
+        params = params.split(",")
+        if not len(params) == 2:
+            await ctx.send("Wrong parameters (item name,group)")
+            return
+        item = params[0]
+        group = params[1]
+        item = get_item(item)
+        if item is None or type(item) is list:
+            print("no, no, here")
+            return None
+        if item["value_sell"] is None:
+            item["value_sell"] = 0
+        
+
+        attachment = ctx.message.attachments[0]
+        if attachment.width != 32 or attachment.height != 32:
+            await ctx.send("Image size has to be 32x32.")
+            return
+
+        file_name = attachment.url.split("/")[len(attachment.url.split("/"))-1]
+        file_url = attachment.url
+        try:
+            with aiohttp.ClientSession() as session:
+                async with session.get(attachment.url) as resp:
+                    original_image = await resp.read()
+            frame_image = Image.open(io.BytesIO(bytearray(original_image))).convert("RGBA")
+        except Exception:
+            await ctx.send("Either that wasn't an image or I failed to load it, please try again.")
+            return
+
+        result = await item_new(item['title'],frame_image,group,item['value_sell'])
+        if result is None:
+            await ctx.send("Couldn't find an item with that name.")
+            return
+        else:
+            result = await item_show(item['title'])
             await ctx.send("Image added to item.", file=discord.File(result, "results.png"))
             return
 
