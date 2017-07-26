@@ -8,7 +8,7 @@ from datetime import datetime
 import time
 
 from config import death_scan_interval, highscores_delay, highscores_categories, highscores_page_delay, \
-    online_scan_interval, announce_threshold, owner_ids, mod_ids
+    online_scan_interval, announce_threshold, owner_ids, mod_ids, ask_channel_name
 from nabbot import NabBot
 from utils import checks
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
@@ -16,7 +16,7 @@ from utils.discord import is_private
 from utils.general import global_online_list, log, join_list, start_time
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
     level_messages
-from utils.paginator import Paginator, CannotPaginate
+from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world_online, get_character, ERROR_DOESNTEXIST, \
     parse_tibia_time, get_pronouns, get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild
 
@@ -601,66 +601,89 @@ class Tracking:
 
     @commands.command()
     @checks.is_not_lite()
-    async def online(self, ctx):
+    async def online(self, ctx, world: str=None):
         """Tells you which users are online on Tibia
 
         This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated.
 
         If used in a server, only characters from users of the server are shown
-        If used on PM, only  characters from users of servers you're in are shown"""
-        if is_private(ctx.message.channel):
-            user_guilds = self.bot.get_user_guilds(ctx.message.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.message.author.id)
+        If used on PM, and you are on more than one server with different tracked worlds, you need to specify the world"""
+        world = world.capitalize() if world is not None else None
+        if world is not None and world not in tibia_worlds:
+            await ctx.send("That world doesn't exist.")
+            return
+        if is_private(ctx.channel):
+            user_guilds = self.bot.get_user_guilds(ctx.author.id)
+            user_worlds = list(set(self.bot.get_user_worlds(ctx.author.id)))
+            if len(user_worlds) == 0:
+                return
+            if len(user_worlds) > 1 and world is None:
+                await ctx.send("You're in more than one server with different worlds, repeat the command with one of "
+                               f"the following world: {', '.join(user_worlds)}")
+                return
+            if len(user_worlds) > 1 and world not in user_worlds:
+                await ctx.send(f"You're not in any servers that track {world}")
+                return
+            if len(user_worlds) == 1:
+                world = user_worlds[0]
+                title = "Users online"
+            else:
+                title = f"Users online in {world}"
         else:
-            user_guilds = [ctx.message.guild]
-            user_worlds = [tracked_worlds.get(ctx.message.guild.id)]
-            if user_worlds[0] is None:
+            user_guilds = [ctx.guild]
+            world = tracked_worlds.get(ctx.guild.id)
+            title = "Users online"
+            if world is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
+
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
+        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+            per_page = 20
+        else:
+            per_page = 5
         c = userDatabase.cursor()
         now = datetime.utcnow()
         uptime = (now - start_time).total_seconds()
         count = 0
-        online_list = {world: "" for world in user_worlds}
+        entries = []
+        vocations = []
         try:
             for char in global_online_list:
                 char = char.split("_", 1)
-                world = char[0]
+                char_world = char[0]
                 name = char[1]
-                if world not in user_worlds:
-                    continue
                 c.execute("SELECT name, user_id, vocation, ABS(last_level) as level FROM chars WHERE name LIKE ?",
                           (name,))
                 row = c.fetchone()
                 if row is None:
+                    continue
+                if char_world != world:
                     continue
                 # Only show members on this server or members visible to author if it's a pm
                 owner = self.bot.get_member(row["user_id"], user_guilds)
                 if owner is None:
                     continue
                 row["owner"] = owner.display_name
+                row["owner"] = "someone"
                 row['emoji'] = get_voc_emoji(row['vocation'])
+                vocations.append(row["vocation"])
                 row['vocation'] = get_voc_abb(row['vocation'])
-                online_list[world] += "\n\t{name} (Lvl {level} {vocation}{emoji}, **@{owner}**)".format(**row)
+                entries.append("{name} (Lvl {level} {vocation}{emoji}, **@{owner}**)".format(**row))
                 count += 1
 
             if count == 0:
-                if uptime < 60:
+                if uptime < 90:
                     await ctx.send("I just started, give me some time to check online lists..." + EMOJI[":clock2:"])
                 else:
                     await ctx.send("There is no one online from Discord.")
                 return
-
-            # Remove worlds with no players online
-            online_list = {k: v for k, v in online_list.items() if v is not ""}
-            reply = "The following discord users are online:"
-            if len(user_worlds) == 1:
-                reply += online_list[user_worlds[0]]
-            else:
-                for world, content in online_list.items():
-                    reply += "\n__**{0}**__{1}".format(world, content)
-
-            await ctx.send(reply)
+            pages = VocationPaginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title,
+                                      vocations=vocations)
+            try:
+                await pages.paginate()
+            except CannotPaginate as e:
+                await ctx.send(e)
         finally:
             c.close()
 
@@ -810,6 +833,7 @@ class Tracking:
         on the other hand, if a member leaves, it won't be shown anymore."""
         if name is None:
             ctx.send("You need to tell me the name of the guild you want to add.")
+            return
 
         world = tracked_worlds.get(ctx.guild.id, None)
         if world is None:

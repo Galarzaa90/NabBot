@@ -4,6 +4,7 @@ import discord
 from discord import Message, Colour, Client, User, Reaction
 
 from utils.discord import is_private
+from utils.tibia import DRUID, SORCERER, PALADIN, KNIGHT
 
 
 class CannotPaginate(Exception):
@@ -202,3 +203,52 @@ class Paginator:
                     break
 
             await self.match()
+
+
+class VocationPaginator(Paginator):
+    def __init__(self, bot: Client, *, message: Message, entries, per_page=10, title=None, description="",
+                 numerate=True, color: Colour = None, author=None, author_icon=discord.Embed.Empty, vocations):
+        super().__init__(bot, message=message, entries=entries, per_page=per_page, title=title, description=description,
+                         numerate=numerate, color=color, author=author, author_icon=author_icon)
+        present_vocations = []
+        # Only add vocation filters for the vocations present
+        if any(v.lower() in DRUID for v in vocations):
+            present_vocations.append(('\U00002744', self.filter_druids))
+        if any(v.lower() in SORCERER for v in vocations):
+            present_vocations.append(('\U0001F525', self.filter_sorcerers))
+        if any(v.lower() in PALADIN for v in vocations):
+            present_vocations.append(('\U0001F3F9', self.filter_paladins))
+        if any(v.lower() in KNIGHT for v in vocations):
+            present_vocations.append(('\U0001F6E1', self.filter_knights))
+
+        # Only add filters if there's more than one different vocation
+        if len(present_vocations) > 1:
+            self.reaction_emojis.extend(present_vocations)
+
+        # Copies the entry list without reference
+        self.original_entries = entries[:]
+        self.vocations = vocations
+        self.filters = [DRUID, SORCERER, PALADIN, KNIGHT]
+        self.current_filter = -1
+
+    async def filter_druids(self):
+        await self.filter_vocation(0)
+
+    async def filter_knights(self):
+        await self.filter_vocation(3)
+
+    async def filter_paladins(self):
+        await self.filter_vocation(2)
+
+    async def filter_sorcerers(self):
+        await self.filter_vocation(1)
+
+    async def filter_vocation(self, vocation):
+        if vocation != self.current_filter:
+            self.current_filter = vocation
+            self.entries = [c for c, v in zip(self.original_entries, self.vocations) if v.lower() in self.filters[vocation]]
+        else:
+            self.current_filter = -1
+            self.entries = self.original_entries[:]
+        await self.show_page(1)
+
