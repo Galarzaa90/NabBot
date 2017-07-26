@@ -18,7 +18,7 @@ from utils.loot import item_show
 from utils.loot import item_add
 from utils.loot import item_new
 from utils.messages import split_message
-from utils.paginator import Paginator, CannotPaginate
+from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import *
 
 
@@ -483,31 +483,33 @@ class Tibia:
                 await ctx.send(reply+f"\nTheir share range is from level **{low}** to **{high}**.")
 
     @commands.guild_only()
-    @commands.command(name="find", aliases=["whereteam", "team", "findteam", "searchteam", "search"])
+    @commands.command(name="findteam", aliases=["whereteam", "team", "searchteam"])
     @checks.is_not_lite()
     async def find_team(self, ctx, *, params=None):
         """Searches for a registered character that meets the criteria
 
         There are 3 ways to use this command:
-        -Find a character of a certain vocation in share range with another character:
-        /find vocation,charname
+        -Find a character in share range with another character:
+        /find charname
 
-        -Find a character of a certain vocation in share range with a certain level
-        /find vocation,level
+        -Find a character in share range with a certain level
+        /find level
 
-        -Find a character of a certain vocation between a level range
-        /find vocation,min_level,max_level"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        -Find a character in a level range
+        /find min_level,max_level
+
+        Results can be filtered by using the vocation filters: \U00002744\U0001F525\U0001F3F9\U0001F6E1"""
+        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.guild))
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         invalid_arguments = "Invalid arguments used, examples:\n" \
-                            "```/find vocation,charname\n" \
-                            "/find vocation,level\n" \
-                            "/find vocation,minlevel,maxlevel```"
+                            "```/find charname\n" \
+                            "/find level\n" \
+                            "/find minlevel,maxlevel```"
 
-        tracked_world = tracked_worlds.get(ctx.message.guild.id)
+        tracked_world = tracked_worlds.get(ctx.guild.id)
         if tracked_world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
@@ -517,56 +519,41 @@ class Tibia:
             return
 
         entries = []
+        vocations = []
         online_entries = []
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
-        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
             per_page = 5
 
         char = None
         params = params.split(",")
-        if len(params) < 2 or len(params) > 3:
-            await ctx.send(invalid_arguments)
-            return
-        params[0] = params[0].lower()
-        if params[0] in KNIGHT:
-            vocation = "knight"
-        elif params[0] in DRUID:
-            vocation = "druid"
-        elif params[0] in SORCERER:
-            vocation = "sorcerer"
-        elif params[0] in PALADIN:
-            vocation = "paladin"
-        elif params[0] in ["any", "all", "everything", "anything"]:
-            vocation = "characters"
-        else:
+        if len(params) < 1 or len(params) > 2:
             await ctx.send(invalid_arguments)
             return
 
-        # params[1] could be a character's name, a character's level or one of the level ranges
+        # params[0] could be a character's name, a character's level or one of the level ranges
         # If it's not a number, it should be a player's name
-        if not is_numeric(params[1]):
+        if not is_numeric(params[0]):
             # We shouldn't have another parameter if a character name was specified
-            if len(params) == 3:
+            if len(params) == 2:
                 await ctx.send(invalid_arguments)
                 return
-            char = await get_character(params[1])
+            char = await get_character(params[0])
             if type(char) is not dict:
                 await ctx.send("I couldn't find a character with that name.")
                 return
             low, high = get_share_range(char["level"])
-            title = "I found the following {0}s in share range with {1} ({2}-{3}):".format(vocation, char["name"],
-                                                                                           low, high)
-            empty = "I didn't find any {0}s in share range with **{1}** ({2}-{3})".format(vocation, char["name"],
-                                                                                          low, high)
+            title = "Characters in share range with {0}({1}-{2}):".format(char["name"], low, high)
+            empty = "I didn't find anyone in share range with **{0}**({1}-{2})".format(char["name"], low, high)
         else:
             # Check if we have another parameter, meaning this is a level range
-            if len(params) == 3:
+            if len(params) == 2:
                 try:
-                    level1 = int(params[1])
-                    level2 = int(params[2])
+                    level1 = int(params[0])
+                    level2 = int(params[1])
                 except ValueError:
                     await ctx.send(invalid_arguments)
                     return
@@ -575,27 +562,24 @@ class Tibia:
                     return
                 low = min(level1, level2)
                 high = max(level1, level2)
-                title = "I found the following {0}s between levels {1} and {2}".format(vocation, low, high)
-                empty = "I didn't find any {0}s between levels **{1}** and **{2}**".format(vocation, low, high)
+                title = "Characters between level {0} and {1}".format(low, high)
+                empty = "I didn't find anyone between levels **{0}** and **{1}**".format(low, high)
             # We only got a level, so we get the share range for it
             else:
-                if int(params[1]) <= 0:
+                if int(params[0]) <= 0:
                     await ctx.send("You entered an invalid level.")
                     return
-                low, high = get_share_range(int(params[1]))
-                title = "I found the following {0}s in share range with level {1} ({2}-{3})".format(vocation, params[1],
-                                                                                                    low, high)
-                empty = "I didn't find any {0}s in share range with level **{1}** ({2}-{3})".format(vocation,
-                                                                                                    params[1],
-                                                                                                    low, high)
+                low, high = get_share_range(int(params[0]))
+                title = "Characters in share range with level {0} ({1}-{2})".format(params[0],
+                                                                                                          low, high)
+                empty = "I didn't find anyone in share range with level **{0}** ({1}-{2})".format(params[0],
+                                                                                                  low, high)
 
         c = userDatabase.cursor()
         try:
-            if vocation == "characters":
-                vocation = ""
             c.execute("SELECT name, user_id, ABS(last_level) as level, vocation FROM chars "
-                      "WHERE vocation LIKE ? AND level >= ? AND level <= ? AND world = ?"
-                      "ORDER by level DESC", ("%"+vocation, low, high, tracked_world, ))
+                      "WHERE level >= ? AND level <= ? AND world = ?"
+                      "ORDER by level DESC", (low, high, tracked_world, ))
             count = 0
             online_list = [x.split("_", 1)[1] for x in global_online_list]
             while True:
@@ -612,25 +596,23 @@ class Tibia:
                 count += 1
                 player["owner"] = owner.display_name
                 player["online"] = ""
-                line_format = "**{name}** - Level {level} - @**{owner}** {online}"
-                if vocation == "":
-                    line_format = "**{name}** - Level {level} - {vocation} - @**{owner}** {online}"
+                vocations.append(player["vocation"])
+                player["emoji"] = get_voc_emoji(player["vocation"])
+                player["vocation"] = get_voc_abb(player["vocation"])
+                line_format = "**{name}** - Level {level} {vocation}{emoji} - @**{owner}** {online}"
                 if player["name"] in online_list:
                     player["online"] = EMOJI[":small_blue_diamond:"]
                     online_entries.append(line_format.format(**player))
                 else:
                     entries.append(line_format.format(**player))
+
             if count < 1:
                 await ctx.send(empty)
                 return
         finally:
             c.close()
-        if online_entries:
-            description = EMOJI[":small_blue_diamond:"]+" = online"
-        else:
-            description = ""
-        pages = Paginator(self.bot, message=ctx.message, entries=online_entries+entries, per_page=per_page,
-                          title=title, description=description)
+        pages = VocationPaginator(self.bot, message=ctx.message, entries=online_entries+entries, per_page=per_page,
+                                  title=title, vocations=vocations)
         try:
             await pages.paginate()
         except CannotPaginate as e:
