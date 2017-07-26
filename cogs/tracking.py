@@ -665,7 +665,6 @@ class Tracking:
                 if owner is None:
                     continue
                 row["owner"] = owner.display_name
-                row["owner"] = "someone"
                 row['emoji'] = get_voc_emoji(row['vocation'])
                 vocations.append(row["vocation"])
                 row['vocation'] = get_voc_abb(row['vocation'])
