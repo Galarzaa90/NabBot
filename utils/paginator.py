@@ -250,5 +250,9 @@ class VocationPaginator(Paginator):
         else:
             self.current_filter = -1
             self.entries = self.original_entries[:]
+        pages, left_over = divmod(len(self.entries), self.per_page)
+        if left_over:
+            pages += 1
+        self.maximum_pages = pages
         await self.show_page(1)
 
