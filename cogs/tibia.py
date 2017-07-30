@@ -521,6 +521,7 @@ class Tibia:
         entries = []
         vocations = []
         online_entries = []
+        online_vocations = []
 
         ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
@@ -596,15 +597,16 @@ class Tibia:
                 count += 1
                 player["owner"] = owner.display_name
                 player["online"] = ""
-                vocations.append(player["vocation"])
                 player["emoji"] = get_voc_emoji(player["vocation"])
-                player["vocation"] = get_voc_abb(player["vocation"])
-                line_format = "**{name}** - Level {level} {vocation}{emoji} - @**{owner}** {online}"
+                player["voc"] = get_voc_abb(player["vocation"])
+                line_format = "**{name}** - Level {level} {voc}{emoji} - @**{owner}** {online}"
                 if player["name"] in online_list:
                     player["online"] = EMOJI[":small_blue_diamond:"]
                     online_entries.append(line_format.format(**player))
+                    online_vocations.append(player["vocation"])
                 else:
                     entries.append(line_format.format(**player))
+                    vocations.append(player["vocation"])
 
             if count < 1:
                 await ctx.send(empty)
@@ -612,7 +614,7 @@ class Tibia:
         finally:
             c.close()
         pages = VocationPaginator(self.bot, message=ctx.message, entries=online_entries+entries, per_page=per_page,
-                                  title=title, vocations=vocations)
+                                  title=title, vocations=online_vocations+vocations)
         try:
             await pages.paginate()
         except CannotPaginate as e:
