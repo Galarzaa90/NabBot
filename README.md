@@ -43,7 +43,16 @@ https://discordapi.com/permissions.html
 https://discordapp.com/developers/docs/topics/oauth2#adding-bots-to-guilds
 ```
 
-To run the bot, execute the following command:
+Define default Discord channel names and Admin/Moderators IDs on config.py
+```
+ask_channel_name = "ask-nabbot"
+log_channel_name = "server-log"
+
+owner_ids = [a, b, c]
+mod_ids = [x, y, z]
+```
+
+Finally, execute the following command to run the bot:
 
 ```
 python nabbot.py
@@ -55,8 +64,8 @@ For more detailed instructions, read the [wiki article](https://github.com/Galar
 * Character database to keep track of the member's characters
 * Level up and deaths are announced by the bot
 * Events can be created by users and announced by the bot
-* Items/Monsters database
-
+* Tibia Highscores/Items/Monsters database
+* Loot value calculator based on screenshots
 
 ### Commands
 * **/check** *charname*: Shows information about a character.
