@@ -1461,6 +1461,8 @@ death_messages_monster = [
      "**{name}** ({level}) was killed by {killer_article}**{killer}**. I guess {he_she} couldn't "
      "sio {him_her}self.",
      ["Druid", "Elder Druid"]],
+    [600, "**{name}** ({level}) died to {killer_article}**{killer}**. \"Don't worry\" they said, \"They are weaker\" "
+     "they said.", False, False, ["weakened frazzlemaw", "enfeebled silencer"]],
     [20000, "Another paladin bites the dust! **{killer}** strikes again! Rest in peace **{name}** ({level}).",
      ["Paladin", "Royal Paladin"], False, ["Lady Tenebris"]],
     [20000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! " + EMOJI[":ghost:"],
@@ -1468,7 +1470,7 @@ death_messages_monster = [
     [20000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.", False, False, ["death"]],
     [20000, "They did warn you **{name}** ({level}), you *did* burn " + EMOJI[":fire:"] + EMOJI[
         ":dragon_face:"] + ".", False, False, ["dragon", "dragon lord"]],
-    [20000, "**{name}** ({level}) died from **{killer}**. Someone forgot the safeword."+EMOJI[":smirk:"],
+    [20000, "**{name}** ({level}) died from {killer_article}**{killer}**. Someone forgot the safeword."+EMOJI[":smirk:"],
      False, False, ["choking fear"]],
     [20000, "That **{killer}** got really up close and personal with **{name}** ({level}). "
             "Maybe he thought you were his princess Lumelia?"+EMOJI[":smirk:"],
@@ -1590,12 +1592,12 @@ def split_message(message: str, limit: int=2000):
         return message_list
 
 
-async def send_messageEx(bot,dest,message,embed=False):
+async def send_messageEx(bot, dest, message, embed=False):
     message = split_message(message)
     for msg in message:
         if embed:
             msg_embed = discord.Embed()
             msg_embed.description = msg
-            await bot.send_message(dest,embed=msg_embed)
+            await bot.send_message(dest, embed=msg_embed)
         else:
-            await bot.send_message(dest,msg)
+            await bot.send_message(dest, msg)

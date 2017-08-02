@@ -228,11 +228,9 @@ class NabBot(commands.Bot):
                                                                                  before.guild))
 
     async def on_member_update(self, before: discord.Member, after: discord.Member):
-        if before.nick != after.nick:
-            reply = "{1.mention}: Nickname changed from **{0.nick}** to **{1.nick}**".format(before, after)
-            await self.send_log_message(after.guild, reply)
-        elif before.name != after.name:
-            reply = "{1.mention}: Name changed from **{0.name}** to **{1.name}**".format(before, after)
+        if before.display_name != after.display_name:
+            reply = "{0.name}#{0.discriminator}: Display named changed from **{0.display_name}** to " \
+                    "**{1.display_name}**.".format(before, after)
             await self.send_log_message(after.guild, reply)
         return
 
