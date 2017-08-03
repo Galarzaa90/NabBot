@@ -18,7 +18,7 @@ else:
     shutil.copyfile("utils/loot_template.db", LOOTDB)
     lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 15
+DB_LASTVERSION = 16
 
 # Dictionary of worlds tracked by nabbot, key:value = server_id:world
 # Dictionary is populated from database
@@ -199,6 +199,20 @@ def init_database():
             c.execute("""CREATE TABLE ignored_channels (
                 server_id INTEGER,
                 channel_id INTEGER
+            );""")
+            db_version += 1
+        if db_version == 15:
+            c.execute("""CREATE TABLE highscores (
+                rank INTEGER,
+                category TEXT,
+                world TEXT,
+                name TEXT,
+                vocation TEXT,
+                value INTEGER
+            );""")
+            c.execute("""CREATE TABLE highscores_times (
+                world TEXT,
+                last_scan INTEGER
             );""")
             db_version += 1
         print("Updated database to version {0}".format(db_version))
