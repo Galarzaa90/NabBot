@@ -533,6 +533,14 @@ async def get_character(name, tries=5):
         c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ?", (name,))
         result = c.fetchone()
         char["owner_id"] = None if result is None else result["user_id"]
+
+        # Skills from highscores
+        c.execute("SELECT category, rank, value FROM highscores WHERE name LIKE ?", (char["name"],))
+        result = c.fetchall()
+        for row in result:
+            char[row["category"]] = row["value"]
+            char[row["category"] + '_rank'] = row["rank"]
+
         if result is None:
             # Untracked character, so there's nothing else to check past here
             return
@@ -555,14 +563,6 @@ async def get_character(name, tries=5):
             log.info("{0}'s guild was set to {1} from {2} during get_character()".format(char['name'],
                                                                                          char['guild'],
                                                                                          result["guild"]))
-        # Skills from highscores
-        for category in highscores_categories:
-            c.execute("SELECT " + category + "," + category + "_rank FROM chars WHERE name LIKE ?", (char["name"],))
-            result = c.fetchone()
-            if result:
-                if result[category] is not None and result[category + '_rank'] is not None:
-                    char[category] = result[category]
-                    char[category + '_rank'] = result[category + '_rank']
     finally:
         userDatabase.commit()
         c.close()
