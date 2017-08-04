@@ -90,22 +90,22 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
         return await get_highscores(world, category, pagenum, profession, tries - 1)
     
     if category == "loyalty":
-        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
+        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
         pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
         matches = re.findall(pattern, content)
         score_list = []
         for m in matches:
-            score_list.append({'rank': m[0], 'name': m[1], 'value': m[2].replace(',', '')})
+            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': m[3].replace(',', '')})
     else:
-        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
+        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
         pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
         matches = re.findall(pattern, content)
         score_list = []
         for m in matches:
-            score_list.append({'rank': m[0], 'name': m[1], 'value': m[2].replace(',', '')})
+            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': m[3].replace(',', '')})
     return score_list
 
-async def get_world_info(name, tries = 5):
+async def get_world_info(name, tries=5):
     """Returns a dictionary with a world's information"""
     name = name.capitalize()
     url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + name

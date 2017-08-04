@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 import asyncio
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 
 from config import death_scan_interval, highscores_delay, highscores_categories, highscores_page_delay, \
@@ -18,7 +18,8 @@ from utils.messages import weighed_choice, death_messages_player, death_messages
     level_messages
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world_online, get_character, ERROR_DOESNTEXIST, \
-    parse_tibia_time, get_pronouns, get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild
+    parse_tibia_time, get_pronouns, get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild, \
+    get_tibia_time_zone
 
 
 class Tracking:
@@ -71,40 +72,56 @@ class Tracking:
                 # If no worlds are tracked, just sleep, worlds might get registered later
                 await asyncio.sleep(highscores_delay)
                 continue
-            for server in tracked_worlds_list:
+            for world in tracked_worlds_list:
                 try:
                     for category in highscores_categories:
-                        highscores = []
+                        # Check the last scan time, highscores are updated every server save
+                        with closing(userDatabase.cursor()) as c:
+                            c.execute("SELECT last_scan FROM highscores_times WHERE world = ? and category = ?",
+                                      (world, category,))
+                            result = c.fetchone()
+                        if result:
+                            last_scan = result["last_scan"]
+                            last_scan_date = datetime.utcfromtimestamp(last_scan).replace(tzinfo=timezone.utc)
+                            now = datetime.now(timezone.utc)
+                            # Current day's server save, could be in the past or the future, an extra hour is added
+                            # as margin
+                            today_ss = datetime.now(timezone.utc).replace(hour=11-get_tibia_time_zone())
+                            if not now > today_ss > last_scan_date:
+                                continue
+                        highscore_data = []
                         for pagenum in range(1, 13):
                             # Special cases (ek/rp mls)
                             if category == "magic_ek":
-                                scores = await get_highscores(server, "magic", pagenum, 3)
+                                scores = await get_highscores(world, "magic", pagenum, 3)
                             elif category == "magic_rp":
-                                scores = await get_highscores(server, "magic", pagenum, 4)
+                                scores = await get_highscores(world, "magic", pagenum, 4)
                             else:
-                                scores = await get_highscores(server, category, pagenum)
-                            if not (scores == ERROR_NETWORK):
-                                highscores += scores
+                                scores = await get_highscores(world, category, pagenum)
+                            if scores == ERROR_NETWORK:
+                                continue
+                            for entry in scores:
+                                highscore_data.append(
+                                    (entry["rank"], category, world, entry["name"], entry["vocation"], entry["value"]))
                             await asyncio.sleep(highscores_page_delay)
-                        scores_tuple = []
-                        ranks_tuple = []
-                        for score in highscores:
-                            scores_tuple.append((score['rank'], score['value'], score['name']))
-                            ranks_tuple.append((score['rank'], server))
-                        # Clear out old rankings
                         with userDatabase as conn:
-                            conn.executemany(f"UPDATE chars SET {category} = NULL, {category}_rank = NULL "
-                                             f"WHERE {category}_rank LIKE ? AND world LIKE ?", ranks_tuple)
-                            # Add new rankings
-                            conn.executemany(f"UPDATE chars SET {category}_rank = ?, {category} = ? "
-                                             f"WHERE name LIKE ?", scores_tuple)
+                            # Delete old records
+                            conn.execute("DELETE FROM highscores WHERE category = ? AND world = ?", (category, world,))
+                            # Add current entries
+                            conn.executemany("INSERT INTO highscores(rank, category, world, name, vocation, value) "
+                                             "VALUES (?, ?, ?, ?, ?, ?)", highscore_data)
+                            # These two executes are equal to an UPDATE OR INSERT
+                            conn.execute("UPDATE highscores_times SET last_scan = ? WHERE world = ? AND category = ?",
+                                         (time.time(), world, category))
+                            conn.execute("INSERT INTO highscores_times(world, last_scan, category) SELECT ?,?,? WHERE "
+                                         "(SELECT Changes() = 0)", (world, time.time(), category))
                 except asyncio.CancelledError:
                     # Task was cancelled, so this is fine
                     break
                 except Exception as e:
                     log.exception("Task: scan_highscores")
                     continue
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(10)
 
     async def scan_online_chars(self):
         #################################################

@@ -18,7 +18,7 @@ else:
     shutil.copyfile("utils/loot_template.db", LOOTDB)
     lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 16
+DB_LASTVERSION = 17
 
 # Dictionary of worlds tracked by nabbot, key:value = server_id:world
 # Dictionary is populated from database
@@ -214,6 +214,9 @@ def init_database():
                 world TEXT,
                 last_scan INTEGER
             );""")
+            db_version += 1
+        if db_version == 16:
+            c.execute("ALTER table highscores_times ADD category TEXT")
             db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
