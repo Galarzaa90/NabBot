@@ -198,12 +198,6 @@ class Tracking:
                                 # If the character wasn't in the globalOnlineList we add them
                                 # (We insert them at the beginning of the list to avoid messing with the death checks order)
                                 global_online_list.insert(0, (current_world + "_" + server_char['name']))
-                                # Since this is the first time we see them online we flag their last death time
-                                # to avoid backlogged death announces
-                                c.execute(
-                                    "UPDATE chars SET last_death_time = ? WHERE name LIKE ?",
-                                    (None, server_char['name'],)
-                                )
                                 await self.check_death(server_char['name'])
 
                             # Else we check for levelup
@@ -303,7 +297,7 @@ class Tracking:
 
         if character_deaths:
             c = userDatabase.cursor()
-            c.execute("SELECT name, last_death_time, id FROM chars WHERE name LIKE ?", (character,))
+            c.execute("SELECT name, id FROM chars WHERE name LIKE ?", (character,))
             result = c.fetchone()
             if result:
                 last_death = character_deaths[0]
