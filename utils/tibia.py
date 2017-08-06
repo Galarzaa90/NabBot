@@ -639,7 +639,7 @@ def get_item(name):
             c.execute("SELECT NPCs.title, city, value "
                       "FROM Items, SellItems, NPCs "
                       "WHERE Items.name LIKE ? AND SellItems.itemid = Items.id AND NPCs.id = vendorid "
-                      "ORDER BY value DESC", (name,))
+                      "ORDER BY value DESC", (item["name"],))
             npcs = []
             value_sell = None
             for npc in c:
@@ -671,7 +671,7 @@ def get_item(name):
             c.execute("SELECT NPCs.title, city, value "
                       "FROM Items, BuyItems, NPCs "
                       "WHERE Items.name LIKE ? AND BuyItems.itemid = Items.id AND NPCs.id = vendorid "
-                      "ORDER BY value ASC", (name,))
+                      "ORDER BY value ASC", (item["name"],))
             npcs = []
             value_buy = None
             for npc in c:
