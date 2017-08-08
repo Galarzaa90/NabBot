@@ -18,7 +18,7 @@ from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, EMOJI
 
-initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general"}
+initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot"}
 
 
 class NabBot(commands.Bot):

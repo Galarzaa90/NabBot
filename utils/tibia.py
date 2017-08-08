@@ -1,6 +1,5 @@
 import asyncio
 
-import io
 from html.parser import HTMLParser
 
 from PIL import Image
