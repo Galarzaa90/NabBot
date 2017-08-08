@@ -58,7 +58,7 @@ tibia_worlds = ["Amera", "Antica", "Astera", "Aurera", "Aurora", "Bellona", "Bel
                 "Neptera", "Nerana", "Nika", "Olympa", "Osera", "Pacera", "Premia", "Pythera", "Guilia", "Refugia",
                 "Rowana", "Secura", "Serdebra", "Shivera", "Silvera", "Solera", "Tavara", "Thera", "Umera", "Unitera",
                 "Veludera", "Verlana", "Xantera", "Xylana", "Yanara", "Zanera", "Zeluna", "Honbra", "Noctera", "Vita",
-                "Duna", "Relembra"]
+                "Duna", "Relembra", "Helera", "Tortura", "Macabra"]
 
 
 def get_character_url(name):
