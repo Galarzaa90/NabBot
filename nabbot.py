@@ -333,7 +333,7 @@ class NabBot(commands.Bot):
     def get_channel_by_name(self, name: str, guild: discord.Guild) -> discord.TextChannel:
         """Finds a channel by name on all the channels visible by the bot.
 
-        If server, server_id or server_name is specified, only channels in that server will be searched"""
+        If guild is specified, only channels in that guild will be searched"""
         if guild is None:
             channel = discord.utils.find(lambda m: m.name == name and not type(m) == discord.ChannelType.voice,
                                          self.get_all_channels())
@@ -349,6 +349,9 @@ class NabBot(commands.Bot):
         return guild
 
     async def wait_for_confirmation_reaction(self, ctx: Context, message: Message, deny_message: str) -> bool:
+        """Waits for the command author (ctx.author) to reply with a Y or N reaction
+
+        Returns true if the user reacted with Y, false if the user reacted with N or didn't react at all"""
         await message.add_reaction('\U0001f1fe')
         await message.add_reaction('\U0001f1f3')
 
