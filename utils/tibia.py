@@ -1,4 +1,5 @@
 import asyncio
+import io
 
 from html.parser import HTMLParser
 
