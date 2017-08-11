@@ -312,11 +312,16 @@ class General:
 
     @commands.group(aliases=["event"], invoke_without_command=True)
     @checks.is_not_lite()
-    async def events(self, ctx):
-        """Shows a list of current active events"""
+    async def events(self, ctx, event_id: int=0):
+        """Shows a list of current active events
+
+        If a number is specified, it will show details for that event. Same as using /events info"""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links and not is_private(ctx.channel):
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+        if event_id != 0:
+            await ctx.invoke(self.bot.all_commands.get('events').get_command("info"), event_id)
             return
         # Time in seconds the bot will show past events
         time_threshold = 60 * 30
@@ -379,7 +384,9 @@ class General:
     @checks.is_not_lite()
     @events.command(name="info", aliases=["show", "details"])
     async def event_info(self, ctx, event_id: int):
-        """Displays an event's info"""
+        """Displays an event's info
+
+        The start time shown in the footer is always displayed in your device's timezone."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
