@@ -23,16 +23,6 @@ class Tibia:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    @commands.command()
-    async def test(self,ctx,*, name):
-        char = await get_character(name)
-        if char is ERROR_DOESNTEXIST:
-            await ctx.send("No char found")
-            return
-        await ctx.send(char)
-        pass
-
-
     @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'])
     async def whois(self, ctx, *, name=None):
         """Tells you a character's or a discord user's information
