@@ -375,7 +375,7 @@ async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]
         await asyncio.sleep(network_retry_delay)
         return await get_character(name, tries-1)
 
-    parsed_content = BeautifulSoup(content, 'lxml', parse_only=SoupStrainer("div", class_="BoxContent"))
+    parsed_content = BeautifulSoup(content, 'html.parser', parse_only=SoupStrainer("div", class_="BoxContent"))
     tables = parsed_content.find_all('table')
     for table in tables:
         header = table.find('td')
