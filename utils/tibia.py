@@ -2,10 +2,11 @@ import asyncio
 import io
 
 from html.parser import HTMLParser
+from typing import List, Union, Dict
 
 from PIL import Image
 from PIL import ImageDraw
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, SoupStrainer
 from discord import Colour
 import datetime
 import urllib.parse
@@ -348,12 +349,11 @@ def get_character_url(name):
     """Gets a character's tibia.com URL"""
     return url_character + urllib.parse.quote(name.encode('iso-8859-1'))
 
-
-async def get_character(name, tries=5):
+async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]:
     """Returns a dictionary with a player's info
 
     The dictionary contains the following keys: name, deleted, level, vocation, world, residence,
-    married, gender, guild, last,login, chars*.
+    married, sex, guild, last,login, chars*.
         *chars is list that contains other characters in the same account (if not hidden).
         Each list element is dictionary with the keys: name, world.
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
@@ -375,198 +375,153 @@ async def get_character(name, tries=5):
         await asyncio.sleep(network_retry_delay)
         return await get_character(name, tries-1)
 
-    # Trimming content to reduce load
+    parsed_content = BeautifulSoup(content, 'lxml', parse_only=SoupStrainer("div", class_="BoxContent"))
+    tables = parsed_content.find_all('table')
+    for table in tables:
+        header = table.find('td')
+        rows = table.find_all('tr')
+        if "Could not find" in header.text:
+            return ERROR_DOESNTEXIST
+        if "Character Information" in header.text:
+            for row in rows:
+                cols_raw = row.find_all('td')
+                cols = [ele.text.strip() for ele in cols_raw]
+                if len(cols) != 2:
+                    continue
+                field, value = cols
+                field = field.replace("\xa0", "_").replace(" ","_").replace(":","").lower()
+                value = value.replace("\xa0", " ")
+                # This is a special case cause we need to see the link
+                if field == "house":
+                    house = cols_raw[1].find('a')
+                    url = urllib.parse.urlparse(house["href"])
+                    query = urllib.parse.parse_qs(url.query)
+                    char["house_town"] = query["town"][0]
+                    char["house_id"] = query["houseid"][0]
+                    char["house"] = house.text.strip()
+                    continue
+                char[field] = value
+        elif "Achievements" in header.text:
+            char["displayed_achievements"] = []
+            for row in rows:
+                cols_raw = row.find_all('td')
+                cols = [ele.text.strip() for ele in cols_raw]
+                if len(cols) != 2:
+                    continue
+                field, value = cols
+                char["displayed_achievements"].append(value)
+        elif "Deaths" in header.text:
+            char["deaths"] = []
+            for row in rows:
+                cols_raw = row.find_all('td')
+                cols = [ele.text.strip() for ele in cols_raw]
+                if len(cols) != 2:
+                    continue
+                death_time, death = cols
+                death_time = death_time.replace("\xa0", " ")
+                regex_death = r'Level (\d+) by ([^.]+)'
+                pattern = re.compile(regex_death)
+                death_info = re.search(pattern, death)
+                if death_info:
+                    level = death_info.group(1)
+                    killer = death_info.group(2)
+                else:
+                    continue
+                death_link = cols_raw[1].find('a')
+                death_player = False
+                if death_link:
+                    death_player = True
+                    killer = death_link.text.strip().replace("\xa0", " ")
+                try:
+                    char["deaths"].append({'time': death_time, 'level': int(level), 'killer': killer,
+                                           'is_player': death_player})
+                except ValueError:
+                    # Some pvp deaths have no level, so they are raising a ValueError, they will be ignored for now.
+                    continue
+        elif "Account Information" in header.text:
+            for row in rows:
+                cols_raw = row.find_all('td')
+                cols = [ele.text.strip() for ele in cols_raw]
+                if len(cols) != 2:
+                    continue
+                field, value = cols
+                field = field.replace("\xa0", "_").replace(" ", "_").replace(":", "").lower()
+                value = value.replace("\xa0", " ")
+                char[field] = value
+        elif "Characters" in header.text:
+            char["chars"] = []
+            for row in rows:
+                cols_raw = row.find_all('td')
+                cols = [ele.text.strip() for ele in cols_raw]
+                if len(cols) != 5:
+                    continue
+                _name, world, status, __, __ = cols
+                _name = _name.replace("\xa0", " ").split(". ")[1]
+                char['chars'].append({'name': _name, 'world': world, 'status': status})
+
+    # Formatting special fields:
     try:
-        start_index = content.index('<div class="BoxContent"')
-        end_index = content.index("<B>Search Character</B>")
-        content = content[start_index:end_index]
-    except ValueError:
-        # Website fetch was incomplete, due to a network error
+        if "," in char["name"]:
+            char["name"], _ = char["name"].split(",", 1)
+            char["deleted"] = True
+        char["premium"] = ("Premium" in char["account_status"])
+        char.pop("account_status")
+        if "former_names" in char:
+            char["former_names"] = char["former_names"].split(", ")
+        char["level"] = int(char["level"])
+        char["achievement_points"] = int(char["achievement_points"])
+        char["guild"] = None
+        if "guild_membership" in char:
+            char["rank"], char["guild"] = char["guild_membership"].split(" of the ")
+            char.pop("guild_membership")
+        if "never" in char["last_login"]:
+            char["last_login"] = None
+    except KeyError:
         await asyncio.sleep(network_retry_delay)
         return await get_character(name, tries - 1)
 
-    # Check if player exists
-    if "Name:</td><td>" not in content:
-        return ERROR_DOESNTEXIST
-
-    # TODO: Is there a way to reduce this part?
-    # Name
-    m = re.search(r'Name:</td><td>([^<,]+)', content)
-    if m:
-        char['name'] = m.group(1).strip()
-
-    # Deleted
-    m = re.search(r', will be deleted at ([^<]+)', content)
-    if m:
-        char['deleted'] = True
-
-    # Vocation
-    m = re.search(r'Vocation:</td><td>([^<]+)', content)
-    if m:
-        char['vocation'] = m.group(1)
-
-    # Level
-    m = re.search(r'Level:</td><td>(\d+)', content)
-    if m:
-        char['level'] = int(m.group(1))
-    # Use database levels for online characters
-    for onchar in global_online_list:
-        if onchar.split("_", 1)[1] == char['name']:
-            c = userDatabase.cursor()
-            c.execute("SELECT last_level FROM chars WHERE name LIKE ?", (char['name'],))
-            result = c.fetchone()
-            if result:
-                char['level'] = abs(result["last_level"])
-            c.close()
-            break
-
-    # World
-    m = re.search(r'World:</td><td>([^<]+)', content)
-    if m:
-        char['world'] = m.group(1)
-
-    # Residence (City)
-    m = re.search(r'Residence:</td><td>([^<]+)', content)
-    if m:
-        char['residence'] = m.group(1)
-
-    # Marriage
-    m = re.search(r'Married To:</td><td>?.+name=([^"]+)', content)
-    if m:
-        char['married'] = urllib.parse.unquote_plus(m.group(1), encoding='ISO-8859-1')
-
-    # Sex
-    m = re.search(r'Sex:</td><td>([^<]+)', content)
-    if m:
-        if m.group(1) == 'male':
-            char['gender'] = 'male'
-        else:
-            char['gender'] = 'female'
-
-    char["guild"] = None
-    # Guild rank
-    m = re.search(r'Membership:</td><td>([^<]+)\sof the', content)
-    if m:
-        char['rank'] = m.group(1)
-        # Guild membership
-        m = re.search(r'GuildName=.*?([^&]+).+', content)
-        if m:
-            char['guild'] = urllib.parse.unquote_plus(m.group(1))
-
-    # House
-    m = re.search(r'House:</td><td> <a href=\"https://secure\.tibia\.com/community/\?subtopic=houses.+houseid=(\d+)'
-                  r'&amp;character=(?:[^&]+)&amp;action=characters\" >([^<]+)</a> \(([^(]+)\) is paid until '
-                  r'([A-z]+).*?;(\d+).*?;(\d+)', content)
-    if m:
-        char["house_id"] = m.group(1)
-        char["house"] = m.group(2)
-        char["house_town"] = m.group(3)
-
-    # Last login
-    m = re.search(r'Last Login:</td><td>([^<]+)', content)
-    if m:
-        lastLogin = m.group(1).replace("&#160;", " ").replace(",", "")
-        if "never" in lastLogin:
-            char['last_login'] = None
-        else:
-            char['last_login'] = lastLogin
-
-    # Character deaths
-    char["deaths"] = []
-    regex_deaths = r'valign="top" >([^<]+)</td><td>(.+?)</td></tr>'
-    pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
-    matches = re.findall(pattern, content)
-
-    for m in matches:
-        death_time = m[0].replace('&#160;', ' ').replace(",", "")
-        death_level = ""
-        death_killer = ""
-        death_by_player = False
-
-        if m[1].find("Died") != -1:
-            regex_deathinfo_monster = r'Level (\d+) by ([^.]+)'
-            pattern = re.compile(regex_deathinfo_monster, re.MULTILINE + re.S)
-            m_deathinfo_monster = re.search(pattern, m[1])
-            if m_deathinfo_monster:
-                death_level = m_deathinfo_monster.group(1)
-                death_killer = m_deathinfo_monster.group(2)
-        else:
-            regex_deathinfo_player = r'Level (\d+) by .+?name=([^"]+)'
-            pattern = re.compile(regex_deathinfo_player, re.MULTILINE + re.S)
-            m_deathinfo_player = re.search(pattern, m[1])
-            if m_deathinfo_player:
-                death_level = m_deathinfo_player.group(1)
-                death_killer = urllib.parse.unquote_plus(m_deathinfo_player.group(2))
-                death_by_player = True
-        try:
-            char["deaths"].append({'time': death_time, 'level': int(death_level), 'killer': death_killer,
-                                   'byPlayer': death_by_player})
-        except ValueError:
-            # Some pvp deaths have no level, so they are raising a ValueError, they will be ignored for now.
-            continue
-
-    # Other chars
-    # note that an empty char list means the character is hidden
-    # otherwise you'd have at least the same char in the list
-    char['chars'] = []
-    try:
-        # See if there is a character list
-        start_index = content.index("<B>Characters</B>")
-        content = content[start_index:]
-
-        # Find characters
-        regex_chars = r'<TD WIDTH=10%><NOBR>([^<]+)[^?]+.+?VALUE=\"([^\"]+)'
-        pattern = re.compile(regex_chars, re.MULTILINE + re.S)
-        m = re.findall(pattern, content)
-
-        if m:
-            for (world, _name) in m:
-                _name = urllib.parse.unquote_plus(_name)
-                char['chars'].append({'name': _name, 'world': world})
-    except Exception:
-        pass
-
-    # Database information:
+    # Database operations
     c = userDatabase.cursor()
-    try:
-        # Discord owner
-        c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ?", (name,))
-        result = c.fetchone()
-        char["owner_id"] = None if result is None else result["user_id"]
+    # Skills from highscores
+    c.execute("SELECT category, rank, value FROM highscores WHERE name LIKE ?", (char["name"],))
+    result = c.fetchall()
+    for row in result:
+        char[row["category"]] = row["value"]
+        char[row["category"] + '_rank'] = row["rank"]
 
-        # Skills from highscores
-        c.execute("SELECT category, rank, value FROM highscores WHERE name LIKE ?", (char["name"],))
-        result = c.fetchall()
-        for row in result:
-            char[row["category"]] = row["value"]
-            char[row["category"] + '_rank'] = row["rank"]
+    # Discord owner
+    c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ?", (name,))
+    result = c.fetchone()
+    if result is None:
+        # Untracked character
+        char["owner_id"] = None
+        return char
 
-        if result is None:
-            # Untracked character, so there's nothing else to check past here
-            return
-        if result["vocation"] != char['vocation']:
-            c.execute("UPDATE chars SET vocation = ? WHERE id = ?", (char['vocation'], result["id"],))
+    char["owner_id"] = result["user_id"]
+    if result["vocation"] != char['vocation']:
+        with userDatabase as conn:
+            conn.execute("UPDATE chars SET vocation = ? WHERE id = ?", (char['vocation'], result["id"],))
             log.info("{0}'s vocation was set to {1} from {2} during get_character()".format(char['name'],
                                                                                             char['vocation'],
                                                                                             result["vocation"]))
-        if result["name"] != char["name"]:
-            c.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
+    if result["name"] != char["name"]:
+        with userDatabase as conn:
+            conn.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
             log.info("{0} was renamed to {1} during get_character()".format(result["name"], char['name']))
 
-        if result["world"] != char["world"]:
-            c.execute("UPDATE chars SET world = ? WHERE id = ?", (char['world'], result["id"],))
+    if result["world"] != char["world"]:
+        with userDatabase as conn:
+            conn.execute("UPDATE chars SET world = ? WHERE id = ?", (char['world'], result["id"],))
             log.info("{0}'s world was set to {1} from {2} during get_character()".format(char['name'],
                                                                                          char['world'],
                                                                                          result["world"]))
-        if result["guild"] != char["guild"]:
-            c.execute("UPDATE chars SET guild = ? WHERE id = ?", (char['guild'], result["id"],))
+    if result["guild"] != char["guild"]:
+        with userDatabase as conn:
+            conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (char['guild'], result["id"],))
             log.info("{0}'s guild was set to {1} from {2} during get_character()".format(char['name'],
                                                                                          char['guild'],
                                                                                          result["guild"]))
-    finally:
-        userDatabase.commit()
-        c.close()
-        return char
+    return char
 
 
 def get_rashid_city() -> str:
@@ -1060,7 +1015,7 @@ def get_voc_emoji(vocation: str) -> str:
         return EMOJI[":question:"]
 
 
-def get_pronouns(gender: str):
+def get_pronouns(gender: str) -> List[str]:
     """Gets a list of pronouns based on the gender given. Only binary genders supported, sorry."""
     gender = gender.lower()
     if gender == "female":

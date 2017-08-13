@@ -346,7 +346,7 @@ class Tracking:
         log.info("Announcing death: {0}({1}) | {2}".format(char["name"], level, killer))
 
         # Get correct pronouns
-        pronoun = get_pronouns(char["gender"])
+        pronoun = get_pronouns(char["sex"])
 
         # Find killer article (a/an)
         killer_article = ""
@@ -409,8 +409,8 @@ class Tracking:
 
         log.info("Announcing level up: {0} ({1})".format(char["name"], level))
 
-        # Get pronouns based on gender
-        pronoun = get_pronouns(char['gender'])
+        # Get pronouns based on sex
+        pronoun = get_pronouns(char['sex'])
 
         # Select a message
         message = weighed_choice(level_messages, vocation=char['vocation'], level=int(level))

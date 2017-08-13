@@ -23,6 +23,16 @@ class Tibia:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
+    @commands.command()
+    async def test(self,ctx,*, name):
+        char = await get_character(name)
+        if char is ERROR_DOESNTEXIST:
+            await ctx.send("No char found")
+            return
+        await ctx.send(char)
+        pass
+
+
     @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'])
     async def whois(self, ctx, *, name=None):
         """Tells you a character's or a discord user's information
@@ -1281,7 +1291,7 @@ class Tibia:
         if stats["vocation"] == "no vocation":
             stats["vocation"] = "with no vocation"
         if char:
-            pronoun = "he" if char['gender'] == "male" else "she"
+            pronoun = "he" if char['sex'] == "male" else "she"
             await ctx.send("**{5}** is a level **{0}** {1}, {6} has:"
                            "\n\t**{2:,}** HP"
                            "\n\t**{3:,}** MP"
@@ -1571,18 +1581,22 @@ class Tibia:
             return char
         char["he_she"] = "He"
         char["his_her"] = "His"
-        if char['gender'] == "female":
+        if char['sex'] == "female":
             char["he_she"] = "She"
             char["his_her"] = "Her"
         char["url"] = get_character_url(char["name"])
+        char["previous_world"] = ""
+        if "former_world" in char:
+            char["previous_world"] = f" (formerly __{char['former_world']}__)"
         reply = "[{name}]({url}) is a level {level} __{vocation}__. " \
-                "{he_she} resides in __{residence}__ in the world of __{world}__.".format(**char)
+                "{he_she} resides in __{residence}__ in the world of __{world}__{previous_world}. " \
+                "{he_she} has {achievement_points:,} achievement points.".format(**char)
         if char["guild"] is not None:
             char["guild_url"] = url_guild+urllib.parse.quote(char["guild"])
             reply += "\n{he_she} is __{rank}__ of the [{guild}]({guild_url}).".format(**char)
-        if "married" in char:
-            char["married_url"] = url_character + urllib.parse.quote(char["married"].encode('iso-8859-1'))
-            reply += "\n{he_she} is married to [{married}]({married_url}).".format(**char)
+        if "married_to" in char:
+            char["married_url"] = url_character + urllib.parse.quote(char["married_to"].encode('iso-8859-1'))
+            reply += "\n{he_she} is married to [{married_to}]({married_url}).".format(**char)
         if "house" in char:
             char["house_url"] = url_house.format(id=char["house_id"], world=char["world"])
             reply += "\n{he_she} owns [{house}]({house_url}) in {house_town}.".format(**char)
@@ -1597,7 +1611,7 @@ class Tibia:
 
         # Insert any highscores this character holds
         for category in highscores_categories:
-            if char.get(category, None):
+            if char.get(category) is not None:
                 highscore_string = highscore_format[category].format(char["his_her"], char[category], char[category+'_rank'])
                 reply += "\n"+EMOJI[":trophy:"]+" {0}".format(highscore_string)
         return reply
