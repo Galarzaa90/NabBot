@@ -1,4 +1,5 @@
 from contextlib import closing
+from typing import Dict, List, Union
 
 import discord
 from discord.ext import commands
@@ -293,7 +294,7 @@ class Tracking:
         if type(char) is not dict:
             log.warning("check_death: couldn't fetch {0}".format(character))
             return
-        character_deaths = char["deaths"]
+        character_deaths = char.get("deaths")  # type: List[Dict[str,Union[int,str]]
 
         if character_deaths:
             c = userDatabase.cursor()
@@ -313,7 +314,7 @@ class Tracking:
 
                 c.execute(
                     "INSERT INTO char_deaths (char_id,level,killer,byplayer,date) VALUES(?,?,?,?,?)",
-                    (result["id"], int(last_death['level']), last_death['killer'], last_death['byPlayer'], death_time,)
+                    (result["id"], int(last_death['level']), last_death['killer'], last_death['by_player'], death_time,)
                 )
 
                 # If the death happened more than 1 hour ago, we don't announce it, but it's saved already.
@@ -322,7 +323,7 @@ class Tracking:
                                                                                               last_death['level'],
                                                                                               last_death['killer']))
                 else:
-                    await self.announce_death(last_death['level'], last_death['killer'], last_death['byPlayer'],
+                    await self.announce_death(last_death['level'], last_death['killer'], last_death['by_player'],
                                               max(last_death["level"] - char["level"], 0), char)
 
             # Close cursor and commit changes
