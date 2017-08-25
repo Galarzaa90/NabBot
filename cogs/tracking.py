@@ -464,12 +464,11 @@ class Tracking:
             elif char == ERROR_DOESNTEXIST:
                 await ctx.send("That character doesn't exists.")
             return
-        chars = char['chars']
+        chars = char.get("chars",[])
         # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
         # searched char, so we don't have to look him up again
         if len(chars) == 0 or len(chars) == 1:
             chars = [char]
-
         skipped = []
         updated = []
         added = []
