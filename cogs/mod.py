@@ -123,6 +123,9 @@ class Mod:
 
         # Only search in the servers the command author is
         user = self.bot.get_member_by_name(params[0], author_servers)
+        if user is None:
+            await ctx.send("I don't see any user named **{0}** in the servers you manage.".format(params[0]))
+            return
         user_servers = self.bot.get_user_guilds(user.id)
         user_worlds = self.bot.get_user_worlds(author.id)
 
@@ -130,9 +133,6 @@ class Mod:
 
         with ctx.typing():
             char = await get_character(params[1])
-            if user is None:
-                await ctx.send("I don't see any user named **{0}** in the servers you manage.".format(params[0]))
-                return
             if type(char) is not dict:
                 if char == ERROR_NETWORK:
                     await ctx.send("I couldn't fetch the character, please try again.")
