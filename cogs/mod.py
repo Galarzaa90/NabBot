@@ -228,15 +228,15 @@ class Mod:
         author_worlds = self.bot.get_user_worlds(author.id)
 
         user = self.bot.get_member_by_name(params[0], author_guilds)
+        if user is None:
+            await ctx.send("I don't see any user named **{0}** in the servers you manage.".format(params[0]))
+            return
         user_servers = self.bot.get_user_guilds(user.id)
         user_worlds = self.bot.get_user_worlds(user.id)
 
         common_worlds = list(set(author_worlds) & set(user_worlds))
         with ctx.typing():
             character = await get_character(params[1])
-            if user is None:
-                await ctx.send("I don't see any user named **{0}** in the servers you manage.".format(params[0]))
-                return
             if type(character) is not dict:
                 if character == ERROR_NETWORK:
                     await ctx.send("I couldn't fetch the character, please try again.")
