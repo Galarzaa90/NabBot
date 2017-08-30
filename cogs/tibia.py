@@ -996,7 +996,7 @@ class Tibia:
 
         try:
             c.execute("SELECT name, world, level, date, vocation "
-                      "FROM chars, char_deaths "
+                      "FROM chars, char_levelups "
                       "WHERE char_id = id AND user_id = ? "
                       "ORDER BY date DESC", (user.id,))
             while True:
