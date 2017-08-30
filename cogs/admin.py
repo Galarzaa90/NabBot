@@ -355,70 +355,50 @@ class Admin:
 
     @commands.command(name="setchannel")
     @checks.is_admin()
+    @commands.guild_only()
     @checks.is_not_lite()
     async def set_announce_channel(self, ctx: commands.Context, *, name: str = None):
         """Changes the channel used for the bot's announcements
 
         If no channel is set, the bot will use the server's default channel."""
         def check(m):
-            return m.author == ctx.message.author and m.channel == ctx.message.channel
+            return m.author == ctx.author and m.channel == ctx.channel
 
-        admin_guilds = self.bot.get_user_admin_guilds(ctx.message.author.id)
-
-        if not is_private(ctx.message.channel):
-            if ctx.message.guild not in admin_guilds:
-                await ctx.send("You don't have permissions to diagnose this server.")
-                return
-            guild = ctx.message.guild
-        else:
-            if len(admin_guilds) == 1:
-                guild = admin_guilds[0]
-            else:
-                server_list = [str(i + 1) + ": " + admin_guilds[i].name for i in range(len(admin_guilds))]
-                await ctx.send(
-                    "For which server do you want to change the announce channel?\n\t0: *Cancel*\n\t" + "\n\t"
-                    .join(server_list))
-                try:
-                    answer = await self.bot.wait_for("message",timeout=60.0, check=check)
-                    answer = int(answer.content)
-                    if answer == 0:
-                        await ctx.send("Changed your mind? Typical human.")
-                        return
-                    guild = admin_guilds[answer - 1]
-                except ValueError:
-                    await ctx.send("That's not a valid answer.")
-                    return
-                except IndexError:
-                    await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
-                    return
-                except asyncio.TimeoutError:
-                    await ctx.send("I guess you changed your mind.")
-                    return
-
+        top_channel = self.bot.get_top_channel(ctx.guild, True)
+        current_channel = announce_channels.get(ctx.guild.id, None)
         if name is None:
-            current_channel = announce_channels.get(guild.id, None)
             if current_channel is None:
-                await ctx.send("This server has no custom channel set, {0} is used."
-                                    .format(guild.default_channel.mention))
-            else:
-                channel = self.bot.get_channel_by_name(current_channel, guild)
-                if channel is not None:
-                    permissions = channel.permissions_for(self.bot.get_member(self.bot.user.id, guild))
-                    if not permissions.read_messages or not permissions.send_messages:
-                        await ctx.send("This server's announce channel is set to #**{0}** but I don't have "
-                                            "permissions to use it. {1.mention} will be used instead."
-                                            .format(current_channel, channel))
-                        return
-                    await ctx.send("This server's announce channel is {0.mention}".format(channel))
+                if top_channel is None:
+                    await ctx.send("This server has no channel set and I can't use any of the channels.")
+                    return
+                await ctx.send(f"This server has no channel set, I use {top_channel.mention} cause it's the highest on "
+                               f"the list I can use.")
+                return
+            channel = ctx.guild.get_channel(int(current_channel))
+            top_channel = self.bot.get_top_channel(ctx.guild, True)
+            # Channel doesn't exist anymore
+            if channel is None:
+                if top_channel is None:
+                    await ctx.send("The announce channel previously set doesn't seem to exist anymore and I don't "
+                                   "have a channel to use.")
                 else:
-                    await ctx.send("This server's announce channel is set to #**{0}** but it doesn't exist. "
-                                        "{1.mention} will be used instead."
-                                        .format(current_channel, guild.default_channel))
+                    await ctx.send(f"The announce channel previously set doesn't seem to exist anymore. I'm using "
+                                   f"{top_channel.mention} meanwhile.")
+                return
+            permissions = channel.permissions_for(ctx.me)
+            if not permissions.read_messages or not permissions.send_messages:
+                if top_channel is None:
+                    await ctx.send(f"The announce channel is {channel.mention}, but I don't have permissions to "
+                                   f"use it and I don't have a channel to use.")
+                else:
+                    await ctx.send(f"The announce channel is {channel.mention}, but I don't have permissions to "
+                                   f"use it. I'm using {top_channel.mention} meanwhile.")
+                return
+            await ctx.send(f"This server's announce channel is {channel.mention}.")
             return
+
         if name.lower() in ["clear", "none", "delete", "remove"]:
-            await ctx.send("Are you sure you want to delete this server's announce channel? `yes/no`\n"
-                                "The server's default channel ({0.mention}) will still be used."
-                                .format(guild.default_channel))
+            await ctx.send("Are you sure you want to delete this server's announce channel? `yes/no`")
             try:
                 reply = await self.bot.wait_for("message", timeout=50.0, check=check)
                 if reply.content.lower() not in ["yes", "y"]:
@@ -429,27 +409,23 @@ class Admin:
                 return
 
             c = userDatabase.cursor()
-            try:
-                c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'announce_channel'", (guild.id,))
-            finally:
-                c.close()
-                userDatabase.commit()
+            with userDatabase as conn:
+                conn.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'announce_channel'",
+                             (ctx.guild.id,))
             await ctx.send("This server's announce channel was removed.")
-            reload_welcome_messages()
+            reload_announce_channels()
             return
-
-        channel = self.bot.get_channel_by_name(name, guild)
-        if channel is None:
-            await ctx.send("There is no channel with that name.")
+        try:
+            channel = await commands.TextChannelConverter().convert(ctx, name)
+        except commands.BadArgument:
+            await ctx.send("I couldn't find that channel.")
             return
-
-        permissions = channel.permissions_for(self.bot.get_member(self.bot.user.id, guild))
+        permissions = channel.permissions_for(ctx.me)
         if not permissions.read_messages or not permissions.send_messages:
             await ctx.send("I don't have permission to use {0.mention}.".format(channel))
             return
 
-        await ctx.send("Are you sure you want {0.mention} as the announcement channel? `yes/no`"
-                                .format(channel))
+        await ctx.send("Are you sure you want {0.mention} as the announcement channel? `yes/no`".format(channel))
         try:
             reply = await self.bot.wait_for("message", timeout=120.0, check=check)
             if reply.content.lower() not in ["yes", "y"]:
@@ -462,13 +438,13 @@ class Admin:
         c = userDatabase.cursor()
         try:
             # Safer to just delete old entry and add new one
-            c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'announce_channel'", (guild.id,))
+            c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'announce_channel'",
+                      (ctx.guild.id,))
             c.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'announce_channel', ?)",
-                      (guild.id, channel.name,))
-            await ctx.send("This server's announcement channel was changed successfully.\nRemember that if "
-                                "the channel is renamed, you must set it again using this command.\nIf the channel "
-                                "becomes unavailable for me in any way, {0.mention} will be used."
-                                .format(guild.default_channel))
+                      (ctx.guild.id, channel.id,))
+            await ctx.send("This server's announcement channel was changed successfully.\n"
+                           "If the channel becomes unavailable for me in any way, I will try to use the highest channel"
+                           " I can see on the list.".format(ctx.guild.default_channel))
         finally:
             c.close()
             userDatabase.commit()

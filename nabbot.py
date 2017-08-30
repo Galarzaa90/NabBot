@@ -2,7 +2,7 @@ import asyncio
 import random
 import sys
 import traceback
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Optional
 
 import discord
 from discord import abc, Reaction, User, Message
@@ -309,15 +309,15 @@ class NabBot(commands.Bot):
         """Returns this world's announcements channel. If no channel is set, the default channel is returned.
 
         It also checks if the bot has permissions on that channel, if not, it will return the default channel too."""
-        channel_name = announce_channels.get(guild.id, None)
-        if channel_name is None:
-            return guild.default_channel
-        channel = self.get_channel_by_name(channel_name, guild)
+        channel_id = announce_channels.get(guild.id, None)
+        if channel_id is None:
+            return self.get_top_channel(guild, True)
+        channel = guild.get_channel(int(channel_id))
         if channel is None:
-            return guild.default_channel
-        permissions = channel.permissions_for(self.get_member(self.user.id, guild))
+            return self.get_top_channel(guild, True)
+        permissions = channel.permissions_for(guild.me)
         if not permissions.read_messages or not permissions.send_messages:
-            return guild.default_channel
+            return self.get_top_channel(guild, True)
         return channel
 
     async def send_log_message(self, guild: discord.Guild, content=None, embed: discord.Embed = None):
@@ -347,6 +347,21 @@ class NabBot(commands.Bot):
 
         guild = discord.utils.find(lambda m: m.name.lower() == name.lower(), self.guilds)
         return guild
+
+    @staticmethod
+    def get_top_channel(guild: discord.Guild, writeable_only: bool=False) -> Optional[discord.TextChannel]:
+        """Returns the highest text channel on the list.
+
+        If writeable_only is set, the first channel where the bot can write is returned
+        If None it returned, the guild has no channels or the bot can't write on any channel"""
+        if guild is None:
+            return None
+        for channel in guild.text_channels:
+            if not writeable_only:
+                return channel
+            if channel.permissions_for(guild.me).send_messages:
+                return channel
+        return None
 
     async def wait_for_confirmation_reaction(self, ctx: Context, message: Message, deny_message: str) -> bool:
         """Waits for the command author (ctx.author) to reply with a Y or N reaction
