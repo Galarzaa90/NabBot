@@ -995,7 +995,7 @@ class Tibia:
             per_page = 5
 
         try:
-            c.execute("SELECT name, world, level, date "
+            c.execute("SELECT name, world, level, date, vocation "
                       "FROM chars, char_deaths "
                       "WHERE char_id = id AND user_id = ? "
                       "ORDER BY date DESC", (user.id,))
