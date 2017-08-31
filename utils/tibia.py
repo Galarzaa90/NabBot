@@ -90,6 +90,8 @@ async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]
 
     parsed_content = BeautifulSoup(content, 'html.parser', parse_only=SoupStrainer("div", class_="BoxContent"))
     tables = parsed_content.find_all('table')
+    if len(tables) <= 2:
+        return ERROR_DOESNTEXIST
     for table in tables:
         header = table.find('td')
         rows = table.find_all('tr')
