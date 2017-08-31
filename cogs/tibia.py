@@ -61,7 +61,7 @@ class Tibia:
 
         char = await get_character(name)
         char_string = self.get_char_string(char)
-        user = await commands.MemberConverter().convert(ctx, name)
+        user = self.bot.get_member_by_name(name, ctx.guild)
         embed = self.get_user_embed(ctx, user)
 
         # No user or char with that name
