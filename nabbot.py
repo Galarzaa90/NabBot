@@ -174,7 +174,6 @@ class NabBot(commands.Bot):
 
         await self.send_log_message(member.guild, log_message)
         await member.send(pm)
-        await member.guild.default_channel.send("Look who just joined! Welcome {0.mention}!".format(member))
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
