@@ -5,13 +5,11 @@ from contextlib import closing
 import discord
 from datetime import timedelta, datetime
 
-from discord import Message, Reaction, User
 from discord.ext import commands
 import psutil
 import random
 import time
 
-from discord.ext.commands import Context
 
 from config import ask_channel_name, owner_ids, mod_ids
 from nabbot import NabBot
@@ -78,7 +76,9 @@ class General:
                         event["start"] = 'now'
                     message = "**{name}** (by **@{author}**,*ID:{id}*) - Is starting {start}!".format(**event)
                     c.execute("UPDATE events SET status = ? WHERE id = ?", (new_status, event["id"],))
-                    await guild.default_channel.send(message)
+                    announce_channel = self.bot.get_announce_channel(guild)
+                    if announce_channel is not None:
+                        await announce_channel.send(message)
                     await self.notify_subscribers(event["id"], message)
             except asyncio.CancelledError:
                 break
