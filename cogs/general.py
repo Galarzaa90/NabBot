@@ -201,7 +201,7 @@ class General:
             title = "Roles in this server"
             entries = [r.mention for r in get_role_list(ctx.guild)]
         else:
-            member = self.bot.get_member_by_name(user_name, ctx.guild)
+            member = self.bot.get_member_named(user_name, ctx.guild)
             if member is None:
                 await ctx.send("I don't see any user named **" + user_name + "**.")
                 return

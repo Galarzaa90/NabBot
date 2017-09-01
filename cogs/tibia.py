@@ -61,7 +61,7 @@ class Tibia:
 
         char = await get_character(name)
         char_string = self.get_char_string(char)
-        user = self.bot.get_member_by_name(name, ctx.guild)
+        user = self.bot.get_member_named(name, ctx.guild)
         embed = self.get_user_embed(ctx, user)
 
         # No user or char with that name
@@ -720,7 +720,7 @@ class Tibia:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
-        user = self.bot.get_member_by_name(name, user_servers)
+        user = self.bot.get_member_named(name, user_servers)
         if user is None:
             await ctx.send("I don't see any users with that name.")
             return
@@ -978,7 +978,7 @@ class Tibia:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
-        user = self.bot.get_member_by_name(name, user_servers)
+        user = self.bot.get_member_named(name, user_servers)
         if user is None:
             await ctx.send("I don't see any users with that name.")
             return
@@ -1163,7 +1163,7 @@ class Tibia:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
-        user = self.bot.get_member_by_name(name, user_servers)
+        user = self.bot.get_member_named(name, user_servers)
         if user is None:
             await ctx.send("I don't see any users with that name.")
             return

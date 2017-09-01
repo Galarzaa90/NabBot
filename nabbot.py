@@ -1,5 +1,6 @@
 import asyncio
 import random
+import re
 import sys
 import traceback
 from typing import Union, List, Dict, Optional
@@ -253,29 +254,43 @@ class NabBot(commands.Bot):
 
     # ------------ Utility methods ------------
 
-    def get_member(self, member_id: int, guild: Union[discord.Guild, List[discord.Guild]] = None) -> discord.Member:
-        """Returns a member matching the id
-        
-        If a guild or guild list is specified, then only members from those guilds will be searched. If no guild is
-        specified, the first member instance will be returned."""
-        if guild is None:
-            return discord.utils.get(self.get_all_members(), id=member_id)
-        if type(guild) is list and len(guild) > 0:
-            members = [m for ml in [g.members for g in guild] for m in ml]
-            return discord.utils.find(lambda m: m.id == member_id, members)
-        return guild.get_member(member_id)
-
-    def get_member_by_name(self, name: str, guild: Union[discord.Guild, List[discord.Guild]] = None) -> discord.Member:
-        """Returns a member matching the name
+    def get_member(self, argument, guild: Union[discord.Guild, List[discord.Guild]] = None) -> discord.Member:
+        """Returns a member matching the id, name#discriminator, nickname or name
 
         If a guild or guild list is specified, then only members from those guilds will be searched. If no guild is
         specified, the first member instance will be returned."""
-        if guild is None:
-            return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), self.get_all_members())
+        id_regex = re.compile(r'([0-9]{15,21})$')
+        match = id_regex.match(str(argument))
+        if match is None:
+            return self.get_member_named(argument, guild)
+        else:
+            user_id = int(match.group(1))
+            if guild is None:
+                return discord.utils.get(self.get_all_members(), id=user_id)
+            if type(guild) is list and len(guild) > 0:
+                members = [m for ml in [g.members for g in guild] for m in ml]
+                return discord.utils.find(lambda m: m.id == user_id, members)
+            return guild.get_member(argument)
+
+    # Todo: Replace calls of this with get_member where it suits
+    def get_member_named(self, name: str, guild: Union[discord.Guild, List[discord.Guild]] = None) -> discord.Member:
+        """Returns a member matching the name#discriminator, nickname or name
+
+        If a guild or guild list is specified, then only members from those guilds will be searched. If no guild is
+        specified, the first member instance will be returned."""
+        members = self.get_all_members()
+        if type(guild) is discord.Guild:
+            members = guild.members
         if type(guild) is list and len(guild) > 0:
             members = [m for ml in [g.members for g in guild] for m in ml]
-            return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), members)
-        return discord.utils.find(lambda m: m.display_name.lower() == name.lower(), guild.members)
+
+        if len(name) > 5 and name[-5] == '#':
+            potential_discriminator = name[-4:]
+            result = discord.utils.get(members, name=name[:-5], discriminator=potential_discriminator)
+            if result is not None:
+                return result
+        return discord.utils.find(lambda m: m.display_name.lower() == name.lower() or m.name.lower == name.lower(),
+                                  members)
 
     def get_user_guilds(self, user_id: int) -> List[discord.Guild]:
         """Returns a list of the user's shared guilds with the bot"""

@@ -122,7 +122,7 @@ class Mod:
         author_worlds = self.bot.get_user_worlds(author.id)
 
         # Only search in the servers the command author is
-        user = self.bot.get_member_by_name(params[0], author_servers)
+        user = self.bot.get_member_named(params[0], author_servers)
         if user is None:
             await ctx.send("I don't see any user named **{0}** in the servers you manage.".format(params[0]))
             return
@@ -227,7 +227,7 @@ class Mod:
             author_guilds = self.bot.get_user_admin_guilds(author.id)
         author_worlds = self.bot.get_user_worlds(author.id)
 
-        user = self.bot.get_member_by_name(params[0], author_guilds)
+        user = self.bot.get_member_named(params[0], author_guilds)
         if user is None:
             await ctx.send("I don't see any user named **{0}** in the servers you manage.".format(params[0]))
             return
@@ -392,7 +392,7 @@ class Mod:
         c = userDatabase.cursor()
         with ctx.typing():
             # Searching users in server
-            user = self.bot.get_member_by_name(name)
+            user = self.bot.get_member_named(name)
             # Searching users in database
             try:
                 c.execute("SELECT id, name from users WHERE name LIKE ?", (name,))
