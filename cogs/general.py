@@ -409,7 +409,7 @@ class General:
             await ctx.send("There's no event with that id.")
             return
         guild = self.bot.get_guild(event["server"])
-        start = datetime.fromtimestamp(event["start"])
+        start = datetime.utcfromtimestamp(event["start"])
         author = self.bot.get_member(event["creator"], guild)
         embed = discord.Embed(title=event["name"], description=event["description"], timestamp=start)
         if author is not None:
@@ -485,7 +485,7 @@ class General:
                 await ctx.send("Nothing? Forget it then.")
                 return
 
-        embed = discord.Embed(title=name, description=event_description, timestamp=datetime.fromtimestamp(start))
+        embed = discord.Embed(title=name, description=event_description, timestamp=datetime.utcfromtimestamp(start))
         embed.set_footer(text="Start time")
 
         message = await ctx.send("Is this correct?", embed=embed)
@@ -618,7 +618,7 @@ class General:
         new_description = clean_string(ctx, new_description)
 
         embed = discord.Embed(title=event["name"], description=new_description,
-                              timestamp=datetime.fromtimestamp(event["start"]))
+                              timestamp=datetime.utcfromtimestamp(event["start"]))
         embed.set_footer(text="Start time")
         message = await ctx.send("Do you want this to be the new description?", embed=embed)
         confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no changes will be done.")
@@ -680,7 +680,7 @@ class General:
             except asyncio.TimeoutError:
                 await ctx.send("Guess you don't want to change the time...")
                 return
-        embed = discord.Embed(title=event["name"], timestamp=datetime.fromtimestamp(now+starts_in.seconds))
+        embed = discord.Embed(title=event["name"], timestamp=datetime.utcfromtimestamp(now+starts_in.seconds))
         embed.set_footer(text="Start time")
         message = await ctx.send(f"This will be the time of your new event in your local time. Is this correct?",
                                  embed=embed)
@@ -834,7 +834,7 @@ class General:
                 return
 
         embed = discord.Embed(title=name, description=event_description,
-                              timestamp=datetime.fromtimestamp(now+starts_in.seconds))
+                              timestamp=datetime.utcfromtimestamp(now+starts_in.seconds))
         embed.set_footer(text="Start time")
         message = await ctx.send("Ok, so this will be your new event. Is this correct?", embed=embed)
         confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no event will be made.")
