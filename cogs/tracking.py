@@ -294,7 +294,7 @@ class Tracking:
         if type(char) is not dict:
             log.warning("check_death: couldn't fetch {0}".format(character))
             return
-        character_deaths = char.get("deaths")  # type: List[Dict[str,Union[int,str]]
+        character_deaths = char.get("deaths", [])
 
         if character_deaths:
             c = userDatabase.cursor()

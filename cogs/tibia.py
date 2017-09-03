@@ -591,7 +591,7 @@ class Tibia:
                 elif char == ERROR_NETWORK:
                     await ctx.send("Sorry, I had trouble checking that character, try it again.")
                     return
-                deaths = char.get("deaths")  # type: List[Dict[str,Union[str,int]]
+                deaths = char.get("deaths", [])
                 last_time = now
                 name = char["name"]
                 voc_emoji = get_voc_emoji(char["vocation"])
