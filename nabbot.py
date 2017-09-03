@@ -270,9 +270,8 @@ class NabBot(commands.Bot):
             if type(guild) is list and len(guild) > 0:
                 members = [m for ml in [g.members for g in guild] for m in ml]
                 return discord.utils.find(lambda m: m.id == user_id, members)
-            return guild.get_member(argument)
+            return guild.get_member(user_id)
 
-    # Todo: Replace calls of this with get_member where it suits
     def get_member_named(self, name: str, guild: Union[discord.Guild, List[discord.Guild]] = None) -> discord.Member:
         """Returns a member matching the name#discriminator, nickname or name
 
