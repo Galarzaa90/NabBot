@@ -139,7 +139,7 @@ class Tibia:
                 await ctx.send("I failed to do a character search for some reason " + EMOJI[":astonished:"])
             embed = discord.Embed(description="")
             if type(char) is dict:
-                owner = self.bot.get_member(char["owner_id"], ctx.message.guild)
+                owner = None if char["owner_id"] is None else self.bot.get_member(char["owner_id"], ctx.message.guild)
                 if owner is not None:
                     # Char is owned by a discord user
                     embed = self.get_user_embed(ctx, owner)
