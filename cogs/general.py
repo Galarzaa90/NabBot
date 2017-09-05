@@ -20,6 +20,8 @@ from utils.general import get_uptime, TimeString, single_line, is_numeric, log
 from utils.messages import EMOJI
 from utils.paginator import Paginator, CannotPaginate
 
+EVENT_NAME_LIMIT = 50
+
 
 class General:
     def __init__(self, bot: NabBot):
@@ -441,6 +443,9 @@ class General:
         start = now + starts_in.seconds
         params = params.split(",", 1)
         name = single_line(clean_string(ctx, params[0]))
+        if len(name) > EVENT_NAME_LIMIT:
+            await ctx.send(f"The event's name can't be longer than {EVENT_NAME_LIMIT} characters.")
+            return
         event_description = ""
         if len(params) > 1:
             event_description = clean_string(ctx, params[1])
@@ -556,6 +561,9 @@ class General:
                 return
 
         new_name = single_line(clean_string(ctx, new_name))
+        if len(new_name) > EVENT_NAME_LIMIT:
+            await ctx.send(f"The name can't be longer than {EVENT_NAME_LIMIT} characters.")
+            return
         message = await ctx.send(f"Do you want to change the name of **{event['name']}** to **{new_name}**?")
         confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, name remains the same.")
         if not confirmed:
@@ -737,6 +745,7 @@ class General:
         await self.notify_subscribers(event_id, f"The event **{event['name']}** was deleted by {ctx.author.mention}.",
                                       skip_creator=True)
 
+    # TODO: Do not cancel the whole process if a parameter is invalid, retry at that point
     @checks.is_not_lite()
     @events.command(name="make", aliases=["creator", "maker"])
     async def event_make(self, ctx):
@@ -760,6 +769,9 @@ class General:
         try:
             name = await self.bot.wait_for("message", timeout=120.0, check=check)
             name = single_line(name.clean_content)
+            if len(name) > EVENT_NAME_LIMIT:
+                await ctx.send(f"The name can't be longer than {EVENT_NAME_LIMIT} characters.")
+                return
             if name.strip().lower() == "cancel":
                 await ctx.send("Event making cancelled.")
                 return
