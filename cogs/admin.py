@@ -375,7 +375,6 @@ class Admin:
                                f"the list I can use.")
                 return
             channel = ctx.guild.get_channel(int(current_channel))
-            top_channel = self.bot.get_top_channel(ctx.guild, True)
             # Channel doesn't exist anymore
             if channel is None:
                 if top_channel is None:
@@ -444,7 +443,7 @@ class Admin:
                       (ctx.guild.id, channel.id,))
             await ctx.send("This server's announcement channel was changed successfully.\n"
                            "If the channel becomes unavailable for me in any way, I will try to use the highest channel"
-                           " I can see on the list.".format(ctx.guild.default_channel))
+                           " I can see on the list.")
         finally:
             c.close()
             userDatabase.commit()
