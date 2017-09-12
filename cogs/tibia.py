@@ -1597,7 +1597,7 @@ class Tibia:
             if time_diff.days > last_login_days:
                 reply += "\n{he_she} hasn't logged in for **{0}**.".format(get_time_diff(time_diff), **char)
         else:
-            reply += "\n{he_she} has never logged in."
+            reply += "\n{he_she} has never logged in.".format(**char)
 
         # Insert any highscores this character holds
         for category in highscores_categories:
