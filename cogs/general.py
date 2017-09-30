@@ -637,9 +637,9 @@ class General:
             conn.execute("UPDATE events SET description = ? WHERE id = ?", (new_description, event_id,))
 
         if event["creator"] == ctx.author.id:
-            await ctx.send("Your event's description was changed successfully..")
+            await ctx.send("Your event's description was changed successfully.")
         else:
-            await ctx.send("Event's description changed successfully..")
+            await ctx.send("Event's description changed successfully.")
             creator = self.bot.get_member(event["creator"])
             if creator is not None:
                 await creator.send(f"Your event **{event['name']}** had its description changed by {ctx.author.mention}",
