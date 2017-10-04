@@ -283,15 +283,16 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
             score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': m[3].replace(',', '')})
     return score_list
 
-async def get_world_info(name, tries=5):
-    """Returns a dictionary with a world's information"""
-    name = name.capitalize()
-    url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + name
-    world = {}
+async def get_world(world, tries=5):
+    """Returns a list of all the online players in current server.
+
+    Each list element is a dictionary with the following keys: name, level"""
+    world = world.capitalize()
+    url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + world
 
     if tries == 0:
-        log.error(f"get_world_info: Couldn't fetch {name}, network error.")
-        return ERROR_NETWORK
+        log.error("get_world_online: Couldn't fetch {0}, network error.".format(world))
+        return None
 
     # Fetch website
     try:
@@ -300,20 +301,21 @@ async def get_world_info(name, tries=5):
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
         await asyncio.sleep(network_retry_delay)
-        return await get_world_info(name, tries - 1)
+        return await get_world(world, tries - 1)
 
     # Trimming content to reduce load
     try:
-        start_index = content.index('<div class="InnerTableContainer"')
+        start_index = content.index('<div class="BoxContent"')
         end_index = content.index('<div id="ThemeboxesColumn" >')
         content = content[start_index:end_index]
     except ValueError:
         await asyncio.sleep(network_retry_delay)
-        return await get_world_online(world, tries - 1)
+        return await get_world(world, tries - 1)
 
     if "World with this name doesn't exist!" in content:
         return None
 
+    world = {}
     # Status
     m = re.search(r'alt=\"Server PVP Type\" /></div>(\w+)<', content)
     if m:
@@ -360,39 +362,7 @@ async def get_world_info(name, tries=5):
     if m:
         world["transfer"] = m.group(1).replace('&#160;', ' ')
 
-    return world
-
-
-async def get_world_online(world, tries=5):
-    """Returns a list of all the online players in current server.
-
-    Each list element is a dictionary with the following keys: name, level"""
-    world = world.capitalize()
-    url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + world
-    online_list = []
-
-    if tries == 0:
-        log.error("get_world_online: Couldn't fetch {0}, network error.".format(world))
-        return online_list
-
-    # Fetch website
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
-        await asyncio.sleep(network_retry_delay)
-        return await get_world_online(world, tries - 1)
-
-    # Trimming content to reduce load
-    try:
-        start_index = content.index('<div class="BoxContent"')
-        end_index = content.index('<div id="ThemeboxesColumn" >')
-        content = content[start_index:end_index]
-    except ValueError:
-        await asyncio.sleep(network_retry_delay)
-        return await get_world_online(world, tries - 1)
-
+    world["online_list"] = list()
     regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td><td style="width:20%;" >([^<]+)'
     pattern = re.compile(regex_members, re.MULTILINE + re.S)
     m = re.findall(pattern, content)
@@ -401,9 +371,9 @@ async def get_world_online(world, tries=5):
         # Building dictionary list from online players
         for (name, level,vocation) in m:
             name = urllib.parse.unquote_plus(name)
-            vocation = vocation.replace('&#160;',' ')
-            online_list.append({'name': name, 'level': int(level), 'vocation': vocation})
-    return online_list
+            vocation = vocation.replace('&#160;', ' ')
+            world["online_list"].append({'name': name, 'level': int(level), 'vocation': vocation})
+    return world
 
 
 async def get_guild_online(name, title_case=True, tries=5):

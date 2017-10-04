@@ -18,7 +18,7 @@ from utils.general import global_online_list, log, join_list, start_time
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
     level_messages
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
-from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world_online, get_character, ERROR_DOESNTEXIST, \
+from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, ERROR_DOESNTEXIST, \
     parse_tibia_time, get_pronouns, get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild, \
     get_tibia_time_zone
 
@@ -144,140 +144,144 @@ class Tracking:
 
                 await asyncio.sleep(online_scan_interval)
                 # Get online list for this server
-                curent_world_online = await get_world_online(current_world)
-                if len(curent_world_online) > 0:
-                    # Remove chars that are no longer online from the globalOnlineList
-                    offline_list = []
-                    for char in global_online_list:
-                        if char.split("_", 1)[0] == current_world:
-                            offline = True
-                            for server_char in curent_world_online:
-                                if server_char['name'] == char.split("_", 1)[1]:
-                                    offline = False
-                                    break
-                            if offline:
-                                offline_list.append(char)
-                    for now_offline_char in offline_list:
-                        global_online_list.remove(now_offline_char)
-                        # Check for deaths and level ups when removing from online list
-                        now_offline_char = await get_character(now_offline_char.split("_", 1)[1])
-                        if not (now_offline_char == ERROR_NETWORK or now_offline_char == ERROR_DOESNTEXIST):
-                            c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",
-                                      (now_offline_char['name'],))
-                            result = c.fetchone()
-                            if result:
-                                last_level = result["last_level"]
-                                c.execute(
-                                    "UPDATE chars SET last_level = ? WHERE name LIKE ?",
-                                    (now_offline_char['level'], now_offline_char['name'],)
-                                )
-                                if now_offline_char['level'] > last_level > 0:
-                                    # Saving level up date in database
-                                    c.execute(
-                                        "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                        (result["id"], now_offline_char['level'], time.time(),)
-                                    )
-                                    # Announce the level up
-                                    await self.announce_level(now_offline_char['level'], char=now_offline_char)
-                            await self.check_death(now_offline_char['name'])
-
-                    # Add new online chars and announce level differences
-                    for server_char in curent_world_online:
-                        c.execute("SELECT name, last_level, id, user_id FROM chars WHERE name LIKE ?",
-                                  (server_char['name'],))
+                _world = await get_world(current_world)
+                if _world is None:
+                    continue
+                current_world_online = _world["online_list"]
+                if len(current_world_online) == 0:
+                    continue
+                # Remove chars that are no longer online from the globalOnlineList
+                offline_list = []
+                for char in global_online_list:
+                    if char.split("_", 1)[0] == current_world:
+                        offline = True
+                        for server_char in current_world_online:
+                            if server_char['name'] == char.split("_", 1)[1]:
+                                offline = False
+                                break
+                        if offline:
+                            offline_list.append(char)
+                for now_offline_char in offline_list:
+                    global_online_list.remove(now_offline_char)
+                    # Check for deaths and level ups when removing from online list
+                    now_offline_char = await get_character(now_offline_char.split("_", 1)[1])
+                    if not (now_offline_char == ERROR_NETWORK or now_offline_char == ERROR_DOESNTEXIST):
+                        c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",
+                                  (now_offline_char['name'],))
                         result = c.fetchone()
                         if result:
-                            # If its a stalked character
                             last_level = result["last_level"]
-                            # We update their last level in the db
                             c.execute(
                                 "UPDATE chars SET last_level = ? WHERE name LIKE ?",
-                                (server_char['level'], server_char['name'],)
+                                (now_offline_char['level'], now_offline_char['name'],)
                             )
-
-                            if not (current_world + "_" + server_char['name']) in global_online_list:
-                                # If the character wasn't in the globalOnlineList we add them
-                                # (We insert them at the beginning of the list to avoid messing with the death checks order)
-                                global_online_list.insert(0, (current_world + "_" + server_char['name']))
-                                await self.check_death(server_char['name'])
-
-                            # Else we check for levelup
-                            elif server_char['level'] > last_level > 0:
+                            if now_offline_char['level'] > last_level > 0:
                                 # Saving level up date in database
                                 c.execute(
                                     "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                    (result["id"], server_char['level'], time.time(),)
+                                    (result["id"], now_offline_char['level'], time.time(),)
                                 )
                                 # Announce the level up
-                                await self.announce_level(server_char['level'], char_name=server_char["name"])
-                    # Watched List checking
-                    # Iterate through servers with tracked world to find one that matches the current world
-                    for server, world in tracked_worlds.items():
-                        if world == current_world:
-                            watched_channel_id = self.watched_channels.get(server, None)
-                            if watched_channel_id is None:
-                                # This server doesn't have watch list enabled
-                                continue
-                            watched_channel = self.bot.get_channel(watched_channel_id)  # type: discord.abc.Messageable
-                            if watched_channel is None:
-                                # This server's watched channel is not available to the bot anymore.
-                                continue
-                            # Get watched list
-                            c.execute("SELECT * FROM watched_list WHERE server_id = ?", (server,))
-                            results = c.fetchall()
-                            if not results:
-                                # List is empty
-                                continue
-                            # Online watched characters
-                            currently_online = []
-                            # Watched guilds
-                            guild_online = dict()
-                            for watched in results:
-                                if watched["is_guild"]:
-                                    guild = await get_guild_online(watched["name"])
-                                    # Todo: Remove deleted guilds from list to avoid unnecessary checks, notify
-                                    if guild == ERROR_NETWORK or guild == ERROR_DOESNTEXIST:
-                                        continue
-                                    # If there's at least one member online, add guild to list
-                                    if len(guild["members"]):
-                                        guild_online[guild["name"]] = guild["members"]
-                                # If it is a character, check if he's in the online list
-                                for online_char in curent_world_online:
-                                    if online_char["name"] == watched["name"]:
-                                        # Add to online list
-                                        currently_online.append(online_char)
-                            watched_message_id = self.watched_messages.get(server, None)
-                            # We try to get the watched message, if the bot can't find it, we just create a new one
-                            # This may be because the old message was deleted or this is the first time the list is checked
-                            try:
-                                watched_message = await watched_channel.get_message(watched_message_id)
-                            except (discord.NotFound, discord.HTTPException, discord.Forbidden):
-                                watched_message = None
-                            items = [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
-                                     for x in currently_online]
-                            if len(items) > 0 or len(guild_online.keys()) > 0:
-                                content = "These watched characters are online:\n"
-                                content += "\n".join(items)
-                                for guild, members in guild_online.items():
-                                    content += f"\nGuild: **{guild}**\n"
-                                    content += "\n".join(
-                                        [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
-                                         for x in members])
+                                await self.announce_level(now_offline_char['level'], char=now_offline_char)
+                        await self.check_death(now_offline_char['name'])
+
+                # Add new online chars and announce level differences
+                for server_char in current_world_online:
+                    c.execute("SELECT name, last_level, id, user_id FROM chars WHERE name LIKE ?",
+                              (server_char['name'],))
+                    result = c.fetchone()
+                    if result:
+                        # If its a stalked character
+                        last_level = result["last_level"]
+                        # We update their last level in the db
+                        c.execute(
+                            "UPDATE chars SET last_level = ? WHERE name LIKE ?",
+                            (server_char['level'], server_char['name'],)
+                        )
+
+                        if not (current_world + "_" + server_char['name']) in global_online_list:
+                            # If the character wasn't in the globalOnlineList we add them
+                            # (We insert them at the beginning of the list to avoid messing with the death checks order)
+                            global_online_list.insert(0, (current_world + "_" + server_char['name']))
+                            await self.check_death(server_char['name'])
+
+                        # Else we check for levelup
+                        elif server_char['level'] > last_level > 0:
+                            # Saving level up date in database
+                            c.execute(
+                                "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
+                                (result["id"], server_char['level'], time.time(),)
+                            )
+                            # Announce the level up
+                            await self.announce_level(server_char['level'], char_name=server_char["name"])
+                # Watched List checking
+                # Iterate through servers with tracked world to find one that matches the current world
+                for server, world in tracked_worlds.items():
+                    if world == current_world:
+                        watched_channel_id = self.watched_channels.get(server, None)
+                        if watched_channel_id is None:
+                            # This server doesn't have watch list enabled
+                            continue
+                        watched_channel = self.bot.get_channel(watched_channel_id)  # type: discord.abc.Messageable
+                        if watched_channel is None:
+                            # This server's watched channel is not available to the bot anymore.
+                            continue
+                        # Get watched list
+                        c.execute("SELECT * FROM watched_list WHERE server_id = ?", (server,))
+                        results = c.fetchall()
+                        if not results:
+                            # List is empty
+                            continue
+                        # Online watched characters
+                        currently_online = []
+                        # Watched guilds
+                        guild_online = dict()
+                        for watched in results:
+                            if watched["is_guild"]:
+                                guild = await get_guild_online(watched["name"])
+                                # Todo: Remove deleted guilds from list to avoid unnecessary checks, notify
+                                if guild == ERROR_NETWORK or guild == ERROR_DOESNTEXIST:
+                                    continue
+                                # If there's at least one member online, add guild to list
+                                if len(guild["members"]):
+                                    guild_online[guild["name"]] = guild["members"]
+                            # If it is a character, check if he's in the online list
+                            for online_char in current_world_online:
+                                if online_char["name"] == watched["name"]:
+                                    # Add to online list
+                                    currently_online.append(online_char)
+                        watched_message_id = self.watched_messages.get(server, None)
+                        # We try to get the watched message, if the bot can't find it, we just create a new one
+                        # This may be because the old message was deleted or this is the first time the list is checked
+                        try:
+                            watched_message = await watched_channel.get_message(watched_message_id)
+                        except (discord.NotFound, discord.HTTPException, discord.Forbidden):
+                            watched_message = None
+                        items = [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
+                                 for x in currently_online]
+                        if len(items) > 0 or len(guild_online.keys()) > 0:
+                            content = "These watched characters are online:\n"
+                            content += "\n".join(items)
+                            for guild, members in guild_online.items():
+                                content += f"\nGuild: **{guild}**\n"
+                                content += "\n".join(
+                                    [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
+                                     for x in members])
+                        else:
+                            content = "There are no watched characters online."
+                        # Send new watched message or edit last one
+                        try:
+                            if watched_message is None:
+                                new_watched_message = await watched_channel.send(content)
+                                c.execute("DELETE FROM server_properties WHERE server_id = ? "
+                                          "AND name LIKE ?", (server, "watched_message",))
+                                c.execute("INSERT INTO server_properties(server_id, name, value) VALUES(?,?,?)",
+                                          (server, "watched_message", new_watched_message.id))
+                                self.watched_messages[server] = new_watched_message.id
                             else:
-                                content = "There are no watched characters online."
-                            # Send new watched message or edit last one
-                            try:
-                                if watched_message is None:
-                                    new_watched_message = await watched_channel.send(content)
-                                    c.execute("DELETE FROM server_properties WHERE server_id = ? "
-                                              "AND name LIKE ?", (server, "watched_message",))
-                                    c.execute("INSERT INTO server_properties(server_id, name, value) VALUES(?,?,?)",
-                                              (server, "watched_message", new_watched_message.id))
-                                    self.watched_messages[server] = new_watched_message.id
-                                else:
-                                    await watched_message.edit(content=content)
-                            except discord.HTTPException:
-                                pass
+                                await watched_message.edit(content=content)
+                        except discord.HTTPException:
+                            pass
             except asyncio.CancelledError:
                 # Task was cancelled, so this is fine
                 break

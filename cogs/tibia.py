@@ -1479,7 +1479,7 @@ class Tibia:
             await ctx.send("You must tell me the name of the world you want to check.")
             return
 
-        world = await get_world_info(name)
+        world = await get_world(name)
         if world is None:
             await ctx.send("There's no world with that name.")
             return
