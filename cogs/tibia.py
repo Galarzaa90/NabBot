@@ -250,13 +250,13 @@ class Tibia:
 
         There are 3 ways to use this command:
         -Find a character in share range with another character:
-        /find charname
+        /findteam charname
 
         -Find a character in share range with a certain level
-        /find level
+        /findteam level
 
         -Find a character in a level range
-        /find min_level,max_level
+        /findteam min_level,max_level
 
         Results can be filtered by using the vocation filters: \U00002744\U0001F525\U0001F3F9\U0001F6E1"""
         permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.guild))
