@@ -93,18 +93,33 @@ def get_local_timezone() -> int:
     return (timegm(t) - timegm(u)) / 60 / 60
 
 
+def get_n_weekday(year, month, weekday, n):
+    """Returns the date where the nth weekday of a month occurred."""
+    count = 0
+    for i in range(1, 32):
+        try:
+            d = date(year, month, i)
+        except ValueError:
+            break
+        if d.isoweekday() == weekday:
+            count += 1
+        if count == n:
+            return d
+    return None
+
+
 def get_brasilia_time_zone() -> int:
     """Returns Brasilia's timezone, considering their daylight saving time dates"""
     # Find date in Brasilia
     bt = datetime.utcnow() - timedelta(hours=3)
     brasilia_date = date(bt.year, bt.month, bt.day)
-    # These are the dates for the 2016/2017 time change, they vary yearly but ¯\0/¯, good enough
-    dst_start = date(bt.year, 10, 16)
-    dst_end = date(bt.year + 1, 2, 21)
-    if dst_start < brasilia_date < dst_end:
+    # DST stars on the third sunday of october and ends on the third sunday of february
+    # It may be off by a couple hours
+    dst_start = get_n_weekday(bt.year, 10, 7, 3)
+    dst_end = get_n_weekday(bt.year, 2, 7, 3)
+    if brasilia_date > dst_start or brasilia_date < dst_end:
         return -2
     return -3
-
 
 start_time = datetime.utcnow()
 
