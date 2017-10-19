@@ -229,7 +229,7 @@ class NabBot(commands.Bot):
 
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         if before.display_name != after.display_name:
-            reply = "{0.name}#{0.discriminator}: Display named changed from **{0.display_name}** to " \
+            reply = "{0.name}#{0.discriminator}: Display name changed from **{0.display_name}** to " \
                     "**{1.display_name}**.".format(before, after)
             await self.send_log_message(after.guild, reply)
         return
