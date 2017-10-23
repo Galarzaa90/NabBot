@@ -1021,13 +1021,12 @@ async def populate_worlds():
     """Populate the list of currently available Tibia worlds"""
 
     print('Searching list of available Tibia worlds.')
-    worlds = await load_tibia_worlds_from_url()
-    if worlds is None:
-        worlds = load_tibia_worlds_from_file()
+    all_worlds = await load_tibia_worlds_from_url()
+    if all_worlds is None:
+        all_worlds = load_tibia_worlds_from_file()
 
-    if worlds is not None:
+    if all_worlds is not None:
         try:
-            all_worlds = worlds["allworlds"]
             if len(all_worlds) > 0:
                 for world in all_worlds:
                     tibia_worlds.append(world["name"])
@@ -1059,17 +1058,17 @@ async def load_tibia_worlds_from_url(tries=3):
         print('Error fetching URL.')
         return await load_tibia_worlds_from_url(tries - 1)
 
-    worlds = json.loads(content)["worlds"]
-    write_tibia_worlds_json_backup(worlds)
-    return worlds
+    all_worlds = json.loads(content)["worlds"]["allworlds"]
+    write_tibia_worlds_json_backup(all_worlds)
+    return all_worlds
 
 
-def write_tibia_worlds_json_backup(worlds):
+def write_tibia_worlds_json_backup(all_worlds):
     """Receives JSON content and writes to a backup file."""
 
     try:
         with open("utils/tibia_worlds.json", "w+") as json_file:
-            json.dump(worlds, json_file)
+            json.dump(all_worlds, json_file)
     except Exception:
         print("Error populate_worlds(): could not save JSON to file.")
 
@@ -1079,7 +1078,7 @@ def load_tibia_worlds_from_file():
 
     try:
         with open("utils/tibia_worlds.json") as json_file:
-            worlds = json.load(json_file)
-            return worlds
+            all_worlds = json.load(json_file)
+            return all_worlds
     except Exception:
         log.error("Error loading backup .json file.")
