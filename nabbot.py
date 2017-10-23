@@ -18,9 +18,9 @@ from utils.general import join_list, get_token
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, EMOJI
+from utils.tibia import populate_worlds, tibia_worlds
 
 initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot"}
-
 
 class NabBot(commands.Bot):
     def __init__(self):
@@ -413,7 +413,16 @@ nabbot = NabBot()
 
 if __name__ == "__main__":
     init_database()
+
+    #List of tracked worlds for NabBot
     reload_worlds()
+    #List of all Tibia worlds
+    nabbot.loop.run_until_complete(populate_worlds())
+
+    if len(tibia_worlds) == 0:
+        print("Critical information was not available: NabBot can not start without the World List.")
+        quit()
+
     reload_welcome_messages()
     reload_announce_channels()
 

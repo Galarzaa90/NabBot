@@ -20,6 +20,7 @@ from utils.database import userDatabase, tibiaDatabase
 from config import highscores_categories, network_retry_delay
 from utils.messages import EMOJI
 from .general import log, global_online_list, get_local_timezone
+import json
 
 # Constants
 ERROR_NETWORK = 0
@@ -53,14 +54,7 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
                     "shielding": "{0} __shielding__ level is **{1}**, on rank **{2}**",
                     "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
 
-tibia_worlds = ["Amera", "Antica", "Astera", "Aurera", "Aurora", "Bellona", "Belobra", "Beneva", "Calmera", "Calva",
-                "Calvera", "Candia", "Celesta", "Chrona", "Danera", "Dolera", "Efidia", "Eldera", "Ferobra", "Fidera",
-                "Fortera", "Garnera", "Guardia", "Harmonia", "Honera", "Hydera", "Inferna", "Iona", "Irmada", "Julera",
-                "Justera", "Kenora", "Kronera", "Laudera", "Luminera", "Magera", "Menera", "Morta", "Mortera",
-                "Neptera", "Nerana", "Nika", "Olympa", "Osera", "Pacera", "Premia", "Pythera", "Guilia", "Refugia",
-                "Rowana", "Secura", "Serdebra", "Shivera", "Silvera", "Solera", "Tavara", "Thera", "Umera", "Unitera",
-                "Veludera", "Verlana", "Xantera", "Xylana", "Yanara", "Zanera", "Zeluna", "Honbra", "Noctera", "Vita",
-                "Duna", "Relembra", "Helera", "Tortura", "Macabra"]
+tibia_worlds = []
 
 async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]:
     """Returns a dictionary with a player's info
@@ -1021,3 +1015,71 @@ def get_map_area(x, y, z, size=15, scale=8, crosshair=True):
     im.save(img_byte_arr, format='png')
     img_byte_arr = img_byte_arr.getvalue()
     return img_byte_arr
+
+
+async def populate_worlds():
+    """Populate the list of currently available Tibia worlds"""
+
+    print('Searching list of available Tibia worlds.')
+    worlds = await load_tibia_worlds_from_url()
+    if worlds is None:
+        worlds = load_tibia_worlds_from_file()
+
+    if worlds is not None:
+        try:
+            all_worlds = worlds["allworlds"]
+            if len(all_worlds) > 0:
+                for world in all_worlds:
+                    tibia_worlds.append(world["name"])
+
+            print("Finished fetching list of Tibia worlds.")
+        except Exception:
+            log.error("Error populate_worlds(): Unexpected JSON format")
+
+
+async def load_tibia_worlds_from_url(tries=3):
+    """Fetch the list of Tibia worlds from TibiaData"""
+
+    if tries == 0:
+        log.error("populate_worlds(): Couldn't fetch TibiaData for the worlds list, network error.")
+        return
+
+    try:
+        url = "https://api.tibiadata.com/v1/worlds.json"
+    except UnicodeEncodeError:
+        return
+
+    # Fetch website
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
+    except Exception:
+        await asyncio.sleep(network_retry_delay)
+        print('Error fetching URL.')
+        return await load_tibia_worlds_from_url(tries - 1)
+
+    worlds = json.loads(content)["worlds"]
+    write_tibia_worlds_json_backup(worlds)
+    return worlds
+
+
+def write_tibia_worlds_json_backup(worlds):
+    """Receives JSON content and writes to a backup file."""
+
+    try:
+        with open("utils/tibia_worlds.json", "w+") as json_file:
+            json.dump(worlds, json_file)
+    except Exception:
+        print("Error populate_worlds(): could not save JSON to file.")
+
+
+def load_tibia_worlds_from_file():
+    """Loading Tibia worlds list from an existing .json backup file."""
+
+    try:
+        with open("utils/tibia_worlds.json") as json_file:
+            worlds = json.load(json_file)
+            return worlds
+    except Exception:
+        log.error("Error loading backup .json file.")
