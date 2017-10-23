@@ -1021,19 +1021,13 @@ async def populate_worlds():
     """Populate the list of currently available Tibia worlds"""
 
     print('Searching list of available Tibia worlds.')
-    all_worlds = await load_tibia_worlds_from_url()
-    if all_worlds is None:
-        all_worlds = load_tibia_worlds_from_file()
+    fetched_worlds = await load_tibia_worlds_from_url()
+    if fetched_worlds is None:
+        fetched_worlds = load_tibia_worlds_from_file()
+    if fetched_worlds is not None:
+        tibia_worlds.extend(fetched_worlds)
 
-    if all_worlds is not None:
-        try:
-            if len(all_worlds) > 0:
-                for world in all_worlds:
-                    tibia_worlds.append(world["name"])
-
-            print("Finished fetching list of Tibia worlds.")
-        except Exception:
-            log.error("Error populate_worlds(): Unexpected JSON format")
+    print("Finished fetching list of Tibia worlds.")
 
 
 async def load_tibia_worlds_from_url(tries=3):
@@ -1058,9 +1052,17 @@ async def load_tibia_worlds_from_url(tries=3):
         print('Error fetching URL.')
         return await load_tibia_worlds_from_url(tries - 1)
 
-    all_worlds = json.loads(content)["worlds"]["allworlds"]
+    try:
+        worlds = []
+        all_worlds = json.loads(content)["worlds"]["allworlds"]
+        for world in all_worlds:
+            worlds.append(world["name"])
+    except Exception:
+        log.error("Error populate_worlds(): Unexpected JSON format")
+        return
+
     write_tibia_worlds_json_backup(all_worlds)
-    return all_worlds
+    return worlds
 
 
 def write_tibia_worlds_json_backup(all_worlds):
@@ -1078,7 +1080,10 @@ def load_tibia_worlds_from_file():
 
     try:
         with open("utils/tibia_worlds.json") as json_file:
+            worlds = []
             all_worlds = json.load(json_file)
-            return all_worlds
+            for world in all_worlds:
+                worlds.append(world["name"])
+            return worlds
     except Exception:
         log.error("Error loading backup .json file.")
