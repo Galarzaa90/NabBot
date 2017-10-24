@@ -6,5 +6,6 @@ __pycache__
 /*.png
 logs/
 /utils/loot.db
+/utils/tibia_worlds.json
 /loot/debug/
 token.txt
