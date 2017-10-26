@@ -51,13 +51,12 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
                     "shielding": "{0} __shielding__ level is **{1}**, on rank **{2}**",
                     "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
 
-tibia_worlds = ["Amera", "Antica", "Astera", "Aurera", "Aurora", "Belobra", "Beneva", "Calmera", "Calva", "Calvera",
-                "Candia", "Celesta", "Chrona", "Dolera", "Eldera", "Ferobra", "Fidera","Fortera", "Garnera", "Guardia",
-                "Harmonia", "Honera", "Inferna", "Julera","Justera", "Kenora", "Laudera", "Luminera", "Magera",
-                "Menera", "Morta", "Mortera", "Nerana", "Olympa", "Pacera", "Premia", "Guilia", "Refugia", "Secura",
-                "Serdebra", "Shivera", "Silvera", "Solera", "Tavara", "Thera", "Umera", "Unitera","Veludera", "Xantera",
-                "Zanera", "Honbra", "Noctera", "Vita","Duna", "Relembra", "Helera", "Tortura", "Macabra", "Estela",
-                "Peloria", "Vunira","Impera", "Quintera"]
+tibia_worlds = ["Amera", "Antica", "Astera", "Belobra", "Beneva", "Calmera", "Candia", "Celesta", "Chrona", "Eldera",
+                "Ferobra", "Fidera", "Fortera", "Garnera", "Guardia", "Harmonia", "Honera", "Julera", "Justera",
+                "Kenora", "Laudera", "Luminera", "Magera", "Menera", "Morta", "Mortera", "Nerana", "Olympa", "Pacera",
+                "Premia", "Guilia", "Refugia", "Secura", "Serdebra", "Shivera", "Silvera", "Solera", "Tavara", "Thera",
+                "Umera", "Unitera", "Veludera", "Xantera", "Zanera", "Honbra", "Noctera", "Vita", "Duna", "Relembra",
+                "Helera", "Tortura", "Macabra", "Estela", "Peloria", "Vunira", "Impera", "Quintera", "Zuna", "Zunera"]
 
 
 def get_character_url(name):
