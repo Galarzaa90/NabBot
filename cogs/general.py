@@ -430,8 +430,8 @@ class General:
         """Adds an event
 
         The syntax is:
-        /event starts_in name
-        /event starts_in name,description
+        /event add starts_in name
+        /event add starts_in name,description
 
         starts_in means in how much time the event will start since the moment of creation
         The time can be set using units such as 'd' for days, 'h' for hours, 'm' for minutes and 'd' for seconds.
