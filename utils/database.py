@@ -6,7 +6,7 @@ from typing import Dict, List
 
 # Databases filenames
 USERDB = "users.db"
-TIBIADB = "database.db"
+TIBIADB = "utils/tibia_database.db"
 LOOTDB = "utils/loot.db"
 
 userDatabase = sqlite3.connect(USERDB)

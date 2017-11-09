@@ -514,7 +514,7 @@ def get_monster(name):
 
     # Reading monster database
     c = tibiaDatabase.cursor()
-    c.execute("SELECT * FROM Creatures WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%"+name+"%",))
+    c.execute("SELECT * FROM creatures WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%"+name+"%",))
     result = c.fetchall()
     if len(result) == 0:
         return None
@@ -523,12 +523,12 @@ def get_monster(name):
     else:
         return [x['title'] for x in result]
     try:
-        if monster['health'] is None or monster['health'] < 1:
-            monster['health'] = None
-        c.execute("SELECT Items.title as name, percentage, min, max "
-                  "FROM CreatureDrops, Items "
-                  "WHERE Items.id = CreatureDrops.itemid AND creatureid = ? "
-                  "ORDER BY percentage DESC",
+        if monster['hitpoints'] is None or monster['hitpoints'] < 1:
+            monster['hitpoints'] = None
+        c.execute("SELECT items.title as item, chance, min, max "
+                  "FROM creatures_drops, items "
+                  "WHERE items.id = creatures_drops.item_id AND creature_id = ? "
+                  "ORDER BY chance DESC",
                   (monster["id"],))
         monster["loot"] = c.fetchall()
         return monster
@@ -546,7 +546,7 @@ def get_item(name):
     c = tibiaDatabase.cursor()
 
     # Search query
-    c.execute("SELECT * FROM Items WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%" + name + "%",))
+    c.execute("SELECT * FROM items WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%" + name + "%",))
     result = c.fetchall()
     if len(result) == 0:
         return None
@@ -558,10 +558,10 @@ def get_item(name):
         # Checking if item exists
         if item is not None:
             # Checking NPCs that buy the item
-            c.execute("SELECT NPCs.title, city, value "
-                      "FROM Items, SellItems, NPCs "
-                      "WHERE Items.name LIKE ? AND SellItems.itemid = Items.id AND NPCs.id = vendorid "
-                      "ORDER BY value DESC", (item["name"],))
+            c.execute("SELECT npcs.title, city, npcs_buying.value "
+                      "FROM items, npcs_buying, npcs "
+                      "WHERE items.name LIKE ? AND npcs_buying.item_id = items.id AND npcs.id = npc_id "
+                      "ORDER BY npcs_buying.value DESC", (item["name"],))
             npcs = []
             value_sell = None
             for npc in c:
@@ -590,10 +590,10 @@ def get_item(name):
             item['value_sell'] = value_sell
 
             # Checking NPCs that sell the item
-            c.execute("SELECT NPCs.title, city, value "
-                      "FROM Items, BuyItems, NPCs "
-                      "WHERE Items.name LIKE ? AND BuyItems.itemid = Items.id AND NPCs.id = vendorid "
-                      "ORDER BY value ASC", (item["name"],))
+            c.execute("SELECT npcs.title, city, npcs_selling.value "
+                      "FROM items, npcs_selling, NPCs "
+                      "WHERE items.name LIKE ? AND npcs_selling.item_id = items.id AND npcs.id = npc_id "
+                      "ORDER BY npcs_selling.value ASC", (item["name"],))
             npcs = []
             value_buy = None
             for npc in c:
@@ -627,29 +627,29 @@ def get_item(name):
             item['value_buy'] = value_buy
 
             # Get creatures that drop it
-            c.execute("SELECT Creatures.title as name, CreatureDrops.percentage "
-                      "FROM CreatureDrops, Creatures "
-                      "WHERE CreatureDrops.creatureid = Creatures.id AND CreatureDrops.itemid = ? "
+            c.execute("SELECT creatures.title as name, creatures_drops.chance as percentage "
+                      "FROM creatures_drops, creatures "
+                      "WHERE creatures_drops.creature_id = creatures.id AND creatures_drops.item_id = ? "
                       "ORDER BY percentage DESC", (item["id"],))
             item["dropped_by"] = c.fetchall()
             # Checking quest rewards:
-            c.execute("SELECT Quests.title FROM Quests, QuestRewards "
-                      "WHERE Quests.id = QuestRewards.questid AND itemid = ?", (item["id"],))
+            c.execute("SELECT quests.name FROM quests, quests_rewards "
+                      "WHERE quests.id = quests_rewards.quest_id AND item_id = ?", (item["id"],))
             quests = c.fetchall()
             item["quests"] = list()
             for quest in quests:
-                item["quests"].append(quest["title"])
+                item["quests"].append(quest["name"])
             # Get item's properties:
-            c.execute("SELECT * FROM ItemProperties WHERE itemid = ?", (item["id"],))
+            c.execute("SELECT * FROM items_attributes WHERE item_id = ?", (item["id"],))
             results = c.fetchall()
-            item["properties"] = {}
+            item["attributes"] = {}
             for row in results:
-                if row["property"] == "Imbuement":
-                    temp = item["properties"].get("imbuements", list())
+                if row["attribute"] == "imbuement":
+                    temp = item["attributes"].get("imbuements", list())
                     temp.append(row["value"])
-                    item["properties"]["imbuements"] = temp
+                    item["attributes"]["imbuements"] = temp
                 else:
-                    item["properties"][row["property"]] = row["value"]
+                    item["attributes"][row["attribute"]] = row["value"]
             return item
     finally:
         c.close()
@@ -739,7 +739,7 @@ def get_spell(name):
     """Returns a dictionary containing a spell's info, a list of possible matches or None"""
     c = tibiaDatabase.cursor()
     try:
-        c.execute("""SELECT * FROM Spells WHERE words LIKE ? OR name LIKE ? ORDER BY LENGTH(name) LIMIT 15""",
+        c.execute("""SELECT * FROM spells WHERE words LIKE ? OR name LIKE ? ORDER BY LENGTH(name) LIMIT 15""",
                   ("%" + name + "%", "%" + name + "%"))
         result = c.fetchall()
         if len(result) == 0:
@@ -750,9 +750,9 @@ def get_spell(name):
             return ["{name} ({words})".format(**x) for x in result]
 
         spell["npcs"] = []
-        c.execute("""SELECT NPCs.title as name, NPCs.city, SpellNPCs.knight, SpellNPCs.paladin,
-                  SpellNPCs.sorcerer, SpellNPCs.druid FROM NPCs, SpellNPCs
-                  WHERE SpellNPCs.spellid = ? AND SpellNPCs.npcid = NPCs.id""", (spell["id"],))
+        c.execute("""SELECT npcs.title as name, npcs.city, npcs_spells.knight, npcs_spells.paladin,
+                  npcs_spells.sorcerer, npcs_spells.druid FROM npcs, npcs_spells
+                  WHERE npcs_spells.spell_id = ? AND npcs_spells.npc_id = npcs.id""", (spell["id"],))
         result = c.fetchall()
         for npc in result:
             npc["city"] = npc["city"].title()
@@ -788,6 +788,7 @@ def get_npc(name):
         return npc
     finally:
         c.close()
+
 
 async def get_world_bosses(world):
     url = f"http://www.tibiabosses.com/{world}/"
@@ -835,7 +836,7 @@ async def get_house(name, world = None):
     c = tibiaDatabase.cursor()
     try:
         # Search query
-        c.execute("SELECT * FROM Houses WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
+        c.execute("SELECT * FROM houses WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
         result = c.fetchall()
         if len(result) == 0:
             return None
@@ -936,7 +937,7 @@ def get_achievement(name):
     c = tibiaDatabase.cursor()
     try:
         # Search query
-        c.execute("SELECT * FROM Achievements WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
+        c.execute("SELECT * FROM achievements WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
         result = c.fetchall()
         if len(result) == 0:
             return None
@@ -994,13 +995,19 @@ def get_pronouns(gender: str) -> List[str]:
     return pronoun
 
 
-def get_map_area(x, y, z, size=15, scale=8, crosshair=True):
+def get_map_area(x, y, z, size=15, scale=8, crosshair=True, client_coordinates=True):
     """Gets a minimap picture of a map area
 
     size refers to the radius of the image in actual tibia sqm
-    scale is how much the image will be streched (1 = 1 sqm = 1 pixel)"""
+    scale is how much the image will be streched (1 = 1 sqm = 1 pixel)
+    client_coordinates means the coordinate origin used is the same used for the Tibia Client
+        If set to False, the origin will be based on the top left corner of the map.
+    """
+    if client_coordinates:
+        x -= 124 * 256
+        y -= 121 * 256
     c = tibiaDatabase.cursor()
-    c.execute("SELECT * FROM WorldMap WHERE z LIKE ?", (z,))
+    c.execute("SELECT * FROM map WHERE z LIKE ?", (z,))
     result = c.fetchone()
     im = Image.open(io.BytesIO(bytearray(result['image'])))
     im = im.crop((x-size, y-size, x+size, y+size))

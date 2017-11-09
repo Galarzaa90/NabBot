@@ -1428,13 +1428,6 @@ class Tibia:
             await ctx.send("I couldn't find that achievement, maybe you meant one of these?", embed=embed)
             return
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
-        if not (ask_channel == ctx.message.channel or is_private(ctx.message.channel)):
-            achievement["spoiler"] = "*To see spoilers, pm me"
-            if ask_channel is not None:
-                achievement["spoiler"] += " or use "+ask_channel.mention
-            achievement["spoiler"] += ".*"
-
         embed = discord.Embed(title=achievement["name"], description=achievement["description"])
         embed.add_field(name="Grade", value=EMOJI[":star:"]*int(achievement["grade"]))
         embed.add_field(name="Points", value=achievement["points"])
@@ -1659,10 +1652,10 @@ class Tibia:
         """Gets the monster embeds to show in /mob command
         The message is split in two embeds, the second contains loot only and is only shown if long is True"""
         embed = discord.Embed(title=monster["title"])
-        hp = "?" if monster["health"] is None else "{0:,}".format(monster["health"])
+        hp = "?" if monster["hitpoints"] is None else "{0:,}".format(monster["hitpoints"])
         experience = "?" if monster["experience"] is None else "{0:,}".format(monster["experience"])
-        if not (monster["experience"] is None or monster["health"] is None or monster["health"] < 0):
-            ratio = "{0:.2f}".format(monster['experience'] / monster['health'])
+        if not (monster["experience"] is None or monster["hitpoints"] is None or monster["hitpoints"] < 0):
+            ratio = "{0:.2f}".format(monster['experience'] / monster['hitpoints'])
         else:
             ratio = "?"
         embed.add_field(name="HP", value=hp)
@@ -1685,7 +1678,7 @@ class Tibia:
         # Add paralysis to immunities
         if monster["paralysable"] == 0:
             immune.append("Paralysis")
-        if monster["senseinvis"] == 1:
+        if monster["see_invisible"] == 1:
             immune.append("Invisibility")
 
         if immune:
@@ -1705,22 +1698,22 @@ class Tibia:
         # If monster drops no loot, we might as well show everything
         if long or not monster["loot"]:
             embed.add_field(name="Max damage",
-                            value="{maxdamage:,}".format(**monster) if monster["maxdamage"] is not None else "???")
+                            value="{max_damage:,}".format(**monster) if monster["max_damage"] is not None else "???")
             embed.add_field(name="Abilities", value=monster["abilities"], inline=False)
         if monster["loot"] and long:
             loot_string = ""
             for item in monster["loot"]:
-                if item["percentage"] is None:
-                    item["percentage"] = "??.??%"
-                elif item["percentage"] >= 100:
-                    item["percentage"] = "Always"
+                if item["chance"] is None:
+                    item["chance"] = "??.??%"
+                elif item["chance"] >= 100:
+                    item["chance"] = "Always"
                 else:
-                    item["percentage"] = "{0:.2f}".format(item['percentage']).zfill(5) + "%"
+                    item["chance"] = "{0:.2f}".format(item['chance']).zfill(5) + "%"
                 if item["max"] > 1:
                     item["count"] = "({min}-{max})".format(**item)
                 else:
                     item["count"] = ""
-                loot_string += "{percentage} {name} {count}\n".format(**item)
+                loot_string += "{chance} {item} {count}\n".format(**item)
             split_loot = split_message(loot_string, FIELD_VALUE_LIMIT)
             for loot in split_loot:
                 if loot == split_loot[0]:
@@ -1746,13 +1739,14 @@ class Tibia:
         drops_too_long = False
         quests_too_long = False
 
-        embed = discord.Embed(title=item["title"], description=item["look_text"])
+        # TODO: Look description no longer in database, attributes must be shown in another way.
+        embed = discord.Embed(title=item["title"], description=item["flavor_text"])
         if "color" in item:
             embed.colour = item["color"]
-        if "ImbueSlots" in item["properties"]:
-            embed.add_field(name="Imbuement slots", value=item["properties"]["ImbueSlots"])
-        if "imbuements" in item["properties"] and len(item["properties"]["imbuements"]) > 0:
-            embed.add_field(name="Used for", value="\n".join(item["properties"]["imbuements"]))
+        if "imbueslots" in item["attributes"]:
+            embed.add_field(name="Imbuement slots", value=item["attributes"]["imbueslots"])
+        if "imbuements" in item["attributes"] and len(item["attributes"]["imbuements"]) > 0:
+            embed.add_field(name="Used for", value="\n".join(item["attributes"]["imbuements"]))
         if 'npcs_bought' in item and len(item['npcs_bought']) > 0:
             name = "Bought for {0:,} gold coins from".format(item['value_buy'])
             value = ""
@@ -1803,7 +1797,7 @@ class Tibia:
                 count += 1
                 if creature["percentage"] is None:
                     creature["percentage"] = "??.??"
-                value += "\n{name} ({percentage}%)".format(**creature)
+                value += "\n{name} ({percentage:.2f}%)".format(**creature)
                 if count >= short_limit and not long:
                     value += "\n*...And {0} others*".format(len(item["dropped_by"]) - short_limit)
                     drops_too_long = True
@@ -1832,7 +1826,7 @@ class Tibia:
         embed = discord.Embed(title=house["name"])
         house["type"] = "house" if house["guildhall"] == 0 else "guildhall"
         house["_beds"] = "bed" if house["beds"] == 1 else "beds"
-        description = "This {type} has **{beds}** {_beds} and has a size of **{sqm}** sqm." \
+        description = "This {type} has **{beds}** {_beds} and a size of **{size}** sqm." \
                       " This {type} is in **{city}**.".format(**house)
         # House was fetched correctly
         if house["fetch"]:
@@ -1871,8 +1865,8 @@ class Tibia:
             return
         embed = discord.Embed(title="{name} ({words})".format(**spell))
         spell["premium"] = "**premium** " if spell["premium"] else ""
-        if spell["manacost"] < 0:
-            spell["manacost"] = "variable"
+        if spell["mana"] < 0:
+            spell["mana"] = "variable"
         if "exani hur" in spell["words"]:
             spell["words"] = "exani hur up/down"
         vocs = list()
@@ -1882,13 +1876,13 @@ class Tibia:
         if spell['sorcerer']: vocs.append("sorcerers")
         spell["vocs"] = join_list(vocs, ", ", " and ")
 
-        description = "A {premium}spell for level **{levelrequired}** and up. " \
-                      "It uses **{manacost}** mana. It can be used by {vocs}".format(**spell)
+        description = "A {premium}spell for level **{level}** and up. " \
+                      "It uses **{mana}** mana. It can be used by {vocs}".format(**spell)
 
-        if spell["goldcost"] == 0:
+        if spell["price"] == 0:
             description += "\nIt can be obtained for free."
         else:
-            description += "\nIt can be bought for {0:,} gold coins.".format(spell["goldcost"])
+            description += "\nIt can be bought for {0:,} gold coins.".format(spell["price"])
 
         for voc in vocs:
             value = ""

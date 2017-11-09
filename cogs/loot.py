@@ -108,8 +108,8 @@ class Loot:
                         value += "x{1} {0}\n".format(item, loot_list[item]['count'])
                     else:
                         with closing(tibiaDatabase.cursor()) as c:
-                            c.execute("SELECT name FROM Items, ItemProperties "
-                                      "WHERE name LIKE ? AND id = itemid AND property LIKE 'Imbuement'"
+                            c.execute("SELECT name FROM items, items_attributes "
+                                      "WHERE name LIKE ? AND id = item_id AND attribute = 'imbuement'"
                                       " LIMIT 1", (item,))
                             result = c.fetchone()
                         if result:
