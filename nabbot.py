@@ -3,7 +3,7 @@ import random
 import re
 import sys
 import traceback
-from typing import Union, List, Dict, Optional
+from typing import Union, List, Optional
 
 import discord
 from discord import abc, Reaction, User, Message
@@ -21,6 +21,7 @@ from utils.messages import decode_emoji, EMOJI
 from utils.tibia import populate_worlds, tibia_worlds
 
 initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot"}
+
 
 class NabBot(commands.Bot):
     def __init__(self):
@@ -62,7 +63,7 @@ class NabBot(commands.Bot):
 
         log.info('Bot is online and ready')
 
-    async def on_command(self, ctx):
+    async def on_command(self, ctx: Context):
         """Called when a command is called. Used to log commands on a file."""
         if isinstance(ctx.message.channel, abc.PrivateChannel):
             destination = 'PM'
@@ -71,7 +72,7 @@ class NabBot(commands.Bot):
         message_decoded = decode_emoji(ctx.message.content)
         log.info('Command by {0} in {1}: {2}'.format(ctx.message.author.display_name, destination, message_decoded))
 
-    async def on_command_error(self, ctx, error):
+    async def on_command_error(self, ctx: Context, error):
         if isinstance(error, commands.errors.CommandNotFound):
             return
         elif isinstance(error, commands.NoPrivateMessage):
@@ -132,7 +133,7 @@ class NabBot(commands.Bot):
             else:
                 self.members[member.id] = [guild.id]
 
-    async def on_guild_remove(self, guild):
+    async def on_guild_remove(self, guild: discord.Guild):
         """Called when the bot leaves a server"""
         log.info("Nab Bot left server: {0.name} (ID: {0.id})".format(guild))
         for member in guild.members:
@@ -409,14 +410,15 @@ class NabBot(commands.Bot):
                     pass
         return True
 
+
 nabbot = NabBot()
 
 if __name__ == "__main__":
     init_database()
 
-    #List of tracked worlds for NabBot
+    # List of tracked worlds for NabBot
     reload_worlds()
-    #List of all Tibia worlds
+    # List of all Tibia worlds
     nabbot.loop.run_until_complete(populate_worlds())
 
     if len(tibia_worlds) == 0:

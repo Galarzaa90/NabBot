@@ -1,27 +1,25 @@
 import asyncio
+import datetime as dt
 import io
+import json
+import re
+import time
+import urllib.parse
+from calendar import timegm
 from contextlib import closing
-
 from html.parser import HTMLParser
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Optional
 
+import aiohttp
 from PIL import Image
 from PIL import ImageDraw
-from bs4 import BeautifulSoup, SoupStrainer
+from bs4 import BeautifulSoup
 from discord import Colour
-import datetime
-import urllib.parse
-import aiohttp
-import re
-from datetime import datetime, date, timedelta
-from calendar import timegm
-import time
 
+from config import network_retry_delay
 from utils.database import userDatabase, tibiaDatabase
-from config import highscores_categories, network_retry_delay
 from utils.messages import EMOJI
-from .general import log, global_online_list, get_local_timezone
-import json
+from .general import log, get_local_timezone
 
 # Constants
 ERROR_NETWORK = 0
@@ -427,11 +425,11 @@ def get_rashid_city() -> str:
     """Returns the city Rashid is currently in."""
     offset = get_tibia_time_zone() - get_local_timezone()
     # Server save is at 10am, so in tibia a new day starts at that hour
-    tibia_time = datetime.now() + timedelta(hours=offset - 10)
+    tibia_time = dt.datetime.now() + dt.timedelta(hours=offset - 10)
     return ["Svargrond",
             "Liberty Bay",
             "Port Hope",
-            "Ankrahmun",
+            "Ankrahmun"
             "Darashia",
             "Edron",
             "Carlin"][tibia_time.weekday()]
@@ -543,7 +541,7 @@ def get_item(name):
                 elif name == 'Rashid':
                     offset = get_tibia_time_zone() - get_local_timezone()
                     # Server save is at 10am, so in tibia a new day starts at that hour
-                    tibia_time = datetime.now() + timedelta(hours=offset - 10)
+                    tibia_time = dt.datetime.now() + dt.timedelta(hours=offset - 10)
                     city = [
                         "Svargrond",
                         "Liberty Bay",
@@ -588,7 +586,7 @@ def get_item(name):
     return
 
 
-def parse_tibia_time(tibia_time: str) -> datetime:
+def parse_tibia_time(tibia_time: str) -> Optional[dt.datetime]:
     """Gets a time object from a time string from tibia.com"""
     tibia_time = tibia_time.replace(",", "").replace("&#160;", " ")
     # Getting local time and GMT
@@ -601,7 +599,7 @@ def parse_tibia_time(tibia_time: str) -> datetime:
     try:
         # Convert time string to time object
         # Removing timezone cause CEST and CET are not supported
-        t = datetime.strptime(tibia_time[:-4].strip(), "%b %d %Y %H:%M:%S")
+        t = dt.datetime.strptime(tibia_time[:-4].strip(), "%b %d %Y %H:%M:%S")
     except ValueError:
         log.error("parse_tibia_time: couldn't parse '{0}'".format(tibia_time))
         return None
@@ -615,27 +613,24 @@ def parse_tibia_time(tibia_time: str) -> datetime:
         log.error("parse_tibia_time: unknown timezone for '{0}'".format(tibia_time))
         return None
     # Add/subtract hours to get the real time
-    return t + timedelta(hours=(local_utc_offset - utc_offset))
+    return t + dt.timedelta(hours=(local_utc_offset - utc_offset))
 
 
-def parse_tibiadata_time(time_dict: Dict):
-    # Getting local time and GMT
-    l = time.localtime()
-    u = time.gmtime(time.mktime(l))
-    # UTC Offset
-    local_utc_offset = ((timegm(l) - timegm(u)) / 60 / 60)
-    if time_dict["timezone"] == "CET":
-        utc_offset = 1
-    elif time_dict["timezone"] == "CEST":
-        utc_offset = 2
+def parse_tibiadata_time(time_dict: Dict[str, Union[int, str]]) -> Optional[dt.datetime]:
     try:
-        t = datetime.strptime(time_dict["date"], "%Y-%m-%d %H:%M:%S.%f")
-        t = t + timedelta(hours=(local_utc_offset - utc_offset))
-        ti = time.mktime(t.timetuple())
-        # We need to convert to timestamp and back to datetime to make it timezone aware
-        return datetime.utcfromtimestamp(ti)
+        t = dt.datetime.strptime(time_dict["date"], "%Y-%m-%d %H:%M:%S.%f")
     except (KeyError, ValueError):
         return None
+
+    if time_dict["timezone"] == "CET":
+        timezone_offset = 1
+    elif time_dict["timezone"] == "CEST":
+        timezone_offset = 2
+    else:
+        return None
+    # We substract the offset to convert the time to UTC
+    t = t - dt.timedelta(hours=timezone_offset)
+    return t.replace(tzinfo=dt.timezone.utc)
 
 
 def get_stats(level: int, vocation: str):
@@ -906,10 +901,10 @@ def get_achievement(name):
 def get_tibia_time_zone() -> int:
     """Returns Germany's timezone, considering their daylight saving time dates"""
     # Find date in Germany
-    gt = datetime.utcnow() + timedelta(hours=1)
-    germany_date = date(gt.year, gt.month, gt.day)
-    dst_start = date(gt.year, 3, (31 - (int(((5 * gt.year) / 4) + 4) % int(7))))
-    dst_end = date(gt.year, 10, (31 - (int(((5 * gt.year) / 4) + 1) % int(7))))
+    gt = dt.datetime.utcnow() + dt.timedelta(hours=1)
+    germany_date = dt.date(gt.year, gt.month, gt.day)
+    dst_start = dt.date(gt.year, 3, (31 - (int(((5 * gt.year) / 4) + 4) % int(7))))
+    dst_end = dt.date(gt.year, 10, (31 - (int(((5 * gt.year) / 4) + 1) % int(7))))
     if dst_start < germany_date < dst_end:
         return 2
     return 1

@@ -1,15 +1,14 @@
+import asyncio
+import time
+import urllib.parse
 from contextlib import closing
-from typing import Dict, List, Union
+import datetime as dt
 
 import discord
 from discord.ext import commands
-import asyncio
-import urllib.parse
-from datetime import datetime, timezone
-import time
 
 from config import death_scan_interval, highscores_delay, highscores_categories, highscores_page_delay, \
-    online_scan_interval, announce_threshold, owner_ids, mod_ids, ask_channel_name
+    online_scan_interval, announce_threshold, ask_channel_name
 from nabbot import NabBot
 from utils import checks
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
@@ -19,7 +18,7 @@ from utils.messages import weighed_choice, death_messages_player, death_messages
     level_messages
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, ERROR_DOESNTEXIST, \
-    parse_tibia_time, get_pronouns, get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild, \
+    get_pronouns, get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild, \
     get_tibia_time_zone
 
 
@@ -83,11 +82,11 @@ class Tracking:
                             result = c.fetchone()
                         if result:
                             last_scan = result["last_scan"]
-                            last_scan_date = datetime.utcfromtimestamp(last_scan).replace(tzinfo=timezone.utc)
-                            now = datetime.now(timezone.utc)
+                            last_scan_date = dt.datetime.utcfromtimestamp(last_scan).replace(tzinfo=dt.timezone.utc)
+                            now = dt.datetime.now(dt.timezone.utc)
                             # Current day's server save, could be in the past or the future, an extra hour is added
                             # as margin
-                            today_ss = datetime.now(timezone.utc).replace(hour=11-get_tibia_time_zone())
+                            today_ss = dt.datetime.now(dt.timezone.utc).replace(hour=11-get_tibia_time_zone())
                             if not now > today_ss > last_scan_date:
                                 continue
                         highscore_data = []
@@ -659,7 +658,7 @@ class Tracking:
         else:
             per_page = 5
         c = userDatabase.cursor()
-        now = datetime.utcnow()
+        now = dt.datetime.utcnow()
         uptime = (now - start_time).total_seconds()
         count = 0
         entries = []

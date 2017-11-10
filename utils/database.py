@@ -1,7 +1,6 @@
 import os
-import sqlite3
-
 import shutil
+import sqlite3
 from typing import Dict, List
 
 # Databases filenames

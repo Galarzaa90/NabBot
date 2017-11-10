@@ -1,15 +1,13 @@
 import asyncio
+import random
 import re
+import time
 from contextlib import closing
-
-import discord
 from datetime import timedelta, datetime
 
-from discord.ext import commands
+import discord
 import psutil
-import random
-import time
-
+from discord.ext import commands
 
 from config import ask_channel_name, owner_ids, mod_ids
 from nabbot import NabBot

@@ -6,12 +6,12 @@ from discord.ext import commands
 
 from config import mod_ids, owner_ids
 from nabbot import NabBot
+from utils import checks
 from utils.database import userDatabase, tracked_worlds
+from utils.discord import FIELD_VALUE_LIMIT, is_private
 from utils.messages import split_message
 from utils.paginator import Paginator, CannotPaginate
 from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
-from utils.discord import FIELD_VALUE_LIMIT, is_private
-from utils import checks
 
 
 class Mod:

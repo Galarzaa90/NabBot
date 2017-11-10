@@ -1,15 +1,12 @@
-from discord.ext import commands
+import datetime as dt
 import logging
-from logging.handlers import TimedRotatingFileHandler
 import os
 import re
 import time
 from calendar import timegm
-from datetime import datetime, date, timedelta
+from logging.handlers import TimedRotatingFileHandler
 
-from config import *
-
-
+from discord.ext import commands
 
 # This is the global online list
 # don't look at it too closely or you'll go blind!
@@ -64,9 +61,9 @@ def get_token():
             return f.read()
 
 
-def get_time_diff(time_diff: timedelta) -> str:
+def get_time_diff(time_diff: dt.timedelta) -> str:
     """Returns a string showing the time difference of a timedelta"""
-    if not isinstance(time_diff, timedelta):
+    if not isinstance(time_diff, dt.timedelta):
         return None
     hours = time_diff.seconds // 3600
     minutes = (time_diff.seconds // 60) % 60
@@ -98,7 +95,7 @@ def get_n_weekday(year, month, weekday, n):
     count = 0
     for i in range(1, 32):
         try:
-            d = date(year, month, i)
+            d = dt.date(year, month, i)
         except ValueError:
             break
         if d.isoweekday() == weekday:
@@ -111,8 +108,8 @@ def get_n_weekday(year, month, weekday, n):
 def get_brasilia_time_zone() -> int:
     """Returns Brasilia's timezone, considering their daylight saving time dates"""
     # Find date in Brasilia
-    bt = datetime.utcnow() - timedelta(hours=3)
-    brasilia_date = date(bt.year, bt.month, bt.day)
+    bt = dt.datetime.utcnow() - dt.timedelta(hours=3)
+    brasilia_date = dt.date(bt.year, bt.month, bt.day)
     # DST stars on the third sunday of october and ends on the third sunday of february
     # It may be off by a couple hours
     dst_start = get_n_weekday(bt.year, 10, 7, 3)
@@ -121,7 +118,8 @@ def get_brasilia_time_zone() -> int:
         return -2
     return -3
 
-start_time = datetime.utcnow()
+
+start_time = dt.datetime.utcnow()
 
 
 def get_uptime(long=False) -> str:
@@ -129,7 +127,7 @@ def get_uptime(long=False) -> str:
 
     Start time is saved when this module is loaded, not when the bot actually logs in,
     so it is a couple seconds off."""
-    now = datetime.utcnow()
+    now = dt.datetime.utcnow()
     delta = now - start_time
     hours, remainder = divmod(int(delta.total_seconds()), 3600)
     minutes, seconds = divmod(remainder, 60)

@@ -1,11 +1,11 @@
+import asyncio
 import io
 import os
+import pickle
 from contextlib import closing
 
 import aiohttp
-import asyncio
 import discord
-import pickle
 from PIL import Image
 from discord.ext import commands
 

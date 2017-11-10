@@ -1,5 +1,4 @@
 import inspect
-import textwrap
 import traceback
 from contextlib import redirect_stdout
 
@@ -8,8 +7,8 @@ from discord.ext import commands
 # Everything is imported to put it in /debug scope
 from nabbot import NabBot
 from utils import checks
-from utils.discord import *
 from utils.database import *
+from utils.discord import *
 from utils.general import *
 from utils.messages import *
 from utils.tibia import *

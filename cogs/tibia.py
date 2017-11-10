@@ -1,8 +1,5 @@
 import calendar
-import os
 import random
-from contextlib import closing
-from typing import Optional
 
 import discord
 from discord.ext import commands
@@ -11,8 +8,8 @@ from config import *
 from nabbot import NabBot
 from utils import checks
 from utils.database import tracked_worlds
-from utils.discord import get_user_color, FIELD_VALUE_LIMIT, is_private, is_lite_mode
-from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, start_time
+from utils.discord import FIELD_VALUE_LIMIT, is_private, is_lite_mode
+from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, global_online_list
 from utils.messages import split_message
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import *
@@ -576,7 +573,7 @@ class Tibia:
                     if row["world"] not in user_worlds:
                         continue
                     count += 1
-                    row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                     row["user"] = user.display_name
                     row["emoji"] = get_voc_emoji(row["vocation"])
                     entries.append("{emoji} {name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*"
@@ -603,7 +600,7 @@ class Tibia:
                         author_icon = owner.avatar_url
                 for death in deaths:
                     last_time = death["time"].timestamp()
-                    death["time"] = get_time_diff(datetime.now() - death['time'])
+                    death["time"] = get_time_diff(dt.datetime.now(tz=dt.timezone.utc) - death['time'])
                     entries.append("At level **{level}** by {killer} - *{time} ago*".format(**death))
                     count += 1
 
@@ -621,7 +618,7 @@ class Tibia:
                         if row is None:
                             break
                         count += 1
-                        row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                        row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                         entries.append("At level **{level}** by {killer} - *{time} ago*".format(**row))
                         if count >= 100:
                             break
@@ -678,7 +675,7 @@ class Tibia:
                 if user is None:
                     continue
                 count += 1
-                row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                 row["user"] = user.display_name
                 row["emoji"] = get_voc_emoji(row["vocation"])
                 entries.append("{emoji} {name} (**@{user}**) - At level **{level}** - *{time} ago*".format(**row))
@@ -748,7 +745,7 @@ class Tibia:
                 if row["world"] not in user_worlds:
                     continue
                 count += 1
-                row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                 row["emoji"] = get_voc_emoji(row["vocation"])
                 entries.append("{emoji} {name} - At level **{level}** by {killer} - *{time} ago*".format(**row))
 
@@ -907,7 +904,7 @@ class Tibia:
                     if row["world"] not in user_worlds:
                         continue
                     count += 1
-                    row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                     row["user"] = user.display_name
                     row["emoji"] = get_voc_emoji(row["vocation"])
                     entries.append("{emoji} {name} - Level **{level}** - (**@{user}**) - *{time} ago*".format(**row))
@@ -937,7 +934,7 @@ class Tibia:
                     if row is None:
                         break
                     count += 1
-                    row["time"] = get_time_diff(timedelta(seconds=now-row["date"]))
+                    row["time"] = get_time_diff(dt.timedelta(seconds=now-row["date"]))
                     entries.append("Level **{level}** - *{time} ago*".format(**row))
                     if count >= 100:
                         break
@@ -1006,7 +1003,7 @@ class Tibia:
                 if row["world"] not in user_worlds:
                     continue
                 count += 1
-                row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                 row["emoji"] = get_voc_emoji(row["vocation"])
                 entries.append("{emoji} {name} - Level **{level}** - *{time} ago*".format(**row))
                 if count >= 100:
@@ -1075,7 +1072,7 @@ class Tibia:
                     if row["world"] not in user_worlds:
                         continue
                     count += 1
-                    row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                     row["user"] = user.display_name
                     row["voc_emoji"] = get_voc_emoji(row["vocation"])
                     if row["type"] == "death":
@@ -1115,7 +1112,7 @@ class Tibia:
                     if row is None:
                         break
                     count += 1
-                    row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                     if row["type"] == "death":
                         row["emoji"] = EMOJI[":skull:"]
                         entries.append("{emoji} At level **{level}** by {killer} - *{time} ago*"
@@ -1194,7 +1191,7 @@ class Tibia:
                 if row["world"] not in user_worlds:
                     continue
                 count += 1
-                row["time"] = get_time_diff(timedelta(seconds=now - row["date"]))
+                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                 row["voc_emoji"] = get_voc_emoji(row["vocation"])
                 if row["type"] == "death":
                     row["emoji"] = EMOJI[":skull:"]
@@ -1439,10 +1436,10 @@ class Tibia:
     async def time(self, ctx):
         """Displays tibia server's time and time until server save"""
         offset = get_tibia_time_zone() - get_local_timezone()
-        tibia_time = datetime.now()+timedelta(hours=offset)
+        tibia_time = dt.datetime.now()+dt.timedelta(hours=offset)
         server_save = tibia_time
         if tibia_time.hour >= 10:
-            server_save += timedelta(days=1)
+            server_save += dt.timedelta(days=1)
         server_save = server_save.replace(hour=10, minute=0, second=0, microsecond=0)
         time_until_ss = server_save - tibia_time
         hours, remainder = divmod(int(time_until_ss.total_seconds()), 3600)
@@ -1454,12 +1451,12 @@ class Tibia:
         reply = "It's currently **{0}** in Tibia's servers.".format(timestrtibia)
         if display_brasilia_time:
             offsetbrasilia = get_brasilia_time_zone() - get_local_timezone()
-            brasilia_time = datetime.now()+timedelta(hours=offsetbrasilia)
+            brasilia_time = dt.datetime.now()+dt.timedelta(hours=offsetbrasilia)
             timestrbrasilia = brasilia_time.strftime("%H:%M")
             reply += "\n**{0}** in Brazil (Brasilia).".format(timestrbrasilia)
         if display_sonora_time:
             offsetsonora = -7 - get_local_timezone()
-            sonora_time = datetime.now()+timedelta(hours=offsetsonora)
+            sonora_time = dt.datetime.now()+dt.timedelta(hours=offsetsonora)
             timestrsonora = sonora_time.strftime("%H:%M")
             reply += "\n**{0}** in Mexico (Sonora).".format(timestrsonora)
         reply += "\nServer save is in {0}.\nRashid is in **{1}** today.".format(server_save_str, get_rashid_city())
@@ -1585,7 +1582,8 @@ class Tibia:
             reply += "\n{he_she} owns [{name}]({url}) in {town}.".format(**char["house"], he_she=char["he_she"])
         if 'last_login' in char:
             last_login = char['last_login']
-            now = datetime.now()
+            now = dt.datetime.utcnow()
+            now = now.replace(tzinfo=dt.timezone.utc)
             time_diff = now - last_login
             if time_diff.days > last_login_days:
                 reply += "\n{he_she} hasn't logged in for **{0}**.".format(get_time_diff(time_diff), **char)
