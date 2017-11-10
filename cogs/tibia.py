@@ -1670,6 +1670,8 @@ class Tibia:
         # Iterate through elemental types
         for index, value in monster.items():
             if index in elements:
+                if monster[index] is None:
+                    continue
                 if monster[index] == 0:
                     immune.append(index.title())
                 elif monster[index] > 100:
