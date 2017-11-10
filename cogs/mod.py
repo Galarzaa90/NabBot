@@ -245,7 +245,7 @@ class Mod:
                 return
             c = userDatabase.cursor()
             try:
-                chars = character.get("chars",[])
+                chars = character.get("other_chacters",[])
                 # If the char is hidden,we still add the searched character
                 if len(chars) == 0:
                     await ctx.send("Character is hidden.")

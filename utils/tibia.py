@@ -1,5 +1,6 @@
 import asyncio
 import io
+from contextlib import closing
 
 from html.parser import HTMLParser
 from typing import List, Union, Dict
@@ -34,7 +35,7 @@ url_guild_online = "https://secure.tibia.com/community/?subtopic=guilds&page=vie
 url_house = "https://secure.tibia.com/community/?subtopic=houses&page=view&houseid={id}&world={world}"
 url_highscores = "https://secure.tibia.com/community/?subtopic=highscores&world={0}&list={1}&profession={2}&currentpage={3}"
 
-KNIGHT = ["knight", "elite knight", "ek", "k", "kina", "eliteknight","elite"]
+KNIGHT = ["knight", "elite knight", "ek", "k", "kina", "eliteknight", "elite"]
 PALADIN = ["paladin", "royal paladin", "rp", "p", "pally", "royalpaladin", "royalpally"]
 DRUID = ["druid", "elder druid", "ed", "d", "elderdruid", "elder"]
 SORCERER = ["sorcerer", "master sorcerer", "ms", "s", "sorc", "mastersorcerer", "master"]
@@ -56,6 +57,7 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
 
 tibia_worlds = []
 
+
 async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]:
     """Returns a dictionary with a player's info
 
@@ -67,11 +69,7 @@ async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]
     if tries == 0:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
         return ERROR_NETWORK
-    try:
-        url = get_character_url(name)
-    except UnicodeEncodeError:
-        return ERROR_DOESNTEXIST
-    char = dict()
+    url = f"https://api.tibiadata.com/v1/characters/{name}.json"
 
     # Fetch website
     try:
@@ -80,123 +78,56 @@ async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
         await asyncio.sleep(network_retry_delay)
-        return await get_character(name, tries-1)
-
-    parsed_content = BeautifulSoup(content, 'html.parser', parse_only=SoupStrainer("div", class_="BoxContent"))
-    tables = parsed_content.find_all('table')
-    if len(tables) <= 2:
-        return ERROR_DOESNTEXIST
-    for table in tables:
-        header = table.find('td')
-        rows = table.find_all('tr')
-        if "Could not find" in header.text:
-            return ERROR_DOESNTEXIST
-        if "Character Information" in header.text:
-            for row in rows:
-                cols_raw = row.find_all('td')
-                cols = [ele.text.strip() for ele in cols_raw]
-                if len(cols) != 2:
-                    continue
-                field, value = cols
-                field = field.replace("\xa0", "_").replace(" ","_").replace(":","").lower()
-                value = value.replace("\xa0", " ")
-                # This is a special case cause we need to see the link
-                if field == "house":
-                    house = cols_raw[1].find('a')
-                    url = urllib.parse.urlparse(house["href"])
-                    query = urllib.parse.parse_qs(url.query)
-                    char["house_town"] = query["town"][0]
-                    char["house_id"] = query["houseid"][0]
-                    char["house"] = house.text.strip()
-                    continue
-                char[field] = value
-        elif "Achievements" in header.text:
-            char["displayed_achievements"] = []
-            for row in rows:
-                cols_raw = row.find_all('td')
-                cols = [ele.text.strip() for ele in cols_raw]
-                if len(cols) != 2:
-                    continue
-                field, value = cols
-                char["displayed_achievements"].append(value)
-        elif "Deaths" in header.text:
-            char["deaths"] = []
-            for row in rows:
-                cols_raw = row.find_all('td')
-                cols = [ele.text.strip() for ele in cols_raw]
-                if len(cols) != 2:
-                    continue
-                death_time, death = cols
-                death_time = death_time.replace("\xa0", " ")
-                regex_death = r'Level (\d+) by ([^.]+)'
-                pattern = re.compile(regex_death)
-                death_info = re.search(pattern, death)
-                if death_info:
-                    level = death_info.group(1)
-                    killer = death_info.group(2)
-                else:
-                    continue
-                death_link = cols_raw[1].find('a')
-                death_player = False
-                if death_link:
-                    death_player = True
-                    killer = death_link.text.strip().replace("\xa0", " ")
-                try:
-                    char["deaths"].append({'time': death_time, 'level': int(level), 'killer': killer,
-                                           'by_player': death_player})
-                except ValueError:
-                    # Some pvp deaths have no level, so they are raising a ValueError, they will be ignored for now.
-                    continue
-        elif "Account Information" in header.text:
-            for row in rows:
-                cols_raw = row.find_all('td')
-                cols = [ele.text.strip() for ele in cols_raw]
-                if len(cols) != 2:
-                    continue
-                field, value = cols
-                field = field.replace("\xa0", "_").replace(" ", "_").replace(":", "").lower()
-                value = value.replace("\xa0", " ")
-                char[field] = value
-        elif "Characters" in header.text:
-            char["chars"] = []
-            for row in rows:
-                cols_raw = row.find_all('td')
-                cols = [ele.text.strip() for ele in cols_raw]
-                if len(cols) != 5:
-                    continue
-                _name, world, status, __, __ = cols
-                _name = _name.replace("\xa0", " ").split(". ")[1]
-                char['chars'].append({'name': _name, 'world': world, 'status': status})
-
-    # Formatting special fields:
-    try:
-        if "," in char["name"]:
-            char["name"], _ = char["name"].split(",", 1)
-            char["deleted"] = True
-        char["premium"] = ("Premium" in char["account_status"])
-        char.pop("account_status")
-        if "former_names" in char:
-            char["former_names"] = char["former_names"].split(", ")
-        char["level"] = int(char["level"])
-        char["achievement_points"] = int(char["achievement_points"])
-        char["guild"] = None
-        if "guild_membership" in char:
-            char["rank"], char["guild"] = char["guild_membership"].split(" of the ")
-            char.pop("guild_membership")
-        if "never" in char["last_login"]:
-            char["last_login"] = None
-    except KeyError:
-        await asyncio.sleep(network_retry_delay)
         return await get_character(name, tries - 1)
+
+    data = json.loads(content)
+    char = data["characters"]  # type: Dict
+    if "error" in char:
+        return ERROR_DOESNTEXIST
+    # In TibiaData, basic character information is nested into the 'data' key, for easy of migration, we merge all those
+    # subkeys back into the main node
+    char.update(char.pop("data"))
+    char["level"] = int(char["level"])
+    char["achievement_points"] = int(char["achievement_points"])
+
+    # TibiaData has no full house information, so we have to get the rest ourselves
+    if "house" in char:
+        # No way to get 'paid until' unles we fetch the site
+        match = re.search(r'(?P<name>.*) \((?P<town>[^\)]+)\)$', char["house"])
+        if match:
+            house = match.groupdict()
+            with closing(tibiaDatabase.cursor()) as c:
+                c.execute("SELECT id FROM houses WHERE name LIKE ?", (house["name"],))
+                result = c.fetchone()
+                if result:
+                    house["id"] = result["id"]
+                    char["house"] = house
+
+    if char["last_login"]:
+        char["last_login"] = parse_tibiadata_time(char["last_login"][0])
+    else:
+        char.pop("last_login")
+
+    deaths = []
+    for death in char["deaths"]:
+        match = re.search("by ([^.]+)", death["reason"])
+        killer = match.group(1)
+        level = int(death["level"])
+        death_time = parse_tibiadata_time(death["date"])
+        by_player = False
+        if death["involved"]:
+            by_player = True
+            killer = death["involved"][0]["name"]
+        deaths.append({"time": death_time, "killer": killer, "level": level, "by_player" : by_player})
+    char["deaths"] = deaths
 
     # Database operations
     c = userDatabase.cursor()
     # Skills from highscores
     c.execute("SELECT category, rank, value FROM highscores WHERE name LIKE ?", (char["name"],))
-    result = c.fetchall()
-    for row in result:
-        char[row["category"]] = row["value"]
-        char[row["category"] + '_rank'] = row["rank"]
+    results = c.fetchall()
+    if len(results) > 0:
+        char["highscores"] = results
 
     # Discord owner
     c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ?", (name,))
@@ -224,11 +155,11 @@ async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]
             log.info("{0}'s world was set to {1} from {2} during get_character()".format(char['name'],
                                                                                          char['world'],
                                                                                          result["world"]))
-    if result["guild"] != char["guild"]:
+    if "guild" in char and result["guild"] != char["guild"]["name"]:
         with userDatabase as conn:
             conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (char['guild'], result["id"],))
             log.info("{0}'s guild was set to {1} from {2} during get_character()".format(char['name'],
-                                                                                         char['guild'],
+                                                                                         char['guild']["name"],
                                                                                          result["guild"]))
     return char
 
@@ -260,7 +191,7 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
     except ValueError:
         await asyncio.sleep(network_retry_delay)
         return await get_highscores(world, category, pagenum, profession, tries - 1)
-    
+
     if category == "loyalty":
         regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
         pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
@@ -276,6 +207,7 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
         for m in matches:
             score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': m[3].replace(',', '')})
     return score_list
+
 
 async def get_world(world, tries=5):
     """Returns a list of all the online players in current server.
@@ -363,7 +295,7 @@ async def get_world(world, tries=5):
     # Check if list is empty
     if m:
         # Building dictionary list from online players
-        for (name, level,vocation) in m:
+        for (name, level, vocation) in m:
             name = urllib.parse.unquote_plus(name)
             vocation = vocation.replace('&#160;', ' ')
             world["online_list"].append({'name': name, 'level': int(level), 'vocation': vocation})
@@ -514,7 +446,7 @@ def get_monster(name):
 
     # Reading monster database
     c = tibiaDatabase.cursor()
-    c.execute("SELECT * FROM creatures WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%"+name+"%",))
+    c.execute("SELECT * FROM creatures WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%" + name + "%",))
     result = c.fetchall()
     if len(result) == 0:
         return None
@@ -658,7 +590,7 @@ def get_item(name):
 
 def parse_tibia_time(tibia_time: str) -> datetime:
     """Gets a time object from a time string from tibia.com"""
-    tibia_time = tibia_time.replace(",","").replace("&#160;", " ")
+    tibia_time = tibia_time.replace(",", "").replace("&#160;", " ")
     # Getting local time and GMT
     t = time.localtime()
     u = time.gmtime(time.mktime(t))
@@ -684,6 +616,26 @@ def parse_tibia_time(tibia_time: str) -> datetime:
         return None
     # Add/subtract hours to get the real time
     return t + timedelta(hours=(local_utc_offset - utc_offset))
+
+
+def parse_tibiadata_time(time_dict: Dict):
+    # Getting local time and GMT
+    l = time.localtime()
+    u = time.gmtime(time.mktime(l))
+    # UTC Offset
+    local_utc_offset = ((timegm(l) - timegm(u)) / 60 / 60)
+    if time_dict["timezone"] == "CET":
+        utc_offset = 1
+    elif time_dict["timezone"] == "CEST":
+        utc_offset = 2
+    try:
+        t = datetime.strptime(time_dict["date"], "%Y-%m-%d %H:%M:%S.%f")
+        t = t + timedelta(hours=(local_utc_offset - utc_offset))
+        ti = time.mktime(t.timetuple())
+        # We need to convert to timestamp and back to datetime to make it timezone aware
+        return datetime.utcfromtimestamp(ti)
+    except (KeyError, ValueError):
+        return None
 
 
 def get_stats(level: int, vocation: str):
@@ -722,8 +674,8 @@ def get_stats(level: int, vocation: str):
     else:
         raise ValueError("That's not a valid vocation!")
 
-    exp = (50*pow(level, 3)/3) - 100*pow(level, 2) + (850*level/3) - 200
-    exp_tnl = 50*level*level - 150 * level + 200
+    exp = (50 * pow(level, 3) / 3) - 100 * pow(level, 2) + (850 * level / 3) - 200
+    exp_tnl = 50 * level * level - 150 * level + 200
 
     return {"vocation": vocation, "hp": hp, "mp": mp, "cap": cap, "exp": int(exp), "exp_tnl": exp_tnl}
 
@@ -744,7 +696,8 @@ def get_spell(name):
         result = c.fetchall()
         if len(result) == 0:
             return None
-        elif result[0]["name"].lower() == name.lower() or result[0]["words"].lower() == name.lower() or len(result) == 1:
+        elif result[0]["name"].lower() == name.lower() or result[0]["words"].lower() == name.lower() or len(
+                result) == 1:
             spell = result[0]
         else:
             return ["{name} ({words})".format(**x) for x in result]
@@ -815,7 +768,7 @@ async def get_world_bosses(world):
         m = re.findall(regex, str(section))
         if m:
             for (chance, link, image, expect_last, days) in m:
-                name = link.split("/")[-1].replace("-"," ").lower()
+                name = link.split("/")[-1].replace("-", " ").lower()
                 bosses[name] = {"chance": chance.strip(), "url": link, "image": image, "type": expect_last,
                                 "days": int(days)}
         else:
@@ -829,7 +782,7 @@ async def get_world_bosses(world):
     return bosses
 
 
-async def get_house(name, world = None):
+async def get_house(name, world=None):
     """Returns a dictionary containing a house's info, a list of possible matches or None.
 
     If world is specified, it will also find the current status of the house in that world."""
@@ -937,7 +890,8 @@ def get_achievement(name):
     c = tibiaDatabase.cursor()
     try:
         # Search query
-        c.execute("SELECT * FROM achievements WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
+        c.execute("SELECT * FROM achievements WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15",
+                  ("%" + name + "%",))
         result = c.fetchall()
         if len(result) == 0:
             return None
@@ -973,10 +927,11 @@ def get_voc_abb(vocation: str) -> str:
 
 def get_voc_emoji(vocation: str) -> str:
     """Given a vocation name, returns a emoji representing it"""
-    emoji = {'none': EMOJI[":hatching_chick:"], 'druid': EMOJI[":snowflake:"], 'sorcerer': EMOJI[":flame:"], 'paladin': EMOJI[":archery:"],
-              'knight': EMOJI[":shield:"], 'elder druid': EMOJI[":snowflake:"],
-              'master sorcerer': EMOJI[":flame:"], 'royal paladin': EMOJI[":archery:"],
-              'elite knight': EMOJI[":shield:"]}
+    emoji = {'none': EMOJI[":hatching_chick:"], 'druid': EMOJI[":snowflake:"], 'sorcerer': EMOJI[":flame:"],
+             'paladin': EMOJI[":archery:"],
+             'knight': EMOJI[":shield:"], 'elder druid': EMOJI[":snowflake:"],
+             'master sorcerer': EMOJI[":flame:"], 'royal paladin': EMOJI[":archery:"],
+             'elite knight': EMOJI[":shield:"]}
     try:
         return emoji[vocation.lower()]
     except KeyError:
@@ -1010,13 +965,13 @@ def get_map_area(x, y, z, size=15, scale=8, crosshair=True, client_coordinates=T
     c.execute("SELECT * FROM map WHERE z LIKE ?", (z,))
     result = c.fetchone()
     im = Image.open(io.BytesIO(bytearray(result['image'])))
-    im = im.crop((x-size, y-size, x+size, y+size))
-    im = im.resize((size*scale, size*scale))
+    im = im.crop((x - size, y - size, x + size, y + size))
+    im = im.resize((size * scale, size * scale))
     if crosshair:
         draw = ImageDraw.Draw(im)
         width, height = im.size
-        draw.line((0, height/2, width, height/2), fill=128)
-        draw.line((width/2, 0, width/2, height), fill=128)
+        draw.line((0, height / 2, width, height / 2), fill=128)
+        draw.line((width / 2, 0, width / 2, height), fill=128)
 
     img_byte_arr = io.BytesIO()
     im.save(img_byte_arr, format='png')

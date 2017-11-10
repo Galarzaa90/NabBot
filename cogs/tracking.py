@@ -298,7 +298,7 @@ class Tracking:
         if type(char) is not dict:
             log.warning("check_death: couldn't fetch {0}".format(character))
             return
-        character_deaths = char.get("deaths", [])
+        character_deaths = char["deaths"]
 
         if character_deaths:
             c = userDatabase.cursor()
@@ -306,7 +306,7 @@ class Tracking:
             result = c.fetchone()
             if result:
                 last_death = character_deaths[0]
-                death_time = parse_tibia_time(last_death["time"]).timestamp()
+                death_time = last_death["time"].timestamp()
                 # Check if we have a death that matches the time
                 c.execute("SELECT * FROM char_deaths "
                           "WHERE char_id = ? AND date >= ? AND date <= ? AND level = ? AND killer LIKE ?",
@@ -468,7 +468,7 @@ class Tracking:
             elif char == ERROR_DOESNTEXIST:
                 await ctx.send("That character doesn't exists.")
             return
-        chars = char.get("chars",[])
+        chars = char.get("other_characters",[])
         # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
         # searched char, so we don't have to look him up again
         if len(chars) == 0 or len(chars) == 1:
@@ -533,7 +533,7 @@ class Tracking:
                 for guild in user_guilds:
                     # Only announce on worlds where the character's world is tracked
                     if tracked_worlds.get(guild.id, None) == char["world"]:
-                        _guild = "No guild" if char["guild"] is None else char["guild"]
+                        _guild = "No guild" if "guild" not in char else char["guild"]["name"]
                         log_reply[guild.id] += "\n\t{name} - {level} {vocation} - **{0}**".format(_guild, **char)
 
         if len(updated) > 0:
@@ -553,7 +553,8 @@ class Tracking:
         for char in added:
             with userDatabase as conn:
                 conn.execute("INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
-                             (char['name'], char['level'] * -1, char['vocation'], user.id, char["world"], char["guild"])
+                             (char['name'], char['level'] * -1, char['vocation'], user.id, char["world"],
+                              char["guild"]["name"])
                              )
 
         with userDatabase as conn:

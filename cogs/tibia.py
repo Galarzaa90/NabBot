@@ -75,9 +75,9 @@ class Tibia:
                 # If it's owned by the user, we append it to the same embed.
                 if char["owner_id"] == int(user.id):
                     embed.add_field(name="Character", value=char_string, inline=False)
-                    if char['last_login'] is not None:
+                    if "last_login" in char:
                         embed.set_footer(text="Last login")
-                        embed.timestamp = parse_tibia_time(char["last_login"])
+                        embed.timestamp = char["last_login"]
                     await ctx.send(embed=embed)
                     return
                 # Not owned by same user, we display a separate embed
@@ -87,9 +87,9 @@ class Tibia:
                                           url=get_character_url(char["name"]),
                                           icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                           )
-                    if char['last_login'] is not None:
+                    if "last_login" in char:
                         char_embed.set_footer(text="Last login")
-                        char_embed.timestamp = parse_tibia_time(char["last_login"])
+                        char_embed.timestamp = char["last_login"]
                     await ctx.send(embed=embed)
                     await ctx.send(embed=char_embed)
                     return
@@ -130,9 +130,9 @@ class Tibia:
                                                       icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                                       )
                                 embed.add_field(name="Highest character", value=char_string, inline=False)
-                                if char['last_login'] is not None:
+                                if "last_login" in char:
                                     embed.set_footer(text="Last login")
-                                    embed.timestamp = parse_tibia_time(char["last_login"])
+                                    embed.timestamp = char["last_login"]
                     await ctx.send(embed=embed)
         else:
             if char == ERROR_NETWORK:
@@ -148,7 +148,7 @@ class Tibia:
                     embed.add_field(name="Character", value=char_string, inline=False)
                     if char['last_login'] is not None:
                         embed.set_footer(text="Last login")
-                        embed.timestamp = parse_tibia_time(char["last_login"])
+                        embed.timestamp = char["last_login"]
                     await ctx.send(embed=embed)
                     return
                 else:
@@ -157,9 +157,9 @@ class Tibia:
                                      icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                                      )
                     embed.description += char_string
-                    if char['last_login'] is not None:
+                    if "last_login" in char:
                         embed.set_footer(text="Last login")
-                        embed.timestamp = parse_tibia_time(char["last_login"])
+                        embed.timestamp = char["last_login"]
 
             await ctx.send(embed=embed)
 
@@ -591,7 +591,7 @@ class Tibia:
                 elif char == ERROR_NETWORK:
                     await ctx.send("Sorry, I had trouble checking that character, try it again.")
                     return
-                deaths = char.get("deaths", [])
+                deaths = char["deaths"]
                 last_time = now
                 name = char["name"]
                 voc_emoji = get_voc_emoji(char["vocation"])
@@ -602,8 +602,8 @@ class Tibia:
                         author = owner.display_name
                         author_icon = owner.avatar_url
                 for death in deaths:
-                    last_time = parse_tibia_time(death["time"]).timestamp()
-                    death["time"] = get_time_diff(datetime.now() - parse_tibia_time(death['time']))
+                    last_time = death["time"].timestamp()
+                    death["time"] = get_time_diff(datetime.now() - death['time'])
                     entries.append("At level **{level}** by {killer} - *{time} ago*".format(**death))
                     count += 1
 
@@ -1574,17 +1574,17 @@ class Tibia:
         reply = "[{name}]({url}) is a level {level} __{vocation}__. " \
                 "{he_she} resides in __{residence}__ in the world of __{world}__{previous_world}. " \
                 "{he_she} has {achievement_points:,} achievement points.".format(**char)
-        if char["guild"] is not None:
-            char["guild_url"] = url_guild+urllib.parse.quote(char["guild"])
-            reply += "\n{he_she} is __{rank}__ of the [{guild}]({guild_url}).".format(**char)
+        if "guild" in char:
+            char["guild"]["url"] = url_guild+urllib.parse.quote(char["guild"]["name"])
+            reply += "\n{he_she} is __{rank}__ of the [{name}]({url}).".format(**char["guild"], he_she=char["he_she"])
         if "married_to" in char:
             char["married_url"] = url_character + urllib.parse.quote(char["married_to"].encode('iso-8859-1'))
             reply += "\n{he_she} is married to [{married_to}]({married_url}).".format(**char)
         if "house" in char:
-            char["house_url"] = url_house.format(id=char["house_id"], world=char["world"])
-            reply += "\n{he_she} owns [{house}]({house_url}) in {house_town}.".format(**char)
-        if char['last_login'] is not None:
-            last_login = parse_tibia_time(char['last_login'])
+            char["house"]["url"] = url_house.format(id=char["house"]["id"], world=char["world"])
+            reply += "\n{he_she} owns [{name}]({url}) in {town}.".format(**char["house"], he_she=char["he_she"])
+        if 'last_login' in char:
+            last_login = char['last_login']
             now = datetime.now()
             time_diff = now - last_login
             if time_diff.days > last_login_days:
@@ -1593,10 +1593,13 @@ class Tibia:
             reply += "\n{he_she} has never logged in.".format(**char)
 
         # Insert any highscores this character holds
-        for category in highscores_categories:
-            if char.get(category) is not None:
-                highscore_string = highscore_format[category].format(char["his_her"], char[category], char[category+'_rank'])
-                reply += "\n"+EMOJI[":trophy:"]+" {0}".format(highscore_string)
+        if "highscores" in char:
+            for highscore in char["highscores"]:
+                highscore_string = highscore_format[highscore["category"]].format(char["his_her"],
+                                                                                  highscore["category"],
+                                                                                  highscore['rank'])
+                reply += "\n" + EMOJI[":trophy:"] + " {0}".format(highscore_string)
+
         return reply
 
     def get_user_embed(self, ctx, user: discord.Member) -> Optional[discord.Embed]:
