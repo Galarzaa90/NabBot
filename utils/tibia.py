@@ -155,7 +155,7 @@ async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]
                                                                                          result["world"]))
     if "guild" in char and result["guild"] != char["guild"]["name"]:
         with userDatabase as conn:
-            conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (char['guild'], result["id"],))
+            conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (char['guild']["name"], result["id"],))
             log.info("{0}'s guild was set to {1} from {2} during get_character()".format(char['name'],
                                                                                          char['guild']["name"],
                                                                                          result["guild"]))
