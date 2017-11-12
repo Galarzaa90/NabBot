@@ -1594,7 +1594,7 @@ class Tibia:
         if "highscores" in char:
             for highscore in char["highscores"]:
                 highscore_string = highscore_format[highscore["category"]].format(char["his_her"],
-                                                                                  highscore["category"],
+                                                                                  highscore["value"],
                                                                                   highscore['rank'])
                 reply += "\n" + EMOJI[":trophy:"] + " {0}".format(highscore_string)
 
