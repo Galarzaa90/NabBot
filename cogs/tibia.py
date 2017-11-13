@@ -1799,8 +1799,10 @@ class Tibia:
             for creature in item["dropped_by"]:
                 count += 1
                 if creature["percentage"] is None:
-                    creature["percentage"] = "??.??"
-                value += "\n{name} ({percentage:.2f}%)".format(**creature)
+                    creature["percentage"] = "??"
+                else:
+                    creature["percentage"] = f"{creature['percentage']:.2f}%"
+                value += "\n{name} ({percentage})".format(**creature)
                 if count >= short_limit and not long:
                     value += "\n*...And {0} others*".format(len(item["dropped_by"]) - short_limit)
                     drops_too_long = True

@@ -429,7 +429,7 @@ def get_rashid_city() -> str:
     return ["Svargrond",
             "Liberty Bay",
             "Port Hope",
-            "Ankrahmun"
+            "Ankrahmun",
             "Darashia",
             "Edron",
             "Carlin"][tibia_time.weekday()]
