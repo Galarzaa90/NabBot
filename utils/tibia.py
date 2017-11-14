@@ -108,15 +108,19 @@ async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]
 
     deaths = []
     for death in char["deaths"]:
-        match = re.search("by ([^.]+)", death["reason"])
-        killer = match.group(1)
-        level = int(death["level"])
-        death_time = parse_tibiadata_time(death["date"])
-        by_player = False
-        if death["involved"]:
-            by_player = True
-            killer = death["involved"][0]["name"]
-        deaths.append({"time": death_time, "killer": killer, "level": level, "by_player" : by_player})
+        try:
+            match = re.search("by ([^.]+)", death["reason"])
+            killer = match.group(1)
+            level = int(death["level"])
+            death_time = parse_tibiadata_time(death["date"])
+            by_player = False
+            if death["involved"]:
+                by_player = True
+                killer = death["involved"][0]["name"]
+            deaths.append({"time": death_time, "killer": killer, "level": level, "by_player" : by_player})
+        except ValueError:
+            # TODO: Handle deaths with no level
+            continue
     char["deaths"] = deaths
 
     # Database operations
