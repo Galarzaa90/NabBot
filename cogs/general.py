@@ -3,7 +3,7 @@ import random
 import re
 import time
 from contextlib import closing
-from datetime import timedelta, datetime
+import datetime as dt
 
 import discord
 import psutil
@@ -12,7 +12,7 @@ from discord.ext import commands
 from config import ask_channel_name, owner_ids, mod_ids
 from nabbot import NabBot
 from utils import checks
-from utils.database import userDatabase
+from utils.database import userDatabase, tibiaDatabase
 from utils.discord import is_lite_mode, get_region_string, get_role_list, get_role, is_private, clean_string
 from utils.general import get_uptime, TimeString, single_line, is_numeric, log
 from utils.messages import EMOJI
@@ -64,7 +64,7 @@ class General:
                     if author is None:
                         continue
                     event["author"] = author.display_name
-                    time_diff = timedelta(seconds=event["start"] - date)
+                    time_diff = dt.timedelta(seconds=event["start"] - date)
                     days, hours, minutes = time_diff.days, time_diff.seconds // 3600, (time_diff.seconds // 60) % 60
                     if days:
                         event["start"] = 'in {0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
@@ -308,6 +308,21 @@ class General:
         embed.add_field(name="Uptime", value=get_uptime())
         memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
         embed.add_field(name='Memory Usage', value='{:.2f} MiB'.format(memory_usage))
+        with closing(tibiaDatabase.cursor()) as c:
+            try:
+                c.execute("SELECT * FROM database_info WHERE key = ?", ("version",))
+                result = c.fetchone()
+                if result:
+                    version = result["value"]
+                c.execute("SELECT * FROM database_info WHERE key = ?", ("generated_date",))
+                result = c.fetchone()
+                if result:
+                    timestamp = float(result["value"])
+                    db_date = dt.datetime.utcfromtimestamp(timestamp)
+                embed.add_field(name="TibiaWiki Database", value=f"{version}, fetched on "
+                                                                 f"{db_date.strftime('%b %d %Y, %H:%M:%S UTC')}")
+            except KeyError:
+                pass
         await ctx.send(embed=embed)
 
     @commands.group(aliases=["event"], invoke_without_command=True)
@@ -355,7 +370,7 @@ class General:
             for event in recent_events:
                 author = self.bot.get_member(event["creator"], server)
                 event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
-                time_diff = timedelta(seconds=now - event["start"])
+                time_diff = dt.timedelta(seconds=now - event["start"])
                 minutes = round((time_diff.seconds / 60) % 60)
                 event["start_str"] = "Started {0} minutes ago".format(minutes)
                 value += "\n**{name}** (by **@{author}**,*ID:{id}*) - {start_str}".format(**event)
@@ -367,7 +382,7 @@ class General:
             for event in upcoming_events:
                 author = self.bot.get_member(event["creator"], server)
                 event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
-                time_diff = timedelta(seconds=event["start"] - now)
+                time_diff = dt.timedelta(seconds=event["start"] - now)
                 days, hours, minutes = time_diff.days, time_diff.seconds // 3600, (time_diff.seconds // 60) % 60
                 if days:
                     event["start_str"] = 'In {0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
@@ -409,7 +424,7 @@ class General:
             await ctx.send("There's no event with that id.")
             return
         guild = self.bot.get_guild(event["server"])
-        start = datetime.utcfromtimestamp(event["start"])
+        start = dt.datetime.utcfromtimestamp(event["start"])
         author = self.bot.get_member(event["creator"], guild)
         embed = discord.Embed(title=event["name"], description=event["description"], timestamp=start)
         if author is not None:
@@ -488,7 +503,7 @@ class General:
                 await ctx.send("Nothing? Forget it then.")
                 return
 
-        embed = discord.Embed(title=name, description=event_description, timestamp=datetime.utcfromtimestamp(start))
+        embed = discord.Embed(title=name, description=event_description, timestamp=dt.datetime.utcfromtimestamp(start))
         embed.set_footer(text="Start time")
 
         message = await ctx.send("Is this correct?", embed=embed)
@@ -624,7 +639,7 @@ class General:
         new_description = clean_string(ctx, new_description)
 
         embed = discord.Embed(title=event["name"], description=new_description,
-                              timestamp=datetime.utcfromtimestamp(event["start"]))
+                              timestamp=dt.datetime.utcfromtimestamp(event["start"]))
         embed.set_footer(text="Start time")
         message = await ctx.send("Do you want this to be the new description?", embed=embed)
         confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no changes will be done.")
@@ -686,7 +701,7 @@ class General:
             except asyncio.TimeoutError:
                 await ctx.send("Guess you don't want to change the time...")
                 return
-        embed = discord.Embed(title=event["name"], timestamp=datetime.utcfromtimestamp(now+starts_in.seconds))
+        embed = discord.Embed(title=event["name"], timestamp=dt.datetime.utcfromtimestamp(now+starts_in.seconds))
         embed.set_footer(text="Start time")
         message = await ctx.send(f"This will be the time of your new event in your local time. Is this correct?",
                                  embed=embed)
@@ -844,7 +859,7 @@ class General:
                 return
 
         embed = discord.Embed(title=name, description=event_description,
-                              timestamp=datetime.utcfromtimestamp(now+starts_in.seconds))
+                              timestamp=dt.datetime.utcfromtimestamp(now+starts_in.seconds))
         embed.set_footer(text="Start time")
         message = await ctx.send("Ok, so this will be your new event. Is this correct?", embed=embed)
         confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no event will be made.")
