@@ -11,7 +11,7 @@ from utils.database import userDatabase, tracked_worlds
 from utils.discord import FIELD_VALUE_LIMIT, is_private
 from utils.messages import split_message
 from utils.paginator import Paginator, CannotPaginate
-from utils.tibia import get_character, ERROR_NETWORK, ERROR_DOESNTEXIST
+from utils.tibia import get_character, ERROR_NETWORK, NetworkError
 
 
 class Mod:
@@ -132,30 +132,31 @@ class Mod:
         common_worlds = list(set(author_worlds) & set(user_worlds))
 
         with ctx.typing():
-            char = await get_character(params[1])
-            if type(char) is not dict:
-                if char == ERROR_NETWORK:
-                    await ctx.send("I couldn't fetch the character, please try again.")
-                elif char == ERROR_DOESNTEXIST:
+            try:
+                char = await get_character(params[1])
+                if char is None:
                     await ctx.send("That character doesn't exists.")
+                    return
+            except NetworkError:
+                await ctx.send("I couldn't fetch the character, please try again.")
                 return
-            if char["world"] not in common_worlds:
-                await ctx.send("**{name}** ({world}) is not in a world you can manage.".format(**char))
+            if char.world not in common_worlds:
+                await ctx.send("**{0.name}** ({0.world}) is not in a world you can manage.".format(char))
                 return
-            if char.get("deleted", False):
-                await ctx.send("**{name}** ({world}) is scheduled for deletion and can't be added.".format(**char))
+            if char.deleted is not None:
+                await ctx.send("**{0.name}** ({0.world}) is scheduled for deletion and can't be added.".format(char))
                 return
             c = userDatabase.cursor()
             try:
-                c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (char['name'],))
+                c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (char.name,))
                 result = c.fetchone()
                 # Char is already in database
                 if result is not None:
                     # Update name if it was changed
-                    if char['name'] != params[1]:
-                        c.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
+                    if char.name != params[1]:
+                        c.execute("UPDATE chars SET name = ? WHERE id = ?", (char.name, result["id"],))
                         await ctx.send("This character's name was changed from **{0}** to **{1}**".format(
-                            params[1], char['name'])
+                            params[1], char.name)
                         )
                     # Registered to a different user
                     if result["user_id"] != user.id:
@@ -168,11 +169,11 @@ class Mod:
                             # Log on relevant servers
                             for server in user_servers:
                                 world = tracked_worlds.get(server.id, None)
-                                if world == char["world"]:
+                                if world == char.world:
                                     log_msg = "{0.mention} registered **{1}** ({2} {3}) to {4.mention}."
-                                    await self.bot.send_log_message(server, log_msg.format(author, char["name"],
-                                                                                           char["level"],
-                                                                                           char["vocation"],
+                                    await self.bot.send_log_message(server, log_msg.format(author, char.name,
+                                                                                           char.level,
+                                                                                           char.vocation,
                                                                                            user))
                         else:
                             await ctx.send("This character is already registered to **@{0}**".format(
@@ -183,21 +184,21 @@ class Mod:
                     await ctx.send("This character is already registered to this user.")
                     return
                 c.execute("INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
-                          (char["name"], char["level"] * -1, char["vocation"], user.id, char["world"], char["guild"]))
+                          (char.name, char.level * -1, char.vocation, user.id, char.world, char.guild_name))
                 # Check if user is already registered
                 c.execute("SELECT id from users WHERE id = ?", (user.id,))
                 result = c.fetchone()
                 if result is None:
                     c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
-                await ctx.send("**{0}** was registered successfully to this user.".format(char['name']))
+                await ctx.send("**{0}** was registered successfully to this user.".format(char.name))
                 # Log on relevant servers
                 for server in user_servers:
                     world = tracked_worlds.get(server.id, None)
-                    if world == char["world"]:
-                        char["guild"] = char.get("guild", "No guild")
+                    if world == char.world:
+                        guild = "No guild" if char.guild is None else char.guild_name
                         log_msg = "{0.mention} registered **{1}** ({2} {3}, {4}) to {5.mention}."
-                        await self.bot.send_log_message(server, log_msg.format(author, char["name"],char["level"],
-                                                                               char["vocation"], char["guild"], user))
+                        await self.bot.send_log_message(server, log_msg.format(author, char.name, char.level,
+                                                                               char.vocation, guild, user))
                 return
             finally:
                 c.close()
@@ -236,18 +237,18 @@ class Mod:
 
         common_worlds = list(set(author_worlds) & set(user_worlds))
         with ctx.typing():
-            character = await get_character(params[1])
-            if type(character) is not dict:
+            try:
+                character = await get_character(params[1])
                 if character == ERROR_NETWORK:
                     await ctx.send("I couldn't fetch the character, please try again.")
-                elif character == ERROR_DOESNTEXIST:
-                    await ctx.send("That character doesn't exists.")
+                    return
+            except NetworkError:
+                await ctx.send("I couldn't fetch the character, please try again.")
                 return
             c = userDatabase.cursor()
             try:
-                chars = character.get("other_chacters",[])
                 # If the char is hidden,we still add the searched character
-                if len(chars) == 0:
+                if len(character.other_characters) == 0:
                     await ctx.send("Character is hidden.")
                     chars = [character]
                 skipped = list()
@@ -256,25 +257,26 @@ class Mod:
                 reassigned_tuples = list()
                 existent = list()
                 error = list()
-                for char in chars:
+                for char in character.other_characters:
                     # Character not in followed server(s), skip.
-                    if char['world'] not in common_worlds:
-                        skipped.append([char["name"], char["world"]])
+                    if char.world not in common_worlds:
+                        skipped.append([char.name, char.world])
                         continue
-                    name = char["name"]
+                    name = char.name
                     # If char is the same we already looked up, no need to look him up again
-                    if character["name"] == char["name"]:
+                    if character.name == char.name:
                         char = character
                     else:
-                        char = await get_character(char["name"])
-                    if type(char) is not dict:
-                        error.append(name)
-                        continue
+                        try:
+                            char = await get_character(char.name)
+                        except NetworkError:
+                            error.append(name)
+                            continue
                     # Skip characters scheduled for deletion
-                    if char.get("deleted", False):
-                        skipped.append([char["name"], char["world"]])
+                    if char.deleted is not None:
+                        skipped.append([char.name, char.world])
                         continue
-                    c.execute("SELECT id, name,user_id FROM chars WHERE name LIKE ?", (char['name'],))
+                    c.execute("SELECT id, name,user_id FROM chars WHERE name LIKE ?", (char.name,))
                     result = c.fetchone()
                     # Char is already in database
                     if result is not None:
@@ -288,14 +290,13 @@ class Mod:
                                 continue
                             else:
                                 await ctx.send("{0} is already assigned to {1}. We can't add any other of these "
-                                                    "characters.".format(char["name"], current_user.display_name))
+                                               "characters.".format(char.name, current_user.display_name))
                                 return
                         # Registered to current user
                         existent.append(char)
                         continue
                     added.append(char)
-                    added_tuples.append((char["name"], char["level"]*-1, char["vocation"], user.id, char["world"],
-                                         char["guild"],))
+                    added_tuples.append((char.name, char.level*-1, char.vocation, user.id, char.world, char.guild_name,))
                 c.execute("SELECT id from users WHERE id = ?", (user.id,))
                 result = c.fetchone()
                 if result is None:
@@ -309,18 +310,19 @@ class Mod:
                 if added:
                     reply += "\nThe following characters were registered or reassigned successfully:"
                     for char in added:
-                        char["guild"] = char.get("guild", "No guild")
-                        reply += "\n\t**{name}** ({level} {vocation}) - **{guild}**".format(**char)
+                        guild = "No guild" if char.guild is None else char.guild["name"]
+                        reply += "\n\t**{0.name}** ({0.level} {0.vocation}) - **{guild}**".format(char, guild=guild)
                         # Announce on server log of each server
                         for server in user_servers:
                             # Only announce on worlds where the character's world is tracked
-                            if tracked_worlds.get(server.id, None) == char["world"]:
-                                log_reply[server.id] += "\n\t{name} - {level} {vocation} - **{guild}**".format(**char)
+                            if tracked_worlds.get(server.id, None) == char.world:
+                                log_reply[server.id] += "\n\t{0.name} - {0.level} {0.vocation} - **{1}**".format(char,
+                                                                                                                 guild)
                 if existent:
                     reply += "\nThe following characters were already registered to this user:"
                     for char in existent:
-                        char["guild"] = char.get("guild", "No guild")
-                        reply += "\n\t**{name}** ({level} {vocation}) - **{guild}**".format(**char)
+                        guild = "No guild" if char.guild is None else char.guild["name"]
+                        reply += "\n\t**{0.name}** ({0.level} {0.vocation}) - **{guild}**".format(char, guild=guild)
                 if skipped:
                     reply += "\nThe following characters were skipped (not in tracked worlds or scheduled deletion):"
                     for char, world in skipped:
@@ -474,39 +476,40 @@ class Mod:
                     await ctx.send("I don't have a character registered with the name: **{0}**".format(old_name))
                     return
                 # Search old name to see if there's a result
-                old_char = await get_character(old_name)
-                if old_char == ERROR_NETWORK:
+                try:
+                    old_char = await get_character(old_name)
+                except NetworkError:
                     await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
                     return
                 # Check if returns a result
-                if type(old_char) is dict:
-                    if old_name.lower() == old_char["name"].lower():
-                        await ctx.send("The character **{0}** wasn't namelocked.".format(old_char["name"]))
+                if old_char is not None:
+                    if old_name.lower() == old_char.name.lower():
+                        await ctx.send("The character **{0}** wasn't namelocked.".format(old_char.name))
                     else:
-                        await ctx.send("The character **{0}** was renamed to **{1}**.".format(old_name,
-                                                                                                   old_char["name"]))
+                        await ctx.send("The character **{0}** was renamed to **{1}**.".format(old_name, old_char.name))
                         # Renaming is actually done in get_character(), no need to do anything.
                     return
 
                 # Check if new name exists
-                new_char = await get_character(new_name)
-                if new_char == ERROR_NETWORK:
+                try:
+                    new_char = await get_character(new_name)
+                except NetworkError:
                     await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
                     return
-                if new_char == ERROR_DOESNTEXIST:
+                if new_char is None:
                     await ctx.send("The character **{0}** doesn't exists.".format(new_name))
                     return
                 # Check if vocations are similar
-                if not (old_char_db["vocation"].lower() in new_char["vocation"].lower()
-                        or new_char["vocation"].lower() in old_char_db["vocation"].lower()):
+                if not (old_char_db["vocation"].lower() in new_char.vocation.lower()
+                        or new_char.vocation.lower() in old_char_db["vocation"].lower()):
                     await ctx.send("**{0}** was a *{1}* and **{2}** is a *{3}*. I think you're making a mistake."
-                                            .format(old_char_db["name"], old_char_db["vocation"],
-                                                    new_char["name"], new_char["vocation"]))
+                                   .format(old_char_db["name"], old_char_db["vocation"],
+                                           new_char.name, new_char.vocation))
                     return
                 confirm_message = "Are you sure **{0}** ({1} {2}) is **{3}** ({4} {5}) now? `yes/no`"
                 await ctx.send(confirm_message.format(old_char_db["name"], abs(old_char_db["last_level"]),
-                                                           old_char_db["vocation"], new_char["name"], new_char["level"],
-                                                           new_char["vocation"]))
+                                                      old_char_db["vocation"], new_char.name, new_char.level,
+                                                      new_char.vocation))
 
                 def check(m):
                     return m.channel == ctx.message.channel and m.author == ctx.message.author
@@ -525,7 +528,7 @@ class Mod:
 
                 if new_char_db is None:
                     c.execute("UPDATE chars SET name = ?, vocation = ?, last_level = ? WHERE id = ?",
-                              (new_char["name"], new_char["vocation"], new_char["level"],old_char_db["id"],))
+                              (new_char.name, new_char.vocation, new_char.level, old_char_db["id"],))
                 else:
                     # Replace new char with old char id and delete old char, reassign deaths and levelups
                     c.execute("DELETE FROM chars WHERE id = ?", (old_char_db["id"]),)

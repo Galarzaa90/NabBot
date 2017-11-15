@@ -17,6 +17,7 @@ from bs4 import BeautifulSoup
 from discord import Colour
 
 from config import network_retry_delay
+from utils.character import Character
 from utils.database import userDatabase, tibiaDatabase
 from utils.messages import EMOJI
 from .general import log, get_local_timezone
@@ -56,17 +57,21 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
 tibia_worlds = []
 
 
-async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]:
-    """Returns a dictionary with a player's info
+class NetworkError(Exception):
+    pass
 
-    The dictionary contains the following keys: name, deleted, level, vocation, world, residence,
-    married, sex, guild, last,login, chars*.
-        *chars is list that contains other characters in the same account (if not hidden).
-        Each list element is dictionary with the keys: name, world.
-    May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
+
+async def get_character(name, tries=5) -> Optional[Character]:
+    """Fetches a character from TibiaData, parses and returns a Character object
+
+    The character object contains all the information available on Tibia.com
+    Infomration from the user's database is also added, like owner and highscores.
+    If the character can't be fetch due to a network error, an NetworkError exception is raised
+    If the character doens't exist, None is returned.
+    """
     if tries == 0:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
-        return ERROR_NETWORK
+        raise NetworkError()
     url = f"https://api.tibiadata.com/v1/characters/{name}.json"
 
     # Fetch website
@@ -78,92 +83,57 @@ async def get_character(name, tries=5) -> Union[Dict[str, Union[str, int]], int]
         await asyncio.sleep(network_retry_delay)
         return await get_character(name, tries - 1)
 
-    data = json.loads(content)
-    char = data["characters"]  # type: Dict
-    if "error" in char:
-        return ERROR_DOESNTEXIST
-    # In TibiaData, basic character information is nested into the 'data' key, for easy of migration, we merge all those
-    # subkeys back into the main node
-    char.update(char.pop("data"))
-    char["level"] = int(char["level"])
-    char["achievement_points"] = int(char["achievement_points"])
-
-    # TibiaData has no full house information, so we have to get the rest ourselves
-    if "house" in char:
-        # No way to get 'paid until' unles we fetch the site
-        match = re.search(r'(?P<name>.*) \((?P<town>[^\)]+)\)$', char["house"])
-        if match:
-            house = match.groupdict()
-            with closing(tibiaDatabase.cursor()) as c:
-                c.execute("SELECT id FROM houses WHERE name LIKE ?", (house["name"],))
-                result = c.fetchone()
-                if result:
-                    house["id"] = result["id"]
-                    char["house"] = house
-
-    if char["last_login"]:
-        char["last_login"] = parse_tibiadata_time(char["last_login"][0])
-    else:
-        char.pop("last_login")
-
-    deaths = []
-    for death in char["deaths"]:
-        try:
-            match = re.search("by ([^.]+)", death["reason"])
-            killer = match.group(1)
-            level = int(death["level"])
-            death_time = parse_tibiadata_time(death["date"])
-            by_player = False
-            if death["involved"]:
-                by_player = True
-                killer = death["involved"][0]["name"]
-            deaths.append({"time": death_time, "killer": killer, "level": level, "by_player" : by_player})
-        except ValueError:
-            # TODO: Handle deaths with no level
-            continue
-    char["deaths"] = deaths
+    content_json = json.loads(content)
+    character = Character.parse_from_tibiadata(content_json)
+    if character is None:
+        return None
+    if character.house is not None:
+        with closing(tibiaDatabase.cursor()) as c:
+            c.execute("SELECT id FROM houses WHERE name LIKE ?", (character.house["name"],))
+            result = c.fetchone()
+            if result:
+                character.house["id"] = result["id"]
 
     # Database operations
     c = userDatabase.cursor()
     # Skills from highscores
-    c.execute("SELECT category, rank, value FROM highscores WHERE name LIKE ?", (char["name"],))
+    c.execute("SELECT category, rank, value FROM highscores WHERE name LIKE ?", (character.name,))
     results = c.fetchall()
     if len(results) > 0:
-        char["highscores"] = results
+        character.highscores = results
 
     # Discord owner
     c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ?", (name,))
     result = c.fetchone()
     if result is None:
         # Untracked character
-        char["owner_id"] = None
-        return char
+        return character
 
-    char["owner_id"] = result["user_id"]
-    if result["vocation"] != char['vocation']:
+    character.owner = result["user_id"]
+    if result["vocation"] != character.vocation:
         with userDatabase as conn:
-            conn.execute("UPDATE chars SET vocation = ? WHERE id = ?", (char['vocation'], result["id"],))
-            log.info("{0}'s vocation was set to {1} from {2} during get_character()".format(char['name'],
-                                                                                            char['vocation'],
+            conn.execute("UPDATE chars SET vocation = ? WHERE id = ?", (character.vocation, result["id"],))
+            log.info("{0}'s vocation was set to {1} from {2} during get_character()".format(character.name,
+                                                                                            character.vocation,
                                                                                             result["vocation"]))
-    if result["name"] != char["name"]:
+    if result["name"] != character.name:
         with userDatabase as conn:
-            conn.execute("UPDATE chars SET name = ? WHERE id = ?", (char['name'], result["id"],))
-            log.info("{0} was renamed to {1} during get_character()".format(result["name"], char['name']))
+            conn.execute("UPDATE chars SET name = ? WHERE id = ?", (character.name, result["id"],))
+            log.info("{0} was renamed to {1} during get_character()".format(result["name"], character.name))
 
-    if result["world"] != char["world"]:
+    if result["world"] != character.world:
         with userDatabase as conn:
-            conn.execute("UPDATE chars SET world = ? WHERE id = ?", (char['world'], result["id"],))
-            log.info("{0}'s world was set to {1} from {2} during get_character()".format(char['name'],
-                                                                                         char['world'],
+            conn.execute("UPDATE chars SET world = ? WHERE id = ?", (character.world, result["id"],))
+            log.info("{0}'s world was set to {1} from {2} during get_character()".format(character.name,
+                                                                                         character.world,
                                                                                          result["world"]))
-    if "guild" in char and result["guild"] != char["guild"]["name"]:
+    if character.guild is not None and result["guild"] != character.guild["name"]:
         with userDatabase as conn:
-            conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (char['guild']["name"], result["id"],))
-            log.info("{0}'s guild was set to {1} from {2} during get_character()".format(char['name'],
-                                                                                         char['guild']["name"],
+            conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (character.guild["name"], result["id"],))
+            log.info("{0}'s guild was set to {1} from {2} during get_character()".format(character.name,
+                                                                                         character.guild["name"],
                                                                                          result["guild"]))
-    return char
+    return character
 
 
 async def get_highscores(world, category, pagenum, profession=0, tries=5):
@@ -618,23 +588,6 @@ def parse_tibia_time(tibia_time: str) -> Optional[dt.datetime]:
         return None
     # Add/subtract hours to get the real time
     return t + dt.timedelta(hours=(local_utc_offset - utc_offset))
-
-
-def parse_tibiadata_time(time_dict: Dict[str, Union[int, str]]) -> Optional[dt.datetime]:
-    try:
-        t = dt.datetime.strptime(time_dict["date"], "%Y-%m-%d %H:%M:%S.%f")
-    except (KeyError, ValueError):
-        return None
-
-    if time_dict["timezone"] == "CET":
-        timezone_offset = 1
-    elif time_dict["timezone"] == "CEST":
-        timezone_offset = 2
-    else:
-        return None
-    # We substract the offset to convert the time to UTC
-    t = t - dt.timedelta(hours=timezone_offset)
-    return t.replace(tzinfo=dt.timezone.utc)
 
 
 def get_stats(level: int, vocation: str):

@@ -1,8 +1,9 @@
 import asyncio
+import datetime as dt
 import time
 import urllib.parse
 from contextlib import closing
-import datetime as dt
+from typing import List
 
 import discord
 from discord.ext import commands
@@ -11,6 +12,7 @@ from config import death_scan_interval, highscores_delay, highscores_categories,
     online_scan_interval, announce_threshold, ask_channel_name
 from nabbot import NabBot
 from utils import checks
+from utils.character import Death, Character
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
 from utils.discord import is_private
 from utils.general import global_online_list, log, join_list, start_time
@@ -18,8 +20,8 @@ from utils.messages import weighed_choice, death_messages_player, death_messages
     level_messages
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, ERROR_DOESNTEXIST, \
-    get_pronouns, get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild, \
-    get_tibia_time_zone
+    get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild, \
+    get_tibia_time_zone, NetworkError
 
 
 class Tracking:
@@ -163,26 +165,29 @@ class Tracking:
                 for now_offline_char in offline_list:
                     global_online_list.remove(now_offline_char)
                     # Check for deaths and level ups when removing from online list
-                    now_offline_char = await get_character(now_offline_char.split("_", 1)[1])
-                    if not (now_offline_char == ERROR_NETWORK or now_offline_char == ERROR_DOESNTEXIST):
+                    try:
+                        now_offline_char = await get_character(now_offline_char.split("_", 1)[1])
+                    except NetworkError:
+                        continue
+                    if now_offline_char is not None:
                         c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",
-                                  (now_offline_char['name'],))
+                                  (now_offline_char.name,))
                         result = c.fetchone()
                         if result:
                             last_level = result["last_level"]
                             c.execute(
                                 "UPDATE chars SET last_level = ? WHERE name LIKE ?",
-                                (now_offline_char['level'], now_offline_char['name'],)
+                                (now_offline_char.level, now_offline_char.name,)
                             )
-                            if now_offline_char['level'] > last_level > 0:
+                            if now_offline_char.level > last_level > 0:
                                 # Saving level up date in database
                                 c.execute(
                                     "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                    (result["id"], now_offline_char['level'], time.time(),)
+                                    (result["id"], now_offline_char.level, time.time(),)
                                 )
                                 # Announce the level up
-                                await self.announce_level(now_offline_char['level'], char=now_offline_char)
-                        await self.check_death(now_offline_char['name'])
+                                await self.announce_level(now_offline_char.level, char=now_offline_char)
+                        await self.check_death(now_offline_char.name)
 
                 # Add new online chars and announce level differences
                 for server_char in current_world_online:
@@ -293,11 +298,12 @@ class Tracking:
 
     async def check_death(self, character):
         """Checks if the player has new deaths"""
-        char = await get_character(character)
-        if type(char) is not dict:
+        try:
+            char = await get_character(character)
+        except NetworkError:
             log.warning("check_death: couldn't fetch {0}".format(character))
             return
-        character_deaths = char["deaths"]
+        character_deaths = char.deaths
 
         if character_deaths:
             c = userDatabase.cursor()
@@ -305,11 +311,11 @@ class Tracking:
             result = c.fetchone()
             if result:
                 last_death = character_deaths[0]
-                death_time = last_death["time"].timestamp()
+                death_time = last_death.time.timestamp()
                 # Check if we have a death that matches the time
                 c.execute("SELECT * FROM char_deaths "
                           "WHERE char_id = ? AND date >= ? AND date <= ? AND level = ? AND killer LIKE ?",
-                          (result["id"], death_time - 200, death_time + 200, last_death["level"], last_death["killer"]))
+                          (result["id"], death_time - 200, death_time + 200, last_death.level, last_death.killer))
                 last_saved_death = c.fetchone()
                 if last_saved_death is not None:
                     # This death is already saved, so nothing else to do here.
@@ -317,45 +323,41 @@ class Tracking:
 
                 c.execute(
                     "INSERT INTO char_deaths (char_id,level,killer,byplayer,date) VALUES(?,?,?,?,?)",
-                    (result["id"], int(last_death['level']), last_death['killer'], last_death['by_player'], death_time,)
+                    (result["id"], int(last_death.level), last_death.killer, last_death.by_player, death_time,)
                 )
 
                 # If the death happened more than 1 hour ago, we don't announce it, but it's saved already.
                 if time.time() - death_time >= (1 * 60 * 60):
-                    log.info("Death detected, but too old to announce: {0}({1}) | {2}".format(character,
-                                                                                              last_death['level'],
-                                                                                              last_death['killer']))
+                    log.info("Death detected, but too old to announce: {0}({1.level}) | {1.killer}".format(character,
+                                                                                                           last_death))
                 else:
-                    await self.announce_death(last_death['level'], last_death['killer'], last_death['by_player'],
-                                              max(last_death["level"] - char["level"], 0), char)
+                    await self.announce_death(last_death, max(last_death.level - char.level, 0), char)
 
             # Close cursor and commit changes
             userDatabase.commit()
             c.close()
 
-    async def announce_death(self, level, killer, by_player, levels_lost=0, char=None, char_name=None):
+    async def announce_death(self, death: Death, levels_lost=0, char: Character=None, char_name: str=None):
         """Announces a level up on the corresponding servers"""
         # Don't announce for low level players
-        if int(level) < announce_threshold:
+        if int(death.level) < announce_threshold:
             return
         if char is None:
             if char_name is None:
                 log.error("announce_death: no character or character name passed.")
                 return
-            char = await get_character(char_name)
-        if type(char) is not dict:
-            log.warning("announce_death: couldn't fetch character (" + char_name + ")")
-            return
+            try:
+                char = await get_character(char_name)
+            except NetworkError:
+                log.warning("announce_death: couldn't fetch character (" + char_name + ")")
+                return
 
-        log.info("Announcing death: {0}({1}) | {2}".format(char["name"], level, killer))
-
-        # Get correct pronouns
-        pronoun = get_pronouns(char["sex"])
+        log.info("Announcing death: {0.name}({1.level}) | {1.killer}".format(char, death))
 
         # Find killer article (a/an)
         killer_article = ""
-        if not by_player:
-            killer_article = killer.split(" ", 1)
+        if not death.by_player:
+            killer_article = death.killer.split(" ", 1)
             if killer_article[0] in ["a", "an"] and len(killer_article) > 1:
                 killer = killer_article[1]
                 killer_article = killer_article[0] + " "
@@ -363,27 +365,26 @@ class Tracking:
                 killer_article = ""
 
         # Select a message
-        if by_player:
-            message = weighed_choice(death_messages_player, vocation=char['vocation'], level=int(level),
+        if death.by_player:
+            message = weighed_choice(death_messages_player, vocation=char.vocation, level=death.level,
                                      levels_lost=levels_lost)
         else:
-            message = weighed_choice(death_messages_monster, vocation=char['vocation'], level=int(level),
-                                     levels_lost=levels_lost, killer=killer)
+            message = weighed_choice(death_messages_monster, vocation=char.vocation, level=death.level,
+                                     levels_lost=levels_lost, killer=death.killer)
         # Format message with death information
-        death_info = {'name': char["name"], 'level': level, 'killer': killer, 'killer_article': killer_article,
-                      'he_she': pronoun[0], 'his_her': pronoun[1], 'him_her': pronoun[2]}
+        death_info = {'name': char.name, 'level': death.level, 'killer': death.killer, 'killer_article': killer_article,
+                      'he_she': char.he_she, 'his_her': char.his_her, 'him_her': char.him_her}
         message = message.format(**death_info)
         # Format extra stylization
         message = format_message(message)
-        if by_player:
+        if death.by_player:
             message = EMOJI[":skull:"] + " " + message
         else:
             message = EMOJI[":skull_crossbones:"] + " " + message
 
         for guild_id, tracked_world in tracked_worlds.items():
             guild = self.bot.get_guild(guild_id)
-            if char["world"] == tracked_world and guild is not None \
-                    and guild.get_member(char["owner_id"]) is not None:
+            if char.world == tracked_world and guild is not None and guild.get_member(char.owner) is not None:
                 try:
                     await self.bot.get_announce_channel(guild).send(message[:1].upper() + message[1:])
                 except discord.Forbidden:
@@ -391,7 +392,7 @@ class Tracking:
                 except discord.HTTPException:
                     log.warning("announce_death: Malformed message.")
 
-    async def announce_level(self, level, char_name=None, char=None):
+    async def announce_level(self, level, char_name: str=None, char: Character=None):
         """Announces a level up on corresponding servers
 
         One of these must be passed:
@@ -406,21 +407,19 @@ class Tracking:
             if char_name is None:
                 log.error("announce_level: no character or character name passed.")
                 return
-            char = await get_character(char_name)
-        if type(char) is not dict:
-            log.warning("announce_level: couldn't fetch character (" + char_name + ")")
-            return
+            try:
+                char = await get_character(char_name)
+            except NetworkError:
+                log.warning("announce_level: couldn't fetch character (" + char_name + ")")
+                return
 
-        log.info("Announcing level up: {0} ({1})".format(char["name"], level))
-
-        # Get pronouns based on sex
-        pronoun = get_pronouns(char['sex'])
+        log.info("Announcing level up: {0} ({1})".format(char.name, level))
 
         # Select a message
-        message = weighed_choice(level_messages, vocation=char['vocation'], level=int(level))
+        message = weighed_choice(level_messages, vocation=char.vocation, level=char.level)
+        level_info = {'name': char.name, 'level': level, 'he_she': char.he_she, 'his_her': char.his_her,
+                      'him_her': char.him_her}
         # Format message with level information
-        level_info = {'name': char["name"], 'level': level, 'he_she': pronoun[0], 'his_her': pronoun[1],
-                      'him_her': pronoun[2]}
         message = message.format(**level_info)
         # Format extra stylization
         message = format_message(message)
@@ -428,8 +427,7 @@ class Tracking:
 
         for server_id, tracked_world in tracked_worlds.items():
             server = self.bot.get_guild(server_id)
-            if char["world"] == tracked_world and server is not None \
-                    and server.get_member(char["owner_id"]) is not None:
+            if char.world == tracked_world and server is not None and server.get_member(char.owner) is not None:
                 try:
                     await self.bot.get_announce_channel(server).send(message)
                 except discord.Forbidden:
@@ -460,39 +458,40 @@ class Tracking:
             return
 
         await ctx.trigger_typing()
-        char = await get_character(char_name)
-        if type(char) is not dict:
-            if char == ERROR_NETWORK:
-                await ctx.send("I couldn't fetch the character, please try again.")
-            elif char == ERROR_DOESNTEXIST:
+        try:
+            char = await get_character(char_name)
+            if char is None:
                 await ctx.send("That character doesn't exists.")
+                return
+        except NetworkError:
+            await ctx.send("I couldn't fetch the character, please try again.")
             return
-        chars = char.get("other_characters",[])
+        chars = char.other_characters
         # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
         # searched char, so we don't have to look him up again
         if len(chars) == 0 or len(chars) == 1:
             chars = [char]
         skipped = []
         updated = []
-        added = []
+        added = []  # type: List[Character]
         existent = []
         for char in chars:
             # Skip chars in non-tracked worlds
-            if char["world"] not in user_tibia_worlds:
+            if char.world not in user_tibia_worlds:
                 skipped.append(char)
                 continue
             with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT name, guild, user_id as owner FROM chars WHERE name LIKE ?", (char["name"],))
+                c.execute("SELECT name, guild, user_id as owner FROM chars WHERE name LIKE ?", (char.name,))
                 db_char = c.fetchone()
             if db_char is not None:
                 owner = self.bot.get_member(db_char["owner"])
                 # Previous owner doesn't exist anymore
                 if owner is None:
-                    updated.append({'name': char['name'], 'world': char['world'], 'prevowner': db_char["owner"]})
+                    updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"]})
                     continue
                 # Char already registered to this user
                 elif owner.id == user.id:
-                    existent.append("{name} ({world})".format(**char))
+                    existent.append("{0.name} ({0.world})".format(char))
                     continue
                 # Character is registered to another user, we stop the whole process
                 else:
@@ -502,12 +501,13 @@ class Tracking:
                     return
             # If we only have one char, it already contains full data
             if len(chars) > 1:
-                await ctx.message.channel.trigger_typing()
-                char = await get_character(char["name"])
-                if char == ERROR_NETWORK:
+                try:
+                    await ctx.message.channel.trigger_typing()
+                    char = await get_character(char.name)
+                except NetworkError:
                     await ctx.send("I'm having network troubles, please try again.")
                     return
-            if char.get("deleted", False):
+            if char.deleted is not None:
                 skipped.append(char)
                 continue
             added.append(char)
@@ -520,20 +520,20 @@ class Tracking:
         reply = ""
         log_reply = dict().fromkeys([server.id for server in user_guilds], "")
         if len(existent) > 0:
-            reply += "\nThe following characters were already registered to you: {0}" \
+            reply += "\nThe following characters were already registered to you: {0}"\
                 .format(join_list(existent, ", ", " and "))
 
         if len(added) > 0:
             reply += "\nThe following characters were added to your account: {0}" \
-                .format(join_list(["{name} ({world})".format(**c) for c in added], ", ", " and "))
+                .format(join_list(["{0.name} ({0.world})".format(c) for c in added], ", ", " and "))
             for char in added:
-                log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
+                log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char.name, user))
                 # Announce on server log of each server
                 for guild in user_guilds:
                     # Only announce on worlds where the character's world is tracked
-                    if tracked_worlds.get(guild.id, None) == char["world"]:
-                        _guild = "No guild" if "guild" not in char else char["guild"]["name"]
-                        log_reply[guild.id] += "\n\t{name} - {level} {vocation} - **{0}**".format(_guild, **char)
+                    if tracked_worlds.get(guild.id, None) == char.world:
+                        _guild = "No guild" if char.guild is None else char.guild_name
+                        log_reply[guild.id] += "\n\t{1.name} - {1.level} {1.vocation} - **{0}**".format(_guild, char)
 
         if len(updated) > 0:
             reply += "\nThe following characters were reassigned to you: {0}" \
@@ -552,8 +552,8 @@ class Tracking:
         for char in added:
             with userDatabase as conn:
                 conn.execute("INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
-                             (char['name'], char['level'] * -1, char['vocation'], user.id, char["world"],
-                              char["guild"]["name"])
+                             (char.name, char.level * -1, char.vocation, user.id, char.world,
+                              char.guild_name)
                              )
 
         with userDatabase as conn:
@@ -767,35 +767,36 @@ class Tracking:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
 
-        char = await get_character(name)
-        if char == ERROR_DOESNTEXIST:
+        try:
+            char = await get_character(name)
+            if char is None:
+                await ctx.send("I couldn't fetch that character right now, please try again.")
+                return
+        except NetworkError:
             await ctx.send("There's no character with that name.")
             return
-        elif char == ERROR_NETWORK:
-            await ctx.send("I couldn't fetch that character right now, please try again.")
-            return
 
-        if char["world"] != world:
+        if char.world != world:
             await ctx.send(f"This character is not in **{world}**.")
             return
         c = userDatabase.cursor()
         try:
             c.execute("SELECT * FROM watched_list WHERE server_id = ? AND name LIKE ? and is_guild = 0",
-                      (ctx.guild.id, char["name"]))
+                      (ctx.guild.id, char.name))
             result = c.fetchone()
             if result is not None:
                 await ctx.send("This character is already in the watched list.")
                 return
 
-            message = await ctx.send("Do you want to add **{name}** (Level {level} {vocation}) to the watched list? "
-                                     .format(**char))
+            message = await ctx.send("Do you want to add **{0.name}** (Level {0.level} {0.vocation}) to the "
+                                     "watched list? ".format(char))
             confirm = await self.bot.wait_for_confirmation_reaction(ctx, message,
                                                                     "Ok then, guess you changed your mind.")
             if not confirm:
                 return
 
             c.execute("INSERT INTO watched_list(name, server_id, is_guild) VALUES(?, ?, 0)",
-                      (char["name"], ctx.guild.id,))
+                      (char.name, ctx.guild.id,))
             await ctx.send("Character added to the watched list.")
         finally:
             userDatabase.commit()
