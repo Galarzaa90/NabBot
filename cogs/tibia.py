@@ -1467,10 +1467,13 @@ class Tibia:
         if name is None:
             await ctx.send("You must tell me the name of the world you want to check.")
             return
-
-        world = await get_world(name)
-        if world is None:
-            await ctx.send("There's no world with that name.")
+        try:
+            world = await get_world(name)
+            if world is None:
+                await ctx.send("There's no world with that name.")
+                return
+        except NetworkError:
+            await ctx.send("I'm having connection issues right now.")
             return
 
         flags = {"North America": EMOJI[":flag_us:"], "South America": EMOJI[":flag_br:"], "Europe": EMOJI[":flag_gb:"]}
@@ -1480,32 +1483,52 @@ class Tibia:
 
         url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
         embed = discord.Embed(url=url, title=name.capitalize())
-        if world["status"] == "Offline":
+        if world.online == 0:
             embed.description = "This world is offline."
             embed.colour = discord.Colour.red()
         else:
             embed.colour = discord.Colour.green()
-        if "online" in world:
-            embed.add_field(name="Players online", value=str(world["online"]))
-        embed.add_field(name="Online record", value="{record_online} online on {record_date}".format(**world))
-        created = world["created"].split("/")
+        embed.add_field(name="Players online", value=str(world.online))
+        embed.set_footer(text=f"The players online record is {world.record_online}")
+        embed.timestamp = world.record_date
+        created = world.creation.split("-")
         try:
-            month = calendar.month_name[int(created[0])]
-            year = int(created[1])
-            if year > 90:
-                year += 1900
-            else:
-                year += 2000
+            month = calendar.month_name[int(created[1])]
+            year = int(created[0])
             embed.add_field(name="Created", value=f"{month} {year}")
         except (IndexError, ValueError):
             pass
 
-        embed.add_field(name="Location", value=f"{flags.get(world['location'],'')} {world['location']}")
-        embed.add_field(name="PvP Type", value=f"{pvp.get(world['pvp'],'')} {world['pvp']}")
-        if "premium" in world:
+        embed.add_field(name="Location", value=f"{flags.get(world.location,'')} {world.location}")
+        embed.add_field(name="PvP Type", value=f"{pvp.get(world.pvp_type,'')} {world.pvp_type}")
+        if world.premium_type is not None:
             embed.add_field(name="Premium restricted", value=EMOJI[":white_check_mark:"])
-        if "transfer" in world:
-            embed.add_field(name="Transfers", value=f"{transfers.get(world['transfer'],'')} {world['transfer']}")
+        if world.transfer_type is not None:
+            embed.add_field(name="Transfers", value=f"{transfers.get(world.transfer_type,'')} {world.transfer_type}")
+
+        knight = 0
+        paladin = 0
+        sorcerer = 0
+        druid = 0
+        none = 0
+        for character in world.players_online:
+            if "knight" in character.vocation.lower():
+                knight += 1
+            if "sorcerer" in character.vocation.lower():
+                sorcerer += 1
+            if "druid" in character.vocation.lower():
+                druid += 1
+            if "paladin" in character.vocation.lower():
+                paladin += 1
+            if "none" in character.vocation.lower():
+                none += 1
+
+        embed.add_field(name="Vocations distribution", value=f"{knight} {get_voc_emoji('knight')} | "
+                                                             f"{druid} {get_voc_emoji('druid')} | "
+                                                             f"{sorcerer} {get_voc_emoji('sorcerer')} | "
+                                                             f"{paladin} {get_voc_emoji('paladin')} | "
+                                                             f"{none} {get_voc_emoji('none')}",
+                        inline=False)
 
         await ctx.send(embed=embed)
 

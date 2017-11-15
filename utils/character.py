@@ -1,10 +1,12 @@
 import datetime as dt
 import re
 import urllib.parse
-from typing import Dict, Union, Optional, List
-
+from typing import Dict, List
 
 # TODO: Generate character from tibia.com response
+import utils.tibia
+
+
 class Character:
     SEX_MALE = 0
     SEX_FEMALE = 1
@@ -14,7 +16,7 @@ class Character:
 
     URL_CHAR = "https://secure.tibia.com/community/?subtopic=characters&name="
 
-    def __init__(self, name: str, world: str, *, online: bool=False, level: int =0):
+    def __init__(self, name: str, world: str, *, online: bool=False, level: int =0, vocation: str=None):
         self.name = name
         self.level = level
         self.world = world
@@ -22,7 +24,7 @@ class Character:
         self.sex = 0
         self.former_world = None
         self.residence = None
-        self.vocation = None
+        self.vocation = vocation
         self.married_to = None
         self.guild = None
         self.house = None
@@ -90,7 +92,7 @@ class Character:
         character.vocation = data["vocation"]
         character.residence = data["residence"]
         if "deleted" in data:
-            character.deleted = cls.parse_tibiadata_time(data["deleted"])
+            character.deleted = utils.tibia.parse_tibiadata_time(data["deleted"])
         if "married_to" in data:
             character.married_to = data["married_to"]
         if "former_world" in data:
@@ -103,7 +105,7 @@ class Character:
                 character.house = match.groupdict()
         character.account_status = cls.PREMIUM_ACCOUNT if data["account_status"] == "Premium Account" else cls.FREE_ACCOUNT
         if len(data["last_login"]) > 0:
-            character.last_login = cls.parse_tibiadata_time(data["last_login"][0])
+            character.last_login = utils.tibia.parse_tibiadata_time(data["last_login"][0])
 
         for achievement in char["achievements"]:
             character.achievements.append(Achievement(achievement["name"], int(achievement["stars"])))
@@ -113,7 +115,7 @@ class Character:
                 match = re.search("by ([^.]+)", death["reason"])
                 killer = match.group(1)
                 level = int(death["level"])
-                death_time = cls.parse_tibiadata_time(death["date"])
+                death_time = utils.tibia.parse_tibiadata_time(death["date"])
                 by_player = False
                 if death["involved"]:
                     by_player = True
@@ -130,33 +132,6 @@ class Character:
                                                         online=online))
 
         return character
-
-    @staticmethod
-    def parse_tibiadata_time(time_dict: Dict[str, Union[int, str]]) -> Optional[dt.datetime]:
-        """Parses the time objects from TibiaData API
-
-        Time objects are made of a dictionary with three keys:
-            date: contains a string representation of the time
-            timezone: a string representation of the timezone the date time is based on
-            timezone_type: the type of representation used in the timezone key
-
-        :param time_dict: dictionary representing the time object.
-        :return: A UTC datetime object (timezone-aware) or None if a parsing error occurred
-        """
-        try:
-            t = dt.datetime.strptime(time_dict["date"], "%Y-%m-%d %H:%M:%S.%f")
-        except (KeyError, ValueError):
-            return None
-
-        if time_dict["timezone"] == "CET":
-            timezone_offset = 1
-        elif time_dict["timezone"] == "CEST":
-            timezone_offset = 2
-        else:
-            return None
-        # We substract the offset to convert the time to UTC
-        t = t - dt.timedelta(hours=timezone_offset)
-        return t.replace(tzinfo=dt.timezone.utc)
 
 
 class Achievement:

@@ -148,7 +148,7 @@ class Tracking:
                 _world = await get_world(current_world)
                 if _world is None:
                     continue
-                current_world_online = _world["online_list"]
+                current_world_online = _world.players_online
                 if len(current_world_online) == 0:
                     continue
                 # Remove chars that are no longer online from the globalOnlineList
@@ -157,7 +157,7 @@ class Tracking:
                     if char.split("_", 1)[0] == current_world:
                         offline = True
                         for server_char in current_world_online:
-                            if server_char['name'] == char.split("_", 1)[1]:
+                            if server_char.name == char.split("_", 1)[1]:
                                 offline = False
                                 break
                         if offline:
@@ -192,7 +192,7 @@ class Tracking:
                 # Add new online chars and announce level differences
                 for server_char in current_world_online:
                     c.execute("SELECT name, last_level, id, user_id FROM chars WHERE name LIKE ?",
-                              (server_char['name'],))
+                              (server_char.name,))
                     result = c.fetchone()
                     if result:
                         # If its a stalked character
@@ -200,24 +200,24 @@ class Tracking:
                         # We update their last level in the db
                         c.execute(
                             "UPDATE chars SET last_level = ? WHERE name LIKE ?",
-                            (server_char['level'], server_char['name'],)
+                            (server_char.level, server_char.name)
                         )
 
-                        if not (current_world + "_" + server_char['name']) in global_online_list:
+                        if not (current_world + "_" + server_char.name) in global_online_list:
                             # If the character wasn't in the globalOnlineList we add them
                             # (We insert them at the beginning of the list to avoid messing with the death checks order)
-                            global_online_list.insert(0, (current_world + "_" + server_char['name']))
-                            await self.check_death(server_char['name'])
+                            global_online_list.insert(0, (current_world + "_" + server_char.name))
+                            await self.check_death(server_char.name)
 
                         # Else we check for levelup
-                        elif server_char['level'] > last_level > 0:
+                        elif server_char.level > last_level > 0:
                             # Saving level up date in database
                             c.execute(
                                 "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                (result["id"], server_char['level'], time.time(),)
+                                (result["id"], server_char.level, time.time(),)
                             )
                             # Announce the level up
-                            await self.announce_level(server_char['level'], char_name=server_char["name"])
+                            await self.announce_level(server_char.level, char_name=server_char.name)
                 # Watched List checking
                 # Iterate through servers with tracked world to find one that matches the current world
                 for server, world in tracked_worlds.items():

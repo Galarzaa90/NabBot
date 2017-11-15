@@ -20,6 +20,7 @@ from config import network_retry_delay
 from utils.character import Character
 from utils.database import userDatabase, tibiaDatabase
 from utils.messages import EMOJI
+from utils.world import World
 from .general import log, get_local_timezone
 
 # Constants
@@ -181,98 +182,24 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
     return score_list
 
 
-async def get_world(world, tries=5):
-    """Returns a list of all the online players in current server.
-
-    Each list element is a dictionary with the following keys: name, level"""
-    world = world.capitalize()
-    url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + world
-
+async def get_world(name, tries=5) -> Optional[World]:
+    url = f"https://api.tibiadata.com/v1/worlds/{name}.json"
     if tries == 0:
-        log.error("get_world_online: Couldn't fetch {0}, network error.".format(world))
-        return None
+        log.error("get_world_online: Couldn't fetch {0}, network error.".format(name))
+        raise NetworkError()
+        # Fetch website
 
-    # Fetch website
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
         await asyncio.sleep(network_retry_delay)
-        return await get_world(world, tries - 1)
+        return await get_world(name, tries - 1)
 
-    # Trimming content to reduce load
-    try:
-        start_index = content.index('<div class="BoxContent"')
-        end_index = content.index('<div id="ThemeboxesColumn" >')
-        content = content[start_index:end_index]
-    except ValueError:
-        await asyncio.sleep(network_retry_delay)
-        return await get_world(world, tries - 1)
-
-    if "World with this name doesn't exist!" in content:
-        return None
-
-    world = {}
-    # Status
-    m = re.search(r'alt=\"Server PVP Type\" /></div>(\w+)<', content)
-    if m:
-        world["status"] = m.group(1)
-    # Players online
-    m = re.search(r'Players Online:</td><td>(\d+)</td>', content)
-    if m:
-        try:
-            world["online"] = int(m.group(1))
-        except ValueError:
-            world["online"] = 0
-
-    # Online record
-    m = re.search(r'Online Record:</td><td>(\d+) players \(on ([^)]+)', content)
-    if m:
-        try:
-            world["record_date"] = m.group(2).replace('&#160;', ' ')
-            world["record_online"] = int(m.group(1))
-        except ValueError:
-            world["record_online"] = 0
-
-    # Creation Date
-    m = re.search(r'Creation Date:</td><td>([^<]+)', content)
-    if m:
-        world["created"] = m.group(1)
-
-    # Location
-    m = re.search(r'Location:</td><td>([^<]+)', content)
-    if m:
-        world["location"] = m.group(1).replace('&#160;', ' ')
-
-    # PvP
-    m = re.search(r'PvP Type:</td><td>([^<]+)', content)
-    if m:
-        world["pvp"] = m.group(1).replace('&#160;', ' ')
-
-    # Premium
-    m = re.search(r'Premium Type:</td><td>(\w+)', content)
-    if m:
-        world["premium"] = m.group(1).replace('&#160;', ' ')
-
-    # Transfer type
-    m = re.search(r'Transfer Type:</td><td>([\w\s]+)', content)
-    if m:
-        world["transfer"] = m.group(1).replace('&#160;', ' ')
-
-    world["online_list"] = list()
-    regex_members = r'<a href="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)" >.+?</a></td><td style="width:10%;" >(.+?)</td><td style="width:20%;" >([^<]+)'
-    pattern = re.compile(regex_members, re.MULTILINE + re.S)
-    m = re.findall(pattern, content)
-    # Check if list is empty
-    if m:
-        # Building dictionary list from online players
-        for (name, level, vocation) in m:
-            name = urllib.parse.unquote_plus(name)
-            vocation = vocation.replace('&#160;', ' ')
-            world["online_list"].append({'name': name, 'level': int(level), 'vocation': vocation})
+    content_json = json.loads(content)
+    world = World.parse_from_tibiadata(name, content_json)
     return world
-
 
 async def get_guild_online(name, title_case=True, tries=5):
     """Returns a guild's world and online member list in a dictionary.
@@ -588,6 +515,33 @@ def parse_tibia_time(tibia_time: str) -> Optional[dt.datetime]:
         return None
     # Add/subtract hours to get the real time
     return t + dt.timedelta(hours=(local_utc_offset - utc_offset))
+
+
+def parse_tibiadata_time(time_dict: Dict[str, Union[int, str]]) -> Optional[dt.datetime]:
+    """Parses the time objects from TibiaData API
+
+    Time objects are made of a dictionary with three keys:
+        date: contains a string representation of the time
+        timezone: a string representation of the timezone the date time is based on
+        timezone_type: the type of representation used in the timezone key
+
+    :param time_dict: dictionary representing the time object.
+    :return: A UTC datetime object (timezone-aware) or None if a parsing error occurred
+    """
+    try:
+        t = dt.datetime.strptime(time_dict["date"], "%Y-%m-%d %H:%M:%S.%f")
+    except (KeyError, ValueError):
+        return None
+
+    if time_dict["timezone"] == "CET":
+        timezone_offset = 1
+    elif time_dict["timezone"] == "CEST":
+        timezone_offset = 2
+    else:
+        return None
+    # We substract the offset to convert the time to UTC
+    t = t - dt.timedelta(hours=timezone_offset)
+    return t.replace(tzinfo=dt.timezone.utc)
 
 
 def get_stats(level: int, vocation: str):
