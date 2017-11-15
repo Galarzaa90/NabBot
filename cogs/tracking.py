@@ -251,7 +251,7 @@ class Tracking:
                                     guild_online[guild["name"]] = guild["members"]
                             # If it is a character, check if he's in the online list
                             for online_char in current_world_online:
-                                if online_char["name"] == watched["name"]:
+                                if online_char.name == watched["name"]:
                                     # Add to online list
                                     currently_online.append(online_char)
                         watched_message_id = self.watched_messages.get(server, None)
