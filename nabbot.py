@@ -20,7 +20,8 @@ from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji, EMOJI
 from utils.tibia import populate_worlds, tibia_worlds
 
-initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot"}
+initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot",
+                "cogs.tibiawiki"}
 
 
 class NabBot(commands.Bot):
