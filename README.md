@@ -1,9 +1,9 @@
 # Rewrite branch
 This branch uses the `rewrite` branch of [discord.py](https://github.com/Rapptz/discord.py/tree/rewrite), which is still
-under development and include breaking changes, so this branch is not recommended for general use.
+under development and include breaking changes, so this branch is not recommended for general use.  
+**Use this at own risk. It's recommended to read commit changes before pulling.**
 
 ---
-
 *NOTE: This is not a cavebot, this bot does not interact with the client in any way, NabBot is a messaging bot. We're not interested in developing cavebots, do not contact us for such reasons.*  
 # NabBot [![Build Status](https://travis-ci.org/Galarzaa90/NabBot.svg?branch=rewrite)](https://travis-ci.org/Galarzaa90/NabBot)
 Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapptz/discord.py). It features commands related to the MMORPG [Tibia](http://www.tibia.com/news/?subtopic=latestnews).
@@ -14,7 +14,7 @@ Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapp
     * pillow (Python Imaging Library)
     * BeautifulSoup
 * discord.py **rewrite branch**
-* Tested on Windows and Raspbian
+* Tested on Windows, Ubuntu and Raspbian
 
 ## Installing and running
 To install discord.py simply run the following on the command line:
