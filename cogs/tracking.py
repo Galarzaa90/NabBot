@@ -12,7 +12,6 @@ from config import death_scan_interval, highscores_delay, highscores_categories,
     online_scan_interval, announce_threshold, ask_channel_name
 from nabbot import NabBot
 from utils import checks
-from utils.character import Death, Character
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
 from utils.discord import is_private
 from utils.general import global_online_list, log, join_list, start_time
@@ -21,7 +20,7 @@ from utils.messages import weighed_choice, death_messages_player, death_messages
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, ERROR_DOESNTEXIST, \
     get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild, \
-    get_tibia_time_zone, NetworkError
+    get_tibia_time_zone, NetworkError, Death, Character
 
 
 class Tracking:
@@ -373,7 +372,7 @@ class Tracking:
                                      levels_lost=levels_lost, killer=death.killer)
         # Format message with death information
         death_info = {'name': char.name, 'level': death.level, 'killer': death.killer, 'killer_article': killer_article,
-                      'he_she': char.he_she, 'his_her': char.his_her, 'him_her': char.him_her}
+                      'he_she': char.he_she.lower(), 'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
         message = message.format(**death_info)
         # Format extra stylization
         message = format_message(message)
@@ -417,8 +416,8 @@ class Tracking:
 
         # Select a message
         message = weighed_choice(level_messages, vocation=char.vocation, level=level)
-        level_info = {'name': char.name, 'level': level, 'he_she': char.he_she, 'his_her': char.his_her,
-                      'him_her': char.him_her}
+        level_info = {'name': char.name, 'level': level, 'he_she': char.he_she.lower(), 'his_her': char.his_her.lower(),
+                      'him_her': char.him_her.lower()}
         # Format message with level information
         message = message.format(**level_info)
         # Format extra stylization
