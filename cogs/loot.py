@@ -15,7 +15,7 @@ from utils import checks
 from utils.database import tibiaDatabase, lootDatabase
 from utils.discord import FIELD_VALUE_LIMIT, is_private
 from utils.messages import EMOJI, split_message
-from utils.tibia import get_item
+from utils.tibiawiki import get_item
 
 slot = Image.open("./images/slot.png")
 slot_border = Image.open("./images/slotborder.png").convert("RGBA").getdata()

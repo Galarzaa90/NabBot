@@ -11,7 +11,7 @@ from nabbot import NabBot
 from utils.discord import is_private, FIELD_VALUE_LIMIT
 from utils.general import join_list
 from utils.messages import EMOJI, split_message
-from utils.tibia import get_item, get_monster, get_spell, get_achievement
+from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement
 
 
 class TibiaWiki:
