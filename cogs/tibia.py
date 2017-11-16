@@ -192,13 +192,17 @@ class Tibia:
                 return
             if len(chars) == 1:
                 with ctx.typing():
-                    char = await get_character(chars[0])
-                    if type(char) is not dict:
-                        await ctx.send('There is no character with that name.')
+                    try:
+                        char = await get_character(chars[0])
+                        if char is None:
+                            await ctx.send('There is no character with that name.')
+                            return
+                    except NetworkError:
+                        await ctx.send("I'm having connection issues right now, please try again.")
                         return
-                    name = char["name"]
-                    level = char["level"]
-                    low, high = get_share_range(char["level"])
+                    name = char.name
+                    level = char.level
+                    low, high = get_share_range(char.level)
                     await ctx.send(f"**{name}** ({level}) can share experience with levels **{low}** to **{high}**.")
                     return
             char_data = []
@@ -298,13 +302,17 @@ class Tibia:
             if len(params) == 2:
                 await ctx.send(invalid_arguments)
                 return
-            char = await get_character(params[0])
-            if type(char) is not dict:
-                await ctx.send("I couldn't find a character with that name.")
+            try:
+                char = await get_character(params[0])
+                if char is None:
+                    await ctx.send("I couldn't find a character with that name.")
+                    return
+            except NetworkError:
+                await ctx.send("I couldn't fetch that character.")
                 return
-            low, high = get_share_range(char["level"])
-            title = "Characters in share range with {0}({1}-{2}):".format(char["name"], low, high)
-            empty = "I didn't find anyone in share range with **{0}**({1}-{2})".format(char["name"], low, high)
+            low, high = get_share_range(char.level)
+            title = "Characters in share range with {0}({1}-{2}):".format(char.name, low, high)
+            empty = "I didn't find anyone in share range with **{0}**({1}-{2})".format(char.name, low, high)
         else:
             # Check if we have another parameter, meaning this is a level range
             if len(params) == 2:
@@ -327,8 +335,7 @@ class Tibia:
                     await ctx.send("You entered an invalid level.")
                     return
                 low, high = get_share_range(int(params[0]))
-                title = "Characters in share range with level {0} ({1}-{2})".format(params[0],
-                                                                                                          low, high)
+                title = "Characters in share range with level {0} ({1}-{2})".format(params[0], low, high)
                 empty = "I didn't find anyone in share range with level **{0}** ({1}-{2})".format(params[0],
                                                                                                   low, high)
 
@@ -344,7 +351,7 @@ class Tibia:
                 if player is None:
                     break
                 # Do not show the same character that was searched for
-                if char is not None and char["name"] == player["name"]:
+                if char is not None and char.name == player["name"]:
                     continue
                 owner = self.bot.get_member(player["user_id"], ctx.message.guild)
                 # If the owner is not in server, skip
@@ -580,11 +587,12 @@ class Tibia:
                     if count >= 100:
                         break
             else:
-                char = await get_character(name)
-                if char == ERROR_DOESNTEXIST:
-                    await ctx.send("That character doesn't exist.")
-                    return
-                elif char == ERROR_NETWORK:
+                try:
+                    char = await get_character(name)
+                    if char is None:
+                        await ctx.send("That character doesn't exist.")
+                        return
+                except NetworkError:
                     await ctx.send("Sorry, I had trouble checking that character, try it again.")
                     return
                 deaths = char.deaths
@@ -1239,15 +1247,16 @@ class Tibia:
                 await ctx.send(invalid_arguments)
                 return
             else:
-                char = await get_character(params[0])
-                if char == ERROR_NETWORK:
-                    await ctx.send("Sorry, can you try it again?")
-                    return
-                if char == ERROR_DOESNTEXIST:
+                try:
+                    char = await get_character(params[0])
+                    if char is None:
+                        await ctx.send("Sorry, can you try it again?")
+                        return
+                except NetworkError:
                     await ctx.send("Character **{0}** doesn't exist!".format(params[0]))
                     return
-                level = int(char['level'])
-                vocation = char['vocation']
+                level = int(char.level)
+                vocation = char.vocation
         elif len(params) == 2:
             try:
                 level = int(params[0])
@@ -1277,15 +1286,14 @@ class Tibia:
         if stats["vocation"] == "no vocation":
             stats["vocation"] = "with no vocation"
         if char:
-            pronoun = "he" if char['sex'] == "male" else "she"
             await ctx.send("**{5}** is a level **{0}** {1}, {6} has:"
                            "\n\t**{2:,}** HP"
                            "\n\t**{3:,}** MP"
                            "\n\t**{4:,}** Capacity"
                            "\n\t**{7:,}** Total experience"
                            "\n\t**{8:,}** to next level"
-                           .format(level, char["vocation"].lower(), stats["hp"], stats["mp"], stats["cap"],
-                                   char['name'], pronoun, stats["exp"], stats["exp_tnl"]))
+                           .format(level, char.vocation.lower(), stats["hp"], stats["mp"], stats["cap"],
+                                   char.name, char.he_she.lower(), stats["exp"], stats["exp_tnl"]))
         else:
             await ctx.send("A level **{0}** {1} has:"
                            "\n\t**{2:,}** HP"
@@ -1580,7 +1588,7 @@ class Tibia:
     def get_char_string(char: Character) -> str:
         """Returns a formatted string containing a character's info."""
         if char is None:
-            return char
+            return None
         reply = "[{0.name}]({0.url}) is a level {0.level} __{0.vocation}__. " \
                 "{0.he_she} resides in __{0.residence}__ in the world of __{0.world}__".format(char)
         if char.former_world is not None:
@@ -1588,10 +1596,10 @@ class Tibia:
         reply += ". {0.he_she} has {0.achievement_points:,} achievement points.".format(char)
 
         if char.guild is not None:
-            guild_url = url_guild+urllib.parse.quote(char.guild["name"])
+            guild_url = url_guild+urllib.parse.quote(char.guild_name)
             reply += "\n{0.he_she} is __{1}__ of the [{2}]({3}).".format(char,
-                                                                         char.guild["rank"],
-                                                                         char.guild["name"],
+                                                                         char.guild_rank,
+                                                                         char.guild_name,
                                                                          guild_url)
         if char.married_to is not None:
             married_url = Character.get_url(char.married_to)
