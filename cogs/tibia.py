@@ -1733,13 +1733,14 @@ class Tibia:
             embed.add_field(name="Abilities", value=monster["abilities"], inline=False)
         if monster["loot"] and long:
             loot_string = ""
+
             for item in monster["loot"]:
                 if item["chance"] is None:
                     item["chance"] = "??.??%"
                 elif item["chance"] >= 100:
                     item["chance"] = "Always"
                 else:
-                    item["chance"] = "{0:.2f}".format(item['chance']).zfill(5) + "%"
+                    item["chance"] = "{0:05.2f}%".format(item['chance'])
                 if item["max"] > 1:
                     item["count"] = "({min}-{max})".format(**item)
                 else:
@@ -1827,10 +1828,12 @@ class Tibia:
             for creature in item["dropped_by"]:
                 count += 1
                 if creature["percentage"] is None:
-                    creature["percentage"] = "??"
+                    creature["percentage"] = "??.??%"
+                elif creature["percentage"] >= 100:
+                    creature["percentage"] = "Always"
                 else:
-                    creature["percentage"] = f"{creature['percentage']:.2f}%"
-                value += "\n{name} ({percentage})".format(**creature)
+                    creature["percentage"] = f"{creature['percentage']:05.2f}%"
+                value += "\n`{percentage} {name}`".format(**creature)
                 if count >= short_limit and not long:
                     value += "\n*...And {0} others*".format(len(item["dropped_by"]) - short_limit)
                     drops_too_long = True
@@ -1839,7 +1842,7 @@ class Tibia:
                     value += "\n*...And {0} others*".format(len(item["dropped_by"]) - long_limit)
                     break
 
-            embed.add_field(name=name, value=value)
+            embed.add_field(name=name, value=value, inline=not long)
 
         if npcs_too_long or drops_too_long or quests_too_long:
             ask_channel = ctx.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
