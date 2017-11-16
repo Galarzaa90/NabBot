@@ -416,7 +416,7 @@ class Tracking:
         log.info("Announcing level up: {0} ({1})".format(char.name, level))
 
         # Select a message
-        message = weighed_choice(level_messages, vocation=char.vocation, level=char.level)
+        message = weighed_choice(level_messages, vocation=char.vocation, level=level)
         level_info = {'name': char.name, 'level': level, 'he_she': char.he_she, 'his_her': char.his_her,
                       'him_her': char.him_her}
         # Format message with level information
