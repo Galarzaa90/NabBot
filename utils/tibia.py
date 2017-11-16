@@ -202,18 +202,17 @@ class Death:
         self.time = time
         self.by_player = by_player
 
-
 class World:
-    def __init__(self, name):
+    def __init__(self, name, **kwargs):
         self.name = name
-        self.online = 0
-        self.record_online = 0
+        self.online = kwargs.get("online", 0)
+        self.record_online = kwargs.get("record_online", 0)
         self.record_date = None  # type: dt.datetime
         self.creation = None
-        self.pvp_type = None
-        self.premium_type = None
-        self.transfer_type = None
-        self.location = 0
+        self.pvp_type = kwargs.get("pvp_type")
+        self.premium_type = kwargs.get("premium_type")
+        self.transfer_type = kwargs.get("transfer_type")
+        self.location = kwargs.get("location")
         self.players_online = []  # type: List[Character]
         self.quests = None  # type: List[str]
 
@@ -255,7 +254,6 @@ async def get_character(name, tries=5) -> Optional[Character]:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
         raise NetworkError()
     url = f"https://api.tibiadata.com/v1/characters/{name}.json"
-
     # Fetch website
     try:
         async with aiohttp.ClientSession() as session:
@@ -1058,27 +1056,26 @@ def get_map_area(x, y, z, size=15, scale=8, crosshair=True, client_coordinates=T
 async def populate_worlds():
     """Populate the list of currently available Tibia worlds"""
 
-    print('Searching list of available Tibia worlds.')
-    fetched_worlds = await load_tibia_worlds_from_url()
-    if fetched_worlds is None:
-        fetched_worlds = load_tibia_worlds_from_file()
-    if fetched_worlds is not None:
-        tibia_worlds.extend(fetched_worlds)
+    print('Fetching list of Tibia worlds...')
+    worlds = await get_world_list()
+    # Couldn't fetch world list, getting json backup
+    if worlds is None:
+        world_list = load_tibia_worlds_file()
+    else:
+        # Convert list of World objects to simple list of world names.
+        world_list = [w.name for w in worlds]
+        save_tibia_worlds_file(world_list)
+    tibia_worlds.extend(world_list)
+    print("\tDone")
 
-    print("Finished fetching list of Tibia worlds.")
 
-
-async def load_tibia_worlds_from_url(tries=3):
+async def get_world_list(tries=3) -> Optional[List[World]]:
     """Fetch the list of Tibia worlds from TibiaData"""
-
     if tries == 0:
-        log.error("populate_worlds(): Couldn't fetch TibiaData for the worlds list, network error.")
+        log.error("get_world_list(): Couldn't fetch TibiaData for the worlds list, network error.")
         return
 
-    try:
-        url = "https://api.tibiadata.com/v1/worlds.json"
-    except UnicodeEncodeError:
-        return
+    url = "https://api.tibiadata.com/v1/worlds.json"
 
     # Fetch website
     try:
@@ -1087,41 +1084,37 @@ async def load_tibia_worlds_from_url(tries=3):
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
         await asyncio.sleep(network_retry_delay)
-        print('Error fetching URL.')
-        return await load_tibia_worlds_from_url(tries - 1)
+        return await get_world_list(tries - 1)
 
     try:
-        worlds = []
-        all_worlds = json.loads(content)["worlds"]["allworlds"]
-        for world in all_worlds:
-            worlds.append(world["name"])
-    except Exception:
-        log.error("Error populate_worlds(): Unexpected JSON format")
+        json_content = json.loads(content)
+    except ValueError:
         return
 
-    write_tibia_worlds_json_backup(all_worlds)
+    worlds = []
+    try:
+        for world in json_content["worlds"]["allworlds"]:
+            worlds.append(World(name=world["name"], online=int(world["online"]), location=world["location"]))
+    except KeyError:
+        return
     return worlds
 
 
-def write_tibia_worlds_json_backup(all_worlds):
+def save_tibia_worlds_file(world_list: List[str]):
     """Receives JSON content and writes to a backup file."""
 
     try:
-        with open("utils/tibia_worlds.json", "w+") as json_file:
-            json.dump(all_worlds, json_file)
+        with open("data/tibia_worlds.json", "w+") as json_file:
+            json.dump(world_list, json_file)
     except Exception:
-        print("Error populate_worlds(): could not save JSON to file.")
+        log.error("save_tibia_worlds_file(): Could not save JSON to file.")
 
 
-def load_tibia_worlds_from_file():
+def load_tibia_worlds_file():
     """Loading Tibia worlds list from an existing .json backup file."""
 
     try:
-        with open("utils/tibia_worlds.json") as json_file:
-            worlds = []
-            all_worlds = json.load(json_file)
-            for world in all_worlds:
-                worlds.append(world["name"])
-            return worlds
+        with open("data/tibia_worlds.json") as json_file:
+            return json.load(json_file)
     except Exception:
-        log.error("Error loading backup .json file.")
+        log.error("load_tibia_worlds_file(): Error loading backup .json file.")

@@ -4,9 +4,9 @@ import sqlite3
 from typing import Dict, List
 
 # Databases filenames
-USERDB = "users.db"
-TIBIADB = "utils/tibia_database.db"
-LOOTDB = "utils/loot.db"
+USERDB = "data/users.db"
+TIBIADB = "data/tibia_database.db"
+LOOTDB = "data/loot.db"
 
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
@@ -14,7 +14,7 @@ tibiaDatabase = sqlite3.connect(TIBIADB)
 if os.path.isfile(LOOTDB):
     lootDatabase = sqlite3.connect(LOOTDB)
 else:
-    shutil.copyfile("utils/loot_template.db", LOOTDB)
+    shutil.copyfile("data/loot_template.db", LOOTDB)
     lootDatabase = sqlite3.connect(LOOTDB)
 
 DB_LASTVERSION = 17
