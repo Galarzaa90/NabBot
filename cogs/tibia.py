@@ -221,14 +221,14 @@ class Tibia:
                         return
                     char_data.append(fetched_char)
                 # Sort character list by level ascending
-                char_data = sorted(char_data, key=lambda k: k["level"])
-                low, _ = get_share_range(char_data[-1]["level"])
-                _, high = get_share_range(char_data[0]["level"])
-                lowest_name = char_data[0]['name']
-                lowest_level = char_data[0]['level']
-                highest_name = char_data[-1]['name']
-                highest_level = char_data[-1]['level']
-                if low > char_data[0]["level"]:
+                char_data = sorted(char_data, key=lambda k: k.level)
+                low, _ = get_share_range(char_data[-1].level)
+                _, high = get_share_range(char_data[0].level)
+                lowest_name = char_data[0].name
+                lowest_level = char_data[0].level
+                highest_name = char_data[-1].name
+                highest_level = char_data[-1].level
+                if low > char_data[0].level:
                     await ctx.send(f"**{lowest_name}** ({lowest_level}) needs {low-lowest_level} more level"
                                    f"{'s' if low-lowest_level > 1 else ''} to share experience with **{highest_name}** "
                                    f"({highest_level}).")

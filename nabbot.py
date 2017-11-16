@@ -82,9 +82,10 @@ class NabBot(commands.Bot):
                 log.error(f"Reply to '{ctx.message.clean_content}' was too long.")
                 await ctx.send("Sorry, the message was too long to send.")
                 return
-            print('In {0.command.qualified_name}:'.format(ctx), file=sys.stderr)
-            traceback.print_tb(error.original.__traceback__)
-            print('{0.__class__.__name__}: {0}'.format(error.original), file=sys.stderr)
+            try:
+                raise(error.original)
+            except Exception:
+                log.exception(f"Exception in command {ctx.command.qualified_name}")
             # Bot returns error message on discord if an owner called the command
             if ctx.message.author.id in owner_ids:
                 await ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
