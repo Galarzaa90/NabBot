@@ -252,7 +252,10 @@ async def get_character(name, tries=5) -> Optional[Character]:
     if tries == 0:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
         raise NetworkError()
-    url = f"https://api.tibiadata.com/v1/characters/{name}.json"
+    try:
+        url = f"https://api.tibiadata.com/v1/characters/{urllib.parse.quote(name, safe='')}.json"
+    except UnicodeEncodeError:
+        return None
     # Fetch website
     try:
         async with aiohttp.ClientSession() as session:
