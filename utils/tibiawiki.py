@@ -1,10 +1,17 @@
 import datetime as dt
+import urllib.parse
 
 from discord import Colour
 
 from utils.database import tibiaDatabase
 from utils.general import get_local_timezone
 from utils.tibia import get_tibia_time_zone, get_rashid_city
+
+WIKI_ICON = "https://vignette.wikia.nocookie.net/tibia/images/b/bc/Wiki.png/revision/latest?path-prefix=en"
+
+
+def get_article_url(title: str) -> str:
+    return f"http://tibia.wikia.com/wiki/{urllib.parse.quote(title)}"
 
 
 def get_monster(name):
@@ -192,7 +199,7 @@ def get_npc(name):
     c = tibiaDatabase.cursor()
     try:
         # search query
-        c.execute("SELECT * FROM NPCs WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%" + name + "%",))
+        c.execute("SELECT * FROM npcs WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%" + name + "%",))
         result = c.fetchall()
         if len(result) == 0:
             return None
@@ -200,15 +207,28 @@ def get_npc(name):
             npc = result[0]
         else:
             return [x["title"] for x in result]
-        npc["image"] = 0
 
-        c.execute("SELECT Items.name, Items.category, BuyItems.value FROM BuyItems, Items "
-                  "WHERE Items.id = BuyItems.itemid AND BuyItems.vendorid = ?", (npc["id"],))
-        npc["sell_items"] = c.fetchall()
+        c.execute("SELECT item.title as name, item.type, npcs_selling.value, currency.name as currency "
+                  "FROM npcs_selling "
+                  "LEFT JOIN items item on item.id = item_id "
+                  "LEFT JOIN items currency on currency.id = currency "
+                  "WHERE npc_id = ? "
+                  "ORDER BY npcs_selling.value DESC", (npc["id"],))
+        npc["selling"] = c.fetchall()
 
-        c.execute("SELECT Items.name, Items.category, SellItems.value FROM SellItems, Items "
-                  "WHERE Items.id = SellItems.itemid AND SellItems.vendorid = ?", (npc["id"],))
-        npc["buy_items"] = c.fetchall()
+        c.execute("SELECT item.title as name, item.type, npcs_buying.value, currency.name as currency "
+                  "FROM npcs_buying "
+                  "LEFT JOIN items item on item.id = item_id "
+                  "LEFT JOIN items currency on currency.id = currency "
+                  "WHERE npc_id = ? "
+                  "ORDER BY npcs_buying.value DESC", (npc["id"],))
+        npc["buying"] = c.fetchall()
+
+        c.execute("SELECT destination as name, price, notes "
+                  "FROM npcs_destinations "
+                  "WHERE npc_id = ? "
+                  "ORDER BY name ASC", (npc["id"],))
+        npc["destinations"] = c.fetchall()
         return npc
     finally:
         c.close()

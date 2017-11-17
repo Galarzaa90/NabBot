@@ -1,8 +1,7 @@
 import random
-
-import discord
 import re
 
+import discord
 from discord import Colour
 from discord.ext import commands
 
@@ -11,7 +10,8 @@ from nabbot import NabBot
 from utils.discord import is_private, FIELD_VALUE_LIMIT
 from utils.general import join_list
 from utils.messages import EMOJI, split_message
-from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement
+from utils.tibia import get_map_area
+from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url
 
 
 class TibiaWiki:
@@ -53,7 +53,6 @@ class TibiaWiki:
             await ctx.send(file=discord.File(item["image"], f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
-
 
     @commands.command(aliases=['mon', 'mob', 'creature'])
     async def monster(self, ctx, *, name: str=None):
@@ -99,6 +98,46 @@ class TibiaWiki:
             filename = re.sub(r"[^A-Za-z0-9]", "", monster["name"]) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
             await ctx.send(file=discord.File(monster["image"], f"{filename}"), embed=embed)
+        else:
+            await ctx.send(embed=embed)
+
+    @commands.command(aliases=["npcs"])
+    async def npc(self, ctx, *, name: str = None):
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        if name is None:
+            await ctx.send("Tell me the name of an NPC.")
+            return
+
+        npc = get_npc(name)
+
+        if npc is None:
+            await ctx.send("I don't know any NPC with that name.")
+            return
+
+        if type(npc) is list:
+            embed = discord.Embed(title="Suggestions",description="\n".join(npc))
+            await ctx.send("I couldn't find that NPC, maybe you meant one of these?", embed=embed)
+            return
+
+        long = is_private(ctx.channel) or ctx.channel.name == ask_channel_name
+        embed = self.get_npc_embed(ctx, npc, long)
+        # Attach spell's image only if the bot has permissions
+        if permissions.attach_files:
+            files = []
+            if npc["image"] != 0:
+                filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + ".png"
+                embed.set_thumbnail(url=f"attachment://{filename}")
+                files.append(discord.File(npc["image"], filename))
+            if None not in [npc["x"], npc["y"], npc["z"]]:
+                map_filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + "-map.png"
+                map_image = get_map_area(npc["x"], npc["y"], npc["z"])
+                embed.set_image(url=f"attachment://{map_filename}")
+                files.append(discord.File(map_image, map_filename))
+            await ctx.send(files=files, embed=embed)
         else:
             await ctx.send(embed=embed)
 
@@ -161,7 +200,11 @@ class TibiaWiki:
             await ctx.send("I couldn't find that achievement, maybe you meant one of these?", embed=embed)
             return
 
-        embed = discord.Embed(title=achievement["name"], description=achievement["description"])
+        embed = discord.Embed(title=achievement["name"], description=achievement["description"],
+                              url=get_article_url(achievement["name"]))
+        embed.set_author(name="TibiaWiki",
+                         icon_url=WIKI_ICON,
+                         url=get_article_url(achievement["name"]))
         embed.add_field(name="Grade", value=EMOJI[":star:"]*int(achievement["grade"]))
         embed.add_field(name="Points", value=achievement["points"])
         embed.add_field(name="Spoiler", value=achievement["spoiler"], inline=True)
@@ -172,7 +215,10 @@ class TibiaWiki:
     def get_monster_embed(ctx, monster, long):
         """Gets the monster embeds to show in /mob command
         The message is split in two embeds, the second contains loot only and is only shown if long is True"""
-        embed = discord.Embed(title=monster["title"])
+        embed = discord.Embed(title=monster["title"], url=get_article_url(monster["title"]))
+        embed.set_author(name="TibiaWiki",
+                         icon_url=WIKI_ICON,
+                         url=get_article_url(monster["title"]))
         hp = "?" if monster["hitpoints"] is None else "{0:,}".format(monster["hitpoints"])
         experience = "?" if monster["experience"] is None else "{0:,}".format(monster["experience"])
         if not (monster["experience"] is None or monster["hitpoints"] is None or monster["hitpoints"] < 0):
@@ -264,7 +310,11 @@ class TibiaWiki:
         quests_too_long = False
 
         # TODO: Look description no longer in database, attributes must be shown in another way.
-        embed = discord.Embed(title=item["title"], description=item["flavor_text"])
+        embed = discord.Embed(title=item["title"], description=item["flavor_text"],
+                              url=get_article_url(item["title"]))
+        embed.set_author(name="TibiaWiki",
+                         icon_url=WIKI_ICON,
+                         url=get_article_url(item["title"]))
         if "color" in item:
             embed.colour = item["color"]
         if "imbueslots" in item["attributes"]:
@@ -355,7 +405,11 @@ class TibiaWiki:
 
         if type(spell) is not dict:
             return
-        embed = discord.Embed(title="{name} ({words})".format(**spell))
+        embed = discord.Embed(title="{name} ({words})".format(**spell), url=get_article_url(spell["name"]))
+        embed.set_author(name="TibiaWiki",
+                         icon_url=WIKI_ICON,
+                         url=get_article_url(spell["name"]))
+
         spell["premium"] = "**premium** " if spell["premium"] else ""
         if spell["mana"] < 0:
             spell["mana"] = "variable"
@@ -420,6 +474,81 @@ class TibiaWiki:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
 
+        return embed
+
+    @staticmethod
+    def get_npc_embed(ctx, npc, long):
+        """Gets the embed to show in /npc command"""
+        short_limit = 5
+        long_limit = 200
+        too_long = False
+
+        if type(npc) is not dict:
+            return
+
+        embed = discord.Embed(title=npc["name"], url=get_article_url(npc["title"]))
+        embed.set_author(name="TibiaWiki",
+                         icon_url=WIKI_ICON,
+                         url=get_article_url(npc["title"]))
+        embed.add_field(name="Job", value=npc["job"])
+        embed.add_field(name="City", value=npc["city"])
+        if npc["selling"]:
+            count = 0
+            value = ""
+            for item in npc["selling"]:
+                count += 1
+                item["currency"] = item["currency"].replace("gold coin", "gold")
+                value += "\n{name} \u2192 {value:,} {currency}".format(**item)
+                if count > short_limit and not long:
+                    value += "\n*...And {0} others*".format(len(npc['selling']) - short_limit)
+                    too_long = True
+                    break
+                if long and count > long_limit:
+                    value += "\n*...And {0} others*".format(len(npc['selling']) - long_limit)
+                    break
+            split_selling = split_message(value, FIELD_VALUE_LIMIT)
+            for value in split_selling:
+                if value == split_selling[0]:
+                    name = "Selling"
+                else:
+                    name = "\u200F"
+                embed.add_field(name=name, value=value)
+        if npc["buying"]:
+            count = 0
+            value = ""
+            for item in npc["buying"]:
+                count += 1
+                item["currency"] = item["currency"].replace("gold coin", "gold")
+                value += "\n{name} \u2192 {value:,} {currency}".format(**item)
+                if count > short_limit and not long:
+                    value += "\n*...And {0} others*".format(len(npc['buying']) - short_limit)
+                    too_long = True
+                    break
+                if long and count > long_limit:
+                    value += "\n*...And {0} others*".format(len(npc['buying']) - long_limit)
+                    break
+            split_buying = split_message(value, FIELD_VALUE_LIMIT)
+            for value in split_buying:
+                if value == split_buying[0]:
+                    name = "Buying"
+                else:
+                    name = "\u200F"
+                embed.add_field(name=name, value=value)
+        if npc["destinations"]:
+            count = 0
+            value = ""
+            for destination in npc["destinations"]:
+                count += 1
+                value += "\n{name} \u2192 {price} gold".format(**destination)
+            embed.add_field(name="Destinations", value=value)
+
+        if too_long:
+            ask_channel = ctx.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
+            if ask_channel:
+                askchannel_string = " or use #" + ask_channel.name
+            else:
+                askchannel_string = ""
+            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         return embed
 
 
