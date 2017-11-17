@@ -358,7 +358,7 @@ class Tracking:
         if not death.by_player:
             killer_article = death.killer.split(" ", 1)
             if killer_article[0] in ["a", "an"] and len(killer_article) > 1:
-                killer = killer_article[1]
+                death.killer = killer_article[1]
                 killer_article = killer_article[0] + " "
             else:
                 killer_article = ""
