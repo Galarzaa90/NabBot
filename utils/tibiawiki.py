@@ -64,106 +64,46 @@ def get_item(name):
     else:
         return [x['title'] for x in result]
     try:
-        # Checking if item exists
-        if item is not None:
-            # Checking NPCs that buy the item
-            c.execute("SELECT npcs.title, city, npcs_buying.value "
-                      "FROM items, npcs_buying, npcs "
-                      "WHERE items.name LIKE ? AND npcs_buying.item_id = items.id AND npcs.id = npc_id "
-                      "ORDER BY npcs_buying.value DESC", (item["name"],))
-            npcs = []
-            value_sell = None
-            for npc in c:
-                name = npc["title"]
-                city = npc["city"].title()
-                if value_sell is None:
-                    value_sell = npc["value"]
-                elif npc["value"] != value_sell:
-                    break
-                # Replacing cities for special npcs and adding colors
-                if name == 'Alesar' or name == 'Yaman':
-                    city = 'Green Djinn\'s Fortress'
-                    item["color"] = Colour.green()
-                elif name == 'Nah\'Bob' or name == 'Haroun':
-                    city = 'Blue Djinn\'s Fortress'
-                    item["color"] = Colour.blue()
-                elif name == 'Rashid':
-                    city = get_rashid_city()
-                    item["color"] = Colour(0xF0E916)
-                elif name == 'Yasir':
-                    city = 'his boat'
-                elif name == 'Briasol':
-                    item["color"] = Colour(0xA958C4)
-                npcs.append({"name": name, "city": city})
-            item['npcs_sold'] = npcs
-            item['value_sell'] = value_sell
+        c.execute("SELECT npc.name, npc.city, npcs_selling.value, currency.name as currency "
+                  "FROM npcs_selling "
+                  "LEFT JOIN npcs npc on npc.id = npc_id "
+                  "LEFT JOIN items currency on currency.id = currency "
+                  "WHERE item_id = ? "
+                  "ORDER BY npcs_selling.value ASC", (item["id"],))
+        item["sellers"] = c.fetchall()
 
-            # Checking NPCs that sell the item
-            c.execute("SELECT npcs.title, city, npcs_selling.value "
-                      "FROM items, npcs_selling, NPCs "
-                      "WHERE items.name LIKE ? AND npcs_selling.item_id = items.id AND npcs.id = npc_id "
-                      "ORDER BY npcs_selling.value ASC", (item["name"],))
-            npcs = []
-            value_buy = None
-            for npc in c:
-                name = npc["title"]
-                city = npc["city"].title()
-                if value_buy is None:
-                    value_buy = npc["value"]
-                elif npc["value"] != value_buy:
-                    break
-                # Replacing cities for special npcs
-                if name == 'Alesar' or name == 'Yaman':
-                    city = 'Green Djinn\'s Fortress'
-                elif name == 'Nah\'Bob' or name == 'Haroun':
-                    city = 'Blue Djinn\'s Fortress'
-                elif name == 'Rashid':
-                    offset = get_tibia_time_zone() - get_local_timezone()
-                    # Server save is at 10am, so in tibia a new day starts at that hour
-                    tibia_time = dt.datetime.now() + dt.timedelta(hours=offset - 10)
-                    city = [
-                        "Svargrond",
-                        "Liberty Bay",
-                        "Port Hope",
-                        "Ankrahmun",
-                        "Darashia",
-                        "Edron",
-                        "Carlin"][tibia_time.weekday()]
-                elif name == 'Yasir':
-                    city = 'his boat'
-                npcs.append({"name": name, "city": city})
-            item['npcs_bought'] = npcs
-            item['value_buy'] = value_buy
-
-            # Get creatures that drop it
-            c.execute("SELECT creatures.title as name, creatures_drops.chance as percentage "
-                      "FROM creatures_drops, creatures "
-                      "WHERE creatures_drops.creature_id = creatures.id AND creatures_drops.item_id = ? "
-                      "ORDER BY percentage DESC", (item["id"],))
-            item["dropped_by"] = c.fetchall()
-            # Checking quest rewards:
-            c.execute("SELECT quests.name FROM quests, quests_rewards "
-                      "WHERE quests.id = quests_rewards.quest_id AND item_id = ?", (item["id"],))
-            quests = c.fetchall()
-            item["quests"] = list()
-            for quest in quests:
-                item["quests"].append(quest["name"])
-            # Get item's properties:
-            c.execute("SELECT * FROM items_attributes WHERE item_id = ?", (item["id"],))
-            results = c.fetchall()
-            item["attributes"] = {}
-            for row in results:
-                if row["attribute"] == "imbuement":
-                    temp = item["attributes"].get("imbuements", list())
-                    temp.append(row["value"])
-                    item["attributes"]["imbuements"] = temp
-                else:
-                    item["attributes"][row["attribute"]] = row["value"]
-            return item
+        c.execute("SELECT npc.name, npc.city, npcs_buying.value, currency.name as currency "
+                  "FROM npcs_buying "
+                  "LEFT JOIN npcs npc on npc.id = npc_id "
+                  "LEFT JOIN items currency on currency.id = currency "
+                  "WHERE item_id = ? "
+                  "ORDER BY npcs_buying.value DESC", (item["id"],))
+        item["buyers"] = c.fetchall()
+        c.execute("SELECT creature.title as name, chance "
+                  "FROM creatures_drops "
+                  "LEFT JOIN creatures creature on creature.id = creature_id "
+                  "WHERE item_id = ? "
+                  "ORDER BY chance DESC ", (item["id"],))
+        item["loot_from"] = c.fetchall()
+        c.execute("SELECT quests.name "
+                  "FROM quests_rewards "
+                  "INNER JOIN quests ON quests.id = quests_rewards.quest_id "
+                  "WHERE item_id = ? ", (item["id"],))
+        item["quests_reward"] = c.fetchall()
+        # Get item's properties:
+        c.execute("SELECT * FROM items_attributes WHERE item_id = ?", (item["id"],))
+        results = c.fetchall()
+        item["attributes"] = {}
+        for row in results:
+            if row["attribute"] == "imbuement":
+                temp = item["attributes"].get("imbuements", list())
+                temp.append(row["value"])
+                item["attributes"]["imbuements"] = temp
+            else:
+                item["attributes"][row["attribute"]] = row["value"]
+        return item
     finally:
         c.close()
-    return
-
 
 def get_spell(name):
     """Returns a dictionary containing a spell's info, a list of possible matches or None"""
@@ -208,7 +148,7 @@ def get_npc(name):
         else:
             return [x["title"] for x in result]
 
-        c.execute("SELECT item.title as name, item.type, npcs_selling.value, currency.name as currency "
+        c.execute("SELECT item.title as name, npcs_selling.value, currency.name as currency "
                   "FROM npcs_selling "
                   "LEFT JOIN items item on item.id = item_id "
                   "LEFT JOIN items currency on currency.id = currency "
@@ -216,7 +156,7 @@ def get_npc(name):
                   "ORDER BY npcs_selling.value DESC", (npc["id"],))
         npc["selling"] = c.fetchall()
 
-        c.execute("SELECT item.title as name, item.type, npcs_buying.value, currency.name as currency "
+        c.execute("SELECT item.title as name, npcs_buying.value, currency.name as currency "
                   "FROM npcs_buying "
                   "LEFT JOIN items item on item.id = item_id "
                   "LEFT JOIN items currency on currency.id = currency "

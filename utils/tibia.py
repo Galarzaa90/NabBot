@@ -518,7 +518,6 @@ def get_rashid_city() -> str:
             "Carlin"][tibia_time.weekday()]
 
 
-
 def parse_tibia_time(tibia_time: str) -> Optional[dt.datetime]:
     """Gets a time object from a time string from tibia.com"""
     tibia_time = tibia_time.replace(",", "").replace("&#160;", " ")

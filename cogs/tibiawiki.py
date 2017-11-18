@@ -1,5 +1,6 @@
 import random
 import re
+import datetime as dt
 
 import discord
 from discord import Colour
@@ -8,19 +9,20 @@ from discord.ext import commands
 from config import ask_channel_name
 from nabbot import NabBot
 from utils.discord import is_private, FIELD_VALUE_LIMIT
-from utils.general import join_list
+from utils.general import join_list, get_local_timezone
 from utils.messages import EMOJI, split_message
-from utils.tibia import get_map_area
+from utils.tibia import get_map_area, get_tibia_time_zone, get_rashid_city
 from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url
 
 
 class TibiaWiki:
     """TibiaWiki related commands."""
+
     def __init__(self, bot: NabBot):
         self.bot = bot
 
     @commands.command(aliases=['checkprice', 'itemprice'])
-    async def item(self, ctx, *, name: str=None):
+    async def item(self, ctx, *, name: str = None):
         """Checks an item's information
 
         Shows name, picture, npcs that buy and sell and creature drops"""
@@ -55,7 +57,7 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @commands.command(aliases=['mon', 'mob', 'creature'])
-    async def monster(self, ctx, *, name: str=None):
+    async def monster(self, ctx, *, name: str = None):
         """Gives information about a monster"""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
@@ -70,10 +72,10 @@ class TibiaWiki:
         else:
             bot_member = self.bot.get_member(self.bot.user.id, ctx.guild)
         if name.lower() == bot_member.display_name.lower():
-            await ctx.send(random.choice(["**"+bot_member.display_name+"** is too strong for you to hunt!",
+            await ctx.send(random.choice(["**" + bot_member.display_name + "** is too strong for you to hunt!",
                                           "Sure, you kill *one* child and suddenly you're a monster!",
                                           "I'M NOT A MONSTER",
-                                          "I'm a monster, huh? I'll remember that, human..."+EMOJI[":flame:"],
+                                          "I'm a monster, huh? I'll remember that, human..." + EMOJI[":flame:"],
                                           "You misspelled *future ruler of the world*.",
                                           "You're not a good person. You know that, right?",
                                           "I guess we both know that isn't going to happen.",
@@ -119,7 +121,7 @@ class TibiaWiki:
             return
 
         if type(npc) is list:
-            embed = discord.Embed(title="Suggestions",description="\n".join(npc))
+            embed = discord.Embed(title="Suggestions", description="\n".join(npc))
             await ctx.send("I couldn't find that NPC, maybe you meant one of these?", embed=embed)
             return
 
@@ -176,7 +178,7 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @commands.command(aliases=["achiev"])
-    async def achievement(self, ctx, *, name: str=None):
+    async def achievement(self, ctx, *, name: str = None):
         """Shows an achievement's information
 
         Spoilers are only shown on ask channel and private messages"""
@@ -205,7 +207,7 @@ class TibiaWiki:
         embed.set_author(name="TibiaWiki",
                          icon_url=WIKI_ICON,
                          url=get_article_url(achievement["name"]))
-        embed.add_field(name="Grade", value=EMOJI[":star:"]*int(achievement["grade"]))
+        embed.add_field(name="Grade", value=EMOJI[":star:"] * int(achievement["grade"]))
         embed.add_field(name="Points", value=achievement["points"])
         embed.add_field(name="Spoiler", value=achievement["spoiler"], inline=True)
 
@@ -309,79 +311,115 @@ class TibiaWiki:
         drops_too_long = False
         quests_too_long = False
 
-        # TODO: Look description no longer in database, attributes must be shown in another way.
+        def adjust_city(name, city):
+            name = name.lower()
+            if name == 'alesar' or name == 'yaman':
+                return "Green Djinn's Fortress"
+            elif name == "nah'bob" or name == "haroun":
+                return "Blue Djinn's Fortress"
+            elif name == 'rashid':
+                return get_rashid_city()
+            elif name == 'Yasir':
+                return 'his boat'
+            return city
+
         embed = discord.Embed(title=item["title"], description=item["flavor_text"],
                               url=get_article_url(item["title"]))
         embed.set_author(name="TibiaWiki",
                          icon_url=WIKI_ICON,
                          url=get_article_url(item["title"]))
-        if "color" in item:
-            embed.colour = item["color"]
-        if "imbueslots" in item["attributes"]:
-            embed.add_field(name="Imbuement slots", value=item["attributes"]["imbueslots"])
+        properties = f"Weight: {item['weight']} oz"
+        # TODO: Look description no longer in database, attributes must be shown in another way.
+        for attribute, value in item["attributes"].items():
+            if attribute in ["imbuements"]:
+                continue
+            if attribute == "vocation":
+                value = ", ".join(value.title().split("+"))
+            properties += f"\n{attribute.replace('_',' ').title()}: {value}"
+        embed.add_field(name="Properties", value=properties)
         if "imbuements" in item["attributes"] and len(item["attributes"]["imbuements"]) > 0:
             embed.add_field(name="Used for", value="\n".join(item["attributes"]["imbuements"]))
-        if 'npcs_bought' in item and len(item['npcs_bought']) > 0:
-            name = "Bought for {0:,} gold coins from".format(item['value_buy'])
-            value = ""
+        if item["sellers"]:
+            item_value = 0
+            currency = ""
             count = 0
-            for npc in item['npcs_bought']:
-                count += 1
+            value = ""
+            for i, npc in enumerate(item["sellers"]):
+                if i == 0:
+                    item_value = npc["value"]
+                    currency = npc["currency"]
+                if npc["value"] != item_value:
+                    break
+                npc["city"] = adjust_city(npc["name"], npc["city"])
                 value += "\n{name} ({city})".format(**npc)
-                if count >= short_limit and not long:
-                    value += "\n*...And {0} others*".format(len(item['npcs_bought']) - short_limit)
+                count += 1
+                if count > short_limit and not long:
+                    value += "\n*...And {0} others*".format(len(item['sellers']) - short_limit)
                     npcs_too_long = True
                     break
-
-            embed.add_field(name=name, value=value)
-
-        if 'npcs_sold' in item and len(item['npcs_sold']) > 0:
-            name = "Sold for {0:,} gold coins to".format(item['value_sell'])
-            value = ""
+            embed.add_field(name=f"Sold for {item_value:,} {currency} by", value=value)
+        if item["buyers"]:
+            item_price = 0
+            currency = ""
             count = 0
-            for npc in item['npcs_sold']:
-                count += 1
+            value = ""
+            for i, npc in enumerate(item["buyers"]):
+                if i == 0:
+                    item_price = npc["value"]
+                    currency = npc["currency"]
+                if npc["value"] != item_price:
+                    break
+                npc["city"] = adjust_city(npc["name"], npc["city"])
+                name = npc["name"].lower()
+                if name == 'alesar' or name == 'yaman':
+                    embed.colour = Colour.green()
+                elif name == "nah'bob" or name == "haroun":
+                    embed.colour = Colour.blue()
+                elif name == 'rashid':
+                    embed.colour = Colour(0xF0E916)
+                elif name == 'briasol':
+                    embed.colour = Colour(0xA958C4)
                 value += "\n{name} ({city})".format(**npc)
-                if count >= short_limit and not long:
-                    value += "\n*...And {0} others*".format(len(item['npcs_sold']) - short_limit)
+                count += 1
+                if count > short_limit and not long:
+                    value += "\n*...And {0} others*".format(len(item['buyers']) - short_limit)
                     npcs_too_long = True
                     break
+            embed.add_field(name=f"Bought for {item_price:,} {currency} by", value=value)
 
-            embed.add_field(name=name, value=value)
-
-        if item["quests"]:
+        if item["quests_reward"]:
             value = ""
             count = 0
             name = "Awarded in"
-            for quest in item["quests"]:
+            for quest in item["quests_reward"]:
                 count += 1
-                value += "\n" + quest
+                value += "\n" + quest["name"]
                 if count >= short_limit and not long:
-                    value += "\n*...And {0} others*".format(len(item["quests"]) - short_limit)
+                    value += "\n*...And {0} others*".format(len(item["quests_reward"]) - short_limit)
                     quests_too_long = True
                     break
             embed.add_field(name=name, value=value)
 
-        if item["dropped_by"]:
+        if item["loot_from"]:
             name = "Dropped by"
             count = 0
             value = ""
 
-            for creature in item["dropped_by"]:
+            for creature in item["loot_from"]:
                 count += 1
-                if creature["percentage"] is None:
-                    creature["percentage"] = "??.??%"
-                elif creature["percentage"] >= 100:
-                    creature["percentage"] = "Always"
+                if creature["chance"] is None:
+                    creature["chance"] = "??.??%"
+                elif creature["chance"] >= 100:
+                    creature["chance"] = "Always"
                 else:
-                    creature["percentage"] = f"{creature['percentage']:05.2f}%"
-                value += "\n`{percentage} {name}`".format(**creature)
+                    creature["chance"] = f"{creature['chance']:05.2f}%"
+                value += "\n`{chance} {name}`".format(**creature)
                 if count >= short_limit and not long:
-                    value += "\n*...And {0} others*".format(len(item["dropped_by"]) - short_limit)
+                    value += "\n*...And {0} others*".format(len(item["loot_from"]) - short_limit)
                     drops_too_long = True
                     break
                 if long and count >= long_limit:
-                    value += "\n*...And {0} others*".format(len(item["dropped_by"]) - long_limit)
+                    value += "\n*...And {0} others*".format(len(item["loot_from"]) - long_limit)
                     break
 
             embed.add_field(name=name, value=value, inline=not long)
@@ -395,7 +433,6 @@ class TibiaWiki:
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
 
         return embed
-
 
     @staticmethod
     def get_spell_embed(ctx, spell, long):
@@ -541,6 +578,8 @@ class TibiaWiki:
                 count += 1
                 value += "\n{name} \u2192 {price} gold".format(**destination)
             embed.add_field(name="Destinations", value=value)
+
+        # TODO: Teachable spells
 
         if too_long:
             ask_channel = ctx.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
