@@ -33,6 +33,7 @@ class NabBot(commands.Bot):
         self.members = {}
 
     async def on_ready(self):
+        """Called when the bot is ready."""
         print('Logged in as')
         print(self.user)
         print(self.user.id)
@@ -65,7 +66,7 @@ class NabBot(commands.Bot):
         log.info('Bot is online and ready')
 
     async def on_command(self, ctx: Context):
-        """Called when a command is called. Used to log commands on a file."""
+        """Called when a command is used. Used to log commands on a file."""
         if isinstance(ctx.message.channel, abc.PrivateChannel):
             destination = 'PM'
         else:
@@ -74,6 +75,7 @@ class NabBot(commands.Bot):
         log.info('Command by {0} in {1}: {2}'.format(ctx.message.author.display_name, destination, message_decoded))
 
     async def on_command_error(self, ctx: Context, error):
+        """Handles command errors"""
         if isinstance(error, commands.errors.CommandNotFound):
             return
         elif isinstance(error, commands.NoPrivateMessage):
@@ -89,9 +91,7 @@ class NabBot(commands.Bot):
                 await ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
 
     async def on_message(self, message: discord.Message):
-        """Called every time a message is sent on a visible channel.
-    
-        This is used to make commands case insensitive."""
+        """Called every time a message is sent on a visible channel."""
         # Ignore if message is from any bot
         if message.author.bot:
             return
@@ -117,6 +117,7 @@ class NabBot(commands.Bot):
         await self.process_commands(message)
 
     async def on_guild_join(self, guild: discord.Guild):
+        """Called when the bot joins a guild (server)."""
         log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(guild))
         message = "Hello! I'm now in **{0.name}**. To see my available commands, type \help\n" \
                   "I will reply to commands from any channel I can see, but if you create a channel called *{1}*," \
@@ -133,14 +134,14 @@ class NabBot(commands.Bot):
                 self.members[member.id] = [guild.id]
 
     async def on_guild_remove(self, guild: discord.Guild):
-        """Called when the bot leaves a server"""
+        """Called when the bot leaves a guild (server)."""
         log.info("Nab Bot left server: {0.name} (ID: {0.id})".format(guild))
         for member in guild.members:
             if member.id in self.members:
                 self.members[member.id].remove(guild.id)
 
     async def on_member_join(self, member: discord.Member):
-        """Called every time a member joins a server visible by the bot."""
+        """ Called when a member joins a guild (server) the bot is in."""
         log.info("{0.display_name} (ID: {0.id}) joined {0.guild.name}".format(member))
         # Updating member list
         if member.id in self.members:
@@ -207,7 +208,6 @@ class NabBot(commands.Bot):
 
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
         """Called every time a message is edited."""
-
         # Ignore bot messages
         if before.author.id == self.user.id:
             return
@@ -228,6 +228,7 @@ class NabBot(commands.Bot):
                                                                                  before.guild))
 
     async def on_member_update(self, before: discord.Member, after: discord.Member):
+        """Called every time a member is updated"""
         if before.display_name != after.display_name:
             reply = "{0.name}#{0.discriminator}: Display name changed from **{0.display_name}** to " \
                     "**{1.display_name}**.".format(before, after)
@@ -235,6 +236,7 @@ class NabBot(commands.Bot):
         return
 
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
+        """Called every time a guild is updated"""
         if before.name != after.name:
             reply = "Server name changed from **{0.name}** to **{1.name}**".format(before, after)
             await self.send_log_message(after, reply)
@@ -244,6 +246,10 @@ class NabBot(commands.Bot):
             await self.send_log_message(after, reply)
 
     async def game_update(self):
+        """Updates the bot's status.
+
+        A random status is selected every 20 minutes.
+        """
         game_list = ["Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2017", "Russian Roulette",
                      "with my toy humans", "with fire"+EMOJI[":fire:"], "God", "innocent", "the part", "hard to get",
                      "with my human minions", "Singularity", "Portal 3", "Dank Souls"]
@@ -256,10 +262,14 @@ class NabBot(commands.Bot):
 
     def get_member(self, argument: Union[str, int], guild: Union[discord.Guild, List[discord.Guild]] = None) \
             -> discord.Member:
-        """Returns a member matching the id, name#discriminator, nickname or name
+        """Returns a member matching the arguments provided.
 
         If a guild or guild list is specified, then only members from those guilds will be searched. If no guild is
-        specified, the first member instance will be returned."""
+        specified, the first member instance will be returned.
+        :param argument: The argument to search for, can be an id, name#disctriminator, nickname or name
+        :param guild: The guild or list of guilds that limit the search.
+        :return: The member found or None.
+        """
         id_regex = re.compile(r'([0-9]{15,21})$')
         match = id_regex.match(str(argument))
         if match is None:
@@ -274,10 +284,15 @@ class NabBot(commands.Bot):
             return guild.get_member(user_id)
 
     def get_member_named(self, name: str, guild: Union[discord.Guild, List[discord.Guild]] = None) -> discord.Member:
-        """Returns a member matching the name#discriminator, nickname or name
+        """Returns a member matching the name
 
         If a guild or guild list is specified, then only members from those guilds will be searched. If no guild is
-        specified, the first member instance will be returned."""
+        specified, the first member instance will be returned.
+
+        :param name: The name, nickname or name#discriminator of the member
+        :param guild: The guild or list of guilds to limit the search
+        :return: The member found or none
+        """
         members = self.get_all_members()
         if type(guild) is discord.Guild:
             members = guild.members

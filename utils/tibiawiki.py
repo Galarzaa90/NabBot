@@ -1,11 +1,12 @@
 import datetime as dt
 import urllib.parse
+from typing import Dict, Union
 
 from discord import Colour
 
 from utils.database import tibiaDatabase
 from utils.general import get_local_timezone
-from utils.tibia import get_tibia_time_zone, get_rashid_city
+from utils.tibia import get_tibia_time_zone
 
 WIKI_ICON = "https://vignette.wikia.nocookie.net/tibia/images/b/bc/Wiki.png/revision/latest?path-prefix=en"
 
@@ -106,21 +107,37 @@ def get_item(name):
         c.close()
 
 
+def get_rashid_info() -> Dict[str, Union[str, int]]:
+    """Returns a dictionary with rashid's info
+
+    Dictionary contains: the name of the week, city and x,y,z, positions."""
+    offset = get_tibia_time_zone() - get_local_timezone()
+    # Server save is at 10am, so in tibia a new day starts at that hour
+    tibia_time = dt.datetime.now() + dt.timedelta(hours=offset - 10)
+    c = tibiaDatabase.cursor()
+    c.execute("SELECT * FROM rashid_positions WHERE day = ?", (tibia_time.weekday(),))
+    info = c.fetchone()
+    c.close()
+    return info
+
+
 def get_spell(name):
     """Returns a dictionary containing a spell's info, a list of possible matches or None"""
     c = tibiaDatabase.cursor()
     try:
-        c.execute("""SELECT * FROM spells WHERE words LIKE ? OR name LIKE ? ORDER BY LENGTH(name) LIMIT 15""",
-                  ("%" + name + "%", "%" + name + "%"))
-        result = c.fetchall()
-        if len(result) == 0:
-            return None
-        elif result[0]["name"].lower() == name.lower() or result[0]["words"].lower() == name.lower() or len(
-                result) == 1:
-            spell = result[0]
-        else:
-            return ["{name} ({words})".format(**x) for x in result]
-
+        c.execute("SELECT * FROM spells WHERE words LIKE ? or name LIKE ?", (name,)*2)
+        spell = c.fetchone()
+        if spell is None:
+            c.execute("SELECT * FROM spells WHERE words LIKE ? OR name LIKE ? ORDER BY LENGTH(name) LIMIT 15",
+                      ("%" + name + "%",)*2)
+            result = c.fetchall()
+            if len(result) == 0:
+                return None
+            elif result[0]["name"].lower() == name.lower() or result[0]["words"].lower() == name.lower() or len(
+                    result) == 1:
+                spell = result[0]
+            else:
+                return ["{name} ({words})".format(**x) for x in result]
         spell["npcs"] = []
         c.execute("""SELECT npcs.title as name, npcs.city, npcs_spells.knight, npcs_spells.paladin,
                   npcs_spells.sorcerer, npcs_spells.druid FROM npcs, npcs_spells
@@ -165,13 +182,19 @@ def get_npc(name):
                   "ORDER BY npcs_buying.value DESC", (npc["id"],))
         npc["buying"] = c.fetchall()
 
+        c.execute("SELECT spell.name, spell.price, npcs_spells.knight, npcs_spells.sorcerer, npcs_spells.paladin, "
+                  "npcs_spells.druid "
+                  "FROM npcs_spells "
+                  "INNER JOIN spells spell ON spell.id = spell_id "
+                  "WHERE npc_id = ? "
+                  "ORDER BY price DESC", (npc["id"],))
+        npc["spells"] = c.fetchall()
+
         c.execute("SELECT destination as name, price, notes "
                   "FROM npcs_destinations "
                   "WHERE npc_id = ? "
                   "ORDER BY name ASC", (npc["id"],))
         npc["destinations"] = c.fetchall()
-
-
         return npc
     finally:
         c.close()
@@ -225,3 +248,9 @@ def get_achievement(name):
             return [x['name'] for x in result]
     finally:
         c.close()
+
+
+def get_mapper_link(x, y, z):
+    def convert_pos(pos):
+        return f"{(pos&0xFF00)>>8}.{pos&0x00FF}"
+    return f"http://tibia.wikia.com/wiki/Mapper?coords={convert_pos(x)}-{convert_pos(y)}-{z}-4-1-1"

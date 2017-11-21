@@ -504,20 +504,6 @@ def get_character_url(name):
     return url_character + urllib.parse.quote(name.encode('iso-8859-1'))
 
 
-def get_rashid_city() -> str:
-    """Returns the city Rashid is currently in."""
-    offset = get_tibia_time_zone() - get_local_timezone()
-    # Server save is at 10am, so in tibia a new day starts at that hour
-    tibia_time = dt.datetime.now() + dt.timedelta(hours=offset - 10)
-    return ["Svargrond",
-            "Liberty Bay",
-            "Port Hope",
-            "Ankrahmun",
-            "Darashia",
-            "Edron",
-            "Carlin"][tibia_time.weekday()]
-
-
 def parse_tibia_time(tibia_time: str) -> Optional[dt.datetime]:
     """Gets a time object from a time string from tibia.com"""
     tibia_time = tibia_time.replace(",", "").replace("&#160;", " ")

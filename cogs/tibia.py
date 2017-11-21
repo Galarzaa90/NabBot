@@ -12,6 +12,7 @@ from utils.discord import is_private, is_lite_mode
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, global_online_list
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import *
+from utils.tibiawiki import get_rashid_info
 
 
 class Tibia:
@@ -1318,7 +1319,8 @@ class Tibia:
             sonora_time = dt.datetime.now()+dt.timedelta(hours=offsetsonora)
             timestrsonora = sonora_time.strftime("%H:%M")
             reply += "\n**{0}** in Mexico (Sonora).".format(timestrsonora)
-        reply += "\nServer save is in {0}.\nRashid is in **{1}** today.".format(server_save_str, get_rashid_city())
+        reply += "\nServer save is in {0}.\nRashid is in **{1}** today."\
+            .format(server_save_str, get_rashid_info()["city"])
         await ctx.send(reply)
 
     @commands.command(name="world")
@@ -1568,10 +1570,5 @@ class Tibia:
         return embed
 
 
-
-
 def setup(bot):
     bot.add_cog(Tibia(bot))
-
-if __name__ == "__main__":
-    input("To run NabBot, run nabbot.py")

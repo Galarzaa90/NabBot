@@ -11,9 +11,9 @@ from nabbot import NabBot
 from utils.discord import is_private, FIELD_VALUE_LIMIT
 from utils.general import join_list, get_local_timezone
 from utils.messages import EMOJI, split_message
-from utils.tibia import get_map_area, get_tibia_time_zone, get_rashid_city
+from utils.tibia import get_map_area, get_tibia_time_zone
 from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
-    get_key, search_key
+    get_key, search_key, get_rashid_info, get_mapper_link
 
 
 class TibiaWiki:
@@ -24,9 +24,9 @@ class TibiaWiki:
 
     @commands.command(aliases=['checkprice', 'itemprice'])
     async def item(self, ctx, *, name: str = None):
-        """Checks an item's information
+        """Shows an item's information
 
-        Shows name, picture, npcs that buy and sell and creature drops"""
+        Shows the item's sprite, attributes, buy and sell offers and creature drops."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -59,7 +59,9 @@ class TibiaWiki:
 
     @commands.command(aliases=['mon', 'mob', 'creature'])
     async def monster(self, ctx, *, name: str = None):
-        """Gives information about a monster"""
+        """Shows a monster's information
+
+        Shows the monster's image, attributes and loot"""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -106,6 +108,9 @@ class TibiaWiki:
 
     @commands.command(aliases=["npcs"])
     async def npc(self, ctx, *, name: str = None):
+        """Shows information about an NPC
+
+        Shows an NPC's picture, trade offers and location."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -139,6 +144,8 @@ class TibiaWiki:
                 map_filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + "-map.png"
                 map_image = get_map_area(npc["x"], npc["y"], npc["z"])
                 embed.set_image(url=f"attachment://{map_filename}")
+                embed.add_field(name="Location", value=f"[Mapper link]({get_mapper_link(npc['x'],npc['y'],npc['z'])})",
+                                inline=False)
                 files.append(discord.File(map_image, map_filename))
             await ctx.send(files=files, embed=embed)
         else:
@@ -146,7 +153,9 @@ class TibiaWiki:
 
     @commands.command()
     async def spell(self, ctx, *, name: str = None):
-        """Tells you information about a certain spell."""
+        """Shows information about a spell
+
+        Shows a spell's icon, general information, price, npcs that teach it."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -182,8 +191,8 @@ class TibiaWiki:
     async def achievement(self, ctx, *, name: str = None):
         """Shows an achievement's information
 
-        Spoilers are only shown on ask channel and private messages"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        Shows the achievement's grade, points, description, and instructions on how to unlock."""
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -215,7 +224,10 @@ class TibiaWiki:
         await ctx.send(embed=embed)
 
     @commands.group(alises=["keys"], invoke_without_command=True)
-    async def key(self, ctx, number:str = None):
+    async def key(self, ctx, number: str = None):
+        """Shows information about a key
+
+        Shows the key's known names, how to obtain it and its uses"""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -248,7 +260,10 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @key.command(name="search")
-    async def key_search(self, ctx, term: str = None):
+    async def key_search(self, ctx, *, term: str = None):
+        """Searches for a key by keywords
+
+        Search for matches on the key's names, location, origin or uses."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -391,7 +406,6 @@ class TibiaWiki:
             embed.add_field(name="Notes/Use", value=key["notes"])
         return embed
 
-
     @staticmethod
     def get_item_embed(ctx, item, long):
         """Gets the item embed to show in /item command"""
@@ -408,7 +422,7 @@ class TibiaWiki:
             elif name == "nah'bob" or name == "haroun":
                 return "Blue Djinn's Fortress"
             elif name == 'rashid':
-                return get_rashid_city()
+                return get_rashid_info()["city"]
             elif name == 'Yasir':
                 return 'his boat'
             return city
@@ -607,7 +621,7 @@ class TibiaWiki:
     def get_npc_embed(ctx, npc, long):
         """Gets the embed to show in /npc command"""
         short_limit = 5
-        long_limit = 200
+        long_limit = 100
         too_long = False
 
         if type(npc) is not dict:
@@ -618,6 +632,16 @@ class TibiaWiki:
                          icon_url=WIKI_ICON,
                          url=get_article_url(npc["title"]))
         embed.add_field(name="Job", value=npc["job"])
+        if npc["name"] == "Rashid":
+            rashid = get_rashid_info()
+            npc["city"] = rashid["city"]
+            npc["x"] = rashid["x"]
+            npc["y"] = rashid["y"]
+            npc["z"] = rashid["z"]
+        if npc["name"] == "Yasir":
+            npc["x"] = None
+            npc["y"] = None
+            npc["z"] = None
         embed.add_field(name="City", value=npc["city"])
         if npc["selling"]:
             count = 0
@@ -668,9 +692,29 @@ class TibiaWiki:
                 count += 1
                 value += "\n{name} \u2192 {price} gold".format(**destination)
             embed.add_field(name="Destinations", value=value)
-
-        # TODO: Teachable spells
-
+        vocs = ["knight", "sorcerer", "paladin", "druid"]
+        if npc["spells"]:
+            values = {}
+            count = {}
+            skip = {}
+            for spell in npc["spells"]:
+                value = "\n{name} \u2014 {price:,} gold".format(**spell)
+                for voc in vocs:
+                    if skip.get(voc, False):
+                        continue
+                    if spell[voc] == 0:
+                        continue
+                    values[voc] = values.get(voc, "")+value
+                    count[voc] = count.get(voc, 0)+1
+                    if count.get(voc, 0) >= short_limit and not long:
+                        values[voc] += "\n*...And more*"
+                        too_long = True
+                        skip[voc] = True
+            for voc, content in values.items():
+                fields = split_message(content, FIELD_VALUE_LIMIT)
+                for i, split_field in enumerate(fields):
+                    name = f"Teaches ({voc.title()}s)" if i == 0 else "\u200F"
+                    embed.add_field(name=name, value=split_field, inline=not len(fields) > 1)
         if too_long:
             ask_channel = ctx.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
             if ask_channel:
