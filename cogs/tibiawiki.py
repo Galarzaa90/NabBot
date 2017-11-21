@@ -377,7 +377,6 @@ class TibiaWiki:
     def get_key_embed(key):
         if key is None:
             return None
-        print(key)
         embed = discord.Embed(title=f"Key {key['number']:04}", url=get_article_url(f"Key {key['number']:04}"))
         embed.set_author(name="TibiaWiki",
                          icon_url=WIKI_ICON,
