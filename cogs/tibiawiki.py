@@ -12,7 +12,8 @@ from utils.discord import is_private, FIELD_VALUE_LIMIT
 from utils.general import join_list, get_local_timezone
 from utils.messages import EMOJI, split_message
 from utils.tibia import get_map_area, get_tibia_time_zone, get_rashid_city
-from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url
+from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
+    get_key, search_key
 
 
 class TibiaWiki:
@@ -213,6 +214,75 @@ class TibiaWiki:
 
         await ctx.send(embed=embed)
 
+    @commands.group(alises=["keys"], invoke_without_command=True)
+    async def key(self, ctx, number:str = None):
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        if number is None:
+            await ctx.send("Tell me the number of the key you want to check.")
+            return
+
+        try:
+            number = int(number)
+        except ValueError:
+            await ctx.send("Tell me a numeric value, to search keys, try: `/key search`")
+            return
+
+        key = get_key(number)
+
+        if key is None:
+            await ctx.send("I couldn't find a key with that number.")
+            return
+
+        embed = self.get_key_embed(key)
+
+        # Attach key's image only if the bot has permissions
+        if permissions.attach_files and key["image"] != 0:
+            filename = f"Key.gif"
+            embed.set_thumbnail(url=f"attachment://{filename}")
+            await ctx.send(file=discord.File(key["image"], f"{filename}"), embed=embed)
+        else:
+            await ctx.send(embed=embed)
+
+    @key.command(name="search")
+    async def key_search(self, ctx, term: str = None):
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        if term is None:
+            await ctx.send("Tell me what do you want to look for.")
+            return
+
+        keys = search_key(term)
+
+        if keys is None:
+            await ctx.send("I couldn't find any related keys.")
+            return
+
+        if type(keys) is list:
+            embed = discord.Embed(title="Possible keys")
+            embed.description = ""
+            for key in keys:
+                name = "" if key.get("name") is None else f" - {key.get('name')}"
+                embed.description += f"\n**Key {key['number']}**{name}"
+            await ctx.send(embed=embed)
+            return
+
+        embed = self.get_key_embed(keys)
+
+        # Attach key's image only if the bot has permissions
+        if permissions.attach_files and keys["image"] != 0:
+            filename = f"Key.gif"
+            embed.set_thumbnail(url=f"attachment://{filename}")
+            await ctx.send(file=discord.File(keys["image"], f"{filename}"), embed=embed)
+        else:
+            await ctx.send(embed=embed)
+
     @staticmethod
     def get_monster_embed(ctx, monster, long):
         """Gets the monster embeds to show in /mob command
@@ -301,6 +371,27 @@ class TibiaWiki:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         return embed
+
+
+    @staticmethod
+    def get_key_embed(key):
+        if key is None:
+            return None
+        print(key)
+        embed = discord.Embed(title=f"Key {key['number']:04}", url=get_article_url(f"Key {key['number']:04}"))
+        embed.set_author(name="TibiaWiki",
+                         icon_url=WIKI_ICON,
+                         url=get_article_url(f"Key {key['number']:04}"))
+        if key.get("name") is not None:
+            embed.description = f"**Also known as:** {key['name']}"
+        if key.get("location") is not None:
+            embed.add_field(name="Location", value=key["location"])
+        if key.get("origin") is not None:
+            embed.add_field(name="Origin", value=key["origin"])
+        if key.get("notes") is not None:
+            embed.add_field(name="Notes/Use", value=key["notes"])
+        return embed
+
 
     @staticmethod
     def get_item_embed(ctx, item, long):

@@ -105,6 +105,7 @@ def get_item(name):
     finally:
         c.close()
 
+
 def get_spell(name):
     """Returns a dictionary containing a spell's info, a list of possible matches or None"""
     c = tibiaDatabase.cursor()
@@ -170,6 +171,38 @@ def get_npc(name):
                   "ORDER BY name ASC", (npc["id"],))
         npc["destinations"] = c.fetchall()
         return npc
+    finally:
+        c.close()
+
+
+def get_key(number):
+    """Returns a dictionary containing a NPC's info, a list of possible matches or None"""
+    c = tibiaDatabase.cursor()
+    try:
+        # search query
+        c.execute("SELECT items_keys.*, item.image FROM items_keys "
+                  "INNER JOIN items item ON item.id = items_keys.item_id "
+                  "WHERE number = ? ", (number,))
+        result = c.fetchone()
+        return result
+    finally:
+        c.close()
+
+
+def search_key(terms):
+    """Returns a dictionary containing a NPC's info, a list of possible matches or None"""
+    c = tibiaDatabase.cursor()
+    try:
+        # search query
+        c.execute("SELECT items_keys.*, item.image FROM items_keys "
+                  "INNER JOIN items item ON item.id = items_keys.item_id "
+                  "WHERE items_keys.name LIKE ? OR notes LIKE ? or origin LIKE ? LIMIT 10 ", ("%" + terms + "%",)*3)
+        result = c.fetchall()
+        if len(result) == 0:
+            return None
+        elif len(result) == 1:
+            return result[0]
+        return result
     finally:
         c.close()
 
