@@ -170,6 +170,8 @@ def get_npc(name):
                   "WHERE npc_id = ? "
                   "ORDER BY name ASC", (npc["id"],))
         npc["destinations"] = c.fetchall()
+
+
         return npc
     finally:
         c.close()
