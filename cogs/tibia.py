@@ -345,7 +345,7 @@ class Tibia:
                       "WHERE level >= ? AND level <= ? AND world = ?"
                       "ORDER by level DESC", (low, high, tracked_world, ))
             count = 0
-            online_list = [x.split("_", 1)[1] for x in global_online_list]
+            online_list = [x.name for x in global_online_list]
             while True:
                 player = c.fetchone()
                 if player is None:

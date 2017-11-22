@@ -12,6 +12,7 @@ from discord.ext import commands
 # don't look at it too closely or you'll go blind!
 # characters are added as servername_charactername
 # The list is updated periodically on think() using get_server_online()
+
 global_online_list = []
 
 # Start logging

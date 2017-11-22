@@ -42,6 +42,9 @@ display_sonora_time = True
 highscores_categories = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
                          "magic_ek", "magic_rp", "loyalty", "achievements"]
 
+# Cached online list expiration
+online_list_expiration = 5*60
+
 # Max amount of simultaneous images /loot can try to parse
 loot_max = 6
 

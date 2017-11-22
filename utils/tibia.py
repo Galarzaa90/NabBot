@@ -93,28 +93,39 @@ class Character:
         self.highscores = []
         self.owner = 0
 
+    def __str__(self) -> str:
+        return f"Character: name = {self.name}, world = {self.world}, level = {self.level}"
+
+    def __eq__(self, o: object) -> bool:
+        """Overrides the default implementation"""
+        if isinstance(o, self.__class__):
+            return self.name.lower() == o.name.lower()
+        return False
+
+
+
     @property
-    def he_she(self):
+    def he_she(self) -> str:
         return ["He", "She"][self.sex]
 
     @property
-    def his_her(self):
+    def his_her(self) -> str:
         return ["His", "Her"][self.sex]
 
     @property
-    def him_her(self):
+    def him_her(self) -> str:
         return ["Him", "Her"][self.sex]
 
     @property
-    def url(self):
+    def url(self) -> str:
         return self.get_url(self.name)
 
     @property
-    def guild_name(self):
+    def guild_name(self) -> Optional[str]:
         return None if self.guild is None else self.guild["name"]
 
     @property
-    def guild_rank(self):
+    def guild_rank(self) -> Optional[str]:
         return None if self.guild is None else self.guild["rank"]
 
     @classmethod

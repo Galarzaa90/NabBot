@@ -1,5 +1,6 @@
 import asyncio
 import datetime as dt
+import pickle
 import time
 import urllib.parse
 from contextlib import closing
@@ -9,7 +10,7 @@ import discord
 from discord.ext import commands
 
 from config import death_scan_interval, highscores_delay, highscores_categories, highscores_page_delay, \
-    online_scan_interval, announce_threshold, ask_channel_name
+    online_scan_interval, announce_threshold, ask_channel_name, online_list_expiration
 from nabbot import NabBot
 from utils import checks
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
@@ -25,6 +26,7 @@ from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, 
 
 class Tracking:
     """Commands related to Nab Bot's tracking system."""
+
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.scan_deaths_task = self.bot.loop.create_task(self.scan_deaths())
@@ -51,10 +53,8 @@ class Tracking:
                 current_char = global_online_list.pop()
                 global_online_list.insert(0, current_char)
 
-                # Get rid of server name
-                current_char = current_char.split("_", 1)[1]
                 # Check for new death
-                await self.check_death(current_char)
+                await self.check_death(current_char.name)
             except asyncio.CancelledError:
                 # Task was cancelled, so this is fine
                 break
@@ -87,7 +87,7 @@ class Tracking:
                             now = dt.datetime.now(dt.timezone.utc)
                             # Current day's server save, could be in the past or the future, an extra hour is added
                             # as margin
-                            today_ss = dt.datetime.now(dt.timezone.utc).replace(hour=11-get_tibia_time_zone())
+                            today_ss = dt.datetime.now(dt.timezone.utc).replace(hour=11 - get_tibia_time_zone())
                             if not now > today_ss > last_scan_date:
                                 continue
                         highscore_data = []
@@ -130,6 +130,18 @@ class Tracking:
         # Do not touch anything, enter at your own risk #
         #################################################
         await self.bot.wait_until_ready()
+        try:
+            with open("data/online_list.dat", "rb") as f:
+                saved_list, timestamp = pickle.load(f)
+                if (time.time() - timestamp) < online_list_expiration:
+                    global_online_list.clear()
+                    global_online_list.extend(saved_list)
+                    log.info("Loaded cached online list")
+                else:
+                    log.info("Cached online list is too old, discarding")
+        except (ValueError, FileNotFoundError, pickle.PickleError):
+            log.info("Couldn't fetch cached online list.")
+            pass
         while not self.bot.is_closed():
             # Open connection to users.db
             c = userDatabase.cursor()
@@ -144,50 +156,53 @@ class Tracking:
 
                 await asyncio.sleep(online_scan_interval)
                 # Get online list for this server
-                _world = await get_world(current_world)
-                if _world is None:
+                world = await get_world(current_world)
+                if world is None:
+                    await asyncio.sleep(0.1)
                     continue
-                current_world_online = _world.players_online
+                current_world_online = world.players_online
                 if len(current_world_online) == 0:
+                    await asyncio.sleep(0.1)
                     continue
-                # Remove chars that are no longer online from the globalOnlineList
+                # Save the online list in file
+                with open("data/online_list.dat", "wb") as f:
+                    pickle.dump((global_online_list, time.time()), f, protocol=pickle.HIGHEST_PROTOCOL)
+                # Remove chars that are no longer online from the global_online_list
                 offline_list = []
                 for char in global_online_list:
-                    if char.split("_", 1)[0] == current_world:
+                    if char.world == current_world:
                         offline = True
                         for server_char in current_world_online:
-                            if server_char.name == char.split("_", 1)[1]:
+                            if server_char.name == char.name:
                                 offline = False
                                 break
                         if offline:
                             offline_list.append(char)
-                for now_offline_char in offline_list:
-                    global_online_list.remove(now_offline_char)
+                for offline_char in offline_list:
+                    global_online_list.remove(offline_char)
                     # Check for deaths and level ups when removing from online list
                     try:
-                        now_offline_char = await get_character(now_offline_char.split("_", 1)[1])
+                        name = offline_char.name
+                        offline_char = await get_character(name)
                     except NetworkError:
+                        log.error(f"scan_online_chars: Could not fetch {name}, NetWorkError")
                         continue
-                    if now_offline_char is not None:
-                        c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?",
-                                  (now_offline_char.name,))
+                    if offline_char is not None:
+                        c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (offline_char.name,))
                         result = c.fetchone()
                         if result:
                             last_level = result["last_level"]
-                            c.execute(
-                                "UPDATE chars SET last_level = ? WHERE name LIKE ?",
-                                (now_offline_char.level, now_offline_char.name,)
-                            )
-                            if now_offline_char.level > last_level > 0:
+                            c.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",
+                                      (offline_char.level, offline_char.name))
+                            if offline_char.level > last_level > 0:
                                 # Saving level up date in database
                                 c.execute(
                                     "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                    (result["id"], now_offline_char.level, time.time(),)
+                                    (result["id"], offline_char.level, time.time(),)
                                 )
                                 # Announce the level up
-                                await self.announce_level(now_offline_char.level, char=now_offline_char)
-                        await self.check_death(now_offline_char.name)
-
+                                await self.announce_level(offline_char.level, char=offline_char)
+                        await self.check_death(offline_char.name)
                 # Add new online chars and announce level differences
                 for server_char in current_world_online:
                     c.execute("SELECT name, last_level, id, user_id FROM chars WHERE name LIKE ?",
@@ -201,13 +216,11 @@ class Tracking:
                             "UPDATE chars SET last_level = ? WHERE name LIKE ?",
                             (server_char.level, server_char.name)
                         )
-
-                        if not (current_world + "_" + server_char.name) in global_online_list:
+                        if server_char not in global_online_list:
                             # If the character wasn't in the globalOnlineList we add them
                             # (We insert them at the beginning of the list to avoid messing with the death checks order)
-                            global_online_list.insert(0, (current_world + "_" + server_char.name))
+                            global_online_list.insert(0, server_char)
                             await self.check_death(server_char.name)
-
                         # Else we check for levelup
                         elif server_char.level > last_level > 0:
                             # Saving level up date in database
@@ -336,7 +349,7 @@ class Tracking:
             userDatabase.commit()
             c.close()
 
-    async def announce_death(self, death: Death, levels_lost=0, char: Character=None, char_name: str=None):
+    async def announce_death(self, death: Death, levels_lost=0, char: Character = None, char_name: str = None):
         """Announces a level up on the corresponding servers"""
         # Don't announce for low level players
         if int(death.level) < announce_threshold:
@@ -391,7 +404,7 @@ class Tracking:
                 except discord.HTTPException:
                     log.warning("announce_death: Malformed message.")
 
-    async def announce_level(self, level, char_name: str=None, char: Character=None):
+    async def announce_level(self, level, char_name: str = None, char: Character = None):
         """Announces a level up on corresponding servers
 
         One of these must be passed:
@@ -519,7 +532,7 @@ class Tracking:
         reply = ""
         log_reply = dict().fromkeys([server.id for server in user_guilds], "")
         if len(existent) > 0:
-            reply += "\nThe following characters were already registered to you: {0}"\
+            reply += "\nThe following characters were already registered to you: {0}" \
                 .format(join_list(existent, ", ", " and "))
 
         if len(added) > 0:
@@ -615,7 +628,7 @@ class Tracking:
 
     @commands.command()
     @checks.is_not_lite()
-    async def online(self, ctx, world: str=None):
+    async def online(self, ctx, world: str = None):
         """Tells you which users are online on Tibia
 
         This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated.
@@ -664,9 +677,8 @@ class Tracking:
         vocations = []
         try:
             for char in global_online_list:
-                char = char.split("_", 1)
-                char_world = char[0]
-                name = char[1]
+                char_world = char.world
+                name = char.name
                 c.execute("SELECT name, user_id, vocation, ABS(last_level) as level FROM chars WHERE name LIKE ?",
                           (name,))
                 row = c.fetchone()

@@ -9,3 +9,4 @@ data/users.db
 logs/
 /loot/debug/
 token.txt
+*.dat
