@@ -69,32 +69,44 @@ class Character:
 
     URL_CHAR = "https://secure.tibia.com/community/?subtopic=characters&name="
 
-    def __init__(self, name: str, world: str, *, online: bool=False, level: int =0, vocation: str=None):
+    def __init__(self, name: str, world: str, **kwargs):
         self.name = name
-        self.level = level
         self.world = world
-        self.achievement_points = 0
-        self.sex = 0
-        self.former_world = None
-        self.residence = None
-        self.vocation = vocation
-        self.married_to = None
-        self.guild = None
-        self.house = None
-        self.last_login = None  # type: dt.datetime
-        self.deleted = None  # type: dt.datetime
-        self.online = online
-        self.achievements = []
-        self.deaths = []  # type: List[Death]
-        self.other_characters = []
-        self.account_status = 0
+        self.level = kwargs.get("level", 0)
+        self.achievement_points = kwargs.get("achievement_points", 0)
+        self.sex = kwargs.get("sex", 0)
+        self.former_world = kwargs.get("former_world")
+        self.residence = kwargs.get("residence")
+        self.vocation = kwargs.get("vocation")
+        self.married_to = kwargs.get("married_to")
+        self.guild = kwargs.get("guild")
+        self.house = kwargs.get("house")
+        self.last_login = kwargs.get("last_login")  # type: dt.datetime
+        self.deleted = kwargs.get("last_login")  # type: dt.datetime
+        self.online = kwargs.get("online") # type: bool
+        self.achievements = kwargs.get("achivements", []) # type: List[Achievement]
+        self.deaths = kwargs.get("deaths", [])  # type: List[Death]
+        self.other_characters = kwargs.get("other_characters", [])
+        self.account_status = kwargs.get("account_status", 0)
 
         # NabBot specific attributes:
         self.highscores = []
         self.owner = 0
 
-    def __str__(self) -> str:
-        return f"Character: name = {self.name}, world = {self.world}, level = {self.level}"
+    def __repr__(self) -> str:
+        kwargs = vars(self)
+        attributes = ""
+        for k, v in kwargs.items():
+            if k in ["name", "world"]:
+                continue
+            if v is None:
+                continue
+            if isinstance(v, int) and v == 0:
+                continue
+            if isinstance(v, list) and len(v) == 0:
+                continue
+            attributes += f", {k} = {v.__repr__()}"
+        return f"Character({self.name!r}, {self.world!r}{attributes})"
 
     def __eq__(self, o: object) -> bool:
         """Overrides the default implementation"""
@@ -148,9 +160,8 @@ class Character:
         if "error" in char:
             return None
         data = char["data"]
-        character = Character(data["name"],
-                              data["world"],
-                              level = int(data["level"]))
+        character = Character(data["name"], data["world"])
+        character.level = int(data["level"])
         character.achievement_points = int(data["achievement_points"])
         character.sex = cls.SEX_MALE if data["sex"] == "male" else cls.SEX_FEMALE
         character.vocation = data["vocation"]
@@ -203,6 +214,9 @@ class Achievement:
         self.name = name
         self.grade = grade
 
+    def __repr__(self) -> str:
+        return f"Achievement({self.name!r},{self.grade})"
+
 
 # TODO: Handle deaths by multiple killers
 class Death:
@@ -211,6 +225,10 @@ class Death:
         self.killer = killer
         self.time = time
         self.by_player = by_player
+
+    def __repr__(self) -> str:
+        return f"Death({self.level},{self.killer!r},{self.time!r},{self.by_player})"
+
 
 class World:
     def __init__(self, name, **kwargs):
