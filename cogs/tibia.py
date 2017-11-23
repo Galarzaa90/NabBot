@@ -1513,7 +1513,7 @@ class Tibia:
             if not characters:
                 embed.description = f"I don't know who **{display_name}** is..."
                 return embed
-            online_list = [x.split("_", 1)[1] for x in global_online_list]
+            online_list = [x.name for x in global_online_list]
             char_list = []
             for char in characters:
                 char["online"] = EMOJI[":small_blue_diamond:"] if char["name"] in online_list else ""
