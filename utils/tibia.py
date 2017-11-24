@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup
 from config import network_retry_delay
 from utils.database import userDatabase, tibiaDatabase
 from utils.messages import EMOJI
-from .general import log, get_local_timezone
+from .general import log
 
 # Constants
 ERROR_NETWORK = 0
@@ -187,15 +187,37 @@ class Character:
 
         for death in char["deaths"]:
             try:
-                match = re.search("by ([^.]+)", death["reason"])
-                killer = match.group(1)
                 level = int(death["level"])
                 death_time = parse_tibiadata_time(death["date"])
                 by_player = False
+
+                match = re.search("by ([^.]+)", death["reason"])
+                killed_by = match.group(1).strip()  # Complete list of killers
+                killers = [k.strip() for k in killed_by.replace(" and ", " ,").split(",")]
+                participants = []
                 if death["involved"]:
+                    involved = [x["name"] for x in death["involved"]]
+                    killer = killers[0]
+                    # If killer is player, and there's another player in killers, assume it was the other player
+                    if killer == character.name:
+                        next_player = next((p for p in killers if p in involved and p != character.name), None)
+                        if next_player is not None:
+                            killer = next_player
                     by_player = True
-                    killer = death["involved"][0]["name"]
-                character.deaths.append(Death(level, killer, death_time, by_player))
+                    for i, name in enumerate(killers):
+                        # If the name is not in involved list, it's a creature
+                        if name not in involved:
+                            # If the only other killer is the player itself, only count the creature
+                            if len(involved) == 1 and involved[0] == character.name:
+                                killer = name
+                                by_player = False
+                                break
+                        elif name != character.name and i != 0 and killer != name:
+                            participants.append(name)
+
+                else:
+                    killer = killers[0]
+                character.deaths.append(Death(level, killer, death_time, by_player, participants))
             except ValueError:
                 # TODO: Handle deaths with no level
                 continue
@@ -220,14 +242,15 @@ class Achievement:
 
 # TODO: Handle deaths by multiple killers
 class Death:
-    def __init__(self, level: int, killer: str, time: dt.datetime, by_player: bool):
+    def __init__(self, level: int, killer: str, time: dt.datetime, by_player: bool, participants: list):
         self.level = level
         self.killer = killer
         self.time = time
         self.by_player = by_player
+        self.participants = participants
 
     def __repr__(self) -> str:
-        return f"Death({self.level},{self.killer!r},{self.time!r},{self.by_player})"
+        return f"Death({self.level},{self.killer!r},{self.time!r},{self.by_player},{self.participants!r})"
 
 
 class World:

@@ -360,7 +360,7 @@ class NabBot(commands.Bot):
         await channel.send(content=content, embed=embed)
 
     def get_channel_by_name(self, name: str, guild: discord.Guild) -> discord.TextChannel:
-        """Finds a channel by name on all the channels visible by the bot.
+        """Finds a channel by name on all the servers the bot is in.
 
         If guild is specified, only channels in that guild will be searched"""
         if guild is None:

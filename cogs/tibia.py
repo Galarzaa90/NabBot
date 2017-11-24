@@ -9,7 +9,8 @@ from nabbot import NabBot
 from utils import checks
 from utils.database import tracked_worlds
 from utils.discord import is_private, is_lite_mode
-from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, global_online_list
+from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, global_online_list, \
+    get_local_timezone
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import *
 from utils.tibiawiki import get_rashid_info
@@ -475,11 +476,12 @@ class Tibia:
         author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
+        show_links = False
+        if is_private(ctx.channel) or ctx.channel.name == ask_channel_name:
             per_page = 20
         else:
             per_page = 5
+            show_links = True
         try:
             if name is None:
                 title = "Latest deaths"
@@ -526,7 +528,14 @@ class Tibia:
                 for death in deaths:
                     last_time = death.time.timestamp()
                     death_time = get_time_diff(dt.datetime.now(tz=dt.timezone.utc) - death.time)
-                    entries.append("At level **{0.level}** by {0.killer} - *{time} ago*".format(death, time=death_time))
+                    if death.by_player and show_links:
+                        killer = f"[{death.killer}]({Character.get_url(death.killer)})"
+                    elif death.by_player:
+                        killer = f"**{death.killer}**"
+                    else:
+                        killer = f"{death.killer}"
+                    entries.append("At level **{0.level}** by {name} - *{time} ago*".format(death, time=death_time,
+                                                                                            name=killer))
                     count += 1
 
                 c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
@@ -1529,8 +1538,6 @@ class Tibia:
         finally:
             c.close()
         return embed
-
-
 
     @staticmethod
     def get_house_embed(house):
