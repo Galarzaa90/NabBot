@@ -315,39 +315,35 @@ class Tracking:
         except NetworkError:
             log.warning("check_death: couldn't fetch {0}".format(character))
             return
-        character_deaths = char.deaths
-
-        if character_deaths:
-            c = userDatabase.cursor()
-            c.execute("SELECT name, id FROM chars WHERE name LIKE ?", (character,))
+        c = userDatabase.cursor()
+        c.execute("SELECT name, id FROM chars WHERE name LIKE ?", (character,))
+        result = c.fetchone()
+        if result is None:
+            return
+        char_id = result["id"]
+        pending_deaths = []
+        for death in char.deaths:
+            death_time = death.time.timestamp()
+            # Check if we have a death that matches the time
+            c.execute("SELECT * FROM char_deaths "
+                      "WHERE char_id = ? AND date >= ? AND date <= ? AND level = ? AND killer LIKE ?",
+                      (char_id, death_time - 20, death_time + 20, death.level, death.killer))
             result = c.fetchone()
-            if result:
-                last_death = character_deaths[0]
-                death_time = last_death.time.timestamp()
-                # Check if we have a death that matches the time
-                c.execute("SELECT * FROM char_deaths "
-                          "WHERE char_id = ? AND date >= ? AND date <= ? AND level = ? AND killer LIKE ?",
-                          (result["id"], death_time - 200, death_time + 200, last_death.level, last_death.killer))
-                last_saved_death = c.fetchone()
-                if last_saved_death is not None:
-                    # This death is already saved, so nothing else to do here.
-                    return
+            if result is not None:
+                # We already have this death, we're assuming we already have older deaths
+                break
+            pending_deaths.append(death)
+        c.close()
 
-                c.execute(
-                    "INSERT INTO char_deaths (char_id,level,killer,byplayer,date) VALUES(?,?,?,?,?)",
-                    (result["id"], int(last_death.level), last_death.killer, last_death.by_player, death_time,)
-                )
-
-                # If the death happened more than 1 hour ago, we don't announce it, but it's saved already.
-                if time.time() - death_time >= (1 * 60 * 60):
-                    log.info("Death detected, but too old to announce: {0}({1.level}) | {1.killer}".format(character,
-                                                                                                           last_death))
-                else:
-                    await self.announce_death(last_death, max(last_death.level - char.level, 0), char)
-
-            # Close cursor and commit changes
-            userDatabase.commit()
-            c.close()
+        # Announce and save deaths from older to new
+        for death in reversed(pending_deaths):
+            with userDatabase as con:
+                con.execute("INSERT INTO char_deaths(char_id, level, killer, byplayer, date) VALUES(?,?,?,?,?)",
+                            (char_id, death.level, death.killer, death.by_player, death.time.timestamp()))
+            if time.time() - death.time.timestamp() >= (30 * 60):
+                log.info("Death detected, too old to announce: {0}({1.level}) | {1.killer}".format(character, death))
+            else:
+                await self.announce_death(death, max(death.level - char.level, 0), char)
 
     async def announce_death(self, death: Death, levels_lost=0, char: Character = None, char_name: str = None):
         """Announces a level up on the corresponding servers"""
