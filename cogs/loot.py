@@ -360,10 +360,10 @@ def crop_item(item_image):
 
 
 def number_scan(item_image):
-    number1 = item_image.crop((7, 21, 7 + 8, 21 + 10))
-    number2 = item_image.crop((15, 21, 15 + 8, 21 + 10))
-    number3 = item_image.crop((23, 21, 23 + 8, 21 + 10))
-    item_numbers_image = item_image.crop((7, 21, 7 + 8 * 3, 21 + 10))
+    number1 = item_image.crop((8, 21, 8 + 8, 21 + 10))
+    number2 = item_image.crop((16, 21, 16 + 8, 21 + 10))
+    number3 = item_image.crop((24, 21, 24 + 8, 21 + 10))
+    item_numbers_image = item_image.crop((8, 21, 8 + 8 * 3, 21 + 10))
     item_numbers = [number1, number2, number3]
     number_string = ""
     numbers_image = Image.new("RGBA", (24, 10), (255, 255, 255, 0))
@@ -397,7 +397,7 @@ def number_scan(item_image):
     while py < numbers_image.size[1]:
         numbers_image_pixel = numbers_image.getpixel((px, py))
         if not is_transparent(numbers_image_pixel):
-            item_image.putpixel((px + 7, py + 21), (255, 255, 0, 0))
+            item_image.putpixel((px + 8, py + 21), (255, 255, 0, 0))
         px += 1
         if px == numbers_image.size[0]:
             py += 1
