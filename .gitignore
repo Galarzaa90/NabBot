@@ -2,8 +2,8 @@
 login.py
 __pycache__
 
-data/users.db
-/data/loot.db
+users.db
+loot.db
 *.db-journal
 
 logs/

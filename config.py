@@ -7,10 +7,6 @@ ask_channel_name = "ask-nabbot"
 ask_channel_delete = True
 log_channel_name = "server-log"
 
-# main_server is the ID of the server NabBot is originally made for, meaning there may be
-# some exclusive features and/or commands on this server only.
-main_server = 159815897052086272
-
 # Lite mode:
 # If lite is enabled, all user database related functions are disabled.
 # /stalk, /im, /whois /levels are disabled
