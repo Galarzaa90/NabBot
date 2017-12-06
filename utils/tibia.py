@@ -54,6 +54,9 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
 
 tibia_worlds = []
 
+HIGHSCORE_CATEGORIES = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
+                         "magic_ek", "magic_rp", "loyalty", "achievements"]
+
 
 class NetworkError(Exception):
     pass

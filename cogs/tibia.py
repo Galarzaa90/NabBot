@@ -1477,7 +1477,7 @@ class Tibia:
             now = dt.datetime.utcnow()
             now = now.replace(tzinfo=dt.timezone.utc)
             time_diff = now - char.last_login
-            if time_diff.days > last_login_days:
+            if time_diff.days > 7:
                 reply += "\n{1.he_she} hasn't logged in for **{0}**.".format(get_time_diff(time_diff), char)
         else:
             reply += "\n{0.he_she} has never logged in.".format(char)

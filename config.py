@@ -34,10 +34,6 @@ mod_ids = [159815675194507265, 164253469912334350]
 display_brasilia_time = True
 display_sonora_time = True
 
-# Which highscores to track (can be empty)
-highscores_categories = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
-                         "magic_ek", "magic_rp", "loyalty", "achievements"]
-
 # Cached online list expiration
 online_list_expiration = 5*60
 
@@ -46,9 +42,6 @@ loot_max = 6
 
 # Level threshold for announces (level < announceLevel)
 announce_threshold = 30
-
-# Minimum days to show last login in /check command.
-last_login_days = 7
 
 # Delay inbreed server checks
 online_scan_interval = 40

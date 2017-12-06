@@ -9,7 +9,7 @@ from typing import List
 import discord
 from discord.ext import commands
 
-from config import death_scan_interval, highscores_delay, highscores_categories, highscores_page_delay, \
+from config import death_scan_interval, highscores_delay, highscores_page_delay, \
     online_scan_interval, announce_threshold, ask_channel_name, online_list_expiration
 from nabbot import NabBot
 from utils import checks
@@ -21,7 +21,10 @@ from utils.messages import weighed_choice, death_messages_player, death_messages
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, ERROR_DOESNTEXIST, \
     get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild, \
-    get_tibia_time_zone, NetworkError, Death, Character
+    get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES
+
+
+
 
 
 class Tracking:
@@ -75,7 +78,7 @@ class Tracking:
                 continue
             for world in tracked_worlds_list:
                 try:
-                    for category in highscores_categories:
+                    for category in HIGHSCORE_CATEGORIES:
                         # Check the last scan time, highscores are updated every server save
                         with closing(userDatabase.cursor()) as c:
                             c.execute("SELECT last_scan FROM highscores_times WHERE world = ? and category = ?",
