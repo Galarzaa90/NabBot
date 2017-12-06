@@ -191,13 +191,12 @@ class Tracking:
                         log.error(f"scan_online_chars: Could not fetch {name}, NetWorkError")
                         continue
                     if offline_char is not None:
-                        c.execute("SELECT name, last_level, id FROM chars WHERE name LIKE ?", (offline_char.name,))
+                        c.execute("SELECT name, level, id FROM chars WHERE name LIKE ?", (offline_char.name,))
                         result = c.fetchone()
                         if result:
-                            last_level = result["last_level"]
-                            c.execute("UPDATE chars SET last_level = ? WHERE name LIKE ?",
+                            c.execute("UPDATE chars SET level = ? WHERE name LIKE ?",
                                       (offline_char.level, offline_char.name))
-                            if offline_char.level > last_level > 0:
+                            if offline_char.level > result["level"] > 0:
                                 # Saving level up date in database
                                 c.execute(
                                     "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
@@ -208,15 +207,14 @@ class Tracking:
                         await self.check_death(offline_char.name)
                 # Add new online chars and announce level differences
                 for server_char in current_world_online:
-                    c.execute("SELECT name, last_level, id, user_id FROM chars WHERE name LIKE ?",
+                    c.execute("SELECT name, level, id, user_id FROM chars WHERE name LIKE ?",
                               (server_char.name,))
                     result = c.fetchone()
+                    # If its a stalked character
                     if result:
-                        # If its a stalked character
-                        last_level = result["last_level"]
                         # We update their last level in the db
                         c.execute(
-                            "UPDATE chars SET last_level = ? WHERE name LIKE ?",
+                            "UPDATE chars SET level = ? WHERE name LIKE ?",
                             (server_char.level, server_char.name)
                         )
                         if server_char not in global_online_list:
@@ -225,7 +223,7 @@ class Tracking:
                             global_online_list.insert(0, server_char)
                             await self.check_death(server_char.name)
                         # Else we check for levelup
-                        elif server_char.level > last_level > 0:
+                        elif server_char.level > result["level"] > 0:
                             # Saving level up date in database
                             c.execute(
                                 "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
@@ -562,7 +560,7 @@ class Tracking:
                 conn.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
         for char in added:
             with userDatabase as conn:
-                conn.execute("INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
+                conn.execute("INSERT INTO chars (name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
                              (char.name, char.level * -1, char.vocation, user.id, char.world,
                               char.guild_name)
                              )
@@ -585,7 +583,7 @@ class Tracking:
         All registered level ups and deaths will be lost forever."""
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT id, name, ABS(last_level) as level, user_id, vocation, world "
+            c.execute("SELECT id, name, ABS(level) as level, user_id, vocation, world "
                       "FROM chars WHERE name LIKE ?", (name,))
             char = c.fetchone()
             if char is None:
@@ -678,7 +676,7 @@ class Tracking:
             for char in global_online_list:
                 char_world = char.world
                 name = char.name
-                c.execute("SELECT name, user_id, vocation, ABS(last_level) as level FROM chars WHERE name LIKE ?",
+                c.execute("SELECT name, user_id, vocation, ABS(level) as level FROM chars WHERE name LIKE ?",
                           (name,))
                 row = c.fetchone()
                 if row is None:

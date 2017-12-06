@@ -912,7 +912,11 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
     worlds = []
     try:
         for world in json_content["worlds"]["allworlds"]:
-            worlds.append(World(name=world["name"], online=int(world["online"]), location=world["location"]))
+            try:
+                world["online"] = int(world["online"])
+            except ValueError:
+                world["online"] = 0
+            worlds.append(World(name=world["name"], online=world["online"], location=world["location"]))
     except KeyError:
         return
     return worlds

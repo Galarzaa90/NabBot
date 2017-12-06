@@ -183,7 +183,7 @@ class Mod:
                     # Registered to current user
                     await ctx.send("This character is already registered to this user.")
                     return
-                c.execute("INSERT INTO chars (name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
+                c.execute("INSERT INTO chars (name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
                           (char.name, char.level * -1, char.vocation, user.id, char.world, char.guild_name))
                 # Check if user is already registered
                 c.execute("SELECT id from users WHERE id = ?", (user.id,))
@@ -302,7 +302,7 @@ class Mod:
                 if result is None:
                     c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
 
-                c.executemany("INSERT INTO chars(name,last_level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
+                c.executemany("INSERT INTO chars(name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
                               added_tuples)
                 c.executemany("UPDATE chars SET user_id = ? WHERE id = ?", reassigned_tuples)
                 reply = ""
@@ -357,7 +357,7 @@ class Mod:
         c = userDatabase.cursor()
         with ctx.typing():
             try:
-                c.execute("SELECT name, user_id, world, ABS(last_level) as level, vocation "
+                c.execute("SELECT name, user_id, world, ABS(level) as level, vocation "
                           "FROM chars WHERE name LIKE ?", (name,))
                 result = c.fetchone()
                 if result is None:
@@ -507,7 +507,7 @@ class Mod:
                                            new_char.name, new_char.vocation))
                     return
                 confirm_message = "Are you sure **{0}** ({1} {2}) is **{3}** ({4} {5}) now? `yes/no`"
-                await ctx.send(confirm_message.format(old_char_db["name"], abs(old_char_db["last_level"]),
+                await ctx.send(confirm_message.format(old_char_db["name"], abs(old_char_db["level"]),
                                                       old_char_db["vocation"], new_char.name, new_char.level,
                                                       new_char.vocation))
 
@@ -527,7 +527,7 @@ class Mod:
                 new_char_db = c.fetchone()
 
                 if new_char_db is None:
-                    c.execute("UPDATE chars SET name = ?, vocation = ?, last_level = ? WHERE id = ?",
+                    c.execute("UPDATE chars SET name = ?, vocation = ?, level = ? WHERE id = ?",
                               (new_char.name, new_char.vocation, new_char.level, old_char_db["id"],))
                 else:
                     # Replace new char with old char id and delete old char, reassign deaths and levelups

@@ -17,7 +17,7 @@ else:
     shutil.copyfile("data/loot_template.db", LOOTDB)
     lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 17
+DB_LASTVERSION = 18
 
 # Dictionary of worlds tracked by nabbot, key:value = server_id:world
 # Dictionary is populated from database
@@ -34,11 +34,10 @@ announce_channels = {}
 
 def init_database():
     """Initializes and/or updates the database to the current version"""
-
     # Database file is automatically created with connect, now we have to check if it has tables
     print("Checking database version...")
+    c = userDatabase.cursor()
     try:
-        c = userDatabase.cursor()
         c.execute("SELECT COUNT(*) as count FROM sqlite_master WHERE type = 'table'")
         result = c.fetchone()
         # Database is empty
@@ -217,10 +216,33 @@ def init_database():
         if db_version == 16:
             c.execute("ALTER table highscores_times ADD category TEXT")
             db_version += 1
+        if db_version == 17:
+            # Cleaning up unused columns and renaming columns
+            c.execute("""CREATE TABLE chars_temp(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                name TEXT,
+                level INTEGER DEFAULT -1,
+                vocation TEXT,
+                world TEXT,
+                guild TEXT
+            );""")
+            c.execute("INSERT INTO chars_temp SELECT id, user_id, name, last_level, vocation, world, guild FROM chars")
+            c.execute("DROP TABLE chars")
+            c.execute("ALTER table chars_temp RENAME TO chars")
+            c.execute("DROP TABLE IF EXISTS user_servers")
+            c.execute("""CREATE TABLE users_temp(
+                id INTEGER NOT NULL,
+                name TEXT
+            );""")
+            c.execute("INSERT INTO users_temp SELECT id, name FROM users")
+            c.execute("DROP TABLE users")
+            c.execute("ALTER table users_temp RENAME TO users")
+            db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
-
     finally:
+        c.close()
         userDatabase.commit()
 
 
@@ -232,6 +254,7 @@ def dict_factory(cursor, row):
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
+
 
 userDatabase.row_factory = dict_factory
 tibiaDatabase.row_factory = dict_factory

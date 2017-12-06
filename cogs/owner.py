@@ -266,7 +266,7 @@ class Owner:
                 c.execute("DELETE FROM chars WHERE user_id NOT IN (SELECT id FROM users)")
 
             # Removing deleted chars
-            c.execute("SELECT name,last_level,vocation FROM chars")
+            c.execute("SELECT name,level,vocation FROM chars")
             result = c.fetchall()
             if result is None:
                 return

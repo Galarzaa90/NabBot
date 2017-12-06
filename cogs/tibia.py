@@ -112,7 +112,7 @@ class Tibia:
                     placeholders = ", ".join("?" for w in user_tibia_worlds)
                     c = userDatabase.cursor()
                     try:
-                        c.execute("SELECT name, ABS(last_level) as level "
+                        c.execute("SELECT name, ABS(level) as level "
                                   "FROM chars "
                                   "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
                                   tuple(user_tibia_worlds))
@@ -342,7 +342,7 @@ class Tibia:
 
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT name, user_id, ABS(last_level) as level, vocation FROM chars "
+            c.execute("SELECT name, user_id, ABS(level) as level, vocation FROM chars "
                       "WHERE level >= ? AND level <= ? AND world = ?"
                       "ORDER by level DESC", (low, high, tracked_world, ))
             count = 0
@@ -1514,7 +1514,7 @@ class Tibia:
         placeholders = ", ".join("?" for w in user_tibia_worlds)
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT name, ABS(last_level) as level, vocation "
+            c.execute("SELECT name, ABS(level) as level, vocation "
                       "FROM chars "
                       "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
                       tuple(user_tibia_worlds))
