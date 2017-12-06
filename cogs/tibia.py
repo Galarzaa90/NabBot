@@ -1035,11 +1035,11 @@ class Tibia:
                 name = result["name"]
                 emoji = get_voc_emoji(result["vocation"])
                 title = f"{emoji} {name} timeline"
-                c.execute("SELECT name, user_id, world, level, killer, 'death' AS `type`, date, vocation "
-                          "FROM char_deaths, chars WHERE char_id = id AND level >= ? AND name LIKE ?"
+                c.execute("SELECT name, user_id, world, chars.level, killer, 'death' AS `type`, date, vocation "
+                          "FROM char_deaths, chars WHERE char_id = id AND char_deaths.level >= ? AND name LIKE ?"
                           "UNION "
-                          "SELECT name, user_id, world, level, null, 'levelup' AS `type`, date, vocation "
-                          "FROM char_levelups, chars WHERE char_id = id AND level >= ? AND name LIKE ? "
+                          "SELECT name, user_id, world, chars.level, null, 'levelup' AS `type`, date, vocation "
+                          "FROM char_levelups, chars WHERE char_id = id AND char_levelups.level >= ? AND name LIKE ? "
                           "ORDER BY date DESC", (announce_threshold, name, announce_threshold, name))
                 while True:
                     row = c.fetchone()
