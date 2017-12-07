@@ -597,7 +597,7 @@ class Tibia:
         else:
             name_with_article = "a "+name
         try:
-            c.execute("SELECT level, date, name, user_id, byplayer, killer, vocation "
+            c.execute("SELECT char_deaths.level, date, name, user_id, byplayer, killer, vocation "
                       "FROM char_deaths, chars "
                       "WHERE char_id = id AND (killer LIKE ? OR killer LIKE ?) "
                       "ORDER BY date DESC", (name, name_with_article))
