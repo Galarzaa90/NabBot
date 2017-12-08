@@ -11,6 +11,7 @@ from utils.database import tracked_worlds
 from utils.discord import is_private, is_lite_mode
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, global_online_list, \
     get_local_timezone
+from utils.messages import html_to_markdown, get_first_image, split_message
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import *
 from utils.tibiawiki import get_rashid_info
@@ -1446,6 +1447,47 @@ class Tibia:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         await ctx.send(embed=embed)
+
+    @commands.command()
+    async def news(self, ctx, news_id : int=0):
+        """Shows the latest news articles from Tibia.com
+
+        If no id is supplied, a list of recent articles is shown, otherwise, a snippet of the article is shown."""
+        if news_id == 0:
+            try:
+                recent_news = await get_recent_news()
+                if recent_news is None:
+                    await ctx.send("Something went wrong getting recent news.")
+            except NetworkError:
+                await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
+                return
+            embed = discord.Embed(title="Recent news")
+            embed.set_footer(text="To see a specific article, use the command /news <id>")
+            news_format = "`{id}`\t[{news}]({tibiaurl})"
+            embed.description = "\n".join([news_format.format(**n) for n in recent_news[:5]])
+            await ctx.send(embed=embed)
+        else:
+            try:
+                article = await get_news(news_id)
+                if article is None:
+                    await ctx.send("Something went wrong getting recent news.")
+            except NetworkError:
+                await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
+                return
+            url = f"http://www.tibia.com/news/?subtopic=newsarchive&id={news_id}"
+            embed = discord.Embed(title=article["title"],
+                                  url=url)
+            content = html_to_markdown(article["content"])
+            thumbnail = get_first_image(article["content"])
+            print(thumbnail)
+            if thumbnail is not None:
+                embed.set_thumbnail(url=thumbnail)
+            messages = split_message(content, 1800)
+            embed.description = messages[0]
+            if len(messages) > 1:
+                embed.description += "\n*[Read more..](url)*"
+            await ctx.send(embed=embed)
+
 
     @staticmethod
     def get_char_string(char: Character) -> str:

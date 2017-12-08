@@ -1602,3 +1602,23 @@ async def send_messageEx(bot, dest, message, embed=False):
             await bot.send_message(dest, embed=msg_embed)
         else:
             await bot.send_message(dest, msg)
+
+
+def html_to_markdown(html_string):
+    html_string = html_string.replace("\r","")
+    html_string = re.sub(r'<br\s?/>', "\n", html_string)
+    html_string = re.sub(r'<strong>([^<]+)</strong>', '**\g<1>**\n', html_string)
+    html_string = re.sub(r'<a href=\"([^\"]+)\"[^>]+>([^<]+)</a>', "[\g<2>](\g<1>)", html_string)
+    html_string = re.sub(r'<iframe src=\"([^\"]+)\"[^>]+></iframe>',"[YouTube](\g<1>)", html_string)
+    # Remove leftover html tags
+    html_string = re.sub(r'<[^>]+>', "", html_string)
+    return html_string
+
+
+def get_first_image(content):
+    print(content)
+    match = re.search(r'<img src=\"([^\"]+)\"[^>]+>', content)
+    if match:
+        return match.group(1)
+    return None
+

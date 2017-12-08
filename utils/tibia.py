@@ -421,7 +421,7 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
 async def get_world(name, tries=5) -> Optional[World]:
     url = f"https://api.tibiadata.com/v1/worlds/{name}.json"
     if tries == 0:
-        log.error("get_world_online: Couldn't fetch {0}, network error.".format(name))
+        log.error("get_world: Couldn't fetch {0}, network error.".format(name))
         raise NetworkError()
         # Fetch website
 
@@ -554,6 +554,61 @@ async def get_guild_online(name, title_case=True, tries=5):
     return guild
 
 
+async def get_recent_news(tries = 5):
+    if tries == 0:
+        log.error("get_recent_news: network error.")
+        raise NetworkError()
+    try:
+        url = f"https://api.tibiadata.com/v1/news.json"
+    except UnicodeEncodeError:
+        return None
+    # Fetch website
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
+    except Exception:
+        await asyncio.sleep(network_retry_delay)
+        return await get_recent_news(tries - 1)
+
+    content_json = json.loads(content)
+    try:
+        news = content_json["news"]
+    except KeyError:
+        return None
+    for article in news:
+        article["date"] = parse_tibiadata_time(article["date"]).date()
+    return news
+
+async def get_news(id: int, tries = 5):
+    if tries == 0:
+        log.error("get_recent_news: network error.")
+        raise NetworkError()
+    try:
+        url = f"https://api.tibiadata.com/v1/news/{id}.json"
+    except UnicodeEncodeError:
+        return None
+    # Fetch website
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
+    except Exception:
+        await asyncio.sleep(network_retry_delay)
+        return await get_recent_news(tries - 1)
+
+    content_json = json.loads(content)
+    try:
+        news = content_json["news"]
+    except KeyError:
+        return None
+    if "error" in news:
+        return None
+    article = news[0]
+    article["date"] = parse_tibiadata_time(article["date"]).date()
+    return article
+
+
 def get_character_url(name):
     """Gets a character's tibia.com URL"""
     return url_character + urllib.parse.quote(name.encode('iso-8859-1'))
@@ -605,12 +660,15 @@ def parse_tibiadata_time(time_dict: Dict[str, Union[int, str]]) -> Optional[dt.d
     except (KeyError, ValueError):
         return None
 
-    if time_dict["timezone"] == "CET":
-        timezone_offset = 1
-    elif time_dict["timezone"] == "CEST":
-        timezone_offset = 2
+    if time_dict["timezone_type"] == 2:
+        if time_dict["timezone"] == "CET":
+            timezone_offset = 1
+        elif time_dict["timezone"] == "CEST":
+            timezone_offset = 2
+        else:
+            return None
     else:
-        return None
+        timezone_offset = 1
     # We substract the offset to convert the time to UTC
     t = t - dt.timedelta(hours=timezone_offset)
     return t.replace(tzinfo=dt.timezone.utc)
