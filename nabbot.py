@@ -11,8 +11,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from config import *
-from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, reload_welcome_messages, \
-    welcome_messages, reload_announce_channels, announce_channels
+from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, get_server_property
 from utils.discord import get_region_string, is_private
 from utils.general import join_list, get_token
 from utils.general import log
@@ -153,7 +152,7 @@ class NabBot(commands.Bot):
         if member.guild.id in lite_servers or tracked_worlds.get(member.guild.id) is None:
             return
 
-        server_welcome = welcome_messages.get(member.guild.id, "")
+        server_welcome = get_server_property("welcome", member.guild.id, "")
         pm = (welcome_pm+"\n"+server_welcome).format(member, self)
         log_message = "{0.mention} joined.".format(member)
 
@@ -335,10 +334,10 @@ class NabBot(commands.Bot):
         return list(set([world for guild, world in tracked_worlds.items() if guild in [g.id for g in guild_list]]))
 
     def get_announce_channel(self, guild: discord.Guild) -> discord.TextChannel:
-        """Returns this world's announcements channel. If no channel is set, the default channel is returned.
+        """Returns this world's announcements channel. If no channel is set, the top channel is returned.
 
-        It also checks if the bot has permissions on that channel, if not, it will return the default channel too."""
-        channel_id = announce_channels.get(guild.id, None)
+        It also checks if the bot has permissions on that channel, if not, it will return the top channel too."""
+        channel_id = get_server_property("announce_channel", guild.id, is_int=True)
         if channel_id is None:
             return self.get_top_channel(guild, True)
         channel = guild.get_channel(int(channel_id))
@@ -438,10 +437,6 @@ if __name__ == "__main__":
     if len(tibia_worlds) == 0:
         print("Critical information was not available: NabBot can not start without the World List.")
         quit()
-
-    reload_welcome_messages()
-    reload_announce_channels()
-
     token = get_token()
 
     print("Loading cogs...")

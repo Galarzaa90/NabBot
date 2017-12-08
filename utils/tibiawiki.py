@@ -2,8 +2,6 @@ import datetime as dt
 import urllib.parse
 from typing import Dict, Union
 
-from discord import Colour
-
 from utils.database import tibiaDatabase
 from utils.general import get_local_timezone
 from utils.tibia import get_tibia_time_zone

@@ -13,7 +13,7 @@ from config import death_scan_interval, highscores_delay, highscores_page_delay,
     online_scan_interval, announce_threshold, ask_channel_name, online_list_expiration
 from nabbot import NabBot
 from utils import checks
-from utils.database import tracked_worlds_list, userDatabase, tracked_worlds
+from utils.database import tracked_worlds_list, userDatabase, tracked_worlds, get_server_property, set_server_property
 from utils.discord import is_private
 from utils.general import global_online_list, log, join_list, start_time
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
@@ -24,9 +24,6 @@ from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, 
     get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES
 
 
-
-
-
 class Tracking:
     """Commands related to Nab Bot's tracking system."""
 
@@ -35,10 +32,6 @@ class Tracking:
         self.scan_deaths_task = self.bot.loop.create_task(self.scan_deaths())
         self.scan_online_chars_task = bot.loop.create_task(self.scan_online_chars())
         self.scan_highscores_task = bot.loop.create_task(self.scan_highscores())
-
-        self.watched_channels = dict()
-        self.watched_messages = dict()
-        self.reload_watched()
 
     async def scan_deaths(self):
         #################################################
@@ -235,7 +228,7 @@ class Tracking:
                 # Iterate through servers with tracked world to find one that matches the current world
                 for server, world in tracked_worlds.items():
                     if world == current_world:
-                        watched_channel_id = self.watched_channels.get(server, None)
+                        watched_channel_id = get_server_property("watched_channel", server, is_int=True)
                         if watched_channel_id is None:
                             # This server doesn't have watch list enabled
                             continue
@@ -267,7 +260,7 @@ class Tracking:
                                 if online_char.name == watched["name"]:
                                     # Add to online list
                                     currently_online.append(online_char)
-                        watched_message_id = self.watched_messages.get(server, None)
+                        watched_message_id = get_server_property("watched_message", server, is_int=True)
                         # We try to get the watched message, if the bot can't find it, we just create a new one
                         # This may be because the old message was deleted or this is the first time the list is checked
                         try:
@@ -290,11 +283,7 @@ class Tracking:
                         try:
                             if watched_message is None:
                                 new_watched_message = await watched_channel.send(content)
-                                c.execute("DELETE FROM server_properties WHERE server_id = ? "
-                                          "AND name LIKE ?", (server, "watched_message",))
-                                c.execute("INSERT INTO server_properties(server_id, name, value) VALUES(?,?,?)",
-                                          (server, "watched_message", new_watched_message.id))
-                                self.watched_messages[server] = new_watched_message.id
+                                set_server_property("watched_message", server, new_watched_message.id)
                             else:
                                 await watched_message.edit(content=content)
                         except discord.HTTPException:
@@ -718,8 +707,7 @@ class Tracking:
         Creates a new channel with the specified name.
         If no name is specified, the default name "watched-list" is used."""
 
-        guild = ctx.message.guild  # type: discord.Guild
-        watched_channel_id = self.watched_channels.get(guild.id)
+        watched_channel_id = get_server_property("watched_channel", ctx.guild.id, is_int=True)
         watched_channel = self.bot.get_channel(watched_channel_id)
 
         world = tracked_worlds.get(ctx.guild.id, None)
@@ -734,13 +722,12 @@ class Tracking:
         if not permissions.manage_channels and not permissions.manage_roles:
             await ctx.send("I need to have `Manage Channels` and `Manage Roles` permissions to use this command.")
             return
-        c = userDatabase.cursor()
         try:
             overwrites = {
-                guild.default_role: discord.PermissionOverwrite(read_messages=False),
-                guild.me: discord.PermissionOverwrite(read_messages=True)
+                ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                ctx.guild.me: discord.PermissionOverwrite(read_messages=True)
             }
-            channel = await guild.create_text_channel(name, overwrites=overwrites)
+            channel = await ctx.guild.create_text_channel(name, overwrites=overwrites)
         except discord.Forbidden:
             await ctx.send("Sorry, I don't have permissions to create channels. Either you give me `Manage Channels`")
         except discord.HTTPException:
@@ -753,13 +740,7 @@ class Tracking:
                                "This channel can be renamed freely."
                                "**It is important to not allow anyone to write in here**\n"
                                "*This message can be deleted now.*")
-            c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'watched_channel'", (guild.id,))
-            c.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'watched_channel', ?)",
-                      (guild.id, channel.id,))
-            self.reload_watched()
-        finally:
-            userDatabase.commit()
-            c.close()
+            set_server_property("watched_channel", ctx.guild.id, channel.id)
 
     @watched.command(name="add")
     @commands.guild_only()
@@ -986,34 +967,6 @@ class Tracking:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
-
-    def reload_watched(self):
-        c = userDatabase.cursor()
-        watched_channels_temp = {}
-        watched_messages_temp = {}
-        try:
-            c.execute("SELECT server_id, value FROM server_properties WHERE name = 'watched_channel'")
-            result = c.fetchall()
-            if len(result) > 0:
-                for row in result:
-                    try:
-                        watched_channels_temp[int(row["server_id"])] = int(row["value"])
-                    except ValueError:
-                        continue
-                self.watched_channels.clear()
-                self.watched_channels.update(watched_channels_temp)
-            c.execute("SELECT server_id, value FROM server_properties WHERE name = 'watched_message'")
-            result = c.fetchall()
-            if len(result) > 0:
-                for row in result:
-                    try:
-                        watched_messages_temp[int(row["server_id"])] = int(row["value"])
-                    except ValueError:
-                        continue
-                self.watched_messages.clear()
-                self.watched_messages.update(watched_messages_temp)
-        finally:
-            c.close()
 
     def __unload(self):
         print("cogs.tracking: Cancelling pending tasks...")

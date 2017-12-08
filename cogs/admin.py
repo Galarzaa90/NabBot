@@ -269,7 +269,7 @@ class Admin:
             else:
                 guild_list = [str(i + 1) + ": " + admin_guilds[i].name for i in range(len(admin_guilds))]
                 await ctx.send("For which server do you want to change the welcome message?\n\t0: *Cancel*\n\t"
-                                    +"\n\t".join(guild_list))
+                               +"\n\t".join(guild_list))
                 try:
                     answer = await self.bot.wait_for("message", timeout=60.0, check=check)
                     answer = int(answer.content)
@@ -287,20 +287,20 @@ class Admin:
                     await ctx.send("I guess you changed your mind.")
                     return
         if message is None:
-            current_message = welcome_messages.get(guild.id, None)
+            current_message = get_server_property("welcome", guild.id)
             if current_message is None:
                 current_message = welcome_pm.format(ctx.message.author, self.bot)
                 await ctx.send("This server has no custom message, joining members get the default message:\n"
-                                    "----------\n{0}".format(current_message))
+                               "----------\n{0}".format(current_message))
             else:
                 current_message = (welcome_pm + "\n" + current_message).format(ctx.message.author, self.bot)
                 await ctx.send("This server has the following welcome message:\n"
-                                    "----------\n``The first two lines can't be changed``\n{0}"
-                                    .format(current_message))
+                               "----------\n``The first two lines can't be changed``\n{0}"
+                               .format(current_message))
             return
         if message.lower() in ["clear", "none", "delete", "remove"]:
             await ctx.send("Are you sure you want to delete this server's welcome message? `yes/no`\n"
-                                "The default welcome message will still be shown.")
+                           "The default welcome message will still be shown.")
             try:
                 reply = await self.bot.wait_for("message", timeout=50.0, check=check)
                 if reply.content.lower() not in ["yes", "y"]:
@@ -310,14 +310,8 @@ class Admin:
                 await ctx.send("I guess you changed your mind...")
                 return
 
-            c = userDatabase.cursor()
-            try:
-                c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'welcome'", (guild.id,))
-            finally:
-                c.close()
-                userDatabase.commit()
+            set_server_property("welcome", guild.id, None)
             await ctx.send("This server's welcome message was removed.")
-            reload_welcome_messages()
             return
 
         if len(message) > 1200:
@@ -330,8 +324,8 @@ class Admin:
             return
 
         await ctx.send("Are you sure you want this as your private welcome message?\n"
-                            "----------\n``The first two lines can't be changed``\n{0}"
-                            .format(complete_message))
+                       "----------\n``The first two lines can't be changed``\n{0}"
+                       .format(complete_message))
         try:
             reply = await self.bot.wait_for("message", timeout=120.0, check=check)
             if reply.content.lower() not in ["yes", "y"]:
@@ -341,17 +335,8 @@ class Admin:
             await ctx.send("I guess you changed your mind...")
             return
 
-        c = userDatabase.cursor()
-        try:
-            # Safer to just delete old entry and add new one
-            c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'welcome'", (guild.id,))
-            c.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'welcome', ?)",
-                      (guild.id, message,))
-            await ctx.send("This server's welcome message has been changed successfully.")
-        finally:
-            c.close()
-            userDatabase.commit()
-            reload_welcome_messages()
+        set_server_property("welcome", guild.id, message)
+        await ctx.send("This server's welcome message has been changed successfully.")
 
     @commands.command(name="setchannel")
     @checks.is_admin()
@@ -365,7 +350,7 @@ class Admin:
             return m.author == ctx.author and m.channel == ctx.channel
 
         top_channel = self.bot.get_top_channel(ctx.guild, True)
-        current_channel = announce_channels.get(ctx.guild.id, None)
+        current_channel = get_server_property("announce_channel", ctx.guild.id, is_int=True)
         if name is None:
             if current_channel is None:
                 if top_channel is None:
@@ -406,13 +391,8 @@ class Admin:
             except asyncio.TimeoutError:
                 await ctx.send("I guess you changed your mind...")
                 return
-
-            c = userDatabase.cursor()
-            with userDatabase as conn:
-                conn.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'announce_channel'",
-                             (ctx.guild.id,))
+            set_server_property("announce_channel", ctx.guild.id, None)
             await ctx.send("This server's announce channel was removed.")
-            reload_announce_channels()
             return
         try:
             channel = await commands.TextChannelConverter().convert(ctx, name)
@@ -434,20 +414,10 @@ class Admin:
             await ctx.send("I guess you changed your mind...")
             return
 
-        c = userDatabase.cursor()
-        try:
-            # Safer to just delete old entry and add new one
-            c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'announce_channel'",
-                      (ctx.guild.id,))
-            c.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'announce_channel', ?)",
-                      (ctx.guild.id, channel.id,))
-            await ctx.send("This server's announcement channel was changed successfully.\n"
-                           "If the channel becomes unavailable for me in any way, I will try to use the highest channel"
-                           " I can see on the list.")
-        finally:
-            c.close()
-            userDatabase.commit()
-            reload_announce_channels()
+        set_server_property("announce_channel", ctx.guild.id, channel.id)
+        await ctx.send("This server's announcement channel was changed successfully.\n"
+                       "If the channel becomes unavailable for me in any way, I will try to use the highest channel"
+                       " I can see on the list.")
 
 
 def get_check_emoji(check: bool) -> str:

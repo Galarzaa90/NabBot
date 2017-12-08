@@ -1,7 +1,8 @@
 import os
 import shutil
 import sqlite3
-from typing import Dict, List
+from contextlib import closing
+from typing import Dict
 
 # Databases filenames
 USERDB = "data/users.db"
@@ -24,12 +25,6 @@ DB_LASTVERSION = 18
 # A list version is created from the dictionary
 tracked_worlds = {}
 tracked_worlds_list = []
-
-# Dictionaries of welcome messages per server
-welcome_messages = {}
-
-# Dictionaries of announce channels per server
-announce_channels = {}
 
 
 def init_database():
@@ -284,31 +279,35 @@ def reload_worlds():
         c.close()
 
 
-def reload_welcome_messages():
-    c = userDatabase.cursor()
-    welcome_messages_temp = {}
-    try:
-        c.execute("SELECT server_id, value FROM server_properties WHERE name = 'welcome'")
-        result = c.fetchall()  # type: Dict
-        if len(result) > 0:
-            for row in result:
-                welcome_messages_temp[int(row["server_id"])] = row["value"]
-        welcome_messages.clear()
-        welcome_messages.update(welcome_messages_temp)
-    finally:
-        c.close()
+def get_server_property(key: str, guild_id: int, default=None, is_int=None):
+    """Returns a guild's property
+
+    :param key: The key of the property to search for
+    :param guild_id: The discord server's id
+    :param default: A default value to return in case the key is not found
+    :param is_int: If true, the return value will be casted to int
+    :return: the property's value or the default value passed
+    """
+    with closing(userDatabase.cursor()) as c:
+        c.execute("SELECT value FROM server_properties WHERE name = ? and server_id = ?", (key, guild_id))
+        result = c.fetchone()  # type: Dict[str]
+        if is_int:
+            try:
+                return int(result["value"]) if result is not None else default
+            except ValueError:
+                return default
+        return result["value"] if result is not None else default
 
 
-def reload_announce_channels():
-    c = userDatabase.cursor()
-    announce_channels_temp = {}
-    try:
-        c.execute("SELECT server_id, value FROM server_properties WHERE name = 'announce_channel'")
-        result = c.fetchall()  # type: List[Dict[str,str]]
-        if len(result) > 0:
-            for row in result:
-                announce_channels_temp[int(row["server_id"])] = row["value"]
-        announce_channels.clear()
-        announce_channels.update(announce_channels_temp)
-    finally:
-        c.close()
+def set_server_property(key: str, guild_id: int, value) -> None:
+    """Edits a server property
+
+    :param key: The name of the property to change
+    :param guild_id: The discord server's id
+    :param value: The new value for the property, if None, it will be deleted
+    """
+    with userDatabase as con:
+        con.execute("DELETE FROM server_properties WHERE server_id = ? AND name = ?", (guild_id, key))
+        if value is None:
+            return
+        con.execute("INSERT INTO server_properties(name, server_id, value) VALUES(?,?,?)", (key, guild_id, value))

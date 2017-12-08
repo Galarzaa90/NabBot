@@ -1,6 +1,5 @@
 import random
 import re
-import datetime as dt
 
 import discord
 from discord import Colour
@@ -9,9 +8,9 @@ from discord.ext import commands
 from config import ask_channel_name
 from nabbot import NabBot
 from utils.discord import is_private, FIELD_VALUE_LIMIT
-from utils.general import join_list, get_local_timezone
+from utils.general import join_list
 from utils.messages import EMOJI, split_message
-from utils.tibia import get_map_area, get_tibia_time_zone
+from utils.tibia import get_map_area
 from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
     get_key, search_key, get_rashid_info, get_mapper_link
 

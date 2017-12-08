@@ -1,9 +1,9 @@
 import asyncio
+import datetime as dt
 import random
 import re
 import time
 from contextlib import closing
-import datetime as dt
 
 import discord
 import psutil
