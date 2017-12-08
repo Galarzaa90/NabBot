@@ -676,8 +676,7 @@ async def get_world_bosses(world):
 
     try:
         soup = BeautifulSoup(content, 'html.parser')
-        entry = soup.find('div', class_='entry')
-        sections = entry.find_all('div', class_="execphpwidget")
+        sections = soup.find_all('div', class_="execphpwidget")
     except HTMLParser.HTMLParseError:
         print("parse error")
         return
@@ -685,9 +684,11 @@ async def get_world_bosses(world):
         print("section was none")
         return
     bosses = {}
+    boss_pattern = re.compile(r'<i style=\"color:\w+;\">(?:<br\s*/>)?\s*([^<]+)\s*</i>\s*<a href=\"([^\"]+)\">'
+                              r'<img src=\"([^\"]+)\"\s*/></a>[\n\s]+(Expect in|Last seen)\s:\s(\d+)')
+    unpredicted_pattern = re.compile(r'<a href="([^"]+)"><img src="([^"]+)"/></a>[\n\s]+(Expect in|Last seen)\s:\s(\d+)')
     for section in sections:
-        regex = r'<i style="color:\w+;">[\n\s]+([^<]+)</i> <a href="([^"]+)"><img src="([^"]+)"/></a>[\n\s]+(Expect in|Last seen)\s:\s(\d+)'
-        m = re.findall(regex, str(section))
+        m = boss_pattern.findall(str(section))
         if m:
             for (chance, link, image, expect_last, days) in m:
                 name = link.split("/")[-1].replace("-", " ").lower()
@@ -695,8 +696,7 @@ async def get_world_bosses(world):
                                 "days": int(days)}
         else:
             # This regex is for bosses without prediction
-            regex = r'<a href="([^"]+)"><img src="([^"]+)"/></a>[\n\s]+(Expect in|Last seen)\s:\s(\d+)'
-            m = re.findall(regex, str(section))
+            m = unpredicted_pattern.findall(str(section))
             for (link, image, expect_last, days) in m:
                 name = link.split("/")[-1].replace("-", " ").lower()
                 bosses[name] = {"chance": "Unpredicted", "url": link, "image": image, "type": expect_last,
