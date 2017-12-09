@@ -580,12 +580,12 @@ async def get_recent_news(tries = 5):
         article["date"] = parse_tibiadata_time(article["date"]).date()
     return news
 
-async def get_news(id: int, tries = 5):
+async def get_news(article_id: int, tries=5):
     if tries == 0:
         log.error("get_recent_news: network error.")
         raise NetworkError()
     try:
-        url = f"https://api.tibiadata.com/v1/news/{id}.json"
+        url = f"https://api.tibiadata.com/v1/news/{article_id}.json"
     except UnicodeEncodeError:
         return None
     # Fetch website

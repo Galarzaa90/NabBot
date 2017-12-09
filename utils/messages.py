@@ -1583,13 +1583,14 @@ def split_message(message: str, limit: int=2000):
         return [message]
     else:
         lines = message.splitlines()
+        new_message = ""
         message_list = []
-        while len(lines) > 0:
-            new_message = ""
-            while len(lines) > 0 and len(new_message+lines[0]+"\r\n") <= limit:
-                new_message += lines[0]+"\r\n"
-                lines.remove(lines[0])
-            message_list.append(new_message)
+        for line in lines:
+            if len(new_message+line+"\n") <= limit:
+                new_message += line+"\n"
+            else:
+                message_list.append(new_message)
+                new_message = ""
         return message_list
 
 
@@ -1605,18 +1606,29 @@ async def send_messageEx(bot, dest, message, embed=False):
 
 
 def html_to_markdown(html_string):
-    html_string = html_string.replace("\r","")
+    """Converts somee html tags to markdown equivalent"""
+    # Carriage return
+    html_string = html_string.replace("\r", "")
+    # Replace <br> tags with line jumps
     html_string = re.sub(r'<br\s?/>', "\n", html_string)
-    html_string = re.sub(r'<strong>([^<]+)</strong>', '**\g<1>**\n', html_string)
+    # Replace <strong> and <b> with bold
+    html_string = re.sub(r'<strong>([^<]+)</strong>', '**\g<1>**', html_string)
+    html_string = re.sub(r'<b>([^<]+)</b>', '**\g<1>**', html_string)
+    html_string = re.sub(r'<li>([^<]+)</li>', '- \g<1>', html_string)
+    # Replace links
     html_string = re.sub(r'<a href=\"([^\"]+)\"[^>]+>([^<]+)</a>', "[\g<2>](\g<1>)", html_string)
-    html_string = re.sub(r'<iframe src=\"([^\"]+)\"[^>]+></iframe>',"[YouTube](\g<1>)", html_string)
+    # Paragraphs with jumpline
+    html_string = re.sub(r'<p>([^<]+)</p>', "\g<1>\n", html_string)
+    # Replace youtube embeds with link to youtube
+    html_string = re.sub(r'<iframe src=\"([^\"]+)\"[^>]+></iframe>', "[YouTube](\g<1>)", html_string)
     # Remove leftover html tags
     html_string = re.sub(r'<[^>]+>', "", html_string)
+    html_string = html_string.replace("\n\n", "\n")
     return html_string
 
 
 def get_first_image(content):
-    print(content)
+    """Returns a url to the first image found in a html string."""
     match = re.search(r'<img src=\"([^\"]+)\"[^>]+>', content)
     if match:
         return match.group(1)

@@ -1449,7 +1449,7 @@ class Tibia:
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def news(self, ctx, news_id : int=0):
+    async def news(self, ctx, news_id: int=0):
         """Shows the latest news articles from Tibia.com
 
         If no id is supplied, a list of recent articles is shown, otherwise, a snippet of the article is shown."""
@@ -1463,31 +1463,42 @@ class Tibia:
                 return
             embed = discord.Embed(title="Recent news")
             embed.set_footer(text="To see a specific article, use the command /news <id>")
-            news_format = "`{id}`\t[{news}]({tibiaurl})"
-            embed.description = "\n".join([news_format.format(**n) for n in recent_news[:5]])
+            news_format = "{emoji} `{id}`\t[{news}]({tibiaurl})"
+            type_emojis = {
+                "Featured Article": EMOJI[":bookmark_tabs:"],
+                "News": EMOJI[":newspaper:"],
+            }
+            for news in recent_news:
+                news["emoji"] = type_emojis.get(news["type"], "")
+            limit = 10
+            if ctx.channel.name == ask_channel_name or is_private(ctx.channel):
+                limit = 20
+            embed.description = "\n".join([news_format.format(**n) for n in recent_news[:limit]])
             await ctx.send(embed=embed)
         else:
             try:
                 article = await get_news(news_id)
                 if article is None:
                     await ctx.send("Something went wrong getting recent news.")
+                    return
             except NetworkError:
                 await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
                 return
             url = f"http://www.tibia.com/news/?subtopic=newsarchive&id={news_id}"
-            embed = discord.Embed(title=article["title"],
-                                  url=url)
+            embed = discord.Embed(title=article["title"], url=url)
             content = html_to_markdown(article["content"])
             thumbnail = get_first_image(article["content"])
-            print(thumbnail)
             if thumbnail is not None:
                 embed.set_thumbnail(url=thumbnail)
-            messages = split_message(content, 1800)
+            limit = 600
+            if ctx.channel.name == ask_channel_name or is_private(ctx.channel):
+                limit = 1900
+            messages = split_message(content, limit)
             embed.description = messages[0]
+            embed.set_footer(text=f"Posted on {article['date']:%A, %B %d, %Y}")
             if len(messages) > 1:
-                embed.description += "\n*[Read more..](url)*"
+                embed.description += f"\n*[Read more..]({url})*"
             await ctx.send(embed=embed)
-
 
     @staticmethod
     def get_char_string(char: Character) -> str:
