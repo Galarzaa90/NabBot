@@ -1471,7 +1471,7 @@ class Tibia:
             for news in recent_news:
                 news["emoji"] = type_emojis.get(news["type"], "")
             limit = 10
-            if ctx.channel.name == ask_channel_name or is_private(ctx.channel):
+            if is_private(ctx.channel) or ctx.channel.name == ask_channel_name:
                 limit = 20
             embed.description = "\n".join([news_format.format(**n) for n in recent_news[:limit]])
             await ctx.send(embed=embed)
@@ -1491,7 +1491,7 @@ class Tibia:
             if thumbnail is not None:
                 embed.set_thumbnail(url=thumbnail)
             limit = 600
-            if ctx.channel.name == ask_channel_name or is_private(ctx.channel):
+            if is_private(ctx.channel) or ctx.channel.name == ask_channel_name:
                 limit = 1900
             messages = split_message(content, limit)
             embed.description = messages[0]
