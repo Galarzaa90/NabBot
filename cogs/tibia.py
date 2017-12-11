@@ -1479,9 +1479,9 @@ class Tibia:
             await ctx.send(embed=embed)
         else:
             try:
-                article = await get_news(news_id)
+                article = await get_news_article(news_id)
                 if article is None:
-                    await ctx.send("Something went wrong getting recent news.")
+                    await ctx.send("There's no article with that id.")
                     return
             except NetworkError:
                 await ctx.send("I couldn't fetch the recent news, I'm having network problems.")

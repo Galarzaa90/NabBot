@@ -580,7 +580,11 @@ async def get_recent_news(tries = 5):
         article["date"] = parse_tibiadata_time(article["date"]).date()
     return news
 
-async def get_news(article_id: int, tries=5):
+
+async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Optional[str, dt.date]]]:
+    """Returns a news article with the specified id or None if it doesn't exist
+
+    If there's a network error, NetworkError exception is raised"""
     if tries == 0:
         log.error("get_recent_news: network error.")
         raise NetworkError()
