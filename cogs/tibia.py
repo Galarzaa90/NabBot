@@ -991,10 +991,12 @@ class Tibia:
         try:
             if name is None:
                 title = "Timeline"
-                c.execute("SELECT name, user_id, world, char_deaths.level, killer, 'death' AS `type`, date, vocation "
+                c.execute("SELECT name, user_id, world, char_deaths.level as level, killer, 'death' AS `type`, date, "
+                          "vocation "
                           "FROM char_deaths, chars WHERE char_id = id AND char_deaths.level >= ? "
                           "UNION "
-                          "SELECT name, user_id, world, char_levelups.level, null, 'levelup' AS `type`, date, vocation "
+                          "SELECT name, user_id, world, char_levelups.level as level, null, 'levelup' AS `type`, date, "
+                          "vocation "
                           "FROM char_levelups, chars WHERE char_id = id AND char_levelups.level >= ? "
                           "ORDER BY date DESC", (announce_threshold, announce_threshold))
                 while True:
@@ -1036,12 +1038,12 @@ class Tibia:
                 name = result["name"]
                 emoji = get_voc_emoji(result["vocation"])
                 title = f"{emoji} {name} timeline"
-                c.execute("SELECT name, user_id, world, char_deaths.level, killer, 'death' AS `type`, date, vocation "
-                          "FROM char_deaths, chars WHERE char_id = id AND char_deaths.level >= ? AND name LIKE ?"
+                c.execute("SELECT level, killer, 'death' AS `type`, date "
+                          "FROM char_deaths WHERE char_id = ? AND level >= ? "
                           "UNION "
-                          "SELECT name, user_id, world, char_levelups.level, null, 'levelup' AS `type`, date, vocation "
-                          "FROM char_levelups, chars WHERE char_id = id AND char_levelups.level >= ? AND name LIKE ? "
-                          "ORDER BY date DESC", (announce_threshold, name, announce_threshold, name))
+                          "SELECT level, null, 'levelup' AS `type`, date "
+                          "FROM char_levelups WHERE char_id = ? AND level >= ? "
+                          "ORDER BY date DESC", (result["id"], announce_threshold, result["id"], announce_threshold))
                 while True:
                     row = c.fetchone()
                     if row is None:
@@ -1113,10 +1115,10 @@ class Tibia:
         await ctx.channel.trigger_typing()
         try:
             title = f"{user.display_name} timeline"
-            c.execute("SELECT name, user_id, world, char_deaths.level, killer, 'death' AS `type`, date, vocation "
+            c.execute("SELECT name, user_id, world, char_deaths.level AS level, killer, 'death' AS `type`, date, vocation "
                       "FROM char_deaths, chars WHERE char_id = id AND char_deaths.level >= ? AND user_id = ? "
                       "UNION "
-                      "SELECT name, user_id, world, char_levelups.level, null, 'levelup' AS `type`, date, vocation "
+                      "SELECT name, user_id, world, char_levelups.level as level, null, 'levelup' AS `type`, date, vocation "
                       "FROM char_levelups, chars WHERE char_id = id AND char_levelups.level >= ? AND user_id = ? "
                       "ORDER BY date DESC", (announce_threshold, user.id, announce_threshold, user.id))
             while True:
