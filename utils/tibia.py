@@ -326,7 +326,7 @@ async def get_character(name, tries=5) -> Optional[Character]:
         return None
     if character.house is not None:
         with closing(tibiaDatabase.cursor()) as c:
-            c.execute("SELECT id FROM houses WHERE name LIKE ?", (character.house["name"],))
+            c.execute("SELECT id FROM houses WHERE name LIKE ?", (character.house["name"].strip(),))
             result = c.fetchone()
             if result:
                 character.house["id"] = result["id"]
