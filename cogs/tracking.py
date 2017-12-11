@@ -267,8 +267,7 @@ class Tracking:
                             watched_message = await watched_channel.get_message(watched_message_id)
                         except (discord.NotFound, discord.HTTPException, discord.Forbidden):
                             watched_message = None
-                        items = [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
-                                 for x in currently_online]
+                        items = [f"\t{x.name} - Level {x.level} {get_voc_emoji(x.vocation)}" for x in currently_online]
                         if len(items) > 0 or len(guild_online.keys()) > 0:
                             content = "These watched characters are online:\n"
                             content += "\n".join(items)
