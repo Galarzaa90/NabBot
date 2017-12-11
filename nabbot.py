@@ -50,9 +50,6 @@ class NabBot(commands.Bot):
             if user is not None:
                 await user.send("Restart complete")
 
-        # Background tasks
-        self.loop.create_task(self.game_update())
-
         # Populating members's guild list
         self.members = {}
         for guild in self.guilds:
@@ -243,19 +240,6 @@ class NabBot(commands.Bot):
             reply = "Server region changed from {0} to {1}".format(get_region_string(before.region),
                                                                    get_region_string(after.region))
             await self.send_log_message(after, reply)
-
-    async def game_update(self):
-        """Updates the bot's status.
-
-        A random status is selected every 20 minutes.
-        """
-        game_list = ["Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2017", "Russian Roulette",
-                     "with my toy humans", "with fire"+EMOJI[":fire:"], "God", "innocent", "the part", "hard to get",
-                     "with my human minions", "Singularity", "Portal 3", "Dank Souls"]
-        await self.wait_until_ready()
-        while not self.is_closed():
-            await self.change_presence(game=discord.Game(name=random.choice(game_list)))
-            await asyncio.sleep(60*20)  # Change game every 20 minutes
 
     # ------------ Utility methods ------------
 

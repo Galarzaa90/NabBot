@@ -25,10 +25,24 @@ class General:
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.events_announce_task = self.bot.loop.create_task(self.events_announce())
+        self.game_update_task = self.bot.loop.create_task(self.game_update())
+
+    async def game_update(self):
+        """Updates the bot's status.
+
+        A random status is selected every 20 minutes.
+        """
+        game_list = ["Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2017", "Russian Roulette",
+                     "with my toy humans", "with fire"+EMOJI[":fire:"], "God", "innocent", "the part", "hard to get",
+                     "with my human minions", "Singularity", "Portal 3", "Dank Souls"]
+        await self.bot.wait_until_ready()
+        while not self.bot.is_closed():
+            await self.bot.change_presence(game=discord.Game(name=random.choice(game_list)))
+            await asyncio.sleep(60*20)  # Change game every 20 minutes
 
     async def events_announce(self):
         await self.bot.wait_until_ready()
-        while not self.bot .is_closed():
+        while not self.bot.is_closed():
             """Announces when an event is close to starting."""
             first_announce = 60 * 30
             second_announce = 60 * 15
@@ -989,6 +1003,7 @@ class General:
 
     def __unload(self):
         self.events_announce_task.cancel()
+        self.game_update_task.cancel()
 
 
 def setup(bot):
