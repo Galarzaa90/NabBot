@@ -7,7 +7,7 @@ from discord.ext import commands
 from config import *
 from nabbot import NabBot
 from utils import checks
-from utils.database import tracked_worlds
+from utils.database import tracked_worlds, get_server_property
 from utils.discord import is_private, is_lite_mode
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, global_online_list, \
     get_local_timezone
@@ -21,6 +21,7 @@ class Tibia:
     """Tibia related commands."""
     def __init__(self, bot: NabBot):
         self.bot = bot
+        self.news_announcements_task = self.bot.loop.create_task(self.scan_news())
 
     @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'])
     async def whois(self, ctx, *, name=None):
@@ -1486,21 +1487,27 @@ class Tibia:
             except NetworkError:
                 await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
                 return
-            url = f"http://www.tibia.com/news/?subtopic=newsarchive&id={news_id}"
-            embed = discord.Embed(title=article["title"], url=url)
-            content = html_to_markdown(article["content"])
-            thumbnail = get_first_image(article["content"])
-            if thumbnail is not None:
-                embed.set_thumbnail(url=thumbnail)
             limit = 600
             if is_private(ctx.channel) or ctx.channel.name == ask_channel_name:
                 limit = 1900
-            messages = split_message(content, limit)
-            embed.description = messages[0]
-            embed.set_footer(text=f"Posted on {article['date']:%A, %B %d, %Y}")
-            if len(messages) > 1:
-                embed.description += f"\n*[Read more..]({url})*"
+            embed = self.get_article_embed(article, limit)
             await ctx.send(embed=embed)
+
+    @staticmethod
+    def get_article_embed(article, limit):
+        url = f"http://www.tibia.com/news/?subtopic=newsarchive&id={article['id']}"
+        embed = discord.Embed(title=article["title"], url=url)
+        content = html_to_markdown(article["content"])
+        thumbnail = get_first_image(article["content"])
+        if thumbnail is not None:
+            embed.set_thumbnail(url=thumbnail)
+
+        messages = split_message(content, limit)
+        embed.description = messages[0]
+        embed.set_footer(text=f"Posted on {article['date']:%A, %B %d, %Y}")
+        if len(messages) > 1:
+            embed.description += f"\n*[Read more...]({url})*"
+        return embed
 
     @staticmethod
     def get_char_string(char: Character) -> str:
@@ -1631,6 +1638,63 @@ class Tibia:
         embed.description = description
         return embed
 
+    async def scan_news(self):
+        await self.bot.wait_until_ready()
+        while not self.bot.is_closed():
+            try:
+                recent_news = await get_recent_news()
+                if recent_news is None:
+                    await asyncio.sleep(30)
+                    continue
+                last_article = recent_news[0]["id"]
+                try:
+                    with open("data/last_article.txt", 'r') as f:
+                        last_id = int(f.read())
+                except (ValueError, FileNotFoundError):
+                    log.info("scan_news: No last article id saved")
+                    last_id = 0
+                if last_id == 0:
+                    with open("data/last_article.txt", 'w+') as f:
+                        f.write(last_article)
+                    await asyncio.sleep(60 * 60 * 2)
+                    continue
+                new_articles = []
+                for article in recent_news:
+                    if int(article["id"]) == last_id:
+                        break
+                    # Do not post articles older than a week (in case bot was offline)
+                    if (dt.date.today() - article["date"]).days > 7:
+                        break
+                    fetched_article = await get_news_article(int(article["id"]))
+                    if fetched_article is not None:
+                        new_articles.insert(0, fetched_article)
+                with open("data/last_article.txt", 'w+') as f:
+                    f.write(last_article)
+                if len(new_articles) == 0:
+                    await asyncio.sleep(60 * 60 * 2)
+                    continue
+                for article in new_articles:
+                    log.info("Announcing new article: {id} - {title}".format(**article))
+                    for guild in self.bot.guilds:
+                        channel = self.bot.get_channel_or_top(guild, get_server_property("events_channel", guild.id,
+                                                                                         is_int=True))
+                        try:
+                            await channel.send("New article posted on Tibia.com",
+                                               embed=self.get_article_embed(article, 400))
+                        except discord.Forbidden:
+                            log.warning("scan_news: Missing permissions.")
+                        except discord.HTTPException:
+                            log.warning("scan_news: Malformed message.")
+                await asyncio.sleep(60 * 60 * 2)
+            except NetworkError:
+                await asyncio.sleep(30)
+                continue
+            except Exception:
+                log.exception("Task: scan_news")
+
+    def __unload(self):
+        print("cogs.tibia: Cancelling pending tasks...")
+        self.news_announcements_task.cancel()
 
 def setup(bot):
     bot.add_cog(Tibia(bot))

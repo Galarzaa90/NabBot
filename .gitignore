@@ -2,11 +2,13 @@
 login.py
 __pycache__
 
-users.db
-loot.db
 *.db-journal
 
 logs/
 /loot/debug/
 token.txt
-*.dat
+
+/data/*
+!/data/loot_template.db
+!/data/tibia_database.db
+!/data/tibia_worlds.json

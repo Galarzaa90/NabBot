@@ -1629,8 +1629,10 @@ def html_to_markdown(html_string):
 
 def get_first_image(content):
     """Returns a url to the first image found in a html string."""
-    match = re.search(r'<img src=\"([^\"]+)\"[^>]+>', content)
-    if match:
-        return match.group(1)
+    matches = re.findall(r'<img([^<]+)>', content)
+    for match in matches:
+        match_src = re.search(r'src="([^"]+)', match)
+        if match_src:
+            return match_src.group(1)
     return None
 

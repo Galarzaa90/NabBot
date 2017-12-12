@@ -611,6 +611,7 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
     if "error" in news:
         return None
     article = news[0]
+    article["id"] = article_id
     article["date"] = parse_tibiadata_time(article["date"]).date()
     return article
 
