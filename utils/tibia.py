@@ -245,7 +245,9 @@ class Achievement:
 
 # TODO: Handle deaths by multiple killers
 class Death:
-    def __init__(self, level: int, killer: str, time: dt.datetime, by_player: bool, participants: list):
+    def __init__(self, level: int, killer: str, time: dt.datetime, by_player: bool, participants=None):
+        if participants is None:
+            participants = []
         self.level = level
         self.killer = killer
         self.time = time
@@ -277,7 +279,7 @@ class World:
             return None
         world_info = _world["world_information"]
         world = World(name.capitalize())
-        world.online = int(world_info["players_online"])
+        world.online = int(world_info.get("players_online", 0))
         if "online_record" in world_info:
             world.record_online = int(world_info["online_record"]["players"])
             world.record_date = parse_tibiadata_time(world_info["online_record"]["date"])

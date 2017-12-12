@@ -383,7 +383,9 @@ class Tracking:
             guild = self.bot.get_guild(guild_id)
             if char.world == tracked_world and guild is not None and guild.get_member(char.owner) is not None:
                 try:
-                    await self.bot.get_announce_channel(guild).send(message[:1].upper() + message[1:])
+                    channel = self.bot.get_channel_or_top(guild, get_server_property("levels_channel", guild.id,
+                                                                                     is_int=True))
+                    await channel.send(message[:1].upper() + message[1:])
                 except discord.Forbidden:
                     log.warning("announce_death: Missing permissions.")
                 except discord.HTTPException:
@@ -426,7 +428,9 @@ class Tracking:
             server = self.bot.get_guild(server_id)
             if char.world == tracked_world and server is not None and server.get_member(char.owner) is not None:
                 try:
-                    await self.bot.get_announce_channel(server).send(message)
+                    channel = self.bot.get_channel_or_top(server, get_server_property("levels_channel", server.id,
+                                                                                      is_int=True))
+                    await channel.send(message)
                 except discord.Forbidden:
                     log.warning("announce_level: Missing permissions.")
                 except discord.HTTPException:

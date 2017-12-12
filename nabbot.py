@@ -317,11 +317,10 @@ class NabBot(commands.Bot):
             guild_list = self.get_user_guilds(user_id)
         return list(set([world for guild, world in tracked_worlds.items() if guild in [g.id for g in guild_list]]))
 
-    def get_announce_channel(self, guild: discord.Guild) -> discord.TextChannel:
-        """Returns this world's announcements channel. If no channel is set, the top channel is returned.
+    def get_channel_or_top(self, guild: discord.Guild, channel_id: int) -> discord.TextChannel:
+        """Returns a guild's channel by id, returns none if channel doesn't exist
 
         It also checks if the bot has permissions on that channel, if not, it will return the top channel too."""
-        channel_id = get_server_property("announce_channel", guild.id, is_int=True)
         if channel_id is None:
             return self.get_top_channel(guild, True)
         channel = guild.get_channel(int(channel_id))

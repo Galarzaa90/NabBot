@@ -12,7 +12,7 @@ from discord.ext import commands
 from config import ask_channel_name, owner_ids, mod_ids
 from nabbot import NabBot
 from utils import checks
-from utils.database import userDatabase, tibiaDatabase
+from utils.database import userDatabase, tibiaDatabase, get_server_property
 from utils.discord import is_lite_mode, get_region_string, get_role_list, get_role, is_private, clean_string
 from utils.general import get_uptime, TimeString, single_line, is_numeric, log
 from utils.messages import EMOJI
@@ -90,7 +90,8 @@ class General:
                         event["start"] = 'now'
                     message = "**{name}** (by **@{author}**,*ID:{id}*) - Is starting {start}!".format(**event)
                     c.execute("UPDATE events SET status = ? WHERE id = ?", (new_status, event["id"],))
-                    announce_channel = self.bot.get_announce_channel(guild)
+                    announce_channel = \
+                        self.bot.get_channel_or_top(guild, get_server_property("events_channel", guild.id, is_int=True))
                     if announce_channel is not None:
                         await announce_channel.send(message)
                     await self.notify_subscribers(event["id"], message)
