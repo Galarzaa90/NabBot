@@ -488,7 +488,7 @@ class Admin:
             await ctx.send("I don't have permission to use {0.mention}.".format(channel))
             return
 
-        await ctx.send("Are you sure you want {0.mention} as the event announcement channel? `yes/no`".format(channel))
+        await ctx.send("Are you sure you want {0.mention} as the level and deaths channel? `yes/no`".format(channel))
         try:
             reply = await self.bot.wait_for("message", timeout=120.0, check=check)
             if reply.content.lower() not in ["yes", "y"]:
