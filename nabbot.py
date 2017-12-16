@@ -159,7 +159,7 @@ class NabBot(commands.Bot):
         if world is not None:
             c = userDatabase.cursor()
             try:
-                c.execute("SELECT name, vocation, ABS(level) as ABS(level), guild "
+                c.execute("SELECT name, vocation, ABS(level) as level, guild "
                           "FROM chars WHERE user_id = ? and world = ?", (member.id, world,))
                 results = c.fetchall()
                 if len(results) > 0:
