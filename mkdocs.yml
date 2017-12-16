@@ -16,6 +16,10 @@ markdown_extensions:
   - admonition
   - codehilite
 
+google_analytics:
+  - UA-111299710-2
+  - auto
+
 extra:
   social:
     - type: 'github'
