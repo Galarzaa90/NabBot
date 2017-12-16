@@ -3,6 +3,7 @@ python:
   - "3.6"
 install:
   - pip install -r requirements.txt
+  - pip install mkdocs mkdocs-material
 
 "script":
 - python -m compileall ./nabbot.py
@@ -11,3 +12,12 @@ install:
 - python -m compileall ./restart.py
 - python -m compileall ./cogs
 - python -m compileall ./utils
+- python -m mkdocs build
+
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN
+  local_dir: site
+  on:
+    branch: rewrite

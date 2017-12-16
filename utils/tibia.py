@@ -360,7 +360,7 @@ async def get_character(name, tries=5) -> Optional[Character]:
     The character object contains all the information available on Tibia.com
     Information from the user's database is also added, like owner and highscores.
     If the character can't be fetch due to a network error, an NetworkError exception is raised
-    If the character doesn't exist, None is returned.
+    If the character doesn 't exist, None is returned.
     """
     if tries == 0:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
