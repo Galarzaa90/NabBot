@@ -117,8 +117,6 @@ class Character:
             return self.name.lower() == o.name.lower()
         return False
 
-
-
     @property
     def he_she(self) -> str:
         return ["He", "She"][self.sex]
@@ -298,6 +296,64 @@ class World:
         return world
 
 
+class Guild:
+    def __init__(self, name, world, **kwargs):
+        self.name = name
+        self.world = world
+        self.application = kwargs.get("application", False)
+        self.description = kwargs.get("description")
+        self.founded = kwargs.get("founded")
+        self.logo = kwargs.get("logo")
+        self.homepage = kwargs.get("homepage")
+        self.guildhall = kwargs.get("guildhall")
+        self.members = kwargs.get("members", [])
+        self.invited = kwargs.get("invited", [])
+
+    @property
+    def url(self) -> str:
+        return self.get_url(self.name)
+
+    @property
+    def online(self) -> List:
+        return [m for m in self.members if m["status"] == "online"]
+
+    @classmethod
+    def get_url(cls, name: str) -> str:
+        """Returns the url pointing to the character's tibia.com page
+
+        :param name: Name of the character
+        :return: url of the character's information
+        """
+        return url_guild + urllib.parse.quote(name.encode('iso-8859-1'))
+
+    @classmethod
+    def parse_from_tibiadata(cls, content_json: Dict):
+        guild = content_json["guild"]
+        if "error" in guild:
+            return None
+        data = guild["data"]
+        tibia_guild = Guild(data["name"], data["world"])
+        tibia_guild.application = data["application"]
+        tibia_guild.description = data["description"]
+        tibia_guild.founded = data["founded"]
+        tibia_guild.logo = data["guildlogo"]
+        tibia_guild.members = []
+        for rank in guild["members"]:
+            rank_name = rank["rank_title"]
+            for member in rank["characters"]:
+                member["rank"] = rank_name
+                tibia_guild.members.append(member)
+        tibia_guild.invited = guild["invited"]
+        if "homepage" in data:
+            tibia_guild.homepage = data["homepage"]
+        if type(data["guildhall"]) is dict:
+            tibia_guild.guildhall = data["guildhall"]
+        else:
+            tibia_guild.guildhall = None
+
+        return tibia_guild
+
+
 async def get_character(name, tries=5) -> Optional[Character]:
     """Fetches a character from TibiaData, parses and returns a Character object
 
@@ -440,7 +496,7 @@ async def get_world(name, tries=5) -> Optional[World]:
     return world
 
 
-async def get_guild_online(name, title_case=True, tries=5):
+async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
     """Returns a guild's world and online member list in a dictionary.
 
     The dictionary contains the following keys: name, logo_url, world and members.
@@ -448,12 +504,11 @@ async def get_guild_online(name, title_case=True, tries=5):
         rank, name, title, vocation, level, joined.
     Guilds are case sensitive on tibia.com so guildstats.eu is checked for correct case.
     May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
-    guildstats_url = 'http://guildstats.eu/guild?guild=' + urllib.parse.quote(name)
-    guild = {}
+    guildstats_url = f"http://guildstats.eu/guild?guild={urllib.parse.quote(name)}"
 
     if tries == 0:
         log.error("get_guild_online: Couldn't fetch {0}, network error.".format(name))
-        return ERROR_NETWORK
+        raise NetworkError()
 
     # Fix casing using guildstats.eu if needed
     # Sorry guildstats.eu :D
@@ -464,18 +519,18 @@ async def get_guild_online(name, title_case=True, tries=5):
                     content = await resp.text(encoding='ISO-8859-1')
         except Exception:
             await asyncio.sleep(network_retry_delay)
-            return await get_guild_online(name, title_case, tries - 1)
+            return await get_guild(name, title_case, tries - 1)
 
         # Make sure we got a healthy fetch
         try:
             content.index('<div class="footer">')
         except ValueError:
             await asyncio.sleep(network_retry_delay)
-            return await get_guild_online(name, title_case, tries - 1)
+            return await get_guild(name, title_case, tries - 1)
 
         # Check if the guild doesn't exist
         if "<div>Sorry!" in content:
-            return ERROR_DOESNTEXIST
+            return None
 
         # Failsafe in case guildstats.eu changes their websites format
         try:
@@ -483,7 +538,7 @@ async def get_guild_online(name, title_case=True, tries=5):
             content.index("Recruitment")
         except Exception:
             log.error("get_guild_online: -IMPORTANT- guildstats.eu seems to have changed their websites format.")
-            return ERROR_NETWORK
+            raise NetworkError
 
         start_index = content.index("General info")
         end_index = content.index("Recruitment")
@@ -494,65 +549,30 @@ async def get_guild_online(name, title_case=True, tries=5):
     else:
         name = name.title()
 
-    tibia_url = 'https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName=' + urllib.parse.quote(
-        name) + '&onlyshowonline=1'
+    tibiadata_url = f"https://api.tibiadata.com/v2/guild/{urllib.parse.quote(name)}.json"
+
     # Fetch website
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(tibia_url) as resp:
+            async with session.get(tibiadata_url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
         await asyncio.sleep(network_retry_delay)
-        return await get_guild_online(name, title_case, tries - 1)
+        return await get_guild(name, title_case, tries - 1)
 
-    # Trimming content to reduce load and making sure we got a healthy fetch
-    try:
-        start_index = content.index('<div class="BoxContent"')
-        end_index = content.index('<div id="ThemeboxesColumn" >')
-        content = content[start_index:end_index]
-    except ValueError:
-        # Website fetch was incomplete, due to a network error
-        await asyncio.sleep(network_retry_delay)
-        return await get_guild_online(name, title_case, tries - 1)
-
-    # Check if the guild doesn't exist
-    # Tibia.com has no search function, so there's no guild doesn't exist page cause you're not supposed to get to a
-    # guild that doesn't exists. So the message displayed is "An internal error has ocurred. Please try again later!".
-    if '<div class="Text" >Error</div>' in content:
+    content_json = json.loads(content)
+    guild = Guild.parse_from_tibiadata(content_json)
+    if guild is None:
         if title_case:
-            return await get_guild_online(name, False)
+            return await get_guild(name, False)
         else:
-            return ERROR_DOESNTEXIST
-    guild['name'] = name
-    # Regex pattern to fetch world, guildhall and founding date
-    m = re.search(r'founded on (\w+) on ([^.]+)', content)
-    if m:
-        guild['world'] = m.group(1)
-
-    m = re.search(r'Their home on \w+ is ([^\.]+)', content)
-    if m:
-        guild["guildhall"] = m.group(1)
-
-    # Logo URL
-    m = re.search(r'<IMG SRC=\"([^\"]+)\" W', content)
-    if m:
-        guild['logo_url'] = m.group(1)
-
-    # Regex pattern to fetch members
-    regex_members = r'<TR BGCOLOR=#[\dABCDEF]+><TD>(.+?)</TD>\s</td><TD><A HREF="https://secure.tibia.com/community/\?subtopic=characters&name=(.+?)">.+?</A> *\(*(.*?)\)*</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>\s<TD>(.+?)</TD>'
-    pattern = re.compile(regex_members, re.MULTILINE + re.S)
-
-    m = re.findall(pattern, content)
-    guild['members'] = []
-    # Check if list is empty
-    if m:
-        # Building dictionary list from members
-        for (rank, name, title, vocation, level, joined) in m:
-            rank = '' if (rank == '&#160;') else rank
-            name = urllib.parse.unquote_plus(name)
-            joined = joined.replace('&#160;', '-')
-            guild['members'].append({'rank': rank, 'name': name, 'title': title,
-                                     'vocation': vocation, 'level': level, 'joined': joined})
+            return None
+    if guild.guildhall is not None:
+        with closing(tibiaDatabase.cursor()) as c:
+            c.execute("SELECT id FROM houses WHERE name LIKE ?", (guild.guildhall["name"].strip(),))
+            result = c.fetchone()
+            if result:
+                guild.guildhall["id"] = result["id"]
     return guild
 
 

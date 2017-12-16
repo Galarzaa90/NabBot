@@ -20,7 +20,7 @@ from utils.messages import weighed_choice, death_messages_player, death_messages
     level_messages
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, ERROR_DOESNTEXIST, \
-    get_voc_emoji, get_guild_online, get_voc_abb, get_character_url, url_guild, \
+    get_voc_emoji, get_guild, get_voc_abb, get_character_url, url_guild, \
     get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES
 
 
@@ -248,13 +248,13 @@ class Tracking:
                         guild_online = dict()
                         for watched in results:
                             if watched["is_guild"]:
-                                guild = await get_guild_online(watched["name"])
+                                guild = await get_guild(watched["name"])
                                 # Todo: Remove deleted guilds from list to avoid unnecessary checks, notify
                                 if guild == ERROR_NETWORK or guild == ERROR_DOESNTEXIST:
                                     continue
                                 # If there's at least one member online, add guild to list
-                                if len(guild["members"]):
-                                    guild_online[guild["name"]] = guild["members"]
+                                if len(guild.online):
+                                    guild_online[guild.name] = guild.online
                             # If it is a character, check if he's in the online list
                             for online_char in current_world_online:
                                 if online_char.name == watched["name"]:
@@ -847,34 +847,35 @@ class Tracking:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
 
-        guild = await get_guild_online(name)
-        if guild == ERROR_DOESNTEXIST:
-            await ctx.send("There's no character with that name.")
-            return
-        elif guild == ERROR_NETWORK:
+        try:
+            guild = await get_guild(name)
+            if guild is None:
+                await ctx.send("There's no character with that name.")
+                return
+        except NetworkError:
             await ctx.send("I couldn't fetch that guild right now, please try again.")
             return
 
-        if guild["world"] != world:
+        if guild.world != world:
             await ctx.send(f"This guild is not in **{world}**.")
             return
         c = userDatabase.cursor()
         try:
             c.execute("SELECT * FROM watched_list WHERE server_id = ? AND name LIKE ? and is_guild = 1",
-                      (ctx.guild.id, guild["name"]))
+                      (ctx.guild.id, guild.name))
             result = c.fetchone()
             if result is not None:
                 await ctx.send("This guild is already in the watched list.")
                 return
 
-            message = await ctx.send("Do you want to add the guild **{name}** to the watched list?".format(**guild))
+            message = await ctx.send(f"Do you want to add the guild **{guild.name}** to the watched list?")
             confirm = await self.bot.wait_for_confirmation_reaction(ctx, message,
                                                                     "Ok then, guess you changed your mind.")
             if not confirm:
                 return
 
             c.execute("INSERT INTO watched_list(name, server_id, is_guild) VALUES(?, ?, 1)",
-                      (guild["name"], ctx.guild.id,))
+                      (guild.name, ctx.guild.id,))
             await ctx.send("Guild added to the watched list.")
         finally:
             userDatabase.commit()

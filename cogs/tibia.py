@@ -397,44 +397,40 @@ class Tibia:
             await ctx.send("Tell me the guild you want me to check.")
             return
 
-        guild = await get_guild_online(name)
-        if guild == ERROR_DOESNTEXIST:
-            await ctx.send("The guild {0} doesn't exist.".format(name))
-            return
-        if guild == ERROR_NETWORK:
+        try:
+            guild = await get_guild(name)
+            if guild is None:
+                await ctx.send("The guild {0} doesn't exist.".format(name))
+                return
+        except NetworkError:
             await ctx.send("Can you repeat that? I had some trouble communicating.")
             return
 
         embed = discord.Embed()
-        embed.set_author(name="{name} ({world})".format(**guild),
-                         url=url_guild + urllib.parse.quote(guild["name"]),
+        embed.set_author(name="{0.name} ({0.world})".format(guild),
+                         url=guild.url,
                          icon_url="http://static.tibia.com/images/global/general/favicon.ico"
                          )
         embed.description = ""
-        embed.set_thumbnail(url=guild["logo_url"])
-        if guild.get("guildhall") is not None:
-            guildhouse = await get_house(guild["guildhall"])
-            if type(guildhouse) is dict:
-                embed.description += "They own the guildhall [{0}]({1}).\n".format(guild["guildhall"],
-                                                                                   url_house.format(id=guildhouse["id"],
-                                                                                                    world=guild["world"])
+        embed.set_thumbnail(url=guild.logo)
+        if guild.guildhall is not None:
+            embed.description += "They own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
+                                                                               url_house.format(id=guild.guildhall["id"],
+                                                                                               world=guild.world)
                                                                                    )
-            else:
-                # In case there's no match in the houses table, we just show the name.
-                embed.description += "They own the guildhall **{0}**.\n".format(guild["guildhall"])
 
-        if len(guild['members']) < 1:
-            embed.description += "Nobody is online."
+        if len(guild.online) < 1:
+            embed.description += f"Nobody is online. It has **{len(guild.members)}** members."
             await ctx.send(embed=embed)
             return
 
         plural = ""
-        if len(guild['members']) > 1:
+        if len(guild.online) > 1:
             plural = "s"
-        embed.description += "It has {0} player{1} online:".format(len(guild['members']), plural)
+        embed.description += f"It has **{len(guild.online)}** player{plural} online out of **{len(guild.members)}**:"
         current_field = ""
         result = ""
-        for member in guild['members']:
+        for member in guild.online:
             if current_field == "":
                 current_field = member['rank']
             elif member['rank'] != current_field and member["rank"] != "":
@@ -442,11 +438,12 @@ class Tibia:
                 result = ""
                 current_field = member['rank']
 
-            member["title"] = ' (*' + member['title'] + '*)' if member['title'] != '' else ''
+            member["nick"] = '(*' + member['nick'] + '*) ' if member['nick'] != '' else ''
             member["vocation"] = get_voc_abb(member["vocation"])
 
-            result += "{name} {title} -- {level} {vocation}\n".format(**member)
+            result += "{name} {nick}\u2192 {level} {vocation}\n".format(**member)
         embed.add_field(name=current_field, value=result, inline=False)
+        embed.set_footer(text=f"The guild was founded on {guild.founded}")
         await ctx.send(embed=embed)
 
     @commands.group(aliases=['deathlist', 'death'], invoke_without_command=True)
