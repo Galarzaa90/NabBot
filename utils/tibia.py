@@ -358,9 +358,9 @@ async def get_character(name, tries=5) -> Optional[Character]:
     """Fetches a character from TibiaData, parses and returns a Character object
 
     The character object contains all the information available on Tibia.com
-    Infomration from the user's database is also added, like owner and highscores.
+    Information from the user's database is also added, like owner and highscores.
     If the character can't be fetch due to a network error, an NetworkError exception is raised
-    If the character doens't exist, None is returned.
+    If the character doesn't exist, None is returned.
     """
     if tries == 0:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
@@ -497,13 +497,12 @@ async def get_world(name, tries=5) -> Optional[World]:
 
 
 async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
-    """Returns a guild's world and online member list in a dictionary.
+    """Fetches a guild from TibiaData, parses and returns a Guild object
 
-    The dictionary contains the following keys: name, logo_url, world and members.
-    The key members contains a list where each element is a dictionary with the following keys:
-        rank, name, title, vocation, level, joined.
+    The Guild object contains all the information available on Tibia.com
     Guilds are case sensitive on tibia.com so guildstats.eu is checked for correct case.
-    May return ERROR_DOESNTEXIST or ERROR_NETWORK accordingly."""
+    If the guild can't be fetched due to a network error, an NetworkError exception is raised
+    If the character doesn't exist, None is returned."""
     guildstats_url = f"http://guildstats.eu/guild?guild={urllib.parse.quote(name)}"
 
     if tries == 0:
