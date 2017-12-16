@@ -11,10 +11,13 @@ theme:
     accent: 'orange'
   logo: 'assets/images/icon.png'
   favicon: 'assets/images/favicon.ico'
+  feature:
+    tabs: true
 
 markdown_extensions:
   - admonition
   - codehilite
+
 
 google_analytics:
   - UA-111299710-2
@@ -32,3 +35,9 @@ pages:
     - Install Guide: install.md
     - Permissions: permissions.md
     - FAQ: faq.md
+    - Commands:
+      - Commands: commands/index.md
+      - General commands: commands/general.md
+      - Tibia commands: commands/tibia.md
+      - Owner commands: commands/owner.md
+      - Admin commands: commands/admin.md
