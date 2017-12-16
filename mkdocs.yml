@@ -9,8 +9,8 @@ theme:
   palette:
     primary: 'deep purple'
     accent: 'orange'
-  logo: 'images/icon.png'
-  favicon: 'images/favicon.ico'
+  logo: 'assets/images/icon.png'
+  favicon: 'assets/images/favicon.ico'
 
 markdown_extensions:
   - admonition
