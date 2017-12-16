@@ -4,12 +4,8 @@ from config import owner_ids, mod_ids
 from utils.discord import is_lite_mode
 
 
-# Checks if the user is the owner of the bot
-# Bot owner can pass any checks
-
-
 def is_owner_check(ctx):
-    return ctx.message.author.id in owner_ids
+    return ctx.message.author.id in owner_ids or ctx.author.id == ctx.bot.owner.id
 
 
 def is_owner():
