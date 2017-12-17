@@ -248,9 +248,12 @@ class Tracking:
                         guild_online = dict()
                         for watched in results:
                             if watched["is_guild"]:
-                                guild = await get_guild(watched["name"])
-                                # Todo: Remove deleted guilds from list to avoid unnecessary checks, notify
-                                if guild == ERROR_NETWORK or guild == ERROR_DOESNTEXIST:
+                                try:
+                                    guild = await get_guild(watched["name"])
+                                    # Todo: Remove deleted guilds from list to avoid unnecessary checks, notify
+                                    if guild is None:
+                                        continue
+                                except NetworkError:
                                     continue
                                 # If there's at least one member online, add guild to list
                                 if len(guild.online):
