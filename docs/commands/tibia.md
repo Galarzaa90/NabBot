@@ -21,13 +21,13 @@ It also shows the character's corresponding highscore positions, however, this i
 Example:  
 **/whois Galarzaa Fidera**
 
-![image](https://cloud.githubusercontent.com/assets/12865379/25361922/c9350c2e-2905-11e7-961b-0773c5f8ac61.png)
+![image](../assets/images/commands/whois_1.png)
 
 In this case, it matched *Galarzaa Fidera* to a character, and that character is registered to user @Galarzaa
 
 **/whois Galarzaa**
 
-![image](https://cloud.githubusercontent.com/assets/12865379/25361940/e38ee77a-2905-11e7-810a-1e0060681fc5.png)
+![image](../assets/images/commands/whois_2.png)
 
 In this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed. However, it also matches the character *Galarzaa* which may not be necessarily related to the user.
 
