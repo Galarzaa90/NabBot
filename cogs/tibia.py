@@ -50,10 +50,7 @@ class Tibia:
                 await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
                 return
             embed = discord.Embed(description=self.get_char_string(char))
-            embed.set_author(name=char.name,
-                             url=char.url,
-                             icon_url="http://static.tibia.com/images/global/general/favicon.ico"
-                             )
+            embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
             await ctx.send(embed=embed)
             return
 
@@ -88,10 +85,7 @@ class Tibia:
                 # Not owned by same user, we display a separate embed
                 else:
                     char_embed = discord.Embed(description=char_string)
-                    char_embed.set_author(name=char.name,
-                                          url=char.url,
-                                          icon_url="http://static.tibia.com/images/global/general/favicon.ico"
-                                          )
+                    char_embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
                     if char.last_login is not None:
                         char_embed.set_footer(text="Last login")
                         char_embed.timestamp = char.last_login
@@ -126,10 +120,7 @@ class Tibia:
                         char_string = self.get_char_string(char)
                         if char is not None:
                             char_embed = discord.Embed(description=char_string)
-                            char_embed.set_author(name=char.name,
-                                                  url=char.url,
-                                                  icon_url="http://static.tibia.com/images/global/general/favicon.ico"
-                                                  )
+                            char_embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
                             embed.add_field(name="Highest character", value=char_string, inline=False)
                             if char.last_login is not None:
                                 embed.set_footer(text="Last login")
@@ -151,10 +142,7 @@ class Tibia:
                     await ctx.send(embed=embed)
                     return
                 else:
-                    embed.set_author(name=char.name,
-                                     url=char.url,
-                                     icon_url="http://static.tibia.com/images/global/general/favicon.ico"
-                                     )
+                    embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
                     embed.description += char_string
                     if char.last_login:
                         embed.set_footer(text="Last login")
@@ -407,10 +395,7 @@ class Tibia:
             return
 
         embed = discord.Embed()
-        embed.set_author(name="{0.name} ({0.world})".format(guild),
-                         url=guild.url,
-                         icon_url="http://static.tibia.com/images/global/general/favicon.ico"
-                         )
+        embed.set_author(name="{0.name} ({0.world})".format(guild), url=guild.url, icon_url=tibia_logo)
         embed.description = ""
         embed.set_thumbnail(url=guild.logo)
         if guild.guildhall is not None:
@@ -445,6 +430,39 @@ class Tibia:
         embed.add_field(name=current_field, value=result, inline=False)
         embed.set_footer(text=f"The guild was founded on {guild.founded}")
         await ctx.send(embed=embed)
+
+    @commands.command(aliases=['guildlist'])
+    async def guildmembers(self, ctx, *, name: str = None):
+        """Shows a list of all guild members"""
+        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+        if name is None:
+            await ctx.send("Tell me the guild you want me to check.")
+            return
+
+        try:
+            guild = await get_guild(name)
+            if guild is None:
+                await ctx.send("The guild {0} doesn't exist.".format(name))
+                return
+        except NetworkError:
+            await ctx.send("Can you repeat that? I had some trouble communicating.")
+            return
+        title = "{0.name} ({0.world})".format(guild)
+        entries = []
+        for member in guild.members:
+            member["nick"] = '(*' + member['nick'] + '*) ' if member['nick'] != '' else ''
+            member["vocation"] = get_voc_abb(member["vocation"])
+
+            entries.append("{rank} - **{name}** {nick}\u2192 {level} {vocation}".format(**member))
+
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=10, title=title)
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
 
     @commands.group(aliases=['deathlist', 'death'], invoke_without_command=True)
     async def deaths(self, ctx, *, name: str = None):

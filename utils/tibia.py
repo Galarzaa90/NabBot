@@ -32,6 +32,8 @@ url_guild_online = "https://secure.tibia.com/community/?subtopic=guilds&page=vie
 url_house = "https://secure.tibia.com/community/?subtopic=houses&page=view&houseid={id}&world={world}"
 url_highscores = "https://secure.tibia.com/community/?subtopic=highscores&world={0}&list={1}&profession={2}&currentpage={3}"
 
+tibia_logo = "http://static.tibia.com/images/global/general/apple-touch-icon-72x72.png"
+
 KNIGHT = ["knight", "elite knight", "ek", "k", "kina", "eliteknight", "elite"]
 PALADIN = ["paladin", "royal paladin", "rp", "p", "pally", "royalpaladin", "royalpally"]
 DRUID = ["druid", "elder druid", "ed", "d", "elderdruid", "elder"]
