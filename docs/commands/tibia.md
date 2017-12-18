@@ -18,18 +18,28 @@ Both cases can match simultaneously.
 
 It also shows the character's corresponding highscore positions, however, this is only available for registered characters.
 
-Example:  
-**/whois Galarzaa Fidera**
+??? summary "Examples"
 
-![image](../assets/images/commands/whois_1.png)
-
-In this case, it matched *Galarzaa Fidera* to a character, and that character is registered to user @Galarzaa
-
-**/whois Galarzaa**
-
-![image](../assets/images/commands/whois_2.png)
-
-In this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed. However, it also matches the character *Galarzaa* which may not be necessarily related to the user.
+    **/whois Galarzaa Fidera**  
+    ![image](../assets/images/commands/whois_1.png)
+    
+    In this case, it matched *Galarzaa Fidera* to a character, and that character is registered to user @Galarzaa
+    
+    **/whois Galarzaa**  
+    ![image](../assets/images/commands/whois_2.png)
+    
+    In this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed.
+    However, it also matches the character *Galarzaa* which may not be necessarily related to the user.
+    
+    **/whois Bichæo**  
+    ![image](../assets/images/commands/whois_3.png)
+    
+    In this case, the name only matches an user, and since no character was matched, their highest level registered character is shown.
+    
+    **/whois 115042985778872322**
+    ![image](../assets/images/commands/whois_4.png)
+    
+    In this case, a user id was provided, and it searched for the user with that id.
 
 ---
 

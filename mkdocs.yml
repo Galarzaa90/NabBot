@@ -17,6 +17,8 @@ theme:
 markdown_extensions:
   - admonition
   - codehilite
+  - pymdownx.superfences
+  - pymdownx.details
 
 
 google_analytics:
