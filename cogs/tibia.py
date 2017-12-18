@@ -576,9 +576,9 @@ class Tibia:
         try:
             if name is None:
                 title = "Latest deaths"
-                c.execute("SELECT level, date, name, user_id, byplayer, killer, world, vocation "
+                c.execute("SELECT char_deaths.level, date, name, user_id, byplayer, killer, world, vocation "
                           "FROM char_deaths, chars "
-                          "WHERE char_id = id AND level > ? "
+                          "WHERE char_id = id AND char_deaths.level > ? "
                           "ORDER BY date DESC", (announce_threshold,))
                 while True:
                     row = c.fetchone()
@@ -633,7 +633,7 @@ class Tibia:
                 result = c.fetchone()
                 if result is not None and not is_lite_mode(ctx):
                     id = result["id"]
-                    c.execute("SELECT level, date, byplayer, killer "
+                    c.execute("SELECT char_deaths.level, date, byplayer, killer "
                               "FROM char_deaths "
                               "WHERE char_id = ? AND date < ? "
                               "ORDER BY date DESC",
@@ -759,7 +759,7 @@ class Tibia:
             per_page = 5
 
         try:
-            c.execute("SELECT name, world, level, killer, byplayer, date, vocation "
+            c.execute("SELECT name, world, char_deaths.level, killer, byplayer, date, vocation "
                       "FROM chars, char_deaths "
                       "WHERE char_id = id AND user_id = ? "
                       "ORDER BY date DESC", (user.id,))
