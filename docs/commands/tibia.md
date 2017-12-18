@@ -86,14 +86,25 @@ Shows basic information about a guild, like their description, homepage, guildha
 ## /share *level/player*
 *Other aliases: /expshare, /party*
 
-Shows the party experience share for a determined level. If a name is used as parameter, it retrieves the player's level and it uses that for the calculation.
+There's three different ways to use this command:
 
-Example:  
-/share 300  
-![image](https://cloud.githubusercontent.com/assets/12865379/25453759/042b2ee2-2a7f-11e7-8cdc-04677b62af42.png)
+1. Providing a single number, shows the share range of a character of that level.
+1. Providing a charater name, shows the share range of that character.
+1. Providing up to 5 character names, separated with commas, shows if they are able to share.
 
-/share Galarzaa Fidera  
-![image](https://cloud.githubusercontent.com/assets/12865379/25453790/19b6d982-2a7f-11e7-9180-dc8ecbee00e9.png)
+??? summary "Examples"
+
+    **/share 300**  
+    ![image](../assets/images/commands/share_1.png)
+    
+    **/share Galarzaa Fidera**  
+    ![image](../assets/images/commands/share_2.png)
+    
+    **/share Galarzaa Fidera, Nezune, Xzilla**  
+    ![image](../assets/images/commands/share_3.png)
+    
+    **/share Galarzaa Fidera, Topheroo**  
+    ![image](../assets/images/commands/share_4.png)
 
 ---
 

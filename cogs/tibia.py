@@ -203,11 +203,12 @@ class Tibia:
                 return
             with ctx.typing():
                 for char in chars:
-                    fetched_char = await get_character(char)
-                    if fetched_char == ERROR_DOESNTEXIST:
-                        await ctx.send(f"There is no character named **{char}**.")
-                        return
-                    elif fetched_char == ERROR_NETWORK:
+                    try:
+                        fetched_char = await get_character(char)
+                        if fetched_char is None:
+                            await ctx.send(f"There is no character named **{char}**.")
+                            return
+                    except NetworkError:
                         await ctx.send("I'm having connection issues, please try again in a bit.")
                         return
                     char_data.append(fetched_char)
