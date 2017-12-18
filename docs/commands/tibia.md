@@ -6,13 +6,17 @@ Command parameters are shown in italics, optional parameters are surrounded with
 ## /whois *playerName/discordUser*
 *Other aliases: /check, /player, /checkplayer, /char, /character*
 
-This commands has 2 functions:
+This commands has 2 functions:  
+
 * It retrieves and displays info about a Tibia character
 * It retrieves the list of characters linked to a discord user
 
-If the parameter matches a discord user, it displays a list of the characters linked to that user. If the parameter matches a character, it will display the character's info, such as level, vocation, guild, world, etc.
+If the parameter matches a discord user, it displays a list of the characters linked to that user.
+If the parameter matches a character, it will display the character's info, such as level, vocation, guild, world, etc.
 
 If the character found is registered to a discord user, it will show the owner of the character.
+
+Discord users can be looked for through Usernames, User#Discriminator (i.e. `Galarzaa#8515`) or even user id.
 
 Both cases can match simultaneously.
 
@@ -46,14 +50,38 @@ It also shows the character's corresponding highscore positions, however, this i
 ## /guild *guildname*
 *Other aliases: /guildcheck, /checkguild*
 
-Shows who's currently online in a guild. It also shows if the guild owns a guildhouse.
+Show's the number of members a guild has, and a list of their online users.
+It also shows whether the guild has a guildhall or not, and their founded date.
 
-Example:  
-/guild Redd Alliance
+??? summary "Examples"
 
-![image](https://cloud.githubusercontent.com/assets/12865379/25362039/67f733e6-2906-11e7-9977-ce6ec14df5e8.png)
+    **/guild Redd Alliance**  
+    ![image](../assets/images/commands/guild.png)
 
 ---
+
+## /guildmembers *guildname*
+*Other aliases: /guildlist*
+
+Shows a paginated list of all the members of a guild. If they are online, 🔹 is shown next to their name.
+
+??? summary "Examples"
+    
+    **/guildmembers Redd Alliance**  
+    ![image](../assets/images/commands/guildmembers.png)
+    
+---
+
+## /guildinfo *guildname*
+*Other aliases /guildstats*
+
+Shows basic information about a guild, like their description, homepage, guildhall, number of members of members and more.
+
+??? summary "Examples"
+    
+    **/guildmembers Bald Dwarfs**  
+    ![image](../assets/images/commands/guildinfo.png)
+
 
 ## /share *level/player*
 *Other aliases: /expshare, /party*
