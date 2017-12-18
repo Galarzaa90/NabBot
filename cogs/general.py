@@ -1077,7 +1077,10 @@ class General:
             author_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
         pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=15, title=event["name"],
                           author=author_name, author_icon=author_icon)
-        await pages.paginate()
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
 
     @checks.is_not_lite()
     @events.command(name="join")

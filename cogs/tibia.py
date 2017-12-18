@@ -409,6 +409,8 @@ class Tibia:
             await ctx.send(embed=embed)
             return
 
+        embed.set_footer(text=f"The guild was founded on {guild.founded}")
+
         plural = ""
         if len(guild.online) > 1:
             plural = "s"
@@ -428,12 +430,13 @@ class Tibia:
 
             result += "{name} {nick}\u2192 {level} {vocation}\n".format(**member)
         embed.add_field(name=current_field, value=result, inline=False)
-        embed.set_footer(text=f"The guild was founded on {guild.founded}")
         await ctx.send(embed=embed)
 
     @commands.command(aliases=['guildlist'])
     async def guildmembers(self, ctx, *, name: str = None):
-        """Shows a list of all guild members"""
+        """Shows a list of all guild members
+
+        Online members have a 🔹 icon next to their name."""
         permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -452,17 +455,88 @@ class Tibia:
             return
         title = "{0.name} ({0.world})".format(guild)
         entries = []
+        vocations = []
         for member in guild.members:
             member["nick"] = '(*' + member['nick'] + '*) ' if member['nick'] != '' else ''
+            vocations.append(member["vocation"])
+            member["emoji"] = get_voc_emoji(member["vocation"])
             member["vocation"] = get_voc_abb(member["vocation"])
+            member["online"] = EMOJI[":small_blue_diamond:"] if member["status"] == "online" else ""
+            entries.append("{rank}\u2014 {online}**{name}** {nick} (Lvl {level} {vocation}{emoji})".format(**member))
 
-            entries.append("{rank} - **{name}** {nick}\u2192 {level} {vocation}".format(**member))
-
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=10, title=title)
+        pages = VocationPaginator(self.bot, message=ctx.message, entries=entries, per_page=10, author=title,
+                                  author_icon=guild.logo, author_url=guild.url, vocations=vocations)
         try:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
+
+    @commands.command(aliases=["guildstats"])
+    async def guildinfo(self, ctx, *, name: str = None):
+        """Shows basic information and stats about a guild"""
+        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+        if name is None:
+            await ctx.send("Tell me the guild you want me to check.")
+            return
+
+        try:
+            guild = await get_guild(name)
+            if guild is None:
+                await ctx.send("The guild {0} doesn't exist.".format(name))
+                return
+        except NetworkError:
+            await ctx.send("Can you repeat that? I had some trouble communicating.")
+            return
+        embed = discord.Embed(title=f"{guild.name} ({guild.world})", description=guild.description, url=guild.url)
+        embed.set_thumbnail(url=guild.logo)
+        embed.set_footer(text=f"The guild was founded on {guild.founded}")
+        if guild.guildhall is not None:
+            embed.description += "\nThey own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
+                                                                               url_house.format(id=guild.guildhall["id"],
+                                                                                               world=guild.world))
+        applications = f"{EMOJI[':white_check_mark:']} Open" if guild.application else f"{EMOJI[':x:']} Closed"
+        embed.add_field(name="Applications", value=applications)
+        if guild.homepage is not None:
+            embed.add_field(name="Homepage", value=f"[{guild.homepage}]({guild.homepage})")
+        knight = 0
+        paladin = 0
+        sorcerer = 0
+        druid = 0
+        none = 0
+        total_level = 0
+        highest_member = None
+        for member in guild.members:
+            if highest_member is None:
+                highest_member = member
+            elif highest_member["level"] < member["level"]:
+                highest_member = member
+            total_level += member["level"]
+            if "knight" in member["vocation"].lower():
+                knight += 1
+            if "sorcerer" in member["vocation"].lower():
+                sorcerer += 1
+            if "druid" in member["vocation"].lower():
+                druid += 1
+            if "paladin" in member["vocation"].lower():
+                paladin += 1
+            if "none" in member["vocation"].lower():
+                none += 1
+
+        embed.add_field(name="Members online", value=f"{len(guild.online)}/{len(guild.members)}")
+        embed.add_field(name="Average level", value=f"{total_level/len(guild.members):.0f}")
+        embed.add_field(name="Highest member", value="{name} - {level} {emoji}".
+                        format(**highest_member, emoji=get_voc_emoji(highest_member["vocation"])))
+        embed.add_field(name="Vocations distribution", value=f"{knight} {get_voc_emoji('knight')} | "
+                                                             f"{druid} {get_voc_emoji('druid')} | "
+                                                             f"{sorcerer} {get_voc_emoji('sorcerer')} | "
+                                                             f"{paladin} {get_voc_emoji('paladin')} | "
+                                                             f"{none} {get_voc_emoji('none')}",
+                        inline=False)
+
+        await ctx.send(embed=embed)
 
     @commands.group(aliases=['deathlist', 'death'], invoke_without_command=True)
     async def deaths(self, ctx, *, name: str = None):

@@ -45,7 +45,7 @@ class Paginator:
     Empty = discord.Embed.Empty
 
     def __init__(self, bot: Client, *, message: Message, entries, per_page=10, title=None, description="",
-                 numerate=True, color: Colour=None, author=None, author_icon=discord.Embed.Empty):
+                 numerate=True, color: Colour=None, author=None, author_icon=discord.Embed.Empty, author_url=None):
         self.bot = bot
         self.entries = entries
         self.message = message
@@ -61,7 +61,7 @@ class Paginator:
         self.maximum_pages = pages
         self.embed = discord.Embed()
         if author is not None:
-            self.embed.set_author(name=author, icon_url=author_icon)
+            self.embed.set_author(name=author, icon_url=author_icon, url=author_url)
         if color is not None:
             self.embed.colour = color
         self.paginating = len(entries) > per_page
@@ -207,9 +207,10 @@ class Paginator:
 
 class VocationPaginator(Paginator):
     def __init__(self, bot: Client, *, message: Message, entries, per_page=10, title=None, description="",
-                 numerate=True, color: Colour = None, author=None, author_icon=discord.Embed.Empty, vocations):
+                 numerate=True, color: Colour = None, author=None, author_icon=discord.Embed.Empty, vocations,
+                 author_url=None):
         super().__init__(bot, message=message, entries=entries, per_page=per_page, title=title, description=description,
-                         numerate=numerate, color=color, author=author, author_icon=author_icon)
+                         numerate=numerate, color=color, author=author, author_icon=author_icon, author_url=author_url)
         present_vocations = []
         # Only add vocation filters for the vocations present
         if any(v.lower() in DRUID for v in vocations):
