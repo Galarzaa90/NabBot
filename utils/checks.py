@@ -1,41 +1,60 @@
 from discord.ext import commands
 
-from config import owner_ids, mod_ids
+from config import owner_ids
 from utils.discord import is_lite_mode
 
 
-def is_owner_check(ctx):
-    return ctx.message.author.id in owner_ids or ctx.author.id == ctx.bot.owner.id
-
-
+# Checks
 def is_owner():
-    return commands.check(is_owner_check)
+    """Check if the author is the bot's owner"""
+    async def predicate(ctx):
+        return await is_owner_check(ctx)
+    return commands.check(predicate)
 
 
-def is_mod_check(ctx):
-    return ctx.message.author.id in mod_ids
+def is_admin():
+    """Checks if the author has administrator permission"""
+    async def predicate(ctx):
+        return await is_owner_check(ctx) or await check_guild_permissions(ctx, {'administrator': True})
+    return commands.check(predicate)
 
 
 def is_mod():
-    def predicate(ctx):
-        return is_owner_check(ctx) or is_mod_check(ctx) or is_admin_check(ctx)
+    """Checks if the author has manage channel permissions
+
+    Mods are based on channel"""
+    async def predicate(ctx):
+        return await is_owner_check(ctx) or (await check_permissions(ctx, {'manage_channels': True}) and
+                                             ctx.guild is not None)
     return commands.check(predicate)
 
 
-def is_admin_check(ctx):
-    author = ctx.message.author
-    return len(ctx.bot.get_user_admin_guilds(author.id)) > 0 or is_owner_check(ctx)
-
-
-# Checks if the user is a server admin
-def is_admin():
-    def predicate(ctx):
-        return is_admin_check(ctx) or is_owner_check(ctx)
-    return commands.check(predicate)
-
-
-# Checks if the bot is not ruining in lite mode
 def is_not_lite():
+    """Checks if the bot is not running in lite mode"""
     def predicate(ctx):
         return not is_lite_mode(ctx)
     return commands.check(predicate)
+
+
+# Check auxiliary functions
+async def check_permissions(ctx, perms, *, check=all):
+    if await ctx.bot.is_owner(ctx.author):
+        return True
+
+    permissions = ctx.channel.permissions_for(ctx.author)
+    return check(getattr(permissions, name, None) == value for name, value in perms.items())
+
+
+async def check_guild_permissions(ctx, perms, *, check=all):
+    if await ctx.bot.is_owner(ctx.author):
+        return True
+
+    if ctx.guild is None:
+        return False
+
+    permissions = ctx.author.guild_permissions
+    return check(getattr(permissions, name, None) == value for name, value in perms.items())
+
+
+async def is_owner_check(ctx):
+    return ctx.message.author.id in owner_ids or await ctx.bot.is_owner(ctx.author)

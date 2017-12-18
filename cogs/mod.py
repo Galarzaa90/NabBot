@@ -4,7 +4,7 @@ from typing import List, Dict
 import discord
 from discord.ext import commands
 
-from config import mod_ids, owner_ids
+from config import owner_ids
 from nabbot import NabBot
 from utils import checks
 from utils.database import userDatabase, tracked_worlds
@@ -23,8 +23,8 @@ class Mod:
 
     def __global_check(self, ctx):
         return is_private(ctx.channel) or \
-               ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or\
-               checks.is_admin_check(ctx)
+               ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_owner_check(ctx) \
+               or checks.check_guild_permissions(ctx, {'manage_channels': True})
 
     # Admin only commands #
     @commands.command()
@@ -88,7 +88,7 @@ class Mod:
             await ctx.message.channel.send(message)
 
     @commands.group(invoke_without_command=True)
-    @checks.is_mod()
+    @checks.is_owner()
     @checks.is_not_lite()
     async def stalk(self, ctx):
         """Manipulate the user database. See subcommands
@@ -100,7 +100,7 @@ class Mod:
         await ctx.send("To see valid subcommands use `/help stalk`")
 
     @stalk.command(name="addchar", aliases=["char"])
-    @checks.is_mod()
+    @checks.is_owner()
     @checks.is_not_lite()
     async def add_char(self, ctx, *, params):
         """Registers a tibia character to a discord user.
@@ -115,7 +115,7 @@ class Mod:
             return
 
         author = ctx.message.author
-        if author.id in mod_ids+owner_ids:
+        if author.id in owner_ids:
             author_servers = self.bot.get_user_guilds(author.id)
         else:
             author_servers = self.bot.get_user_admin_guilds(author.id)
@@ -205,7 +205,7 @@ class Mod:
                 userDatabase.commit()
 
     @stalk.command(name="addacc", aliases=["account", "addaccount", "acc"])
-    @checks.is_mod()
+    @checks.is_owner()
     @checks.is_not_lite()
     async def add_account(self, ctx, *, params):
         """Register a character and all other visible characters to a discord user.
@@ -222,7 +222,7 @@ class Mod:
             return
 
         author = ctx.message.author
-        if author.id in mod_ids+owner_ids:
+        if author.id in owner_ids:
             author_guilds = self.bot.get_user_guilds(author.id)
         else:
             author_guilds = self.bot.get_user_admin_guilds(author.id)
@@ -445,7 +445,7 @@ class Mod:
 
     # Todo: Add server-log entry
     @stalk.command(name="namelock", aliases=["namechange","rename"])
-    @checks.is_mod()
+    @checks.is_owner()
     @checks.is_not_lite()
     async def stalk_namelock(self, ctx, *, params):
         """Register the name of a new character that was namelocked.
@@ -542,7 +542,7 @@ class Mod:
                 userDatabase.commit()
 
     @stalk.command()
-    @checks.is_mod()
+    @checks.is_owner()
     @checks.is_not_lite()
     async def check(self, ctx):
         """Check which users are currently not registered."""
@@ -550,7 +550,7 @@ class Mod:
             return True
 
         author = ctx.message.author
-        if author.id in mod_ids+owner_ids:
+        if author.id in owner_ids:
             author_servers = self.bot.get_user_guilds(author.id)
         else:
             author_servers = self.bot.get_user_admin_guilds(author.id)
@@ -592,7 +592,7 @@ class Mod:
                 c.close()
 
     @stalk.command(name="refreshnames")
-    @checks.is_mod()
+    @checks.is_owner()
     @checks.is_not_lite()
     async def refresh_names(self, ctx):
         """Checks and updates user names on the database."""
@@ -717,6 +717,7 @@ class Mod:
             self.ignored.update(ignored_dict_temp)
         finally:
             c.close()
+
 
 def setup(bot):
     bot.add_cog(Mod(bot))

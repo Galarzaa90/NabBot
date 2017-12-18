@@ -29,7 +29,6 @@ welcome_pm = "Welcome to **{0.guild.name}**! I'm **{1.user.name}**, to learn mor
 # Owners can use mods commands and more sensible commands like /shutdown and restart
 # Mods can register chars and users and use makesay
 owner_ids = [162060569803751424, 162070610556616705]
-mod_ids = [159815675194507265, 164253469912334350]
 # Enable of disable specific timezones for /time
 display_brasilia_time = True
 display_sonora_time = True

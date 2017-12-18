@@ -161,7 +161,7 @@ class Loot:
             await ctx.author.send(file=discord.File(loot_image_overlay, "results.png"), embed=embed)
 
     @loot.command(name="show")
-    @checks.is_mod()
+    @checks.is_owner()
     @checks.is_not_lite()
     async def loot_show(self, ctx, *, item=None):
         """Shows item info from loot database."""
@@ -173,7 +173,7 @@ class Loot:
                        file=discord.File(result, "results.png"))
 
     @loot.command(name="add")
-    @checks.is_mod()
+    @checks.is_owner()
     @checks.is_not_lite()
     async def loot_add(self, ctx, *, item=None):
         """Adds an image to an existing loot item in the database."""
@@ -208,7 +208,7 @@ class Loot:
             return
 
     @loot.command(name="new")
-    @checks.is_mod()
+    @checks.is_owner()
     @checks.is_not_lite()
     async def loot_new(self, ctx, *, params=None):
         """Adds a new item to the loot database."""

@@ -432,7 +432,6 @@ class TibiaWiki:
                          icon_url=WIKI_ICON,
                          url=get_article_url(item["title"]))
         properties = f"Weight: {item['weight']} oz"
-        # TODO: Look description no longer in database, attributes must be shown in another way.
         for attribute, value in item["attributes"].items():
             if attribute in ["imbuements"]:
                 continue
