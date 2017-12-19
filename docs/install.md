@@ -24,6 +24,7 @@ To invite your bot to your server, you need to use the authentication URL. Here'
 ```commandline
 https://discordapp.com/oauth2/authorize?scope=bot&permissions=519232&client_id=CLIENT_ID_HERE
 ```
+
 !!! info
     Make sure you don't deny any of the permissions requested as they are necessary for NabBot.
     For detailed explanation on NabBot's permissions, see the [Permissions](permissions.md) section.

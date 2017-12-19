@@ -1,3 +1,7 @@
+!!! note
+    The information contained here refers to the `master` branch, it will be updated to `rewrite` documentation soon.
+
+
 ## /itemprice *name*
 *Other aliases: /checkprice, /item*
 
@@ -45,17 +49,6 @@ Example:
 **/monster Demon** *On an ask channel or private message*  
 ![image](https://cloud.githubusercontent.com/assets/12865379/25457180/30f37aa0-2a8a-11e7-8d56-7000167a29bc.png)  
 (*The bottom of the image has been cropped*)
-
-----
-
-## /house *name**
-*Other aliases: /houses, /guildhall, /gh*
-
-Displays information about a house, including a picture of the a section of the map where it is located. It shows the current status of the house in the world the current discord server is tracking.
-
-Example:  
-**/house darashia 8, flat 03**  
-![image](https://user-images.githubusercontent.com/12865379/32842320-0091f7de-c9da-11e7-9d43-dfeeced54dbe.png)
 
 ----
 

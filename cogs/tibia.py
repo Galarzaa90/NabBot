@@ -1789,5 +1789,6 @@ class Tibia:
         print("cogs.tibia: Cancelling pending tasks...")
         self.news_announcements_task.cancel()
 
+
 def setup(bot):
     bot.add_cog(Tibia(bot))

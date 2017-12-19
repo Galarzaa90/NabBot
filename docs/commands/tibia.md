@@ -1,7 +1,4 @@
-!!! note
-    The information contained here refers to the `master` branch, it will be updated to `rewrite` documentation soon.
-    
-!!! info
+ !!! info
     Words in italics are parameters.  
     Parameters enclosed in brackets `[]` are optional.
 
@@ -244,8 +241,57 @@ Online characters are shown first on the list, they also have a 🔹 icon.
     **/findteam 100,120**  
     ![image](../assets/images/commands/findteam_3.png)
 
-
 ---
+
+## /world *name*
+
+Displays information about a world like pvp type, online count, location and more.
+
+??? Summary "Examples"
+    
+    **/world Fidera**    
+    ![image](../assets/images/commands/world_1.png)
+    
+    **/world Ferobra**  
+    ![image](../assets/images/commands/world_2.png)
+
+ 
+---
+
+## news [*article_id*]
+
+Displays a list of recent news and articles. Or if an article id is provided, a summary of that article is displayed.
+
+If the command is used on the ask channel or in private, the list or summary displayed will be longer.
+
+??? Summary "Examples"
+
+    **/news**    
+    ![image](../assets/images/commands/news_1.png)
+    
+    **/news 4400**  
+    ![image](../assets/images/commands/news_2.png)
+
+
+
+
+## /house *name*[/*world*]
+*Other aliases: /houses, /guildhall, /gh*
+
+Displays information about a house, including a picture of the a section of the map where it is located.
+It shows the current status of the house in the world the current discord server is tracking.
+
+To specify a different world, add the world after a slash `/`
+
+??? Summary "Examples"
+    
+    **/house darashia 8, flat 03**  
+    ![image](../assets/images/commands/house_1.png)
+      
+    **/house caveman shelter/calmera**  
+    ![image](../assets/images/commands/house_2.png)
+
+----
 
 ## /blessings *level*
 *Other aliases: /bless*
@@ -273,23 +319,3 @@ Displays the time in CipSoft's (CET/CEST), Brazil's and Mexico's timezones, the 
     
     **/time**  
     ![image](../assets/images/commands/time.png)
-
-----
-
-## /loot
-
-Scans an image of a container looking for Tibia items and shows an approximate loot value. An image must be attached with the message. The prices used are NPC prices only, images from the flash client don't work
-
-The image requires the following:
-
-* Must be a screenshot of inventory windows (backpacks, depots, etc).
-* Have the original size, the image can't be scaled up or down, however it can be cropped.
-* Use the regular client, flash client is not supported.
-* The image must show the complete slot.
-* JPG images are usually not recognized, and PNG images with low compression settings take longer to be scanned or aren't detected at all.
-
-The bot shows the total loot value calculated and a list of the items detected, separated into the NPC that buy them.
-
-### Subcommand: /loot legend
-
-Shows a legend indicating what the overlayed icons on items mean.
