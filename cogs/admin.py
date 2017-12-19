@@ -69,19 +69,17 @@ class Admin:
         member = self.bot.get_member(self.bot.user.id, guild)
         server_perms = member.guild_permissions
 
-        channels = guild.channels
+        channels = guild.text_channels
         not_read_messages = []
         not_send_messages = []
+        not_add_reactions = []
+        not_read_history = []
         not_manage_messages = []
         not_embed_links = []
         not_attach_files = []
         not_mention_everyone = []
-        not_add_reactions = []
-        not_read_history = []
         count = 0
         for channel in channels:
-            if type(channel) == discord.ChannelType.voice:
-                continue
             count += 1
             channel_permissions = channel.permissions_for(member)
             if not channel_permissions.read_messages:
