@@ -42,5 +42,5 @@ Additionally, they may have up to 4 vocation emojis to filter:
 When a vocation is filtered, the list is updated to only show those. Clicking another vocation filter will now show only
 that vocation. Clicking the current filtered vocation again will show all vocations again.
 
-![Command with vocation filter](../assets/images/commands/findteam.png)
+![Command with vocation filter](../assets/images/commands/findteam_1.png)
 
