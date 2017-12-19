@@ -1748,7 +1748,7 @@ class Tibia:
                     last_id = 0
                 if last_id == 0:
                     with open("data/last_article.txt", 'w+') as f:
-                        f.write(last_article)
+                        f.write(str(last_article))
                     await asyncio.sleep(60 * 60 * 2)
                     continue
                 new_articles = []
@@ -1762,7 +1762,7 @@ class Tibia:
                     if fetched_article is not None:
                         new_articles.insert(0, fetched_article)
                 with open("data/last_article.txt", 'w+') as f:
-                    f.write(last_article)
+                    f.write(str(last_article))
                 if len(new_articles) == 0:
                     await asyncio.sleep(60 * 60 * 2)
                     continue
