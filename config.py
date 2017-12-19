@@ -15,14 +15,15 @@ log_channel_name = "server-log"
 lite_servers = [253338519143972864]
 
 # The welcome message that is sent to members when they join a discord server with NabBot in it
-# 0 is the member object, examples:
-#       0.name - The joined member's name
-#       0.server.name - The name of the server the member joined
-#       0.server.owner.name - The name of the owner of the server the member joined
-#       0.server.owner.mention - A mention to the owner of the server the member joined
-# 1 is the bot's object, examples:
-#       1.user.name - The bot's name
-welcome_pm = "Welcome to **{0.guild.name}**! I'm **{1.user.name}**, to learn more about my commands type `/help`\n" \
+# The following keyboards can be used:
+# {user.name} - The joining user's name
+# {user.mention} - The joining user's mention
+# {server.name} - The name of the server the member joined.
+# {owner.name} - The name of the owner of the server.
+# {owner.mention} - A mention to the owner of the server.
+# {bot.name} - The name of the bot
+# {bot.mention} - The name of the bot
+welcome_pm = "Welcome to **{server.name}**! I'm **{bot.name}**, to learn more about my commands type `/help`\n" \
              "Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking " \
              "your level ups and deaths!"
 

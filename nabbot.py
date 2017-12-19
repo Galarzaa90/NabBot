@@ -150,7 +150,8 @@ class NabBot(commands.Bot):
             return
 
         server_welcome = get_server_property("welcome", member.guild.id, "")
-        pm = (welcome_pm+"\n"+server_welcome).format(member, self)
+        pm = (welcome_pm+"\n"+server_welcome).format(user=member, server=member.guild, bot=self.user,
+                                                     owner=member.guild.owner)
         log_message = "{0.mention} joined.".format(member)
 
         # Check if user already has characters registered and announce them on log_channel

@@ -138,9 +138,10 @@ class Admin:
         await ctx.send(answer)
         return
 
-    @commands.command(name="setworld")
+    @commands.guild_only()
     @checks.is_admin()
     @checks.is_not_lite()
+    @commands.command(name="setworld")
     async def set_world(self, ctx: commands.Context, *, world: str = None):
         """Sets this server's Tibia world.
 
@@ -148,44 +149,12 @@ class Admin:
         def check(m):
             return m.channel == ctx.message.channel and m.author == ctx.message.author
 
-        admin_guilds = self.bot.get_user_admin_guilds(ctx.message.author.id)
-
-        if not is_private(ctx.message.channel):
-            if ctx.message.guild not in admin_guilds:
-                await ctx.send("You don't have permissions to diagnose this server.")
-                return
-            guild = ctx.message.guild
-        else:
-            if len(admin_guilds) == 1:
-                guild = admin_guilds[0]
-            else:
-                guild_list = [str(i+1)+": "+admin_guilds[i].name for i in range(len(admin_guilds))]
-                await ctx.send("For which server do you want to change the world?\n\t0: *Cancel*\n\t"+"\n\t".join(guild_list))
-
-                try:
-                    answer = await self.bot.wait_for("message", timeout=60.0)
-                    answer = int(answer.content)
-                    if answer == 0:
-                        await ctx.send("Changed your mind? Typical human.")
-                        return
-                    guild = admin_guilds[answer-1]
-                except IndexError:
-                    await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
-                    return
-                except ValueError:
-                    await ctx.send("That's not a valid answer.")
-                    return
-                except asyncio.TimeoutError:
-                    await ctx.send("I guess you changed your mind.")
-                    return
-
-        guild_id = guild.id
+        current_world = tracked_worlds.get(ctx.guild.id, None)
         if world is None:
-            current_world = tracked_worlds.get(guild_id, None)
             if current_world is None:
                 await ctx.send("This server has no tibia world assigned.")
             else:
-                await ctx.send("This server has **{0}** assigned.".format(current_world))
+                await ctx.send(f"This server has **{current_world} assigned.")
             return
 
         if world.lower() in ["clear", "none", "delete", "remove"]:
@@ -201,7 +170,7 @@ class Admin:
 
             c = userDatabase.cursor()
             try:
-                c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'world'", (guild_id,))
+                c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'world'", (ctx.guild.id,))
             finally:
                 c.close()
                 userDatabase.commit()
@@ -213,8 +182,7 @@ class Admin:
         if world not in tibia_worlds:
             await ctx.send("There's no world with that name.")
             return
-        await ctx.send("Are you sure you want to assign **{0}** to this server? Previous worlds will be replaced."
-                            .format(world))
+        await ctx.send(f"Are you sure you want to assign **{world}** to this server? Previous worlds will be replaced.")
 
         try:
             reply = await self.bot.wait_for("message", timeout=50.0, check=check)
@@ -225,21 +193,18 @@ class Admin:
             await ctx.send("I guess you changed your mind...")
             return
 
-        c = userDatabase.cursor()
-        try:
+        with userDatabase as con:
             # Safer to just delete old entry and add new one
-            c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'world'", (guild_id,))
-            c.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'world', ?)",
-                      (guild_id, world,))
+            con.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'world'", (ctx.guild.id,))
+            con.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'world', ?)",
+                        (ctx.guild.id, world,))
             await ctx.send("This server's world has been changed successfully.")
-        finally:
-            c.close()
-            userDatabase.commit()
             reload_worlds()
 
-    @commands.command(name="setwelcome")
+    @commands.guild_only()
     @checks.is_admin()
     @checks.is_not_lite()
+    @commands.command(name="setwelcome")
     async def set_welcome(self, ctx, *, message: str = None):
         """Changes the messages members get pmed when joining
 
@@ -248,55 +213,28 @@ class Admin:
         Say "clear" to clear the current message.
 
         The following can be used to get dynamically replaced:
-        {0.name} - The joining user's name
-        {0.guild.name} - The name of the server the user joined
-        {0.guild.owner.name} - The name of the owner of the server the member joined
-        {0.guild.owner.mention} - A mention to the owner of the server
-        {1.user.name} - The name of the bot"""
+        {user.name} - The joining user's name
+        {user.mention} - The joining user's mention
+        {server.name} - The name of the server the member joined.
+        {owner.name} - The name of the owner of the server.
+        {owner.mention} - A mention to the owner of the server.
+        {bot.name} - The name of the bot
+        {bot.mention} - The name of the bot"""
         def check(m):
             return m.author == ctx.message.author and m.channel == ctx.message.channel
 
-        admin_guilds = self.bot.get_user_admin_guilds(ctx.message.author.id)
-
-        if not is_private(ctx.message.channel):
-            if ctx.message.guild not in admin_guilds:
-                await ctx.send("You don't have permissions to diagnose this server.")
-                return
-            guild = ctx.message.guild
-        else:
-            if len(admin_guilds) == 1:
-                guild = admin_guilds[0]
-            else:
-                guild_list = [str(i + 1) + ": " + admin_guilds[i].name for i in range(len(admin_guilds))]
-                await ctx.send("For which server do you want to change the welcome message?\n\t0: *Cancel*\n\t"
-                               +"\n\t".join(guild_list))
-                try:
-                    answer = await self.bot.wait_for("message", timeout=60.0, check=check)
-                    answer = int(answer.content)
-                    if answer == 0:
-                        await ctx.send("Changed your mind? Typical human.")
-                        return
-                    guild = admin_guilds[answer - 1]
-                except IndexError:
-                    await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
-                    return
-                except ValueError:
-                    await ctx.send("That's not a valid answer.")
-                    return
-                except asyncio.TimeoutError:
-                    await ctx.send("I guess you changed your mind.")
-                    return
         if message is None:
-            current_message = get_server_property("welcome", guild.id)
+            current_message = get_server_property("welcome", ctx.guild.id)
             if current_message is None:
                 current_message = welcome_pm.format(ctx.message.author, self.bot)
-                await ctx.send("This server has no custom message, joining members get the default message:\n"
-                               "----------\n{0}".format(current_message))
+                await ctx.send(f"This server has no custom message, joining members get the default message:\n"
+                               f"----------\n{current_message}")
             else:
-                current_message = (welcome_pm + "\n" + current_message).format(ctx.message.author, self.bot)
-                await ctx.send("This server has the following welcome message:\n"
-                               "----------\n``The first two lines can't be changed``\n{0}"
-                               .format(current_message))
+                unformatted_message = f"{welcome_pm}\n{current_message}"
+                complete_message = unformatted_message.format(user=ctx.author, server=ctx.guild, bot=self.bot.user,
+                                                              owner=ctx.guild.owner)
+                await ctx.send(f"This server has the following welcome message:\n"
+                               f"----------\n``The first two lines can't be changed``\n{complete_message}")
             return
         if message.lower() in ["clear", "none", "delete", "remove"]:
             await ctx.send("Are you sure you want to delete this server's welcome message? `yes/no`\n"
@@ -310,7 +248,7 @@ class Admin:
                 await ctx.send("I guess you changed your mind...")
                 return
 
-            set_server_property("welcome", guild.id, None)
+            set_server_property("welcome", ctx.guild.id, None)
             await ctx.send("This server's welcome message was removed.")
             return
 
@@ -318,7 +256,9 @@ class Admin:
             await ctx.send("This message exceeds the character limit! ({0}/{1}".format(len(message), 1200))
             return
         try:
-            complete_message = (welcome_pm+"\n"+message).format(ctx.message.author, self.bot)
+            unformatted_message = f"{welcome_pm}\n{message}"
+            complete_message = unformatted_message.format(user=ctx.author, server=ctx.guild, bot=self.bot.user,
+                                                          owner=ctx.guild.owner)
         except Exception as e:
             await ctx.send("There is something wrong with your message.\n```{0}```".format(e))
             return
@@ -335,7 +275,7 @@ class Admin:
             await ctx.send("I guess you changed your mind...")
             return
 
-        set_server_property("welcome", guild.id, message)
+        set_server_property("welcome", ctx.guild.id, message)
         await ctx.send("This server's welcome message has been changed successfully.")
 
     @commands.command(name="seteventchannel", aliases=["setnewschannel", "seteventschannel"])
