@@ -152,7 +152,7 @@ class Admin:
             if current_world is None:
                 await ctx.send("This server has no tibia world assigned.")
             else:
-                await ctx.send(f"This server has **{current_world} assigned.")
+                await ctx.send(f"This server has **{current_world}** assigned.")
             return
 
         if world.lower() in ["clear", "none", "delete", "remove"]:
