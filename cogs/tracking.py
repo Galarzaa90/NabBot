@@ -853,7 +853,7 @@ class Tracking:
         try:
             guild = await get_guild(name)
             if guild is None:
-                await ctx.send("There's no character with that name.")
+                await ctx.send("There's no guild with that name.")
                 return
         except NetworkError:
             await ctx.send("I couldn't fetch that guild right now, please try again.")
@@ -914,7 +914,7 @@ class Tracking:
 
             c.execute("DELETE FROM watched_list WHERE server_id = ? AND name LIKE ? AND is_guild = 1",
                       (ctx.guild.id, name,))
-            await ctx.send("Character removed from the watched list.")
+            await ctx.send("Guild removed from the watched list.")
         finally:
             userDatabase.commit()
             c.close()
@@ -922,7 +922,7 @@ class Tracking:
     @watched.command(name="list")
     @commands.guild_only()
     @checks.is_admin()
-    async def hunted_list(self, ctx):
+    async def watched_list(self, ctx):
         """Shows a list of all watched characters
         
         Note that this lists all characters, not just online characters."""
@@ -950,7 +950,7 @@ class Tracking:
     @watched.command(name="guildlist", aliases=["listguild", "guilds"])
     @commands.guild_only()
     @checks.is_admin()
-    async def hunted_list_guild(self, ctx):
+    async def watched_list_guild(self, ctx):
         """Shows a list of all watched characters
 
         Note that this lists all characters, not just online characters."""
