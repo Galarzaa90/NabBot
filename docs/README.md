@@ -15,4 +15,5 @@ To view locally:
     ```commandline
     mkdocs serve
     ```
-1. The website should be now available on: http://127.0.0.1:8000/
+1. The website should be now available on:  
+http://127.0.0.1:8000/

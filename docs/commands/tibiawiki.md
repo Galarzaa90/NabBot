@@ -1,5 +1,8 @@
-!!! note
-    The information contained here refers to the `master` branch, it will be updated to `rewrite` documentation soon.
+All the commands that use information from TibiaWiki.  
+Information is read from `tibia_database.sql`, which is generated from [tibiawiki-sql](https://github.com/Galarzaa90/tibiawiki-sql).
+
+!!! info
+    Words in italics are parameters.  
 
 
 ## /itemprice *name*
@@ -24,39 +27,91 @@ For longer replies, the command must be used in the ask channel or via private m
 
 ---
 
-## /spell *name/words*
-
-Replies with information on a certain spell like level, vocation(s) required, level required, cost and NPCs that sell it. Information given is shorter unless it's used in the ask channel or private messages.
-
-Example:  
-**/spell ice strike**  
-![image](https://cloud.githubusercontent.com/assets/12865379/25456795/ccb9e534-2a88-11e7-9cf2-d49c77648137.png)
-
-**/spell exevo gran mas vis**  
-![image](https://cloud.githubusercontent.com/assets/12865379/25457018/a098ecce-2a89-11e7-85da-0ef2c64ef9ff.png)
-
----
-
 ## /monster name
 *Other aliases: /mob, /creature, /mon*
 
-Displays information about a specific creature.
+Displays information about a specific creature. Health points, experience, resistances and weaknesses, loot drops, etc.
 
-Example:   
-**/monster Demon** *On a regular channel*  
-![image](https://cloud.githubusercontent.com/assets/12865379/25457099/f1d97b62-2a89-11e7-992d-7115e3f0d7a0.png)
+If used on the ask-channel or private message, the information displayed is longer.
 
-**/monster Demon** *On an ask channel or private message*  
-![image](https://cloud.githubusercontent.com/assets/12865379/25457180/30f37aa0-2a8a-11e7-8d56-7000167a29bc.png)  
-(*The bottom of the image has been cropped*)
+??? summary "Examples"
+
+    **/monster Demon** *(On a regular channel)*  
+    ![image](../assets/images/commands/monster_1.png)
+    
+    **/monster Demon** *(On an ask channel or private message)*  
+    ![image](../assets/images/commands/monster_2.png)
+    
+    (*The bottom of the image has been cropped*)
 
 ----
 
-## /achievements
+## /spell *name/words*
+
+Replies with information on a certain spell like level, vocation(s) required, level required, cost and NPCs that sell it.
+Information given is shorter unless it's used in the ask channel or private messages.
+
+??? summary "Examples"
+
+    **/spell exori gran**  
+    ![image](../assets/images/commands/spell_1.png)
+    
+    **/spell emberwing**  
+    ![image](../assets/images/commands/spell_2.png)
+
+----
+
+## /npc *name*
+*Other aliases: /npcs*
+
+Shows information about an NPC. What items do they sell and buy, where are they found and travel destinations.
+More information is displayed if used on the ask channel or on private messages.
+
+??? summary "Examples"
+
+    **/npc rashid** *(On a regular channel)*  
+    ![image](../assets/images/commands/npc_1.png)
+    
+    **/npc captain fearless**  *(On an ask channel or private message)*  
+    ![image](../assets/images/commands/npc_2.png)
+
+----
+
+## /achievements *name*
 *Other aliases: /achiev*
 
-Shows information about an achievement. Spoiler info is shown only on ask channels or private messages.
+Shows information about an achievement.
 
-Example:  
-**/achievement demonic barkeeper**  
-![image](https://cloud.githubusercontent.com/assets/12865379/25457881/a50d2920-2a8c-11e7-8704-968808abdd14.png)
+??? summary "Examples"
+
+    **/achievement demonic barkeeper**  
+    ![image](../assets/images/commands/achievement.png)
+    
+----
+
+## /key *number*
+*Other aliases: /keys*
+
+Shows information about a key with a certain number.
+
+??? summary "Examples"
+
+    **/key 3940**  
+    ![image](../assets/images/commands/key.png)
+    
+----
+
+### /key search *name*
+
+Searches for keys by keyword. The keyboard might be their common name or the place they're used in.
+If there are multiple coincidences, a list is shown. If only one, the key's information is shown directly.
+
+??? summary "Examples"
+
+    **/key search hellgate** *(only one match)*  
+    ![image](../assets/images/commands/key_search_1.png)
+    
+    **/key search fibula** *(multiple matches)*  
+    ![image](../assets/images/commands/key_search_2.png)
+    
+    

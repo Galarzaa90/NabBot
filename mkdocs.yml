@@ -38,7 +38,7 @@ pages:
     - Permissions: permissions.md
     - FAQ: faq.md
     - Commands:
-      - Commands: commands/index.md
+      - Overview: commands/index.md
       - General commands: commands/general.md
       - Tibia commands: commands/tibia.md
       - TibiaWiki commands: commands/tibiawiki.md

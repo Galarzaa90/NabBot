@@ -1,8 +1,9 @@
- !!! info
+Commands related to Tibia, specially commands related to tibia.com
+
+!!! info
     Words in italics are parameters.  
     Parameters enclosed in brackets `[]` are optional.
 
-Command parameters are shown in italics, optional parameters are surrounded with `[ ]`
 
 ## /whois *playerName/discordUser*
 *Other aliases: /check, /player, /checkplayer, /char, /character*
