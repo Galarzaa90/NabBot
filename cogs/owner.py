@@ -125,7 +125,7 @@ class Owner:
                 if answer.content.lower().strip() in ["cancel", "none"]:
                     await ctx.send("Nevermind then.")
                     return
-                content = answer
+                content = answer.content
             except asyncio.TimeoutError:
                 await ctx.send("You changed your mind then?")
                 return
