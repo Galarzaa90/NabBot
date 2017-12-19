@@ -1782,6 +1782,9 @@ class Tibia:
             except NetworkError:
                 await asyncio.sleep(30)
                 continue
+            except asyncio.CancelledError:
+                # Task was cancelled, so this is fine
+                break
             except Exception:
                 log.exception("Task: scan_news")
 

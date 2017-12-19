@@ -20,7 +20,6 @@ class Owner:
         self.bot = bot
         self.sessions = set()
 
-
     def cleanup_code(self, content):
         """Automatically removes code blocks from the code."""
         # remove ```py\n```
@@ -29,7 +28,6 @@ class Owner:
 
         # remove `foo`
         return content.strip('` \n')
-
 
     def get_syntax_error(self, e):
         if e.text is None:
@@ -53,7 +51,7 @@ class Owner:
 
     @commands.command(name="load")
     @checks.is_owner()
-    async def load_cog(self, ctx, cog : str):
+    async def load_cog(self, ctx, cog: str):
         """Loads a cog"""
         try:
             self.bot.load_extension(cog)
