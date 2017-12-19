@@ -582,7 +582,7 @@ async def get_recent_news(tries = 5):
         log.error("get_recent_news: network error.")
         raise NetworkError()
     try:
-        url = f"https://api.tibiadata.com/v1/news.json"
+        url = f"https://api.tibiadata.com/v2/latestnews.json"
     except UnicodeEncodeError:
         return None
     # Fetch website
@@ -596,12 +596,12 @@ async def get_recent_news(tries = 5):
 
     content_json = json.loads(content)
     try:
-        news = content_json["news"]
+        newslist = content_json["newslist"]
     except KeyError:
         return None
-    for article in news:
+    for article in newslist["data"]:
         article["date"] = parse_tibiadata_time(article["date"]).date()
-    return news
+    return newslist["data"]
 
 
 async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union[str, dt.date]]]:
@@ -612,7 +612,7 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
         log.error("get_recent_news: network error.")
         raise NetworkError()
     try:
-        url = f"https://api.tibiadata.com/v1/news/{article_id}.json"
+        url = f"https://api.tibiadata.com/v2/news/{article_id}.json"
     except UnicodeEncodeError:
         return None
     # Fetch website
@@ -626,12 +626,11 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
 
     content_json = json.loads(content)
     try:
-        news = content_json["news"]
+        article = content_json["news"]
     except KeyError:
         return None
-    if "error" in news:
+    if "error" in article:
         return None
-    article = news[0]
     article["id"] = article_id
     article["date"] = parse_tibiadata_time(article["date"]).date()
     return article

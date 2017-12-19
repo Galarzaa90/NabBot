@@ -1610,11 +1610,11 @@ def html_to_markdown(html_string):
     # Carriage return
     html_string = html_string.replace("\r", "")
     # Replace <br> tags with line jumps
-    html_string = re.sub(r'<br\s?/>', "\n", html_string)
+    html_string = re.sub(r'<br\s?/?>', "\n", html_string)
     # Replace <strong> and <b> with bold
     html_string = re.sub(r'<strong>([^<]+)</strong>', '**\g<1>**', html_string)
     html_string = re.sub(r'<b>([^<]+)</b>', '**\g<1>**', html_string)
-    html_string = re.sub(r'<li>([^<]+)</li>', '- \g<1>', html_string)
+    html_string = re.sub(r'<li>([^<]+)</li>', '- \g<1>\n', html_string)
     # Replace links
     html_string = re.sub(r'<a href=\"([^\"]+)\"[^>]+>([^<]+)</a>', "[\g<2>](\g<1>)", html_string)
     # Paragraphs with jumpline
