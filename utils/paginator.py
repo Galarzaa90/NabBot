@@ -44,27 +44,29 @@ class Paginator:
     """
     Empty = discord.Embed.Empty
 
-    def __init__(self, bot: Client, *, message: Message, entries, per_page=10, title=None, description="",
-                 numerate=True, color: Colour=None, author=None, author_icon=discord.Embed.Empty, author_url=None):
+    def __init__(self, bot: Client, *, message: Message, entries, **kwargs):
         self.bot = bot
         self.entries = entries
         self.message = message
         self.author = message.author
-        self.per_page = per_page
+        self.per_page = kwargs.get("per_page", 10)
         self.current_page = 1
-        self.title = title
-        self.numerate = numerate
-        self.description = description
+        self.title = kwargs.get("title",None)
+        self.numerate = kwargs.get("numerate", True)
+        self.description = kwargs.get("description", "")
         pages, left_over = divmod(len(self.entries), self.per_page)
         if left_over:
             pages += 1
         self.maximum_pages = pages
         self.embed = discord.Embed()
+        author = kwargs.get("author", None)
         if author is not None:
-            self.embed.set_author(name=author, icon_url=author_icon, url=author_url)
+            self.embed.set_author(name=author, icon_url=kwargs.get("author_icon", discord.Embed.Empty),
+                                  url=kwargs.get("author_url", discord.Embed.Empty))
+        color = kwargs.get("color", None)
         if color is not None:
             self.embed.colour = color
-        self.paginating = len(entries) > per_page
+        self.paginating = len(entries) > self.per_page
         self.reaction_emojis = [
             ('\N{BLACK LEFT-POINTING TRIANGLE}', self.previous_page),
             ('\N{BLACK RIGHT-POINTING TRIANGLE}', self.next_page),
@@ -206,11 +208,8 @@ class Paginator:
 
 
 class VocationPaginator(Paginator):
-    def __init__(self, bot: Client, *, message: Message, entries, per_page=10, title=None, description="",
-                 numerate=True, color: Colour = None, author=None, author_icon=discord.Embed.Empty, vocations,
-                 author_url=None):
-        super().__init__(bot, message=message, entries=entries, per_page=per_page, title=title, description=description,
-                         numerate=numerate, color=color, author=author, author_icon=author_icon, author_url=author_url)
+    def __init__(self, bot: Client, *, message: Message, entries, vocations, **kwargs):
+        super().__init__(bot, message=message, entries=entries, **kwargs)
         present_vocations = []
         # Only add vocation filters for the vocations present
         if any(v.lower() in DRUID for v in vocations):
