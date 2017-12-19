@@ -13,27 +13,6 @@ Example:
 
 ----
 
-## /im characterName
-
-The bot scans the character and other characters on the account and registers them to the user. Registered characters have their deaths and level ups announced on the chat.
-
-The bot will skip characters on different worlds than the world the discord server tracks. Also, if it finds a character owned by another user, the whole process will be stopped.
-
-Example:  
-**/im Elf**  
-![image](https://cloud.githubusercontent.com/assets/12865379/25461243/acadbc7a-2a9c-11e7-91ee-a4ddcbd3ab8f.png)
-
-----
-
-## /imnot characterName
-
-Unregisters a character you previously registered.
-
-Example:  
-**/imnot tomas haake**  
-![image](https://cloud.githubusercontent.com/assets/12865379/25461316/222922fa-2a9d-11e7-9967-8fbde3a03684.png)
-
-----
 
 ## /uptime
 
@@ -138,12 +117,3 @@ Example:
 **/role The Dozzle Cult ☠️**  
 ![image](https://cloud.githubusercontent.com/assets/12865379/25462021/1a2816ca-2aa1-11e7-99b2-4e80f0bc9b12.png)
 
-----
-
-## /online
-
-Shows a list of tracked characters that are online, along with their level, vocation and owner.
-
-Example:  
-**/online**  
-![image](https://cloud.githubusercontent.com/assets/12865379/25462094/9c5eda0c-2aa1-11e7-879c-2c4e4eb68429.png)

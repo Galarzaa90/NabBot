@@ -748,7 +748,7 @@ class Tracking:
                                "*This message can be deleted now.*")
             set_server_property("watched_channel", ctx.guild.id, channel.id)
 
-    @watched.command(name="add")
+    @watched.command(name="add", aliases=["addplayer", "addchar"])
     @commands.guild_only()
     @checks.is_admin()
     async def watched_add(self, ctx, *, name=None):
@@ -797,7 +797,7 @@ class Tracking:
             userDatabase.commit()
             c.close()
 
-    @watched.command(name="remove")
+    @watched.command(name="remove", aliases=["removeplayer", "removechar"])
     @commands.guild_only()
     @checks.is_admin()
     async def watched_remove(self, ctx, *, name=None):
@@ -947,7 +947,7 @@ class Tracking:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @watched.command(name="guildlist", aliases=["listguild", "guilds"])
+    @watched.command(name="guildlist", aliases=["listguilds", "guilds"])
     @commands.guild_only()
     @checks.is_admin()
     async def watched_list_guild(self, ctx):

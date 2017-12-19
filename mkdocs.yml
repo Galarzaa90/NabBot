@@ -42,6 +42,7 @@ pages:
       - General commands: commands/general.md
       - Tibia commands: commands/tibia.md
       - TibiaWiki commands: commands/tibiawiki.md
+      - Tracking commands: commands/tracking.md
       - Loot commands: commands/loot.md
       - Admin commands: commands/admin.md
       - Owner commands: commands/owner.md
