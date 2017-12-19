@@ -375,8 +375,8 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.command(aliases=['guildcheck', 'checkguild'])
-    async def guild(self, ctx, *, name=None):
+    @commands.group(aliases=['guildcheck', 'checkguild'], invoke_without_command=True)
+    async def guild(self, ctx, *, name:str=None):
         """Checks who is online in a guild"""
         permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
@@ -433,12 +433,12 @@ class Tibia:
         embed.add_field(name=current_field, value=result, inline=False)
         await ctx.send(embed=embed)
 
-    @commands.command(aliases=['guildlist'])
-    async def guildmembers(self, ctx, *, name: str = None):
+    @guild.command(name="members", aliases=['ist'])
+    async def guild_members(self, ctx, *, name: str = None):
         """Shows a list of all guild members
 
         Online members have a 🔹 icon next to their name."""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -464,16 +464,19 @@ class Tibia:
             member["vocation"] = get_voc_abb(member["vocation"])
             member["online"] = EMOJI[":small_blue_diamond:"] if member["status"] == "online" else ""
             entries.append("{rank}\u2014 {online}**{name}** {nick} (Lvl {level} {vocation}{emoji})".format(**member))
-
-        pages = VocationPaginator(self.bot, message=ctx.message, entries=entries, per_page=10, author=title,
+        if is_private(ctx.channel) or ctx.channel.name == ask_channel_name:
+            per_page = 20
+        else:
+            per_page = 5
+        pages = VocationPaginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, author=title,
                                   author_icon=guild.logo, author_url=guild.url, vocations=vocations)
         try:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.command(aliases=["guildstats"])
-    async def guildinfo(self, ctx, *, name: str = None):
+    @guild.command(name="info", aliases=["stats"])
+    async def guild_info(self, ctx, *, name: str = None):
         """Shows basic information and stats about a guild"""
         permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
         if not permissions.embed_links:
