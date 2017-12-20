@@ -1046,12 +1046,7 @@ class General:
         if event is None:
             await ctx.send("There's no active event with that id.")
             return
-        with closing(userDatabase.cursor()) as c:
-
-            participants = c.fetchall()
-            if participants is None:
-                participants = []
-        if len(participants) == 0:
+        if len(event["participants"]) == 0:
             join_prompt = ""
             if event["joinable"] != 0:
                 join_prompt = f" To join, use `/event join {event_id} characterName`."
@@ -1059,7 +1054,7 @@ class General:
             return
         entries = []
         event_server = self.bot.get_guild(event["server"])  # type: discord.Guild
-        for char in participants:
+        for char in event["participants"]:
             char["level"] = abs(char["level"])
             char["emoji"] = get_voc_emoji(char["vocation"])
             char["vocation"] = get_voc_abb(char["vocation"])
@@ -1289,7 +1284,7 @@ class General:
         event = c.fetchone()
         if event is None:
             return None
-        c.execute("SELECT user_id, id as char_id, ABS(level) as level, vocation, world  "
+        c.execute("SELECT user_id, id as char_id, name, ABS(level) as level, vocation, world  "
                   "FROM chars WHERE id IN (SELECT char_id FROM event_participants WHERE event_id = ?)",
                   (event_id,))
         event["participants"] = c.fetchall()
