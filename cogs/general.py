@@ -17,7 +17,7 @@ from utils.database import userDatabase, tibiaDatabase, get_server_property, tra
 from utils.discord import is_lite_mode, get_region_string, get_role_list, get_role, is_private, clean_string
 from utils.general import get_uptime, TimeString, single_line, is_numeric, log
 from utils.messages import EMOJI
-from utils.paginator import Paginator, CannotPaginate
+from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50
@@ -444,6 +444,7 @@ class General:
             if event["slots"] > 0:
                 slots = f"/{event['slots']}"
             embed.add_field(name="Participants", value=f"{len(event['participants'])}{slots}")
+
         await ctx.send(embed=embed)
 
     @checks.is_not_lite()
@@ -1053,10 +1054,12 @@ class General:
             await ctx.send(f"There are no participants in this event.{join_prompt}")
             return
         entries = []
+        vocations = []
         event_server = self.bot.get_guild(event["server"])  # type: discord.Guild
         for char in event["participants"]:
             char["level"] = abs(char["level"])
             char["emoji"] = get_voc_emoji(char["vocation"])
+            vocations.append(char["vocation"])
             char["vocation"] = get_voc_abb(char["vocation"])
             owner = self.bot.get_member(char["user_id"], self.bot.get_guild(event_server))
             char["owner"] = "unknown" if owner is None else owner.display_name
@@ -1070,8 +1073,8 @@ class General:
             else:
                 author_name = author.display_name
             author_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=15, title=event["name"],
-                          author=author_name, author_icon=author_icon)
+        pages = VocationPaginator(self.bot, message=ctx.message, entries=entries, per_page=15, title=event["name"],
+                                  author=author_name, author_icon=author_icon, vocations=vocations)
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -1151,13 +1154,12 @@ class General:
             return
 
     @checks.is_not_lite()
-    @events.command(name="addplayer", aliases=["addcharacter", "addchar"])
+    @events.command(name="addplayer", aliases=["addchar"])
     async def event_addplayer(self, ctx, event_id: int, *, character):
         """Adds a character to an event
 
         Only the creator can add characters to an event.
         If the event is joinable, anyone can join an event using /event join"""
-        print("aaaaa")
         event = self.get_event(ctx, event_id)
         if event is None:
             await ctx.send("There's no active event with that id.")
@@ -1197,7 +1199,7 @@ class General:
             return
 
     @checks.is_not_lite()
-    @events.command(name="removeplayer", aliases=["removechar", "removecharacter"])
+    @events.command(name="removeplayer", aliases=["removechar"])
     async def event_removeplayer(self, ctx, event_id: int, *, character):
         """Removes a player from an event
 
