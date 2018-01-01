@@ -256,6 +256,18 @@ class Loot:
                                file=discord.File(result, "results.png"))
             return
 
+    @loot.command(name="update")
+    @checks.is_owner()
+    @checks.is_not_lite()
+    async def loot_update(self, ctx, *, item=None):
+        """Shows item info from loot database."""
+        result = await loot_db_update()
+        if result is not None:
+            await ctx.send("Added "+str(result)+" items to loot database, check debugimages folder for more info.")
+        else:
+            await ctx.send("No new items found in tibia_database.")
+        return
+
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
     @checks.is_not_lite()
     async def loot_legend(self, ctx):
@@ -693,7 +705,7 @@ async def item_new(item, frame, group, value):
                      (item, group, 0, value, frameStr, frame_crop.size[0], frame_crop.size[1], frame_size,
                       frame_color[0], frame_color[1], frame_color[2]))
 
-    c.execute("SELECT * FROM Items  WHERE name LIKE ?", (item,))
+    c.execute("SELECT * FROM Items WHERE name LIKE ?", (item,))
     item_list = c.fetchall()
     output_image = Image.new("RGBA", (33 * len(item_list) - 1, 32), (255, 255, 255, 255))
     x = 0
@@ -708,6 +720,153 @@ async def item_new(item, frame, group, value):
     c.close()
     return img_byte_arr
 
+def is_black(pixel):
+    return not(pixel[0] >= 55 or pixel[1] >= 55 or pixel[2] >= 55)
+
+def clear_black_lines(itemImage):
+    if itemImage is None:
+        return itemImage
+    #horizontal
+    px = 0
+    py = 0
+    while py<itemImage.size[1]:
+        itemImagePixel = itemImage.getpixel((px,py))
+        if not is_black(itemImagePixel):
+            py+=1
+            px=0
+            continue
+        px+=1
+        if px == itemImage.size[0]:
+            px=0
+            for lx in range(0,itemImage.size[0]):
+                itemImage.putpixel((lx,py),(0,0,0,0))
+            py+=1
+    #vertical
+    px = 0
+    py = 0
+    while px<itemImage.size[0]:
+        itemImagePixel = itemImage.getpixel((px,py))
+        if not is_black(itemImagePixel):
+            px+=1
+            py=0
+            continue
+        py+=1
+        if py == itemImage.size[1]:
+            py=0
+            for ly in range(0,itemImage.size[1]):
+                itemImage.putpixel((px,ly),(0,0,0,0))
+            px+=1
+    return itemImage
+
+async def loot_db_update():
+    itemSkipFilters = ["Abacus (Replica)","Airtight Cloth","Almanac of Magic","Amulet of Life","Animal Fetish","Annihilation Bear","Antler Talisman","Areca Palm","Armor Rack","Arrow (Weak)","Artist's Easel (with Canvas)","Artist's Easel","Avalanche Rune (Weak)","Baby Dragon","Badger Fur (Decoration)","Badly Made Piece of Cloth","Bag (Ahmet)","Bag of Screws","Bag with Stolen Gold","Baking Tray (with Garlic Dough)","Bale of White Cloth","Bale of Yellowed Cloth","Bamboo Drawer","Bamboo Shelf","Bamboo Table","Barrel (Brown)","Barrel of Beer","Barrel","Beer Bottle","Belongings of a Deceased","Big Table","Birdcage (Dead)","Birdcage","Blessed Ankh","Blue Powder","Blue Spell Wand","Bolt (Weak)","Bookcase (Ab'Dendriel)","Bookcase (Venore)","Bookcase","Boots of Homecoming (Used)","Boots of Waterwalking","Botanist's Container (Bells)","Botanist's Container (Cauldron)","Botanist's Container (Empty)","Botanist's Container (Orchid)","Botanist's Container (Rose)","Bottle of Bug Milk","Bottle of Whisper Beer","Bowl (Gold)","Bowl (Green)","Bowl (Silver)","Bowl of Tea Leaves","Bowl with Sacred Water","Box (Brown)","Box (Pies)","Branch","Brandon's Wedding Ring","Bricklayers' Kit","Broken Wooden Shield","Bucket Full of Mortar","Bucket of Bog Water","Bundle of Rags","Burst Arrow (Weak)","Butterfly Conservation Kit (Blue)","Butterfly Conservation Kit (Empty)","Butterfly Conservation Kit (Purple)","Butterfly Conservation Kit (Red)","Cabinet (Venorean)","Cabinet","Cake Cabinet","Carafe of Water Binding","Carved Stone Table","Case of Rust Bugs","Cask of Brown Ale (Item)","Cat in a Basket","Chaos Matter","Chest of Drawers","Chimney (Lit)","Chimney","Christmas Branch","Christmas Present Bag","Christmas Tree Package","Christmas Tree","Club of the Fury","Compromising Letter","Conjurer Wand","Crate (Swapped)","Crate (Wine)","Crate Full of Coral","Crumpled Paper","Crystal Ring (Eleonore)","Cups of Honour","Damaged Logbook","Dead Bog Frog (Quest)","Dead Rat (Oramond)","Deed of Ownership","Deep Crystal","Delany's Golden Bug Trophy","Dinky Moss Floret Garland","Djinn's Lamp","Document of the Follower","Document of the Leader","Double Loot Week","Dragha's Spellbook","Dragon Eye (Replica)","Dragon Statue (Item)","Dragon Throne","Drawer","Dream Junk","Dresser","Drowned Seaman's Skull","Dung Ball (Quest)","Dwarven Pickaxe","Easily Inflammable Sulphur","Eclesius' Sandals","Eerie Song Book","Eggs of a Sacred Snake","Elane's Crossbow","Elven Brooch","Elven Wand","Empty Beer Bottle","Empty Jug","Energy Net","Enigmatic Voodoo Skull","Envelope from the Wizards","Envenom Rune","Exploding Cookie","Explosion Rune (Weak)","Exquisite Silk","Exquisite Wood","Fake Dwarven Beard","Fake Rabbit's Foot","Faked Label","Family Brooch (Dwarven)","Family Brooch","Family Signet Ring","Fan Doll of King Tibianus","Farmer's Avenger","Ferocious Cabinet","Ferocious Chair","Ferocious Table","Ferocious Trunk","Ferumbras' Mana Keg (Used)","Filigree Statue","Filled Carrying Device","Filled Cup","Fine Sulphur","Fireball Rune (Weak)","Fishnapped Goldfish","Flask of Cough Syrup","Flask of Warrior's Sweat","Flexible Dragon Scale","Food Crate","Friendship Amulet (Replica)","Frozen Heart (Replica)","Full Gas Bag","Funeral Urn","Fungus Powder","Garlic Bread","Garlic Cookie","Gas Bag","Gemmed Lamp (Fa'hradin's)","Ghost Duster","Ghost Residue","Giant Screwdriver","Giant Smithhammer","Glob of Grease","Globe","Glooth Vinegar","Glutton's Mace","Gnomish Crystal Package","Gnomish Spore Gatherer (Blue)","Gnomish Spore Gatherer (Complete)","Gnomish Spore Gatherer (Green)","Gnomish Spore Gatherer (Red)","Gnomish Spore Gatherer (Yellow)","Goblets","Goblin Statue","Golden Goblet (15th Anniversary)","Golden Quartz Powder","Golden Wand","Golem Disassembler","Gooey Substance","Great Fireball Rune (Weak)","Green Balloons","Green Cushioned Chair","Green Powder","Green Power Core","Green Spell Wand","Griffinclaw Container","Grodrik's Favourite Axe","Guardcatcher","Hamster in a Wheel","Harp","Headache Pill","Heated Worm Punisher","Heavy Magic Missile Rune (Weak)","Heavy Metal T-Shirt","Helmet of Nature","Holy Missile Rune (Weak)","Hopgoblin's Broken Staff","Hourglass","House Silversun's Signet Ring","Ice Cream Cone (Venorean Dream)","Icicle (Item)","Icicle Rune (Weak)","Incantation Fragment","Incredible Mumpiz Slayer","Indoor Plant","Intense Healing Rune (Item Weak)","Iriana's Chest","Ivory Chair","Jerom's Family Necklace","Key of Numerous Locks (Replica)","Key Ring","Kidney Table","Large Amphora","Large Trunk","Leaf Basket","Letter to Chantalle","Letter to Eremo","Letter to Markwin","Lettuce","Light Magic Missile Rune (Weak)","Lightest Magic Missile Rune","Lit Protectress Lamp","Lizard Weapon Rack","Locker","Lump of Garlic Dough","Lump of Holy Water Dough","Machine Crate","Magic Crystal","Magical Inkwell","Magical Watch","Magnificent Cabinet","Magnificent Chair","Magnificent Table","Magnificent Trunk","Mago Mechanic Core","Mailbox (Furniture)","Masterpiece of a Gozzler","Masterpiece of a Muse","Matrix Crystal","Mean Knight Sword","Mean Paladin Spear","Meat Shield","Memory Box (Activated)","Memory Stone","Mighty Helm of Green Sparks","Milking Fork","Miniature House","Mining Helmet (Budrik)","Minotaur Statue","Molten Wax","Monk's Diary","Musician's Bow","Mysterious Package","Mysterious Scroll","Mystic Root","Nature Magic Spellbook","Noble Sword (Activated)","Noble Sword (Replica)","Nomad Parchment","Norseman Doll (Replica)","Note from the Thieves Guild","Odd Hat","Ogre Rune Stone","Ogre Rune Stones (Corner)","Ogre Rune Stones (Right)","Ogre Rune Stones (Two)","Ogre Rune Stones (Up)","Old and Used Backpack","Old Encrypted Text","Old Iron","Old Nasty","Old Piece of Paper","Old Power Core","Omrabas' Heart","Omrabas' Talking Skull","Orc Tusk","Orc's Jaw Shredder (Replica)","Orichalcum Pearl","Ornamented Stone Table","Ornate Mailbox","Oven (Lit)","Oven","Painting of a Gozzler","Painting of a Muse","Pet Pig","Pharaoh Rares","Phoenix Statue (Replica)","Piano","Piercing Bolt (Weak)","Pile of Bones","Pinch of Crystal Dust","Pirates Surprise","Poet's Fencing Quill","Pointed Rabbitslayer","Potted Plant","Power Arrow","Power Bolt (Weak)","Precious Necklace","Prepared Bucket","Present (Explosive)","Present (Postman)","Protectress Lamp","Quagmire Rod","Red Cushioned Chair","Red Powder","Red Power Core","Red Spell Wand","Replica of the Sceptre","Rerun's Ring","Resonance Crystal","Reward Box","Ring of Wishes","Ritual Wand","Rocking Chair","Rocking Horse","Rolling Pin (Rookgaard)","Roshamuul Prison Keys","Sacred Bowl of Purification","Sacred Bowl","Sacred Earth","Scum Bag","Secret Agent Tools","Shadow Orb","Shaggy Ogre Bag","Shapechanger","Shield of Care","Shield of the White Knight","Silver Key (Outpost)","Simon the Beggar's Favorite Staff","Simple Arrow (Weak)","Siramal's Golden Bug Trophy","Skeleton (Item)","Skull (Item)","Skull of Ratha","Small Bamboo Shelf","Small Enchanted Amethyst","Small Enchanted Emerald","Small Enchanted Ruby","Small Enchanted Sapphire","Small Golden Taboret","Small Round Table","Small Table","Snake Destroyer","Sneaky Stabber of Eliteness (Jammed)","Sniper Arrow (Weak)","Snowman Package","Sofa Chair","Soft Piece of Cloth","Some Mushrooms (Brown)","Some Special Leaves","Sorc and Druid Staff","Soul Contract","Spare Part","Special Flask (Fools Guild)","Special Flask (Quara)","Special Flask (Slime)","Special Polish","Spectral Cloth","Spectral Dress","Spectral Stone","Spool of Steel Silk Yarn","Square Table","Squeezing Gear of Girlpower (Jammed)","Stabilizer","Stalagmite Rune (Weak)","Stale Bread of Ancientness","Standing Mirror","Steel Spider Silk","Stolen Golden Goblet","Stone Shower Rune (Weak)","Stool","Strange Powder (Hive)","Strong Sinew","Sudden Death Rune (Weak)","Sugar","Sugatrap's Obsidian Lance","Suspicious Documents","Suspicious Surprise Bag","Swarmer Drum","Sweet and Sugary Substance","Taboret","Tainted Blood Essence","Tea Spoon","Telescope","Tempest Rod","Test Voodoo Doll","The Alchemists' Formulas","The Carrot of Doom","The Crossbow of Swordfish","The Dust of Arthei","The Dust of Boreth","The Dust of Lersatio","The Dust of Marziel","The Dwarven Emperor's Beard","The Famous Mina Losa Painting","The Horn of Sundering","The Mexcalibur (Replica)","The Rain Coat","The Ring of the Count","The Shield Nevermourn","The Tail of the Keeper","Thick Trunk","Throwing Cake","Thunderstorm Rune (Weak)","Tibia Coins","Timber Chair","Time Compass","Tome","Torn Incantation Fragment","Torn Log Book","Torn Magic Cape","Tortoise Egg from Nargor","Trashed Draken Boots","Treasure Digging","Treasure Map (Pirate)","Trough for Mortar","Trough","Trousers of the Ancients","Trunkhammer","Tusk Chair","Tusk Table","Ultimate Healing Rune (Item Weak)","Unholy Shield","Unworked Sacred Wood","V-Belt","Valuable Vase","Venorean Chair","Venorean Stool","Very Noble-Looking Watch","Volcanic Rod","Waldo's Post Horn","Wand of Might","Wand of Plague","War Wolf Skin","Wardrobe (Venorean)","Water Pipe (Deluxe)","Weapon Rack","Weapons Crate (Set)","Weapons Crate","Whacking Driller of Fate (Jammed)","Whisper Moss","Whoopee Cushion","Witchesbroom","Wooden Chair","Wooden Ties","Wooden Trunk","Wooden Wand","Worm Punisher","Xodet's First Wand","Yalahari Gear Wheel","Yellow Pillow (Supersoft)","Yellow Powder","Yellow Spell Wand","Amazon Disguise Kit","Armor Rack Kit","Bamboo Drawer Kit","Bamboo Table Kit","Barrel Kit","Big Table Kit","Birdcage Kit","Blue Bed Kit","Cake Cabinet Kit","Canopy Bed Kit","Chimney Kit","Coal Basin Kit","Crystal Table Kit","Dragon Statue Kit","Dragon Throne Kit","Drawer Kit","Dresser Kit","Dwarf Disguise Kit","Easel Kit","Globe Kit","Goblin Statue Kit","Green Bed Kit","Green Cushioned Chair Kit","Harp Kit","Heavy Package","Indoor Plant Kit","Ivory Chair Kit","Knight Statue Kit","Large Amphora Kit","Large Used Amphora Kit","Lizard Weapon Rack Kit","Locker Kit","Minotaur Statue Kit","Monkey Statue 'Hear' Kit","Monkey Statue 'See' Kit","Monkey Statue 'Speak' Kit","Oven Kit","Pendulum Clock Kit","Piano Kit","Red Bed Kit","Red Cushioned Chair Kit","Rocking Chair Kit","Rocking Horse Kit","Round Table Kit","Small Table Kit","Sofa Chair Kit","Square Table Kit","Stone Table Kit","Table Lamp Kit","Telescope Kit","Trough Kit","Trunk Chair Kit","Trunk Kit","Trunk Table Kit","Tusk Chair Kit","Tusk Table Kit","Used Globe Kit","Used Red Chair Kit","Used Rocking Horse Kit","Used Telescope Kit","Venorean Cabinet Kit","Venorean Drawer Kit","Venorean Wardrobe Kit","Weapon Rack Kit","Wooden Chair Kit","Yellow Bed Kit","Goblin Bone Key","Green Key","Key 0000","Key 0001","Key 0004","Key 0005","Key 0006","Key 0007","Key 0008","Key 0009","Key 0010","Key 0020","Key 0021","Key 0555","Key 3001","Key 3002","Key 3003","Key 3004","Key 3005","Key 3006","Key 3007","Key 3008","Key 3012","Key 3033","Key 3100","Key 3142","Key 3301","Key 3302","Key 3303","Key 3304","Key 3350","Key 3520","Key 3600","Key 3610","Key 3620","Key 3650","Key 3666","Key 3667","Key 3700","Key 3701","Key 3702","Key 3703","Key 3800","Key 3801","Key 3802","Key 3899","Key 3900","Key 3901","Key 3909","Key 3910","Key 3911","Key 3912","Key 3913","Key 3914","Key 3915","Key 3916","Key 3917","Key 3923","Key 3925","Key 3930","Key 3931","Key 3932","Key 3933","Key 3934","Key 3935","Key 3936","Key 3937","Key 3938","Key 3940","Key 3950","Key 3960","Key 3970","Key 3980","Key 3988","Key 4001","Key 4009","Key 4022","Key 4023","Key 4033","Key 4037","Key 4055","Key 4210","Key 4501","Key 4502","Key 4503","Key 4600","Key 4601","Key 4602","Key 4603","Key 5000","Key 5002","Key 5010","Key 5050","Key 6010","Magical Key","Omrabas' Bone Key","Omrabas' Copper Key","Prison Cell Key","Theodore Loveless' Key","Rusty Armor (Common)","Rusty Armor (Rare)","Rusty Armor (Semi-Rare)","Rusty Helmet (Common)","Rusty Helmet (Rare)","Rusty Helmet (Semi-Rare)","Rusty Legs (Common)","Rusty Legs (Rare)","Rusty Legs (Semi-Rare)","Rusty Shield (Common)","Rusty Shield (Rare)","Rusty Shield (Semi-Rare)","Golden Rune Emblem (Animate Dead)","Golden Rune Emblem (Avalanche)","Golden Rune Emblem (Chameleon)","Golden Rune Emblem (Desintegrate)","Golden Rune Emblem (Destroy Field)","Golden Rune Emblem (Energy Bomb)","Golden Rune Emblem (Energy Wall)","Golden Rune Emblem (Explosion)","Golden Rune Emblem (Fire Bomb)","Golden Rune Emblem (Fire Field)","Golden Rune Emblem (Fireball)","Golden Rune Emblem (Great Fireball)","Golden Rune Emblem (Heavy Magic Missile)","Golden Rune Emblem (Holy Missile)","Golden Rune Emblem (Icicle)","Golden Rune Emblem (Light Magic Missile)","Golden Rune Emblem (Magic Wall)","Golden Rune Emblem (Paralyze)","Golden Rune Emblem (Poison Bomb)","Golden Rune Emblem (Soulfire)","Golden Rune Emblem (Sudden Death)","Golden Rune Emblem (Thunderstorm)","Golden Rune Emblem (Ultimate Healing)","Golden Rune Emblem (Wild Growth)","Monkey Statue (No Hearing)","Monkey Statue (No Seeing)","Monkey Statue (No Speaking)","Silver Rune Emblem (Animate Dead)","Silver Rune Emblem (Avalanche)","Silver Rune Emblem (Chameleon)","Silver Rune Emblem (Desintegrate)","Silver Rune Emblem (Destroy Field)","Silver Rune Emblem (Energy Bomb)","Silver Rune Emblem (Energy Wall)","Silver Rune Emblem (Explosion)","Silver Rune Emblem (Fire Bomb)","Silver Rune Emblem (Fire Field)","Silver Rune Emblem (Fireball)","Silver Rune Emblem (Great Fireball)","Silver Rune Emblem (Heavy Magic Missile)","Silver Rune Emblem (Holy Missile)","Silver Rune Emblem (Icicle)","Silver Rune Emblem (Light Magic Missile)","Silver Rune Emblem (Magic Wall)","Silver Rune Emblem (Paralyze)","Silver Rune Emblem (Poison Bomb)","Silver Rune Emblem (Soulfire)","Silver Rune Emblem (Sudden Death)","Silver Rune Emblem (Thunderstorm)","Silver Rune Emblem (Ultimate Healing)","Silver Rune Emblem (Wild Growth)","Aggressive Fluid","Animal Cure","Beer","Blood Vial (Necromancer)","Blood Vial (Vampire)","Blood Vial","Blood","Bottle of Airtight Gloo","Bottle of Gloo","Bottle with Rat Urine","Coconut Milk","Flask Mushroom Fertilizer","Flask of Chitin Dissolver","Flask of Crown Polisher","Flask of Dissolved Chitin","Flask of Greasy Red Oil","Flask of Plant Poison","Flask of Poison","Flask of Wasp Poison","Flask with Beaver Bait","Flask with Magical Oil","Flask with Oil and Blood","Flask with Paint","Fruit Juice","Glooth Plasma","Lemonade","Lifefluid","Manafluid","Mead","Milk","Mud","Oil","Pink Gloud Essence","Reagent Flask","Rum","Slime (Liquid)","Special Flask (Holy Water)","Special Flask (Padreia)","Special Flask (Stalker)","Special Flask (Vascalir)","Tea","Urine","Vial of Elemental Water","Vial of Medusa Blood","Water (Liquid)","Wine","Wonder Glue","Amarie's Favourite Book","Ancient Map","Baby Rotworm","Bag of Oriental Spices (Replica)","Bill","Blank Poetry Parchment","Blob Bomb","Blood Crystal (Charged)","Blue Pollen","Book (Atlas)","Book (Black)","Book (Blue)","Book (Brown Square)","Book (Brown Thin)","Book (Brown)","Book (CGB)","Book (Draconia)","Book (Fat Green)","Book (Green)","Book (Grey)","Book (Orange)","Book (Red)","Boots of Renewal","Botany Almanach","Carrying Device","Combustion Rune","Contract","Document (Certificate)","Document of the Officer","Dog House","Doll of Durin The Almighty (Replica)","Emergency Kit","Encyclopedia (Replica)","Ewer (Blue)","Ewer (Golden)","Ewer (Green)","Ewer (Silver)","Ewer with Holy Water","Faded Last Will","Fan Club Membership Card","File AH-X17L89","Fish Tank","Gingerbread Recipe","Gnomish Voucher Type CA1","Gnomish Voucher Type CA2","Gnomish Voucher Type CB","Gnomish Voucher Type MA1","Gnomish Voucher Type MA2","Gnomish Voucher Type MB","Golden Newspaper (Replica)","Golem Blueprint","Hand Puppets (Replica)","Helmet of Ultimate Terror","Imortus (Replica)","Intelligence Reports","Interwoven Moss Florets","Invitation","Julius' Map","Map (Brown)","Map (Colour)","Map to the Unknown","Medusa Skull (Replica)","Music Box (Replica)","Music Sheet (First Verse)","Music Sheet (Fourth Verse)","Music Sheet (Second Verse)","Music Sheet (Third Verse)","Nautical Map","Notes and Coordinates","Old Parchment (Brown)","Old Parchment (Omrabas)","Old Parchment","Package of Potions","Paper","Parcel (Watchtower)","Parchment (Gnomes)","Parchment (Poetry)","Parchment (Questionnaire)","Parchment (White)","Parchment (Yellow Rewritable)","Parchment (Yellow)","Picture (Landscape)","Picture (Portrait)","Picture (Still Life)","Plans for a Strange Device","Purple Powder","Scribbled Sheet of Paper","Scroll (Brown)","Scroll (TBI)","Secret Letter","Sheet of Tracing Paper (Blank)","Sheet of Tracing Paper (Full)","Signed Contract","Spellbook (Alternative)","Statue (Knight)","Stone (Small)","Strange Amulet","Strange Good Night Songs","Strong Cloth","Strong Health Potion","Tactical Map","Tea Cup","The Lower Left Part of a Map","The Lower Right Part of a Map","The Top Left Part of a Map","The Top Right Part of a Map","Translation Scroll","Treasure Chest (Item)","Very Old Piece of Paper","Voodoo Doll (Quest)","Wrinkled Parchment","Your Student Book","Giant Shimmering Pearl (Brown)","Giant Shimmering Pearl (Green)","Belongings of a Deceased (Death Priest Shargon)","Belongings of a Deceased (The Ravager)","Gleaming Starlight Vial (Quest)","Golden Goblet (Level 999)","Voodoo Doll (5261)","Voodoo Doll (3613)","Voodoo Doll (2543)","Very Noble-Looking Watch (Broken)","TibiaHispano Emblem (Replica)","Strange Blue Powder (Used)","Strange Yellow Powder (Used)","Strange Red Powder (Used)","Staff (Simon)"]
+    # Reading item database
+    c = tibiaDatabase.cursor()
+    c2 = lootDatabase.cursor()
+    # Search query
+    c.execute("SELECT DISTINCT Items.title,Items.type"+
+    " FROM Items",())
+    itemList = c.fetchall()
+    newitems = 0
+    for item in itemList:
+        if item['title'] in itemSkipFilters:
+            continue
+        c2.execute("SELECT * FROM Items WHERE name LIKE ?", (item['title'],))
+        item_list = c2.fetchall()
+        if not len(item_list) == 0:
+            continue
+        
+        get = get_item(item['title'])
+        if get is None:
+            item['value'] = 0
+            item['buyers'] = []
+            item['type'] = "Other"
+        else:
+            get['type'] = item['type']
+            item = get
+            if item['title'] == "Crystal Coin":
+                item['value'] = 10000
+                item['buyers'] = [{'name':"Bank"}]
+            elif item['title'] == "Platinum Coin":
+                item['value'] = 100
+                item['buyers'] = [{'name':"Bank"}]
+            elif item['title'] == "Gold Coin":
+                item['value'] = 1
+                item['buyers'] = [{'name':"Bank"}]
+        
+        group = item['type']
+        if item['value'] is None or len(item['buyers']) == 0:
+            item['value'] = 0
+            group = 'No Value'
+        elif group not in ["Creature Products","Containers"]:
+            group = 'Valuables'
+        for npc in item['buyers']:
+            if npc['name'] == 'Alesar' or npc['name'] == 'Yaman':
+                group = 'Green Djinn'
+                break
+            elif npc['name'] == 'Nah\'Bob' or npc['name'] == 'Haroun':
+                group = 'Blue Djinn'
+                break
+            elif npc['name'] == 'Rashid':
+                group = 'Rashid'
+                break
+            elif npc['name'] == 'Yasir':
+                group = 'Yasir'
+                break
+            elif npc['name'] == 'Gnomission':
+                group = 'Gnomission'
+                break
+            elif npc['name'] == 'Jessica':
+                group = 'Jewels'
+                break
+            elif npc['name'] == 'Tamoril':
+                group = 'Dragon'
+            elif npc['name'] == 'Alaistar' or npc['name'] == 'Flint':
+                group = 'Oramond'
+                break
+                
+        frames = []
+        try:
+            imagegif = Image.open(io.BytesIO(bytearray(item['image'])))
+            ## v    to save .gif images correctly     v ##
+            with open("debugimages/"+item["title"]+"/"+item["title"]+'.gif', 'wb') as w:
+                w.write(item['image'])
+            ##############################################
+            nframes = 0
+            while imagegif:
+                itemImageFrame = clear_black_lines(imagegif.convert("RGBA"))
+                itemImageFrameCrop = crop_item(itemImageFrame)
+                itemColor = get_item_color(itemImageFrameCrop)
+                if itemImageFrame is not None and itemImageFrameCrop is not None:
+                    #frames.append(itemImageFrame.tobytes())
+                    imgByteArr = io.BytesIO()
+                    itemImageFrame.save(imgByteArr, format='PNG')
+                    imgByteArr = imgByteArr.getvalue() 
+                    frames.append([imgByteArr,itemImageFrameCrop.size,itemColor])
+                nframes += 1
+                try:
+                    imagegif.seek( nframes )
+                except EOFError:
+                    break;
+        except Exception as e:
+            imagegif = None
+        
+        print("Creating new item: "+item['title'])
+        fn = 0
+        if not os.path.exists("debugimages/"+item['title']):
+            os.makedirs("debugimages/"+item['title'])
+        for frame in frames:
+            frameStr = pickle.dumps(frame[0])
+            frameImg = Image.open(io.BytesIO(frame[0]))
+            c2.execute("INSERT INTO Items(name,`group`,value,frame,sizeX,sizeY,size,red,green,blue) VALUES (?,?,?,?,?,?,?,?,?,?)",(item["title"],group,item["value"],frameStr,frame[1][0],frame[1][1],get_item_size(frameImg),frame[2][0],frame[2][1],frame[2][2]))
+            frameImg.save("debugimages/"+item['title']+"/"+item['title']+str(fn)+".png", "PNG")
+            fn+=1
+        newitems+=1
+        
+    c.close()
+    c2.close()
+    lootDatabase.commit()
+    return newitems or None
 
 async def loot_scan(loot_image, image_name, progress_msg, progress_bar):
     debug_output = image_name
