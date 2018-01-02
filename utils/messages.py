@@ -1389,7 +1389,7 @@ level_messages = [
      "holy crap!", False, [200, 300, 400]]]
 
 # Message list for announce death.
-# Parameters: ({name},{deathTime},{level},{killer},{killer_article},{he_she}, {his_her},{him_her}
+# Parameters: ({name},{level},{killer},{killer_article},{he_she}, {his_her},{him_her}
 # Additionally, words surrounded by \WORD/ are upper cased, /word\ are lower cased, /Word/ are title cased
 # words surrounded by ^WORD^ are ignored if the next letter found is uppercase (useful for dealing with proper nouns)
 # Values in each list element are:

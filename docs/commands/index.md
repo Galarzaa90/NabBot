@@ -2,7 +2,7 @@
     The information contained here refers to the `master` branch, it will be updated to `rewrite` documentation soon.
 
 
-One of the main feature of discord bots is being able to respond to commands.
+One of the main features of discord bots is being able to respond to commands.
 All commands require a prefix in order to be recognized and to avoid command triggering accidentally.
 
 By default, the command prefix is `/`, this can be changed in the main file by changing `command_prefix`.

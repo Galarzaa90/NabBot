@@ -19,6 +19,8 @@ markdown_extensions:
   - codehilite
   - pymdownx.superfences
   - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.tilde
 
 
 google_analytics:
@@ -46,3 +48,5 @@ pages:
       - Loot commands: commands/loot.md
       - Admin commands: commands/admin.md
       - Owner commands: commands/owner.md
+    - Customizing:
+      - Messages: customizing/messages.md
