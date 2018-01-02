@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import closing
 from typing import List, Dict
 
 import discord
@@ -541,55 +542,39 @@ class Mod:
                 c.close()
                 userDatabase.commit()
 
-    @stalk.command()
-    @checks.is_owner()
-    @checks.is_not_lite()
-    async def check(self, ctx):
+    @commands.command()
+    @checks.is_mod()
+    @commands.guild_only()
+    async def unregistered(self, ctx):
         """Check which users are currently not registered."""
-        if not is_private(ctx.message.channel):
-            return True
 
-        author = ctx.message.author
-        if author.id in owner_ids:
-            author_servers = self.bot.get_user_guilds(author.id)
-        else:
-            author_servers = self.bot.get_user_admin_guilds(author.id)
+        world = tracked_worlds.get(ctx.guild.id, None)
+        entries = []
+        if world is None:
+            await ctx.send("This server is not tracking any worlds.")
+            return
 
-        embed = discord.Embed(description="Members with unregistered users.")
+        with closing(userDatabase.cursor()) as c:
+            c.execute("SELECT user_id FROM chars WHERE world LIKE ? GROUP BY user_id", (world,))
+            result = c.fetchall()
+            if len(result) <= 0:
+                await ctx.send("There are no registered characters.")
+                return
+            users = [i["user_id"] for i in result]
+        for member in ctx.guild.members:  # type: discord.Member
+            if member.id == ctx.me.id:
+                continue
+            if member.id not in users:
+                entries.append(f"@**{member.display_name}** \u2014 Joined on: **{member.joined_at.date()}**")
+        if len(entries) == 0:
+            await ctx.send("There are no unregistered users.")
+            return
 
-        with ctx.typing():
-            c = userDatabase.cursor()
-            try:
-                for server in author_servers:
-                    world = tracked_worlds.get(server.id, None)
-                    if world is None:
-                        continue
-                    c.execute("SELECT user_id FROM chars WHERE world LIKE ? GROUP BY user_id", (world,))
-                    result = c.fetchall()
-                    if len(result) <= 0:
-                        embed.add_field(name=server.name, value="There are no registered characters.", inline=False)
-                        continue
-                    users = [i["user_id"] for i in result]
-                    empty_members = list()
-                    for member in server.members:
-                        if member.id == self.bot.user.id:
-                            continue
-                        if member.id not in users:
-                            empty_members.append("**@" + member.display_name + "**")
-                    if len(empty_members) == 0:
-                        embed.add_field(name=server.name, value="There are no unregistered users.", inline=False)
-                        continue
-                    field_value = "\n{0}".format("\n".join(empty_members))
-                    split_value = split_message(field_value, FIELD_VALUE_LIMIT)
-                    for empty_member in split_value:
-                        if empty_member == split_value[0]:
-                            name = server.name
-                        else:
-                            name = "\u200F"
-                        embed.add_field(name=name, value=empty_member, inline=False)
-                await ctx.send(embed=embed)
-            finally:
-                c.close()
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, title="Unregistered members", per_page=10)
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
 
     @stalk.command(name="refreshnames")
     @checks.is_owner()
@@ -620,7 +605,6 @@ class Mod:
     @add_account.error
     @remove_char.error
     @remove_user.error
-    @check.error
     @refresh_names.error
     async def stalk_error(self, ctx, error):
         if not is_private(ctx.message.channel):
