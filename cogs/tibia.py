@@ -1602,6 +1602,9 @@ class Tibia:
             return
         hours = int(match.group(1))
         minutes = int(match.group(2))
+        if minutes >= 60:
+            await ctx.send("Invalid time, minutes can't be 60 or greater.")
+            return
         current = dt.timedelta(hours=hours, minutes=minutes)
         if hours > 42 or (hours == 42 and minutes > 0):
             await ctx.send("You can't have more than 42 hours of stamina.")
