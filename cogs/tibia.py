@@ -1586,6 +1586,53 @@ class Tibia:
             embed = self.get_article_embed(article, limit)
             await ctx.send(embed=embed)
 
+    @commands.command()
+    async def stamina(self, ctx, current_stamina=None):
+        """Tells you the time you have to wait to restore stamina.
+
+        In the footer of the embed, the date in your local time is shown."""
+        if current_stamina is None:
+            await ctx.send("You need to tell me your current stamina, in this format: `34:03`.")
+            return
+
+        hour_pattern = re.compile(r"(\d{1,2}):(\d{1,2})")
+        match = hour_pattern.match(current_stamina.strip())
+        if not match:
+            await ctx.send("You need to tell me your current stamina, in this format: `34:03`.")
+            return
+        hours = int(match.group(1))
+        minutes = int(match.group(2))
+        current = dt.timedelta(hours=hours, minutes=minutes)
+        if hours > 42 or (hours == 42 and minutes > 0):
+            await ctx.send("You can't have more than 42 hours of stamina.")
+            return
+        elif hours == 42:
+            await ctx.send("Your stamina is full already.")
+            return
+        # Stamina takes 3 minutes to regenerate one minute until 40 hours.
+        resting_time = max((dt.timedelta(hours=40)-current).total_seconds(), 0)*3
+        # Last two hours of stamina take 10 minutes for a minute
+        resting_time += (dt.timedelta(hours=42)-max(dt.timedelta(hours=40), current)).total_seconds()*10
+
+        hours, remainder = divmod(int(resting_time), 3600)
+        minutes, _ = divmod(remainder, 60)
+        if hours:
+            remaining = f'{hours} hours and {minutes} minutes'
+        else:
+            remaining = f'{minutes} minutes'
+
+        reply = f"You need to rest **{remaining}** to get back to full stamina."
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send(reply)
+            return
+
+        embed = discord.Embed(description=reply)
+        embed.set_footer(text="Full stamina")
+        embed.colour = discord.Color.green()
+        embed.timestamp = dt.datetime.utcnow()+dt.timedelta(seconds=resting_time)
+        await ctx.send(embed=embed)
+
     @staticmethod
     def get_article_embed(article, limit):
         url = f"http://www.tibia.com/news/?subtopic=newsarchive&id={article['id']}"
