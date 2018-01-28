@@ -90,9 +90,9 @@ class Tracking:
                         for pagenum in range(1, 13):
                             # Special cases (ek/rp mls)
                             if category == "magic_ek":
-                                scores = await get_highscores(world, "magic", pagenum, 3)
+                                scores = await get_highscores(world, "magic", pagenum, 1)
                             elif category == "magic_rp":
-                                scores = await get_highscores(world, "magic", pagenum, 4)
+                                scores = await get_highscores(world, "magic", pagenum, 2)
                             else:
                                 scores = await get_highscores(world, category, pagenum)
                             if scores == ERROR_NETWORK:
