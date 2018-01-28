@@ -1660,7 +1660,7 @@ class Tibia:
         reply = "[{0.name}]({0.url}) is a level {0.level} __{0.vocation}__. " \
                 "{0.he_she} resides in __{0.residence}__ in the world of __{0.world}__".format(char)
         if char.former_world is not None:
-            reply += "(formerly __{0.former_world}__)".format(char)
+            reply += " (formerly __{0.former_world}__)".format(char)
         reply += ". {0.he_she} has {0.achievement_points:,} achievement points.".format(char)
 
         if char.guild is not None:
