@@ -1673,7 +1673,7 @@ class Tibia:
             married_url = Character.get_url(char.married_to)
             reply += "\n{0.he_she} is married to [{0.married_to}]({1}).".format(char, married_url)
         if char.house is not None:
-            house_url = url_house.format(id=char.house["id"], world=char.world)
+            house_url = url_house.format(id=char.house["houseid"], world=char.world)
             reply += "\n{0.he_she} owns [{1}]({2}) in {3}.".format(char,
                                                                    char.house["name"],
                                                                    house_url,

@@ -164,8 +164,8 @@ class Character:
             return None
         data = char["data"]
         character = Character(data["name"], data["world"])
-        character.level = int(data["level"])
-        character.achievement_points = int(data["achievement_points"])
+        character.level = data["level"]
+        character.achievement_points = data["achievement_points"]
         character.sex = cls.SEX_MALE if data["sex"] == "male" else cls.SEX_FEMALE
         character.vocation = data["vocation"]
         character.residence = data["residence"]
@@ -178,9 +178,7 @@ class Character:
         if "guild" in data:
             character.guild = data["guild"]
         if "house" in data:
-            match = re.search(r'(?P<name>.*) \((?P<town>[^\)]+)\)$', data["house"])
-            if match:
-                character.house = match.groupdict()
+            character.house = data["house"]
         character.account_status = cls.PREMIUM_ACCOUNT if data["account_status"] == "Premium Account" else cls.FREE_ACCOUNT
         if len(data["last_login"]) > 0:
             character.last_login = parse_tibiadata_time(data["last_login"][0])
@@ -368,7 +366,7 @@ async def get_character(name, tries=5) -> Optional[Character]:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
         raise NetworkError()
     try:
-        url = f"https://api.tibiadata.com/v1/characters/{urllib.parse.quote(name, safe='')}.json"
+        url = f"https://api.tibiadata.com/v2/characters/{urllib.parse.quote(name, safe='')}.json"
     except UnicodeEncodeError:
         return None
     # Fetch website
@@ -384,12 +382,6 @@ async def get_character(name, tries=5) -> Optional[Character]:
     character = Character.parse_from_tibiadata(content_json)
     if character is None:
         return None
-    if character.house is not None:
-        with closing(tibiaDatabase.cursor()) as c:
-            c.execute("SELECT id FROM houses WHERE name LIKE ?", (character.house["name"].strip(),))
-            result = c.fetchone()
-            if result:
-                character.house["id"] = result["id"]
 
     # Database operations
     c = userDatabase.cursor()
