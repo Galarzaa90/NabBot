@@ -93,6 +93,7 @@ class Character:
         self.deaths = kwargs.get("deaths", [])  # type: List[Death]
         self.other_characters = kwargs.get("other_characters", [])
         self.account_status = kwargs.get("account_status", 0)
+        self.comment = kwargs.get("comment")
 
         # NabBot specific attributes:
         self.highscores = []
@@ -177,8 +178,8 @@ class Character:
             character.former_world = data["former_world"]
         if "guild" in data:
             character.guild = data["guild"]
-        if "house" in data:
-            character.house = data["house"]
+        if "comment" in data:
+            character.comment = data["comment"]
         character.account_status = cls.PREMIUM_ACCOUNT if data["account_status"] == "Premium Account" else cls.FREE_ACCOUNT
         if len(data["last_login"]) > 0:
             character.last_login = parse_tibiadata_time(data["last_login"][0])
