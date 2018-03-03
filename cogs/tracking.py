@@ -272,6 +272,7 @@ class Tracking:
                         except (discord.NotFound, discord.HTTPException, discord.Forbidden):
                             watched_message = None
                         items = [f"\t{x.name} - Level {x.level} {get_voc_emoji(x.vocation)}" for x in currently_online]
+                        onlinecount = len(items)
                         if len(items) > 0 or len(guild_online.keys()) > 0:
                             content = "These watched characters are online:\n"
                             content += "\n".join(items)
@@ -280,6 +281,7 @@ class Tracking:
                                 content += "\n".join(
                                     [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
                                      for x in members])
+                                onlinecount+= len(members)
                         else:
                             content = "There are no watched characters online."
                         # Send new watched message or edit last one
@@ -289,6 +291,7 @@ class Tracking:
                                 set_server_property("watched_message", server, new_watched_message.id)
                             else:
                                 await watched_message.edit(content=content)
+                            await watched_channel.edit(name=watched_channel.name.split("·",1)[0]+"·"+str(onlinecount))
                         except discord.HTTPException:
                             pass
             except asyncio.CancelledError:
@@ -871,7 +874,11 @@ class Tracking:
 
         watched_channel_id = get_server_property("watched_channel", ctx.guild.id, is_int=True)
         watched_channel = self.bot.get_channel(watched_channel_id)
-
+        
+        if "·" in name:
+            await ctx.send("Channel name cannot contain the special character **·**")
+            return
+        
         world = tracked_worlds.get(ctx.guild.id, None)
         if world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
@@ -899,7 +906,7 @@ class Tracking:
             await channel.send("This is where I will post a list of online watched characters."
                                "Right now only **admins** are able to read this.\n"
                                "Edit this channel's permissions to allow the roles you want.\n"
-                               "This channel can be renamed freely."
+                               "This channel can be renamed freely.\n"
                                "**It is important to not allow anyone to write in here**\n"
                                "*This message can be deleted now.*")
             set_server_property("watched_channel", ctx.guild.id, channel.id)
