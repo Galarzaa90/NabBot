@@ -100,58 +100,48 @@ class Mod:
             return True
         await ctx.send("To see valid subcommands use `/help stalk`")
 
-    @stalk.command(name="addchar", aliases=["char"])
-    @checks.is_owner()
-    @checks.is_not_lite()
+    @commands.command(name="addchar", aliases=["registerchar"])
+    @checks.is_admin()
+    @commands.guild_only()
     async def add_char(self, ctx, *, params):
-        """Registers a tibia character to a discord user.
+        """Registers a character to a user
 
         The syntax is:
         /stalk addchar user,character"""
-        if not is_private(ctx.message.channel):
-            return True
         params = params.split(",")
         if len(params) != 2:
-            await ctx.send("The correct syntax is: ``/stalk addchar username,character``")
+            await ctx.send("The correct syntax is: ``/addchar username,character``")
             return
 
-        author = ctx.message.author
-        if author.id in owner_ids:
-            author_servers = self.bot.get_user_guilds(author.id)
-        else:
-            author_servers = self.bot.get_user_admin_guilds(author.id)
-        author_worlds = self.bot.get_user_worlds(author.id)
+        world = tracked_worlds.get(ctx.guild.id, None)
+        entries = []
+        if world is None:
+            await ctx.send("This server is not tracking any worlds.")
+            return
 
-        # Only search in the servers the command author is
-        user = self.bot.get_member(params[0], author_servers)
+        user = self.bot.get_member(params[0], ctx.guild)
         if user is None:
-            await ctx.send("I don't see any user named **{0}** in the servers you manage.".format(params[0]))
-            return
+            await ctx.send("I don't see any user named **{0}** in this server.".format(params[0]))
         user_servers = self.bot.get_user_guilds(user.id)
-        user_worlds = self.bot.get_user_worlds(author.id)
-
-        common_worlds = list(set(author_worlds) & set(user_worlds))
 
         with ctx.typing():
             try:
                 char = await get_character(params[1])
                 if char is None:
-                    await ctx.send("That character doesn't exists.")
+                    await ctx.send("That character doesn't exist")
                     return
             except NetworkError:
                 await ctx.send("I couldn't fetch the character, please try again.")
                 return
-            if char.world not in common_worlds:
+            if char.world != world:
                 await ctx.send("**{0.name}** ({0.world}) is not in a world you can manage.".format(char))
                 return
             if char.deleted is not None:
                 await ctx.send("**{0.name}** ({0.world}) is scheduled for deletion and can't be added.".format(char))
                 return
-            c = userDatabase.cursor()
-            try:
+            with closing(userDatabase.cursor()) as c:
                 c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (char.name,))
                 result = c.fetchone()
-                # Char is already in database
                 if result is not None:
                     # Update name if it was changed
                     if char.name != params[1]:
@@ -162,27 +152,23 @@ class Mod:
                     # Registered to a different user
                     if result["user_id"] != user.id:
                         current_user = self.bot.get_member(result["user_id"])
-                        # User no longer in server
-                        if current_user is None:
-                            c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
-                            await ctx.send("This character was registered to a user no longer in server. "
-                                           "It was assigned to this user successfully.")
-                            # Log on relevant servers
-                            for server in user_servers:
-                                world = tracked_worlds.get(server.id, None)
-                                if world == char.world:
-                                    log_msg = "{0.mention} registered **{1}** ({2} {3}) to {4.mention}."
-                                    await self.bot.send_log_message(server, log_msg.format(author, char.name,
-                                                                                           char.level,
-                                                                                           char.vocation,
-                                                                                           user))
-                        else:
-                            await ctx.send("This character is already registered to **@{0}**".format(
-                                current_user.display_name)
-                            )
-                        return
-                    # Registered to current user
-                    await ctx.send("This character is already registered to this user.")
+                        # User registered to someone else
+                        if current_user is not None:
+                            await ctx.send("This character is already registered to  **{0.name}#{0.discriminator}**"
+                                           .format(current_user))
+                            return
+                        # User no longer in any servers
+                        c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
+                        await ctx.send("This character was reassigned to this user successfully.")
+                        userDatabase.commit()
+                        for server in user_servers:
+                            world = tracked_worlds.get(server.id, None)
+                            if world == char.world:
+                                log_msg = "{0.mention} registered **{1}** ({2} {3}) to {4.mention}."
+                                await self.bot.send_log_message(server, log_msg.format(ctx.author, char.name,char.level,
+                                                                                       char.vocation, user))
+                    else:
+                        await ctx.send("This character is already registered to this user.")
                     return
                 c.execute("INSERT INTO chars (name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
                           (char.name, char.level * -1, char.vocation, user.id, char.world, char.guild_name))
@@ -198,11 +184,8 @@ class Mod:
                     if world == char.world:
                         guild = "No guild" if char.guild is None else char.guild_name
                         log_msg = "{0.mention} registered **{1}** ({2} {3}, {4}) to {5.mention}."
-                        await self.bot.send_log_message(server, log_msg.format(author, char.name, char.level,
+                        await self.bot.send_log_message(server, log_msg.format(ctx.author, char.name, char.level,
                                                                                char.vocation, guild, user))
-                return
-            finally:
-                c.close()
                 userDatabase.commit()
 
     @stalk.command(name="addacc", aliases=["account", "addaccount", "acc"])
@@ -618,7 +601,7 @@ class Mod:
     @checks.is_mod()
     @commands.group(invoke_without_command=True)
     async def ignore(self, ctx, *, channel: discord.TextChannel = None):
-        """Ignores a channel
+        """Makes the bot ignore a channel
 
         Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
 
@@ -657,7 +640,7 @@ class Mod:
     @checks.is_mod()
     @commands.command()
     async def unignore(self, ctx, *, channel: discord.TextChannel = None):
-        """Unignores a channel
+        """Makes teh bot unignore a channel
 
         Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
 
