@@ -871,7 +871,7 @@ async def get_house(name, world=None):
                 if ". No bid has" in content:
                     house["status"] = "empty"
                     break
-                m = re.search(r'The auction (?:has ended|will end) at <B>([^\<]+)</B>\. '
+                m = re.search(r'The auction (?:has ended|will end) at <B>([^<]+)</B>\. '
                               r'The highest bid so far is <B>(\d+).+ by .+name=([^\"]+)\"', house_status)
                 if m:
                     house["auction_end"] = m.group(1).replace("&#160;", " ")

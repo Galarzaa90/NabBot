@@ -99,8 +99,10 @@ class NabBot(commands.Bot):
             else:
                 message.content = message.content.lower()
         if len(split) == 2:
-            if message.author.id != self.user.id and (not split[0].lower()[1:] in self.command_list or not split[0][:1] == "/")\
-                    and not isinstance(message.channel, abc.PrivateChannel) and message.channel.name == ask_channel_name:
+            if message.author.id != self.user.id and \
+                    (not split[0].lower()[1:] in self.command_list or not split[0][:1] == "/") and \
+                    not isinstance(message.channel, abc.PrivateChannel) and \
+                    message.channel.name == ask_channel_name:
                 await message.delete()
                 return
         elif ask_channel_delete:
@@ -277,6 +279,7 @@ class NabBot(commands.Bot):
         :param guild: The guild or list of guilds to limit the search
         :return: The member found or none
         """
+        name = str(name)
         members = self.get_all_members()
         if type(guild) is discord.Guild:
             members = guild.members

@@ -228,7 +228,8 @@ def init_database():
             c.execute("DROP TABLE IF EXISTS user_servers")
             c.execute("""CREATE TABLE users_temp(
                 id INTEGER NOT NULL,
-                name TEXT
+                name TEXT,
+                PRIMARY KEY(id)
             );""")
             c.execute("INSERT INTO users_temp SELECT id, name FROM users")
             c.execute("DROP TABLE users")

@@ -586,7 +586,7 @@ class Tracking:
             c.execute("SELECT id, name, ABS(level) as level, user_id, vocation, world "
                       "FROM chars WHERE name LIKE ?", (name,))
             char = c.fetchone()
-            if char is None:
+            if char is None or char["user_id"] == 0:
                 await ctx.send("There's no character registered with that name.")
                 return
             if char["user_id"] != ctx.message.author.id:
@@ -594,7 +594,6 @@ class Tracking:
                 return
 
             await ctx.send("Are you sure you want to unregister **{name}** ({level} {vocation})? `yes/no`"
-                           "\n*All registered level ups and deaths will be lost forever.*"
                            .format(**char))
 
             def check(m):
@@ -609,9 +608,7 @@ class Tracking:
                 await ctx.send("I guess you changed your mind.")
                 return
 
-            c.execute("DELETE FROM chars WHERE id = ?", (char["id"],))
-            c.execute("DELETE FROM char_levelups WHERE char_id = ?", (char["id"],))
-            c.execute("DELETE FROM char_deaths WHERE char_id = ?", (char["id"],))
+            c.execute("UPDATE chars SET user_id = 0 WHERE id = ?", (char["id"],))
             await ctx.send("**{0}** is no longer registered to you.".format(char["name"]))
 
             user_servers = [s.id for s in self.bot.get_user_guilds(ctx.message.author.id)]
@@ -772,10 +769,6 @@ class Tracking:
             if message:
                 message = user.mention + " registered the following characters: " + message
                 await self.bot.send_log_message(self.bot.get_guild(server_id), message)
-
-
-
-
 
     @commands.command()
     @checks.is_not_lite()
