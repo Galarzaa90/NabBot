@@ -100,94 +100,6 @@ class Mod:
             return True
         await ctx.send("To see valid subcommands use `/help stalk`")
 
-    @commands.command(name="addchar", aliases=["registerchar"])
-    @checks.is_admin()
-    @commands.guild_only()
-    async def add_char(self, ctx, *, params):
-        """Registers a character to a user
-
-        The syntax is:
-        /stalk addchar user,character"""
-        params = params.split(",")
-        if len(params) != 2:
-            await ctx.send("The correct syntax is: ``/addchar username,character``")
-            return
-
-        world = tracked_worlds.get(ctx.guild.id, None)
-        entries = []
-        if world is None:
-            await ctx.send("This server is not tracking any worlds.")
-            return
-
-        user = self.bot.get_member(params[0], ctx.guild)
-        if user is None:
-            await ctx.send("I don't see any user named **{0}** in this server.".format(params[0]))
-        user_servers = self.bot.get_user_guilds(user.id)
-
-        with ctx.typing():
-            try:
-                char = await get_character(params[1])
-                if char is None:
-                    await ctx.send("That character doesn't exist")
-                    return
-            except NetworkError:
-                await ctx.send("I couldn't fetch the character, please try again.")
-                return
-            if char.world != world:
-                await ctx.send("**{0.name}** ({0.world}) is not in a world you can manage.".format(char))
-                return
-            if char.deleted is not None:
-                await ctx.send("**{0.name}** ({0.world}) is scheduled for deletion and can't be added.".format(char))
-                return
-            with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (char.name,))
-                result = c.fetchone()
-                if result is not None:
-                    # Update name if it was changed
-                    if char.name != params[1]:
-                        c.execute("UPDATE chars SET name = ? WHERE id = ?", (char.name, result["id"],))
-                        await ctx.send("This character's name was changed from **{0}** to **{1}**".format(
-                            params[1], char.name)
-                        )
-                    # Registered to a different user
-                    if result["user_id"] != user.id:
-                        current_user = self.bot.get_member(result["user_id"])
-                        # User registered to someone else
-                        if current_user is not None:
-                            await ctx.send("This character is already registered to  **{0.name}#{0.discriminator}**"
-                                           .format(current_user))
-                            return
-                        # User no longer in any servers
-                        c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
-                        await ctx.send("This character was reassigned to this user successfully.")
-                        userDatabase.commit()
-                        for server in user_servers:
-                            world = tracked_worlds.get(server.id, None)
-                            if world == char.world:
-                                log_msg = "{0.mention} registered **{1}** ({2} {3}) to {4.mention}."
-                                await self.bot.send_log_message(server, log_msg.format(ctx.author, char.name,char.level,
-                                                                                       char.vocation, user))
-                    else:
-                        await ctx.send("This character is already registered to this user.")
-                    return
-                c.execute("INSERT INTO chars (name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
-                          (char.name, char.level * -1, char.vocation, user.id, char.world, char.guild_name))
-                # Check if user is already registered
-                c.execute("SELECT id from users WHERE id = ?", (user.id,))
-                result = c.fetchone()
-                if result is None:
-                    c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
-                await ctx.send("**{0}** was registered successfully to this user.".format(char.name))
-                # Log on relevant servers
-                for server in user_servers:
-                    world = tracked_worlds.get(server.id, None)
-                    if world == char.world:
-                        guild = "No guild" if char.guild is None else char.guild_name
-                        log_msg = "{0.mention} registered **{1}** ({2} {3}, {4}) to {5.mention}."
-                        await self.bot.send_log_message(server, log_msg.format(ctx.author, char.name, char.level,
-                                                                               char.vocation, guild, user))
-                userDatabase.commit()
-
     @stalk.command(name="addacc", aliases=["account", "addaccount", "acc"])
     @checks.is_owner()
     @checks.is_not_lite()
@@ -326,44 +238,6 @@ class Mod:
                 c.close()
                 userDatabase.commit()
 
-    @stalk.command(name="removechar", aliases=["deletechar"])
-    @checks.is_owner()
-    @checks.is_not_lite()
-    async def remove_char(self, ctx, *, name):
-        """Removes a registered character.
-
-        The syntax is:
-        /stalk removechar name"""
-        if not is_private(ctx.message.channel):
-            return True
-        # This could be used to remove deleted chars so we don't need to check anything
-        # Except if the char exists in the database...
-        c = userDatabase.cursor()
-        with ctx.typing():
-            try:
-                c.execute("SELECT name, user_id, world, ABS(level) as level, vocation "
-                          "FROM chars WHERE name LIKE ?", (name,))
-                result = c.fetchone()
-                if result is None:
-                    await ctx.send("There's no character with that name registered.")
-                    return
-                user = self.bot.get_member(result["user_id"])
-                username = "unknown" if user is None else user.display_name
-                c.execute("DELETE FROM chars WHERE name LIKE ?", (name,))
-                await ctx.send("**{0}** was removed successfully from **@{1}**.".format(result["name"], username))
-                if user is not None:
-                    for server in self.bot.get_user_guilds(user.id):
-                        world = tracked_worlds.get(server.id, None)
-                        if world != result["world"]:
-                            continue
-                        log_msg = "{0.mention} removed **{1}** ({2} {3}) from {4.mention}.".\
-                            format(ctx.message.author, result["name"], result["level"], result["vocation"], user)
-                        await self.bot.send_log_message(server, log_msg)
-
-                return
-            finally:
-                c.close()
-                userDatabase.commit()
 
     @stalk.command(name="remove", aliases=["delete", "deleteuser", "removeuser"])
     @checks.is_owner()
