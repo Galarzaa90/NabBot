@@ -1,0 +1,1108 @@
+
+
+
+
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      
+        <meta name="description" content="A discord bot for the MMO Tibia">
+      
+      
+        <link rel="canonical" href="https://galarzaa90.github.io/NabBot/commands/tibia/">
+      
+      
+        <meta name="author" content="Allan Galarza">
+      
+      
+        <meta name="lang:clipboard.copy" content="Copy to clipboard">
+      
+        <meta name="lang:clipboard.copied" content="Copied to clipboard">
+      
+        <meta name="lang:search.language" content="en">
+      
+        <meta name="lang:search.pipeline.stopwords" content="True">
+      
+        <meta name="lang:search.pipeline.trimmer" content="True">
+      
+        <meta name="lang:search.result.none" content="No matching documents">
+      
+        <meta name="lang:search.result.one" content="1 matching document">
+      
+        <meta name="lang:search.result.other" content="# matching documents">
+      
+        <meta name="lang:search.tokenizer" content="[\s\-]+">
+      
+      <link rel="shortcut icon" href="../../assets/images/favicon.ico">
+      <meta name="generator" content="mkdocs-0.17.2, mkdocs-material-2.6.6">
+    
+    
+      
+        <title>Tibia commands - NabBot</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/application.78aab2dc.css">
+      
+        <link rel="stylesheet" href="../../assets/stylesheets/application-palette.6079476c.css">
+      
+    
+    
+      <script src="../../assets/javascripts/modernizr.1aa3b519.js"></script>
+    
+    
+      <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+      
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+        <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+      
+      <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    
+    
+    
+  </head>
+  
+    
+    
+    <body dir="ltr" data-md-color-primary="deep-purple" data-md-color-accent="orange">
+  
+    <svg class="md-svg">
+      <defs>
+        
+        
+          <svg xmlns="http://www.w3.org/2000/svg" width="416" height="448"
+    viewBox="0 0 416 448" id="github">
+  <path fill="currentColor" d="M160 304q0 10-3.125 20.5t-10.75 19-18.125
+        8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5
+        18.125 8.5 10.75 19 3.125 20.5zM320 304q0 10-3.125 20.5t-10.75
+        19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19
+        18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM360
+        304q0-30-17.25-51t-46.75-21q-10.25 0-48.75 5.25-17.75 2.75-39.25
+        2.75t-39.25-2.75q-38-5.25-48.75-5.25-29.5 0-46.75 21t-17.25 51q0 22 8
+        38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0
+        37.25-1.75t35-7.375 30.5-15 20.25-25.75 8-38.375zM416 260q0 51.75-15.25
+        82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5-41.75
+        1.125q-19.5 0-35.5-0.75t-36.875-3.125-38.125-7.5-34.25-12.875-30.25-20.25-21.5-28.75q-15.5-30.75-15.5-82.75
+        0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25
+        30.875q36.75-8.75 77.25-8.75 37 0 70 8 26.25-20.5
+        46.75-30.25t47.25-9.75q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34
+        99.5z" />
+</svg>
+        
+      </defs>
+    </svg>
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="drawer">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="search">
+    <label class="md-overlay" data-md-component="overlay" for="drawer"></label>
+    
+      <a href="#whois-playernamediscorduser" tabindex="1" class="md-skip">
+        Skip to content
+      </a>
+    
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid">
+    <div class="md-flex">
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <a href="https://galarzaa90.github.io/NabBot/" title="NabBot" class="md-header-nav__button md-logo">
+          
+            <img src="../../assets/images/icon.png" width="24" height="24">
+          
+        </a>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <label class="md-icon md-icon--menu md-header-nav__button" for="drawer"></label>
+      </div>
+      <div class="md-flex__cell md-flex__cell--stretch">
+        <div class="md-flex__ellipsis md-header-nav__title" data-md-component="title">
+          
+            
+              <span class="md-header-nav__topic">
+                NabBot
+              </span>
+              <span class="md-header-nav__topic">
+                Tibia commands
+              </span>
+            
+          
+        </div>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        
+          
+            <label class="md-icon md-icon--search md-header-nav__button" for="search"></label>
+            
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="query" data-md-state="active">
+      <label class="md-icon md-search__icon" for="search"></label>
+      <button type="reset" class="md-icon md-search__icon" data-md-component="reset" tabindex="-1">
+        &#xE5CD;
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="result">
+          <div class="md-search-result__meta">
+            Type to start searching
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+          
+        
+      </div>
+      
+        <div class="md-flex__cell md-flex__cell--shrink">
+          <div class="md-header-nav__source">
+            
+
+
+  
+
+
+  <a href="https://github.com/Galarzaa90/NabBot" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+          </div>
+        </div>
+      
+    </div>
+  </nav>
+</header>
+    
+    <div class="md-container">
+      
+        
+      
+      
+        
+
+  
+
+<nav class="md-tabs md-tabs--active" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  <li class="md-tabs__item">
+    
+      <a href="../.." title="Home" class="md-tabs__link">
+        Home
+      </a>
+    
+  </li>
+
+      
+        
+      
+        
+      
+        
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../" title="Commands" class="md-tabs__link md-tabs__link--active">
+          Commands
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../customizing/messages/" title="Customizing" class="md-tabs__link">
+          Customizing
+        </a>
+      
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+      
+      <main class="md-main">
+        <div class="md-main__inner md-grid" data-md-component="container">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    <nav class="md-nav md-nav--primary" data-md-level="0">
+  <label class="md-nav__title md-nav__title--site" for="drawer">
+    <span class="md-nav__button md-logo">
+      
+        <img src="../../assets/images/icon.png" width="24" height="24">
+      
+    </span>
+    NabBot
+  </label>
+  
+    <div class="md-nav__source">
+      
+
+
+  
+
+
+  <a href="https://github.com/Galarzaa90/NabBot" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../.." title="Home" class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../install/" title="Install Guide" class="md-nav__link">
+      Install Guide
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../permissions/" title="Permissions" class="md-nav__link">
+      Permissions
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../faq/" title="FAQ" class="md-nav__link">
+      FAQ
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-5" type="checkbox" id="nav-5" checked>
+    
+    <label class="md-nav__link" for="nav-5">
+      Commands
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-5">
+        Commands
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../" title="Overview" class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../general/" title="General commands" class="md-nav__link">
+      General commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="toc">
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="toc">
+        Tibia commands
+      </label>
+    
+    <a href="./" title="Tibia commands" class="md-nav__link md-nav__link--active">
+      Tibia commands
+    </a>
+    
+      
+<nav class="md-nav md-nav--secondary">
+  
+  
+  
+    <label class="md-nav__title" for="toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#whois-playernamediscorduser" title="/whois playerName/discordUser" class="md-nav__link">
+    /whois playerName/discordUser
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guild-guildname" title="/guild guildname" class="md-nav__link">
+    /guild guildname
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#guild-members-guildname" title="/guild members guildname" class="md-nav__link">
+    /guild members guildname
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guild-info-guildname" title="/guild info guildname" class="md-nav__link">
+    /guild info guildname
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#share-levelplayer" title="/share level/player" class="md-nav__link">
+    /share level/player
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deaths-player" title="/deaths [player]" class="md-nav__link">
+    /deaths [player]
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deaths-monster-name" title="/deaths monster name" class="md-nav__link">
+    /deaths monster name
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deaths-user-name" title="/deaths user name" class="md-nav__link">
+    /deaths user name
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#levels-player" title="/levels [player]" class="md-nav__link">
+    /levels [player]
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#levels-user-name" title="/levels user name" class="md-nav__link">
+    /levels user name
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#timeline-player" title="/timeline [player]" class="md-nav__link">
+    /timeline [player]
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#timeline-user-name" title="/timeline user name" class="md-nav__link">
+    /timeline user name
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stats-levelvocationcharactername" title="/stats level,vocation/charactername" class="md-nav__link">
+    /stats level,vocation/charactername
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#findteam-charlevelminlevelmaxlevel" title="/findteam char/level/minlevel,maxlevel" class="md-nav__link">
+    /findteam char/level/minlevel,maxlevel
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#world-name" title="/world name" class="md-nav__link">
+    /world name
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#news-article_id" title="news [article_id]" class="md-nav__link">
+    news [article_id]
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#house-nameworld" title="/house name[/world]" class="md-nav__link">
+    /house name[/world]
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#blessings-level" title="/blessings level" class="md-nav__link">
+    /blessings level
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#time" title="/time" class="md-nav__link">
+    /time
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+    
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../tibiawiki/" title="TibiaWiki commands" class="md-nav__link">
+      TibiaWiki commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../tracking/" title="Tracking commands" class="md-nav__link">
+      Tracking commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../loot/" title="Loot commands" class="md-nav__link">
+      Loot commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../admin/" title="Admin commands" class="md-nav__link">
+      Admin commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../owner/" title="Owner commands" class="md-nav__link">
+      Owner commands
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+    
+    <label class="md-nav__link" for="nav-6">
+      Customizing
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-6">
+        Customizing
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../customizing/messages/" title="Messages" class="md-nav__link">
+      Messages
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary">
+  
+  
+  
+    <label class="md-nav__title" for="toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#whois-playernamediscorduser" title="/whois playerName/discordUser" class="md-nav__link">
+    /whois playerName/discordUser
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#guild-guildname" title="/guild guildname" class="md-nav__link">
+    /guild guildname
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#guild-members-guildname" title="/guild members guildname" class="md-nav__link">
+    /guild members guildname
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guild-info-guildname" title="/guild info guildname" class="md-nav__link">
+    /guild info guildname
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#share-levelplayer" title="/share level/player" class="md-nav__link">
+    /share level/player
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deaths-player" title="/deaths [player]" class="md-nav__link">
+    /deaths [player]
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deaths-monster-name" title="/deaths monster name" class="md-nav__link">
+    /deaths monster name
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deaths-user-name" title="/deaths user name" class="md-nav__link">
+    /deaths user name
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#levels-player" title="/levels [player]" class="md-nav__link">
+    /levels [player]
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#levels-user-name" title="/levels user name" class="md-nav__link">
+    /levels user name
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#timeline-player" title="/timeline [player]" class="md-nav__link">
+    /timeline [player]
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#timeline-user-name" title="/timeline user name" class="md-nav__link">
+    /timeline user name
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stats-levelvocationcharactername" title="/stats level,vocation/charactername" class="md-nav__link">
+    /stats level,vocation/charactername
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#findteam-charlevelminlevelmaxlevel" title="/findteam char/level/minlevel,maxlevel" class="md-nav__link">
+    /findteam char/level/minlevel,maxlevel
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#world-name" title="/world name" class="md-nav__link">
+    /world name
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#news-article_id" title="news [article_id]" class="md-nav__link">
+    news [article_id]
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#house-nameworld" title="/house name[/world]" class="md-nav__link">
+    /house name[/world]
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#blessings-level" title="/blessings level" class="md-nav__link">
+    /blessings level
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#time" title="/time" class="md-nav__link">
+    /time
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                
+                  <h1>Tibia commands</h1>
+                
+                <p>Commands related to Tibia, specially commands related to tibia.com</p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>Words in italics are parameters.<br />
+Parameters enclosed in brackets <code class="codehilite">[]</code> are optional.</p>
+</div>
+<h2 id="whois-playernamediscorduser">/whois <em>playerName/discordUser</em></h2>
+<p><em>Other aliases: /check, /player, /checkplayer, /char, /character</em></p>
+<p>This commands has 2 functions:  </p>
+<ul>
+<li>It retrieves and displays info about a Tibia character</li>
+<li>It retrieves the list of characters linked to a discord user</li>
+</ul>
+<p>If the parameter matches a discord user, it displays a list of the characters linked to that user.
+If the parameter matches a character, it will display the character's info, such as level, vocation, guild, world, etc.</p>
+<p>If the character found is registered to a discord user, it will show the owner of the character.</p>
+<p>Discord users can be looked for through Usernames, User#Discriminator (i.e. <code class="codehilite">Galarzaa#8515</code>) or even user id.</p>
+<p>Both cases can match simultaneously.</p>
+<p>It also shows the character's corresponding highscore positions, however, this is only available for registered characters.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/whois Galarzaa Fidera</strong><br />
+<img alt="image" src="../../assets/images/commands/whois_1.png" /></p><p>In this case, it matched <em>Galarzaa Fidera</em> to a character, and that character is registered to user @Galarzaa</p><p><strong>/whois Galarzaa</strong><br />
+<img alt="image" src="../../assets/images/commands/whois_2.png" /></p><p>In this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed.
+However, it also matches the character <em>Galarzaa</em> which may not be necessarily related to the user.</p><p><strong>/whois Bichæo</strong><br />
+<img alt="image" src="../../assets/images/commands/whois_3.png" /></p><p>In this case, the name only matches an user, and since no character was matched, their highest level registered character is shown.</p><p><strong>/whois 115042985778872322</strong>
+<img alt="image" src="../../assets/images/commands/whois_4.png" /></p><p>In this case, a user id was provided, and it searched for the user with that id.</p></details><hr />
+<h2 id="guild-guildname">/guild <em>guildname</em></h2>
+<p><em>Other aliases: /guildcheck, /checkguild</em></p>
+<p>Show's the number of members a guild has, and a list of their online users.
+It also shows whether the guild has a guildhall or not, and their founded date.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/guild Redd Alliance</strong><br />
+<img alt="image" src="../../assets/images/commands/guild.png" /></p></details><hr />
+<h3 id="guild-members-guildname">/guild members <em>guildname</em></h3>
+<p><em>Other aliases: /guild list</em></p>
+<p>Shows a paginated list of all the members of a guild. If they are online, 🔹 is shown next to their name.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/guild members Redd Alliance</strong><br />
+<img alt="image" src="../../assets/images/commands/guildmembers.png" /></p></details><hr />
+<h3 id="guild-info-guildname">/guild info <em>guildname</em></h3>
+<p><em>Other aliases /guild stats</em></p>
+<p>Shows basic information about a guild, like their description, homepage, guildhall, number of members of members and more.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/guild info Bald Dwarfs</strong><br />
+<img alt="image" src="../../assets/images/commands/guildinfo.png" /></p></details><h2 id="share-levelplayer">/share <em>level/player</em></h2>
+<p><em>Other aliases: /expshare, /party</em></p>
+<p>There's three different ways to use this command:</p>
+<ol>
+<li>Providing a single number, shows the share range of a character of that level.</li>
+<li>Providing a charater name, shows the share range of that character.</li>
+<li>Providing up to 5 character names, separated with commas, shows if they are able to share.</li>
+</ol>
+<details class="summary"><summary>Examples</summary><p><strong>/share 300</strong><br />
+<img alt="image" src="../../assets/images/commands/share_1.png" /></p><p><strong>/share Galarzaa Fidera</strong><br />
+<img alt="image" src="../../assets/images/commands/share_2.png" /></p><p><strong>/share Galarzaa Fidera, Nezune, Xzilla</strong><br />
+<img alt="image" src="../../assets/images/commands/share_3.png" /></p><p><strong>/share Galarzaa Fidera, Topheroo</strong><br />
+<img alt="image" src="../../assets/images/commands/share_4.png" /></p></details><hr />
+<h2 id="deaths-player">/deaths [<em>player</em>]</h2>
+<p><em>Other aliases: /deathlist, /death</em></p>
+<p>If a player is specified, it displays a list of that player's recent deaths. 
+If no player is specified, it will show the recent deaths of all players registered in the database. 
+The number of entries shown per page is higher in ask channel and private channels.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/deaths Xzilla</strong><br />
+<img alt="image" src="../../assets/images/commands/deaths_1.png" /></p><p><strong>/deaths</strong><br />
+<img alt="image" src="../../assets/images/commands/deaths_2.png" /></p></details><h3 id="deaths-monster-name">/deaths monster <em>name</em></h3>
+<p><em>Other aliases: /deaths mob, /deaths killer</em></p>
+<p>Shows recent deaths by a specific monster or killer.</p>
+<details class="summary"><summary>Example</summary><p><strong>/deaths mob Lloyd</strong><br />
+<img alt="image" src="../../assets/images/commands/deaths_mob.png" /></p></details><h3 id="deaths-user-name">/deaths user <em>name</em></h3>
+<p>Shows recent deaths by all characters registered to a user.</p>
+<details class="summary"><summary>Example</summary><p><strong>/deaths user Nezune</strong><br />
+<img alt="image" src="../../assets/images/commands/deaths_user.png" /></p></details><hr />
+<h2 id="levels-player">/levels [<em>player</em>]</h2>
+<p><em>Other aliases: /levelups, /lvl, /level, /lvls</em></p>
+<p>If a player is specified, it displays a list of the player's recent level ups.
+If no player is specified, it will show the recent level ups of all players registered in the database.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/levels</strong><br />
+<img alt="image" src="../../assets/images/commands/levels_1.png" /></p><p><strong>/levels Dre amz</strong><br />
+<img alt="image" src="../../assets/images/commands/levels_2.png" /></p></details><h3 id="levels-user-name">/levels user <em>name</em></h3>
+<p>*Other aliases: /story</p>
+<p>Shows recent levels by all characters registered to a user.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/levels user Nezune</strong><br />
+<img alt="image" src="../../assets/images/commands/levels_user.png" /></p></details><hr />
+<h2 id="timeline-player">/timeline [<em>player</em>]</h2>
+<p>Shows recent levels and deaths by all registered characters.
+If a character name is provided, their level ups and deaths are shown. </p>
+<ul>
+<li>🌟 Indicates level ups</li>
+<li>💀 Indicates deaths</li>
+</ul>
+<details class="summary"><summary>Examples</summary><p><strong>/timeline</strong><br />
+<img alt="image" src="../../assets/images/commands/timeline_1.png" /></p><p><strong>/timeline Fila Bro</strong><br />
+<img alt="image" src="../../assets/images/commands/timeline_2.png" /></p></details><hr />
+<h3 id="timeline-user-name">/timeline user <em>name</em></h3>
+<p>Shows recent levels and deaths by all characters registed to the user.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/timeline user Pepyto 🍌</strong><br />
+<img alt="image" src="../../assets/images/commands/timeline_user.png" /></p></details><hr />
+<h2 id="stats-levelvocationcharactername">/stats <em>level,vocation</em>/<em>charactername</em></h2>
+<p>Replies with the hitpoints, mana, capacity, total experience and experience to next level (at 0% progress) 
+of a character with that level and vocation, or if a character's name was entered, it replies with its stats.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/stats 543,elder druid</strong><br />
+<img alt="image" src="../../assets/images/commands/stats_1.png" /></p><p><strong>/stats Galarzaa Fidera</strong><br />
+<img alt="image" src="../../assets/images/commands/stats_2.png" /></p></details><h2 id="findteam-charlevelminlevelmaxlevel">/findteam char/level/minlevel,maxlevel</h2>
+<p><em>Other aliases: /whereteam, /searchteam, /team</em></p>
+<p>This commands finds registered characters with the desired levels.
+Vocations can be filtered using the reaction buttons.</p>
+<p>There's three ways to use the command:</p>
+<ol>
+<li>Provide a character's name, shows a list of characters in share range. (<code class="codehilite">/findteam char</code>)</li>
+<li>Provide a level, shows a list of characters in share range with that level. (<code class="codehilite">/findteam level</code>)</li>
+<li>Provide two levels, shows a list of characters in that level range. (<code class="codehilite">/findteam min,max</code>)</li>
+</ol>
+<p>Online characters are shown first on the list, they also have a 🔹 icon.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/findteam Galarzaa Fidera</strong><br />
+<img alt="image" src="../../assets/images/commands/findteam_1.png" /></p><p><strong>/findteam 234</strong><br />
+<img alt="image" src="../../assets/images/commands/findteam_2.png" /></p><p><strong>/findteam 100,120</strong><br />
+<img alt="image" src="../../assets/images/commands/findteam_3.png" /></p></details><hr />
+<h2 id="world-name">/world <em>name</em></h2>
+<p>Displays information about a world like pvp type, online count, location and more.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/world Fidera</strong>  <br />
+<img alt="image" src="../../assets/images/commands/world_1.png" /></p><p><strong>/world Ferobra</strong><br />
+<img alt="image" src="../../assets/images/commands/world_2.png" /></p></details><hr />
+<h2 id="news-article_id">news [<em>article_id</em>]</h2>
+<p>Displays a list of recent news and articles. Or if an article id is provided, a summary of that article is displayed.</p>
+<p>If the command is used on the ask channel or in private, the list or summary displayed will be longer.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/news</strong>  <br />
+<img alt="image" src="../../assets/images/commands/news_1.png" /></p><p><strong>/news 4400</strong><br />
+<img alt="image" src="../../assets/images/commands/news_2.png" /></p></details><h2 id="house-nameworld">/house <em>name</em>[/<em>world</em>]</h2>
+<p><em>Other aliases: /houses, /guildhall, /gh</em></p>
+<p>Displays information about a house, including a picture of the a section of the map where it is located.
+It shows the current status of the house in the world the current discord server is tracking.</p>
+<p>To specify a different world, add the world after a slash <code class="codehilite">/</code></p>
+<details class="summary"><summary>Examples</summary><p><strong>/house darashia 8, flat 03</strong><br />
+<img alt="image" src="../../assets/images/commands/house_1.png" /></p><p><strong>/house caveman shelter/calmera</strong><br />
+<img alt="image" src="../../assets/images/commands/house_2.png" /></p></details><hr />
+<h2 id="blessings-level">/blessings <em>level</em></h2>
+<p><em>Other aliases: /bless</em></p>
+<p>Replies with the cost of blessings for that level.
+For players over level 100, it will also display the cost of the Blessing of the Inquisition.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/bless 90</strong><br />
+<img alt="image" src="../../assets/images/commands/bless_1.png" /></p><p><strong>/bless 140</strong><br />
+<img alt="image" src="../../assets/images/commands/bless_2.png" /></p></details><hr />
+<h2 id="time">/time</h2>
+<p><em>Other aliases: /serversave, /ss</em></p>
+<p>Displays the time in CipSoft's (CET/CEST), Brazil's and Mexico's timezones, the time until server save and Rashid's current city.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/time</strong><br />
+<img alt="image" src="../../assets/images/commands/time.png" /></p></details>
+                
+                  
+                
+              
+              
+                
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <div class="md-footer-nav">
+      <nav class="md-footer-nav__inner md-grid">
+        
+          <a href="../general/" title="General commands" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-back md-footer-nav__button"></i>
+            </div>
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Previous
+                </span>
+                General commands
+              </span>
+            </div>
+          </a>
+        
+        
+          <a href="../tibiawiki/" title="TibiaWiki commands" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Next
+                </span>
+                TibiaWiki commands
+              </span>
+            </div>
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-forward md-footer-nav__button"></i>
+            </div>
+          </a>
+        
+      </nav>
+    </div>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        powered by
+        <a href="http://www.mkdocs.org">MkDocs</a>
+        and
+        <a href="https://squidfunk.github.io/mkdocs-material/">
+          Material for MkDocs</a>
+      </div>
+      
+        
+  <div class="md-footer-social">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    
+      <a href="https://github.com/galarzaa90" class="md-footer-social__link fa fa-github"></a>
+    
+  </div>
+
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../../assets/javascripts/application.02434462.js"></script>
+      
+      <script>app.initialize({version:"0.17.2",url:{base:"../.."}})</script>
+      
+    
+    
+      
+        <script>!function(e,a,t,n,o,c,i){e.GoogleAnalyticsObject=o,e.ga=e.ga||function(){(e.ga.q=e.ga.q||[]).push(arguments)},e.ga.l=1*new Date,c=a.createElement(t),i=a.getElementsByTagName(t)[0],c.async=1,c.src="https://www.google-analytics.com/analytics.js",i.parentNode.insertBefore(c,i)}(window,document,"script",0,"ga"),ga("create","UA-111299710-2","auto"),ga("set","anonymizeIp",!0),ga("send","pageview");var links=document.getElementsByTagName("a");if(Array.prototype.map.call(links,function(e){e.host!=document.location.host&&e.addEventListener("click",function(){var a=e.getAttribute("data-md-action")||"follow";ga("send","event","outbound",a,e.href)})}),document.forms.search){var query=document.forms.search.query;query.addEventListener("blur",function(){if(this.value){var e=document.location.pathname;ga("send","pageview",e+"?q="+this.value)}})}</script>
+      
+    
+  </body>
+</html>
