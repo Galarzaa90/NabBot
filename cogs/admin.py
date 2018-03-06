@@ -1,4 +1,5 @@
 import asyncio
+from typing import List
 
 import discord
 from discord.ext import commands
@@ -8,8 +9,9 @@ from nabbot import NabBot
 from utils import checks
 from utils.database import *
 from utils.discord import is_private
+from utils.general import join_list, log
 from utils.messages import EMOJI
-from utils.tibia import tibia_worlds, get_character, NetworkError
+from utils.tibia import tibia_worlds, get_character, NetworkError, Character
 
 
 class Admin:
@@ -530,6 +532,142 @@ class Admin:
                                                                                char.vocation, guild, user))
                 userDatabase.commit()
 
+    @commands.command(name="addacc", aliases=["account", "addaccount", "acc"])
+    @checks.is_owner()
+    @commands.guild_only()
+    async def add_account(self, ctx, *, params):
+        """Register a character and all other visible characters to a discord user.
+
+        If a character is hidden, only that character will be added. Characters in other worlds are skipped.
+
+        The syntax is the following:
+        /addacc user,char"""
+        params = params.split(",")
+        if len(params) != 2:
+            await ctx.send("The correct syntax is: ``/stalk addacc username,character``")
+            return
+        target_name, char_name = params
+
+        # This is equivalent to someone using /stalk addacc on themselves.
+        user = ctx.author
+        world = tracked_worlds.get(ctx.guild.id)
+
+        if world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+
+        target = self.bot.get_member(target_name, ctx.guild)
+        if target is None:
+            await ctx.send(f"I couldn't find any users named @{target_name}")
+            return
+        target_guilds = self.bot.get_user_guilds(target.id)
+        target_guilds = list(filter(lambda x: x == world, target_guilds))
+
+        await ctx.trigger_typing()
+        try:
+            char = await get_character(char_name)
+            if char is None:
+                await ctx.send("That character doesn't exists.")
+                return
+        except NetworkError:
+            await ctx.send("I couldn't fetch the character, please try again.")
+            return
+        chars = char.other_characters
+        # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
+        # searched char, so we don't have to look him up again
+        if len(chars) == 0 or len(chars) == 1:
+            chars = [char]
+        skipped = []
+        updated = []
+        added = []  # type: List[Character]
+        existent = []
+        for char in chars:
+            # Skip chars in non-tracked worlds
+            if char.world != world:
+                skipped.append(char)
+                continue
+            with closing(userDatabase.cursor()) as c:
+                c.execute("SELECT name, guild, user_id as owner FROM chars WHERE name LIKE ?", (char.name,))
+                db_char = c.fetchone()
+            if db_char is not None:
+                owner = self.bot.get_member(db_char["owner"])
+                # Previous owner doesn't exist anymore
+                if owner is None:
+                    updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"]})
+                    continue
+                # Char already registered to this user
+                elif owner.id == user.id:
+                    existent.append("{0.name} ({0.world})".format(char))
+                    continue
+                # Character is registered to another user, we stop the whole process
+                else:
+                    reply = "A character in that account ({0}) is already registered to **{1.display_name}**"
+                    await ctx.send(reply.format(db_char["name"], owner))
+                    return
+            # If we only have one char, it already contains full data
+            if len(chars) > 1:
+                try:
+                    await ctx.message.channel.trigger_typing()
+                    char = await get_character(char.name)
+                except NetworkError:
+                    await ctx.send("I'm having network troubles, please try again.")
+                    return
+            if char.deleted is not None:
+                skipped.append(char)
+                continue
+            added.append(char)
+
+        if len(skipped) == len(chars):
+            await ctx.send(f"Sorry, I couldn't find any characters in **{world}**.")
+            return
+
+        reply = ""
+        log_reply = dict().fromkeys([server.id for server in target_guilds], "")
+        if len(existent) > 0:
+            reply += "\nThe following characters were already registered to @{1}: {0}" \
+                .format(join_list(existent, ", ", " and "), target.display_name)
+
+        if len(added) > 0:
+            reply += "\nThe following characters were added to @{1.display_name}: {0}" \
+                .format(join_list(["{0.name} ({0.world})".format(c) for c in added], ", ", " and "), target)
+            for char in added:
+                log.info("{2.display_name} registered character {0} was assigned to {1.display_name} (ID: {1.id})"
+                         .format(char.name, target, user))
+                # Announce on server log of each server
+                for guild in target_guilds:
+                    _guild = "No guild" if char.guild is None else char.guild_name
+                    log_reply[guild.id] += "\n\t{1.name} - {1.level} {1.vocation} - **{0}**".format(_guild, char)
+
+        if len(updated) > 0:
+            reply += "\nThe following characters were reassigned to @{1.display_name}: {0}" \
+                .format(join_list(["{name} ({world})".format(**c) for c in updated], ", ", " and "), target)
+            for char in updated:
+                log.info("{2.display_name} reassigned character {0} to {1.display_name} (ID: {1.id})"
+                         .format(char['name'], target, user))
+                # Announce on server log of each server
+                for guild in target_guilds:
+                    log_reply[guild.id] += "\n\t{name} (Reassigned)".format(**char)
+
+        for char in updated:
+            with userDatabase as conn:
+                conn.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
+        for char in added:
+            with userDatabase as conn:
+                conn.execute("INSERT INTO chars (name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
+                             (char.name, char.level * -1, char.vocation, user.id, char.world,
+                              char.guild_name)
+                             )
+
+        with userDatabase as conn:
+            conn.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
+            conn.execute("UPDATE users SET name = ? WHERE id = ?", (user.display_name, user.id,))
+
+        await ctx.send(reply)
+        for server_id, message in log_reply.items():
+            if message:
+                message = f"{user.mention} registered the following characters to {target.mention}" + message
+                await self.bot.send_log_message(self.bot.get_guild(server_id), message)
+
     @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
     @checks.is_admin()
     @commands.guild_only()
@@ -569,6 +707,104 @@ class Admin:
         finally:
             c.close()
             userDatabase.commit()
+
+    # Todo: Add server-log entry
+    @commands.command(aliases=["namechange","rename"])
+    @checks.is_owner()
+    @checks.is_not_lite()
+    async def namelock(self, ctx, *, params):
+        """Register the name of a new character that was namelocked.
+
+        Characters that get namelocked can't be searched by their old name, so they must be reassigned manually.
+
+        If the character got a name change (from the store), searching the old name redirects to the new name, so
+        this are usually reassigned automatically.
+
+        The syntax is:
+        /stalk namelock oldname,newname"""
+        if not is_private(ctx.message.channel):
+            return True
+        params = params.split(",")
+        if len(params) != 2:
+            await ctx.send("The correct syntax is: `/stalk namelock oldname,newname")
+            return
+
+        old_name = params[0]
+        new_name = params[1]
+        with ctx.typing():
+            c = userDatabase.cursor()
+            try:
+                c.execute("SELECT * FROM chars WHERE name LIKE ? LIMIT 1", (old_name,))
+                old_char_db = c.fetchone()
+                # If character wasn't registered, there's nothing to do.
+                if old_char_db is None:
+                    await ctx.send("I don't have a character registered with the name: **{0}**".format(old_name))
+                    return
+                # Search old name to see if there's a result
+                try:
+                    old_char = await get_character(old_name)
+                except NetworkError:
+                    await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
+                    return
+                # Check if returns a result
+                if old_char is not None:
+                    if old_name.lower() == old_char.name.lower():
+                        await ctx.send("The character **{0}** wasn't namelocked.".format(old_char.name))
+                    else:
+                        await ctx.send("The character **{0}** was renamed to **{1}**.".format(old_name, old_char.name))
+                        # Renaming is actually done in get_character(), no need to do anything.
+                    return
+
+                # Check if new name exists
+                try:
+                    new_char = await get_character(new_name)
+                except NetworkError:
+                    await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
+                    return
+                if new_char is None:
+                    await ctx.send("The character **{0}** doesn't exists.".format(new_name))
+                    return
+                # Check if vocations are similar
+                if not (old_char_db["vocation"].lower() in new_char.vocation.lower()
+                        or new_char.vocation.lower() in old_char_db["vocation"].lower()):
+                    await ctx.send("**{0}** was a *{1}* and **{2}** is a *{3}*. I think you're making a mistake."
+                                   .format(old_char_db["name"], old_char_db["vocation"],
+                                           new_char.name, new_char.vocation))
+                    return
+                confirm_message = "Are you sure **{0}** ({1} {2}) is **{3}** ({4} {5}) now? `yes/no`"
+                await ctx.send(confirm_message.format(old_char_db["name"], abs(old_char_db["level"]),
+                                                      old_char_db["vocation"], new_char.name, new_char.level,
+                                                      new_char.vocation))
+
+                def check(m):
+                    return m.channel == ctx.message.channel and m.author == ctx.message.author
+                try:
+                    reply = await self.bot.wait_for("message", timeout=50.0, check=check)
+                    if reply.content.lower() not in ["yes", "y"]:
+                        await ctx.send("No then? Alright.")
+                        return
+                except asyncio.TimeoutError:
+                    await ctx.send("No answer? I guess you changed your mind.")
+                    return
+
+                # Check if new name was already registered
+                c.execute("SELECT * FROM chars WHERE name LIKE ?", (new_char["name"],))
+                new_char_db = c.fetchone()
+
+                if new_char_db is None:
+                    c.execute("UPDATE chars SET name = ?, vocation = ?, level = ? WHERE id = ?",
+                              (new_char.name, new_char.vocation, new_char.level, old_char_db["id"],))
+                else:
+                    # Replace new char with old char id and delete old char, reassign deaths and levelups
+                    c.execute("DELETE FROM chars WHERE id = ?", (old_char_db["id"]),)
+                    c.execute("UPDATE chars SET id = ? WHERE id = ?", (old_char_db["id"], new_char_db["id"],))
+                    c.execute("UPDATE char_deaths SET id = ? WHERE id = ?", (old_char_db["id"], new_char_db["id"],))
+                    c.execute("UPDATE char_levelups SET id = ? WHERE id = ?", (old_char_db["id"], new_char_db["id"],))
+
+                await ctx.send("Character renamed successfully.")
+            finally:
+                c.close()
+                userDatabase.commit()
 
 
 def get_check_emoji(check: bool) -> str:
