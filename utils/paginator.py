@@ -1,5 +1,10 @@
 import asyncio
+
 import discord
+from discord import Message, Colour, Client, User, Reaction
+
+from utils.discord import is_private
+from utils.tibia import DRUID, SORCERER, PALADIN, KNIGHT
 
 
 class CannotPaginate(Exception):
@@ -37,42 +42,56 @@ class Paginator:
     permissions: discord.Permissions
         Our permissions for the channel.
     """
-    def __init__(self, bot, *, message, entries, per_page=10, title=None, description="", numerate=True):
+    Empty = discord.Embed.Empty
+
+    def __init__(self, bot: Client, *, message: Message, entries, **kwargs):
         self.bot = bot
         self.entries = entries
         self.message = message
         self.author = message.author
-        self.per_page = per_page
+        self.per_page = kwargs.get("per_page", 10)
         self.current_page = 1
-        self.title = title
-        self.numerate = numerate
-        self.description = description
+        self.title = kwargs.get("title",None)
+        self.numerate = kwargs.get("numerate", True)
+        self.description = kwargs.get("description", "")
         pages, left_over = divmod(len(self.entries), self.per_page)
         if left_over:
             pages += 1
         self.maximum_pages = pages
         self.embed = discord.Embed()
-        self.paginating = len(entries) > per_page
+        author = kwargs.get("author", None)
+        if author is not None:
+            self.embed.set_author(name=author, icon_url=kwargs.get("author_icon", discord.Embed.Empty),
+                                  url=kwargs.get("author_url", discord.Embed.Empty))
+        color = kwargs.get("color", None)
+        if color is not None:
+            self.embed.colour = color
+        self.paginating = len(entries) > self.per_page
         self.reaction_emojis = [
             ('\N{BLACK LEFT-POINTING TRIANGLE}', self.previous_page),
             ('\N{BLACK RIGHT-POINTING TRIANGLE}', self.next_page),
             ('\U000023F9', self.stop_pages)
         ]
-        server = self.message.server
-        if server is not None:
-            self.permissions = self.message.channel.permissions_for(server.me)
+        guild = self.message.guild
+        if guild is not None:
+            self.permissions = self.message.channel.permissions_for(guild.me)
         else:
-            self.permissions = self.message.channel.permissions_for(self.bot.user)
+            self.permissions = discord.Permissions.all()
 
         if not self.permissions.embed_links:
             raise CannotPaginate('Bot does not have embed links permission.')
+
+        if not self.permissions.add_reactions:
+            raise CannotPaginate('Bot does not have add reactions permission.')
+
+        if not self.permissions.read_message_history:
+            raise CannotPaginate('Bot does not have read message history permission.')
 
     def get_page(self, page):
         base = (page - 1) * self.per_page
         return self.entries[base:base + self.per_page]
 
-    @asyncio.coroutine
-    def show_page(self, page, *, first=False):
+    async def show_page(self, page, *, first=False):
         self.current_page = page
         entries = self.get_page(page)
         p = []
@@ -88,12 +107,10 @@ class Paginator:
 
         self.embed.description = self.description+"\n"+'\n'.join(p)
         if not self.paginating:
-            ret = yield from self.bot.send_message(self.message.channel, embed=self.embed)
-            return ret
-
+            return await self.message.channel.send(embed=self.embed)
+            
         if not first:
-            yield from self.bot.edit_message(self.message, embed=self.embed)
-            return
+            return await self.message.edit(embed=self.embed)
 
         # verify we can actually use the pagination session
         if not self.permissions.add_reactions:
@@ -101,59 +118,59 @@ class Paginator:
         if not self.permissions.read_message_history:
             raise CannotPaginate("Bot does not have read message history permission.")
 
-        self.message = yield from self.bot.send_message(self.message.channel, embed=self.embed)
+        self.message = await self.message.channel.send(embed=self.embed)
         for (reaction, _) in self.reaction_emojis:
             if self.maximum_pages == 2 and reaction in ('\u23ed', '\u23ee'):
                 # no |<< or >>| buttons if we only have two pages
                 # we can't forbid it if someone ends up using it but remove
                 # it from the default set
                 continue
+            # Stop reaction doesn't work on PMs so do not add it
+            if is_private(self.message.channel) and reaction == '\U000023F9':
+                continue
+            await self.message.add_reaction(reaction)
 
-            yield from self.bot.add_reaction(self.message, reaction)
-
-    @asyncio.coroutine
-    def checked_show_page(self, page):
+    async def checked_show_page(self, page):
         if page != 0 and page <= self.maximum_pages:
-            yield from self.show_page(page)
+            await self.show_page(page)
 
-    @asyncio.coroutine
-    def first_page(self):
+    async def first_page(self):
         """goes to the first page"""
-        yield from self.show_page(1)
+        await self.show_page(1)
 
-    @asyncio.coroutine
-    def last_page(self):
+    async def last_page(self):
         """goes to the last page"""
-        yield from self.show_page(self.maximum_pages)
+        await self.show_page(self.maximum_pages)
 
-    @asyncio.coroutine
-    def next_page(self):
+    async def next_page(self):
         """goes to the next page"""
-        yield from self.checked_show_page(self.current_page + 1)
+        await self.checked_show_page(self.current_page + 1)
 
-    @asyncio.coroutine
-    def previous_page(self):
+    async def previous_page(self):
         """goes to the previous page"""
-        yield from self.checked_show_page(self.current_page - 1)
+        await self.checked_show_page(self.current_page - 1)
 
-    @asyncio.coroutine
-    def show_current_page(self):
+    async def show_current_page(self):
         if self.paginating:
-            yield from self.show_page(self.current_page)
+            await self.show_page(self.current_page)
 
-    @asyncio.coroutine
-    def stop_pages(self):
+    async def stop_pages(self):
         """stops the interactive pagination session"""
-        # yield from self.bot.delete_message(self.message)
+        # await self.bot.delete_message(self.message)
         try:
-            yield from self.bot.clear_reactions(self.message)
+            # Can't remove reactions in DMs, so don't even try
+            if not is_private(self.message.channel):
+                await self.message.clear_reactions()
         except:
             pass
-        yield from self.show_page(1)
+        await self.show_page(1)
         self.paginating = False
 
-    def react_check(self, reaction, user):
-        if not self.message.channel.is_private and user.id != self.author.id:
+    def react_check(self, reaction: Reaction, user: User):
+        if reaction.message.id != self.message.id:
+            return False
+
+        if (not is_private(self.message.channel) and user.id != self.author.id) or user.id == self.bot.user.id:
             return False
 
         for (emoji, func) in self.reaction_emojis:
@@ -162,25 +179,80 @@ class Paginator:
                 return True
         return False
 
-    @asyncio.coroutine
-    def paginate(self):
+    async def paginate(self):
         """Actually paginate the entries and run the interactive loop if necessary."""
-        yield from self.show_page(1, first=True)
+        await self.show_page(1, first=True)
 
         while self.paginating:
-            react = yield from self.bot.wait_for_reaction(message=self.message, check=self.react_check, timeout=120.0)
-            if react is None:
-                yield from self.first_page()
+            try:
+                react = await self.bot.wait_for("reaction_add", check=self.react_check, timeout=120.0)
+                try:
+                    # Can't remove other users reactions in DMs
+                    if not is_private(self.message.channel):
+                        await self.message.remove_reaction(react[0].emoji, react[1])
+                except Exception as e:
+                    pass
+            except asyncio.TimeoutError:
+                await self.first_page()
                 self.paginating = False
                 try:
-                    yield from self.bot.clear_reactions(self.message)
+                    # Can't remove other users reactions in DMs
+                    if not is_private(self.message.channel):
+                        await self.message.clear_reactions()
                 except:
                     pass
                 finally:
                     break
-            try:
-                yield from self.bot.remove_reaction(self.message, react.reaction.emoji, react.user)
-            except:
-                pass  # can't remove it so don't bother doing so
 
-            yield from self.match()
+            await self.match()
+
+
+class VocationPaginator(Paginator):
+    def __init__(self, bot: Client, *, message: Message, entries, vocations, **kwargs):
+        super().__init__(bot, message=message, entries=entries, **kwargs)
+        present_vocations = []
+        # Only add vocation filters for the vocations present
+        if any(v.lower() in DRUID for v in vocations):
+            present_vocations.append(('\U00002744', self.filter_druids))
+        if any(v.lower() in SORCERER for v in vocations):
+            present_vocations.append(('\U0001F525', self.filter_sorcerers))
+        if any(v.lower() in PALADIN for v in vocations):
+            present_vocations.append(('\U0001F3F9', self.filter_paladins))
+        if any(v.lower() in KNIGHT for v in vocations):
+            present_vocations.append(('\U0001F6E1', self.filter_knights))
+
+        # Only add filters if there's more than one different vocation
+        if len(present_vocations) > 1:
+            self.reaction_emojis.extend(present_vocations)
+
+        # Copies the entry list without reference
+        self.original_entries = entries[:]
+        self.vocations = vocations
+        self.filters = [DRUID, SORCERER, PALADIN, KNIGHT]
+        self.current_filter = -1
+
+    async def filter_druids(self):
+        await self.filter_vocation(0)
+
+    async def filter_knights(self):
+        await self.filter_vocation(3)
+
+    async def filter_paladins(self):
+        await self.filter_vocation(2)
+
+    async def filter_sorcerers(self):
+        await self.filter_vocation(1)
+
+    async def filter_vocation(self, vocation):
+        if vocation != self.current_filter:
+            self.current_filter = vocation
+            self.entries = [c for c, v in zip(self.original_entries, self.vocations) if v.lower() in self.filters[vocation]]
+        else:
+            self.current_filter = -1
+            self.entries = self.original_entries[:]
+        pages, left_over = divmod(len(self.entries), self.per_page)
+        if left_over:
+            pages += 1
+        self.maximum_pages = pages
+        await self.show_page(1)
+

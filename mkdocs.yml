@@ -1,0 +1,52 @@
+site_name: 'NabBot'
+site_description: 'A discord bot for the MMO Tibia'
+site_author: 'Allan Galarza'
+site_url: 'https://galarzaa90.github.io/NabBot/'
+
+site_name: NabBot
+theme:
+  name: material
+  palette:
+    primary: 'deep purple'
+    accent: 'orange'
+  logo: 'assets/images/icon.png'
+  favicon: 'assets/images/favicon.ico'
+  feature:
+    tabs: true
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.tilde
+
+
+google_analytics:
+  - UA-111299710-2
+  - auto
+
+extra:
+  social:
+    - type: 'github'
+      link: 'https://github.com/galarzaa90'
+
+repo_url: https://github.com/Galarzaa90/NabBot
+edit_uri: ""
+pages:
+    - Home: index.md
+    - Install Guide: install.md
+    - Permissions: permissions.md
+    - FAQ: faq.md
+    - Commands:
+      - Overview: commands/index.md
+      - General commands: commands/general.md
+      - Tibia commands: commands/tibia.md
+      - TibiaWiki commands: commands/tibiawiki.md
+      - Tracking commands: commands/tracking.md
+      - Loot commands: commands/loot.md
+      - Admin commands: commands/admin.md
+      - Owner commands: commands/owner.md
+    - Customizing:
+      - Messages: customizing/messages.md

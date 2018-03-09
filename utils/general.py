@@ -1,21 +1,18 @@
-from discord.ext import commands
+import datetime as dt
 import logging
-from logging.handlers import TimedRotatingFileHandler
 import os
 import re
 import time
 from calendar import timegm
-from datetime import datetime, date, timedelta
+from logging.handlers import TimedRotatingFileHandler
 
-from config import *
-
-# Command list (populated automatically, used to check if a message is(n't) a command invocation)
-command_list = []
+from discord.ext import commands
 
 # This is the global online list
 # don't look at it too closely or you'll go blind!
 # characters are added as servername_charactername
 # The list is updated periodically on think() using get_server_online()
+
 global_online_list = []
 
 # Start logging
@@ -43,40 +40,31 @@ consoleHandler.setLevel(logging.DEBUG)
 log.addHandler(consoleHandler)
 
 
-def getLogin():
+def get_token():
     """When the bot is run without a login.py file, it prompts the user for login info"""
-    if not os.path.isfile("login.py"):
-        print("This seems to be the first time NabBot is ran (or login.py is missing)")
+    if not os.path.isfile("token.txt"):
+        print("This seems to be the first time NabBot is ran (or token.txt is missing)")
         print("To run your own instance of NabBot you need to create a new bot account to get a bot token")
         print("https://discordapp.com/developers/applications/me")
-        print("Alternatively, you can use a regular discord account for your bot, although this is not recommended")
-        print("Insert a bot token OR an e-mail address for a regular account to be used as a bot")
-        login = input(">>")
-        email = ""
-        password = ""
-        token = ""
-        if "@" in login:
-            email = login
-            password = input("Enter password: >>")
-        elif len(login) >= 50:
-            token = login
-        else:
-            input("What you entered isn't a token or an e-mail. Restart NabBot to retry.")
+        print("Enter the token:")
+        token = input(">>")
+        if len(token) < 50:
+            input("What you entered isn't a token. Restart NabBot to retry.")
             quit()
-        f = open("login.py", "w+")
-        f.write("#Token always has priority, if token is defined it will always attempt to login using a token\n")
-        f.write("#Comment the token line or set it empty to use email login\n")
-        f.write("token = '{0}'\nemail = '{1}'\npassword = '{2}'\n".format(token, email, password))
+        f = open("token.txt", "w+")
+        f.write(token)
         f.close()
-        print("Login data has been saved correctly. You can change this later by editing login.py")
+        print("Token has been saved to token.txt, you can edit this file later to change it.")
         input("Press any key to start NabBot now...")
-        quit()
-    return __import__("login")
+        return token
+    else:
+        with open("token.txt") as f:
+            return f.read()
 
 
-def get_time_diff(time_diff: timedelta) -> str:
+def get_time_diff(time_diff: dt.timedelta) -> str:
     """Returns a string showing the time difference of a timedelta"""
-    if not isinstance(time_diff, timedelta):
+    if not isinstance(time_diff, dt.timedelta):
         return None
     hours = time_diff.seconds // 3600
     minutes = (time_diff.seconds // 60) % 60
@@ -103,20 +91,36 @@ def get_local_timezone() -> int:
     return (timegm(t) - timegm(u)) / 60 / 60
 
 
+def get_n_weekday(year, month, weekday, n):
+    """Returns the date where the nth weekday of a month occurred."""
+    count = 0
+    for i in range(1, 32):
+        try:
+            d = dt.date(year, month, i)
+        except ValueError:
+            break
+        if d.isoweekday() == weekday:
+            count += 1
+        if count == n:
+            return d
+    return None
+
+
 def get_brasilia_time_zone() -> int:
     """Returns Brasilia's timezone, considering their daylight saving time dates"""
     # Find date in Brasilia
-    bt = datetime.utcnow() - timedelta(hours=3)
-    brasilia_date = date(bt.year, bt.month, bt.day)
-    # These are the dates for the 2016/2017 time change, they vary yearly but ¯\0/¯, good enough
-    dst_start = date(bt.year, 10, 16)
-    dst_end = date(bt.year + 1, 2, 21)
-    if dst_start < brasilia_date < dst_end:
+    bt = dt.datetime.utcnow() - dt.timedelta(hours=3)
+    brasilia_date = dt.date(bt.year, bt.month, bt.day)
+    # DST stars on the third sunday of october and ends on the third sunday of february
+    # It may be off by a couple hours
+    dst_start = get_n_weekday(bt.year, 10, 7, 3)
+    dst_end = get_n_weekday(bt.year, 2, 7, 3)
+    if brasilia_date > dst_start or brasilia_date < dst_end:
         return -2
     return -3
 
 
-start_time = datetime.utcnow()
+start_time = dt.datetime.utcnow()
 
 
 def get_uptime(long=False) -> str:
@@ -124,7 +128,7 @@ def get_uptime(long=False) -> str:
 
     Start time is saved when this module is loaded, not when the bot actually logs in,
     so it is a couple seconds off."""
-    now = datetime.utcnow()
+    now = dt.datetime.utcnow()
     delta = now - start_time
     hours, remainder = divmod(int(delta.total_seconds()), 3600)
     minutes, seconds = divmod(remainder, 60)

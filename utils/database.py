@@ -1,12 +1,13 @@
 import os
+import shutil
 import sqlite3
+from contextlib import closing
+from typing import Dict
 
 # Databases filenames
-import shutil
-
-USERDB = "users.db"
-TIBIADB = "database.db"
-LOOTDB = "utils/loot.db"
+USERDB = "data/users.db"
+TIBIADB = "data/tibia_database.db"
+LOOTDB = "data/loot.db"
 
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
@@ -14,10 +15,10 @@ tibiaDatabase = sqlite3.connect(TIBIADB)
 if os.path.isfile(LOOTDB):
     lootDatabase = sqlite3.connect(LOOTDB)
 else:
-    shutil.copyfile("utils/loot_template.db", LOOTDB)
+    shutil.copyfile("data/loot_template.db", LOOTDB)
     lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 10
+DB_LASTVERSION = 19
 
 # Dictionary of worlds tracked by nabbot, key:value = server_id:world
 # Dictionary is populated from database
@@ -25,20 +26,13 @@ DB_LASTVERSION = 10
 tracked_worlds = {}
 tracked_worlds_list = []
 
-# Dictionaries of welcome messages per server
-welcome_messages = {}
-
-# Dictionaries of announce channels per server
-announce_channels = {}
-
 
 def init_database():
     """Initializes and/or updates the database to the current version"""
-
     # Database file is automatically created with connect, now we have to check if it has tables
     print("Checking database version...")
+    c = userDatabase.cursor()
     try:
-        c = userDatabase.cursor()
         c.execute("SELECT COUNT(*) as count FROM sqlite_master WHERE type = 'table'")
         result = c.fetchone()
         # Database is empty
@@ -107,7 +101,7 @@ def init_database():
                       date INTEGER,
                       byplayer BOOLEAN
                       )""")
-            c.execute("ALTER TABLE events ADD COLUMN status DEFAULT 4")
+            c.execute("ALTER TABLE events ADD COLUMN status INTEGER DEFAULT 4")
             db_version += 1
         if db_version == 4:
             # Added 'name' column to 'discord_users' table to save their names for external use
@@ -135,7 +129,7 @@ def init_database():
         if db_version == 7:
             # Created 'server_properties' table
             c.execute("""CREATE TABLE server_properties (
-                      server_id TEXT,
+                      server_id INTEGER,
                       name TEXT,
                       value TEXT
                       );""")
@@ -172,10 +166,88 @@ def init_database():
             c.execute("ALTER TABLE chars ADD magic_ek_rank INTEGER")
             c.execute("ALTER TABLE chars ADD magic_rp_rank INTEGER")
             db_version += 1
+        if db_version == 10:
+            # Added 'guild' column to 'chars'
+            c.execute("ALTER TABLE chars ADD guild TEXT")
+            db_version += 1
+        if db_version == 11:
+            # Added 'deleted' column to 'chars'
+            c.execute("ALTER TABLE chars ADD deleted INTEGER DEFAULT 0")
+            db_version += 1
+        if db_version == 12:
+            # Added 'hunted' table
+            c.execute("""CREATE TABLE hunted_list (
+                name TEXT,
+                is_guild BOOLEAN DEFAULT 0,
+                server_id INTEGER
+            );""")
+            db_version += 1
+        if db_version == 13:
+            # Renamed table hunted_list to watched_list and related server properties
+            c.execute("ALTER TABLE hunted_list RENAME TO watched_list")
+            c.execute("UPDATE server_properties SET name = 'watched_channel' WHERE name LIKE 'hunted_channel'")
+            c.execute("UPDATE server_properties SET name = 'watched_message' WHERE name LIKE 'hunted_message'")
+            db_version += 1
+        if db_version == 14:
+            c.execute("""CREATE TABLE ignored_channels (
+                server_id INTEGER,
+                channel_id INTEGER
+            );""")
+            db_version += 1
+        if db_version == 15:
+            c.execute("""CREATE TABLE highscores (
+                rank INTEGER,
+                category TEXT,
+                world TEXT,
+                name TEXT,
+                vocation TEXT,
+                value INTEGER
+            );""")
+            c.execute("""CREATE TABLE highscores_times (
+                world TEXT,
+                last_scan INTEGER
+            );""")
+            db_version += 1
+        if db_version == 16:
+            c.execute("ALTER table highscores_times ADD category TEXT")
+            db_version += 1
+        if db_version == 17:
+            # Cleaning up unused columns and renaming columns
+            c.execute("""CREATE TABLE chars_temp(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                name TEXT,
+                level INTEGER DEFAULT -1,
+                vocation TEXT,
+                world TEXT,
+                guild TEXT
+            );""")
+            c.execute("INSERT INTO chars_temp SELECT id, user_id, name, last_level, vocation, world, guild FROM chars")
+            c.execute("DROP TABLE chars")
+            c.execute("ALTER table chars_temp RENAME TO chars")
+            c.execute("DROP TABLE IF EXISTS user_servers")
+            c.execute("""CREATE TABLE users_temp(
+                id INTEGER NOT NULL,
+                name TEXT,
+                PRIMARY KEY(id)
+            );""")
+            c.execute("INSERT INTO users_temp SELECT id, name FROM users")
+            c.execute("DROP TABLE users")
+            c.execute("ALTER table users_temp RENAME TO users")
+            db_version += 1
+        if db_version == 18:
+            # Adding event participants
+            c.execute("ALTER TABLE events ADD joinable INTEGER DEFAULT 1")
+            c.execute("ALTER TABLE events ADD slots INTEGER DEFAULT 0")
+            c.execute("""CREATE TABLE event_participants(
+                event_id INTEGER NOT NULL,
+                char_id INTEGER NOT NULL
+            );""")
+            db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
-
     finally:
+        c.close()
         userDatabase.commit()
 
 
@@ -187,6 +259,7 @@ def dict_factory(cursor, row):
     for idx, col in enumerate(cursor.description):
         d[col[0]] = row[idx]
     return d
+
 
 userDatabase.row_factory = dict_factory
 tibiaDatabase.row_factory = dict_factory
@@ -202,13 +275,13 @@ def reload_worlds():
     tibia_servers_dict_temp = {}
     try:
         c.execute("SELECT server_id, value FROM server_properties WHERE name = 'world' ORDER BY value ASC")
-        result = c.fetchall()
+        result = c.fetchall()  # type: Dict
         del tracked_worlds_list[:]
         if len(result) > 0:
             for row in result:
                 if row["value"] not in tracked_worlds_list:
                     tracked_worlds_list.append(row["value"])
-                tibia_servers_dict_temp[row["server_id"]] = row["value"]
+                tibia_servers_dict_temp[int(row["server_id"])] = row["value"]
 
         tracked_worlds.clear()
         tracked_worlds.update(tibia_servers_dict_temp)
@@ -216,31 +289,35 @@ def reload_worlds():
         c.close()
 
 
-def reload_welcome_messages():
-    c = userDatabase.cursor()
-    welcome_messages_temp = {}
-    try:
-        c.execute("SELECT server_id, value FROM server_properties WHERE name = 'welcome'")
-        result = c.fetchall()
-        if len(result) > 0:
-            for row in result:
-                welcome_messages_temp[row["server_id"]] = row["value"]
-        welcome_messages.clear()
-        welcome_messages.update(welcome_messages_temp)
-    finally:
-        c.close()
+def get_server_property(key: str, guild_id: int, default=None, is_int=None):
+    """Returns a guild's property
+
+    :param key: The key of the property to search for
+    :param guild_id: The discord server's id
+    :param default: A default value to return in case the key is not found
+    :param is_int: If true, the return value will be casted to int
+    :return: the property's value or the default value passed
+    """
+    with closing(userDatabase.cursor()) as c:
+        c.execute("SELECT value FROM server_properties WHERE name = ? and server_id = ?", (key, guild_id))
+        result = c.fetchone()  # type: Dict[str]
+        if is_int:
+            try:
+                return int(result["value"]) if result is not None else default
+            except ValueError:
+                return default
+        return result["value"] if result is not None else default
 
 
-def reload_announce_channels():
-    c = userDatabase.cursor()
-    announce_channels_temp = {}
-    try:
-        c.execute("SELECT server_id, value FROM server_properties WHERE name = 'announce_channel'")
-        result = c.fetchall()
-        if len(result) > 0:
-            for row in result:
-                announce_channels_temp[row["server_id"]] = row["value"]
-        announce_channels.clear()
-        announce_channels.update(announce_channels_temp)
-    finally:
-        c.close()
+def set_server_property(key: str, guild_id: int, value) -> None:
+    """Edits a server property
+
+    :param key: The name of the property to change
+    :param guild_id: The discord server's id
+    :param value: The new value for the property, if None, it will be deleted
+    """
+    with userDatabase as con:
+        con.execute("DELETE FROM server_properties WHERE server_id = ? AND name = ?", (guild_id, key))
+        if value is None:
+            return
+        con.execute("INSERT INTO server_properties(name, server_id, value) VALUES(?,?,?)", (key, guild_id, value))
