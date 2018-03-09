@@ -5,7 +5,7 @@ __pycache__
 *.db-journal
 
 logs/
-/loot/debug/
+loot/
 token.txt
 
 /data/*

@@ -5,8 +5,6 @@ If you're submitting a feature request, you can delete the template
 ## Platform information
 * **Operating system:** 
 * **Python version:**
-* **Repository branch:** master
-<!-- If you don't know which branch you're using, you're probably using master -->
 
 ## Bug information
 <!-- Short description of the bug -->
