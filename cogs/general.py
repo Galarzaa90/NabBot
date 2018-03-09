@@ -35,7 +35,7 @@ class General:
         """
         game_list = ["Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2017", "Russian Roulette",
                      "with my toy humans", "with fire"+EMOJI[":fire:"], "God", "innocent", "the part", "hard to get",
-                     "with my human minions", "Singularity", "Portal 3", "Dank Souls"]
+                     "with my human minions", "Singularity", "Portal 3", "Dank Souls", "with GLaDOS " + EMOJI[":blue_heart:"]]
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
             await self.bot.change_presence(game=discord.Game(name=random.choice(game_list)))
