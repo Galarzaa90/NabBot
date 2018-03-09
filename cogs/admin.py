@@ -450,7 +450,7 @@ class Admin:
         """Registers a character to a user
 
         The syntax is:
-        /stalk addchar user,character"""
+        /addchar user,character"""
         params = params.split(",")
         if len(params) != 2:
             await ctx.send("The correct syntax is: ``/addchar username,character``")
@@ -544,7 +544,7 @@ class Admin:
         /addacc user,char"""
         params = params.split(",")
         if len(params) != 2:
-            await ctx.send("The correct syntax is: ``/stalk addacc username,character``")
+            await ctx.send("The correct syntax is: ``/addacc username,character``")
             return
         target_name, char_name = params
 
@@ -675,7 +675,7 @@ class Admin:
         """Removes a registered character.
 
         The syntax is:
-        /stalk removechar name"""
+        /emovechar name"""
         # This could be used to remove deleted chars so we don't need to check anything
         # Except if the char exists in the database...
         c = userDatabase.cursor()
@@ -709,24 +709,23 @@ class Admin:
             userDatabase.commit()
 
     # Todo: Add server-log entry
-    @commands.command(aliases=["namechange","rename"])
+    @commands.command(aliases=["namechange", "rename"])
     @checks.is_owner()
     @checks.is_not_lite()
+    @commands.guild_only()
     async def namelock(self, ctx, *, params):
         """Register the name of a new character that was namelocked.
 
         Characters that get namelocked can't be searched by their old name, so they must be reassigned manually.
 
         If the character got a name change (from the store), searching the old name redirects to the new name, so
-        this are usually reassigned automatically.
+        these are usually reassigned automatically.
 
         The syntax is:
-        /stalk namelock oldname,newname"""
-        if not is_private(ctx.message.channel):
-            return True
+        /namelock oldname,newname"""
         params = params.split(",")
         if len(params) != 2:
-            await ctx.send("The correct syntax is: `/stalk namelock oldname,newname")
+            await ctx.send("The correct syntax is: `/namelock oldname,newname")
             return
 
         old_name = params[0]
