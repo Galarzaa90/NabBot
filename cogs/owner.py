@@ -286,10 +286,10 @@ class Owner:
                     await ctx.send("**{0}** doesn't exists, deleting...".format(row["name"]))
                     continue
                 # Char was renamed
-                if char['name'] != row["name"]:
-                    rename_chars.append((char['name'], row["name"],))
+                if char.name != row["name"]:
+                    rename_chars.append((char.name, row["name"],))
                     await ctx.send(
-                        "**{0}** was renamed to **{1}**, updating...".format(row["name"], char['name']))
+                        "**{0}** was renamed to **{1}**, updating...".format(row["name"], char.name))
 
             # No need to check if user exists cause those were removed already
             if len(delete_chars) > 0:
@@ -320,6 +320,105 @@ class Owner:
         finally:
             userDatabase.commit()
             c.close()
+
+    @commands.command(aliases=["namechange", "rename"])
+    @checks.is_owner()
+    @checks.is_not_lite()
+    @commands.guild_only()
+    async def namelock(self, ctx, *, params):
+        """Register the name of a new character that was namelocked.
+
+        Characters that get namelocked can't be searched by their old name, so they must be reassigned manually.
+
+        If the character got a name change (from the store), searching the old name redirects to the new name, so
+        these are usually reassigned automatically.
+
+        The syntax is:
+        /namelock oldname,newname"""
+        params = params.split(",")
+        if len(params) != 2:
+            await ctx.send("The correct syntax is: `/namelock oldname,newname")
+            return
+
+        old_name = params[0]
+        new_name = params[1]
+        with ctx.typing():
+            c = userDatabase.cursor()
+            try:
+                c.execute("SELECT * FROM chars WHERE name LIKE ? LIMIT 1", (old_name,))
+                old_char_db = c.fetchone()
+                # If character wasn't registered, there's nothing to do.
+                if old_char_db is None:
+                    await ctx.send("I don't have a character registered with the name: **{0}**".format(old_name))
+                    return
+                # Search old name to see if there's a result
+                try:
+                    old_char = await get_character(old_name)
+                except NetworkError:
+                    await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
+                    return
+                # Check if returns a result
+                if old_char is not None:
+                    if old_name.lower() == old_char.name.lower():
+                        await ctx.send("The character **{0}** wasn't namelocked.".format(old_char.name))
+                    else:
+                        await ctx.send(
+                            "The character **{0}** was renamed to **{1}**.".format(old_name, old_char.name))
+                        # Renaming is actually done in get_character(), no need to do anything.
+                    return
+
+                # Check if new name exists
+                try:
+                    new_char = await get_character(new_name)
+                except NetworkError:
+                    await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
+                    return
+                if new_char is None:
+                    await ctx.send("The character **{0}** doesn't exists.".format(new_name))
+                    return
+                # Check if vocations are similar
+                if not (old_char_db["vocation"].lower() in new_char.vocation.lower()
+                        or new_char.vocation.lower() in old_char_db["vocation"].lower()):
+                    await ctx.send("**{0}** was a *{1}* and **{2}** is a *{3}*. I think you're making a mistake."
+                                   .format(old_char_db["name"], old_char_db["vocation"],
+                                           new_char.name, new_char.vocation))
+                    return
+                confirm_message = "Are you sure **{0}** ({1} {2}) is **{3}** ({4} {5}) now? `yes/no`"
+                await ctx.send(confirm_message.format(old_char_db["name"], abs(old_char_db["level"]),
+                                                      old_char_db["vocation"], new_char.name, new_char.level,
+                                                      new_char.vocation))
+
+                def check(m):
+                    return m.channel == ctx.message.channel and m.author == ctx.message.author
+
+                try:
+                    reply = await self.bot.wait_for("message", timeout=50.0, check=check)
+                    if reply.content.lower() not in ["yes", "y"]:
+                        await ctx.send("No then? Alright.")
+                        return
+                except asyncio.TimeoutError:
+                    await ctx.send("No answer? I guess you changed your mind.")
+                    return
+
+                # Check if new name was already registered
+                c.execute("SELECT * FROM chars WHERE name LIKE ?", (new_char["name"],))
+                new_char_db = c.fetchone()
+
+                if new_char_db is None:
+                    c.execute("UPDATE chars SET name = ?, vocation = ?, level = ? WHERE id = ?",
+                              (new_char.name, new_char.vocation, new_char.level, old_char_db["id"],))
+                else:
+                    # Replace new char with old char id and delete old char, reassign deaths and levelups
+                    c.execute("DELETE FROM chars WHERE id = ?", (old_char_db["id"]), )
+                    c.execute("UPDATE chars SET id = ? WHERE id = ?", (old_char_db["id"], new_char_db["id"],))
+                    c.execute("UPDATE char_deaths SET id = ? WHERE id = ?", (old_char_db["id"], new_char_db["id"],))
+                    c.execute("UPDATE char_levelups SET id = ? WHERE id = ?",
+                              (old_char_db["id"], new_char_db["id"],))
+
+                await ctx.send("Character renamed successfully.")
+            finally:
+                c.close()
+                userDatabase.commit()
 
 
 def setup(bot):
