@@ -4,13 +4,13 @@ cache: pip
 
 python:
   - "3.6"
+  - "3.7-dev"
 install:
   - pip install -r requirements.txt
   - pip install mkdocs mkdocs-material
 
 "script":
 - python -m compileall ./nabbot.py
-- python -m compileall ./login.py
 - python -m compileall ./config.py
 - python -m compileall ./restart.py
 - python -m compileall ./cogs
