@@ -308,6 +308,9 @@ class Tracking:
         """Checks if the player has new deaths"""
         try:
             char = await get_character(character)
+            if char is None:
+                # During server save, characters can't be read sometimes
+                return
         except NetworkError:
             log.warning("check_death: couldn't fetch {0}".format(character))
             return
