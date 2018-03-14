@@ -665,8 +665,7 @@ class Tracking:
         except NetworkError:
             await ctx.send("I couldn't fetch the character, please try again.")
             return
-        print(char.comment)
-        match = claim_pattern.search(char.comment)
+        match = claim_pattern.search(char.comment if char.comment is not None else "")
         if not match:
             await ctx.send(f"Couldn't find verification code on character's comment.\n"
                            f"Add `/NB-{user_code}/` to the comment to authenticate.")
