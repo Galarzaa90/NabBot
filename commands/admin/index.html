@@ -99,7 +99,7 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="search">
     <label class="md-overlay" data-md-component="overlay" for="drawer"></label>
     
-      <a href="#diagnose-name" tabindex="1" class="md-skip">
+      <a href="#diagnose" tabindex="1" class="md-skip">
         Skip to content
       </a>
     
@@ -460,36 +460,57 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#diagnose-name" title="/diagnose [name]" class="md-nav__link">
-    /diagnose [name]
+  <a href="#diagnose" title="/diagnose" class="md-nav__link">
+    /diagnose
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#setworld-world" title="/setworld [world]" class="md-nav__link">
-    /setworld [world]
+  <a href="#setworld" title="/setworld" class="md-nav__link">
+    /setworld
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#setwelcome-message" title="/setwelcome [message]" class="md-nav__link">
-    /setwelcome [message]
+  <a href="#setwelcome" title="/setwelcome" class="md-nav__link">
+    /setwelcome
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#seteventschannel-name" title="/seteventschannel [name]" class="md-nav__link">
-    /seteventschannel [name]
+  <a href="#seteventschannel" title="/seteventschannel" class="md-nav__link">
+    /seteventschannel
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#setlevelsdeathschannel-name" title="/setlevelsdeathschannel [name]" class="md-nav__link">
-    /setlevelsdeathschannel [name]
+  <a href="#setlevelsdeathschannels" title="/setlevelsdeathschannels" class="md-nav__link">
+    /setlevelsdeathschannels
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#addchar" title="/addchar" class="md-nav__link">
+    /addchar
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#addacc" title="/addacc" class="md-nav__link">
+    /addacc
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#removechar" title="/removechar" class="md-nav__link">
+    /removechar
   </a>
   
 </li>
@@ -577,36 +598,57 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#diagnose-name" title="/diagnose [name]" class="md-nav__link">
-    /diagnose [name]
+  <a href="#diagnose" title="/diagnose" class="md-nav__link">
+    /diagnose
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#setworld-world" title="/setworld [world]" class="md-nav__link">
-    /setworld [world]
+  <a href="#setworld" title="/setworld" class="md-nav__link">
+    /setworld
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#setwelcome-message" title="/setwelcome [message]" class="md-nav__link">
-    /setwelcome [message]
+  <a href="#setwelcome" title="/setwelcome" class="md-nav__link">
+    /setwelcome
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#seteventschannel-name" title="/seteventschannel [name]" class="md-nav__link">
-    /seteventschannel [name]
+  <a href="#seteventschannel" title="/seteventschannel" class="md-nav__link">
+    /seteventschannel
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#setlevelsdeathschannel-name" title="/setlevelsdeathschannel [name]" class="md-nav__link">
-    /setlevelsdeathschannel [name]
+  <a href="#setlevelsdeathschannels" title="/setlevelsdeathschannels" class="md-nav__link">
+    /setlevelsdeathschannels
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#addchar" title="/addchar" class="md-nav__link">
+    /addchar
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#addacc" title="/addacc" class="md-nav__link">
+    /addacc
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#removechar" title="/removechar" class="md-nav__link">
+    /removechar
   </a>
   
 </li>
@@ -636,7 +678,8 @@
 <p>Words in italics are parameters.<br />
 Parameters enclosed in brackets <code class="codehilite">[]</code> are optional.</p>
 </div>
-<h2 id="diagnose-name">/diagnose [<em>name</em>]</h2>
+<h2 id="diagnose">/diagnose<a class="headerlink" href="#diagnose" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /diagnose [<em>name</em>]</p>
 <p>Checks the server and every channel's permissions to check if the bot has the needed permissions to work correctly.
 Also checks if the ask channel and server log channels are set correctly.</p>
 <p>If no serverName is specified, it check's the current server.
@@ -645,14 +688,16 @@ The command can't be used without a server name on private messages.</p>
 <p>Note that you must be the owner of the server in order to check. Bot owner can check any server the bot is in.  </p>
 <details class="summary"><summary>Examples</summary><p><strong>/diagnose</strong> <em>(on a server called Nab Bot)</em><br />
 <img alt="image" src="../../assets/images/commands/diagnose.png" /></p></details><hr />
-<h2 id="setworld-world">/setworld [<em>world</em>]</h2>
+<h2 id="setworld">/setworld<a class="headerlink" href="#setworld" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /setworld [<em>world</em>] </p>
 <p>Sets the tibia world this server will track. This lets users in this servers add their characters.</p>
 <p>If the command is used without a world, the bot will just say which world the server is currently tracking.<br />
 If the command is used with a world, the bot will ask to confirm the change.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/setworld</strong> <br />
 <img alt="image" src="../../assets/images/commands/setworld_1.png" /></p><p><strong>/setworld Fidera</strong> <br />
 <img alt="image" src="../../assets/images/commands/setworld_2.png" /></p></details><hr />
-<h2 id="setwelcome-message">/setwelcome [<em>message</em>]</h2>
+<h2 id="setwelcome">/setwelcome<a class="headerlink" href="#setwelcome" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /setwelcome [<em>message</em>]</p>
 <p>Sets the welcome message new users get when joining a server. By default all members receive the following message: </p>
 <hr />
 <p>Welcome to <strong>Server Name</strong>! I'm <strong>NabBot</strong>, to learn more about my commands type <code class="codehilite">/help</code><br />
@@ -665,8 +710,9 @@ Using the command with no parameters shows the current welcome message.</p>
 <img alt="image" src="../../assets/images/commands/setwelcome_2.png" /></p></details><p>Note that you can use special formatting to show the current user's name, server name, etc.
 For more info, use <code class="codehilite">/help setwelcome</code></p>
 <hr />
-<h2 id="seteventschannel-name">/seteventschannel [<em>name</em>]</h2>
-<p><em>Other aliases: /setnewschannel, /seteventschannel</em></p>
+<h2 id="seteventschannel">/seteventschannel<a class="headerlink" href="#seteventschannel" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /seteventschannel [<em>name</em>] <br />
+<strong>Other aliases</strong>: /setnewschannel, /seteventschannel</p>
 <p>By default, announcements are made on the highest channel the bot can see. This command can be used to change this channel.</p>
 <p>The channel set will be used for event announcements and news announcements. </p>
 <p>When setting a new channel, the bot will check if it has permission to write in there. 
@@ -675,8 +721,9 @@ If at some point the channel becomes deleted or unavailable to the bot in some w
 <details class="summary"><summary>Examples</summary><p><strong>/seteventschannel</strong> <br />
 <img alt="image" src="../../assets/images/commands/seteventschannel_1.png" /></p><p><strong>/seteventschannel #redd-alliance</strong> <br />
 <img alt="image" src="../../assets/images/commands/seteventschannel_2.png" /></p></details><hr />
-<h2 id="setlevelsdeathschannel-name">/setlevelsdeathschannel [<em>name</em>]</h2>
-<p><em>Other aliases: /setlevelschannel, /setdeathschannel, /setlevelchannel, /setdeathchannel, /setleveldeathchannel</em></p>
+<h2 id="setlevelsdeathschannels">/setlevelsdeathschannels<a class="headerlink" href="#setlevelsdeathschannels" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax</strong>: /setlevelsdeathschannels<br />
+<strong>Other aliases:</strong> /setlevelschannel, /setdeathschannel, /setlevelchannel, /setdeathchannel, /setleveldeathchannel</p>
 <p>By default, announcements are made on the highest channel the bot can see. This command can be used to change this channel.</p>
 <p>The channel set will be used for level up and deaths messages. </p>
 <p>When setting a new channel, the bot will check if it has permission to write in there. 
@@ -684,7 +731,21 @@ If at some point the channel becomes deleted or unavailable to the bot in some w
 <p>When it's used with no parameters, it will show the current assigned channel</p>
 <details class="summary"><summary>Examples</summary><p><strong>/seteventschannel</strong> <br />
 <img alt="image" src="../../assets/images/commands/setlevelsdeathschannel_1.png" /></p><p><strong>/seteventschannel #redd-alliance</strong> <br />
-<img alt="image" src="../../assets/images/commands/setlevelsdeathschannel_2.png" /></p></details>
+<img alt="image" src="../../assets/images/commands/setlevelsdeathschannel_2.png" /></p></details><hr />
+<h2 id="addchar">/addchar<a class="headerlink" href="#addchar" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /addchar <em>username</em>,<em>character</em><br />
+<strong>Other aliases:</strong> /registerchar</p>
+<p>Registers a character to a user. This command cannot be used on private channels.</p>
+<hr />
+<h2 id="addacc">/addacc<a class="headerlink" href="#addacc" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /addacc <em>username</em>,<em>character</em><br />
+<strong>Other aliases:</strong> /addaccount</p>
+<p>Registers the specified character and all other visible characters in the same account from the tracked world.</p>
+<hr />
+<h2 id="removechar">/removechar<a class="headerlink" href="#removechar" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /removechar <em>name</em><br />
+<strong>Other aliases:</strong> /deletechar, /unregisterchar</p>
+<p>Unassigns the specified character from its owner.</p>
                 
                   
                 
