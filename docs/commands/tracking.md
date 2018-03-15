@@ -5,7 +5,8 @@ Commands related to NabBot's tracking functions.
     Parameters enclosed in brackets `[]` are optional.
 
 
-## /im characterName
+## /im
+**Syntax:** /im *characterName*
 
 The bot scans the character and other characters on the account and registers them to the user.
 Registered characters have their deaths and level ups announced on the chat.

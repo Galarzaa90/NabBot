@@ -532,7 +532,7 @@ class Admin:
                                                                                char.vocation, guild, user))
                 userDatabase.commit()
 
-    @commands.command(name="addacc", aliases=["account", "addaccount", "acc"])
+    @commands.command(name="addacc", aliases=["addaccount"])
     @checks.is_owner()
     @commands.guild_only()
     async def add_account(self, ctx, *, params):

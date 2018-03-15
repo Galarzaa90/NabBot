@@ -4,7 +4,8 @@ This commands can only be used by the server's owner and users with the `Adminis
     Words in italics are parameters.  
     Parameters enclosed in brackets `[]` are optional.
 
-## /diagnose [*name*]
+## /diagnose
+**Syntax:** /diagnose [*name*]
 
 Checks the server and every channel's permissions to check if the bot has the needed permissions to work correctly.
 Also checks if the ask channel and server log channels are set correctly.
@@ -22,7 +23,8 @@ Note that you must be the owner of the server in order to check. Bot owner can c
 
 ----
 
-## /setworld [*world*]
+## /setworld 
+**Syntax:** /setworld [*world*] 
 
 Sets the tibia world this server will track. This lets users in this servers add their characters.
 
@@ -40,7 +42,8 @@ If the command is used with a world, the bot will ask to confirm the change.
 
 ----
 
-## /setwelcome [*message*]
+## /setwelcome
+**Syntax:** /setwelcome [*message*]
 
 Sets the welcome message new users get when joining a server. By default all members receive the following message: 
 ****
@@ -65,8 +68,9 @@ For more info, use `/help setwelcome`
 
 ----
 
-## /seteventschannel [*name*]
-*Other aliases: /setnewschannel, /seteventschannel*
+## /seteventschannel
+**Syntax:** /seteventschannel [*name*]   
+**Other aliases**: /setnewschannel, /seteventschannel
 
 By default, announcements are made on the highest channel the bot can see. This command can be used to change this channel.
 
@@ -87,8 +91,9 @@ When it's used with no parameters, it will show the current assigned channel
 
 ----
 
-## /setlevelsdeathschannel [*name*]
-*Other aliases: /setlevelschannel, /setdeathschannel, /setlevelchannel, /setdeathchannel, /setleveldeathchannel*
+## /setlevelsdeathschannels
+**Syntax**: /setlevelsdeathschannels  
+**Other aliases:** /setlevelschannel, /setdeathschannel, /setlevelchannel, /setdeathchannel, /setleveldeathchannel
 
 By default, announcements are made on the highest channel the bot can see. This command can be used to change this channel.
 
@@ -106,3 +111,28 @@ When it's used with no parameters, it will show the current assigned channel
     
     **/seteventschannel #redd-alliance**   
     ![image](../assets/images/commands/setlevelsdeathschannel_2.png)
+
+----
+
+## /addchar
+**Syntax:** /addchar *username*,*character*  
+**Other aliases:** /registerchar
+
+Registers a character to a user. This command cannot be used on private channels.
+
+----
+
+## /addacc 
+**Syntax:** /addacc *username*,*character*  
+**Other aliases:** /addaccount
+
+Registers the specified character and all other visible characters in the same account from the tracked world.
+
+
+----
+
+## /removechar
+**Syntax:** /removechar *name*  
+**Other aliases:** /deletechar, /unregisterchar
+
+Unassigns the specified character from its owner.
