@@ -375,7 +375,7 @@ class Tracking:
         if death.by_player:
             message = weighed_choice(death_messages_player, vocation=char.vocation, level=death.level,
                                      levels_lost=levels_lost)
-        elif death.killer in ["death","energy","earth","fire"] and levels_lost == 0:
+        elif death.killer in ["death","energy","earth","fire","Pit Battler","Pit Berserker","Pit Blackling","Pit Brawler","Pit Condemned","Pit Demon","Pit Destroyer","Pit Fiend","Pit Groveller","Pit Grunt","Pit Lord","Pit Maimer","Pit Overlord","Pit Reaver","Pit Scourge"] and levels_lost == 0:
             #skip element damage deaths unless player lost a level to avoid spam from arena deaths
             #this will cause a small amount of deaths to not be announced but it's probably worth the tradeoff (ty selken)
             return
