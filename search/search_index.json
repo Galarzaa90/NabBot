@@ -147,18 +147,18 @@
         },
         {
             "location": "/commands/general/",
-            "text": "Note\n\n\nThe information contained here refers to the \nmaster\n branch, it will be updated to \nrewrite\n documentation soon.\n\n\n\n\n\n\nInfo\n\n\nWords in italics are parameters.\n\nParameters enclosed in brackets \n[]\n are optional.\n\n\n\n\n/help \n[command]\n\u00b6\n\n\nDisplays commands available to the user.\n\n\nIf a category (a.k.a Cog) is specified, it will show only commands in that category.\n\nIf a command is specified, it will show more information about that commands, and commands if available.\n\nFurther help can be obtained by calling help for subcommands.  \n\n\nExamples\n/help\n\n\n\n\n(The reply is cropped, commands shown depend on caller)\n/help guild\n\n\n/help guild info\n\n\n\n\n/choose \noption1 option2 ... optionN\n\u00b6\n\n\nThe bot randomly chooses one of the options given.\nOptions with spaces in them must be quoted or they will be considered as multiple options.\n\n\nExamples\n/choose \"Option A\" optionb \"Option C\"\n\n\n\n\n/uptime\n\u00b6\n\n\nShows the time the bot has been running.\n\n\nExamples\n/uptime\n\n\n\n\n/about\n\u00b6\n\n\nShows various information about the bot.\n\n\nExamples\n/about\n\n\n\n\n/server\n\u00b6\n\n\nOther aliases: /serverinfo, /server_info\n\n\nShows information about the current server.\n\n\nExamples\n/server\n\n\n\n\n/roles [\nuserName\n]\n\u00b6\n\n\nShows a list of roles in the server. If a user is specified, roles assigned to them will be shown instead.\n\n\nExamples\n/roles\n\n\n/roles Galarzaa\n\n\n\n\n/role \nroleName\n\u00b6\n\n\nShows a list of members that have the specified role.\n\n\nExamples\n/role Vice Leader\n\n\n\n\n/events\n\u00b6\n\n\nShows a list of upcoming and recent events.\n\n\nExamples\n/event\n\n\n/events info \nid\n\u00b6\n\n\nShows details about an event with a specific id. The id can be seen when using /events or after creating an event.\n\n\nThe time shown on the bottom is in the local timezone of the viewer.\n\n\nExamples\n/event info 136\n\n\n/events add \nstarttime\n \nname\n[,description]\n\u00b6\n\n\nCreates an event. The start time must be set by specifying in how much time the event will start from now, e.g. 1d3h20m, 20h4m, 1d20m, 70m.  \n\n\nA description for an event is optional. Description can contain links using the following syntax \n[title](url)\n\n\nOnce the event is created, the id of the event will be returned. This id is used to edits, subscribe or join events.\nEvents can only be edited by the creator or by bot admins.\n\n\nUsers can only have 2 active events simultaneously.\n\n\nAfter using the command, the bot will ask for confirmation and show a preview of the event.\nThe start time displayed is based on the viewer's local time.\n\n\nExample\n/event add 5h Inquisition Quest,Remember to bring holy water!\n\n\n[\nTibiaWiki\n \nlink\n](\nhttp\n:\n//tibia.wikia.com/wiki/Inquisition_quest)\n\n\n/event delete \nid\n\u00b6\n\n\nOther aliases: /event remove, /event cancel\n\n\nDeletes or cancels an event.\n\n\nExamples\n/event delete 136\n\n\n/event subscribe \nid\n\u00b6\n\n\nOther aliases: /event sub\n\n\nLets you subscribe to an upcoming event. Meaning you will receive private messages when the event time is close.\n\n\nExamples\n/event sub 136\n\n\n/event unsubscribe \nid\n\u00b6\n\n\nOther aliases: /event unsub\n\n\nUnsubscribes you from an event.\n\n\nExamples\n/event unsub 136\n\n\n/event join \nid\n \nchar\n\u00b6\n\n\nLets you join the event with a character registered to you.\nEvents can be set to not joinable and only the creator can add characters.\n\n\nExamples\n/event join 136 Galarzaa Fidera\n\n\n/event leave \nid\n\u00b6\n\n\nLets you leave an event you had joined before.\n\n\nExamples\n/event leave 136\n\n\n/event addplayer \nid\n \ncharacter\n\u00b6\n\n\nOther aliases: /event addchar\n\n\nAdds someone else's character to the event. Only the event creator can do this.\n\n\nThis is useful for non joinable events, so the creator can control who's going or not.\n\n\nThe character must be registered to someone in the same server.\n\n\nExamples\n/event addplayer 136 Nezune\n\n\n/event removeplayer \nid\n \ncharacter\n\u00b6\n\n\nOther aliases: /event removechar\n\n\nRemoves someone from the event\n\n\nExamples\n/event addplayer 136 Nezune\n\n\n/event edit\n\u00b6\n\n\n/event edit name \nid\n [\nnew_name\n]\n\u00b6\n\n\nEdit's an event's name. If no new name is provided initially, the bot will ask for one.\n\n\n/event edit description \nid\n [\nnew_description\n]\n\u00b6\n\n\nEdit's an event's description. If no new description is provided initially, the bot will ask for one.\n\n\nTo remove an even't description, say \nblank\n.\n\n\n/event edit time \nid\n [\nnew_time\n]\n\u00b6\n\n\nEdit's an event's start time. If no new time is provided initially, the bot will ask for one.\n\n\n/event edit joinable \nid\n [\nyes_no\n]\n\u00b6\n\n\nSets whether the event is joinable or not.\n\nIf the event is joinable, anyone can use \n/event join\n.\nOtherwise, the creator can add characters themselves by using \n/event addchar\n.\n\n\n/event edit slots \nid\n [\nnew_slots\n]\n\u00b6\n\n\nSets the number of characters an event can have. By default this is 0, which means no limit.\n\n\n/event make\n\u00b6\n\n\nGuides you step by step through the event making process.",
+            "text": "Note\n\n\nThe information contained here refers to the \nmaster\n branch, it will be updated to \nrewrite\n documentation soon.\n\n\n\n\n\n\nInfo\n\n\nWords in italics are parameters.\n\nParameters enclosed in brackets \n[]\n are optional.\n\n\n\n\n/help\n\u00b6\n\n\nSyntax:\n /help \n[command]\n\n\nDisplays commands available to the user.\n\n\nIf a category (a.k.a Cog) is specified, it will show only commands in that category.\n\nIf a command is specified, it will show more information about that commands, and commands if available.\n\nFurther help can be obtained by calling help for subcommands.  \n\n\nExamples\n/help\n\n\n\n\n(The reply is cropped, commands shown depend on caller)\n/help guild\n\n\n/help guild info\n\n\n\n\n/choose\n\u00b6\n\n\nSyntax:\n /choose \noption1 option2 ... optionN\n\n\nThe bot randomly chooses one of the options given.\nOptions with spaces in them must be quoted or they will be considered as multiple options.\n\n\nExamples\n/choose \"Option A\" optionb \"Option C\"\n\n\n\n\n/uptime\n\u00b6\n\n\nShows the time the bot has been running.\n\n\nExamples\n/uptime\n\n\n\n\n/about\n\u00b6\n\n\nShows various information about the bot.\n\n\nExamples\n/about\n\n\n\n\n/server\n\u00b6\n\n\nOther aliases:\n /serverinfo, /server_info\n\n\nShows information about the current server.\n\n\nExamples\n/server\n\n\n\n\n/roles\n\u00b6\n\n\nSyntax:\n /roles [\nuserName\n]\n\n\nShows a list of roles in the server. If a user is specified, roles assigned to them will be shown instead.\n\n\nExamples\n/roles\n\n\n/roles Galarzaa\n\n\n\n\n/role\n\u00b6\n\n\nSyntax:\n /role \nroleName\n\n\nShows a list of members that have the specified role.\n\n\nExamples\n/role Vice Leader\n\n\n\n\n/events\n\u00b6\n\n\nShows a list of upcoming and recent events.\n\n\nExamples\n/event\n\n\n/events info\n\u00b6\n\n\nSyntax\n: /events info \nid\n\n\nShows details about an event with a specific id. The id can be seen when using /events or after creating an event.\n\n\nThe time shown on the bottom is in the local timezone of the viewer.\n\n\nExamples\n/event info 136\n\n\n/events add\n\u00b6\n\n\nSyntax\n: /events add \nstarttime\n \nname[,description]\n\n\nCreates an event. The start time must be set by specifying in how much time the event will start from now, e.g. 1d3h20m, 20h4m, 1d20m, 70m.  \n\n\nA description for an event is optional. Description can contain links using the following syntax \n[title](url)\n\n\nOnce the event is created, the id of the event will be returned. This id is used to edits, subscribe or join events.\nEvents can only be edited by the creator or by bot admins.\n\n\nUsers can only have 2 active events simultaneously.\n\n\nAfter using the command, the bot will ask for confirmation and show a preview of the event.\nThe start time displayed is based on the viewer's local time.\n\n\nExample\n/event add 5h Inquisition Quest,Remember to bring holy water!\n\n\n[\nTibiaWiki\n \nlink\n](\nhttp\n:\n//tibia.wikia.com/wiki/Inquisition_quest)\n\n\n/event delete\n\u00b6\n\n\nSyntax\n: /event \nid\n\n\nOther aliases:\n /event remove, /event cancel\n\n\nDeletes or cancels an event.\n\n\nExamples\n/event delete 136\n\n\n/event subscribe\n\u00b6\n\n\nSyntax\n: /event subscribe \nid\n\n\nOther aliases:\n /event sub\n\n\nLets you subscribe to an upcoming event. Meaning you will receive private messages when the event time is close.\n\n\nExamples\n/event sub 136\n\n\n/event unsubscribe\n\u00b6\n\n\nSyntax\n: /event unsubscribe \nid\n\n\nOther aliases:\n /event unsub\n\n\nUnsubscribes you from an event.\n\n\nExamples\n/event unsub 136\n\n\n/event join\n\u00b6\n\n\nSyntax:\n /event join \nid\n \nchar\n\n\nLets you join the event with a character registered to you.\nEvents can be set to not joinable and only the creator can add characters.\n\n\nExamples\n/event join 136 Galarzaa Fidera\n\n\n/event leave\n\u00b6\n\n\nSyntax:\n /event leave \nid\n\n\nLets you leave an event you had joined before.\n\n\nExamples\n/event leave 136\n\n\n/event addplayer\n\u00b6\n\n\nSyntax:\n /event addplayer \nid\n \ncharacter\n\n\nOther aliases:\n /event addchar\n\n\nAdds someone else's character to the event. Only the event creator can do this.\n\n\nThis is useful for non joinable events, so the creator can control who's going or not.\n\n\nThe character must be registered to someone in the same server.\n\n\nExamples\n/event addplayer 136 Nezune\n\n\n/event removeplayer\n\u00b6\n\n\nSyntax:\n /event removeplayer \nid\n \ncharacter\n\n\nOther aliases:\n /event removechar\n\n\nRemoves someone from the event\n\n\nExamples\n/event addplayer 136 Nezune\n\n\n/event edit\n\u00b6\n\n\n/event edit name\n\u00b6\n\n\nSyntax:\n /event edit name \nid\n [\nnew_name\n]\n\n\nEdit's an event's name. If no new name is provided initially, the bot will ask for one.\n\n\n/event edit description\n\u00b6\n\n\nSyntax:\n /event edit description \nid\n [\nnew_description\n]\n\n\nEdit's an event's description. If no new description is provided initially, the bot will ask for one.\n\n\nTo remove an even't description, say \nblank\n.\n\n\n/event edit time\n\u00b6\n\n\nSyntax:\n /event edit time \nid\n [\nnew_time\n]\n\n\nEdit's an event's start time. If no new time is provided initially, the bot will ask for one.\n\n\n/event edit joinable\n\u00b6\n\n\nSyntax:\n /event edit joinable \nid\n [\nyes_no\n]\n\n\nSets whether the event is joinable or not.\n\nIf the event is joinable, anyone can use \n/event join\n.\nOtherwise, the creator can add characters themselves by using \n/event addchar\n.\n\n\n/event edit slots\n\u00b6\n\n\nSyntax:\n /event edit slots \nid\n [\nnew_slots\n]\n\n\nSets the number of characters an event can have. By default this is 0, which means no limit.\n\n\n/event make\n\u00b6\n\n\nGuides you step by step through the event making process.",
             "title": "General commands"
         },
         {
-            "location": "/commands/general/#help-command",
-            "text": "Displays commands available to the user.  If a category (a.k.a Cog) is specified, it will show only commands in that category. \nIf a command is specified, it will show more information about that commands, and commands if available. \nFurther help can be obtained by calling help for subcommands.    Examples /help   (The reply is cropped, commands shown depend on caller) /help guild  /help guild info",
-            "title": "/help [command]"
+            "location": "/commands/general/#help",
+            "text": "Syntax:  /help  [command]  Displays commands available to the user.  If a category (a.k.a Cog) is specified, it will show only commands in that category. \nIf a command is specified, it will show more information about that commands, and commands if available. \nFurther help can be obtained by calling help for subcommands.    Examples /help   (The reply is cropped, commands shown depend on caller) /help guild  /help guild info",
+            "title": "/help"
         },
         {
-            "location": "/commands/general/#choose-option1-option2-optionn",
-            "text": "The bot randomly chooses one of the options given.\nOptions with spaces in them must be quoted or they will be considered as multiple options.  Examples /choose \"Option A\" optionb \"Option C\"",
-            "title": "/choose option1 option2 ... optionN"
+            "location": "/commands/general/#choose",
+            "text": "Syntax:  /choose  option1 option2 ... optionN  The bot randomly chooses one of the options given.\nOptions with spaces in them must be quoted or they will be considered as multiple options.  Examples /choose \"Option A\" optionb \"Option C\"",
+            "title": "/choose"
         },
         {
             "location": "/commands/general/#uptime",
@@ -172,18 +172,18 @@
         },
         {
             "location": "/commands/general/#server",
-            "text": "Other aliases: /serverinfo, /server_info  Shows information about the current server.  Examples /server",
+            "text": "Other aliases:  /serverinfo, /server_info  Shows information about the current server.  Examples /server",
             "title": "/server"
         },
         {
-            "location": "/commands/general/#roles-username",
-            "text": "Shows a list of roles in the server. If a user is specified, roles assigned to them will be shown instead.  Examples /roles  /roles Galarzaa",
-            "title": "/roles [userName]"
+            "location": "/commands/general/#roles",
+            "text": "Syntax:  /roles [ userName ]  Shows a list of roles in the server. If a user is specified, roles assigned to them will be shown instead.  Examples /roles  /roles Galarzaa",
+            "title": "/roles"
         },
         {
-            "location": "/commands/general/#role-rolename",
-            "text": "Shows a list of members that have the specified role.  Examples /role Vice Leader",
-            "title": "/role roleName"
+            "location": "/commands/general/#role",
+            "text": "Syntax:  /role  roleName  Shows a list of members that have the specified role.  Examples /role Vice Leader",
+            "title": "/role"
         },
         {
             "location": "/commands/general/#events",
@@ -191,49 +191,49 @@
             "title": "/events"
         },
         {
-            "location": "/commands/general/#events-info-id",
-            "text": "Shows details about an event with a specific id. The id can be seen when using /events or after creating an event.  The time shown on the bottom is in the local timezone of the viewer.  Examples /event info 136",
-            "title": "/events info id"
+            "location": "/commands/general/#events-info",
+            "text": "Syntax : /events info  id  Shows details about an event with a specific id. The id can be seen when using /events or after creating an event.  The time shown on the bottom is in the local timezone of the viewer.  Examples /event info 136",
+            "title": "/events info"
         },
         {
-            "location": "/commands/general/#events-add-starttime-namedescription",
-            "text": "Creates an event. The start time must be set by specifying in how much time the event will start from now, e.g. 1d3h20m, 20h4m, 1d20m, 70m.    A description for an event is optional. Description can contain links using the following syntax  [title](url)  Once the event is created, the id of the event will be returned. This id is used to edits, subscribe or join events.\nEvents can only be edited by the creator or by bot admins.  Users can only have 2 active events simultaneously.  After using the command, the bot will ask for confirmation and show a preview of the event.\nThe start time displayed is based on the viewer's local time.  Example /event add 5h Inquisition Quest,Remember to bring holy water!  [ TibiaWiki   link ]( http : //tibia.wikia.com/wiki/Inquisition_quest)",
-            "title": "/events add starttime name[,description]"
+            "location": "/commands/general/#events-add",
+            "text": "Syntax : /events add  starttime   name[,description]  Creates an event. The start time must be set by specifying in how much time the event will start from now, e.g. 1d3h20m, 20h4m, 1d20m, 70m.    A description for an event is optional. Description can contain links using the following syntax  [title](url)  Once the event is created, the id of the event will be returned. This id is used to edits, subscribe or join events.\nEvents can only be edited by the creator or by bot admins.  Users can only have 2 active events simultaneously.  After using the command, the bot will ask for confirmation and show a preview of the event.\nThe start time displayed is based on the viewer's local time.  Example /event add 5h Inquisition Quest,Remember to bring holy water!  [ TibiaWiki   link ]( http : //tibia.wikia.com/wiki/Inquisition_quest)",
+            "title": "/events add"
         },
         {
-            "location": "/commands/general/#event-delete-id",
-            "text": "Other aliases: /event remove, /event cancel  Deletes or cancels an event.  Examples /event delete 136",
-            "title": "/event delete id"
+            "location": "/commands/general/#event-delete",
+            "text": "Syntax : /event  id  Other aliases:  /event remove, /event cancel  Deletes or cancels an event.  Examples /event delete 136",
+            "title": "/event delete"
         },
         {
-            "location": "/commands/general/#event-subscribe-id",
-            "text": "Other aliases: /event sub  Lets you subscribe to an upcoming event. Meaning you will receive private messages when the event time is close.  Examples /event sub 136",
-            "title": "/event subscribe id"
+            "location": "/commands/general/#event-subscribe",
+            "text": "Syntax : /event subscribe  id  Other aliases:  /event sub  Lets you subscribe to an upcoming event. Meaning you will receive private messages when the event time is close.  Examples /event sub 136",
+            "title": "/event subscribe"
         },
         {
-            "location": "/commands/general/#event-unsubscribe-id",
-            "text": "Other aliases: /event unsub  Unsubscribes you from an event.  Examples /event unsub 136",
-            "title": "/event unsubscribe id"
+            "location": "/commands/general/#event-unsubscribe",
+            "text": "Syntax : /event unsubscribe  id  Other aliases:  /event unsub  Unsubscribes you from an event.  Examples /event unsub 136",
+            "title": "/event unsubscribe"
         },
         {
-            "location": "/commands/general/#event-join-id-char",
-            "text": "Lets you join the event with a character registered to you.\nEvents can be set to not joinable and only the creator can add characters.  Examples /event join 136 Galarzaa Fidera",
-            "title": "/event join id char"
+            "location": "/commands/general/#event-join",
+            "text": "Syntax:  /event join  id   char  Lets you join the event with a character registered to you.\nEvents can be set to not joinable and only the creator can add characters.  Examples /event join 136 Galarzaa Fidera",
+            "title": "/event join"
         },
         {
-            "location": "/commands/general/#event-leave-id",
-            "text": "Lets you leave an event you had joined before.  Examples /event leave 136",
-            "title": "/event leave id"
+            "location": "/commands/general/#event-leave",
+            "text": "Syntax:  /event leave  id  Lets you leave an event you had joined before.  Examples /event leave 136",
+            "title": "/event leave"
         },
         {
-            "location": "/commands/general/#event-addplayer-id-character",
-            "text": "Other aliases: /event addchar  Adds someone else's character to the event. Only the event creator can do this.  This is useful for non joinable events, so the creator can control who's going or not.  The character must be registered to someone in the same server.  Examples /event addplayer 136 Nezune",
-            "title": "/event addplayer id character"
+            "location": "/commands/general/#event-addplayer",
+            "text": "Syntax:  /event addplayer  id   character  Other aliases:  /event addchar  Adds someone else's character to the event. Only the event creator can do this.  This is useful for non joinable events, so the creator can control who's going or not.  The character must be registered to someone in the same server.  Examples /event addplayer 136 Nezune",
+            "title": "/event addplayer"
         },
         {
-            "location": "/commands/general/#event-removeplayer-id-character",
-            "text": "Other aliases: /event removechar  Removes someone from the event  Examples /event addplayer 136 Nezune",
-            "title": "/event removeplayer id character"
+            "location": "/commands/general/#event-removeplayer",
+            "text": "Syntax:  /event removeplayer  id   character  Other aliases:  /event removechar  Removes someone from the event  Examples /event addplayer 136 Nezune",
+            "title": "/event removeplayer"
         },
         {
             "location": "/commands/general/#event-edit",
@@ -241,29 +241,29 @@
             "title": "/event edit"
         },
         {
-            "location": "/commands/general/#event-edit-name-id-new_name",
-            "text": "Edit's an event's name. If no new name is provided initially, the bot will ask for one.",
-            "title": "/event edit name id [new_name]"
+            "location": "/commands/general/#event-edit-name",
+            "text": "Syntax:  /event edit name  id  [ new_name ]  Edit's an event's name. If no new name is provided initially, the bot will ask for one.",
+            "title": "/event edit name"
         },
         {
-            "location": "/commands/general/#event-edit-description-id-new_description",
-            "text": "Edit's an event's description. If no new description is provided initially, the bot will ask for one.  To remove an even't description, say  blank .",
-            "title": "/event edit description id [new_description]"
+            "location": "/commands/general/#event-edit-description",
+            "text": "Syntax:  /event edit description  id  [ new_description ]  Edit's an event's description. If no new description is provided initially, the bot will ask for one.  To remove an even't description, say  blank .",
+            "title": "/event edit description"
         },
         {
-            "location": "/commands/general/#event-edit-time-id-new_time",
-            "text": "Edit's an event's start time. If no new time is provided initially, the bot will ask for one.",
-            "title": "/event edit time id [new_time]"
+            "location": "/commands/general/#event-edit-time",
+            "text": "Syntax:  /event edit time  id  [ new_time ]  Edit's an event's start time. If no new time is provided initially, the bot will ask for one.",
+            "title": "/event edit time"
         },
         {
-            "location": "/commands/general/#event-edit-joinable-id-yes_no",
-            "text": "Sets whether the event is joinable or not. \nIf the event is joinable, anyone can use  /event join .\nOtherwise, the creator can add characters themselves by using  /event addchar .",
-            "title": "/event edit joinable id [yes_no]"
+            "location": "/commands/general/#event-edit-joinable",
+            "text": "Syntax:  /event edit joinable  id  [ yes_no ]  Sets whether the event is joinable or not. \nIf the event is joinable, anyone can use  /event join .\nOtherwise, the creator can add characters themselves by using  /event addchar .",
+            "title": "/event edit joinable"
         },
         {
-            "location": "/commands/general/#event-edit-slots-id-new_slots",
-            "text": "Sets the number of characters an event can have. By default this is 0, which means no limit.",
-            "title": "/event edit slots id [new_slots]"
+            "location": "/commands/general/#event-edit-slots",
+            "text": "Syntax:  /event edit slots  id  [ new_slots ]  Sets the number of characters an event can have. By default this is 0, which means no limit.",
+            "title": "/event edit slots"
         },
         {
             "location": "/commands/general/#event-make",
@@ -272,147 +272,147 @@
         },
         {
             "location": "/commands/tibia/",
-            "text": "Commands related to Tibia, specially commands related to tibia.com\n\n\n\n\nInfo\n\n\nWords in italics are parameters.\n\nParameters enclosed in brackets \n[]\n are optional.\n\n\n\n\n/whois \nplayerName/discordUser\n\u00b6\n\n\nOther aliases: /check, /player, /checkplayer, /char, /character\n\n\nThis commands has 2 functions:  \n\n\n\n\nIt retrieves and displays info about a Tibia character\n\n\nIt retrieves the list of characters linked to a discord user\n\n\n\n\nIf the parameter matches a discord user, it displays a list of the characters linked to that user.\nIf the parameter matches a character, it will display the character's info, such as level, vocation, guild, world, etc.\n\n\nIf the character found is registered to a discord user, it will show the owner of the character.\n\n\nDiscord users can be looked for through Usernames, User#Discriminator (i.e. \nGalarzaa#8515\n) or even user id.\n\n\nBoth cases can match simultaneously.\n\n\nIt also shows the character's corresponding highscore positions, however, this is only available for registered characters.\n\n\nExamples\n/whois Galarzaa Fidera\n\n\nIn this case, it matched \nGalarzaa Fidera\n to a character, and that character is registered to user @Galarzaa\n/whois Galarzaa\n\n\nIn this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed.\nHowever, it also matches the character \nGalarzaa\n which may not be necessarily related to the user.\n/whois Bich\u00e6o\n\n\nIn this case, the name only matches an user, and since no character was matched, their highest level registered character is shown.\n/whois 115042985778872322\n\n\nIn this case, a user id was provided, and it searched for the user with that id.\n\n\n/guild \nguildname\n\u00b6\n\n\nOther aliases: /guildcheck, /checkguild\n\n\nShow's the number of members a guild has, and a list of their online users.\nIt also shows whether the guild has a guildhall or not, and their founded date.\n\n\nExamples\n/guild Redd Alliance\n\n\n\n\n/guild members \nguildname\n\u00b6\n\n\nOther aliases: /guild list\n\n\nShows a paginated list of all the members of a guild. If they are online, \ud83d\udd39 is shown next to their name.\n\n\nExamples\n/guild members Redd Alliance\n\n\n\n\n/guild info \nguildname\n\u00b6\n\n\nOther aliases /guild stats\n\n\nShows basic information about a guild, like their description, homepage, guildhall, number of members of members and more.\n\n\nExamples\n/guild info Bald Dwarfs\n\n\n/share \nlevel/player\n\u00b6\n\n\nOther aliases: /expshare, /party\n\n\nThere's three different ways to use this command:\n\n\n\n\nProviding a single number, shows the share range of a character of that level.\n\n\nProviding a charater name, shows the share range of that character.\n\n\nProviding up to 5 character names, separated with commas, shows if they are able to share.\n\n\n\n\nExamples\n/share 300\n\n\n/share Galarzaa Fidera\n\n\n/share Galarzaa Fidera, Nezune, Xzilla\n\n\n/share Galarzaa Fidera, Topheroo\n\n\n\n\n/deaths [\nplayer\n]\n\u00b6\n\n\nOther aliases: /deathlist, /death\n\n\nIf a player is specified, it displays a list of that player's recent deaths. \nIf no player is specified, it will show the recent deaths of all players registered in the database. \nThe number of entries shown per page is higher in ask channel and private channels.\n\n\nExamples\n/deaths Xzilla\n\n\n/deaths\n\n\n/deaths monster \nname\n\u00b6\n\n\nOther aliases: /deaths mob, /deaths killer\n\n\nShows recent deaths by a specific monster or killer.\n\n\nExample\n/deaths mob Lloyd\n\n\n/deaths user \nname\n\u00b6\n\n\nShows recent deaths by all characters registered to a user.\n\n\nExample\n/deaths user Nezune\n\n\n\n\n/levels [\nplayer\n]\n\u00b6\n\n\nOther aliases: /levelups, /lvl, /level, /lvls\n\n\nIf a player is specified, it displays a list of the player's recent level ups.\nIf no player is specified, it will show the recent level ups of all players registered in the database.\n\n\nExamples\n/levels\n\n\n/levels Dre amz\n\n\n/levels user \nname\n\u00b6\n\n\n*Other aliases: /story\n\n\nShows recent levels by all characters registered to a user.\n\n\nExamples\n/levels user Nezune\n\n\n\n\n/timeline [\nplayer\n]\n\u00b6\n\n\nShows recent levels and deaths by all registered characters.\nIf a character name is provided, their level ups and deaths are shown. \n\n\n\n\n\ud83c\udf1f Indicates level ups\n\n\n\ud83d\udc80 Indicates deaths\n\n\n\n\nExamples\n/timeline\n\n\n/timeline Fila Bro\n\n\n\n\n/timeline user \nname\n\u00b6\n\n\nShows recent levels and deaths by all characters registed to the user.\n\n\nExamples\n/timeline user Pepyto \ud83c\udf4c\n\n\n\n\n/stats \nlevel,vocation\n/\ncharactername\n\u00b6\n\n\nReplies with the hitpoints, mana, capacity, total experience and experience to next level (at 0% progress) \nof a character with that level and vocation, or if a character's name was entered, it replies with its stats.\n\n\nExamples\n/stats 543,elder druid\n\n\n/stats Galarzaa Fidera\n\n\n/findteam char/level/minlevel,maxlevel\n\u00b6\n\n\nOther aliases: /whereteam, /searchteam, /team\n\n\nThis commands finds registered characters with the desired levels.\nVocations can be filtered using the reaction buttons.\n\n\nThere's three ways to use the command:\n\n\n\n\nProvide a character's name, shows a list of characters in share range. (\n/findteam char\n)\n\n\nProvide a level, shows a list of characters in share range with that level. (\n/findteam level\n)\n\n\nProvide two levels, shows a list of characters in that level range. (\n/findteam min,max\n)\n\n\n\n\nOnline characters are shown first on the list, they also have a \ud83d\udd39 icon.\n\n\nExamples\n/findteam Galarzaa Fidera\n\n\n/findteam 234\n\n\n/findteam 100,120\n\n\n\n\n/world \nname\n\u00b6\n\n\nDisplays information about a world like pvp type, online count, location and more.\n\n\nExamples\n/world Fidera\n  \n\n\n/world Ferobra\n\n\n\n\nnews [\narticle_id\n]\n\u00b6\n\n\nDisplays a list of recent news and articles. Or if an article id is provided, a summary of that article is displayed.\n\n\nIf the command is used on the ask channel or in private, the list or summary displayed will be longer.\n\n\nExamples\n/news\n  \n\n\n/news 4400\n\n\n/house \nname\n[/\nworld\n]\n\u00b6\n\n\nOther aliases: /houses, /guildhall, /gh\n\n\nDisplays information about a house, including a picture of the a section of the map where it is located.\nIt shows the current status of the house in the world the current discord server is tracking.\n\n\nTo specify a different world, add the world after a slash \n/\n\n\nExamples\n/house darashia 8, flat 03\n\n\n/house caveman shelter/calmera\n\n\n\n\n/blessings \nlevel\n\u00b6\n\n\nOther aliases: /bless\n\n\nReplies with the cost of blessings for that level.\nFor players over level 100, it will also display the cost of the Blessing of the Inquisition.\n\n\nExamples\n/bless 90\n\n\n/bless 140\n\n\n\n\n/time\n\u00b6\n\n\nOther aliases: /serversave, /ss\n\n\nDisplays the time in CipSoft's (CET/CEST), Brazil's and Mexico's timezones, the time until server save and Rashid's current city.\n\n\nExamples\n/time",
+            "text": "Commands related to Tibia, specially commands related to tibia.com\n\n\n\n\nInfo\n\n\nWords in italics are parameters.\n\nParameters enclosed in brackets \n[]\n are optional.\n\n\n\n\n/whois\n\u00b6\n\n\nSyntax:\n /whois \nplayerName/discordUser\n\n\nOther aliases:\n /check, /player, /checkplayer, /char, /character\n\n\nThis commands has 2 functions:  \n\n\n\n\nIt retrieves and displays info about a Tibia character\n\n\nIt retrieves the list of characters linked to a discord user\n\n\n\n\nIf the parameter matches a discord user, it displays a list of the characters linked to that user.\nIf the parameter matches a character, it will display the character's info, such as level, vocation, guild, world, etc.\n\n\nIf the character found is registered to a discord user, it will show the owner of the character.\n\n\nDiscord users can be looked for through Usernames, User#Discriminator (i.e. \nGalarzaa#8515\n) or even user id.\n\n\nBoth cases can match simultaneously.\n\n\nIt also shows the character's corresponding highscore positions, however, this is only available for registered characters.\n\n\nExamples\n/whois Galarzaa Fidera\n\n\nIn this case, it matched \nGalarzaa Fidera\n to a character, and that character is registered to user @Galarzaa\n/whois Galarzaa\n\n\nIn this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed.\nHowever, it also matches the character \nGalarzaa\n which may not be necessarily related to the user.\n/whois Bich\u00e6o\n\n\nIn this case, the name only matches an user, and since no character was matched, their highest level registered character is shown.\n/whois 115042985778872322\n\n\nIn this case, a user id was provided, and it searched for the user with that id.\n\n\n/guild\n\u00b6\n\n\nSyntax:\n /guild \nguildname\n\n\nOther aliases:\n /guildcheck, /checkguild\n\n\nShow's the number of members a guild has, and a list of their online users.\nIt also shows whether the guild has a guildhall or not, and their founded date.\n\n\nExamples\n/guild Redd Alliance\n\n\n\n\n/guild members\n\u00b6\n\n\nSyntax:\n /guild \nguildname\n\n\nOther aliases:\n /guild list\n\n\nShows a paginated list of all the members of a guild. If they are online, \ud83d\udd39 is shown next to their name.\n\n\nExamples\n/guild members Redd Alliance\n\n\n\n\n/guild info\n\u00b6\n\n\nSyntax:\n /guild info \nguildname\n\n\nOther aliases:\n /guild stats\n\n\nShows basic information about a guild, like their description, homepage, guildhall, number of members of members and more.\n\n\nExamples\n/guild info Bald Dwarfs\n\n\n/share\n\u00b6\n\n\nSyntax:\n /share \nlevel/player\n\n\nOther aliases:\n /expshare, /party\n\n\nThere's three different ways to use this command:\n\n\n\n\nProviding a single number, shows the share range of a character of that level.\n\n\nProviding a charater name, shows the share range of that character.\n\n\nProviding up to 5 character names, separated with commas, shows if they are able to share.\n\n\n\n\nExamples\n/share 300\n\n\n/share Galarzaa Fidera\n\n\n/share Galarzaa Fidera, Nezune, Xzilla\n\n\n/share Galarzaa Fidera, Topheroo\n\n\n\n\n/deaths\n\u00b6\n\n\nSyntax:\n /deaths [\nplayer\n]\n\n\nOther aliases:\n /deathlist, /death\n\n\nIf a player is specified, it displays a list of that player's recent deaths. \nIf no player is specified, it will show the recent deaths of all players registered in the database. \nThe number of entries shown per page is higher in ask channel and private channels.\n\n\nExamples\n/deaths Xzilla\n\n\n/deaths\n\n\n/deaths monster\n\u00b6\n\n\nSyntax:\n /deaths monster \nname\n\n\nOther aliases:\n /deaths mob, /deaths killer\n\n\nShows recent deaths by a specific monster or killer.\n\n\nExample\n/deaths mob Lloyd\n\n\n/deaths user\n\u00b6\n\n\nSyntax:\n /death user \nname\n\n\nShows recent deaths by all characters registered to a user.\n\n\nExample\n/deaths user Nezune\n\n\n\n\n/levels\n\u00b6\n\n\nSyntax:\n /levels [\nplayer\n]\n\n\nOther aliases:\n /levelups, /lvl, /level, /lvls\n\n\nIf a player is specified, it displays a list of the player's recent level ups.\nIf no player is specified, it will show the recent level ups of all players registered in the database.\n\n\nExamples\n/levels\n\n\n/levels Dre amz\n\n\n/levels user\n\u00b6\n\n\nSyntax:\n /levels user \nname\n  \n\n\nShows recent levels by all characters registered to a user.\n\n\nExamples\n/levels user Nezune\n\n\n\n\n/timeline\n\u00b6\n\n\nSyntax:\n /timeline [\nplayer\n]\n\n\nOther aliases:\n /story\n\n\nShows recent levels and deaths by all registered characters.\nIf a character name is provided, their level ups and deaths are shown. \n\n\n\n\n\ud83c\udf1f Indicates level ups\n\n\n\ud83d\udc80 Indicates deaths\n\n\n\n\nExamples\n/timeline\n\n\n/timeline Fila Bro\n\n\n\n\n/timeline\n\u00b6\n\n\nSyntax:\n /timeline user \nname\n\n\nShows recent levels and deaths by all characters registed to the user.\n\n\nExamples\n/timeline user Pepyto \ud83c\udf4c\n\n\n\n\n/stats\n\u00b6\n\n\nSyntax:\n /stats \nlevel,vocation\n/\ncharactername\n\n\nReplies with the hitpoints, mana, capacity, total experience and experience to next level (at 0% progress) \nof a character with that level and vocation, or if a character's name was entered, it replies with its stats.\n\n\nExamples\n/stats 543,elder druid\n\n\n/stats Galarzaa Fidera\n\n\n/findteam\n\u00b6\n\n\nSyntax:\n /findteam \nchar/level/minlevel\n,\nmaxlevel\n\n\nOther aliases:\n /whereteam, /searchteam, /team\n\n\nThis commands finds registered characters with the desired levels.\nVocations can be filtered using the reaction buttons.\n\n\nThere's three ways to use the command:\n\n\n\n\nProvide a character's name, shows a list of characters in share range. (\n/findteam char\n)\n\n\nProvide a level, shows a list of characters in share range with that level. (\n/findteam level\n)\n\n\nProvide two levels, shows a list of characters in that level range. (\n/findteam min,max\n)\n\n\n\n\nOnline characters are shown first on the list, they also have a \ud83d\udd39 icon.\n\n\nExamples\n/findteam Galarzaa Fidera\n\n\n/findteam 234\n\n\n/findteam 100,120\n\n\n\n\n/world\n\u00b6\n\n\nSyntax:\n /world \nname\n\n\nDisplays information about a world like pvp type, online count, location and more.\n\n\nExamples\n/world Fidera\n  \n\n\n/world Ferobra\n\n\n\n\nnews\n\u00b6\n\n\nSyntax:\n news [\narticle_id\n]\n\n\nDisplays a list of recent news and articles. Or if an article id is provided, a summary of that article is displayed.\n\n\nIf the command is used on the ask channel or in private, the list or summary displayed will be longer.\n\n\nExamples\n/news\n  \n\n\n/news 4400\n\n\n/house\n\u00b6\n\n\nSyntax:\n /house \nname\n[/\nworld\n]\n\n\nOther aliases:\n /houses, /guildhall, /gh\n\n\nDisplays information about a house, including a picture of the a section of the map where it is located.\nIt shows the current status of the house in the world the current discord server is tracking.\n\n\nTo specify a different world, add the world after a slash \n/\n\n\nExamples\n/house darashia 8, flat 03\n\n\n/house caveman shelter/calmera\n\n\n\n\n/blessings\n\u00b6\n\n\nSyntax:\n /blessings \nlevel\n\n\nOther aliases:\n /bless\n\n\nReplies with the cost of blessings for that level.\nFor players over level 100, it will also display the cost of the Blessing of the Inquisition.\n\n\nExamples\n/bless 90\n\n\n/bless 140\n\n\n\n\n/time\n\u00b6\n\n\nOther aliases:\n /serversave, /ss\n\n\nDisplays the time in CipSoft's (CET/CEST), Brazil's and Mexico's timezones, the time until server save and Rashid's current city.\n\n\nExamples\n/time",
             "title": "Tibia commands"
         },
         {
-            "location": "/commands/tibia/#whois-playernamediscorduser",
-            "text": "Other aliases: /check, /player, /checkplayer, /char, /character  This commands has 2 functions:     It retrieves and displays info about a Tibia character  It retrieves the list of characters linked to a discord user   If the parameter matches a discord user, it displays a list of the characters linked to that user.\nIf the parameter matches a character, it will display the character's info, such as level, vocation, guild, world, etc.  If the character found is registered to a discord user, it will show the owner of the character.  Discord users can be looked for through Usernames, User#Discriminator (i.e.  Galarzaa#8515 ) or even user id.  Both cases can match simultaneously.  It also shows the character's corresponding highscore positions, however, this is only available for registered characters.  Examples /whois Galarzaa Fidera  In this case, it matched  Galarzaa Fidera  to a character, and that character is registered to user @Galarzaa /whois Galarzaa  In this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed.\nHowever, it also matches the character  Galarzaa  which may not be necessarily related to the user. /whois Bich\u00e6o  In this case, the name only matches an user, and since no character was matched, their highest level registered character is shown. /whois 115042985778872322  In this case, a user id was provided, and it searched for the user with that id.",
-            "title": "/whois playerName/discordUser"
+            "location": "/commands/tibia/#whois",
+            "text": "Syntax:  /whois  playerName/discordUser  Other aliases:  /check, /player, /checkplayer, /char, /character  This commands has 2 functions:     It retrieves and displays info about a Tibia character  It retrieves the list of characters linked to a discord user   If the parameter matches a discord user, it displays a list of the characters linked to that user.\nIf the parameter matches a character, it will display the character's info, such as level, vocation, guild, world, etc.  If the character found is registered to a discord user, it will show the owner of the character.  Discord users can be looked for through Usernames, User#Discriminator (i.e.  Galarzaa#8515 ) or even user id.  Both cases can match simultaneously.  It also shows the character's corresponding highscore positions, however, this is only available for registered characters.  Examples /whois Galarzaa Fidera  In this case, it matched  Galarzaa Fidera  to a character, and that character is registered to user @Galarzaa /whois Galarzaa  In this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed.\nHowever, it also matches the character  Galarzaa  which may not be necessarily related to the user. /whois Bich\u00e6o  In this case, the name only matches an user, and since no character was matched, their highest level registered character is shown. /whois 115042985778872322  In this case, a user id was provided, and it searched for the user with that id.",
+            "title": "/whois"
         },
         {
-            "location": "/commands/tibia/#guild-guildname",
-            "text": "Other aliases: /guildcheck, /checkguild  Show's the number of members a guild has, and a list of their online users.\nIt also shows whether the guild has a guildhall or not, and their founded date.  Examples /guild Redd Alliance",
-            "title": "/guild guildname"
+            "location": "/commands/tibia/#guild",
+            "text": "Syntax:  /guild  guildname  Other aliases:  /guildcheck, /checkguild  Show's the number of members a guild has, and a list of their online users.\nIt also shows whether the guild has a guildhall or not, and their founded date.  Examples /guild Redd Alliance",
+            "title": "/guild"
         },
         {
-            "location": "/commands/tibia/#guild-members-guildname",
-            "text": "Other aliases: /guild list  Shows a paginated list of all the members of a guild. If they are online, \ud83d\udd39 is shown next to their name.  Examples /guild members Redd Alliance",
-            "title": "/guild members guildname"
+            "location": "/commands/tibia/#guild-members",
+            "text": "Syntax:  /guild  guildname  Other aliases:  /guild list  Shows a paginated list of all the members of a guild. If they are online, \ud83d\udd39 is shown next to their name.  Examples /guild members Redd Alliance",
+            "title": "/guild members"
         },
         {
-            "location": "/commands/tibia/#guild-info-guildname",
-            "text": "Other aliases /guild stats  Shows basic information about a guild, like their description, homepage, guildhall, number of members of members and more.  Examples /guild info Bald Dwarfs",
-            "title": "/guild info guildname"
+            "location": "/commands/tibia/#guild-info",
+            "text": "Syntax:  /guild info  guildname  Other aliases:  /guild stats  Shows basic information about a guild, like their description, homepage, guildhall, number of members of members and more.  Examples /guild info Bald Dwarfs",
+            "title": "/guild info"
         },
         {
-            "location": "/commands/tibia/#share-levelplayer",
-            "text": "Other aliases: /expshare, /party  There's three different ways to use this command:   Providing a single number, shows the share range of a character of that level.  Providing a charater name, shows the share range of that character.  Providing up to 5 character names, separated with commas, shows if they are able to share.   Examples /share 300  /share Galarzaa Fidera  /share Galarzaa Fidera, Nezune, Xzilla  /share Galarzaa Fidera, Topheroo",
-            "title": "/share level/player"
+            "location": "/commands/tibia/#share",
+            "text": "Syntax:  /share  level/player  Other aliases:  /expshare, /party  There's three different ways to use this command:   Providing a single number, shows the share range of a character of that level.  Providing a charater name, shows the share range of that character.  Providing up to 5 character names, separated with commas, shows if they are able to share.   Examples /share 300  /share Galarzaa Fidera  /share Galarzaa Fidera, Nezune, Xzilla  /share Galarzaa Fidera, Topheroo",
+            "title": "/share"
         },
         {
-            "location": "/commands/tibia/#deaths-player",
-            "text": "Other aliases: /deathlist, /death  If a player is specified, it displays a list of that player's recent deaths. \nIf no player is specified, it will show the recent deaths of all players registered in the database. \nThe number of entries shown per page is higher in ask channel and private channels.  Examples /deaths Xzilla  /deaths",
-            "title": "/deaths [player]"
+            "location": "/commands/tibia/#deaths",
+            "text": "Syntax:  /deaths [ player ]  Other aliases:  /deathlist, /death  If a player is specified, it displays a list of that player's recent deaths. \nIf no player is specified, it will show the recent deaths of all players registered in the database. \nThe number of entries shown per page is higher in ask channel and private channels.  Examples /deaths Xzilla  /deaths",
+            "title": "/deaths"
         },
         {
-            "location": "/commands/tibia/#deaths-monster-name",
-            "text": "Other aliases: /deaths mob, /deaths killer  Shows recent deaths by a specific monster or killer.  Example /deaths mob Lloyd",
-            "title": "/deaths monster name"
+            "location": "/commands/tibia/#deaths-monster",
+            "text": "Syntax:  /deaths monster  name  Other aliases:  /deaths mob, /deaths killer  Shows recent deaths by a specific monster or killer.  Example /deaths mob Lloyd",
+            "title": "/deaths monster"
         },
         {
-            "location": "/commands/tibia/#deaths-user-name",
-            "text": "Shows recent deaths by all characters registered to a user.  Example /deaths user Nezune",
-            "title": "/deaths user name"
+            "location": "/commands/tibia/#deaths-user",
+            "text": "Syntax:  /death user  name  Shows recent deaths by all characters registered to a user.  Example /deaths user Nezune",
+            "title": "/deaths user"
         },
         {
-            "location": "/commands/tibia/#levels-player",
-            "text": "Other aliases: /levelups, /lvl, /level, /lvls  If a player is specified, it displays a list of the player's recent level ups.\nIf no player is specified, it will show the recent level ups of all players registered in the database.  Examples /levels  /levels Dre amz",
-            "title": "/levels [player]"
+            "location": "/commands/tibia/#levels",
+            "text": "Syntax:  /levels [ player ]  Other aliases:  /levelups, /lvl, /level, /lvls  If a player is specified, it displays a list of the player's recent level ups.\nIf no player is specified, it will show the recent level ups of all players registered in the database.  Examples /levels  /levels Dre amz",
+            "title": "/levels"
         },
         {
-            "location": "/commands/tibia/#levels-user-name",
-            "text": "*Other aliases: /story  Shows recent levels by all characters registered to a user.  Examples /levels user Nezune",
-            "title": "/levels user name"
+            "location": "/commands/tibia/#levels-user",
+            "text": "Syntax:  /levels user  name     Shows recent levels by all characters registered to a user.  Examples /levels user Nezune",
+            "title": "/levels user"
         },
         {
-            "location": "/commands/tibia/#timeline-player",
-            "text": "Shows recent levels and deaths by all registered characters.\nIf a character name is provided, their level ups and deaths are shown.    \ud83c\udf1f Indicates level ups  \ud83d\udc80 Indicates deaths   Examples /timeline  /timeline Fila Bro",
-            "title": "/timeline [player]"
+            "location": "/commands/tibia/#timeline",
+            "text": "Syntax:  /timeline [ player ]  Other aliases:  /story  Shows recent levels and deaths by all registered characters.\nIf a character name is provided, their level ups and deaths are shown.    \ud83c\udf1f Indicates level ups  \ud83d\udc80 Indicates deaths   Examples /timeline  /timeline Fila Bro",
+            "title": "/timeline"
         },
         {
-            "location": "/commands/tibia/#timeline-user-name",
-            "text": "Shows recent levels and deaths by all characters registed to the user.  Examples /timeline user Pepyto \ud83c\udf4c",
-            "title": "/timeline user name"
+            "location": "/commands/tibia/#timeline_1",
+            "text": "Syntax:  /timeline user  name  Shows recent levels and deaths by all characters registed to the user.  Examples /timeline user Pepyto \ud83c\udf4c",
+            "title": "/timeline"
         },
         {
-            "location": "/commands/tibia/#stats-levelvocationcharactername",
-            "text": "Replies with the hitpoints, mana, capacity, total experience and experience to next level (at 0% progress) \nof a character with that level and vocation, or if a character's name was entered, it replies with its stats.  Examples /stats 543,elder druid  /stats Galarzaa Fidera",
-            "title": "/stats level,vocation/charactername"
+            "location": "/commands/tibia/#stats",
+            "text": "Syntax:  /stats  level,vocation / charactername  Replies with the hitpoints, mana, capacity, total experience and experience to next level (at 0% progress) \nof a character with that level and vocation, or if a character's name was entered, it replies with its stats.  Examples /stats 543,elder druid  /stats Galarzaa Fidera",
+            "title": "/stats"
         },
         {
-            "location": "/commands/tibia/#findteam-charlevelminlevelmaxlevel",
-            "text": "Other aliases: /whereteam, /searchteam, /team  This commands finds registered characters with the desired levels.\nVocations can be filtered using the reaction buttons.  There's three ways to use the command:   Provide a character's name, shows a list of characters in share range. ( /findteam char )  Provide a level, shows a list of characters in share range with that level. ( /findteam level )  Provide two levels, shows a list of characters in that level range. ( /findteam min,max )   Online characters are shown first on the list, they also have a \ud83d\udd39 icon.  Examples /findteam Galarzaa Fidera  /findteam 234  /findteam 100,120",
-            "title": "/findteam char/level/minlevel,maxlevel"
+            "location": "/commands/tibia/#findteam",
+            "text": "Syntax:  /findteam  char/level/minlevel , maxlevel  Other aliases:  /whereteam, /searchteam, /team  This commands finds registered characters with the desired levels.\nVocations can be filtered using the reaction buttons.  There's three ways to use the command:   Provide a character's name, shows a list of characters in share range. ( /findteam char )  Provide a level, shows a list of characters in share range with that level. ( /findteam level )  Provide two levels, shows a list of characters in that level range. ( /findteam min,max )   Online characters are shown first on the list, they also have a \ud83d\udd39 icon.  Examples /findteam Galarzaa Fidera  /findteam 234  /findteam 100,120",
+            "title": "/findteam"
         },
         {
-            "location": "/commands/tibia/#world-name",
-            "text": "Displays information about a world like pvp type, online count, location and more.  Examples /world Fidera     /world Ferobra",
-            "title": "/world name"
+            "location": "/commands/tibia/#world",
+            "text": "Syntax:  /world  name  Displays information about a world like pvp type, online count, location and more.  Examples /world Fidera     /world Ferobra",
+            "title": "/world"
         },
         {
-            "location": "/commands/tibia/#news-article_id",
-            "text": "Displays a list of recent news and articles. Or if an article id is provided, a summary of that article is displayed.  If the command is used on the ask channel or in private, the list or summary displayed will be longer.  Examples /news     /news 4400",
-            "title": "news [article_id]"
+            "location": "/commands/tibia/#news",
+            "text": "Syntax:  news [ article_id ]  Displays a list of recent news and articles. Or if an article id is provided, a summary of that article is displayed.  If the command is used on the ask channel or in private, the list or summary displayed will be longer.  Examples /news     /news 4400",
+            "title": "news"
         },
         {
-            "location": "/commands/tibia/#house-nameworld",
-            "text": "Other aliases: /houses, /guildhall, /gh  Displays information about a house, including a picture of the a section of the map where it is located.\nIt shows the current status of the house in the world the current discord server is tracking.  To specify a different world, add the world after a slash  /  Examples /house darashia 8, flat 03  /house caveman shelter/calmera",
-            "title": "/house name[/world]"
+            "location": "/commands/tibia/#house",
+            "text": "Syntax:  /house  name [/ world ]  Other aliases:  /houses, /guildhall, /gh  Displays information about a house, including a picture of the a section of the map where it is located.\nIt shows the current status of the house in the world the current discord server is tracking.  To specify a different world, add the world after a slash  /  Examples /house darashia 8, flat 03  /house caveman shelter/calmera",
+            "title": "/house"
         },
         {
-            "location": "/commands/tibia/#blessings-level",
-            "text": "Other aliases: /bless  Replies with the cost of blessings for that level.\nFor players over level 100, it will also display the cost of the Blessing of the Inquisition.  Examples /bless 90  /bless 140",
-            "title": "/blessings level"
+            "location": "/commands/tibia/#blessings",
+            "text": "Syntax:  /blessings  level  Other aliases:  /bless  Replies with the cost of blessings for that level.\nFor players over level 100, it will also display the cost of the Blessing of the Inquisition.  Examples /bless 90  /bless 140",
+            "title": "/blessings"
         },
         {
             "location": "/commands/tibia/#time",
-            "text": "Other aliases: /serversave, /ss  Displays the time in CipSoft's (CET/CEST), Brazil's and Mexico's timezones, the time until server save and Rashid's current city.  Examples /time",
+            "text": "Other aliases:  /serversave, /ss  Displays the time in CipSoft's (CET/CEST), Brazil's and Mexico's timezones, the time until server save and Rashid's current city.  Examples /time",
             "title": "/time"
         },
         {
             "location": "/commands/tibiawiki/",
-            "text": "All the commands that use information from TibiaWiki.\n\nInformation is read from \ntibia_database.sql\n, which is generated from \ntibiawiki-sql\n.\n\n\n\n\nInfo\n\n\nWords in italics are parameters.  \n\n\n\n\n/itemprice \nname\n\u00b6\n\n\nOther aliases: /checkprice, /item\n\n\nShows information about an item, their attributes, NPCs that buy and/or sell it (only for the best price), and creatures that drop it and quest where it's given as reward.\n\n\nThe embed's sidebar color shows if a major loot NPC buys it so it can be noted at quick glance.\nYellow for Rashid, Blue and Green for Djinns and Purple for gems.\n\n\nThe answer given may be shortened to avoid spam in chats. \nFor longer replies, the command must be used in the ask channel or via private message.\n\n\nExamples\n/item dragon scale mail\n\n\nWhen used on the ask-channel or private message\n\n\n/item dragon scale mail\n\n\n\n\n/monster name\n\u00b6\n\n\nOther aliases: /mob, /creature, /mon\n\n\nDisplays information about a specific creature. Health points, experience, resistances and weaknesses, loot drops, etc.\n\n\nIf used on the ask-channel or private message, the information displayed is longer.\n\n\nExamples\n/monster Demon\n \n(On a regular channel)\n\n\n/monster Demon\n \n(On an ask channel or private message)\n\n\n(\nThe bottom of the image has been cropped\n)\n\n\n/spell \nname/words\n\u00b6\n\n\nReplies with information on a certain spell like level, vocation(s) required, level required, cost and NPCs that sell it.\nInformation given is shorter unless it's used in the ask channel or private messages.\n\n\nExamples\n/spell exori gran\n\n\n/spell emberwing\n\n\n\n\n/npc \nname\n\u00b6\n\n\nOther aliases: /npcs\n\n\nShows information about an NPC. What items do they sell and buy, where are they found and travel destinations.\nMore information is displayed if used on the ask channel or on private messages.\n\n\nExamples\n/npc rashid\n \n(On a regular channel)\n\n\n/npc captain fearless\n  \n(On an ask channel or private message)\n\n\n\n\n/achievements \nname\n\u00b6\n\n\nOther aliases: /achiev\n\n\nShows information about an achievement.\n\n\nExamples\n/achievement demonic barkeeper\n\n\n\n\n/key \nnumber\n\u00b6\n\n\nOther aliases: /keys\n\n\nShows information about a key with a certain number.\n\n\nExamples\n/key 3940\n\n\n\n\n/key search \nname\n\u00b6\n\n\nSearches for keys by keyword. The keyboard might be their common name or the place they're used in.\nIf there are multiple coincidences, a list is shown. If only one, the key's information is shown directly.\n\n\nExamples\n/key search hellgate\n \n(only one match)\n\n\n/key search fibula\n \n(multiple matches)",
+            "text": "All the commands that use information from TibiaWiki.\n\nInformation is read from \ntibia_database.sql\n, which is generated from \ntibiawiki-sql\n.\n\n\n\n\nInfo\n\n\nWords in italics are parameters.  \n\n\n\n\n/itemprice\n\u00b6\n\n\nSyntax:\n /itemprice \nname\n\n\nOther aliases:\n /checkprice, /item\n\n\nShows information about an item, their attributes, NPCs that buy and/or sell it (only for the best price), and creatures that drop it and quest where it's given as reward.\n\n\nThe embed's sidebar color shows if a major loot NPC buys it so it can be noted at quick glance.\nYellow for Rashid, Blue and Green for Djinns and Purple for gems.\n\n\nThe answer given may be shortened to avoid spam in chats. \nFor longer replies, the command must be used in the ask channel or via private message.\n\n\nExamples\n/item dragon scale mail\n\n\nWhen used on the ask-channel or private message\n\n\n/item dragon scale mail\n\n\n\n\n/monster\n\u00b6\n\n\nSyntax:\n /monster \nname\n\n\nOther aliases:\n /mob, /creature, /mon\n\n\nDisplays information about a specific creature. Health points, experience, resistances and weaknesses, loot drops, etc.\n\n\nIf used on the ask-channel or private message, the information displayed is longer.\n\n\nExamples\n/monster Demon\n \n(On a regular channel)\n\n\n/monster Demon\n \n(On an ask channel or private message)\n\n\n(\nThe bottom of the image has been cropped\n)\n\n\n/spell\n\u00b6\n\n\nSyntax:\n /spell \nname/words\n\n\nReplies with information on a certain spell like level, vocation(s) required, level required, cost and NPCs that sell it.\nInformation given is shorter unless it's used in the ask channel or private messages.\n\n\nExamples\n/spell exori gran\n\n\n/spell emberwing\n\n\n\n\n/npc \nname\n\u00b6\n\n\nSyntax:\n /npc \nname\n\n\nOther aliases:\n /npcs\n\n\nShows information about an NPC. What items do they sell and buy, where are they found and travel destinations.\nMore information is displayed if used on the ask channel or on private messages.\n\n\nExamples\n/npc rashid\n \n(On a regular channel)\n\n\n/npc captain fearless\n  \n(On an ask channel or private message)\n\n\n\n\n/achievements\n\u00b6\n\n\nSyntax:\n /achievements \nname\n\n\nOther aliases:\n /achiev\n\n\nShows information about an achievement.\n\n\nExamples\n/achievement demonic barkeeper\n\n\n\n\n/key\n\u00b6\n\n\nSyntax:\n /key \nnumber\n\n\nOther aliases:\n /keys\n\n\nShows information about a key with a certain number.\n\n\nExamples\n/key 3940\n\n\n\n\n/key search\n\u00b6\n\n\nSyntax:\n /key search \nname\n\n\nSearches for keys by keyword. The keyboard might be their common name or the place they're used in.\nIf there are multiple coincidences, a list is shown. If only one, the key's information is shown directly.\n\n\nExamples\n/key search hellgate\n \n(only one match)\n\n\n/key search fibula\n \n(multiple matches)",
             "title": "TibiaWiki commands"
         },
         {
-            "location": "/commands/tibiawiki/#itemprice-name",
-            "text": "Other aliases: /checkprice, /item  Shows information about an item, their attributes, NPCs that buy and/or sell it (only for the best price), and creatures that drop it and quest where it's given as reward.  The embed's sidebar color shows if a major loot NPC buys it so it can be noted at quick glance.\nYellow for Rashid, Blue and Green for Djinns and Purple for gems.  The answer given may be shortened to avoid spam in chats. \nFor longer replies, the command must be used in the ask channel or via private message.  Examples /item dragon scale mail  When used on the ask-channel or private message  /item dragon scale mail",
-            "title": "/itemprice name"
+            "location": "/commands/tibiawiki/#itemprice",
+            "text": "Syntax:  /itemprice  name  Other aliases:  /checkprice, /item  Shows information about an item, their attributes, NPCs that buy and/or sell it (only for the best price), and creatures that drop it and quest where it's given as reward.  The embed's sidebar color shows if a major loot NPC buys it so it can be noted at quick glance.\nYellow for Rashid, Blue and Green for Djinns and Purple for gems.  The answer given may be shortened to avoid spam in chats. \nFor longer replies, the command must be used in the ask channel or via private message.  Examples /item dragon scale mail  When used on the ask-channel or private message  /item dragon scale mail",
+            "title": "/itemprice"
         },
         {
-            "location": "/commands/tibiawiki/#monster-name",
-            "text": "Other aliases: /mob, /creature, /mon  Displays information about a specific creature. Health points, experience, resistances and weaknesses, loot drops, etc.  If used on the ask-channel or private message, the information displayed is longer.  Examples /monster Demon   (On a regular channel)  /monster Demon   (On an ask channel or private message)  ( The bottom of the image has been cropped )",
-            "title": "/monster name"
+            "location": "/commands/tibiawiki/#monster",
+            "text": "Syntax:  /monster  name  Other aliases:  /mob, /creature, /mon  Displays information about a specific creature. Health points, experience, resistances and weaknesses, loot drops, etc.  If used on the ask-channel or private message, the information displayed is longer.  Examples /monster Demon   (On a regular channel)  /monster Demon   (On an ask channel or private message)  ( The bottom of the image has been cropped )",
+            "title": "/monster"
         },
         {
-            "location": "/commands/tibiawiki/#spell-namewords",
-            "text": "Replies with information on a certain spell like level, vocation(s) required, level required, cost and NPCs that sell it.\nInformation given is shorter unless it's used in the ask channel or private messages.  Examples /spell exori gran  /spell emberwing",
-            "title": "/spell name/words"
+            "location": "/commands/tibiawiki/#spell",
+            "text": "Syntax:  /spell  name/words  Replies with information on a certain spell like level, vocation(s) required, level required, cost and NPCs that sell it.\nInformation given is shorter unless it's used in the ask channel or private messages.  Examples /spell exori gran  /spell emberwing",
+            "title": "/spell"
         },
         {
             "location": "/commands/tibiawiki/#npc-name",
-            "text": "Other aliases: /npcs  Shows information about an NPC. What items do they sell and buy, where are they found and travel destinations.\nMore information is displayed if used on the ask channel or on private messages.  Examples /npc rashid   (On a regular channel)  /npc captain fearless    (On an ask channel or private message)",
+            "text": "Syntax:  /npc  name  Other aliases:  /npcs  Shows information about an NPC. What items do they sell and buy, where are they found and travel destinations.\nMore information is displayed if used on the ask channel or on private messages.  Examples /npc rashid   (On a regular channel)  /npc captain fearless    (On an ask channel or private message)",
             "title": "/npc name"
         },
         {
-            "location": "/commands/tibiawiki/#achievements-name",
-            "text": "Other aliases: /achiev  Shows information about an achievement.  Examples /achievement demonic barkeeper",
-            "title": "/achievements name"
+            "location": "/commands/tibiawiki/#achievements",
+            "text": "Syntax:  /achievements  name  Other aliases:  /achiev  Shows information about an achievement.  Examples /achievement demonic barkeeper",
+            "title": "/achievements"
         },
         {
-            "location": "/commands/tibiawiki/#key-number",
-            "text": "Other aliases: /keys  Shows information about a key with a certain number.  Examples /key 3940",
-            "title": "/key number"
+            "location": "/commands/tibiawiki/#key",
+            "text": "Syntax:  /key  number  Other aliases:  /keys  Shows information about a key with a certain number.  Examples /key 3940",
+            "title": "/key"
         },
         {
-            "location": "/commands/tibiawiki/#key-search-name",
-            "text": "Searches for keys by keyword. The keyboard might be their common name or the place they're used in.\nIf there are multiple coincidences, a list is shown. If only one, the key's information is shown directly.  Examples /key search hellgate   (only one match)  /key search fibula   (multiple matches)",
-            "title": "/key search name"
+            "location": "/commands/tibiawiki/#key-search",
+            "text": "Syntax:  /key search  name  Searches for keys by keyword. The keyboard might be their common name or the place they're used in.\nIf there are multiple coincidences, a list is shown. If only one, the key's information is shown directly.  Examples /key search hellgate   (only one match)  /key search fibula   (multiple matches)",
+            "title": "/key search"
         },
         {
             "location": "/commands/tracking/",
-            "text": "Commands related to NabBot's tracking functions.\n\n\n\n\nInfo\n\n\nWords in italics are parameters.\n\nParameters enclosed in brackets \n[]\n are optional.\n\n\n\n\n/im\n\u00b6\n\n\nSyntax:\n /im \ncharacterName\n\n\nThe bot scans the character and other characters on the account and registers them to the user.\nRegistered characters have their deaths and level ups announced on the chat.\n\n\nThe bot will skip characters on different worlds than the world the discord server tracks.\nAlso, if it finds a character owned by another user, the whole process will be stopped.\n\n\nExample\n/im Elf\n\n\n\n\n/imnot characterName\n\u00b6\n\n\nUnregisters a character you previously registered.\n\n\nExample\n/imnot tomas haake\n\n\n\n\n/online\n\u00b6\n\n\nShows a list of tracked characters that are online, along with their level, vocation and owner.\n\n\nThe list is shown with pages and vocation filter.\n\n\nExample\n/online\n\n\n\n\n/watched \n[name]\n\u00b6\n\n\nOther aliases: /watchlist, /hunted, /huntedlist\n\n\nCreates a new text channel for the watched list to be posted. The watch list shows which characters from it are online.\nEntire guilds can be added too.\n\n\nIf no name is specified, the default name \n#hunted-list\n will be used.\n\n\nWhen the channel is created, only NabBot and people with \nAdministrator\n permissions can read it.\nYou can change the permissions to whatever you see fit afterwards.\n\n\nThe channel may be renamed at anytime without problems. But if it's deleted, it must be created again using the command.\n\n\nExamples\n/watched\n\n\nInitial message shown in the channel\n\n\nMessage once characters and/or guilds have been added\n\n\n\n\n/watched add \nname\n\u00b6\n\n\n/Other aliases: /watched addplayer, /watched addchar\n\n\nAdds a character to the character list. The character must be in the same world the server is tracking.\n\n\nThe bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.\n\n\nExamples\n/watched add Galarzaa Fidera\n\n\n\n\n/watched remove \nname\n\u00b6\n\n\n/Other aliases: /watched removeplayer, /watched removechar\n\n\nRemoves a character from the watched list.\n\n\nThe bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.\n\n\nExamples\n/watched remove Kaiizokuo\n\n\n/watched addguild \nname\n\u00b6\n\n\nAdds a guild to the watched list. Every online members will be listed on the list.\n\n\nThe bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.\n\n\nExamples\n/watched addguild Redd Alliance\n\n\n\n\n/watched removeguild \nname\n\u00b6\n\n\nRemoves a guild from the watched list.\n\n\nThe bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.\n\n\nExamples\n/watched removeguild Redd Alliance\n\n\n\n\n/watched list\n\u00b6\n\n\nShows a list of all characters currently in the list.\n\n\nExamples\n/watched list\n\n\n\n\n/watched guildlist\n\u00b6\n\n\nOther aliases: /watched guilds, /watched listguilds\n\n\nShows a list of all guilds currently in the list.\n\n\nExamples\n/watched guildlist",
+            "text": "Commands related to NabBot's tracking functions.\n\n\n\n\nInfo\n\n\nWords in italics are parameters.\n\nParameters enclosed in brackets \n[]\n are optional.\n\n\n\n\n/im\n\u00b6\n\n\nSyntax:\n /im \ncharacterName\n\n\nThe bot scans the character and other characters on the account and registers them to the user.\nRegistered characters have their deaths and level ups announced on the chat.\n\n\nThe bot will skip characters on different worlds than the world the discord server tracks.\nAlso, if it finds a character owned by another user, the whole process will be stopped.\n\n\nExample\n/im Elf\n\n\n\n\n/imnot\n\u00b6\n\n\nSyntax:\n /imnot \ncharacterName\n  \n\n\nUnregisters a character you previously registered.\n\n\nExample\n/imnot tomas haake\n\n\n\n\n/online\n\u00b6\n\n\nShows a list of tracked characters that are online, along with their level, vocation and owner.\n\n\nThe list is shown with pages and vocation filter.\n\n\nExample\n/online\n\n\n\n\n/watched\n\u00b6\n\n\nSyntax:\n /watched  \n[name]\n\n\nOther aliases:\n /watchlist, /hunted, /huntedlist\n\n\nCreates a new text channel for the watched list to be posted. The watch list shows which characters from it are online.\nEntire guilds can be added too.\n\n\nIf no name is specified, the default name \n#hunted-list\n will be used.\n\n\nWhen the channel is created, only NabBot and people with \nAdministrator\n permissions can read it.\nYou can change the permissions to whatever you see fit afterwards.\n\n\nThe channel may be renamed at anytime without problems. But if it's deleted, it must be created again using the command.\n\n\nExamples\n/watched\n\n\nInitial message shown in the channel\n\n\nMessage once characters and/or guilds have been added\n\n\n\n\n/watched add\n\u00b6\n\n\nSyntax:\n /watched  \nname\n\n\nOther aliases:\n /watched addplayer, /watched addchar\n\n\nAdds a character to the character list. The character must be in the same world the server is tracking.\n\n\nThe bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.\n\n\nExamples\n/watched add Galarzaa Fidera\n\n\n\n\n/watched remove\n\u00b6\n\n\nSyntax:\n /watched remove \nname\n\n\nOther aliases:\n /watched removeplayer, /watched removechar\n\n\nRemoves a character from the watched list.\n\n\nThe bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.\n\n\nExamples\n/watched remove Kaiizokuo\n\n\n/watched addguild\n\u00b6\n\n\nSyntax:\n /watched addguild \nname\n\n\nAdds a guild to the watched list. Every online members will be listed on the list.\n\n\nThe bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.\n\n\nExamples\n/watched addguild Redd Alliance\n\n\n\n\n/watched removeguild\n\u00b6\n\n\nSyntax\n:  /watched \nname\n\n\nRemoves a guild from the watched list.\n\n\nThe bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.\n\n\nExamples\n/watched removeguild Redd Alliance\n\n\n\n\n/watched list\n\u00b6\n\n\nShows a list of all characters currently in the list.\n\n\nExamples\n/watched list\n\n\n\n\n/watched guildlist\n\u00b6\n\n\nOther aliases:\n /watched guilds, /watched listguilds\n\n\nShows a list of all guilds currently in the list.\n\n\nExamples\n/watched guildlist",
             "title": "Tracking commands"
         },
         {
@@ -421,9 +421,9 @@
             "title": "/im"
         },
         {
-            "location": "/commands/tracking/#imnot-charactername",
-            "text": "Unregisters a character you previously registered.  Example /imnot tomas haake",
-            "title": "/imnot characterName"
+            "location": "/commands/tracking/#imnot",
+            "text": "Syntax:  /imnot  characterName     Unregisters a character you previously registered.  Example /imnot tomas haake",
+            "title": "/imnot"
         },
         {
             "location": "/commands/tracking/#online",
@@ -431,29 +431,29 @@
             "title": "/online"
         },
         {
-            "location": "/commands/tracking/#watched-name",
-            "text": "Other aliases: /watchlist, /hunted, /huntedlist  Creates a new text channel for the watched list to be posted. The watch list shows which characters from it are online.\nEntire guilds can be added too.  If no name is specified, the default name  #hunted-list  will be used.  When the channel is created, only NabBot and people with  Administrator  permissions can read it.\nYou can change the permissions to whatever you see fit afterwards.  The channel may be renamed at anytime without problems. But if it's deleted, it must be created again using the command.  Examples /watched  Initial message shown in the channel  Message once characters and/or guilds have been added",
-            "title": "/watched [name]"
+            "location": "/commands/tracking/#watched",
+            "text": "Syntax:  /watched   [name]  Other aliases:  /watchlist, /hunted, /huntedlist  Creates a new text channel for the watched list to be posted. The watch list shows which characters from it are online.\nEntire guilds can be added too.  If no name is specified, the default name  #hunted-list  will be used.  When the channel is created, only NabBot and people with  Administrator  permissions can read it.\nYou can change the permissions to whatever you see fit afterwards.  The channel may be renamed at anytime without problems. But if it's deleted, it must be created again using the command.  Examples /watched  Initial message shown in the channel  Message once characters and/or guilds have been added",
+            "title": "/watched"
         },
         {
-            "location": "/commands/tracking/#watched-add-name",
-            "text": "/Other aliases: /watched addplayer, /watched addchar  Adds a character to the character list. The character must be in the same world the server is tracking.  The bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.  Examples /watched add Galarzaa Fidera",
-            "title": "/watched add name"
+            "location": "/commands/tracking/#watched-add",
+            "text": "Syntax:  /watched   name  Other aliases:  /watched addplayer, /watched addchar  Adds a character to the character list. The character must be in the same world the server is tracking.  The bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.  Examples /watched add Galarzaa Fidera",
+            "title": "/watched add"
         },
         {
-            "location": "/commands/tracking/#watched-remove-name",
-            "text": "/Other aliases: /watched removeplayer, /watched removechar  Removes a character from the watched list.  The bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.  Examples /watched remove Kaiizokuo",
-            "title": "/watched remove name"
+            "location": "/commands/tracking/#watched-remove",
+            "text": "Syntax:  /watched remove  name  Other aliases:  /watched removeplayer, /watched removechar  Removes a character from the watched list.  The bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.  Examples /watched remove Kaiizokuo",
+            "title": "/watched remove"
         },
         {
-            "location": "/commands/tracking/#watched-addguild-name",
-            "text": "Adds a guild to the watched list. Every online members will be listed on the list.  The bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.  Examples /watched addguild Redd Alliance",
-            "title": "/watched addguild name"
+            "location": "/commands/tracking/#watched-addguild",
+            "text": "Syntax:  /watched addguild  name  Adds a guild to the watched list. Every online members will be listed on the list.  The bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.  Examples /watched addguild Redd Alliance",
+            "title": "/watched addguild"
         },
         {
-            "location": "/commands/tracking/#watched-removeguild-name",
-            "text": "Removes a guild from the watched list.  The bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.  Examples /watched removeguild Redd Alliance",
-            "title": "/watched removeguild name"
+            "location": "/commands/tracking/#watched-removeguild",
+            "text": "Syntax :  /watched  name  Removes a guild from the watched list.  The bot asks for confirmation before adding, by using emoji reactions: \ud83c\uddfe/\ud83c\uddf3.  Examples /watched removeguild Redd Alliance",
+            "title": "/watched removeguild"
         },
         {
             "location": "/commands/tracking/#watched-list",
@@ -462,7 +462,7 @@
         },
         {
             "location": "/commands/tracking/#watched-guildlist",
-            "text": "Other aliases: /watched guilds, /watched listguilds  Shows a list of all guilds currently in the list.  Examples /watched guildlist",
+            "text": "Other aliases:  /watched guilds, /watched listguilds  Shows a list of all guilds currently in the list.  Examples /watched guildlist",
             "title": "/watched guildlist"
         },
         {
@@ -527,17 +527,17 @@
         },
         {
             "location": "/commands/owner/",
-            "text": "All commands can only be run by users in the \nowner_ids\n list or the bot's application owner.\n\n\n\n\nInfo\n\n\nWords in italics are parameters.\n\nParameters enclosed in brackets \n[]\n are optional.\n\n\n\n\n/restart\n\u00b6\n\n\nOther aliases: /reset\n\n\nCompletely restarts the bot, reloading all code. When used, the bot shutsdown and then restarts itself in 5 seconds.\n\n\nOnce the bot starts again, it will notify the user that restarted it.\n\n\nExample\n/restart\n\n\n\n\n/unload\n\u00b6\n\n\nUnloads a cog. Cogs are extensions that contain their own commands and tasks.\n\n\n\n\nNote\n\n\nUnloading \ncogs.owner\n would remove the \n/load\n command, making it impossible to reload cogs until restarting the bot.\n\n\n\n\nExample\n/unload cogs.tibia\n\n\n\n\n/load\n\u00b6\n\n\nLoads a cog. If there's an error while compiling, it will be displayed here.\nAny cog can be loaded here, including cogs made by user.\n\n\nWhen loading and unloading cogs in subdirectories, periods (\n.\n) are used instead of slashes (\n/\n).\nFor example, a cog found in \ncogs/tibia.py\n would be loaded as \ncogs.tibia\n.\n\n\n**/load cogs.tibia**  \n![image](../assets/images/commands/load.png)\n\n\n\n\n\n\n\n/debug \ncode\n\u00b6\n\n\nEvaluates Python code. This command can be used to run python command and get the response as a reply.\n\n\n\n\nWarning\n\n\nThis command is meant for advanced users and debugging code.\n\n\n\n\nExample\n/debug bot.get_member(162060569803751424)\n\n\n\n\n/repl\n\u00b6\n\n\nStarts a REPL session in the current channel.\nSimilar to \n/debug\n, except this keep an open session where variables are stored.\n\n\nTo exit, type \nexit()\n.\n\n\n\n\nWarning\n\n\nThis command is meant for advanced users and debugging code.\n\n\n\n\n\n\n/servers\n\u00b6\n\n\nShows a list of servers where the bot is in, along with their owners and tracked world.\n\n\nExample\n/debug bot.get_member(162060569803751424)\n\n\n\n\n/admins_message [\nmessage\n]\n\u00b6\n\n\nOther aliases: /message_admins, /adminsmessage, /msgadmins, /adminsmsg\n\n\nSends a private message to all the server owners of the servers the bot is.\nIf no message is specified at first, the command will prompt the user to enter a message to send.\n\n\nMessages contain a signature to indicate who wrote the message.\n\n\nExample\n/admins_message\n\n\nAfter typing the message.",
+            "text": "All commands can only be run by users in the \nowner_ids\n list or the bot's application owner.\n\n\n\n\nInfo\n\n\nWords in italics are parameters.\n\nParameters enclosed in brackets \n[]\n are optional.\n\n\n\n\n/restart\n\u00b6\n\n\nOther aliases:\n /reset\n\n\nCompletely restarts the bot, reloading all code. When used, the bot shutsdown and then restarts itself in 5 seconds.\n\n\nOnce the bot starts again, it will notify the user that restarted it.\n\n\nExample\n/restart\n\n\n\n\n/unload\n\u00b6\n\n\nSyntax\n: /unload \nname\n\n\nUnloads a cog. Cogs are extensions that contain their own commands and tasks.\n\n\n\n\nNote\n\n\nUnloading \ncogs.owner\n would remove the \n/load\n command, making it impossible to reload cogs until restarting the bot.\n\n\n\n\nExample\n/unload cogs.tibia\n\n\n\n\n/load\n\u00b6\n\n\nLoads a cog. If there's an error while compiling, it will be displayed here.\nAny cog can be loaded here, including cogs made by user.\n\n\nWhen loading and unloading cogs in subdirectories, periods (\n.\n) are used instead of slashes (\n/\n).\nFor example, a cog found in \ncogs/tibia.py\n would be loaded as \ncogs.tibia\n.\n\n\n**/load cogs.tibia**  \n![image](../assets/images/commands/load.png)\n\n\n\n\n\n\n\n/debug\n\u00b6\n\n\nSyntax:\n /debug \ncode\n\n\nEvaluates Python code. This command can be used to run python command and get the response as a reply.\n\n\n\n\nWarning\n\n\nThis command is meant for advanced users and debugging code.\n\n\n\n\nExample\n/debug bot.get_member(162060569803751424)\n\n\n\n\n/repl\n\u00b6\n\n\nStarts a REPL session in the current channel.\nSimilar to \n/debug\n, except this keep an open session where variables are stored.\n\n\nTo exit, type \nexit()\n.\n\n\n\n\nWarning\n\n\nThis command is meant for advanced users and debugging code.\n\n\n\n\n\n\n/servers\n\u00b6\n\n\nShows a list of servers where the bot is in, along with their owners and tracked world.\n\n\nExample\n/debug bot.get_member(162060569803751424)\n\n\n\n\n/admins_message\n\u00b6\n\n\nSyntax\n: /admins_message [\nmessage\n]\n\n\nOther aliases:\n /message_admins, /adminsmessage, /msgadmins, /adminsmsg\n\n\nSends a private message to all the server owners of the servers the bot is.\nIf no message is specified at first, the command will prompt the user to enter a message to send.\n\n\nMessages contain a signature to indicate who wrote the message.\n\n\nExample\n/admins_message\n\n\nAfter typing the message.",
             "title": "Owner commands"
         },
         {
             "location": "/commands/owner/#restart",
-            "text": "Other aliases: /reset  Completely restarts the bot, reloading all code. When used, the bot shutsdown and then restarts itself in 5 seconds.  Once the bot starts again, it will notify the user that restarted it.  Example /restart",
+            "text": "Other aliases:  /reset  Completely restarts the bot, reloading all code. When used, the bot shutsdown and then restarts itself in 5 seconds.  Once the bot starts again, it will notify the user that restarted it.  Example /restart",
             "title": "/restart"
         },
         {
             "location": "/commands/owner/#unload",
-            "text": "Unloads a cog. Cogs are extensions that contain their own commands and tasks.   Note  Unloading  cogs.owner  would remove the  /load  command, making it impossible to reload cogs until restarting the bot.   Example /unload cogs.tibia",
+            "text": "Syntax : /unload  name  Unloads a cog. Cogs are extensions that contain their own commands and tasks.   Note  Unloading  cogs.owner  would remove the  /load  command, making it impossible to reload cogs until restarting the bot.   Example /unload cogs.tibia",
             "title": "/unload"
         },
         {
@@ -546,9 +546,9 @@
             "title": "/load"
         },
         {
-            "location": "/commands/owner/#debug-code",
-            "text": "Evaluates Python code. This command can be used to run python command and get the response as a reply.   Warning  This command is meant for advanced users and debugging code.   Example /debug bot.get_member(162060569803751424)",
-            "title": "/debug code"
+            "location": "/commands/owner/#debug",
+            "text": "Syntax:  /debug  code  Evaluates Python code. This command can be used to run python command and get the response as a reply.   Warning  This command is meant for advanced users and debugging code.   Example /debug bot.get_member(162060569803751424)",
+            "title": "/debug"
         },
         {
             "location": "/commands/owner/#repl",
@@ -561,9 +561,9 @@
             "title": "/servers"
         },
         {
-            "location": "/commands/owner/#admins_message-message",
-            "text": "Other aliases: /message_admins, /adminsmessage, /msgadmins, /adminsmsg  Sends a private message to all the server owners of the servers the bot is.\nIf no message is specified at first, the command will prompt the user to enter a message to send.  Messages contain a signature to indicate who wrote the message.  Example /admins_message  After typing the message.",
-            "title": "/admins_message [message]"
+            "location": "/commands/owner/#admins_message",
+            "text": "Syntax : /admins_message [ message ]  Other aliases:  /message_admins, /adminsmessage, /msgadmins, /adminsmsg  Sends a private message to all the server owners of the servers the bot is.\nIf no message is specified at first, the command will prompt the user to enter a message to send.  Messages contain a signature to indicate who wrote the message.  Example /admins_message  After typing the message.",
+            "title": "/admins_message"
         },
         {
             "location": "/customizing/messages/",

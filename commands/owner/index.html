@@ -493,8 +493,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#debug-code" title="/debug code" class="md-nav__link">
-    /debug code
+  <a href="#debug" title="/debug" class="md-nav__link">
+    /debug
   </a>
   
 </li>
@@ -514,8 +514,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#admins_message-message" title="/admins_message [message]" class="md-nav__link">
-    /admins_message [message]
+  <a href="#admins_message" title="/admins_message" class="md-nav__link">
+    /admins_message
   </a>
   
 </li>
@@ -612,8 +612,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#debug-code" title="/debug code" class="md-nav__link">
-    /debug code
+  <a href="#debug" title="/debug" class="md-nav__link">
+    /debug
   </a>
   
 </li>
@@ -633,8 +633,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#admins_message-message" title="/admins_message [message]" class="md-nav__link">
-    /admins_message [message]
+  <a href="#admins_message" title="/admins_message" class="md-nav__link">
+    /admins_message
   </a>
   
 </li>
@@ -665,12 +665,13 @@
 Parameters enclosed in brackets <code class="codehilite">[]</code> are optional.</p>
 </div>
 <h2 id="restart">/restart<a class="headerlink" href="#restart" title="Permanent link">&para;</a></h2>
-<p><em>Other aliases: /reset</em></p>
+<p><strong>Other aliases:</strong> /reset</p>
 <p>Completely restarts the bot, reloading all code. When used, the bot shutsdown and then restarts itself in 5 seconds.</p>
 <p>Once the bot starts again, it will notify the user that restarted it.</p>
 <details class="summary"><summary>Example</summary><p><strong>/restart</strong><br />
 <img alt="image" src="../../assets/images/commands/restart.png" /></p></details><hr />
 <h2 id="unload">/unload<a class="headerlink" href="#unload" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax</strong>: /unload <em>name</em></p>
 <p>Unloads a cog. Cogs are extensions that contain their own commands and tasks.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -689,7 +690,8 @@ For example, a cog found in <code class="codehilite">cogs/tibia.py</code> would 
 
 
 <hr />
-<h2 id="debug-code">/debug <em>code</em><a class="headerlink" href="#debug-code" title="Permanent link">&para;</a></h2>
+<h2 id="debug">/debug<a class="headerlink" href="#debug" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /debug <em>code</em></p>
 <p>Evaluates Python code. This command can be used to run python command and get the response as a reply.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
@@ -710,8 +712,9 @@ Similar to <code class="codehilite">/debug</code>, except this keep an open sess
 <p>Shows a list of servers where the bot is in, along with their owners and tracked world.</p>
 <details class="summary"><summary>Example</summary><p><strong>/debug bot.get_member(162060569803751424)</strong><br />
 <img alt="image" src="../../assets/images/commands/servers.png" /></p></details><hr />
-<h2 id="admins_message-message">/admins_message [<em>message</em>]<a class="headerlink" href="#admins_message-message" title="Permanent link">&para;</a></h2>
-<p><em>Other aliases: /message_admins, /adminsmessage, /msgadmins, /adminsmsg</em></p>
+<h2 id="admins_message">/admins_message<a class="headerlink" href="#admins_message" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax</strong>: /admins_message [<em>message</em>]<br />
+<strong>Other aliases:</strong> /message_admins, /adminsmessage, /msgadmins, /adminsmsg</p>
 <p>Sends a private message to all the server owners of the servers the bot is.
 If no message is specified at first, the command will prompt the user to enter a message to send.</p>
 <p>Messages contain a signature to indicate who wrote the message.</p>
