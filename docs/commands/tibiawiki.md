@@ -5,8 +5,9 @@ Information is read from `tibia_database.sql`, which is generated from [tibiawik
     Words in italics are parameters.  
 
 
-## /itemprice *name*
-*Other aliases: /checkprice, /item*
+## /itemprice
+**Syntax:** /itemprice *name*  
+**Other aliases:** /checkprice, /item
 
 Shows information about an item, their attributes, NPCs that buy and/or sell it (only for the best price), and creatures that drop it and quest where it's given as reward.
 
@@ -27,8 +28,9 @@ For longer replies, the command must be used in the ask channel or via private m
 
 ---
 
-## /monster name
-*Other aliases: /mob, /creature, /mon*
+## /monster
+**Syntax:** /monster *name*
+**Other aliases:** /mob, /creature, /mon
 
 Displays information about a specific creature. Health points, experience, resistances and weaknesses, loot drops, etc.
 
@@ -46,7 +48,8 @@ If used on the ask-channel or private message, the information displayed is long
 
 ----
 
-## /spell *name/words*
+## /spell
+**Syntax:** /spell *name/words*
 
 Replies with information on a certain spell like level, vocation(s) required, level required, cost and NPCs that sell it.
 Information given is shorter unless it's used in the ask channel or private messages.
@@ -62,7 +65,8 @@ Information given is shorter unless it's used in the ask channel or private mess
 ----
 
 ## /npc *name*
-*Other aliases: /npcs*
+**Syntax:** /npc *name*  
+**Other aliases:** /npcs
 
 Shows information about an NPC. What items do they sell and buy, where are they found and travel destinations.
 More information is displayed if used on the ask channel or on private messages.
@@ -77,8 +81,9 @@ More information is displayed if used on the ask channel or on private messages.
 
 ----
 
-## /achievements *name*
-*Other aliases: /achiev*
+## /achievements
+**Syntax:** /achievements *name*  
+**Other aliases:** /achiev
 
 Shows information about an achievement.
 
@@ -89,8 +94,9 @@ Shows information about an achievement.
     
 ----
 
-## /key *number*
-*Other aliases: /keys*
+## /key
+**Syntax:** /key *number*  
+**Other aliases:** /keys
 
 Shows information about a key with a certain number.
 
@@ -101,7 +107,8 @@ Shows information about a key with a certain number.
     
 ----
 
-### /key search *name*
+### /key search
+**Syntax:** /key search *name*
 
 Searches for keys by keyword. The keyboard might be their common name or the place they're used in.
 If there are multiple coincidences, a list is shown. If only one, the key's information is shown directly.

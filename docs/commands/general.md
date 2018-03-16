@@ -6,7 +6,8 @@
     Parameters enclosed in brackets `[]` are optional.
 
 
-## /help *[command]*
+## /help
+**Syntax:** /help *[command]*
 
 Displays commands available to the user.
 
@@ -28,7 +29,8 @@ Further help can be obtained by calling help for subcommands.
 
 ----
 
-## /choose *option1 option2 ... optionN*
+## /choose
+**Syntax:** /choose *option1 option2 ... optionN*
 
 The bot randomly chooses one of the options given.
 Options with spaces in them must be quoted or they will be considered as multiple options.
@@ -63,7 +65,7 @@ Shows various information about the bot.
 ----    
     
 ## /server
-*Other aliases: /serverinfo, /server_info*
+**Other aliases:** /serverinfo, /server_info
 
 Shows information about the current server.
 
@@ -74,7 +76,8 @@ Shows information about the current server.
 
 ----
 
-## /roles [*userName*]
+## /roles
+**Syntax:** /roles [*userName*]
 
 Shows a list of roles in the server. If a user is specified, roles assigned to them will be shown instead.
 
@@ -88,7 +91,8 @@ Shows a list of roles in the server. If a user is specified, roles assigned to t
 
 ----
 
-## /role *roleName*
+## /role
+**Syntax:** /role *roleName*
 
 Shows a list of members that have the specified role.
 
@@ -109,7 +113,8 @@ Shows a list of upcoming and recent events.
     ![image](../assets/images/commands/event.png)
     
 
-### /events info *id*
+### /events info
+**Syntax**: /events info *id*
 
 Shows details about an event with a specific id. The id can be seen when using /events or after creating an event.
 
@@ -121,7 +126,8 @@ The time shown on the bottom is in the local timezone of the viewer.
     ![image](../assets/images/commands/event_info.png)
    
 
-### /events add *starttime* *name*[,description]
+### /events add
+**Syntax**: /events add *starttime* *name[,description]*
 
 Creates an event. The start time must be set by specifying in how much time the event will start from now, e.g. 1d3h20m, 20h4m, 1d20m, 70m.  
 
@@ -141,8 +147,9 @@ The start time displayed is based on the viewer's local time.
     **`[TibiaWiki link](http://tibia.wikia.com/wiki/Inquisition_quest)`**  
     ![image](../assets/images/commands/event_add.png)
 
-### /event delete *id*
-*Other aliases: /event remove, /event cancel*
+### /event delete
+**Syntax**: /event *id*  
+**Other aliases:** /event remove, /event cancel
 
 Deletes or cancels an event.
 
@@ -151,8 +158,9 @@ Deletes or cancels an event.
     **/event delete 136**  
     ![image](../assets/images/commands/event_remove.png)
 
-### /event subscribe *id*
-*Other aliases: /event sub*
+### /event subscribe
+**Syntax**: /event subscribe *id*  
+**Other aliases:** /event sub
 
 Lets you subscribe to an upcoming event. Meaning you will receive private messages when the event time is close.
 
@@ -161,8 +169,9 @@ Lets you subscribe to an upcoming event. Meaning you will receive private messag
     **/event sub 136**  
     ![image](../assets/images/commands/event_sub.png)
 
-### /event unsubscribe *id*
-*Other aliases: /event unsub*
+### /event unsubscribe
+**Syntax**: /event unsubscribe *id*
+**Other aliases:** /event unsub
 
 Unsubscribes you from an event.
 
@@ -171,7 +180,8 @@ Unsubscribes you from an event.
     **/event unsub 136**  
     ![image](../assets/images/commands/event_unsub.png)
     
-### /event join *id* *char*
+### /event join
+**Syntax:** /event join *id* *char*
 
 Lets you join the event with a character registered to you.
 Events can be set to not joinable and only the creator can add characters.
@@ -181,7 +191,8 @@ Events can be set to not joinable and only the creator can add characters.
     **/event join 136 Galarzaa Fidera**  
     ![image](../assets/images/commands/event_join.png)
     
-### /event leave *id*
+### /event leave
+**Syntax:** /event leave *id*
 
 Lets you leave an event you had joined before.
 
@@ -190,8 +201,9 @@ Lets you leave an event you had joined before.
     **/event leave 136**  
     ![image](../assets/images/commands/event_leave.png)
 
-### /event addplayer *id* *character*
-*Other aliases: /event addchar*
+### /event addplayer
+**Syntax:** /event addplayer *id* *character*  
+**Other aliases:** /event addchar
 
 Adds someone else's character to the event. Only the event creator can do this.
 
@@ -204,8 +216,9 @@ The character must be registered to someone in the same server.
     **/event addplayer 136 Nezune**  
     ![image](../assets/images/commands/event_addchar.png)
 
-### /event removeplayer *id* *character*
-*Other aliases: /event removechar*
+### /event removeplayer
+**Syntax:** /event removeplayer *id* *character*  
+**Other aliases:** /event removechar
 
 Removes someone from the event
 
@@ -215,21 +228,33 @@ Removes someone from the event
     ![image](../assets/images/commands/event_removechar.png)
 
 ### /event edit
-####/event edit name *id* [*new_name*]
+####/event edit name
+**Syntax:** /event edit name *id* [*new_name*]
+
 Edit's an event's name. If no new name is provided initially, the bot will ask for one.
-####/event edit description *id* [*new_description*]
+
+####/event edit description
+**Syntax:** /event edit description *id* [*new_description*]
+
 Edit's an event's description. If no new description is provided initially, the bot will ask for one.
 
 To remove an even't description, say `blank`.
-####/event edit time *id* [*new_time*]
+
+####/event edit time
+**Syntax:** /event edit time *id* [*new_time*]
+
 Edit's an event's start time. If no new time is provided initially, the bot will ask for one.
 
-####/event edit joinable *id* [*yes_no*]
+####/event edit joinable 
+**Syntax:** /event edit joinable *id* [*yes_no*]
+
 Sets whether the event is joinable or not.  
 If the event is joinable, anyone can use `/event join`.
 Otherwise, the creator can add characters themselves by using `/event addchar`.
 
-####/event edit slots *id* [*new_slots*]
+####/event edit slots
+**Syntax:** /event edit slots *id* [*new_slots*]
+
 Sets the number of characters an event can have. By default this is 0, which means no limit.
 
 ### /event make

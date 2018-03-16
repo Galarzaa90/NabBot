@@ -5,8 +5,9 @@ Commands related to Tibia, specially commands related to tibia.com
     Parameters enclosed in brackets `[]` are optional.
 
 
-## /whois *playerName/discordUser*
-*Other aliases: /check, /player, /checkplayer, /char, /character*
+## /whois
+**Syntax:** /whois *playerName/discordUser*  
+**Other aliases:** /check, /player, /checkplayer, /char, /character
 
 This commands has 2 functions:  
 
@@ -49,8 +50,9 @@ It also shows the character's corresponding highscore positions, however, this i
 
 ---
 
-## /guild *guildname*
-*Other aliases: /guildcheck, /checkguild*
+## /guild
+**Syntax:** /guild *guildname*  
+**Other aliases:** /guildcheck, /checkguild
 
 Show's the number of members a guild has, and a list of their online users.
 It also shows whether the guild has a guildhall or not, and their founded date.
@@ -62,8 +64,9 @@ It also shows whether the guild has a guildhall or not, and their founded date.
 
 ---
 
-### /guild members *guildname*
-*Other aliases: /guild list*
+### /guild members
+**Syntax:** /guild *guildname*  
+**Other aliases:** /guild list
 
 Shows a paginated list of all the members of a guild. If they are online, 🔹 is shown next to their name.
 
@@ -74,8 +77,9 @@ Shows a paginated list of all the members of a guild. If they are online, 🔹 i
     
 ---
 
-### /guild info *guildname*
-*Other aliases /guild stats*
+### /guild info
+**Syntax:** /guild info *guildname*  
+**Other aliases:** /guild stats
 
 Shows basic information about a guild, like their description, homepage, guildhall, number of members of members and more.
 
@@ -85,8 +89,9 @@ Shows basic information about a guild, like their description, homepage, guildha
     ![image](../assets/images/commands/guildinfo.png)
 
 
-## /share *level/player*
-*Other aliases: /expshare, /party*
+## /share
+**Syntax:** /share *level/player*  
+**Other aliases:** /expshare, /party
 
 There's three different ways to use this command:
 
@@ -110,8 +115,9 @@ There's three different ways to use this command:
 
 ---
 
-## /deaths [*player*]
-*Other aliases: /deathlist, /death*
+## /deaths
+**Syntax:** /deaths [*player*]  
+**Other aliases:** /deathlist, /death
 
 If a player is specified, it displays a list of that player's recent deaths. 
 If no player is specified, it will show the recent deaths of all players registered in the database. 
@@ -125,8 +131,9 @@ The number of entries shown per page is higher in ask channel and private channe
     **/deaths**  
     ![image](../assets/images/commands/deaths_2.png)
 
-### /deaths monster *name*
-*Other aliases: /deaths mob, /deaths killer*
+### /deaths monster
+**Syntax:** /deaths monster *name*  
+**Other aliases:** /deaths mob, /deaths killer
 
 Shows recent deaths by a specific monster or killer.
 
@@ -135,7 +142,8 @@ Shows recent deaths by a specific monster or killer.
     **/deaths mob Lloyd**  
     ![image](../assets/images/commands/deaths_mob.png)
 
-### /deaths user *name*
+### /deaths user
+**Syntax:** /death user *name*
 
 Shows recent deaths by all characters registered to a user.
 
@@ -146,8 +154,9 @@ Shows recent deaths by all characters registered to a user.
 
 ---
 
-## /levels [*player*]
-*Other aliases: /levelups, /lvl, /level, /lvls*
+## /levels
+**Syntax:** /levels [*player*]  
+**Other aliases:** /levelups, /lvl, /level, /lvls
 
 If a player is specified, it displays a list of the player's recent level ups.
 If no player is specified, it will show the recent level ups of all players registered in the database.
@@ -162,8 +171,8 @@ If no player is specified, it will show the recent level ups of all players regi
 
 
 
-### /levels user *name*
-*Other aliases: /story
+### /levels user
+**Syntax:** /levels user *name*  
 
 Shows recent levels by all characters registered to a user.
 
@@ -174,7 +183,9 @@ Shows recent levels by all characters registered to a user.
 
 ---
 
-## /timeline [*player*]
+## /timeline
+**Syntax:** /timeline [*player*]  
+**Other aliases:** /story
 
 Shows recent levels and deaths by all registered characters.
 If a character name is provided, their level ups and deaths are shown. 
@@ -192,7 +203,8 @@ If a character name is provided, their level ups and deaths are shown.
 
 ---
 
-### /timeline user *name*
+### /timeline
+**Syntax:** /timeline user *name*
 
 Shows recent levels and deaths by all characters registed to the user.
 
@@ -203,7 +215,8 @@ Shows recent levels and deaths by all characters registed to the user.
 
 ---
 
-## /stats *level,vocation*/*charactername*
+## /stats
+**Syntax:** /stats *level,vocation*/*charactername*
 
 Replies with the hitpoints, mana, capacity, total experience and experience to next level (at 0% progress) 
 of a character with that level and vocation, or if a character's name was entered, it replies with its stats.
@@ -217,8 +230,9 @@ of a character with that level and vocation, or if a character's name was entere
     ![image](../assets/images/commands/stats_2.png)
 
 
-## /findteam char/level/minlevel,maxlevel
-*Other aliases: /whereteam, /searchteam, /team*
+## /findteam
+**Syntax:** /findteam *char/level/minlevel*,*maxlevel*  
+**Other aliases:** /whereteam, /searchteam, /team
 
 This commands finds registered characters with the desired levels.
 Vocations can be filtered using the reaction buttons.
@@ -244,7 +258,8 @@ Online characters are shown first on the list, they also have a 🔹 icon.
 
 ---
 
-## /world *name*
+## /world
+**Syntax:** /world *name*
 
 Displays information about a world like pvp type, online count, location and more.
 
@@ -259,7 +274,8 @@ Displays information about a world like pvp type, online count, location and mor
  
 ---
 
-## news [*article_id*]
+## news
+**Syntax:** news [*article_id*]
 
 Displays a list of recent news and articles. Or if an article id is provided, a summary of that article is displayed.
 
@@ -276,8 +292,9 @@ If the command is used on the ask channel or in private, the list or summary dis
 
 
 
-## /house *name*[/*world*]
-*Other aliases: /houses, /guildhall, /gh*
+## /house
+**Syntax:** /house *name*[/*world*]  
+**Other aliases:** /houses, /guildhall, /gh
 
 Displays information about a house, including a picture of the a section of the map where it is located.
 It shows the current status of the house in the world the current discord server is tracking.
@@ -294,8 +311,9 @@ To specify a different world, add the world after a slash `/`
 
 ----
 
-## /blessings *level*
-*Other aliases: /bless*
+## /blessings
+**Syntax:** /blessings *level*  
+**Other aliases:** /bless
 
 Replies with the cost of blessings for that level.
 For players over level 100, it will also display the cost of the Blessing of the Inquisition.
@@ -312,7 +330,7 @@ For players over level 100, it will also display the cost of the Blessing of the
 ----
 
 ## /time
-*Other aliases: /serversave, /ss*
+**Other aliases:** /serversave, /ss
 
 Displays the time in CipSoft's (CET/CEST), Brazil's and Mexico's timezones, the time until server save and Rashid's current city.
 

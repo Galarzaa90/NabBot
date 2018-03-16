@@ -5,7 +5,7 @@ All commands can only be run by users in the `owner_ids` list or the bot's appli
     Parameters enclosed in brackets `[]` are optional.
 
 ## /restart
-*Other aliases: /reset*
+**Other aliases:** /reset
 
 Completely restarts the bot, reloading all code. When used, the bot shutsdown and then restarts itself in 5 seconds.
 
@@ -19,6 +19,7 @@ Once the bot starts again, it will notify the user that restarted it.
 ----
 
 ## /unload
+**Syntax**: /unload *name*
 
 Unloads a cog. Cogs are extensions that contain their own commands and tasks.
 
@@ -48,7 +49,8 @@ For example, a cog found in `cogs/tibia.py` would be loaded as `cogs.tibia`.
 
 ----
 
-## /debug *code*
+## /debug
+**Syntax:** /debug *code*
 
 Evaluates Python code. This command can be used to run python command and get the response as a reply.
 
@@ -85,8 +87,9 @@ Shows a list of servers where the bot is in, along with their owners and tracked
 
 ----
 
-## /admins_message [*message*]
-*Other aliases: /message_admins, /adminsmessage, /msgadmins, /adminsmsg*
+## /admins_message
+**Syntax**: /admins_message [*message*]  
+**Other aliases:** /message_admins, /adminsmessage, /msgadmins, /adminsmsg
 
 Sends a private message to all the server owners of the servers the bot is.
 If no message is specified at first, the command will prompt the user to enter a message to send.

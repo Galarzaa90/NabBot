@@ -21,7 +21,8 @@ Also, if it finds a character owned by another user, the whole process will be s
 
 ----
 
-## /imnot characterName
+## /imnot
+**Syntax:** /imnot *characterName*  
 
 Unregisters a character you previously registered.
 
@@ -45,8 +46,9 @@ The list is shown with pages and vocation filter.
 
 ----
 
-## /watched *[name]*
-*Other aliases: /watchlist, /hunted, /huntedlist*
+## /watched
+**Syntax:** /watched  *[name]*  
+**Other aliases:** /watchlist, /hunted, /huntedlist
 
 Creates a new text channel for the watched list to be posted. The watch list shows which characters from it are online.
 Entire guilds can be added too.
@@ -71,8 +73,9 @@ The channel may be renamed at anytime without problems. But if it's deleted, it 
 
 ----
 
-### /watched add *name*
-*/Other aliases: /watched addplayer, /watched addchar*
+### /watched add
+**Syntax:** /watched  *name*  
+**Other aliases:** /watched addplayer, /watched addchar
 
 Adds a character to the character list. The character must be in the same world the server is tracking.
 
@@ -85,8 +88,9 @@ The bot asks for confirmation before adding, by using emoji reactions: 🇾/🇳
     
 ----
 
-### /watched remove *name*
-*/Other aliases: /watched removeplayer, /watched removechar*
+### /watched remove
+**Syntax:** /watched remove *name*  
+**Other aliases:** /watched removeplayer, /watched removechar
 
 Removes a character from the watched list.
 
@@ -98,7 +102,8 @@ The bot asks for confirmation before adding, by using emoji reactions: 🇾/🇳
     ![image](../assets/images/commands/watched_remove.png)
     
     
-### /watched addguild *name*
+### /watched addguild
+**Syntax:** /watched addguild *name*
 
 Adds a guild to the watched list. Every online members will be listed on the list.
 
@@ -112,7 +117,8 @@ The bot asks for confirmation before adding, by using emoji reactions: 🇾/🇳
 
 ----
     
-### /watched removeguild *name*
+### /watched removeguild
+**Syntax**:  /watched *name*
 
 Removes a guild from the watched list.
 
@@ -137,7 +143,7 @@ Shows a list of all characters currently in the list.
 ----
     
 ### /watched guildlist
-*Other aliases: /watched guilds, /watched listguilds*
+**Other aliases:** /watched guilds, /watched listguilds
 
 Shows a list of all guilds currently in the list.
 
