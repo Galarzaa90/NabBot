@@ -1119,7 +1119,7 @@ class General:
             await ctx.send("A character of yours is already in this event.")
             return
 
-        message = await ctx.send(f"Do you want to join to **{event['name']}** as **{char['name']}**")
+        message = await ctx.send(f"Do you want to join the event \'**{event['name']}**\' as **{char['name']}**?")
         confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Nevermind then.")
         if not confirm:
             return
