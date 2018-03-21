@@ -178,6 +178,8 @@ class Character:
             character.former_world = data["former_world"]
         if "guild" in data:
             character.guild = data["guild"]
+        if "house" in data:
+            character.house = data["house"]
         if "comment" in data:
             character.comment = data["comment"]
         character.account_status = cls.PREMIUM_ACCOUNT if data["account_status"] == "Premium Account" else cls.FREE_ACCOUNT
@@ -383,6 +385,13 @@ async def get_character(name, tries=5) -> Optional[Character]:
     character = Character.parse_from_tibiadata(content_json)
     if character is None:
         return None
+
+    if character.house is not None:
+        with closing(tibiaDatabase.cursor()) as c:
+            c.execute("SELECT id FROM houses WHERE name LIKE ?", (character.house["name"].strip(),))
+            result = c.fetchone()
+            if result:
+                character.house["houseid"] = result["id"]
 
     # Database operations
     c = userDatabase.cursor()
