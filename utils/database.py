@@ -269,7 +269,7 @@ lootDatabase.row_factory = dict_factory
 def reload_worlds():
     """Refresh the world list from the database
 
-    This is used to avoid reading the database everytime the world list is needed.
+    This is used to avoid reading the database every time the world list is needed.
     A global variable holding the world list is loaded on startup and refreshed only when worlds are modified"""
     c = userDatabase.cursor()
     tibia_servers_dict_temp = {}

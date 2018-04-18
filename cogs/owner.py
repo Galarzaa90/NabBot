@@ -420,6 +420,47 @@ class Owner:
                 c.close()
                 userDatabase.commit()
 
+    @commands.command()
+    @checks.is_owner()
+    @checks.is_not_lite()
+    async def merge(self, ctx, old_world: str, new_world: str):
+        """Renames all references of an old world
+
+        This command should updates all the database entries, changing all references of the old world to the new one
+
+        This updates all characters' worlds and discord guild's tracked worlds to the new world.
+        All the highscores entries of the old world will be deleted.
+
+        This should be done immediately after the world merge occurs and not before, or else tracking will stop.
+
+        Use this with caution as the damage can be irreversible.
+
+        Example
+        /merge Fidera Gladera
+        """
+        old_world = old_world.capitalize()
+        new_world = new_world.capitalize()
+        message = await ctx.send(f"Are you sure you want to merge **{old_world}** into **{new_world}**?\n"
+                                 f"*This will affect all the Discord servers I'm in, and may be irreversible.*")
+        confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Good, I hate doing that.")
+        if not confirmed:
+            return
+        c = userDatabase.cursor()
+        try:
+            c.execute("UPDATE chars SET world = ? WHERE world LIKE ? ", (new_world, old_world))
+            affected_chars = c.rowcount
+            c.execute("UPDATE server_properties SET value = ? WHERE name = ? AND value LIKE ?",
+                      (new_world, "world", old_world))
+            affected_guilds = c.rowcount
+            c.execute("DELETE FROM highscores WHERE world LIKE ?", (old_world,))
+            await ctx.send(f"Moved **{affected_chars:,}** characters to {new_world}. "
+                           f"**{affected_guilds}** discord servers were affected.\n\n"
+                           f"Enjoy **{new_world}**! {EMOJI[':fire:']}{EMOJI[':cancer:']}")
+            reload_worlds()
+        finally:
+            c.close()
+            userDatabase.commit()
+
 
 def setup(bot):
     bot.add_cog(Owner(bot))
