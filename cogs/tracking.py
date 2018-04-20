@@ -167,7 +167,10 @@ class Tracking:
                 # Remove chars that are no longer online from the global_online_list
                 offline_list = []
                 for char in global_online_list:
-                    if char.world == current_world:
+                    if char.world not in tibia_worlds:
+                        # Remove chars from worlds that no longer exist
+                        offline_list.append(char)
+                    elif char.world == current_world:
                         offline = True
                         for server_char in current_world_online:
                             if server_char.name == char.name:
