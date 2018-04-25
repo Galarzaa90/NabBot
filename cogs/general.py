@@ -208,7 +208,7 @@ class General:
     @commands.guild_only()
     @commands.command()
     async def roles(self, ctx: commands.Context, *, user_name: str = None):
-        """Shows a list of roles or an user's roles
+        """Shows a list of roles or a user's roles
 
         If no user_name is specified, it shows a list of the server's role.
         If user_name is specified, it shows a list of that user's roles."""
@@ -271,6 +271,34 @@ class General:
             per_page = 5
         pages = Paginator(self.bot, message=ctx.message, entries=role_members, per_page=per_page, title=title,
                           color=role.colour)
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+    @commands.guild_only()
+    @commands.command()
+    async def norole(self, ctx):
+        """Shows a list of members with no roles"""
+
+        entries = []
+
+        for member in ctx.guild.members:
+            # Member only has the @everyone role
+            if len(member.roles) == 1:
+                entries.append(member.mention)
+
+        if not entries:
+            await ctx.send("There are no members without roles.")
+            return
+
+        title = "Members with no roles"
+        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
+            per_page = 20
+        else:
+            per_page = 5
+        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
         try:
             await pages.paginate()
         except CannotPaginate as e:
