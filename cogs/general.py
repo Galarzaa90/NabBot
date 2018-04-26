@@ -22,6 +22,7 @@ from utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50
 
+
 class General:
     def __init__(self, bot: NabBot):
         self.bot = bot
@@ -33,12 +34,14 @@ class General:
 
         A random status is selected every 20 minutes.
         """
-        game_list = ["Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2017", "Russian Roulette",
+        game_list = ["Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2018", "Russian roulette",
                      "with my toy humans", "with fire"+EMOJI[":fire:"], "God", "innocent", "the part", "hard to get",
-                     "with my human minions", "Singularity", "Portal 3", "Dank Souls", "with GLaDOS " + EMOJI[":blue_heart:"]]
+                     "with my human minions", "Singularity", "Portal 3", "Dank Souls", "you", "01101110", "dumb",
+                     "with GLaDOS " + EMOJI[":blue_heart:"], "with myself", "with your heart", "Generic MOBA",
+                     "Generic Battle Royale", "League of Dota", "my cards right", "out your death in my head"]
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
-            await self.bot.change_presence(game=discord.Game(name=random.choice(game_list)))
+            await self.bot.change_presence(activity=discord.Game(name=random.choice(game_list)))
             await asyncio.sleep(60*20)  # Change game every 20 minutes
 
     async def events_announce(self):
