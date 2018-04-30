@@ -280,8 +280,8 @@ class General:
             await ctx.send(e)
 
     @commands.guild_only()
-    @commands.command()
-    async def norole(self, ctx):
+    @commands.command(aliases=["norole"])
+    async def noroles(self, ctx):
         """Shows a list of members with no roles"""
 
         entries = []

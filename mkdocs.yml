@@ -1,9 +1,7 @@
 site_name: 'NabBot'
 site_description: 'A discord bot for the MMO Tibia'
 site_author: 'Allan Galarza'
-site_url: 'https://galarzaa90.github.io/NabBot/'
 
-site_name: NabBot
 theme:
   name: material
   palette:
@@ -33,6 +31,8 @@ extra:
   social:
     - type: 'github'
       link: 'https://github.com/galarzaa90'
+    - type: 'gitlab'
+      link: 'https://gitlab.com/Galarzaa90'
 
 repo_url: https://github.com/Galarzaa90/NabBot
 edit_uri: ""

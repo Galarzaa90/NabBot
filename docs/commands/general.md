@@ -103,6 +103,19 @@ Shows a list of members that have the specified role.
 
 ----
 
+## /noroles
+**Syntax:** /noroles  
+**Other aliases:** /norole
+
+Shows a list of members that have no roles.
+
+??? Summary "Examples"
+  
+    **/noroles**  
+    ![image](../assets/images/commands/noroles.png)
+
+----
+
 ## /events
 
 Shows a list of upcoming and recent events.
