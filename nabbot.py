@@ -1,5 +1,5 @@
 import asyncio
-import random
+import datetime as dt
 import re
 import sys
 import traceback
@@ -16,7 +16,7 @@ from utils.discord import get_region_string, is_private
 from utils.general import join_list, get_token
 from utils.general import log
 from utils.help_format import NabHelpFormat
-from utils.messages import decode_emoji, EMOJI
+from utils.messages import decode_emoji
 from utils.tibia import populate_worlds, tibia_worlds
 
 initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot",
@@ -178,9 +178,36 @@ class NabBot(commands.Bot):
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
+        now = dt.datetime.utcnow()
         self.members[member.id].remove(member.guild.id)
+        bot_member = member.guild.me  # type: discord.Member
+        embed = discord.Embed(description="Left the server or was kicked".format(member))
+        icon_url = member.avatar_url if member.avatar_url else member.default_avatar_url
+        embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
+        embed.timestamp = now
+        if bot_member.guild_permissions.view_audit_log:
+            async for entry in member.guild.audit_logs(limit=10, action=discord.AuditLogAction.kick, reverse=False,
+                                                       after=dt.datetime.utcnow()-dt.timedelta(0, 5)):
+                if abs((entry.created_at-now).total_seconds()) >= 5:
+                    # After is broken in the API, so we must check if entry is too old.
+                    break
+                if entry.target.id == member.id:
+                    embed.description = "Kicked"
+                    icon_url = entry.user.avatar_url if entry.user.avatar_url else entry.user.default_avatar_url
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    embed.timestamp = entry.created_at
+                    if entry.reason:
+                        embed.description += f"\n**Reason:** {entry.reason}"
+                    log.info("{0.display_name} (ID:{0.id}) was kicked from {0.guild.name} by {1.display_name}"
+                             .format(member, entry.user))
+                    await self.send_log_message(member.guild, embed=embed)
+                    return
+            embed.description = "Left the server"
+            log.info("{0.display_name} (ID:{0.id}) left {0.guild.name}".format(member))
+            await self.send_log_message(member.guild, embed=embed)
+            return
         log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.guild.name}".format(member))
-        await self.send_log_message(member.guild, "**{0.name}#{0.discriminator}** left or was kicked.".format(member))
+        await self.send_log_message(member.guild, embed=embed)
 
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
@@ -335,7 +362,7 @@ class NabBot(commands.Bot):
             return self.get_top_channel(guild, True)
         return channel
 
-    async def send_log_message(self, guild: discord.Guild, content=None, embed: discord.Embed = None):
+    async def send_log_message(self, guild: discord.Guild, content=None, *, embed: discord.Embed = None):
         """Sends a message on the server-log channel
 
         If the channel doesn't exist, it doesn't send anything or give of any warnings as it meant to be an optional
