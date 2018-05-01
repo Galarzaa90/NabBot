@@ -5,7 +5,7 @@ import discord
 from discord.abc import PrivateChannel, Messageable
 from discord.ext import commands
 
-from config import lite_servers
+from utils.config import config
 from .messages import EMOJI
 
 # Discord length limit
@@ -108,7 +108,7 @@ def is_lite_mode(ctx: commands.Context) -> bool:
     then context is not lite"""
     if is_private(ctx.message.channel):
         for g in ctx.bot.get_user_guilds(ctx.message.author.id):
-            if g.id not in lite_servers:
+            if g.id not in config.lite_servers:
                 return False
     else:
-        return ctx.message.guild in lite_servers
+        return ctx.message.guild in config.lite_servers

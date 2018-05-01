@@ -4,9 +4,9 @@ from typing import List
 import discord
 from discord.ext import commands
 
-from config import welcome_pm, ask_channel_name, log_channel_name
 from nabbot import NabBot
 from utils import checks
+from utils.config import config
 from utils.database import *
 from utils.discord import is_private
 from utils.general import join_list, log
@@ -122,14 +122,14 @@ class Admin:
                 answer += "\n\t{0} Not in: {1}\n".format(get_check_emoji(False), ",".join(channel_list))
             i += 1
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, guild)
         answer += "\nAsk channel:\n\t"
         if ask_channel is not None:
             answer += "{0} Enabled: {1.mention}".format(get_check_emoji(True), ask_channel)
         else:
             answer += "{0} Not enabled".format(get_check_emoji(False))
 
-        log_channel = self.bot.get_channel_by_name(log_channel_name, guild)
+        log_channel = self.bot.get_channel_by_name(config.log_channel_name, guild)
         answer += "\nLog channel:\n\t"
         if log_channel is not None:
             answer += "{0} Enabled: {1.mention}".format(get_check_emoji(True), log_channel)
@@ -226,11 +226,11 @@ class Admin:
         if message is None:
             current_message = get_server_property("welcome", ctx.guild.id)
             if current_message is None:
-                current_message = welcome_pm.format(ctx.message.author, self.bot)
+                current_message = config.welcome_pm.format(ctx.message.author, self.bot)
                 await ctx.send(f"This server has no custom message, joining members get the default message:\n"
                                f"----------\n{current_message}")
             else:
-                unformatted_message = f"{welcome_pm}\n{current_message}"
+                unformatted_message = f"{config.welcome_pm}\n{current_message}"
                 complete_message = unformatted_message.format(user=ctx.author, server=ctx.guild, bot=self.bot.user,
                                                               owner=ctx.guild.owner)
                 await ctx.send(f"This server has the following welcome message:\n"

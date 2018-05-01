@@ -10,9 +10,9 @@ import discord
 import psutil
 from discord.ext import commands
 
-from config import ask_channel_name, owner_ids
 from nabbot import NabBot
 from utils import checks
+from utils.config import config
 from utils.database import userDatabase, tibiaDatabase, get_server_property, tracked_worlds
 from utils.discord import is_lite_mode, get_region_string, get_role_list, get_role, is_private, clean_string
 from utils.general import get_uptime, TimeString, single_line, is_numeric, log
@@ -121,7 +121,7 @@ class General:
 
         bot = ctx.bot
         destination = ctx.channel if is_private(
-            ctx.channel) or ctx.channel.name == ask_channel_name else ctx.author
+            ctx.channel) or ctx.channel.name == config.ask_channel_name else ctx.author
 
         def repl(obj):
             return _mentions_transforms.get(obj.group(0), '')
@@ -237,7 +237,7 @@ class General:
                 await ctx.send(f"There are no active roles for **{member.display_name}**.")
                 return
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
@@ -267,7 +267,7 @@ class General:
             return
 
         title = "Members with the role '{0.name}'".format(role)
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
@@ -296,7 +296,7 @@ class General:
             return
 
         title = "Members with no roles"
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
@@ -507,7 +507,7 @@ class General:
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
             result = c.fetchall()
-        if len(result) > 1 and creator not in owner_ids:
+        if len(result) > 1 and creator not in config.owner_ids:
             await ctx.send("You can only have two running events simultaneously. Delete or edit an active event")
             return
 
@@ -594,7 +594,7 @@ class General:
         if event is None:
             await ctx.send("There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in owner_ids:
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send("You can only edit your own events.")
             return
 
@@ -651,7 +651,7 @@ class General:
         if event is None:
             await ctx.send("There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in owner_ids:
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send("You can only edit your own events.")
             return
 
@@ -713,7 +713,7 @@ class General:
         if event is None:
             await ctx.send("There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in owner_ids:
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send("You can only edit your own events.")
             return
 
@@ -772,7 +772,7 @@ class General:
         if event is None:
             await ctx.send("There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in owner_ids:
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send("You can only edit your own events.")
             return
 
@@ -833,7 +833,7 @@ class General:
         if event is None:
             await ctx.send("There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in owner_ids:
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send("You can only edit your own events.")
             return
 
@@ -880,7 +880,7 @@ class General:
         if event is None:
             await ctx.send("There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in owner_ids:
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send("You can only delete your own events.")
             return
 
@@ -918,7 +918,7 @@ class General:
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
             event = c.fetchall()
-        if len(event) > 1 and creator not in owner_ids:
+        if len(event) > 1 and creator not in config.owner_ids:
             return
         await ctx.send("Let's create an event. What would you like the name to be? You can `cancel` at any time.")
 
@@ -1195,7 +1195,7 @@ class General:
         if event is None:
             await ctx.send("There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in owner_ids:
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send("You can only add people to your own events.")
             return
         with closing(userDatabase.cursor()) as c:
@@ -1240,7 +1240,7 @@ class General:
         if event is None:
             await ctx.send("There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in owner_ids:
+        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send("You can only add people to your own events.")
             return
         with closing(userDatabase.cursor()) as c:

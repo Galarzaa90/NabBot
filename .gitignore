@@ -1,5 +1,5 @@
 .idea
-login.py
+.vscode
 __pycache__
 
 *.db-journal
@@ -12,3 +12,5 @@ token.txt
 !/data/loot_template.db
 !/data/tibia_database.db
 !/data/tibia_worlds.json
+!/data/config_template.yml
+/config.yml

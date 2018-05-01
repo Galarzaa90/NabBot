@@ -15,7 +15,7 @@ from PIL import Image
 from PIL import ImageDraw
 from bs4 import BeautifulSoup
 
-from config import network_retry_delay
+from utils.config import config
 from utils.database import userDatabase, tibiaDatabase
 from utils.messages import EMOJI
 from .general import log
@@ -378,7 +378,7 @@ async def get_character(name, tries=5) -> Optional[Character]:
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
-        await asyncio.sleep(network_retry_delay)
+        await asyncio.sleep(config.network_retry_delay)
         return await get_character(name, tries - 1)
 
     content_json = json.loads(content)
@@ -451,7 +451,7 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
-        await asyncio.sleep(network_retry_delay)
+        await asyncio.sleep(config.network_retry_delay)
         return await get_highscores(world, category, pagenum, profession, tries - 1)
 
     # Trimming content to reduce load
@@ -460,7 +460,7 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
         end_index = content.index('<div style="float: left;"><b>&raquo; Pages:')
         content = content[start_index:end_index]
     except ValueError:
-        await asyncio.sleep(network_retry_delay)
+        await asyncio.sleep(config.network_retry_delay)
         return await get_highscores(world, category, pagenum, profession, tries - 1)
 
     if category == "loyalty":
@@ -492,7 +492,7 @@ async def get_world(name, tries=5) -> Optional[World]:
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
-        await asyncio.sleep(network_retry_delay)
+        await asyncio.sleep(config.network_retry_delay)
         return await get_world(name, tries - 1)
 
     content_json = json.loads(content)
@@ -521,14 +521,14 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
                 async with session.get(guildstats_url) as resp:
                     content = await resp.text(encoding='ISO-8859-1')
         except Exception:
-            await asyncio.sleep(network_retry_delay)
+            await asyncio.sleep(config.network_retry_delay)
             return await get_guild(name, title_case, tries - 1)
 
         # Make sure we got a healthy fetch
         try:
             content.index('<div class="footer">')
         except ValueError:
-            await asyncio.sleep(network_retry_delay)
+            await asyncio.sleep(config.network_retry_delay)
             return await get_guild(name, title_case, tries - 1)
 
         # Check if the guild doesn't exist
@@ -560,7 +560,7 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
             async with session.get(tibiadata_url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
-        await asyncio.sleep(network_retry_delay)
+        await asyncio.sleep(config.network_retry_delay)
         return await get_guild(name, title_case, tries - 1)
 
     content_json = json.loads(content)
@@ -593,7 +593,7 @@ async def get_recent_news(tries = 5):
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
-        await asyncio.sleep(network_retry_delay)
+        await asyncio.sleep(config.network_retry_delay)
         return await get_recent_news(tries - 1)
 
     content_json = json.loads(content)
@@ -623,7 +623,7 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
-        await asyncio.sleep(network_retry_delay)
+        await asyncio.sleep(config.network_retry_delay)
         return await get_recent_news(tries - 1)
 
     content_json = json.loads(content)
@@ -825,7 +825,7 @@ async def get_house(name, world=None):
                                                                                                      world))
                     house["fetch"] = False
                     break
-                await asyncio.sleep(network_retry_delay)
+                await asyncio.sleep(config.network_retry_delay)
                 continue
 
             # Trimming content to reduce load
@@ -842,7 +842,7 @@ async def get_house(name, world=None):
                     break
                 else:
                     tries -= 1
-                    await asyncio.sleep(network_retry_delay)
+                    await asyncio.sleep(config.network_retry_delay)
                     continue
             m = re.search(r'<BR>(.+)<BR><BR>(.+)', content)
             if not m:
@@ -988,7 +988,7 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
     except Exception:
-        await asyncio.sleep(network_retry_delay)
+        await asyncio.sleep(config.network_retry_delay)
         return await get_world_list(tries - 1)
 
     try:

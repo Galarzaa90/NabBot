@@ -3,7 +3,9 @@ import re
 
 import discord
 
-from config import announce_threshold
+from utils.config import config
+
+announce_threshold = config.announce_threshold
 
 # Emoji code
 # Emoji :shortname: list

@@ -7,6 +7,7 @@ from discord.ext import commands
 # Everything is imported to put it in /debug scope
 from nabbot import NabBot
 from utils import checks
+from utils.config import *
 from utils.database import *
 from utils.discord import *
 from utils.general import *

@@ -5,14 +5,12 @@ from typing import List, Dict
 import discord
 from discord.ext import commands
 
-from config import owner_ids
 from nabbot import NabBot
 from utils import checks
+from utils.config import config
 from utils.database import userDatabase, tracked_worlds
-from utils.discord import FIELD_VALUE_LIMIT, is_private
-from utils.messages import split_message
+from utils.discord import is_private
 from utils.paginator import Paginator, CannotPaginate
-from utils.tibia import get_character, ERROR_NETWORK, NetworkError
 
 
 class Mod:
@@ -52,7 +50,7 @@ class Mod:
                     bot_permissions = bot_member.permissions_in(channel)  # type: discord.Permissions
                     # Check if both the author and the bot have permissions to send messages and add channel to list
                     if (author_permissions.send_messages and bot_permissions.send_messages) and \
-                            (ctx.message.author.id in owner_ids or author_permissions.administrator):
+                            (ctx.message.author.id in config.owner_ids or author_permissions.administrator):
                         separator = ""
                         if prev_server is not server:
                             separator = "---------------\n\t"

@@ -1,6 +1,6 @@
 from discord.ext import commands
 
-from config import owner_ids
+from utils.config import config
 from utils.discord import is_lite_mode
 
 
@@ -57,4 +57,4 @@ async def check_guild_permissions(ctx, perms, *, check=all):
 
 
 async def is_owner_check(ctx):
-    return ctx.message.author.id in owner_ids or await ctx.bot.is_owner(ctx.author)
+    return ctx.message.author.id in config.owner_ids or await ctx.bot.is_owner(ctx.author)

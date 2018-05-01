@@ -10,18 +10,17 @@ from typing import List
 import discord
 from discord.ext import commands
 
-from config import death_scan_interval, highscores_delay, highscores_page_delay, \
-    online_scan_interval, announce_threshold, ask_channel_name, online_list_expiration
 from nabbot import NabBot
 from utils import checks
+from utils.config import config
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds, get_server_property, set_server_property
 from utils.discord import is_private
 from utils.general import global_online_list, log, join_list, start_time
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
     level_messages
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
-from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, ERROR_DOESNTEXIST, \
-    get_voc_emoji, get_guild, get_voc_abb, get_character_url, url_guild, \
+from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
+    get_voc_abb, get_character_url, url_guild, \
     get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES
 
 
@@ -42,7 +41,7 @@ class Tracking:
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
             try:
-                await asyncio.sleep(death_scan_interval)
+                await asyncio.sleep(config.death_scan_interval)
                 if len(global_online_list) == 0:
                     await asyncio.sleep(0.5)
                     continue
@@ -68,7 +67,7 @@ class Tracking:
         while not self.bot.is_closed():
             if len(tracked_worlds_list) == 0:
                 # If no worlds are tracked, just sleep, worlds might get registered later
-                await asyncio.sleep(highscores_delay)
+                await asyncio.sleep(config.highscores_delay)
                 continue
             for world in tracked_worlds_list:
                 try:
@@ -101,7 +100,7 @@ class Tracking:
                             for entry in scores:
                                 highscore_data.append(
                                     (entry["rank"], category, world, entry["name"], entry["vocation"], entry["value"]))
-                            await asyncio.sleep(highscores_page_delay)
+                            await asyncio.sleep(config.highscores_page_delay)
                         with userDatabase as conn:
                             # Delete old records
                             conn.execute("DELETE FROM highscores WHERE category = ? AND world = ?", (category, world,))
@@ -130,7 +129,7 @@ class Tracking:
         try:
             with open("data/online_list.dat", "rb") as f:
                 saved_list, timestamp = pickle.load(f)
-                if (time.time() - timestamp) < online_list_expiration:
+                if (time.time() - timestamp) < config.online_list_expiration:
                     global_online_list.clear()
                     global_online_list.extend(saved_list)
                     log.info("Loaded cached online list")
@@ -151,7 +150,7 @@ class Tracking:
                     await asyncio.sleep(0.1)
                     continue
 
-                await asyncio.sleep(online_scan_interval)
+                await asyncio.sleep(config.online_scan_interval)
                 # Get online list for this server
                 world = await get_world(current_world)
                 if world is None:
@@ -350,7 +349,7 @@ class Tracking:
     async def announce_death(self, death: Death, levels_lost=0, char: Character = None, char_name: str = None):
         """Announces a level up on the corresponding servers"""
         # Don't announce for low level players
-        if int(death.level) < announce_threshold:
+        if int(death.level) < config.announce_threshold:
             return
         if char is None:
             if char_name is None:
@@ -417,7 +416,7 @@ class Tracking:
 
         If char_name is passed, the character is fetched here."""
         # Don't announce low level players
-        if int(level) < announce_threshold:
+        if int(level) < config.announce_threshold:
             return
         if char is None:
             if char_name is None:
@@ -817,7 +816,7 @@ class Tracking:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.message.guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.message.guild)
         if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
             per_page = 20
         else:

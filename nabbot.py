@@ -10,7 +10,7 @@ from discord import abc, Reaction, User, Message
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from config import *
+from utils.config import config
 from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, get_server_property
 from utils.discord import get_region_string, is_private
 from utils.general import join_list, get_token
@@ -83,7 +83,7 @@ class NabBot(commands.Bot):
                 return
             log.error(f"Exception in command: {ctx.command.qualified_name}", exc_info=error.original)
             # Bot returns error message on discord if an owner called the command
-            if ctx.message.author.id in owner_ids:
+            if ctx.message.author.id in config.owner_ids:
                 await ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
 
     async def on_message(self, message: discord.Message):
@@ -102,14 +102,14 @@ class NabBot(commands.Bot):
             if message.author.id != self.user.id and \
                     (not split[0].lower()[1:] in self.command_list or not split[0][:1] == "/") and \
                     not isinstance(message.channel, abc.PrivateChannel) and \
-                    message.channel.name == ask_channel_name:
+                    message.channel.name == config.ask_channel_name:
                 await message.delete()
                 return
-        elif ask_channel_delete:
+        elif config.ask_channel_delete:
             # Delete messages in askchannel
             if message.author.id != self.user.id \
                     and (not message.content.lower()[1:] in self.command_list or not message.content[:1] == "/") \
-                    and not isinstance(message.channel, abc.PrivateChannel) and message.channel.name == ask_channel_name:
+                    and not isinstance(message.channel, abc.PrivateChannel) and message.channel.name == config.ask_channel_name:
                 await message.delete()
                 return
         await self.process_commands(message)
@@ -123,7 +123,7 @@ class NabBot(commands.Bot):
                   "If you want a server log channel, create a channel called *{2}*, I will post logs in there." \
                   "You might want to make it private though.\n" \
                   "To have all of Nab Bot's features, use `/setworld <tibia_world>`"
-        formatted_message = message.format(guild, ask_channel_name, log_channel_name)
+        formatted_message = message.format(guild, config.ask_channel_name, config.log_channel_name)
         await guild.owner.send(formatted_message)
         for member in guild.members:
             if member.id in self.members:
@@ -148,11 +148,11 @@ class NabBot(commands.Bot):
             self.members[member.id] = [member.guild.id]
 
         # No welcome message for lite servers and servers not tracking worlds
-        if member.guild.id in lite_servers or tracked_worlds.get(member.guild.id) is None:
+        if member.guild.id in config.lite_servers or tracked_worlds.get(member.guild.id) is None:
             return
 
         server_welcome = get_server_property("welcome", member.guild.id, "")
-        pm = (welcome_pm+"\n"+server_welcome).format(user=member, server=member.guild, bot=self.user,
+        pm = (config.welcome_pm+"\n"+server_welcome).format(user=member, server=member.guild, bot=self.user,
                                                      owner=member.guild.owner)
         log_message = "{0.mention} joined.".format(member)
 
@@ -221,7 +221,7 @@ class NabBot(commands.Bot):
 
     async def on_message_delete(self, message: discord.Message):
         """Called every time a message is deleted."""
-        if message.channel.name == ask_channel_name:
+        if message.channel.name == config.ask_channel_name:
             return
 
         message_decoded = decode_emoji(message.clean_content)
@@ -329,7 +329,7 @@ class NabBot(commands.Bot):
         """Returns a list of the guilds the user is and admin of and the bot is a member of
 
         If the user is a bot owner, returns all the guilds the bot is in"""
-        if user_id in owner_ids:
+        if user_id in config.owner_ids:
             return list(self.guilds)
         guilds = self.get_user_guilds(user_id)
         ret = []
@@ -367,7 +367,7 @@ class NabBot(commands.Bot):
 
         If the channel doesn't exist, it doesn't send anything or give of any warnings as it meant to be an optional
         feature"""
-        channel = self.get_channel_by_name(log_channel_name, guild)
+        channel = self.get_channel_by_name(config.log_channel_name, guild)
         if channel is None:
             return
         await channel.send(content=content, embed=embed)
@@ -452,6 +452,9 @@ if __name__ == "__main__":
         print("Critical information was not available: NabBot can not start without the World List.")
         quit()
     token = get_token()
+
+    print("Loading config...")
+    config.parse()
 
     print("Loading cogs...")
     for cog in initial_cogs:

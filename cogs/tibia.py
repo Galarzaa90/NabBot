@@ -4,9 +4,9 @@ import random
 import discord
 from discord.ext import commands
 
-from config import *
 from nabbot import NabBot
 from utils import checks
+from utils.config import config
 from utils.database import tracked_worlds, get_server_property
 from utils.discord import is_private, is_lite_mode
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, global_online_list, \
@@ -275,7 +275,7 @@ class Tibia:
         online_entries = []
         online_vocations = []
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
@@ -464,7 +464,7 @@ class Tibia:
             member["vocation"] = get_voc_abb(member["vocation"])
             member["online"] = EMOJI[":small_blue_diamond:"] if member["status"] == "online" else ""
             entries.append("{rank}\u2014 {online}**{name}** {nick} (Lvl {level} {vocation}{emoji})".format(**member))
-        if is_private(ctx.channel) or ctx.channel.name == ask_channel_name:
+        if is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name:
             per_page = 20
         else:
             per_page = 5
@@ -572,7 +572,7 @@ class Tibia:
         count = 0
         now = time.time()
         show_links = False
-        if is_private(ctx.channel) or ctx.channel.name == ask_channel_name:
+        if is_private(ctx.channel) or ctx.channel.name == config.config.ask_channel_name:
             per_page = 20
         else:
             per_page = 5
@@ -583,7 +583,7 @@ class Tibia:
                 c.execute("SELECT char_deaths.level, date, name, user_id, byplayer, killer, world, vocation "
                           "FROM char_deaths, chars "
                           "WHERE char_id = id AND char_deaths.level > ? "
-                          "ORDER BY date DESC", (announce_threshold,))
+                          "ORDER BY date DESC", (config.announce_threshold,))
                 while True:
                     row = c.fetchone()
                     if row is None:
@@ -681,7 +681,7 @@ class Tibia:
         count = 0
         entries = []
         now = time.time()
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
@@ -756,7 +756,7 @@ class Tibia:
         entries = []
         now = time.time()
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
@@ -910,7 +910,7 @@ class Tibia:
         author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
@@ -922,7 +922,7 @@ class Tibia:
                 c.execute("SELECT char_levelups.level, date, name, user_id, world, vocation "
                           "FROM char_levelups, chars "
                           "WHERE char_id = id AND char_levelups.level >= ? "
-                          "ORDER BY date DESC", (announce_threshold, ))
+                          "ORDER BY date DESC", (config.announce_threshold, ))
                 while True:
                     row = c.fetchone()
                     if row is None:
@@ -1014,7 +1014,7 @@ class Tibia:
         entries = []
         now = time.time()
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
@@ -1076,7 +1076,7 @@ class Tibia:
         author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
@@ -1092,7 +1092,7 @@ class Tibia:
                           "SELECT name, user_id, world, char_levelups.level as level, null, 'levelup' AS `type`, date, "
                           "vocation "
                           "FROM char_levelups, chars WHERE char_id = id AND char_levelups.level >= ? "
-                          "ORDER BY date DESC", (announce_threshold, announce_threshold))
+                          "ORDER BY date DESC", (config.announce_threshold, config.announce_threshold))
                 while True:
                     row = c.fetchone()
                     if row is None:
@@ -1137,7 +1137,7 @@ class Tibia:
                           "UNION "
                           "SELECT level, null, 'levelup' AS `type`, date "
                           "FROM char_levelups WHERE char_id = ? AND level >= ? "
-                          "ORDER BY date DESC", (result["id"], announce_threshold, result["id"], announce_threshold))
+                          "ORDER BY date DESC", (result["id"], config.announce_threshold, result["id"], config.announce_threshold))
                 while True:
                     row = c.fetchone()
                     if row is None:
@@ -1201,7 +1201,7 @@ class Tibia:
         count = 0
         now = time.time()
 
-        ask_channel = self.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
@@ -1214,7 +1214,7 @@ class Tibia:
                       "UNION "
                       "SELECT name, user_id, world, char_levelups.level as level, null, 'levelup' AS `type`, date, vocation "
                       "FROM char_levelups, chars WHERE char_id = id AND char_levelups.level >= ? AND user_id = ? "
-                      "ORDER BY date DESC", (announce_threshold, user.id, announce_threshold, user.id))
+                      "ORDER BY date DESC", (config.announce_threshold, user.id, config.announce_threshold, user.id))
             while True:
                 row = c.fetchone()
                 if row is None:
@@ -1415,12 +1415,12 @@ class Tibia:
         server_save_str = '{h} hours and {m} minutes'.format(h=hours, m=minutes)
 
         reply = "It's currently **{0}** in Tibia's servers.".format(timestrtibia)
-        if display_brasilia_time:
+        if config.display_brasilia_time:
             offsetbrasilia = get_brasilia_time_zone() - get_local_timezone()
             brasilia_time = dt.datetime.now()+dt.timedelta(hours=offsetbrasilia)
             timestrbrasilia = brasilia_time.strftime("%H:%M")
             reply += "\n**{0}** in Brazil (Brasilia).".format(timestrbrasilia)
-        if display_sonora_time:
+        if config.display_sonora_time:
             offsetsonora = -7 - get_local_timezone()
             sonora_time = dt.datetime.now()+dt.timedelta(hours=offsetsonora)
             timestrsonora = sonora_time.strftime("%H:%M")
@@ -1503,7 +1503,7 @@ class Tibia:
     @commands.command()
     async def bosses(self, ctx, world=None):
         """Shows predictions for bosses"""
-        ask_channel = ctx.bot.get_channel_by_name(ask_channel_name, ctx.guild)
+        ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
 
         if world is None and not is_private(ctx.channel) and tracked_worlds.get(ctx.guild.id) is not None:
             world = tracked_worlds.get(ctx.guild.id)
@@ -1567,7 +1567,7 @@ class Tibia:
             for news in recent_news:
                 news["emoji"] = type_emojis.get(news["type"], "")
             limit = 10
-            if is_private(ctx.channel) or ctx.channel.name == ask_channel_name:
+            if is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name:
                 limit = 20
             embed.description = "\n".join([news_format.format(**n) for n in recent_news[:limit]])
             await ctx.send(embed=embed)
@@ -1581,7 +1581,7 @@ class Tibia:
                 await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
                 return
             limit = 600
-            if is_private(ctx.channel) or ctx.channel.name == ask_channel_name:
+            if is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name:
                 limit = 1900
             embed = self.get_article_embed(article, limit)
             await ctx.send(embed=embed)
