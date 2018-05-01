@@ -26,6 +26,7 @@ KEYS = [
     "extra_cogs"
 ]
 
+
 class Config:
     def __init__(self, **kwargs):
         self.ask_channel_name = kwargs.get("ask_channel_name", "ask-nabbot")

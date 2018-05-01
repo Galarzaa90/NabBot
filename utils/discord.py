@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import discord
 from discord.abc import PrivateChannel, Messageable
@@ -47,6 +47,13 @@ def get_user_color(user: discord.Member, guild: discord.Guild) -> discord.Colour
     if member is not None:
         return member.colour
     return discord.Colour.default()
+
+
+def get_user_avatar(user: Union[discord.User, discord.Member]) -> str:
+    """Gets the user's avatar url
+
+    If they don't have an avatar set, the default avatar is returned"""
+    return user.avatar_url if user.avatar_url is not None else user.default_avatar_url
 
 
 def get_region_string(region: discord.VoiceRegion) -> str:

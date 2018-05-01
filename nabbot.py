@@ -12,7 +12,7 @@ from discord.ext.commands import Context
 
 from utils.config import config
 from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, get_server_property
-from utils.discord import get_region_string, is_private
+from utils.discord import get_region_string, is_private, get_user_avatar
 from utils.general import join_list, get_token
 from utils.general import log
 from utils.help_format import NabHelpFormat
@@ -153,8 +153,12 @@ class NabBot(commands.Bot):
 
         server_welcome = get_server_property("welcome", member.guild.id, "")
         pm = (config.welcome_pm+"\n"+server_welcome).format(user=member, server=member.guild, bot=self.user,
-                                                     owner=member.guild.owner)
-        log_message = "{0.mention} joined.".format(member)
+                                                            owner=member.guild.owner)
+
+        embed = discord.Embed(description="{0.mention} joined.".format(member))
+        icon_url = get_user_avatar(member)
+        embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
+        embed.timestamp = dt.datetime.utcnow()
 
         # Check if user already has characters registered and announce them on log_channel
         # This could be because he rejoined the server or is in another server tracking the same worlds
@@ -168,12 +172,12 @@ class NabBot(commands.Bot):
                 if len(results) > 0:
                     pm += "\nYou already have these characters in {0} registered to you: {1}"\
                         .format(world, join_list([r["name"] for r in results], ", ", " and "))
-                    log_message += "\nPreviously registered characters:\n\t"
-                    log_message += "\n\t".join("{name} - {level} {vocation} - **{guild}**".format(**r) for r in results)
+                    embed.add_field(name="Registered characters",
+                                    value="\n".join("{name} - {level} {vocation} - **{guild}**".format(**r) for r in results))
             finally:
                 c.close()
 
-        await self.send_log_message(member.guild, log_message)
+        await self.send_log_message(member.guild, embed=embed)
         await member.send(pm)
 
     async def on_member_remove(self, member: discord.Member):
@@ -181,21 +185,26 @@ class NabBot(commands.Bot):
         now = dt.datetime.utcnow()
         self.members[member.id].remove(member.guild.id)
         bot_member = member.guild.me  # type: discord.Member
-        embed = discord.Embed(description="Left the server or was kicked".format(member))
-        icon_url = member.avatar_url if member.avatar_url else member.default_avatar_url
+
+        embed = discord.Embed(description="Left the server or was kicked")
+        icon_url = get_user_avatar(member)
         embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
         embed.timestamp = now
+        embed.colour = discord.Colour(0xffff00)
+
+        # If bot can see audit log, he can see if it was a kick or member left on it's own
         if bot_member.guild_permissions.view_audit_log:
-            async for entry in member.guild.audit_logs(limit=10, action=discord.AuditLogAction.kick, reverse=False,
-                                                       after=dt.datetime.utcnow()-dt.timedelta(0, 5)):
+            async for entry in member.guild.audit_logs(limit=20, reverse=False, action=discord.AuditLogAction.kick,
+                                                       after=now-dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
                 if abs((entry.created_at-now).total_seconds()) >= 5:
                     # After is broken in the API, so we must check if entry is too old.
                     break
                 if entry.target.id == member.id:
                     embed.description = "Kicked"
-                    icon_url = entry.user.avatar_url if entry.user.avatar_url else entry.user.default_avatar_url
+                    icon_url = get_user_avatar(entry.user)
                     embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
                     embed.timestamp = entry.created_at
+                    embed.colour = discord.Colour(0xff0000)
                     if entry.reason:
                         embed.description += f"\n**Reason:** {entry.reason}"
                     log.info("{0.display_name} (ID:{0.id}) was kicked from {0.guild.name} by {1.display_name}"
@@ -206,18 +215,64 @@ class NabBot(commands.Bot):
             log.info("{0.display_name} (ID:{0.id}) left {0.guild.name}".format(member))
             await self.send_log_message(member.guild, embed=embed)
             return
+        # Otherwise, we are not certain
         log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.guild.name}".format(member))
         await self.send_log_message(member.guild, embed=embed)
 
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
-        log.warning("{1.name}#{1.discriminator} (ID:{1.id}) was banned from {0.name}".format(guild, user))
-        await self.send_log_message(guild, "**{0.name}#{0.discriminator}** was banned.".format(user))
+        now = dt.datetime.utcnow()
+        log_message = "{1.name}#{1.discriminator} (ID:{1.id}) was banned from {0.name}".format(guild, user)
+        bot_member = guild.me  # type: discord.Member
+
+        embed = discord.Embed(description="Banned")
+        icon_url = get_user_avatar(user)
+        embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=icon_url)
+        embed.timestamp = now
+        embed.colour = discord.Colour(0x7a0d0d)
+
+        # If bot can see audit log, we can get more details of the ban
+        if bot_member.guild_permissions.view_audit_log:
+            async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.ban,
+                                                after=now-dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
+                if abs((entry.created_at-now).total_seconds()) >= 5:
+                    # After is broken in the API, so we must check if entry is too old.
+                    break
+                if entry.target.id == user.id:
+                    icon_url = get_user_avatar(entry.user)
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    if entry.reason:
+                        embed.description += f"\n**Reason:** {entry.reason}"
+                    log_message += f"by {entry.user.name}"
+                    break
+        log.warning(log_message)
+        await self.send_log_message(guild, embed=embed)
 
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
-        log.warning("{1.name}#{1.discriminator} (ID:{1.id}) was unbanned from {0.name}".format(guild, user))
-        await self.send_log_message(guild, "**{0.name}#{0.discriminator}** was unbanned.".format(user))
+        now = dt.datetime.utcnow()
+        log_message = "{1.name}#{1.discriminator} (ID:{1.id}) was unbanned from {0.name}".format(guild, user)
+        bot_member = guild.me  # type: discord.Member
+
+        embed = discord.Embed(description="Unbanned")
+        icon_url = get_user_avatar(user)
+        embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=icon_url)
+        embed.timestamp = now
+        embed.colour = discord.Colour(0xff9000)
+
+        if bot_member.guild_permissions.view_audit_log:
+            async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.unban,
+                                                after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
+                if abs((entry.created_at - now).total_seconds()) >= 5:
+                    # After is broken in the API, so we must check if entry is too old.
+                    break
+                if entry.target.id == user.id:
+                    icon_url = get_user_avatar(entry.user)
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    log_message += f"by {entry.user.name}"
+                    break
+        log.warning(log_message)
+        await self.send_log_message(guild, embed=embed)
 
     async def on_message_delete(self, message: discord.Message):
         """Called every time a message is deleted."""
