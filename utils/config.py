@@ -62,6 +62,7 @@ class Config:
 
     def parse(self):
         if not os.path.isfile(CONFIG_PATH):
+            print("\tconfig.yml not found, copying from template...")
             shutil.copyfile(TEMPLATE_PATH, CONFIG_PATH)
         with open(CONFIG_PATH, "r") as f:
             _config = yaml.load(f)
@@ -79,6 +80,7 @@ class Config:
                 print(f"\tExtra entry found: '{key}', ignoring")
         if missing:
             print("Check data/config_template.yml for reference")
+        print("\tDone")
 
 
 config = Config()
