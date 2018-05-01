@@ -22,9 +22,9 @@ KEYS = [
     "death_scan_interval",
     "highscores_delay",
     "highscores_page_delay",
-    "network_retry_delay"
+    "network_retry_delay",
+    "extra_cogs"
 ]
-
 
 class Config:
     def __init__(self, **kwargs):
@@ -34,6 +34,7 @@ class Config:
         self.lite_servers = kwargs.get("lite_servers", [])
         self.welcome_pm = kwargs.get("welcome_pm", "")
         self.owner_ids = kwargs.get("owner_ids", [])
+        self.extra_cogs = kwargs.get("extra_cogs", [])
         self.display_brasilia_time = kwargs.get("display_brasilia_time", True)
         self.display_sonora_time = kwargs.get("display_sonora_time", True)
         self.online_list_expiration = kwargs.get("online_list_expiration", 300)
@@ -68,10 +69,13 @@ class Config:
         missing = False
         for key in KEYS:
             if key not in _config:
-                print(f"config.yml missing '{key}', using default: {getattr(self, key)}")
+                print(f"\tMissing '{key}', using default: {getattr(self, key)}")
                 missing = True
             else:
                 setattr(self, key, _config[key])
+        for key in _config:
+            if key not in KEYS:
+                print(f"\tExtra entry found: '{key}', ignoring")
         if missing:
             print("Check data/config_template.yml for reference")
 

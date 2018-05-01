@@ -15,6 +15,10 @@ log_channel_name: server-log
 lite_servers:
   - 253338519143972864
 
+# Add extra features by adding your own cogs.
+# Example: extras/twitch.py would be added as 'extras.twitch'
+extra_cogs: []
+
 # The welcome message that is sent to members when they join a discord server with NabBot in it
 # The following keyboards can be used:
 # {user.name} - The joining user's name
