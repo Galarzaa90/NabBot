@@ -157,6 +157,7 @@ class NabBot(commands.Bot):
 
         embed = discord.Embed(description="{0.mention} joined.".format(member))
         icon_url = get_user_avatar(member)
+        embed.colour = discord.Colour.green()
         embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
         embed.timestamp = dt.datetime.utcnow()
 
