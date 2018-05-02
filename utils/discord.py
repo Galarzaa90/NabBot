@@ -69,7 +69,13 @@ def get_region_string(region: discord.VoiceRegion) -> str:
                "sydney": EMOJI[":flag_au:"]+"Sydney",
                "amsterdam": EMOJI[":flag_nl:"]+"Amsterdam",
                "frankfurt": EMOJI[":flag_de:"]+"Frankfurt",
-               "brazil": EMOJI[":flag_br:"]+"Brazil"
+               "brazil": EMOJI[":flag_br:"]+"Brazil",
+               "japan": EMOJI[":flag_jp:"]+"Japan",
+               "hongkong": EMOJI[":flag_hk:"]+"Hong Kong",
+               "russia": EMOJI[":flag_ru:"]+"Russia",
+               "vip-us-east": EMOJI[":flag_us:"]+"US East (VIP)",
+               "vip-us-west": EMOJI[":flag_us:"]+"US West (VIP)",
+               "vip-amsterdam": EMOJI[":flag_nl:"]+"Amsterdam (VIP)",
                }
     return regions.get(str(region), str(region))
 

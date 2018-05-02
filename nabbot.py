@@ -317,49 +317,74 @@ class NabBot(commands.Bot):
         """Called every time a member is updated"""
         now = dt.datetime.utcnow()
         guild = after.guild
+        bot_member = guild.me
 
         embed = discord.Embed(description=f"{after.mention}: ")
         embed.set_author(name=f"{after.name}#{after.discriminator}", icon_url=get_user_avatar(after))
         embed.timestamp = now
         embed.colour = discord.Colour.blue()
-        changes = False
+        changes = True
         if f"{before.name}#{before.discriminator}" != f"{after.name}#{after.discriminator}":
             embed.description += "Name changed from **{0.name}#{0.discriminator}** to **{1.name}#{1.discriminator}**."\
                 .format(before, after)
-            changes = True
         elif before.nick != after.nick:
-            changes = True
             if before.nick is None:
                 embed.description += f"Nickname set to **{after.nick}**"
             elif after.nick is None:
                 embed.description += f"Nickname **{before.nick}** deleted"
             else:
                 embed.description += f"Nickname changed from **{before.nick}** to **{after.nick}**"
-            async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.member_update,
-                                                after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                if abs((entry.created_at - now).total_seconds()) >= 5:
-                    # After is broken in the API, so we must check if entry is too old.
-                    break
-                if entry.target.id == after.id:
-                    # If the user changed their own nickname, no need to specify
-                    if entry.user.id == after.id:
+            if bot_member.guild_permissions.view_audit_log:
+                async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.member_update,
+                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
+                    if abs((entry.created_at - now).total_seconds()) >= 5:
+                        # After is broken in the API, so we must check if entry is too old.
                         break
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
-                    break
+                    if entry.target.id == after.id:
+                        # If the user changed their own nickname, no need to specify
+                        if entry.user.id == after.id:
+                            break
+                        icon_url = get_user_avatar(entry.user)
+                        embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                        break
+        else:
+            changes = False
         if changes:
             await self.send_log_message(after.guild, embed=embed)
         return
 
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
         """Called every time a guild is updated"""
+        now = dt.datetime.utcnow()
+        guild = after
+        bot_member = guild.me
+
+        embed = discord.Embed()
+        embed.set_author(name=after.name, icon_url=after.icon_url)
+        embed.timestamp = now
+        embed.colour = discord.Colour(value=0x9b3ee8)
+
+        changes = True
         if before.name != after.name:
-            reply = "Server name changed from **{0.name}** to **{1.name}**".format(before, after)
-            await self.send_log_message(after, reply)
+            embed.description = "Name changed from **{0.name}** to **{1.name}**".format(before, after)
         elif before.region != after.region:
-            reply = "Server region changed from {0} to {1}".format(get_region_string(before.region),
-                                                                   get_region_string(after.region))
-            await self.send_log_message(after, reply)
+            embed.description = "Region changed from **{0}** to **{1}**".format(get_region_string(before.region),
+                                                                                get_region_string(after.region))
+        elif before.icon_url != after.icon_url:
+            embed.description = "Icon changed"
+            embed.set_thumbnail(url=after.icon_url)
+        elif before.owner_id != after.owner_id:
+            embed.description = f"Ownership transferred to {after.owner.mention}"
+        else:
+            changes = False
+        if changes:
+            if bot_member.guild_permissions.view_audit_log:
+                async for entry in guild.audit_logs(limit=1, reverse=False, action=discord.AuditLogAction.guild_update,
+                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry:
+                    icon_url = get_user_avatar(entry.user)
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    break
+            await self.send_log_message(after, embed=embed)
 
     # ------------ Utility methods ------------
 
