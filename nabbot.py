@@ -25,7 +25,11 @@ initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.t
 
 class NabBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=["/"], description='Mission: Destroy all humans.', pm_help=True,
+        if config.command_mention:
+            command_prefix = commands.when_mentioned_or(*config.command_prefix)
+        else:
+            command_prefix = config.command_prefix
+        super().__init__(command_prefix=command_prefix, description='Mission: Destroy all humans.', pm_help=True,
                          formatter=NabHelpFormat())
         self.remove_command("help")
         self.command_list = []
@@ -494,10 +498,15 @@ class NabBot(commands.Bot):
         return True
 
 
-nabbot = NabBot()
+nabbot = None
 
 if __name__ == "__main__":
     init_database()
+
+    print("Loading config...")
+    config.parse()
+
+    nabbot = NabBot()
 
     # List of tracked worlds for NabBot
     reload_worlds()
@@ -508,9 +517,6 @@ if __name__ == "__main__":
         print("Critical information was not available: NabBot can not start without the World List.")
         quit()
     token = get_token()
-
-    print("Loading config...")
-    config.parse()
 
     print("Loading cogs...")
     for cog in initial_cogs:

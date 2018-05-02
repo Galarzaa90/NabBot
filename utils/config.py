@@ -23,7 +23,9 @@ KEYS = [
     "highscores_delay",
     "highscores_page_delay",
     "network_retry_delay",
-    "extra_cogs"
+    "extra_cogs",
+    "command_prefix",
+    "command_mention"
 ]
 
 
@@ -32,6 +34,8 @@ class Config:
         self.ask_channel_name = kwargs.get("ask_channel_name", "ask-nabbot")
         self.ask_channel_delete = kwargs.get("ask_channel_delete", True)
         self.log_channel_name = kwargs.get("log_channel_name", "server_log")
+        self.command_prefix = kwargs.get("command_prefix", "/")
+        self.command_mention = kwargs.get("command_mention", False)
         self.lite_servers = kwargs.get("lite_servers", [])
         self.welcome_pm = kwargs.get("welcome_pm", "")
         self.owner_ids = kwargs.get("owner_ids", [])
@@ -71,7 +75,7 @@ class Config:
         missing = False
         for key in KEYS:
             if key not in _config:
-                print(f"\tMissing '{key}', using default: {getattr(self, key)}")
+                print(f"\33[33m\tMissing '{key}', using default: {repr(getattr(self, key))}\033[0m")
                 missing = True
             else:
                 setattr(self, key, _config[key])
@@ -79,7 +83,7 @@ class Config:
             if key not in KEYS:
                 print(f"\tExtra entry found: '{key}', ignoring")
         if missing:
-            print("Check data/config_template.yml for reference")
+            print("\33[35mCheck data/config_template.yml for reference\033[0m")
         print("\tDone")
 
 

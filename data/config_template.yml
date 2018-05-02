@@ -7,6 +7,18 @@ ask_channel_name: ask-nabbot
 ask_channel_delete: true
 log_channel_name: server-log
 
+# The prefix used for commands, this shouldn't overlap with prefixes of other bots in the same server.
+# It's possible to have multiple command prefixes, but it's not recommended to expand this.
+command_prefix:
+  - "/"
+
+# If this is enabled, commands can also be called mentioning the bot and then the command name, e.g. @NabBot share 50
+# If this is enabled, and command_prefix is left empty, the bot will only answer to commands via mentions
+# Example:
+# command_prefix: []
+# command_mention: true
+command_mention: false
+
 # Lite mode:
 # If lite is enabled, all user database related functions are disabled.
 # /stalk, /im, /whois /levels are disabled
