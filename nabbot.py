@@ -315,10 +315,40 @@ class NabBot(commands.Bot):
 
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         """Called every time a member is updated"""
-        if before.display_name != after.display_name:
-            reply = "{0.name}#{0.discriminator}: Display name changed from **{0.display_name}** to " \
-                    "**{1.display_name}**.".format(before, after)
-            await self.send_log_message(after.guild, reply)
+        now = dt.datetime.utcnow()
+        guild = after.guild
+
+        embed = discord.Embed(description=f"{after.mention}: ")
+        embed.set_author(name=f"{after.name}#{after.discriminator}", icon_url=get_user_avatar(after))
+        embed.timestamp = now
+        embed.colour = discord.Colour.blue()
+        changes = False
+        if f"{before.name}#{before.discriminator}" != f"{after.name}#{after.discriminator}":
+            embed.description += "Name changed from **{0.name}#{0.discriminator}** to **{1.name}#{1.discriminator}**."\
+                .format(before, after)
+            changes = True
+        elif before.nick != after.nick:
+            changes = True
+            if before.nick is None:
+                embed.description += f"Nickname set to **{after.nick}**"
+            elif after.nick is None:
+                embed.description += f"Nickname **{before.nick}** deleted"
+            else:
+                embed.description += f"Nickname changed from **{before.nick}** to **{after.nick}**"
+            async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.member_update,
+                                                after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
+                if abs((entry.created_at - now).total_seconds()) >= 5:
+                    # After is broken in the API, so we must check if entry is too old.
+                    break
+                if entry.target.id == after.id:
+                    # If the user changed their own nickname, no need to specify
+                    if entry.user.id == after.id:
+                        break
+                    icon_url = get_user_avatar(entry.user)
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    break
+        if changes:
+            await self.send_log_message(after.guild, embed=embed)
         return
 
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
