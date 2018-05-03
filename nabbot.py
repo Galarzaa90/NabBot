@@ -17,7 +17,7 @@ from utils.general import join_list, get_token
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.messages import decode_emoji
-from utils.tibia import populate_worlds, tibia_worlds
+from utils.tibia import populate_worlds, tibia_worlds, get_voc_abb_and_emoji
 
 initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot",
                 "cogs.tibiawiki"}
@@ -177,8 +177,9 @@ class NabBot(commands.Bot):
                 if len(results) > 0:
                     pm += "\nYou already have these characters in {0} registered to you: {1}"\
                         .format(world, join_list([r["name"] for r in results], ", ", " and "))
-                    embed.add_field(name="Registered characters",
-                                    value="\n".join("{name} - {level} {vocation} - **{guild}**".format(**r) for r in results))
+                    characters = ["\u2023 {name} - Level {level} {voc} - **{guild}**"
+                                  .format(**c, voc=get_voc_abb_and_emoji(c["vocation"])) for c in results]
+                    embed.add_field(name="Registered characters", value="\n".join(characters))
             finally:
                 c.close()
 

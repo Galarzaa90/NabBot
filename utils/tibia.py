@@ -929,6 +929,13 @@ def get_voc_emoji(vocation: str) -> str:
         return EMOJI[":question:"]
 
 
+def get_voc_abb_and_emoji(vocation: str) -> str:
+    """Given a vocation name, gets its abbreviation and representative emoji
+
+    This is simply a method to shorten and ease the use of get_voc_abb and get_voc_emoji together"""
+    return get_voc_abb(vocation)+get_voc_emoji(vocation)
+
+
 def get_map_area(x, y, z, size=15, scale=8, crosshair=True, client_coordinates=True):
     """Gets a minimap picture of a map area
 
