@@ -572,7 +572,7 @@ class Tibia:
         count = 0
         now = time.time()
         show_links = False
-        if is_private(ctx.channel) or ctx.channel.name == config.config.ask_channel_name:
+        if is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name:
             per_page = 20
         else:
             per_page = 5
