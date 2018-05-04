@@ -2,6 +2,8 @@
 
 ## Unreleased Version 1.0.1
 - Renamed characters are updated more effectively, preventing some cases of character duplication.
+- `/watched` no longer asks for `Manage Roles` permissions.
+- `/im` asks the user if he wants to add other visible characters if applicable, instead of just adding all.
 
 
 ## Version 1.0.0 (2018-05-03)

@@ -550,8 +550,12 @@ class General:
         embed.set_footer(text="Start time")
 
         message = await ctx.send("Is this correct?", embed=embed)
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no event for you.")
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
         if not confirm:
+            await ctx.send("Alright, no event for you.")
             return
         with closing(userDatabase.cursor()) as c:
             c.execute("INSERT INTO events (creator,server,start,name,description) VALUES(?,?,?,?,?)",
@@ -620,8 +624,12 @@ class General:
             await ctx.send(f"The name can't be longer than {EVENT_NAME_LIMIT} characters.")
             return
         message = await ctx.send(f"Do you want to change the name of **{event['name']}** to **{new_name}**?")
-        confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, name remains the same.")
-        if not confirmed:
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
+        if not confirm:
+            await ctx.send("Alright, name remains the same.")
             return
 
         with userDatabase as conn:
@@ -681,8 +689,12 @@ class General:
                               timestamp=dt.datetime.utcfromtimestamp(event["start"]))
         embed.set_footer(text="Start time")
         message = await ctx.send("Do you want this to be the new description?", embed=embed)
-        confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no changes will be done.")
-        if not confirmed:
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
+        if not confirm:
+            await ctx.send("Alright, no changes will be done.")
             return
 
         with userDatabase as conn:
@@ -742,9 +754,14 @@ class General:
         embed.set_footer(text="Start time")
         message = await ctx.send(f"This will be the time of your new event in your local time. Is this correct?",
                                  embed=embed)
-        confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, event remains the same.")
-        if not confirmed:
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("You took too long!")
             return
+        if not confirm:
+            await ctx.send("Alright, event remains the same.")
+            return
+
         with userDatabase as conn:
             conn.execute("UPDATE events SET start = ? WHERE id = ?", (now + starts_in.seconds, event_id,))
 
@@ -802,8 +819,12 @@ class General:
             await ctx.send("That's not a number...")
             return
         message = await ctx.send(f"Do you want the number of slots of **{event['name']}** to **{slots}**?")
-        confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, slots remain unchanged.")
-        if not confirmed:
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
+        if not confirm:
+            await ctx.send("Alright, slots remain unchanged.")
             return
 
         with userDatabase as conn:
@@ -887,8 +908,12 @@ class General:
             return
 
         message = await ctx.send("Do you want to delete the event **{0}**?".format(event["name"]))
-        confirmed = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, event remains active.")
-        if not confirmed:
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
+        if not confirm:
+            await ctx.send("Alright, event remains active.")
             return
 
         with userDatabase as conn:
@@ -1007,8 +1032,12 @@ class General:
                               timestamp=dt.datetime.utcfromtimestamp(now+starts_in.seconds))
         embed.set_footer(text="Start time")
         message = await ctx.send("Ok, so this will be your new event. Is this correct?", embed=embed)
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Alright, no event will be made.")
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
         if not confirm:
+            await ctx.send("Alright, no event will be made.")
             return
 
         now = time.time()
@@ -1032,8 +1061,12 @@ class General:
             return
         try:
             message = await ctx.send(f"Do you want to subscribe to **{event['name']}**")
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Ok then.")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+            if confirm is None:
+                await ctx.send("You took too long!")
+                return
             if not confirm:
+                await ctx.send("Ok then.")
                 return
 
             c.execute("INSERT INTO event_subscribers (event_id, user_id) VALUES(?,?)", (event_id, author.id))
@@ -1061,8 +1094,12 @@ class General:
                 return
 
             message = await ctx.send(f"Do you want to unsubscribe to **{event['name']}**")
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Ok then.")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+            if confirm is None:
+                await ctx.send("You took too long!")
+                return
             if not confirm:
+                await ctx.send("Ok then.")
                 return
 
             c.execute("DELETE FROM event_subscribers WHERE event_id = ? AND user_id = ?", (event_id, author.id))
@@ -1153,8 +1190,12 @@ class General:
             return
 
         message = await ctx.send(f"Do you want to join the event \'**{event['name']}**\' as **{char['name']}**?")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Nevermind then.")
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
         if not confirm:
+            await ctx.send("Nevermind then.")
             return
 
         with userDatabase as con:
@@ -1177,8 +1218,12 @@ class General:
             return
 
         message = await ctx.send(f"Do you want to leave **{event['name']}**?")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Nevermind then.")
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
         if not confirm:
+            await ctx.send("Nevermind then.")
             return
 
         with userDatabase as con:
@@ -1222,8 +1267,12 @@ class General:
 
         message = await ctx.send(f"Do you want to add **{char['name']}** (@{owner.display_name}) "
                                  f"to **{event['name']}**?")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Nevermind then.")
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
         if not confirm:
+            await ctx.send("Nevermind then.")
             return
 
         with userDatabase as con:
@@ -1257,8 +1306,12 @@ class General:
         owner = self.bot.get_member(char["user_id"], self.bot.get_guild(event_server))
         owner_name = "unknown" if owner is None else owner.display_name
         message = await ctx.send(f"Do you want to remove **{char['name']}** (@**{owner_name}**) from **{event['name']}**?")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, "Nevermind then.")
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
         if not confirm:
+            await ctx.send("Nevermind then.")
             return
 
         with userDatabase as con:

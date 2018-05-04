@@ -522,30 +522,36 @@ class NabBot(commands.Bot):
                 return channel
         return None
 
-    async def wait_for_confirmation_reaction(self, ctx: Context, message: Message, deny_message: str) -> bool:
+    async def wait_for_confirmation_reaction(self, ctx: Context, message: Message, timeout: float=120) -> Optional[bool]:
         """Waits for the command author (ctx.author) to reply with a Y or N reaction
 
-        Returns true if the user reacted with Y, false if the user reacted with N or didn't react at all"""
-        await message.add_reaction('\U0001f1fe')
-        await message.add_reaction('\U0001f1f3')
+        Returns True if the user reacted with Y
+        Returns False if the user reacted with N
+        Returns None if the user didn't react at all"""
+        YES_REACTION = '\U0001f1fe'
+        NO_REACTION = '\U0001f1f3'
+        try:
+            await message.add_reaction(YES_REACTION)
+            await message.add_reaction(NO_REACTION)
+        except discord.Forbidden:
+            log.error("wait_for_confirmation_reaction: No permission to add reactions.")
+            return None
 
         def check_react(reaction: Reaction, user: User):
             if reaction.message.id != message.id:
                 return False
             if user.id != ctx.author.id:
                 return False
-            if reaction.emoji not in ['\U0001f1f3', '\U0001f1fe']:
+            if reaction.emoji not in [NO_REACTION, YES_REACTION]:
                 return False
             return True
 
         try:
-            react = await self.wait_for("reaction_add", timeout=120, check=check_react)
-            if react[0].emoji == '\U0001f1f3':
-                await ctx.send(deny_message)
+            react = await self.wait_for("reaction_add", timeout=timeout, check=check_react)
+            if react[0].emoji == NO_REACTION:
                 return False
         except asyncio.TimeoutError:
-            await ctx.send("You took too long!")
-            return False
+            return None
         finally:
             if not is_private(ctx.channel):
                 try:

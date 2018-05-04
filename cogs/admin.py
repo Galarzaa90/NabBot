@@ -146,8 +146,6 @@ class Admin:
         """Sets this server's Tibia world.
 
         If no world is passed, it shows this server's current assigned world."""
-        def check(m):
-            return m.channel == ctx.message.channel and m.author == ctx.message.author
 
         current_world = tracked_worlds.get(ctx.guild.id, None)
         if world is None:
@@ -158,15 +156,15 @@ class Admin:
             return
 
         if world.lower() in ["clear", "none", "delete", "remove"]:
-            await ctx.send("Are you sure you want to delete this server's tracked world? `yes/no`")
-            try:
-                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
-                if reply.content.lower() not in ["yes", "y"]:
-                    await ctx.send("No changes were made then.")
-                    return
-            except asyncio.TimeoutError:
-                await ctx.send("I guess you changed your mind...")
+            message = await ctx.send("Are you sure you want to delete this server's tracked world? `yes/no`")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, timeout=60)
+            if confirm is None:
+                await ctx.send("I guess you changed your mind?")
                 return
+            if not confirm:
+                await ctx.send("No changes were made then.")
+                return
+
 
             c = userDatabase.cursor()
             try:
@@ -182,15 +180,14 @@ class Admin:
         if world not in tibia_worlds:
             await ctx.send("There's no world with that name.")
             return
-        await ctx.send(f"Are you sure you want to assign **{world}** to this server? Previous worlds will be replaced.")
-
-        try:
-            reply = await self.bot.wait_for("message", timeout=50.0, check=check)
-            if reply.content.lower() not in ["yes", "y"]:
-                await ctx.send("No changes were made then.")
-                return
-        except asyncio.TimeoutError:
+        message = await ctx.send(f"Are you sure you want to assign **{world}** to this server? "
+                                 f"Previous worlds will be replaced.")
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, timeout=60)
+        if confirm is None:
             await ctx.send("I guess you changed your mind...")
+            return
+        if not confirm:
+            await ctx.send("No changes were made then.")
             return
 
         with userDatabase as con:

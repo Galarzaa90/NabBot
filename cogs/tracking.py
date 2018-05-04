@@ -455,7 +455,9 @@ class Tracking:
     @checks.is_not_lite()
     @commands.command(aliases=["i'm", "iam"])
     async def im(self, ctx, *, char_name: str):
-        """Lets you add your tibia character(s) for the bot to track."""
+        """Lets you add your tibia character(s) for the bot to track.
+
+        If there are other visible characters, the bot will ask for confirmation to add them too."""
         # This is equivalent to someone using /stalk addacc on themselves.
 
         user = ctx.author
@@ -483,10 +485,15 @@ class Tracking:
             await ctx.send("I couldn't fetch the character, please try again.")
             return
         chars = char.other_characters
-        # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
-        # searched char, so we don't have to look him up again
-        if len(chars) == 0 or len(chars) == 1:
+        check_other = False
+        if len(chars) > 1:
+            message = await ctx.send("Do you want to attempt to add the other visible characters in this account?")
+            check_other = await self.bot.wait_for_confirmation_reaction(ctx, message, timeout=60)
+        if not check_other:
+            if check_other is None:
+                await ctx.send("Going to take that as a no... Moving on...")
             chars = [char]
+
         skipped = []
         updated = []
         added = []  # type: List[Character]
@@ -684,9 +691,10 @@ class Tracking:
         check_other = False
         if len(chars) > 1:
             message = await ctx.send("Do you want to attempt to add the other visible characters in this account?")
-            check_other = await self.bot.wait_for_confirmation_reaction(ctx, message,
-                                                                        "Going to take that as a no... Moving on...")
+            check_other = await self.bot.wait_for_confirmation_reaction(ctx, message, timeout=60)
         if not check_other:
+            if check_other is None:
+                await ctx.send("Going to take that as a no... Moving on...")
             chars = [char]
 
         skipped = []
@@ -947,9 +955,12 @@ class Tracking:
 
             message = await ctx.send("Do you want to add **{0.name}** (Level {0.level} {0.vocation}) to the "
                                      "watched list? ".format(char))
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message,
-                                                                    "Ok then, guess you changed your mind.")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+            if confirm is None:
+                await ctx.send("You took too long!")
+                return
             if not confirm:
+                await ctx.send("Ok then, guess you changed your mind.")
                 return
 
             c.execute("INSERT INTO watched_list(name, server_id, is_guild) VALUES(?, ?, 0)",
@@ -982,9 +993,12 @@ class Tracking:
                 return
 
             message = await ctx.send(f"Do you want to remove **{name}** from the watched list?")
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message,
-                                                                    "Ok then, guess you changed your mind.")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+            if confirm is None:
+                await ctx.send("You took too long!")
+                return
             if not confirm:
+                await ctx.send("Ok then, guess you changed your mind.")
                 return
 
             c.execute("DELETE FROM watched_list WHERE server_id = ? AND name LIKE ? AND is_guild = 0",
@@ -1036,7 +1050,11 @@ class Tracking:
             message = await ctx.send(f"Do you want to add the guild **{guild.name}** to the watched list?")
             confirm = await self.bot.wait_for_confirmation_reaction(ctx, message,
                                                                     "Ok then, guess you changed your mind.")
+            if confirm is None:
+                await ctx.send("You took too long!")
+                return
             if not confirm:
+                await ctx.send("Ok then, guess you changed your mind.")
                 return
 
             c.execute("INSERT INTO watched_list(name, server_id, is_guild) VALUES(?, ?, 1)",
@@ -1069,9 +1087,12 @@ class Tracking:
                 return
 
             message = await ctx.send(f"Do you want to remove **{name}** from the watched list?")
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message,
-                                                                    "Ok then, guess you changed your mind.")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+            if confirm is None:
+                await ctx.send("You took too long!")
+                return
             if not confirm:
+                await ctx.send("Ok then, guess you changed your mind.")
                 return
 
             c.execute("DELETE FROM watched_list WHERE server_id = ? AND name LIKE ? AND is_guild = 1",
