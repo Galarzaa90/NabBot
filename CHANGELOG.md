@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased Version 1.0.1
+- Renamed characters are updated more effectively, preventing some cases of character duplication.
+
+
 ## Version 1.0.0 (2018-05-03)
 - Now requires **Python 3.6** or higher.
 - Now uses the "rewrite" version of `discord.py`, meaning there are tons of breaking changes, and there will be more

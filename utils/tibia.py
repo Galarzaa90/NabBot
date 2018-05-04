@@ -80,6 +80,7 @@ class Character:
         self.level = kwargs.get("level", 0)
         self.achievement_points = kwargs.get("achievement_points", 0)
         self.sex = kwargs.get("sex", 0)
+        self.former_names = kwargs.get("former_names", [])
         self.former_world = kwargs.get("former_world")
         self.residence = kwargs.get("residence")
         self.vocation = kwargs.get("vocation")
@@ -170,6 +171,8 @@ class Character:
         character.sex = cls.SEX_MALE if data["sex"] == "male" else cls.SEX_FEMALE
         character.vocation = data["vocation"]
         character.residence = data["residence"]
+        if "former_names" in data:
+            character.former_names = data["former_names"]
         if "deleted" in data:
             character.deleted = parse_tibiadata_time(data["deleted"])
         if "married_to" in data:
@@ -401,8 +404,18 @@ async def get_character(name, tries=5) -> Optional[Character]:
     if len(results) > 0:
         character.highscores = results
 
+    # Check if this user was recently renamed, and update old reference to this
+    for old_name in character.former_names:
+        c.execute("SELECT id FROM chars WHERE name LIKE ? LIMIT 1", (old_name, ))
+        result = c.fetchone()
+        if result:
+            with userDatabase as conn:
+                conn.execute("UPDATE chars SET name = ? WHERE id = ?", (character.name, result["id"]))
+                log.info("{0} was renamed to {1} during get_character()".format(old_name, character.name))
+
     # Discord owner
-    c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ?", (name,))
+    c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ? OR name LIKE ?",
+              (name, character.name))
     result = c.fetchone()
     if result is None:
         # Untracked character
@@ -415,6 +428,7 @@ async def get_character(name, tries=5) -> Optional[Character]:
             log.info("{0}'s vocation was set to {1} from {2} during get_character()".format(character.name,
                                                                                             character.vocation,
                                                                                             result["vocation"]))
+    # This condition PROBABLY can't be met again
     if result["name"] != character.name:
         with userDatabase as conn:
             conn.execute("UPDATE chars SET name = ? WHERE id = ?", (character.name, result["id"],))

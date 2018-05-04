@@ -455,12 +455,11 @@ class Tracking:
     @checks.is_not_lite()
     @commands.command(aliases=["i'm", "iam"])
     async def im(self, ctx, *, char_name: str):
-        """Lets you add your tibia character(s) for the bot to track.
-
-        If you need to add any more characters or made a mistake, please message an admin."""
+        """Lets you add your tibia character(s) for the bot to track."""
         # This is equivalent to someone using /stalk addacc on themselves.
+
         user = ctx.author
-        # List of servers the user shares with the self.bot
+        # List of servers the user shares with the bot
         user_guilds = self.bot.get_user_guilds(user.id)
         # List of Tibia worlds tracked in the servers the user is
         user_tibia_worlds = [world for guild, world in tracked_worlds.items() if guild in [g.id for g in user_guilds]]
