@@ -10,7 +10,7 @@ If you're submitting a feature request, you can delete the template
 <!-- Short description of the bug -->
 
 
-**Steps to reproduce:**: 
+**Steps to reproduce:**
 
 **Expected result:**
 

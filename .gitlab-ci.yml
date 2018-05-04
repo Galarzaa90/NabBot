@@ -1,10 +1,6 @@
 image: python:3.6
 
-stages:
-  - build
-
-build:pages:
-  stage: build
+pages:
   before_script:
     - python -m pip install mkdocs mkdocs-material pymdown-extensions
   script:

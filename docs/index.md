@@ -20,13 +20,14 @@ It features commands related to the MMORPG [Tibia](http://www.tibia.com/abouttib
 * psutil
 * pillow
 * BeautifulSoup
+* pyYAML
 * Any operating system
  
 ## Installing and running
 1. Install the required python modules
     ```bat
     python -m pip install -U git+https://github.com/Rapptz/discord.py@rewrite
-    python -m pip install pillow psutil bs4 pyYAML
+    python -m pip install pillow psutil beautifulsoup4 pyYAML
     ```
 1. [Create a bot token on Discord](https://discordapp.com/developers/applications/me)
 1. Start the bot by running the file `nabbot.py`, you will be prompted for a token. Insert the generated token.

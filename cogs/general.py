@@ -340,8 +340,10 @@ class General:
 
         embed = discord.Embed(description="*Beep bop beep bop*. I'm just a bot!")
         embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
-                         icon_url="https://assets-cdn.github.com/favicon.ico")
-        embed.add_field(name="Authors", value="@Galarzaa#8515, @Nezune#2269")
+                         icon_url="https://github.com/fluidicon.png")
+        embed.add_field(name="Version", value=self.bot.version)
+        embed.add_field(name="Authors", value="\u2023 [Galarzaa90](https://github.com/Galarzaa90)\n"
+                                              "\u2023 [Nezune](https://github.com/Nezune)")
         embed.add_field(name="Platform", value="Python " + EMOJI[":snake:"])
         embed.add_field(name="Created", value="March 30th 2016")
         embed.add_field(name="Servers", value="{0:,}".format(len(self.bot.guilds)))
