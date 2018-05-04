@@ -38,6 +38,11 @@ It features commands related to the MMORPG [Tibia](http://www.tibia.com/abouttib
 !!! info
     For more details, check the [Install Guide](install.md)
 
+
+## Support
+Visit our support server
+
+[![Support Server](https://discordapp.com/api/guilds/441991938200305674/embed.png)](https://discord.gg/NmDvhpY)
  
  
 ## Donate
