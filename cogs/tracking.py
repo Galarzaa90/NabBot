@@ -888,9 +888,8 @@ class Tracking:
             await ctx.send(f"This server already has a watched list channel: {watched_channel.mention}")
             return
         permissions = ctx.message.channel.permissions_for(ctx.me)  # type: discord.Permissions
-        if not permissions.manage_channels and not permissions.manage_roles:
-            await ctx.send("I need to have `Manage Channels` and `Manage Roles` permissions to use this command.")
-            return
+        if not permissions.manage_channels:
+            await ctx.send("I need to have `Manage Channels` permissions to use this command.")
         try:
             overwrites = {
                 ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -898,9 +897,9 @@ class Tracking:
             }
             channel = await ctx.guild.create_text_channel(name, overwrites=overwrites)
         except discord.Forbidden:
-            await ctx.send("Sorry, I don't have permissions to create channels. Either you give me `Manage Channels`")
+            await ctx.send("Sorry, I don't have permissions to create channels.")
         except discord.HTTPException:
-            await ctx.send("Something went wrong, the channel name you chose is probably unvalid.")
+            await ctx.send("Something went wrong, the channel name you chose is probably invalid.")
         else:
             await ctx.send(f"Channel created successfully: {channel.mention}\n")
             await channel.send("This is where I will post a list of online watched characters."

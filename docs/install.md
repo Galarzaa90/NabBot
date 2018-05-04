@@ -22,7 +22,7 @@ Once you entered the token, the bot will log in. You should see a dialog showing
 To invite your bot to your server, you need to use the authentication URL. Here's where your **Client ID** is used.
 
 ```commandline
-https://discordapp.com/oauth2/authorize?scope=bot&permissions=519232&client_id=CLIENT_ID_HERE
+https://discordapp.com/oauth2/authorize?scope=bot&permissions=257232&client_id=CLIENT_ID_HERE
 ```
 
 !!! info
