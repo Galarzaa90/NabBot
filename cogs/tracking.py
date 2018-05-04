@@ -14,14 +14,14 @@ from nabbot import NabBot
 from utils import checks
 from utils.config import config
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds, get_server_property, set_server_property
-from utils.discord import is_private
+from utils.discord import is_private, get_user_avatar
 from utils.general import global_online_list, log, join_list, start_time
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
     level_messages
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
     get_voc_abb, get_character_url, url_guild, \
-    get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES
+    get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_voc_abb_and_emoji
 
 
 class Tracking:
@@ -504,13 +504,16 @@ class Tracking:
                 skipped.append(char)
                 continue
             with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT name, guild, user_id as owner FROM chars WHERE name LIKE ?", (char.name,))
+                c.execute("SELECT name, guild, user_id as owner, vocation, ABS(level) as level, guild FROM chars "
+                          "WHERE name LIKE ?", (char.name,))
                 db_char = c.fetchone()
             if db_char is not None:
                 owner = self.bot.get_member(db_char["owner"])
                 # Previous owner doesn't exist anymore
                 if owner is None:
-                    updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"]})
+                    updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
+                                   'vocation': db_char["vocation"], 'level': db_char['level'], 'guild': db_char['guild']
+                                    })
                     continue
                 # Char already registered to this user
                 elif owner.id == user.id:
@@ -557,7 +560,9 @@ class Tracking:
                     # Only announce on worlds where the character's world is tracked
                     if tracked_worlds.get(guild.id, None) == char.world:
                         _guild = "No guild" if char.guild is None else char.guild_name
-                        log_reply[guild.id] += "\n\t{1.name} - {1.level} {1.vocation} - **{0}**".format(_guild, char)
+                        voc = get_voc_abb_and_emoji(char.vocation)
+                        log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**"\
+                            .format(_guild, char, voc)
 
         if len(updated) > 0:
             reply += "\nThe following characters were reassigned to you: {0}" \
@@ -568,7 +573,11 @@ class Tracking:
                 for guild in user_guilds:
                     # Only announce on worlds where the character's world is tracked
                     if tracked_worlds.get(guild.id, None) == char["world"]:
-                        log_reply[guild.id] += "\n\t{name} (Reassigned)".format(**char)
+                        char["voc"] = get_voc_abb_and_emoji(char["vocation"])
+                        if char["guild"] is None:
+                            char["guild"] = "No guild"
+                        log_reply[guild.id] += "\n\u2023 {name} - Level {level} {voc} - **{guild}** (Reassigned)".\
+                            format(**char)
 
         for char in updated:
             with userDatabase as conn:
@@ -588,7 +597,11 @@ class Tracking:
         for server_id, message in log_reply.items():
             if message:
                 message = user.mention + " registered the following characters: " + message
-                await self.bot.send_log_message(self.bot.get_guild(server_id), message)
+                embed = discord.Embed(description=message)
+                embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
+                embed.timestamp = dt.datetime.utcnow()
+                embed.colour = discord.Colour.dark_teal()
+                await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
 
     @checks.is_not_lite()
     @commands.command(aliases=["i'mnot"])
@@ -707,7 +720,8 @@ class Tracking:
                 skipped.append(char)
                 continue
             with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT name, guild, user_id as owner FROM chars WHERE name LIKE ?", (char.name,))
+                c.execute("SELECT name, guild, user_id as owner, vocation, ABS(level) as level, guild FROM chars "
+                          "WHERE name LIKE ?", (char.name,))
                 db_char = c.fetchone()
             if db_char is not None:
                 owner = self.bot.get_member(db_char["owner"])
@@ -715,9 +729,11 @@ class Tracking:
                 if owner.id == user.id:
                     existent.append("{0.name} ({0.world})".format(char))
                     continue
-                # Character is registered to another user, we stop the whole process
                 else:
-                    updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"]})
+                    updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
+                                    'vocation': db_char["vocation"], 'level': db_char['level'],
+                                    'guild': db_char['guild']
+                                    })
             # If we only have one char, it already contains full data
             if len(chars) > 1:
                 try:
@@ -752,7 +768,9 @@ class Tracking:
                     # Only announce on worlds where the character's world is tracked
                     if tracked_worlds.get(guild.id, None) == char.world:
                         _guild = "No guild" if char.guild is None else char.guild_name
-                        log_reply[guild.id] += "\n\t{1.name} - {1.level} {1.vocation} - **{0}**".format(_guild, char)
+                        voc = get_voc_abb_and_emoji(char.vocation)
+                        log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**" \
+                            .format(_guild, char, voc)
 
         if len(updated) > 0:
             reply += "\nThe following characters were reassigned to you: {0}" \
@@ -763,7 +781,11 @@ class Tracking:
                 for guild in user_guilds:
                     # Only announce on worlds where the character's world is tracked
                     if tracked_worlds.get(guild.id, None) == char["world"]:
-                        log_reply[guild.id] += "\n\t{name} (Reassigned)".format(**char)
+                        char["voc"] = get_voc_abb_and_emoji(char["vocation"])
+                        if char["guild"] is None:
+                            char["guild"] = "No guild"
+                        log_reply[guild.id] += "\n\u2023 {name} - Level {level} {voc} - **{guild}** (Reassigned)". \
+                            format(**char)
 
         for char in updated:
             with userDatabase as conn:
@@ -783,7 +805,11 @@ class Tracking:
         for server_id, message in log_reply.items():
             if message:
                 message = user.mention + " registered the following characters: " + message
-                await self.bot.send_log_message(self.bot.get_guild(server_id), message)
+                embed = discord.Embed(description=message)
+                embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
+                embed.timestamp = dt.datetime.utcnow()
+                embed.colour = discord.Colour.dark_teal()
+                await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
 
     @commands.command()
     @checks.is_not_lite()
