@@ -1,10 +1,12 @@
 # Changelog
 
-## Version 1.0.1 (Unreleased)
+## Version 1.0.1 (2018-05-07)
 - Renamed characters are updated more effectively, preventing some cases of character duplication.
 - `/watched` no longer asks for `Manage Roles` permissions.
 - `/im` asks the user if he wants to add other visible characters if applicable, instead of just adding all.
 - Changed format of server-log messages for `/im` and `/claim` to match the style of the rest of the messages.
+- Fixed bug in `/namelock` command.
+- Updated documentation
 
 
 ## Version 1.0.0 (2018-05-03)

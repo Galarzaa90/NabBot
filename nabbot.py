@@ -34,7 +34,7 @@ class NabBot(commands.Bot):
         self.remove_command("help")
         self.command_list = []
         self.members = {}
-        self.version = "1.0.1a"
+        self.version = "1.0.1"
 
     async def on_ready(self):
         """Called when the bot is ready."""
