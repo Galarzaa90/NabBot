@@ -14,6 +14,8 @@ Registered characters have their deaths and level ups announced on the chat.
 The bot will skip characters on different worlds than the world the discord server tracks.
 Also, if it finds a character owned by another user, the whole process will be stopped.
 
+If a character is already registered to someone else, [/claim](#claim) can be used.
+
 ??? Summary "Example"
 
     **/im Elf**  
@@ -30,6 +32,22 @@ Unregisters a character you previously registered.
   
     **/imnot tomas haake**  
     ![image](../assets/images/commands/imnot.png)
+
+----
+
+## /claim
+**Syntax:** /claim *characterName*
+
+Claims a character as yours, even if it is already registered to someone else.
+
+In order for this to work, you have to put a special code in the character's comment.
+You can see this code by using the command with no parameters. The code looks like this: `/NB-23FC13AC7400000/`
+
+Once you had set the code, you can use the command with that character, if the code matches, it will be reassigned to you.
+Note that it may take some time for the code to be visible to NabBot because of caching.
+
+This code is unique for your discord user, so the code will only work for your discord account and no one else.
+No one can claim a character of yours unless you put **their** code on your character's comment.
 
 ----
 

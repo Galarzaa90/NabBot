@@ -33,6 +33,8 @@ extra:
       link: 'https://github.com/galarzaa90'
     - type: 'gitlab'
       link: 'https://gitlab.com/Galarzaa90'
+    - type: 'discord'
+      link: 'https://discord.me/NabBot'
 
 repo_url: https://github.com/Galarzaa90/NabBot
 edit_uri: ""
@@ -48,6 +50,7 @@ pages:
       - TibiaWiki commands: commands/tibiawiki.md
       - Tracking commands: commands/tracking.md
       - Loot commands: commands/loot.md
+      - Mod commands: commands/mod.md
       - Admin commands: commands/admin.md
       - Owner commands: commands/owner.md
     - Customizing:

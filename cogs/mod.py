@@ -163,11 +163,11 @@ class Mod:
     @checks.is_mod()
     @commands.command()
     async def unignore(self, ctx, *, channel: discord.TextChannel = None):
-        """Makes teh bot unignore a channel
+        """Makes the bot unignore a channel
 
         Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
 
-        If the parameter is used with no parameters, it ignores the current channel."""
+        If the parameter is used with no parameters, it unignores the current channel."""
         if channel is None:
             channel = ctx.channel
 

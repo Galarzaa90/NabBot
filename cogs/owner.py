@@ -402,7 +402,7 @@ class Owner:
                     return
 
                 # Check if new name was already registered
-                c.execute("SELECT * FROM chars WHERE name LIKE ?", (new_char["name"],))
+                c.execute("SELECT * FROM chars WHERE name LIKE ?", (new_char.name,))
                 new_char_db = c.fetchone()
 
                 if new_char_db is None:

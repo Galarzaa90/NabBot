@@ -103,3 +103,44 @@ Messages contain a signature to indicate who wrote the message.
     
     **After typing the message.**  
     ![image](../assets/images/commands/admins_message_2.png)
+
+----
+
+## /merge
+**Syntax**: /merge *old_world new_world*
+
+Renames all instances of *old_world* to *new_world*. This is to be used when any worlds NabBot is tracking is going to be merged.
+
+This command will update all references of the old world to the new world, so it can continue tracking level ups and deaths in the new world.
+
+This should be done as soon as the world is merged. It is recommended to use it right at the server save before the merge.
+
+??? Summary "Example"
+
+    **/merge Fidera Gladera**  
+    ![image](../assets/images/commands/merge.png)
+    
+----
+
+## /namelock
+**Syntax**: /namelock *old_name*,*new_name*  
+**Other aliases**: /rename, /namechange
+
+When a character is renamed using a namechange from the store, NabBot updates the references automatically.
+However, when a character is namelocked, all previous references to the old name are gone, like the character was deleted.
+
+This makes NabBot stop tracking levels and deaths of the character because it has no way of knowing what the new name is.
+
+If the user assigns the new named character using [/im](tracking.md#im), he will be left with the character with the old name still assigned, and the character with the new name.
+
+In order to fix this, this command must be used.
+
+/namelock will check if the old name redirects to a non existent character to confirm it was namelocked, and will check the new name.
+If all conditions are met, their entries will be merged into one.
+
+**Conditions:**
+
+- The old name must exist in NabBot's characters database.
+- The old name must not be a valid character in Tibia.com
+- The new name must be a valid character in Tibia.com
+- They must have the same vocation, not considering promotions.

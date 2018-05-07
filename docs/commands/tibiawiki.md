@@ -5,9 +5,9 @@ Information is read from `tibia_database.sql`, which is generated from [tibiawik
     Words in italics are parameters.  
 
 
-## /itemprice
-**Syntax:** /itemprice *name*  
-**Other aliases:** /checkprice, /item
+## /item
+**Syntax:** /item *name*  
+**Other aliases:** /checkprice, /itemprice
 
 Shows information about an item, their attributes, NPCs that buy and/or sell it (only for the best price), and creatures that drop it and quest where it's given as reward.
 

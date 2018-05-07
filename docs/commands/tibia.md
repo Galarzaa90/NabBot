@@ -274,8 +274,8 @@ Displays information about a world like pvp type, online count, location and mor
  
 ---
 
-## news
-**Syntax:** news [*article_id*]
+## /news
+**Syntax:** /news [*article_id*]
 
 Displays a list of recent news and articles. Or if an article id is provided, a summary of that article is displayed.
 
@@ -326,6 +326,23 @@ For players over level 100, it will also display the cost of the Blessing of the
     **/bless 140**  
     ![image](../assets/images/commands/bless_2.png)
 
+
+----
+
+## /stamina
+**Syntax:** /stamina *current_stamina*
+
+Tells you how much time you have to be offline in order to regain full stamina. You must input your current stamina in this format: `hh:mm`.
+
+At the bottom, you can tell the time in your local timezone in which you would have full stamina if you logout now.
+
+??? Summary "Examples"
+  
+    **/stamina 39:00**  
+    ![image](../assets/images/commands/stamina_1.png)
+    
+    **/stamina 28:32**  
+    ![image](../assets/images/commands/stamina_2.png)
 
 ----
 
