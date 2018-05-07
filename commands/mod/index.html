@@ -40,7 +40,7 @@
     
     
       
-        <title>Loot commands - NabBot</title>
+        <title>Mod commands - NabBot</title>
       
     
     
@@ -97,7 +97,7 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="search" autocomplete="off">
     <label class="md-overlay" data-md-component="overlay" for="drawer"></label>
     
-      <a href="#loot" tabindex="1" class="md-skip">
+      <a href="#makesay" tabindex="1" class="md-skip">
         Skip to content
       </a>
     
@@ -123,7 +123,7 @@
                 NabBot
               </span>
               <span class="md-header-nav__topic">
-                Loot commands
+                Mod commands
               </span>
             
           
@@ -421,6 +421,18 @@
           
           
 
+
+  <li class="md-nav__item">
+    <a href="../loot/" title="Loot commands" class="md-nav__link">
+      Loot commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
   
 
 
@@ -430,11 +442,11 @@
     
     
       <label class="md-nav__link md-nav__link--active" for="toc">
-        Loot commands
+        Mod commands
       </label>
     
-    <a href="./" title="Loot commands" class="md-nav__link md-nav__link--active">
-      Loot commands
+    <a href="./" title="Mod commands" class="md-nav__link md-nav__link--active">
+      Mod commands
     </a>
     
       
@@ -446,22 +458,43 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#loot" title="/loot" class="md-nav__link">
-    /loot
+  <a href="#makesay" title="/makesay" class="md-nav__link">
+    /makesay
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unregistered" title="/unregistered" class="md-nav__link">
+    /unregistered
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ignore" title="/ignore" class="md-nav__link">
+    /ignore
   </a>
   
     <nav class="md-nav">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#loot-legend" title="/loot legend" class="md-nav__link">
-    /loot legend
+  <a href="#ignore-list" title="/ignore list" class="md-nav__link">
+    /ignore list
   </a>
   
 </li>
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unignore" title="/unignore" class="md-nav__link">
+    /unignore
+  </a>
   
 </li>
       
@@ -473,18 +506,6 @@
   
 </nav>
     
-  </li>
-
-        
-          
-          
-          
-
-
-  <li class="md-nav__item">
-    <a href="../mod/" title="Mod commands" class="md-nav__link">
-      Mod commands
-    </a>
   </li>
 
         
@@ -584,22 +605,43 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#loot" title="/loot" class="md-nav__link">
-    /loot
+  <a href="#makesay" title="/makesay" class="md-nav__link">
+    /makesay
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unregistered" title="/unregistered" class="md-nav__link">
+    /unregistered
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ignore" title="/ignore" class="md-nav__link">
+    /ignore
   </a>
   
     <nav class="md-nav">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#loot-legend" title="/loot legend" class="md-nav__link">
-    /loot legend
+  <a href="#ignore-list" title="/ignore list" class="md-nav__link">
+    /ignore list
   </a>
   
 </li>
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unignore" title="/unignore" class="md-nav__link">
+    /unignore
+  </a>
   
 </li>
       
@@ -620,25 +662,43 @@
               
                 
                 
-                  <h1>Loot commands</h1>
+                  <h1>Mod commands</h1>
                 
-                <h2 id="loot">/loot<a class="headerlink" href="#loot" title="Permanent link">&para;</a></h2>
-<p>Scans an image of a container looking for Tibia items and shows an approximate loot value. An image must be attached with the message. The prices used are NPC prices only, images from the flash client don't work</p>
-<p>The image requires the following:</p>
-<ul>
-<li>Must be a screenshot of inventory windows (backpacks, depots, etc).</li>
-<li>Have the original size, the image can't be scaled up or down, however it can be cropped.</li>
-<li>Use the regular client, flash client is not supported.</li>
-<li>The image must show the complete slot.</li>
-<li>JPG images are usually not recognized, and PNG images with low compression settings take longer to be scanned or aren't detected at all.</li>
-</ul>
-<p>The bot shows the total loot value calculated and a list of the items detected, separated into the NPC that buy them.</p>
-<details class="summary"><summary>Example</summary><p><strong>/loot</strong> (attached image)<br />
-<img alt="image" src="../../assets/images/commands/loot_input.png" /><br />
-<img alt="image" src="../../assets/images/commands/loot.png" />  </p></details><h3 id="loot-legend">/loot legend<a class="headerlink" href="#loot-legend" title="Permanent link">&para;</a></h3>
-<p>Shows a legend indicating what the overlayed icons on items mean.</p>
-<details class="summary"><summary>Example</summary><p><strong>/loot legend</strong> <br />
-<img alt="image" src="../../assets/images/commands/loot_legend.png" /></p></details>
+                <p>This commands can only be used by the server's owner and users with the <code class="codehilite">Manage Channels</code> permission.</p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>Words in italics are parameters.<br />
+Parameters enclosed in brackets <code class="codehilite">[]</code> are optional.</p>
+</div>
+<h2 id="makesay">/makesay<a class="headerlink" href="#makesay" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /makesay [<em>message</em>]</p>
+<p>Makes the bot say a message. This command can be used in two ways.</p>
+<p>If you use this command on any channel, NabBot will delete your original message and then repeat it itself.
+Note that the bot requries <code class="codehilite">Manage Messages</code> permissions in that channel in order to use it effectively.</p>
+<p>Bot owners can use this command on private messages in a more discrete way.
+After using <code class="codehilite">/makesay Some message</code>, the bot will look for all the channels it shares with the command author, and where both can
+send messages. The bot will display the list, numbering each channel.<br />
+The command user must then respond with the number of the channel where they want NabBot to relay the message to.
+Alternatively, they can cancel the operation replying with <code class="codehilite">0</code>. The bot will confirm that the message was delivered.</p>
+<hr />
+<h2 id="unregistered">/unregistered<a class="headerlink" href="#unregistered" title="Permanent link">&para;</a></h2>
+<p>Shows a list of discord users that have no registered characters.</p>
+<details class="summary"><summary>Example</summary><p><strong>/unregistered</strong><br />
+<img alt="image" src="../../assets/images/commands/unregistered.png" /></p></details><hr />
+<h2 id="ignore">/ignore<a class="headerlink" href="#ignore" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /ignore [<em>channel</em>]</p>
+<p>Makes the bot ignore commands in a channel. This allows you to have a channel where the bot can still make announcements but
+he won't respond to any commands.</p>
+<p>If the command is used with no parameters, the current channel will be ignored, otherwise, the specified channel will be looked for.</p>
+<p>Administrators can bypass this.</p>
+<h3 id="ignore-list">/ignore list<a class="headerlink" href="#ignore-list" title="Permanent link">&para;</a></h3>
+<p>Shows a list of the currently ignored channels in the server.</p>
+<hr />
+<h2 id="unignore">/unignore<a class="headerlink" href="#unignore" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /unignore [<em>channel</em>]</p>
+<p>Makes the bot listen to commands in this channel again.</p>
+<p>If the command is used with no parameters, the current channel will be unignored, otherwise, the specified channel will be looked for.</p>
+<hr />
                 
                   
                 
@@ -659,7 +719,7 @@
     <div class="md-footer-nav">
       <nav class="md-footer-nav__inner md-grid">
         
-          <a href="../tracking/" title="Tracking commands" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+          <a href="../loot/" title="Loot commands" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
             <div class="md-flex__cell md-flex__cell--shrink">
               <i class="md-icon md-icon--arrow-back md-footer-nav__button"></i>
             </div>
@@ -668,19 +728,19 @@
                 <span class="md-footer-nav__direction">
                   Previous
                 </span>
-                Tracking commands
+                Loot commands
               </span>
             </div>
           </a>
         
         
-          <a href="../mod/" title="Mod commands" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+          <a href="../admin/" title="Admin commands" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
             <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
               <span class="md-flex__ellipsis">
                 <span class="md-footer-nav__direction">
                   Next
                 </span>
-                Mod commands
+                Admin commands
               </span>
             </div>
             <div class="md-flex__cell md-flex__cell--shrink">

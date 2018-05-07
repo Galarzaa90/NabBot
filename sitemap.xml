@@ -4,7 +4,7 @@
     
     <url>
      <loc>/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     
@@ -12,7 +12,7 @@
     
     <url>
      <loc>/install/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     
@@ -20,7 +20,7 @@
     
     <url>
      <loc>/permissions/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     
@@ -28,7 +28,7 @@
     
     <url>
      <loc>/faq/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     
@@ -37,49 +37,55 @@
         
     <url>
      <loc>/commands/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>/commands/general/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>/commands/tibia/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>/commands/tibiawiki/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>/commands/tracking/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>/commands/loot/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
+     <changefreq>daily</changefreq>
+    </url>
+        
+    <url>
+     <loc>/commands/mod/</loc>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>/commands/admin/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
     <url>
      <loc>/commands/owner/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
         
@@ -88,8 +94,14 @@
     
         
     <url>
+     <loc>/customizing/config/</loc>
+     <lastmod>2018-05-07</lastmod>
+     <changefreq>daily</changefreq>
+    </url>
+        
+    <url>
      <loc>/customizing/messages/</loc>
-     <lastmod>2018-05-04</lastmod>
+     <lastmod>2018-05-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
         

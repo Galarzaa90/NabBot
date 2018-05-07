@@ -235,7 +235,7 @@
   
     <li class="md-tabs__item">
       
-        <a href="../../customizing/messages/" title="Customizing" class="md-tabs__link">
+        <a href="../../customizing/config/" title="Customizing" class="md-tabs__link">
           Customizing
         </a>
       
@@ -448,6 +448,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#claim" title="/claim" class="md-nav__link">
+    /claim
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#online" title="/online" class="md-nav__link">
     /online
   </a>
@@ -538,6 +545,18 @@
 
 
   <li class="md-nav__item">
+    <a href="../mod/" title="Mod commands" class="md-nav__link">
+      Mod commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
     <a href="../admin/" title="Admin commands" class="md-nav__link">
       Admin commands
     </a>
@@ -586,6 +605,18 @@
 
 
   <li class="md-nav__item">
+    <a href="../../customizing/config/" title="Configuration" class="md-nav__link">
+      Configuration
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
     <a href="../../customizing/messages/" title="Messages" class="md-nav__link">
       Messages
     </a>
@@ -625,6 +656,13 @@
         <li class="md-nav__item">
   <a href="#imnot" title="/imnot" class="md-nav__link">
     /imnot
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#claim" title="/claim" class="md-nav__link">
+    /claim
   </a>
   
 </li>
@@ -722,6 +760,7 @@ Parameters enclosed in brackets <code class="codehilite">[]</code> are optional.
 Registered characters have their deaths and level ups announced on the chat.</p>
 <p>The bot will skip characters on different worlds than the world the discord server tracks.
 Also, if it finds a character owned by another user, the whole process will be stopped.</p>
+<p>If a character is already registered to someone else, <a href="#claim">/claim</a> can be used.</p>
 <details class="summary"><summary>Example</summary><p><strong>/im Elf</strong><br />
 <img alt="image" src="../../assets/images/commands/im.png" /></p></details><hr />
 <h2 id="imnot">/imnot<a class="headerlink" href="#imnot" title="Permanent link">&para;</a></h2>
@@ -729,6 +768,16 @@ Also, if it finds a character owned by another user, the whole process will be s
 <p>Unregisters a character you previously registered.</p>
 <details class="summary"><summary>Example</summary><p><strong>/imnot tomas haake</strong><br />
 <img alt="image" src="../../assets/images/commands/imnot.png" /></p></details><hr />
+<h2 id="claim">/claim<a class="headerlink" href="#claim" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /claim <em>characterName</em></p>
+<p>Claims a character as yours, even if it is already registered to someone else.</p>
+<p>In order for this to work, you have to put a special code in the character's comment.
+You can see this code by using the command with no parameters. The code looks like this: <code class="codehilite">/NB-23FC13AC7400000/</code></p>
+<p>Once you had set the code, you can use the command with that character, if the code matches, it will be reassigned to you.
+Note that it may take some time for the code to be visible to NabBot because of caching.</p>
+<p>This code is unique for your discord user, so the code will only work for your discord account and no one else.
+No one can claim a character of yours unless you put <strong>their</strong> code on your character's comment.</p>
+<hr />
 <h2 id="online">/online<a class="headerlink" href="#online" title="Permanent link">&para;</a></h2>
 <p>Shows a list of tracked characters that are online, along with their level, vocation and owner.</p>
 <p>The list is shown with pages and vocation filter.</p>
@@ -852,6 +901,8 @@ You can change the permissions to whatever you see fit afterwards.</p>
       <a href="https://github.com/galarzaa90" class="md-footer-social__link fa fa-github"></a>
     
       <a href="https://gitlab.com/Galarzaa90" class="md-footer-social__link fa fa-gitlab"></a>
+    
+      <a href="https://discord.me/NabBot" class="md-footer-social__link fa fa-discord"></a>
     
   </div>
 

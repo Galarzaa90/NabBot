@@ -235,7 +235,7 @@
   
     <li class="md-tabs__item">
       
-        <a href="../../customizing/messages/" title="Customizing" class="md-tabs__link">
+        <a href="../../customizing/config/" title="Customizing" class="md-tabs__link">
           Customizing
         </a>
       
@@ -435,6 +435,18 @@
 
 
   <li class="md-nav__item">
+    <a href="../mod/" title="Mod commands" class="md-nav__link">
+      Mod commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
     <a href="../admin/" title="Admin commands" class="md-nav__link">
       Admin commands
     </a>
@@ -518,6 +530,20 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#merge" title="/merge" class="md-nav__link">
+    /merge
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#namelock" title="/namelock" class="md-nav__link">
+    /namelock
+  </a>
+  
+</li>
+      
       
       
       
@@ -552,6 +578,18 @@
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
         
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../customizing/config/" title="Configuration" class="md-nav__link">
+      Configuration
+    </a>
+  </li>
+
         
           
           
@@ -637,6 +675,20 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#merge" title="/merge" class="md-nav__link">
+    /merge
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#namelock" title="/namelock" class="md-nav__link">
+    /namelock
+  </a>
+  
+</li>
+      
       
       
       
@@ -718,7 +770,31 @@ If no message is specified at first, the command will prompt the user to enter a
 <p>Messages contain a signature to indicate who wrote the message.</p>
 <details class="summary"><summary>Example</summary><p><strong>/admins_message</strong><br />
 <img alt="image" src="../../assets/images/commands/admins_message_1.png" /></p><p><strong>After typing the message.</strong><br />
-<img alt="image" src="../../assets/images/commands/admins_message_2.png" /></p></details>
+<img alt="image" src="../../assets/images/commands/admins_message_2.png" /></p></details><hr />
+<h2 id="merge">/merge<a class="headerlink" href="#merge" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax</strong>: /merge <em>old_world new_world</em></p>
+<p>Renames all instances of <em>old_world</em> to <em>new_world</em>. This is to be used when any worlds NabBot is tracking is going to be merged.</p>
+<p>This command will update all references of the old world to the new world, so it can continue tracking level ups and deaths in the new world.</p>
+<p>This should be done as soon as the world is merged. It is recommended to use it right at the server save before the merge.</p>
+<details class="summary"><summary>Example</summary><p><strong>/merge Fidera Gladera</strong><br />
+<img alt="image" src="../../assets/images/commands/merge.png" /></p></details><hr />
+<h2 id="namelock">/namelock<a class="headerlink" href="#namelock" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax</strong>: /namelock <em>old_name</em>,<em>new_name</em><br />
+<strong>Other aliases</strong>: /rename, /namechange</p>
+<p>When a character is renamed using a namechange from the store, NabBot updates the references automatically.
+However, when a character is namelocked, all previous references to the old name are gone, like the character was deleted.</p>
+<p>This makes NabBot stop tracking levels and deaths of the character because it has no way of knowing what the new name is.</p>
+<p>If the user assigns the new named character using <a href="../tracking/#im">/im</a>, he will be left with the character with the old name still assigned, and the character with the new name.</p>
+<p>In order to fix this, this command must be used.</p>
+<p>/namelock will check if the old name redirects to a non existent character to confirm it was namelocked, and will check the new name.
+If all conditions are met, their entries will be merged into one.</p>
+<p><strong>Conditions:</strong></p>
+<ul>
+<li>The old name must exist in NabBot's characters database.</li>
+<li>The old name must not be a valid character in Tibia.com</li>
+<li>The new name must be a valid character in Tibia.com</li>
+<li>They must have the same vocation, not considering promotions.</li>
+</ul>
                 
                   
                 
@@ -754,13 +830,13 @@ If no message is specified at first, the command will prompt the user to enter a
           </a>
         
         
-          <a href="../../customizing/messages/" title="Messages" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+          <a href="../../customizing/config/" title="Configuration" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
             <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
               <span class="md-flex__ellipsis">
                 <span class="md-footer-nav__direction">
                   Next
                 </span>
-                Messages
+                Configuration
               </span>
             </div>
             <div class="md-flex__cell md-flex__cell--shrink">
@@ -790,6 +866,8 @@ If no message is specified at first, the command will prompt the user to enter a
       <a href="https://github.com/galarzaa90" class="md-footer-social__link fa fa-github"></a>
     
       <a href="https://gitlab.com/Galarzaa90" class="md-footer-social__link fa fa-gitlab"></a>
+    
+      <a href="https://discord.me/NabBot" class="md-footer-social__link fa fa-discord"></a>
     
   </div>
 
