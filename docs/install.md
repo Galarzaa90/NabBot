@@ -48,3 +48,5 @@ The bot will give longer responses here and it will delete any message that is n
 
 Additionally, you can create a channel named **#server-log**. Whenever a user registers characters, they will be shown here, along with their levels and guilds.
 Other changes are shown here, such as users leaving, getting banned, changing display names and more.
+
+Further customization can be done by editing the `config.yml` file. More information [here](customizing/config.md).

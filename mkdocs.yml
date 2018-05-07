@@ -21,6 +21,7 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.inlinehilite
   - pymdownx.tilde
+  - meta
 
 
 google_analytics:
@@ -54,4 +55,5 @@ pages:
       - Admin commands: commands/admin.md
       - Owner commands: commands/owner.md
     - Customizing:
+      - Configuration: customizing/config.md
       - Messages: customizing/messages.md
