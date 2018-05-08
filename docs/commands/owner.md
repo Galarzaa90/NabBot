@@ -144,3 +144,18 @@ If all conditions are met, their entries will be merged into one.
 - The old name must not be a valid character in Tibia.com
 - The new name must be a valid character in Tibia.com
 - They must have the same vocation, not considering promotions.
+
+## /leave
+**Syntax**: /leave *server*
+
+Makes the bot leave the specified server. The server name or its id must be provided.
+
+The bot will ask for confirmation and will show some information about the server to ensure you're choosing the correct server.
+
+Once the bot has left the server, it can only join back by using the authentication link.
+
+??? Summary "Example"
+
+    **/leave 159815897052086272**  
+    ![image](../assets/images/commands/leave.png)
+    
