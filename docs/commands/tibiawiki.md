@@ -1,3 +1,5 @@
+# TibiaWiki commands
+
 All the commands that use information from TibiaWiki.  
 Information is read from `tibia_database.sql`, which is generated from [tibiawiki-sql](https://github.com/Galarzaa90/tibiawiki-sql).
 

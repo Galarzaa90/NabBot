@@ -1,3 +1,5 @@
+# Messages
+
 One of NabBot's main features is the ability to announce when registered characters level up and ~~make fun~~ announce deaths.
 
 These messages can be found on `utils/messages.py`, in the variables `level_messages`, `death_messages_monster` and `death_messages_player`.

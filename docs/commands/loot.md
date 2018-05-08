@@ -1,3 +1,5 @@
+# Loot commands
+
 ## /loot
 
 Scans an image of a container looking for Tibia items and shows an approximate loot value. An image must be attached with the message. The prices used are NPC prices only, images from the flash client don't work

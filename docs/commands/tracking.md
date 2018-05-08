@@ -1,3 +1,5 @@
+# Tracking commands
+
 Commands related to NabBot's tracking functions.
 
 !!! info

@@ -1,3 +1,5 @@
+# Owner commands
+
 All commands can only be run by users in the `owner_ids` list or the bot's application owner.
 
 !!! info
