@@ -1,3 +1,5 @@
+# Tibia commands
+
 Commands related to Tibia, specially commands related to tibia.com
 
 !!! info

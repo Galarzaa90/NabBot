@@ -1,3 +1,5 @@
+# Mod commands
+
 This commands can only be used by the server's owner and users with the `Manage Channels` permission.
 
 !!! info

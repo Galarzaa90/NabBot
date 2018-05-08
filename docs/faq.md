@@ -1,3 +1,5 @@
+# FAQ
+
 !!! note
     In order to run and manage NabBot, basic knowledge of Python is expected.
 

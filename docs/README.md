@@ -8,12 +8,16 @@ https://galarzaa90.github.io/NabBot/
 
 To view locally:
 1. Install the required python modules:
+
     ```commandline
     python -m pip install mkdocs mkdcos-material
     ```
+    
 1.  Run mkdocs on the root folder of this project.
+
     ```commandline
     mkdocs serve
     ```
+    
 1. The website should be now available on:  
 http://127.0.0.1:8000/

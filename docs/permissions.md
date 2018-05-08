@@ -1,3 +1,5 @@
+# Permissions
+
 When the bot is first added to a server, a role is created with the permissions defined in the invite link.
 To operate correctly, the bot needs the following permissions.
 
