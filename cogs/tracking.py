@@ -479,7 +479,7 @@ class Tracking:
         try:
             char = await get_character(char_name)
             if char is None:
-                await ctx.send("That character doesn't exists.")
+                await ctx.send("That character doesn't exist.")
                 return
         except NetworkError:
             await ctx.send("I couldn't fetch the character, please try again.")
@@ -684,7 +684,7 @@ class Tracking:
         try:
             char = await get_character(char_name)
             if char is None:
-                await ctx.send("That character doesn't exists.")
+                await ctx.send("That character doesn't exist.")
                 return
         except NetworkError:
             await ctx.send("I couldn't fetch the character, please try again.")

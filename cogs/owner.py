@@ -284,7 +284,7 @@ class Owner:
                 # Char was deleted
                 if char == ERROR_DOESNTEXIST:
                     delete_chars.append((row["name"],))
-                    await ctx.send("**{0}** doesn't exists, deleting...".format(row["name"]))
+                    await ctx.send("**{0}** doesn't exist, deleting...".format(row["name"]))
                     continue
                 # Char was renamed
                 if char.name != row["name"]:
@@ -375,7 +375,7 @@ class Owner:
                     await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
                     return
                 if new_char is None:
-                    await ctx.send("The character **{0}** doesn't exists.".format(new_name))
+                    await ctx.send("The character **{0}** doesn't exist.".format(new_name))
                     return
                 # Check if vocations are similar
                 if not (old_char_db["vocation"].lower() in new_char.vocation.lower()
