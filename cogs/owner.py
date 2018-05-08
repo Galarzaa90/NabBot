@@ -468,7 +468,7 @@ class Owner:
 
     @commands.command()
     @checks.is_owner()
-    async def leave(self, ctx, server: str=None):
+    async def leave(self, ctx, *, server: str=None):
         """Makes the bot leave a server"""
         if server is None:
             await ctx.send("Tell me the name of id of the server you want me to leave.")
