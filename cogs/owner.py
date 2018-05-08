@@ -466,6 +466,50 @@ class Owner:
             c.close()
             userDatabase.commit()
 
+    @commands.command()
+    @checks.is_owner()
+    async def leave(self, ctx, server: str=None):
+        """Makes the bot leave a server"""
+        if server is None:
+            await ctx.send("Tell me the name of id of the server you want me to leave.")
+            return
+
+        id_regex = re.compile(r'([0-9]{15,21})$')
+        match = id_regex.match(server)
+        if match:
+            guild = self.bot.get_guild(int(match.group(1)))
+            if guild is None:
+                await ctx.send(f"I'm not in any server with the id {server}.")
+                return
+        else:
+            guild = self.bot.get_guild_by_name(server)
+            if guild is None:
+                await ctx.send(f"I'm not in any server named {server}")
+                return
+
+        embed = discord.Embed(title=guild.name)
+        embed.set_footer(text="Created")
+        embed.set_author(name=guild.owner.name, icon_url=get_user_avatar(guild.owner))
+        embed.set_thumbnail(url=guild.icon_url)
+        embed.add_field(name="Members", value=str(guild.member_count))
+        embed.add_field(name="Joined", value=str(guild.me.joined_at))
+        embed.timestamp = guild.created_at
+
+        message = await ctx.send("Are you sure you want me to leave this server?", embed=embed)
+        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        if confirm is None:
+            await ctx.send("Forget it then.")
+            return
+        if confirm is False:
+            await ctx.send("Ok, I will stay there.")
+            return
+
+        try:
+            await guild.leave()
+            await ctx.send(f"I just left the server **{guild.name}**.")
+        except discord.HTTPException:
+            await ctx.send("Something went wrong, I guess they don't want to let me go.")
+
 
 def setup(bot):
     bot.add_cog(Owner(bot))
