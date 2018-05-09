@@ -152,10 +152,6 @@ class NabBot(commands.Bot):
         else:
             self.members[member.id] = [member.guild.id]
 
-        # No welcome message for lite servers and servers not tracking worlds
-        if member.guild.id in config.lite_servers or tracked_worlds.get(member.guild.id) is None:
-            return
-
         server_welcome = get_server_property("welcome", member.guild.id, "")
         pm = (config.welcome_pm+"\n"+server_welcome).format(user=member, server=member.guild, bot=self.user,
                                                             owner=member.guild.owner)
@@ -165,6 +161,11 @@ class NabBot(commands.Bot):
         embed.colour = discord.Colour.green()
         embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
         embed.timestamp = dt.datetime.utcnow()
+
+        # If server is not tracking worlds, we don't check the database
+        if member.guild.id in config.lite_servers or tracked_worlds.get(member.guild.id) is None:
+            await self.send_log_message(member.guild, embed=embed)
+            return
 
         # Check if user already has characters registered and announce them on log_channel
         # This could be because he rejoined the server or is in another server tracking the same worlds

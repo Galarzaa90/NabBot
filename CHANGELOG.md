@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 1.1.0 (unreleased)
+- New command: `\leave`, to make the bot leave a discord server.
+- Minor improvements to documentation site.
+
 ## Version 1.0.1 (2018-05-07)
 - Renamed characters are updated more effectively, preventing some cases of character duplication.
 - `/watched` no longer asks for `Manage Roles` permissions.
@@ -11,15 +15,14 @@
 
 ## Version 1.0.0 (2018-05-03)
 - Now requires **Python 3.6** or higher.
-- Now uses the "rewrite" version of `discord.py`, meaning there are tons of breaking changes, and there will be more
-until v1.0.0 is released for `discord.py`
+- Now uses the "rewrite" version of `discord.py`, meaning there are tons of breaking changes, and there will be more until v1.0.0 is released for `discord.py`
 - Improved cogs organization, allowing to reload NabBot by modules
 - Improved many commands to use pagination
 - Added better support for multiple discord servers
 - Added watchlist feature, to keep track of the online status of certain characters or guilds (also known as "Hunted list")
 - Improved /whois appearance
 - New commands: /ignore and /unignore, to make it easier to control where NabBot can answer to commands.
-. Improved the way events work and are displayed
+- Improved the way events work and are displayed
 - Added event participants, to keep track of which characters are assisting and events, good for organizing team based events like Heart of Destruction.
 - Various changes to /deaths, /levels and /timeline display
 - Items and monsters now show animated gifs
