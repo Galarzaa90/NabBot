@@ -47,10 +47,9 @@ It features commands related to the MMORPG [Tibia](http://www.tibia.com/abouttib
 Visit our support server
 
 [![Support Server](https://discordapp.com/api/guilds/441991938200305674/embed.png)](https://discord.gg/NmDvhpY)
- 
- 
+
 ## Donate
-If you like Nab Bot, you can donate to this project. Nab Bot and the developers will appreciate it :)
+If you like NabBot, you can donate to this project. Nab Bot and the developers will appreciate it :)
 
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)
