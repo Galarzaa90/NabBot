@@ -7,7 +7,7 @@ pages:
     - python -m mkdocs build -d public
   only:
     refs:
-      - master
+      - dev
   artifacts:
     paths:
       - public
