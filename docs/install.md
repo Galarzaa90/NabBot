@@ -1,27 +1,41 @@
 # Installation Guide
-# Creating an Application
+## Installing requirements
+In order to install and run NabBot, you need to install two things: [git](https://git-scm.com/) and [Python 3.6 or higher](https://www.python.org/).
+
+When installing on Windows, make sure that you select the option to add Python to `PATH`.
+
+Once installed, you need to find what's the python's executable name, depending on the installation, it can be either `python`, `python3` or `py`.
+
+Once the correct command has been found, open a terminal window on NabBot's root directory and run the following:
+
+```shell
+python -m pip install -U git+https://github.com/Rapptz/discord.py@rewrite
+python -m pip install -U -r requirements.txt
+```
+
+## Creating an Application
 In order to run a Discord bot, you need to create a new application.
 
 1. Go to [My Apps](https://discordapp.com/developers/applications/me) in the developers portal.
-1. Once you're here, click on the **New App** button.
-1. Fill the fields, Click on **Create App** once you're done.
-1. Now that you have created your App, look for the **Create a Bot User** button.
-1. You're going to need two things from here, your **Client ID**, found at the top, and your **Token**, found in the Bot section.  
-Your Client ID should look like `391624006744145920` and your token like `MzkxNjI0MDA2NzQ0MTQ1OTIw.DRbYSQ.EbWIRWMqEQCYSBhlnNpG7FQLwZs`
+2. Once you're here, click on the **New App** button.
+3. Fill the fields, Click on **Create App** once you're done.
+4. Now that you have created your App, look for the **Create a Bot User** button.
+5. You're going to need two things from here, your **Client ID**, found at the top, and your **Token**, found in the Bot section.  
+    Your Client ID should look like `391624006744145920` and your token like `MzkxNjI0MDA2NzQ0MTQ1OTIw.DRbYSQ.EbWIRWMqEQCYSBhlnNpG7FQLwZs`
 
 !!! warning
     Your token is secret, never expose it to anyone. Anyone with access to your token can run a bot as you,
     compromising your account if they break discord's Terms of Service
-    
-# Running your bot
+
+## Running your bot
 The first time you run `nabbot.py`, you will be asked for a token. Here's where you will use the token given on the App page.
 
 Once you entered the token, the bot will log in. You should see a dialog showing that the bot is now online.
-    
-# Inviting your bot
+
+## Inviting your bot
 To invite your bot to your server, you need to use the authentication URL. Here's where your **Client ID** is used.
 
-```commandline
+```ruby
 https://discordapp.com/oauth2/authorize?scope=bot&permissions=257232&client_id=CLIENT_ID_HERE
 ```
 
@@ -32,7 +46,7 @@ https://discordapp.com/oauth2/authorize?scope=bot&permissions=257232&client_id=C
 You should now see your bot online on your server.
 Depending on your privacy settings, you (or the owner of the server) should have received a DM by NabBot explaining how to do the inital configuration.
 
-# Initial configuration
+## Initial configuration
 In order for the bot to have access to most of its features, you must configure the world the server tracks.
 
 Use the command `/setworld`, for example: `/setworld Fidera`. Then the bot will ask for confirmation.
