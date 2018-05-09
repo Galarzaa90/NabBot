@@ -5,20 +5,17 @@ cache: pip
 python:
   - "3.6"
 install:
-  - pip install -r requirements.txt
-  - pip install mkdocs mkdocs-material
+  - pip install -U -r requirements.txt
+  - pip install mkdocs mkdocs-material pymdown-extensions
 
-"script":
+script:
 - python -m compileall ./nabbot.py
-- python -m compileall ./config.py
 - python -m compileall ./restart.py
 - python -m compileall ./cogs
 - python -m compileall ./utils
 - python -m mkdocs build
 
 deploy:
-  edge:
-    branch: v1.8.47
   provider: pages
   skip-cleanup: true
   github-token: $GITHUB_TOKEN
