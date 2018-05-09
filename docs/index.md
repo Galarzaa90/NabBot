@@ -20,12 +20,12 @@ It features commands related to the MMORPG [Tibia](http://www.tibia.com/abouttib
 
 ## Requirements
 * Python 3.6+
-* [discord.py (rewrite branch)](https://github.com/Rapptz/discord.py/tree/rewrite)
-* psutil
-* pillow
-* BeautifulSoup
-* pyYAML
-* Any operating system
+* Python modules:
+    * [discord.py (rewrite branch)](https://github.com/Rapptz/discord.py/tree/rewrite)
+    * psutil
+    * pillow
+    * BeautifulSoup
+    * pyYAML
  
 ## Installing and running
 1. Install the required python modules
