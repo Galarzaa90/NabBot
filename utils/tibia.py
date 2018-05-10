@@ -11,8 +11,7 @@ from html.parser import HTMLParser
 from typing import List, Union, Dict, Optional
 
 import aiohttp
-from PIL import Image
-from PIL import ImageDraw
+from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
 
 from utils.config import config

@@ -6,9 +6,7 @@ import traceback
 from typing import Union, List, Optional
 
 import discord
-from discord import abc, Reaction, User, Message
 from discord.ext import commands
-from discord.ext.commands import Context
 
 from utils.config import config
 from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, get_server_property
@@ -66,16 +64,16 @@ class NabBot(commands.Bot):
 
         log.info('Bot is online and ready')
 
-    async def on_command(self, ctx: Context):
+    async def on_command(self, ctx: commands.Context):
         """Called when a command is used. Used to log commands on a file."""
-        if isinstance(ctx.message.channel, abc.PrivateChannel):
+        if isinstance(ctx.message.channel, discord.abc.PrivateChannel):
             destination = 'PM'
         else:
             destination = '#{0.channel.name} ({0.guild.name})'.format(ctx.message)
         message_decoded = decode_emoji(ctx.message.content)
         log.info('Command by {0} in {1}: {2}'.format(ctx.message.author.display_name, destination, message_decoded))
 
-    async def on_command_error(self, ctx: Context, error):
+    async def on_command_error(self, ctx: commands.Context, error):
         """Handles command errors"""
         if isinstance(error, commands.errors.CommandNotFound):
             return
@@ -91,6 +89,7 @@ class NabBot(commands.Bot):
             if ctx.message.author.id in config.owner_ids:
                 await ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
 
+    # TODO: Implement's library's case-insensitive comamnds and clean this
     async def on_message(self, message: discord.Message):
         """Called every time a message is sent on a visible channel."""
         # Ignore if message is from any bot
@@ -106,7 +105,7 @@ class NabBot(commands.Bot):
         if len(split) == 2:
             if message.author.id != self.user.id and \
                     (not split[0].lower()[1:] in self.command_list or not split[0][:1] == "/") and \
-                    not isinstance(message.channel, abc.PrivateChannel) and \
+                    not isinstance(message.channel, discord.abc.PrivateChannel) and \
                     message.channel.name == config.ask_channel_name:
                 await message.delete()
                 return
@@ -114,7 +113,8 @@ class NabBot(commands.Bot):
             # Delete messages in askchannel
             if message.author.id != self.user.id \
                     and (not message.content.lower()[1:] in self.command_list or not message.content[:1] == "/") \
-                    and not isinstance(message.channel, abc.PrivateChannel) and message.channel.name == config.ask_channel_name:
+                    and not isinstance(message.channel, discord.abc.PrivateChannel) and \
+                    message.channel.name == config.ask_channel_name:
                 await message.delete()
                 return
         await self.process_commands(message)
@@ -302,7 +302,7 @@ class NabBot(commands.Bot):
             return
 
         # Ignore private messages
-        if isinstance(before.channel, abc.PrivateChannel):
+        if isinstance(before.channel, discord.abc.PrivateChannel):
             return
 
         # Ignore if content didn't change (usually fired when attaching files)
@@ -523,7 +523,7 @@ class NabBot(commands.Bot):
                 return channel
         return None
 
-    async def wait_for_confirmation_reaction(self, ctx: Context, message: Message, timeout: float=120) -> Optional[bool]:
+    async def wait_for_confirmation_reaction(self, ctx: commands.Context, message: discord.Message, timeout: float=120) -> Optional[bool]:
         """Waits for the command author (ctx.author) to reply with a Y or N reaction
 
         Returns True if the user reacted with Y
@@ -538,7 +538,7 @@ class NabBot(commands.Bot):
             log.error("wait_for_confirmation_reaction: No permission to add reactions.")
             return None
 
-        def check_react(reaction: Reaction, user: User):
+        def check_react(reaction: discord.Reaction, user: discord.User):
             if reaction.message.id != message.id:
                 return False
             if user.id != ctx.author.id:

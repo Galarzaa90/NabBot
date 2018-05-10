@@ -1,10 +1,10 @@
 import inspect
 import itertools
 
-from discord.ext.commands import HelpFormatter, Command, Paginator
+from discord.ext import commands
 
 
-class NabHelpFormat(HelpFormatter):
+class NabHelpFormat(commands.HelpFormatter):
 
     def get_ending_note(self):
         command_name = self.context.invoked_with
@@ -22,7 +22,7 @@ class NabHelpFormat(HelpFormatter):
         list
             A paginated output of the help command.
         """
-        self._paginator = Paginator()
+        self._paginator = commands.Paginator()
 
         # we need a padding of ~80 or so
 
@@ -32,7 +32,7 @@ class NabHelpFormat(HelpFormatter):
             # <description> portion
             self._paginator.add_line(description, empty=True)
 
-        if isinstance(self.command, Command):
+        if isinstance(self.command, commands.Command):
             # <signature portion>
             signature = self.get_command_signature()
             self._paginator.add_line(signature, empty=True)
@@ -57,13 +57,13 @@ class NabHelpFormat(HelpFormatter):
         filtered = await self.filter_command_list()
         if self.is_bot():
             data = sorted(filtered, key=category)
-            for category, commands in itertools.groupby(data, key=category):
+            for category, _commands in itertools.groupby(data, key=category):
                 # there simply is no prettier way of doing this.
-                commands = sorted(commands)
-                if len(commands) > 0:
+                _commands = sorted(_commands)
+                if len(_commands) > 0:
                     self._paginator.add_line(category)
 
-                self._add_subcommands_to_page(max_width, commands)
+                self._add_subcommands_to_page(max_width, _commands)
         else:
             filtered = sorted(filtered)
             self._add_subcommands_to_page(max_width, self.filter_command_list())
