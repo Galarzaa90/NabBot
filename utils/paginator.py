@@ -1,7 +1,6 @@
 import asyncio
 
 import discord
-from discord import Message, Colour, Client, User, Reaction
 
 from utils.discord import is_private
 from utils.tibia import DRUID, SORCERER, PALADIN, KNIGHT
@@ -44,7 +43,7 @@ class Paginator:
     """
     Empty = discord.Embed.Empty
 
-    def __init__(self, bot: Client, *, message: Message, entries, **kwargs):
+    def __init__(self, bot: discord.Client, *, message: discord.Message, entries, **kwargs):
         self.bot = bot
         self.entries = entries
         self.message = message
@@ -166,7 +165,7 @@ class Paginator:
         await self.show_page(1)
         self.paginating = False
 
-    def react_check(self, reaction: Reaction, user: User):
+    def react_check(self, reaction: discord.Reaction, user: discord.User):
         if reaction.message.id != self.message.id:
             return False
 
@@ -208,7 +207,7 @@ class Paginator:
 
 
 class VocationPaginator(Paginator):
-    def __init__(self, bot: Client, *, message: Message, entries, vocations, **kwargs):
+    def __init__(self, bot: discord.Client, *, message: discord.Message, entries, vocations, **kwargs):
         super().__init__(bot, message=message, entries=entries, **kwargs)
         present_vocations = []
         # Only add vocation filters for the vocations present

@@ -2,7 +2,6 @@ import random
 import re
 
 import discord
-from discord import Colour
 from discord.ext import commands
 
 from nabbot import NabBot
@@ -474,13 +473,13 @@ class TibiaWiki:
                 npc["city"] = adjust_city(npc["name"], npc["city"])
                 name = npc["name"].lower()
                 if name == 'alesar' or name == 'yaman':
-                    embed.colour = Colour.green()
+                    embed.colour = discord.Colour.green()
                 elif name == "nah'bob" or name == "haroun":
-                    embed.colour = Colour.blue()
+                    embed.colour = discord.Colour.blue()
                 elif name == 'rashid':
-                    embed.colour = Colour(0xF0E916)
+                    embed.colour = discord.Colour(0xF0E916)
                 elif name == 'briasol':
-                    embed.colour = Colour(0xA958C4)
+                    embed.colour = discord.Colour(0xA958C4)
                 value += "\n{name} ({city})".format(**npc)
                 count += 1
                 if count > short_limit and not long:
@@ -589,19 +588,19 @@ class TibiaWiki:
                 embed.add_field(name=name, value=value)
         # Set embed color based on element:
         if spell["element"] == "Fire":
-            embed.colour = Colour(0xFF9900)
+            embed.colour = discord.Colour(0xFF9900)
         if spell["element"] == "Ice":
-            embed.colour = Colour(0x99FFFF)
+            embed.colour = discord.Colour(0x99FFFF)
         if spell["element"] == "Energy":
-            embed.colour = Colour(0xCC33FF)
+            embed.colour = discord.Colour(0xCC33FF)
         if spell["element"] == "Earth":
-            embed.colour = Colour(0x00FF00)
+            embed.colour = discord.Colour(0x00FF00)
         if spell["element"] == "Holy":
-            embed.colour = Colour(0xFFFF00)
+            embed.colour = discord.Colour(0xFFFF00)
         if spell["element"] == "Death":
-            embed.colour = Colour(0x990000)
+            embed.colour = discord.Colour(0x990000)
         if spell["element"] == "Physical" or spell["element"] == "Bleed":
-            embed.colour = Colour(0xF70000)
+            embed.colour = discord.Colour(0xF70000)
 
         embed.description = description
 

@@ -1,5 +1,11 @@
+import asyncio
 import calendar
+import datetime as dt
 import random
+import re
+import time
+import urllib.parse
+from typing import Optional
 
 import discord
 from discord.ext import commands
@@ -7,13 +13,15 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils import checks
 from utils.config import config
-from utils.database import tracked_worlds, get_server_property
+from utils.database import tracked_worlds, get_server_property, userDatabase
 from utils.discord import is_private, is_lite_mode
 from utils.general import is_numeric, get_time_diff, join_list, get_brasilia_time_zone, global_online_list, \
-    get_local_timezone
-from utils.messages import html_to_markdown, get_first_image, split_message
+    get_local_timezone, log
+from utils.messages import html_to_markdown, get_first_image, split_message, EMOJI
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
-from utils.tibia import *
+from utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
+    url_house, get_stats, get_map_area, get_tibia_time_zone, get_world, tibia_worlds, get_world_bosses, get_recent_news, \
+    get_news_article, Character, url_guild, highscore_format, get_character_url, url_character, get_house
 from utils.tibiawiki import get_rashid_info
 
 
@@ -1346,7 +1354,6 @@ class Tibia:
                        f"**{bless_price*5:,}** gold coins.{inquisition}"
                        f"\nMountain blessings cost **{mountain_bless_price:,}** each, for a total of "
                        f"**{int(mountain_bless_price*2):,}**.")
-
 
     @commands.command(aliases=["houses", "guildhall", "gh"])
     async def house(self, ctx, *, name: str=None):

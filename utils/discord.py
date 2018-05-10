@@ -2,7 +2,6 @@ import re
 from typing import List, Optional, Union
 
 import discord
-from discord.abc import PrivateChannel, Messageable
 from discord.ext import commands
 
 from utils.config import config
@@ -80,8 +79,8 @@ def get_region_string(region: discord.VoiceRegion) -> str:
     return regions.get(str(region), str(region))
 
 
-def is_private(channel: Messageable) -> bool:
-    return isinstance(channel, PrivateChannel)
+def is_private(channel: discord.abc.Messageable) -> bool:
+    return isinstance(channel, discord.abc.PrivateChannel)
 
 
 def clean_string(ctx: commands.Context, string: str) -> str:
