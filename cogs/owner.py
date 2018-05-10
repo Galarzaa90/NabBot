@@ -518,14 +518,16 @@ class Owner:
     @commands.command()
     @checks.is_owner()
     async def versions(self, ctx):
-        embed = discord.Embed(title="NabBot", description=self.bot.__version__)
-        embed.add_field(name="discord.py", value=pkg_resources.get_distribution("discord.py").version)
-        embed.add_field(name="aiohttp", value=aiohttp.__version__)
-        embed.add_field(name="beautifulsoup", value=bs4.__version__)
-        embed.add_field(name="pillow", value=PIL.__version__)
-        embed.add_field(name="psutil", value=psutil.__version__)
-        embed.add_field(name="PyYAML", value=yaml.__version__)
-        embed.set_footer(text=f"Running on Python {platform.python_version()}")
+        """"Shows version info about NabBot and its dependencies"""
+        embed = discord.Embed(title="NabBot", description="v"+self.bot.__version__)
+        embed.add_field(name="discord.py", value="v"+pkg_resources.get_distribution("discord.py").version)
+        embed.add_field(name="aiohttp", value="v"+aiohttp.__version__)
+        embed.add_field(name="beautifulsoup", value="v"+bs4.__version__)
+        embed.add_field(name="pillow", value="v"+PIL.__version__)
+        embed.add_field(name="psutil", value="v"+psutil.__version__)
+        embed.add_field(name="PyYAML", value="v"+yaml.__version__)
+        embed.set_footer(text=f"Python v{platform.python_version()} on {platform.platform()}",
+                         icon_url="https://www.python.org/static/apple-touch-icon-precomposed.png")
         await ctx.send(embed=embed)
 
 
