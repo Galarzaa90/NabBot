@@ -147,6 +147,8 @@ If all conditions are met, their entries will be merged into one.
 - The new name must be a valid character in Tibia.com
 - They must have the same vocation, not considering promotions.
 
+----
+
 ## /leave
 **Syntax**: /leave *server*
 
@@ -161,3 +163,12 @@ Once the bot has left the server, it can only join back by using the authenticat
     **/leave 159815897052086272**  
     ![image](../assets/images/commands/leave.png)
     
+----
+
+##/versions
+Shows NabBot's version and the versions of all dependencies.
+
+??? Summary "Example"
+
+    **/versions**  
+    ![image](../assets/images/commands/versions.png)
