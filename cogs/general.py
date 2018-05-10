@@ -341,7 +341,7 @@ class General:
         embed = discord.Embed(description="*Beep bop beep bop*. I'm just a bot!")
         embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
                          icon_url="https://github.com/fluidicon.png")
-        embed.add_field(name="Version", value=self.bot.version)
+        embed.add_field(name="Version", value=self.bot.__version__)
         embed.add_field(name="Authors", value="\u2023 [Galarzaa90](https://github.com/Galarzaa90)\n"
                                               "\u2023 [Nezune](https://github.com/Nezune)")
         embed.add_field(name="Platform", value="Python " + EMOJI[":snake:"])
