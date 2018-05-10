@@ -1,7 +1,12 @@
 import inspect
+import platform
 import traceback
 from contextlib import redirect_stdout
 
+import PIL
+import bs4
+import pkg_resources
+import psutil
 from discord.ext import commands
 
 # Everything is imported to put it in /debug scope
@@ -509,6 +514,19 @@ class Owner:
             await ctx.send(f"I just left the server **{guild.name}**.")
         except discord.HTTPException:
             await ctx.send("Something went wrong, I guess they don't want to let me go.")
+
+    @commands.command()
+    @checks.is_owner()
+    async def versions(self, ctx):
+        embed = discord.Embed(title="NabBot", description=self.bot.__version__)
+        embed.add_field(name="discord.py", value=pkg_resources.get_distribution("discord.py").version)
+        embed.add_field(name="aiohttp", value=aiohttp.__version__)
+        embed.add_field(name="beautifulsoup", value=bs4.__version__)
+        embed.add_field(name="pillow", value=PIL.__version__)
+        embed.add_field(name="psutil", value=psutil.__version__)
+        embed.add_field(name="PyYAML", value=yaml.__version__)
+        embed.set_footer(text=f"Running on Python {platform.python_version()}")
+        await ctx.send(embed=embed)
 
 
 def setup(bot):
