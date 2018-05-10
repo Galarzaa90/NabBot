@@ -1,7 +1,8 @@
 # Changelog
 
 ## Version 1.1.0 (unreleased)
-- New command: `\leave`, to make the bot leave a discord server.
+- New command: `/leave`, to make the bot leave a discord server.
+- New command: `/versions`, shows the current version and the version of dependencies.
 - Minor improvements to documentation site.
 
 ## Version 1.0.1 (2018-05-07)
