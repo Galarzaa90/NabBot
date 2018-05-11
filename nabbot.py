@@ -28,9 +28,8 @@ class NabBot(commands.Bot):
         else:
             command_prefix = config.command_prefix
         super().__init__(command_prefix=command_prefix, description='Mission: Destroy all humans.', pm_help=True,
-                         formatter=NabHelpFormat())
+                         formatter=NabHelpFormat(), case_insensitive=True)
         self.remove_command("help")
-        self.command_list = []
         self.members = {}
         self.__version__ = "1.1.0a"
 
@@ -40,11 +39,6 @@ class NabBot(commands.Bot):
         print(self.user)
         print(self.user.id)
         print('------')
-
-        # Populate command_list
-        for command in self.commands:
-            self.command_list.append(command.name)
-            self.command_list.extend(command.aliases)
 
         # Notify reset author
         if len(sys.argv) > 1:
@@ -89,35 +83,24 @@ class NabBot(commands.Bot):
             if ctx.message.author.id in config.owner_ids:
                 await ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
 
-    # TODO: Implement's library's case-insensitive comamnds and clean this
     async def on_message(self, message: discord.Message):
         """Called every time a message is sent on a visible channel."""
         # Ignore if message is from any bot
         if message.author.bot:
             return
 
-        split = message.content.split(" ", 1)
-        if split[0][:1] == "/" and split[0].lower()[1:] in self.command_list:
-            if len(split) > 1:
-                message.content = split[0].lower()+" "+split[1]
-            else:
-                message.content = message.content.lower()
-        if len(split) == 2:
-            if message.author.id != self.user.id and \
-                    (not split[0].lower()[1:] in self.command_list or not split[0][:1] == "/") and \
-                    not isinstance(message.channel, discord.abc.PrivateChannel) and \
-                    message.channel.name == config.ask_channel_name:
+        ctx = await self.get_context(message)
+        if ctx.command is not None:
+            await self.invoke(ctx)
+            return
+        # Delete messages that are not commands in ask-nabbot (if enabled
+        if config.ask_channel_delete and not is_private(message.channel) \
+                and message.channel.name == config.ask_channel_name:
+            try:
                 await message.delete()
-                return
-        elif config.ask_channel_delete:
-            # Delete messages in askchannel
-            if message.author.id != self.user.id \
-                    and (not message.content.lower()[1:] in self.command_list or not message.content[:1] == "/") \
-                    and not isinstance(message.channel, discord.abc.PrivateChannel) and \
-                    message.channel.name == config.ask_channel_name:
-                await message.delete()
-                return
-        await self.process_commands(message)
+            except discord.Forbidden:
+                # Bot doesn't have permission to delete message
+                pass
 
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""

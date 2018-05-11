@@ -36,7 +36,7 @@ class Loot:
         self.bot = bot
         self.parsing_count = 0
 
-    @commands.group(invoke_without_command=True)
+    @commands.group(invoke_without_command=True, case_insensitive=True)
     @checks.is_not_lite()
     async def loot(self, ctx):
         """Scans a loot image and returns it's loot value

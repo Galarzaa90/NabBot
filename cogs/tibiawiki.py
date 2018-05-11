@@ -221,7 +221,7 @@ class TibiaWiki:
 
         await ctx.send(embed=embed)
 
-    @commands.group(alises=["keys"], invoke_without_command=True)
+    @commands.group(alises=["keys"], invoke_without_command=True, case_insensitive=True)
     async def key(self, ctx, number: str = None):
         """Shows information about a key
 
