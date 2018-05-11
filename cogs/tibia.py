@@ -383,7 +383,7 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.group(aliases=['guildcheck', 'checkguild'], invoke_without_command=True)
+    @commands.group(aliases=['guildcheck', 'checkguild'], invoke_without_command=True, case_insensitive=True)
     async def guild(self, ctx, *, name:str=None):
         """Checks who is online in a guild"""
         permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
@@ -550,7 +550,7 @@ class Tibia:
 
         await ctx.send(embed=embed)
 
-    @commands.group(aliases=['deathlist', 'death'], invoke_without_command=True)
+    @commands.group(aliases=['deathlist', 'death'], invoke_without_command=True, case_insensitive=True)
     async def deaths(self, ctx, *, name: str = None):
         """Shows a player's or everyone's recent deaths
 
@@ -890,7 +890,7 @@ class Tibia:
         finally:
             c.close()
 
-    @commands.group(aliases=['levelups', 'lvl', 'level', 'lvls'], invoke_without_command=True)
+    @commands.group(aliases=['levelups', 'lvl', 'level', 'lvls'], invoke_without_command=True, case_insensitive=True)
     @checks.is_not_lite()
     async def levels(self, ctx, *, name: str=None):
         """Shows a player's or everoyne's recent level ups
@@ -1059,7 +1059,7 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.group(aliases=["story"], invoke_without_command=True)
+    @commands.group(aliases=["story"], invoke_without_command=True, case_insensitive=True)
     @checks.is_not_lite()
     async def timeline(self, ctx, *, name: str = None):
         """Shows a player's recent level ups and deaths"""

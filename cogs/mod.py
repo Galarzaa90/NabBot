@@ -122,7 +122,7 @@ class Mod:
 
     @commands.guild_only()
     @checks.is_mod()
-    @commands.group(invoke_without_command=True)
+    @commands.group(invoke_without_command=True, case_insensitive=True)
     async def ignore(self, ctx, *, channel: discord.TextChannel = None):
         """Makes the bot ignore a channel
 

@@ -374,7 +374,7 @@ class General:
                 pass
         await ctx.send(embed=embed)
 
-    @commands.group(aliases=["event"], invoke_without_command=True)
+    @commands.group(aliases=["event"], invoke_without_command=True, case_insensitive=True)
     @checks.is_not_lite()
     async def events(self, ctx, event_id: int=0):
         """Shows a list of current active events
@@ -572,7 +572,7 @@ class General:
         if isinstance(error, commands.BadArgument):
             await ctx.send(str(error))
 
-    @events.group(name="edit", invoke_without_command=True)
+    @events.group(name="edit", invoke_without_command=True, case_insensitive=True)
     async def event_edit(self, ctx):
         """Edits an event's name, description or time
         

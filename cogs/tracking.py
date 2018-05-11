@@ -897,7 +897,7 @@ class Tracking:
         finally:
             c.close()
 
-    @commands.group(invoke_without_command=True, aliases=["watchlist", "hunted", "huntedlist"])
+    @commands.group(invoke_without_command=True, aliases=["watchlist", "hunted", "huntedlist"], case_insensitive=True)
     @checks.is_admin()
     @commands.guild_only()
     async def watched(self, ctx, *, name="watched-list"):
