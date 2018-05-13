@@ -93,7 +93,7 @@ class NabBot(commands.Bot):
         if ctx.command is not None:
             await self.invoke(ctx)
             return
-        # Delete messages that are not commands in ask-nabbot (if enabled
+        # Delete messages that are not commands in ask-nabbot (if enabled)
         if config.ask_channel_delete and not is_private(message.channel) \
                 and message.channel.name == config.ask_channel_name:
             try:
@@ -143,7 +143,6 @@ class NabBot(commands.Bot):
         icon_url = get_user_avatar(member)
         embed.colour = discord.Colour.green()
         embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
-        embed.timestamp = dt.datetime.utcnow()
 
         # If server is not tracking worlds, we don't check the database
         if member.guild.id in config.lite_servers or tracked_worlds.get(member.guild.id) is None:
@@ -180,7 +179,6 @@ class NabBot(commands.Bot):
         embed = discord.Embed(description="Left the server or was kicked")
         icon_url = get_user_avatar(member)
         embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
-        embed.timestamp = now
         embed.colour = discord.Colour(0xffff00)
 
         # If bot can see audit log, he can see if it was a kick or member left on it's own
@@ -219,7 +217,6 @@ class NabBot(commands.Bot):
         embed = discord.Embed(description="Banned")
         icon_url = get_user_avatar(user)
         embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=icon_url)
-        embed.timestamp = now
         embed.colour = discord.Colour(0x7a0d0d)
 
         # If bot can see audit log, we can get more details of the ban
@@ -248,7 +245,6 @@ class NabBot(commands.Bot):
         embed = discord.Embed(description="Unbanned")
         icon_url = get_user_avatar(user)
         embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=icon_url)
-        embed.timestamp = now
         embed.colour = discord.Colour(0xff9000)
 
         if bot_member.guild_permissions.view_audit_log:
@@ -281,7 +277,7 @@ class NabBot(commands.Bot):
     async def on_message_edit(self, before: discord.Message, after: discord.Message):
         """Called every time a message is edited."""
         # Ignore bot messages
-        if before.author.id == self.user.id:
+        if before.author.bot:
             return
 
         # Ignore private messages
@@ -307,7 +303,6 @@ class NabBot(commands.Bot):
 
         embed = discord.Embed(description=f"{after.mention}: ")
         embed.set_author(name=f"{after.name}#{after.discriminator}", icon_url=get_user_avatar(after))
-        embed.timestamp = now
         embed.colour = discord.Colour.blue()
         changes = True
         if f"{before.name}#{before.discriminator}" != f"{after.name}#{after.discriminator}":
@@ -506,7 +501,8 @@ class NabBot(commands.Bot):
                 return channel
         return None
 
-    async def wait_for_confirmation_reaction(self, ctx: commands.Context, message: discord.Message, timeout: float=120) -> Optional[bool]:
+    async def wait_for_confirmation_reaction(self, ctx: commands.Context, message: discord.Message,
+                                             timeout: float=120) -> Optional[bool]:
         """Waits for the command author (ctx.author) to reply with a Y or N reaction
 
         Returns True if the user reacted with Y
