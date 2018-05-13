@@ -599,7 +599,6 @@ class Tracking:
                 message = user.mention + " registered the following characters: " + message
                 embed = discord.Embed(description=message)
                 embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-                embed.timestamp = dt.datetime.utcnow()
                 embed.colour = discord.Colour.dark_teal()
                 await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
 
@@ -611,39 +610,41 @@ class Tracking:
         All registered level ups and deaths will be lost forever."""
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT id, name, ABS(level) as level, user_id, vocation, world "
+            c.execute("SELECT id, name, ABS(level) as level, user_id, vocation, world, guild "
                       "FROM chars WHERE name LIKE ?", (name,))
             char = c.fetchone()
             if char is None or char["user_id"] == 0:
                 await ctx.send("There's no character registered with that name.")
                 return
-            if char["user_id"] != ctx.message.author.id:
+            user = ctx.author
+            if char["user_id"] != user.id:
                 await ctx.send("The character **{0}** is not registered to you.".format(char["name"]))
                 return
 
-            await ctx.send("Are you sure you want to unregister **{name}** ({level} {vocation})? `yes/no`"
-                           .format(**char))
-
-            def check(m):
-                return m.channel == ctx.channel and m.author == ctx.author
-
-            try:
-                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
-                if reply.content.lower() not in ["yes", "y"]:
-                    await ctx.send("No then? Ok.")
-                    return
-            except asyncio.TimeoutError:
+            message = await ctx.send("Are you sure you want to unregister **{name}** ({level} {vocation})?"
+                                     .format(**char))
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, timeout=50)
+            if confirm is None:
                 await ctx.send("I guess you changed your mind.")
                 return
+            if not confirm:
+                await ctx.send("No then? Ok.")
 
             c.execute("UPDATE chars SET user_id = 0 WHERE id = ?", (char["id"],))
             await ctx.send("**{0}** is no longer registered to you.".format(char["name"]))
 
-            user_servers = [s.id for s in self.bot.get_user_guilds(ctx.message.author.id)]
+            user_servers = [s.id for s in self.bot.get_user_guilds(user.id)]
             for server_id, world in tracked_worlds.items():
                 if char["world"] == world and server_id in user_servers:
-                    message = "{0} unregistered **{1}**".format(ctx.message.author.mention, char["name"])
-                    await self.bot.send_log_message(self.bot.get_guild(server_id), message)
+                    if char["guild"] is None:
+                        char["guild"] = "No guild"
+                    message = "{0} unregistered:\n\u2023 **{1}** - Level {2} {3} - {4}".\
+                        format(user.mention, char["name"], char["level"], get_voc_abb_and_emoji(char["vocation"]),
+                               char["guild"])
+                    embed = discord.Embed(description=message)
+                    embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
+                    embed.colour = discord.Colour.dark_teal()
+                    await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
         finally:
             userDatabase.commit()
             c.close()
@@ -807,7 +808,6 @@ class Tracking:
                 message = user.mention + " registered the following characters: " + message
                 embed = discord.Embed(description=message)
                 embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-                embed.timestamp = dt.datetime.utcnow()
                 embed.colour = discord.Colour.dark_teal()
                 await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
 
