@@ -2,11 +2,9 @@ import inspect
 import platform
 import traceback
 from contextlib import redirect_stdout
+from distutils.version import StrictVersion
 
-import PIL
-import bs4
 import pkg_resources
-import psutil
 from discord.ext import commands
 
 # Everything is imported to put it in /debug scope
@@ -18,6 +16,8 @@ from utils.discord import *
 from utils.general import *
 from utils.messages import *
 from utils.tibia import *
+
+req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 
 
 class Owner:
@@ -518,16 +518,52 @@ class Owner:
     @commands.command()
     @checks.is_owner()
     async def versions(self, ctx):
-        """"Shows version info about NabBot and its dependencies"""
+        """Shows version info about NabBot and its dependencies
+
+        An X is displayed if the minimum required version is not met, this is likely to cause problems.
+        An exclamation sign is displayed when the version installed exceeds the highest version supported
+           This means there might be breaking changes, causing the bot to malfunction.
+        A checkmark indicates that the dependency is inside the allowed range."""
+        def comp(operator, object1, object2):
+            if operator == ">=":
+                return object1 >= object2
+            if operator == ">":
+                return object1 > object2
+            if operator == "==":
+                return object1 == object2
+            if operator == "<":
+                return object1 < object2
+            if operator == "<=":
+                return object1 <= object2
+
         embed = discord.Embed(title="NabBot", description="v"+self.bot.__version__)
         embed.add_field(name="discord.py", value="v"+pkg_resources.get_distribution("discord.py").version)
-        embed.add_field(name="aiohttp", value="v"+aiohttp.__version__)
-        embed.add_field(name="beautifulsoup", value="v"+bs4.__version__)
-        embed.add_field(name="pillow", value="v"+PIL.__version__)
-        embed.add_field(name="psutil", value="v"+psutil.__version__)
-        embed.add_field(name="PyYAML", value="v"+yaml.__version__)
         embed.set_footer(text=f"Python v{platform.python_version()} on {platform.platform()}",
                          icon_url="https://www.python.org/static/apple-touch-icon-precomposed.png")
+
+        try:
+            with open("./requirements.txt") as f:
+                requirements = f.read()
+        except FileNotFoundError:
+            embed.add_field(name="Error",value="`requirements.txt` wasn't found in NabBot's root directory.")
+            await ctx.send(embed=embed)
+            return
+
+        dependencies = req_pattern.findall(requirements)
+        print(dependencies)
+        for package in dependencies:
+            version = pkg_resources.get_distribution(package[0]).version
+            value = f"v{version}"
+            if not comp(package[1], StrictVersion(version), StrictVersion(package[2])):
+                value += EMOJI[":x:"]
+                value += f"\n`At least v{package[2]} expected`"
+            elif not comp(package[3], StrictVersion(version), StrictVersion(package[4])):
+                value += EMOJI[":exclamation:"]
+                value += f"\n`Only v{package[4]} and below tested`"
+            else:
+                value += EMOJI[":white_check_mark:"]
+            embed.add_field(name=package[0], value=value)
+
         await ctx.send(embed=embed)
 
 

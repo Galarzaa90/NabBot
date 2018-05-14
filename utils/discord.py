@@ -28,7 +28,7 @@ def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -
 
 
 def get_role_list(guild: discord.Guild) -> List[discord.Role]:
-    """Lists all role within the discord server and returns to caller."""
+    """Lists all roles within the discord server"""
     roles = []
     for role in guild.roles:
         # Ignore @everyone and NabBot
@@ -86,7 +86,7 @@ def is_private(channel: discord.abc.Messageable) -> bool:
 def clean_string(ctx: commands.Context, string: str) -> str:
     """Turns mentions into plain text
 
-    For message object, there's already a property that odes this: message.clean_content"""
+    For message object, there's already a property that does this: message.clean_content"""
     def repl_channel(match):
         channel_id = match.group(0).replace("<", "").replace("#", "").replace(">", "")
         channel = ctx.message.guild.get_channel(int(channel_id))
