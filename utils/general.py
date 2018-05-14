@@ -110,7 +110,7 @@ def get_brasilia_time_zone() -> int:
     # Find date in Brasilia
     bt = dt.datetime.utcnow() - dt.timedelta(hours=3)
     brasilia_date = dt.date(bt.year, bt.month, bt.day)
-    # DST stars on the third sunday of october and ends on the third sunday of february
+    # DST starts on the third sunday of october and ends on the third sunday of february
     # It may be off by a couple hours
     dst_start = get_n_weekday(bt.year, 10, 7, 3)
     dst_end = get_n_weekday(bt.year, 2, 7, 3)

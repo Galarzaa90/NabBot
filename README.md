@@ -13,14 +13,12 @@ Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapp
     * BeautifulSoup
     * pyYAML
 * discord.py **rewrite branch**
-* Tested on Windows, Ubuntu and Raspbian
 
 ## Installing and running
-To install discord.py simply run the following on the command line:
+To install NabBot's dependencies, open the command line from NabBot's root folder and use:
 
 ```bat
-python -m pip install -U git+https://github.com/Rapptz/discord.py@rewrite
-python -m pip install pillow psutil beautifulsoup4 pyYAML
+python -m pip install -U -r requirements.txt
 ```
 
 Create a bot token on Discord
