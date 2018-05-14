@@ -18,6 +18,7 @@ from utils.messages import *
 from utils.tibia import *
 
 req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
+dpy_commit = re.compile(r"a\d+\+g([\w]+)")
 
 
 class Owner:
@@ -536,8 +537,16 @@ class Owner:
             if operator == "<=":
                 return object1 <= object2
 
+        discordpy_version = pkg_resources.get_distribution("discord.py").version
+        m = dpy_commit.search(discordpy_version)
+        if m:
+            discordpy_url = f"https://github.com/Rapptz/discord.py/commit/{m.group(1)}"
+            dpy = f"[v{discordpy_version}]({discordpy_url})"
+        else:
+            dpy = f"v{discordpy_version}"
+
         embed = discord.Embed(title="NabBot", description="v"+self.bot.__version__)
-        embed.add_field(name="discord.py", value="v"+pkg_resources.get_distribution("discord.py").version)
+        embed.add_field(name="discord.py", value=dpy)
         embed.set_footer(text=f"Python v{platform.python_version()} on {platform.platform()}",
                          icon_url="https://www.python.org/static/apple-touch-icon-precomposed.png")
 
@@ -545,12 +554,11 @@ class Owner:
             with open("./requirements.txt") as f:
                 requirements = f.read()
         except FileNotFoundError:
-            embed.add_field(name="Error",value="`requirements.txt` wasn't found in NabBot's root directory.")
+            embed.add_field(name="Error", value="`requirements.txt` wasn't found in NabBot's root directory.")
             await ctx.send(embed=embed)
             return
 
         dependencies = req_pattern.findall(requirements)
-        print(dependencies)
         for package in dependencies:
             version = pkg_resources.get_distribution(package[0]).version
             value = f"v{version}"

@@ -168,6 +168,18 @@ Once the bot has left the server, it can only join back by using the authenticat
 ##/versions
 Shows NabBot's version and the versions of all dependencies.
 
+This command can be useful to find out why the bot is not behaving as it should or for submitting bug reports.
+
+Currently, discord.py's version can't be controlled because an unreleased version is being used.
+This will change once `v1.0.0` is ~~finally~~ released.
+
+For every dependency, an emoji indicates if the requirement is met:
+
+- ✅ Indicates that the installed version is in the required range.
+- ❌ Indicates that the installed version is under the required range. This means some features may not be available.
+- ❗ Indicates that the installed version is higher than the required range.
+  This is usually not as bad as the previous case, but there may be some incompatibility issues.
+
 ??? Summary "Example"
 
     **/versions**  
