@@ -14,10 +14,10 @@ from nabbot import NabBot
 from utils import checks
 from utils.config import config
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds, get_server_property, set_server_property
-from utils.discord import is_private, get_user_avatar
+from utils.discord import is_private, get_user_avatar, FIELD_VALUE_LIMIT, EMBED_LIMIT
 from utils.general import global_online_list, log, join_list, start_time
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
-    level_messages
+    level_messages, split_message
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
     get_voc_abb, get_character_url, url_guild, \
@@ -25,7 +25,7 @@ from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, 
 
 
 class Tracking:
-    """Commands related to Nab Bot's tracking system."""
+    """Commands related to NabBot's tracking system."""
 
     def __init__(self, bot: NabBot):
         self.bot = bot
@@ -274,26 +274,38 @@ class Tracking:
                         except (discord.NotFound, discord.HTTPException, discord.Forbidden):
                             watched_message = None
                         items = [f"\t{x.name} - Level {x.level} {get_voc_emoji(x.vocation)}" for x in currently_online]
-                        onlinecount = len(items)
+                        online_count = len(items)
                         if len(items) > 0 or len(guild_online.keys()) > 0:
-                            content = "These watched characters are online:\n"
-                            content += "\n".join(items)
+                            description = ""
+                            content = "\n".join(items)
                             for guild, members in guild_online.items():
                                 content += f"\nGuild: **{guild}**\n"
                                 content += "\n".join(
                                     [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
                                      for x in members])
-                                onlinecount+= len(members)
+                                online_count += len(members)
                         else:
-                            content = "There are no watched characters online."
+                            description = "There are no watched characters online."
+                            content = ""
                         # Send new watched message or edit last one
+                        embed = discord.Embed(description=description)
+                        embed.set_footer(text="Last updated")
+                        embed.timestamp = dt.datetime.utcnow()
+                        if content:
+                            if len(content) >= EMBED_LIMIT-50:
+                                content = split_message(content, EMBED_LIMIT-50)[0]
+                                content += "\n*And more...*"
+                            fields = split_message(content, FIELD_VALUE_LIMIT)
+                            for s, split_field in enumerate(fields):
+                                name = "Watched List" if s == 0 else "\u200F"
+                                embed.add_field(name=name, value=split_field, inline=False)
                         try:
                             if watched_message is None:
-                                new_watched_message = await watched_channel.send(content)
+                                new_watched_message = await watched_channel.send(embed=embed)
                                 set_server_property("watched_message", server, new_watched_message.id)
                             else:
-                                await watched_message.edit(content=content)
-                            await watched_channel.edit(name=watched_channel.name.split("·",1)[0]+"·"+str(onlinecount))
+                                await watched_message.edit(embed=embed)
+                            await watched_channel.edit(name=f"{watched_channel.name.split('·', 1)[0]}·{online_count}")
                         except discord.HTTPException:
                             pass
             except asyncio.CancelledError:
@@ -1074,8 +1086,7 @@ class Tracking:
                 return
 
             message = await ctx.send(f"Do you want to add the guild **{guild.name}** to the watched list?")
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message,
-                                                                    "Ok then, guess you changed your mind.")
+            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
             if confirm is None:
                 await ctx.send("You took too long!")
                 return
