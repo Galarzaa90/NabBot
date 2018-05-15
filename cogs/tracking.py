@@ -15,13 +15,13 @@ from utils import checks
 from utils.config import config
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds, get_server_property, set_server_property
 from utils.discord import is_private, get_user_avatar, FIELD_VALUE_LIMIT, EMBED_LIMIT
-from utils.general import global_online_list, log, join_list, start_time
+from utils.general import global_online_list, log, join_list, start_time, is_numeric
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
     level_messages, split_message
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
     get_voc_abb, get_character_url, url_guild, \
-    get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_voc_abb_and_emoji
+    get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_voc_abb_and_emoji, get_share_range
 
 
 class Tracking:
@@ -908,6 +908,147 @@ class Tracking:
                 await ctx.send(e)
         finally:
             c.close()
+
+    @commands.guild_only()
+    @commands.command(name="findteam", aliases=["whereteam", "team", "searchteam"])
+    @checks.is_not_lite()
+    async def find_team(self, ctx, *, params=None):
+        """Searches for a registered character that meets the criteria
+
+        There are 3 ways to use this command:
+        -Find a character in share range with another character:
+        /findteam charname
+
+        -Find a character in share range with a certain level
+        /findteam level
+
+        -Find a character in a level range
+        /findteam min_level,max_level
+
+        Results can be filtered by using the vocation filters: \U00002744\U0001F525\U0001F3F9\U0001F6E1"""
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        invalid_arguments = "Invalid arguments used, examples:\n" \
+                            "```/find charname\n" \
+                            "/find level\n" \
+                            "/find minlevel,maxlevel```"
+
+        tracked_world = tracked_worlds.get(ctx.guild.id)
+        if tracked_world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+
+        if params is None:
+            await ctx.send(invalid_arguments)
+            return
+
+        entries = []
+        vocations = []
+        online_entries = []
+        online_vocations = []
+
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
+            per_page = 20
+        else:
+            per_page = 5
+
+        char = None
+        params = params.split(",")
+        if len(params) < 1 or len(params) > 2:
+            await ctx.send(invalid_arguments)
+            return
+
+        # params[0] could be a character's name, a character's level or one of the level ranges
+        # If it's not a number, it should be a player's name
+        if not is_numeric(params[0]):
+            # We shouldn't have another parameter if a character name was specified
+            if len(params) == 2:
+                await ctx.send(invalid_arguments)
+                return
+            try:
+                char = await get_character(params[0])
+                if char is None:
+                    await ctx.send("I couldn't find a character with that name.")
+                    return
+            except NetworkError:
+                await ctx.send("I couldn't fetch that character.")
+                return
+            low, high = get_share_range(char.level)
+            title = "Characters in share range with {0}({1}-{2}):".format(char.name, low, high)
+            empty = "I didn't find anyone in share range with **{0}**({1}-{2})".format(char.name, low, high)
+        else:
+            # Check if we have another parameter, meaning this is a level range
+            if len(params) == 2:
+                try:
+                    level1 = int(params[0])
+                    level2 = int(params[1])
+                except ValueError:
+                    await ctx.send(invalid_arguments)
+                    return
+                if level1 <= 0 or level2 <= 0:
+                    await ctx.send("You entered an invalid level.")
+                    return
+                low = min(level1, level2)
+                high = max(level1, level2)
+                title = "Characters between level {0} and {1}".format(low, high)
+                empty = "I didn't find anyone between levels **{0}** and **{1}**".format(low, high)
+            # We only got a level, so we get the share range for it
+            else:
+                if int(params[0]) <= 0:
+                    await ctx.send("You entered an invalid level.")
+                    return
+                low, high = get_share_range(int(params[0]))
+                title = "Characters in share range with level {0} ({1}-{2})".format(params[0], low, high)
+                empty = "I didn't find anyone in share range with level **{0}** ({1}-{2})".format(params[0],
+                                                                                                  low, high)
+
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT name, user_id, ABS(level) as level, vocation FROM chars "
+                      "WHERE level >= ? AND level <= ? AND world = ?"
+                      "ORDER by level DESC", (low, high, tracked_world,))
+            count = 0
+            online_list = [x.name for x in global_online_list]
+            while True:
+                player = c.fetchone()
+                if player is None:
+                    break
+                # Do not show the same character that was searched for
+                if char is not None and char.name == player["name"]:
+                    continue
+                owner = self.bot.get_member(player["user_id"], ctx.message.guild)
+                # If the owner is not in server, skip
+                if owner is None:
+                    continue
+                count += 1
+                player["owner"] = owner.display_name
+                player["online"] = ""
+                player["emoji"] = get_voc_emoji(player["vocation"])
+                player["voc"] = get_voc_abb(player["vocation"])
+                line_format = "**{name}** - Level {level} {voc}{emoji} - @**{owner}** {online}"
+                if player["name"] in online_list:
+                    player["online"] = EMOJI[":small_blue_diamond:"]
+                    online_entries.append(line_format.format(**player))
+                    online_vocations.append(player["vocation"])
+                else:
+                    entries.append(line_format.format(**player))
+                    vocations.append(player["vocation"])
+
+            if count < 1:
+                await ctx.send(empty)
+                return
+        finally:
+            c.close()
+        pages = VocationPaginator(self.bot, message=ctx.message, entries=online_entries + entries, per_page=per_page,
+                                  title=title, vocations=online_vocations + vocations)
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
 
     @commands.group(invoke_without_command=True, aliases=["watchlist", "hunted", "huntedlist"], case_insensitive=True)
     @checks.is_admin()
