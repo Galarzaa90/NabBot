@@ -3,9 +3,10 @@
 ## Version 1.1.0 (Unreleased)
 - New command: `/leave`, to make the bot leave a discord server.
 - New command: `/versions`, shows the current version and the version of dependencies.
+- New command `/worldsearch`, to show filterable list of players online in a server.
 - Watched List now uses an embed, meaning the length is 3 times longer.
 - Minor improvements to documentation site.
-- Improvements to server-log to make them have an uniform style.
+- Improvements to server-log to make them have a uniform style.
 - Updated TibiaWiki database, fixed bug with potions price due to NPC Minzy
 
 ## Version 1.0.1 (2018-05-07)

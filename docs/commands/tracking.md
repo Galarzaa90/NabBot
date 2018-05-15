@@ -66,6 +66,34 @@ The list is shown with pages and vocation filter.
 
 ----
 
+## /findteam
+**Syntax:** /findteam *char/level/minlevel*,*maxlevel*  
+**Other aliases:** /whereteam, /searchteam, /team
+
+This commands finds registered characters with the desired levels.
+Vocations can be filtered using the reaction buttons.
+
+There's three ways to use the command:
+
+1. Provide a character's name, shows a list of characters in share range. (`/findteam char`)
+1. Provide a level, shows a list of characters in share range with that level. (`/findteam level`)
+1. Provide two levels, shows a list of characters in that level range. (`/findteam min,max`)
+
+Online characters are shown first on the list, they also have a 🔹 icon.
+
+??? Summary "Examples"
+    
+    **/findteam Galarzaa Fidera**  
+    ![image](../assets/images/commands/findteam_1.png)
+    
+    **/findteam 234**  
+    ![image](../assets/images/commands/findteam_2.png)
+    
+    **/findteam 100,120**  
+    ![image](../assets/images/commands/findteam_3.png)
+
+---
+
 ## /watched
 **Syntax:** /watched  *[name]*  
 **Other aliases:** /watchlist, /hunted, /huntedlist
