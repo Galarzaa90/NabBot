@@ -1,6 +1,6 @@
 # Installation Guide
 ## Installing requirements
-In order to install and run NabBot, you need to install two things: [git](https://git-scm.com/) and [Python 3.6 or higher](https://www.python.org/).
+In order to run NabBot, you need to install two things: [git](https://git-scm.com/) and [Python 3.6 or higher](https://www.python.org/).
 
 When installing on Windows, make sure that you select the option to add Python to `PATH`.
 

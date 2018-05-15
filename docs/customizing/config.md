@@ -75,11 +75,10 @@ This can be combined with `command_prefix` to have both working simultaneously, 
     In this case, the bot will only answer when mentioned directly.
     
 ## Extra cogs
-This key is only here for future updates. This will allow you to add your own commands extensions.
+For more information, see [Cogs](cogs.md)
 
 ```yaml
 # Add extra features by adding your own cogs.
-# Example: extras/twitch.py would be added as 'extras.twitch'
 extra_cogs: []
 ```
 

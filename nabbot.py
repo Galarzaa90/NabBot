@@ -192,7 +192,6 @@ class NabBot(commands.Bot):
                     embed.description = "Kicked"
                     icon_url = get_user_avatar(entry.user)
                     embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
-                    embed.timestamp = entry.created_at
                     embed.colour = discord.Colour(0xff0000)
                     if entry.reason:
                         embed.description += f"\n**Reason:** {entry.reason}"
@@ -342,7 +341,6 @@ class NabBot(commands.Bot):
 
         embed = discord.Embed()
         embed.set_author(name=after.name, icon_url=after.icon_url)
-        embed.timestamp = now
         embed.colour = discord.Colour(value=0x9b3ee8)
 
         changes = True
@@ -568,6 +566,14 @@ if __name__ == "__main__":
             print(f"Cog {cog} loaded successfully.")
         except Exception as e:
             print(f'Cog {cog} failed to load:')
+            traceback.print_exc(limit=-1)
+
+    for extra in config.extra_cogs:
+        try:
+            nabbot.load_extension(extra)
+            print(f"Extra cog {extra} loaded successfully.")
+        except Exception as e:
+            print(f'Extra og {extra} failed to load:')
             traceback.print_exc(limit=-1)
 
     try:

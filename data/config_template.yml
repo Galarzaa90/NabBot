@@ -28,7 +28,7 @@ lite_servers:
   - 253338519143972864
 
 # Add extra features by adding your own cogs.
-# Example: extras/twitch.py would be added as 'extras.twitch'
+# Example: extra/twitch.py would be added as 'extra.twitch'
 extra_cogs: []
 
 # The welcome message that is sent to members when they join a discord server with NabBot in it
