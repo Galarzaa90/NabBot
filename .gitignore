@@ -16,4 +16,4 @@ token.txt
 /config.yml
 
 extra/*.py
-!/extra/extra.py
+!/extra/example.py

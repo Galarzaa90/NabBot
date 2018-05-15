@@ -13,6 +13,7 @@ DESCRIPTION_LIMIT = 2048
 FIELD_NAME_LIMIT = 256
 FIELD_VALUE_LIMIT = 1024
 FIELD_AMOUNT = 25
+EMBED_LIMIT = 6000
 
 
 def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -> Optional[discord.Role]:
