@@ -57,3 +57,4 @@ pages:
     - Customizing:
       - Configuration: customizing/config.md
       - Messages: customizing/messages.md
+      - Cogs: customizing/cogs.md
