@@ -53,10 +53,11 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
                     "shielding": "{0} __shielding__ level is **{1}**, on rank **{2}**",
                     "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
 
-tibia_worlds = []
+# This is preloaded on startup
+tibia_worlds = []  # type: List[str]
 
 HIGHSCORE_CATEGORIES = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
-                         "magic_ek", "magic_rp", "loyalty", "achievements"]
+                        "magic_ek", "magic_rp", "loyalty", "achievements"]
 
 
 class NetworkError(Exception):

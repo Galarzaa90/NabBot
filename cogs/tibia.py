@@ -1368,9 +1368,7 @@ class Tibia:
 
         await ctx.send(embed=embed)
 
-    @commands.guild_only()
     @commands.command(name="worldsearch", aliases=["whereworld","worldfind"])
-    @checks.is_not_lite()
     async def world_search(self, ctx, *, params=None):
         """Searches for online characters that meet the criteria
 
@@ -1384,6 +1382,8 @@ class Tibia:
         -Find a character in a level range
         /worldsearch min_level,max_level
 
+        By default, the tracked world is searched, unless specified at the end of the parameters.
+
         Results can be filtered by using the vocation filters: \U00002744\U0001F525\U0001F3F9\U0001F6E1"""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
@@ -1391,21 +1391,37 @@ class Tibia:
             return
 
         invalid_arguments = "Invalid arguments used, examples:\n" \
-                            "```/worldsearch charname\n" \
-                            "/worldsearch level\n" \
-                            "/worldsearch minlevel,maxlevel\n" \
-                            "/worldsearch```"
+                            "```/worldsearch charname[,world]\n" \
+                            "/worldsearch level[,world]\n" \
+                            "/worldsearch minlevel,maxlevel[,world]```"
 
-        tracked_world = tracked_worlds.get(ctx.guild.id)
-        if tracked_world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
+        if params is None:
+            await ctx.send(invalid_arguments)
             return
 
+        world_name = None
+        params = params.split(",")
+        # If last element matches a world
+        if len(params) > 1:
+            world_name = params[-1].capitalize()
+            del params[-1]
+        if not (1 <= len(params) <= 2):
+            await ctx.send(invalid_arguments)
+            return
+
+        tracked_world = None if is_private(ctx.channel) else tracked_worlds.get(ctx.guild.id)
+        if world_name is None:
+            if tracked_world is None:
+                await ctx.send("You must specify the world where you want to look in.")
+                return
+            else:
+                world_name = tracked_world
+
         try:
-            world = await get_world(tracked_world)
+            world = await get_world(world_name)
             if world is None:
                 # This really shouldn't happen...
-                await ctx.send("This world doesn't exist, what? Where am I?")
+                await ctx.send(f"There's no world named **{world_name}**.")
                 return
         except NetworkError:
             await ctx.send("I'm having 'network problems' as you humans say, please try again later.")
@@ -1413,7 +1429,7 @@ class Tibia:
 
         online_list = world.players_online
         if len(online_list) == 0:
-            await ctx.send(f"There is no one online in {tracked_world}.")
+            await ctx.send(f"There is no one online in {world_name}.")
             return
 
         # Sort by level, descending
@@ -1428,61 +1444,53 @@ class Tibia:
         else:
             per_page = 5
 
-        if params is not None:
-            params = params.split(",")
-            if len(params) < 1 or len(params) > 2:
+        content = ""
+        # params[0] could be a character's name, a character's level or one of the level ranges
+        # If it's not a number, it should be a player's name
+        if not is_numeric(params[0]):
+            # We shouldn't have another parameter if a character name was specified
+            if len(params) == 2:
                 await ctx.send(invalid_arguments)
                 return
-
-            # params[0] could be a character's name, a character's level or one of the level ranges
-            # If it's not a number, it should be a player's name
-            if not is_numeric(params[0]):
-                # We shouldn't have another parameter if a character name was specified
-                if len(params) == 2:
+            try:
+                char = await get_character(params[0])
+                if char is None:
+                    await ctx.send("I couldn't find a character with that name.")
+                    return
+                filter_name = char.name
+                if char.world != world.name:
+                    content = f"**Note**: The character is in **{char.world}** and I'm searching **{world.name}**."
+            except NetworkError:
+                await ctx.send("I couldn't fetch that character.")
+                return
+            low, high = get_share_range(char.level)
+            title = "Characters online in share range with {0}({1}-{2}):".format(char.name, low, high)
+            empty = "I didn't find anyone in share range with **{0}**({1}-{2})".format(char.name, low, high)
+        else:
+            # Check if we have another parameter, meaning this is a level range
+            if len(params) == 2:
+                try:
+                    level1 = int(params[0])
+                    level2 = int(params[1])
+                except ValueError:
                     await ctx.send(invalid_arguments)
                     return
-                try:
-                    char = await get_character(params[0])
-                    if char is None:
-                        await ctx.send("I couldn't find a character with that name.")
-                        return
-                    filter_name = char.name
-                except NetworkError:
-                    await ctx.send("I couldn't fetch that character.")
+                if level1 <= 0 or level2 <= 0:
+                    await ctx.send("You entered an invalid level.")
                     return
-                low, high = get_share_range(char.level)
-                title = "Characters online in share range with {0}({1}-{2}):".format(char.name, low, high)
-                empty = "I didn't find anyone in share range with **{0}**({1}-{2})".format(char.name, low, high)
+                low = min(level1, level2)
+                high = max(level1, level2)
+                title = "Characters online between level {0} and {1}".format(low, high)
+                empty = "I didn't find anyone between levels **{0}** and **{1}**".format(low, high)
+            # We only got a level, so we get the share range for it
             else:
-                # Check if we have another parameter, meaning this is a level range
-                if len(params) == 2:
-                    try:
-                        level1 = int(params[0])
-                        level2 = int(params[1])
-                    except ValueError:
-                        await ctx.send(invalid_arguments)
-                        return
-                    if level1 <= 0 or level2 <= 0:
-                        await ctx.send("You entered an invalid level.")
-                        return
-                    low = min(level1, level2)
-                    high = max(level1, level2)
-                    title = "Characters online between level {0} and {1}".format(low, high)
-                    empty = "I didn't find anyone between levels **{0}** and **{1}**".format(low, high)
-                # We only got a level, so we get the share range for it
-                else:
-                    if int(params[0]) <= 0:
-                        await ctx.send("You entered an invalid level.")
-                        return
-                    low, high = get_share_range(int(params[0]))
-                    title = "Characters online in share range with level {0} ({1}-{2})".format(params[0], low, high)
-                    empty = "I didn't find anyone in share range with level **{0}** ({1}-{2})".format(params[0],
-                                                                                                      low, high)
-        else:
-            low = -1
-            high = 3000
-            title = f"Characters online in {tracked_world}"
-            empty = f"There is no one online in {tracked_world}."
+                if int(params[0]) <= 0:
+                    await ctx.send("You entered an invalid level.")
+                    return
+                low, high = get_share_range(int(params[0]))
+                title = "Characters online in share range with level {0} ({1}-{2})".format(params[0], low, high)
+                empty = "I didn't find anyone in share range with level **{0}** ({1}-{2})".format(params[0],
+                                                                                                  low, high)
 
         online_list = list(filter(lambda x: low <= x.level <= high and x.name != filter_name, online_list))
 
@@ -1496,7 +1504,7 @@ class Tibia:
             vocations.append(player.vocation)
 
         pages = VocationPaginator(self.bot, message=ctx.message, entries=entries, per_page=per_page,
-                                  title=title, vocations=vocations)
+                                  title=title, vocations=vocations, description=content)
         try:
             await pages.paginate()
         except CannotPaginate as e:
