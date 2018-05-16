@@ -7,7 +7,7 @@ Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapp
 [![GitHub release](https://img.shields.io/github/release/Galarzaa90/NabBot.svg)](https://github.com/Galarzaa90/NabBot/releases)
 
 ## Requirements
-* Python 3.6.1 with modules:
+* Python 3.6 with modules:
     * psutil
     * pillow (Python Imaging Library)
     * BeautifulSoup
