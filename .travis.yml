@@ -13,6 +13,7 @@ script:
 - python -m compileall ./restart.py
 - python -m compileall ./cogs
 - python -m compileall ./utils
+- cp CHANGELOG.md docs/changelog.md
 - python -m mkdocs build
 
 deploy:
