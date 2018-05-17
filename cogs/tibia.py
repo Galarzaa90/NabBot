@@ -1368,19 +1368,19 @@ class Tibia:
 
         await ctx.send(embed=embed)
 
-    @commands.command(name="worldsearch", aliases=["whereworld","worldfind"])
+    @commands.command(name="searchworld", aliases=["whereworld","findworld"])
     async def world_search(self, ctx, *, params=None):
         """Searches for online characters that meet the criteria
 
         There are 3 ways to use this command:
         -Find a character in share range with another character:
-        /worldsearch charname
+        /searchworld charname
 
         -Find a character in share range with a certain level
-        /worldsearch level
+        /searchworld level
 
         -Find a character in a level range
-        /worldsearch min_level,max_level
+        /searchworld min_level,max_level
 
         By default, the tracked world is searched, unless specified at the end of the parameters.
 
@@ -1391,9 +1391,9 @@ class Tibia:
             return
 
         invalid_arguments = "Invalid arguments used, examples:\n" \
-                            "```/worldsearch charname[,world]\n" \
-                            "/worldsearch level[,world]\n" \
-                            "/worldsearch minlevel,maxlevel[,world]```"
+                            "```/searchworld charname[,world]\n" \
+                            "/searchworld level[,world]\n" \
+                            "/searchworld minlevel,maxlevel[,world]```"
 
         if params is None:
             await ctx.send(invalid_arguments)

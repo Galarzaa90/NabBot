@@ -910,20 +910,20 @@ class Tracking:
             c.close()
 
     @commands.guild_only()
-    @commands.command(name="findteam", aliases=["whereteam", "team", "searchteam"])
+    @commands.command(name="searchteam", aliases=["whereteam", "team", "findteam"])
     @checks.is_not_lite()
     async def find_team(self, ctx, *, params=None):
         """Searches for a registered character that meets the criteria
 
         There are 3 ways to use this command:
         -Find a character in share range with another character:
-        /findteam charname
+        /searchteam charname
 
         -Find a character in share range with a certain level
-        /findteam level
+        /searchteam level
 
         -Find a character in a level range
-        /findteam min_level,max_level
+        /searchteam min_level,max_level
 
         Results can be filtered by using the vocation filters: \U00002744\U0001F525\U0001F3F9\U0001F6E1"""
         permissions = ctx.channel.permissions_for(ctx.me)
@@ -932,9 +932,9 @@ class Tracking:
             return
 
         invalid_arguments = "Invalid arguments used, examples:\n" \
-                            "```/find charname\n" \
-                            "/find level\n" \
-                            "/find minlevel,maxlevel```"
+                            "```/searchteam charname\n" \
+                            "/searchteam level\n" \
+                            "/searchteam minlevel,maxlevel```"
 
         tracked_world = tracked_worlds.get(ctx.guild.id)
         if tracked_world is None:
