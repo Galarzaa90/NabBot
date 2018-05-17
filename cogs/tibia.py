@@ -1402,8 +1402,8 @@ class Tibia:
         world_name = None
         params = params.split(",")
         # If last element matches a world
-        if len(params) > 1:
-            world_name = params[-1].capitalize()
+        if len(params) > 1 and params[-1].strip().capitalize() in tibia_worlds:
+            world_name = params[-1].capitalize().strip()
             del params[-1]
         if not (1 <= len(params) <= 2):
             await ctx.send(invalid_arguments)

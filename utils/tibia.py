@@ -496,6 +496,7 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
 
 async def get_world(name, tries=5) -> Optional[World]:
     url = f"https://api.tibiadata.com/v1/worlds/{name}.json"
+    name = name.strip()
     if tries == 0:
         log.error("get_world: Couldn't fetch {0}, network error.".format(name))
         raise NetworkError()
