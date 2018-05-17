@@ -7,7 +7,7 @@
 - Watched List now uses an embed, meaning the length is 3 times longer.
 - Minor improvements to documentation site.
 - Improvements to server-log to make them have a uniform style.
-- Updated TibiaWiki database, fixed bug with potions price due to NPC Minzy
+- Updated TibiaWiki database, fixed bug with potions price due to NPC Minzy.
 
 ## Version 1.0.1 (2018-05-07)
 - Renamed characters are updated more effectively, preventing some cases of character duplication.
@@ -19,7 +19,7 @@
 
 
 ## Version 1.0.0 (2018-05-03)
-- Now requires **Python 3.6** or higher.
+- Now requires **Python 3.6**.
 - Now uses the "rewrite" version of `discord.py`, meaning there are tons of breaking changes, and there will be more until v1.0.0 is released for `discord.py`.
 - Improved cogs organization, allowing to reload NabBot by modules.
 - Improved many commands to use pagination.
@@ -56,7 +56,6 @@
 ## Version 0.1.0 (2017-04-16)
 Initial release
 
-### Features
 - Tibia character lookup
 - Item lookup
 - Spell lookup

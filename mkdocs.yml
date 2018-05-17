@@ -41,6 +41,7 @@ repo_url: https://github.com/Galarzaa90/NabBot
 edit_uri: ""
 pages:
     - Home: index.md
+    - Changelog: changelog.md
     - Install Guide: install.md
     - Permissions: permissions.md
     - FAQ: faq.md
