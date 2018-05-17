@@ -183,7 +183,7 @@ Shows recent levels by all characters registered to a user.
     **/levels user Nezune**  
     ![image](../assets/images/commands/levels_user.png)
 
----
+----
 
 ## /timeline
 **Syntax:** /timeline [*player*]  
@@ -203,7 +203,7 @@ If a character name is provided, their level ups and deaths are shown.
     **/timeline Fila Bro**  
     ![image](../assets/images/commands/timeline_2.png)
 
----
+----
 
 ### /timeline
 **Syntax:** /timeline user *name*
@@ -215,7 +215,7 @@ Shows recent levels and deaths by all characters registed to the user.
     **/timeline user Pepyto 🍌**  
     ![image](../assets/images/commands/timeline_user.png)
 
----
+----
 
 ## /stats
 **Syntax:** /stats *level,vocation*/*charactername*
@@ -231,7 +231,7 @@ of a character with that level and vocation, or if a character's name was entere
     **/stats Galarzaa Fidera**  
     ![image](../assets/images/commands/stats_2.png)
 
----
+----
 
 ## /world
 **Syntax:** /world *name*
@@ -245,9 +245,39 @@ Displays information about a world like pvp type, online count, location and mor
     
     **/world Ferobra**  
     ![image](../assets/images/commands/world_2.png)
-
  
----
+----
+
+## /searchworld
+**Syntax:** *See below*  
+**Other aliases:** /whereworld, /findworld
+
+This commands searches for characters currently online that meet a certain criteria.
+
+By default, this command will search in tracked world of the server where it was used.
+If no world is tracked or the command is used on a DM, the world must be specified with an extra parameter at the end.
+
+There's three ways to use the command:
+
+1. Provide a character's name, shows a list of characters in share range. (`/searchworld char[,world]`)
+1. Provide a level, shows a list of characters in share range with that level. (`/searchworld level[,world]`)
+1. Provide two levels, shows a list of characters in that level range. (`/searchworld min,max[,world]`)
+
+??? Summary "Examples"
+    
+    **/searchworld Galarzaa Fidera**  
+    ![image](../assets/images/commands/searchworld_1.png)
+    
+    **/searchworld Nezune,Calmera**  
+    ![image](../assets/images/commands/searchworld_2.png)
+    
+    **/searchworld 600,700**  
+    ![image](../assets/images/commands/searchworld_3.png)
+
+    **/searchworld 70**  
+    ![image](../assets/images/commands/searchworld_4.png)
+
+----
 
 ## /news
 **Syntax:** /news [*article_id*]
