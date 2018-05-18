@@ -41,7 +41,7 @@ class Tibia:
         If it matches a character, it displays its information.
 
         Note that the bot has no way to know the characters of a member that just joined.
-        The bot has to be taught about the character's of an user."""
+        The bot has to be taught about the character's of a user."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -80,7 +80,7 @@ class Tibia:
         if char is None and user is None:
             await ctx.send("I don't see any user or character with that name.")
             return
-        # We found an user
+        # We found a user
         if embed is not None:
             # Check if we found a char too
             if char is not None:
@@ -596,14 +596,14 @@ class Tibia:
     @deaths.command(name="user")
     @checks.is_not_lite()
     async def deaths_user(self, ctx, *, name: str=None):
-        """Shows an user's recent deaths on his/her registered characters"""
+        """Shows a user's recent deaths on his/her registered characters"""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            await ctx.send("You must tell me an user's name to look for his/her deaths.")
+            await ctx.send("You must tell me a user's name to look for his/her deaths.")
             return
 
         if is_private(ctx.channel):
@@ -854,14 +854,14 @@ class Tibia:
     @levels.command(name="user")
     @checks.is_not_lite()
     async def levels_user(self, ctx, *, name: str = None):
-        """Shows an user's recent level ups on his/her registered characters"""
+        """Shows a user's recent level ups on his/her registered characters"""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            await ctx.send("You must tell me an user's name to look for his/her level ups.")
+            await ctx.send("You must tell me a user's name to look for his/her level ups.")
             return
 
         if is_private(ctx.channel):
@@ -1041,14 +1041,14 @@ class Tibia:
     @timeline.command(name="user")
     @checks.is_not_lite()
     async def timeline_user(self, ctx, *, name: str = None):
-        """Shows an users's recent level ups and deaths on his/her characters"""
+        """Shows a users's recent level ups and deaths on his/her characters"""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            await ctx.send("You must tell me an user's name to look for his/her story.")
+            await ctx.send("You must tell me a user's name to look for his/her story.")
             return
 
         if is_private(ctx.channel):

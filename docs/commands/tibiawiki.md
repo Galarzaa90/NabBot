@@ -70,7 +70,7 @@ Information given is shorter unless it's used in the ask channel or private mess
 **Syntax:** /npc *name*  
 **Other aliases:** /npcs
 
-Shows information about an NPC. What items do they sell and buy, where are they found and travel destinations.
+Shows information about a NPC. What items do they sell and buy, where are they found and travel destinations.
 More information is displayed if used on the ask channel or on private messages.
 
 ??? summary "Examples"
