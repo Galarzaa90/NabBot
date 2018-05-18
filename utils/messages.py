@@ -1295,12 +1295,6 @@ EMOJI = {":grinning:": "\U0001F600",  # People
          ":flag_zw:": "\U0001F1FF\U0001F1FC"}
 
 
-def decode_emoji(message):
-    """Replaces unicode emojis with shortnames for logging"""
-    for shortname_emoji, u_emoji in EMOJI.items():
-        message = message.replace(u_emoji, shortname_emoji)
-    return message
-
 # We save the last messages so they are not repeated so often
 last_messages = [""]*10
 

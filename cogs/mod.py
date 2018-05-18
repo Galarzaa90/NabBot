@@ -7,7 +7,6 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils import checks
-from utils.config import config
 from utils.database import userDatabase, tracked_worlds
 from utils.discord import is_private
 from utils.paginator import Paginator, CannotPaginate
@@ -27,7 +26,7 @@ class Mod:
 
     # Admin only commands #
     @commands.command()
-    @checks.is_mod()
+    @checks.is_mod_somewhere()
     async def makesay(self, ctx: discord.ext.commands.Context, *, message: str):
         """Makes the bot say a message
         If it's used directly on a text channel, the bot will delete the command's message and repeat it itself
@@ -39,18 +38,17 @@ class Mod:
             prev_server = None
             num = 1
             for server in self.bot.guilds:
-                author = self.bot.get_member(ctx.author.id, server)
+                author = server.get_member(ctx.author.id)
                 bot_member = self.bot.get_member(self.bot.user.id, server)
                 # Skip servers where the command user is not in
                 if author is None:
                     continue
                 # Check for every channel
                 for channel in server.text_channels:
-                    author_permissions = author.permissions_in(channel)  # type: discord.Permissions
-                    bot_permissions = bot_member.permissions_in(channel)  # type: discord.Permissions
+                    author_permissions = author.permissions_in(channel)
+                    bot_permissions = bot_member.permissions_in(channel)
                     # Check if both the author and the bot have permissions to send messages and add channel to list
-                    if (author_permissions.send_messages and bot_permissions.send_messages) and \
-                            (ctx.author.id in config.owner_ids or author_permissions.administrator):
+                    if author_permissions.send_messages and bot_permissions.send_messages:
                         separator = ""
                         if prev_server is not server:
                             separator = "---------------\n\t"
@@ -60,22 +58,22 @@ class Mod:
                         prev_server = server
                         num += 1
             if len(description_list) < 1:
-                await ctx.send("We don't have channels in common with permissions.")
+                await ctx.send("We don't have any channels where we both can send messages.")
                 return
             await ctx.send("Choose a channel for me to send your message (number only): \n\t0: *Cancel*\n\t" +
-                                "\n\t".join(["{0}".format(i) for i in description_list]))
+                           "\n\t".join(["{0}".format(i) for i in description_list]))
 
             def check(m):
                 return m.author == ctx.author and m.channel == ctx.channel
             try:
-                answer = await self.bot.wait_for("message",timeout=60.0, check=check)
+                answer = await self.bot.wait_for("message", timeout=60.0, check=check)
                 answer = int(answer.content)
                 if answer == 0:
                     await ctx.send("Changed your mind? Typical human.")
                     return
                 await channel_list[answer-1].send(message)
                 await ctx.send("Message sent on {0} ({1})".format(channel_list[answer-1].mention,
-                                                                       channel_list[answer-1].guild))
+                                                                  channel_list[answer-1].guild))
             except IndexError:
                 await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
             except ValueError:
@@ -87,7 +85,7 @@ class Mod:
             await ctx.channel.send(message)
 
     @commands.command()
-    @checks.is_mod()
+    @checks.is_channel_mod()
     @commands.guild_only()
     async def unregistered(self, ctx):
         """Check which users are currently not registered."""
@@ -121,7 +119,7 @@ class Mod:
             await ctx.send(e)
 
     @commands.guild_only()
-    @checks.is_mod()
+    @checks.is_channel_mod()
     @commands.group(invoke_without_command=True, case_insensitive=True)
     async def ignore(self, ctx, *, channel: discord.TextChannel = None):
         """Makes the bot ignore a channel
@@ -145,7 +143,7 @@ class Mod:
             self.reload_ignored()
 
     @commands.guild_only()
-    @checks.is_mod()
+    @checks.is_channel_mod()
     @ignore.command(name="list")
     async def ignore_list(self, ctx):
         """Shows a list of ignored channels"""
@@ -160,7 +158,7 @@ class Mod:
             await ctx.send(e)
 
     @commands.guild_only()
-    @checks.is_mod()
+    @checks.is_channel_mod()
     @commands.command()
     async def unignore(self, ctx, *, channel: discord.TextChannel = None):
         """Makes the bot unignore a channel
@@ -189,7 +187,7 @@ class Mod:
     def reload_ignored(self):
         """Refresh the world list from the database
 
-        This is used to avoid reading the database everytime the world list is needed.
+        This is used to avoid reading the database every time the world list is needed.
         A global variable holding the world list is loaded on startup and refreshed only when worlds are modified"""
         c = userDatabase.cursor()
         ignored_dict_temp = {}  # type: Dict[int, List[int]]

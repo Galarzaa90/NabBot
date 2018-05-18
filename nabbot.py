@@ -14,7 +14,6 @@ from utils.discord import get_region_string, is_private, get_user_avatar
 from utils.general import join_list, get_token
 from utils.general import log
 from utils.help_format import NabHelpFormat
-from utils.messages import decode_emoji
 from utils.tibia import populate_worlds, tibia_worlds, get_voc_abb_and_emoji
 
 initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot",
@@ -31,6 +30,7 @@ class NabBot(commands.Bot):
                          formatter=NabHelpFormat(), case_insensitive=True)
         self.remove_command("help")
         self.members = {}
+        self.start_time = dt.datetime.utcnow()
         self.__version__ = "1.1.0a"
 
     async def on_ready(self):
@@ -38,6 +38,7 @@ class NabBot(commands.Bot):
         print('Logged in as')
         print(self.user)
         print(self.user.id)
+        print(f"Version {self.__version__}")
         print('------')
 
         # Notify reset author
@@ -63,9 +64,8 @@ class NabBot(commands.Bot):
         if isinstance(ctx.channel, discord.abc.PrivateChannel):
             destination = 'PM'
         else:
-            destination = '#{0.channel.name} ({0.guild.name})'.format(ctx.message)
-        message_decoded = decode_emoji(ctx.message.content)
-        log.info('Command by {0} in {1}: {2}'.format(ctx.author.display_name, destination, message_decoded))
+            destination = '#{0.channel.name} ({0.guild.name})'.format(ctx)
+        log.info('Command by {0.author.display_name} in {1}: {0.message.content}'.format(ctx, destination))
 
     async def on_command_error(self, ctx: commands.Context, error):
         """Handles command errors"""
@@ -265,34 +265,11 @@ class NabBot(commands.Bot):
         if message.channel.name == config.ask_channel_name:
             return
 
-        message_decoded = decode_emoji(message.clean_content)
         attachment = ""
         if message.attachments:
             attachment = "\n\tAttached file: "+message.attachments[0]['filename']
-        log.info("A message by @{0} was deleted in #{2} ({3}):\n\t'{1}'{4}".format(message.author.display_name,
-                                                                                   message_decoded, message.channel.name,
-                                                                                   message.guild.name, attachment))
-
-    async def on_message_edit(self, before: discord.Message, after: discord.Message):
-        """Called every time a message is edited."""
-        # Ignore bot messages
-        if before.author.bot:
-            return
-
-        # Ignore private messages
-        if isinstance(before.channel, discord.abc.PrivateChannel):
-            return
-
-        # Ignore if content didn't change (usually fired when attaching files)
-        if before.content == after.content:
-            return
-
-        before_decoded = decode_emoji(before.clean_content)
-        after_decoded = decode_emoji(after.clean_content)
-
-        log.info("@{0} edited a message in #{3} ({4}):\n\t'{1}'\n\t'{2}'".format(before.author.name, before_decoded,
-                                                                                 after_decoded, before.channel,
-                                                                                 before.guild))
+        log.info("A message by @{0.author.display_name} was deleted in #{0.channel.name} ({0.guild.name}):\n"
+                 "\t'{0.clean_content}'{1}".format(message, attachment))
 
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         """Called every time a member is updated"""

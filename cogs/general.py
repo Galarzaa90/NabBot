@@ -15,7 +15,7 @@ from utils import checks
 from utils.config import config
 from utils.database import userDatabase, tibiaDatabase, get_server_property, tracked_worlds
 from utils.discord import is_lite_mode, get_region_string, get_role_list, get_role, is_private, clean_string
-from utils.general import get_uptime, TimeString, single_line, is_numeric, log
+from utils.general import parse_uptime, TimeString, single_line, is_numeric, log
 from utils.messages import EMOJI
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
@@ -178,7 +178,7 @@ class General:
     @commands.command()
     async def uptime(self, ctx):
         """Shows how long the bot has been running"""
-        await ctx.send("I have been running for {0}.".format(get_uptime(True)))
+        await ctx.send("I have been running for {0}.".format(parse_uptime(self.bot.start_time, True)))
 
     @commands.guild_only()
     @commands.command(name="server", aliases=["serverinfo", "server_info"])
@@ -354,7 +354,7 @@ class General:
             embed.add_field(name="Tracked deaths", value="{0:,}".format(deaths_count))
             embed.add_field(name="Tracked level ups", value="{0:,}".format(levels_count))
 
-        embed.add_field(name="Uptime", value=get_uptime())
+        embed.add_field(name="Uptime", value=parse_uptime(self.bot.start_time))
         memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
         embed.add_field(name='Memory Usage', value='{:.2f} MiB'.format(memory_usage))
         with closing(tibiaDatabase.cursor()) as c:

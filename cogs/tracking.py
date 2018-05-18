@@ -15,7 +15,7 @@ from utils import checks
 from utils.config import config
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds, get_server_property, set_server_property
 from utils.discord import is_private, get_user_avatar, FIELD_VALUE_LIMIT, EMBED_LIMIT
-from utils.general import global_online_list, log, join_list, start_time, is_numeric
+from utils.general import global_online_list, log, join_list, is_numeric
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
     level_messages, split_message
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
@@ -868,7 +868,7 @@ class Tracking:
             per_page = 5
         c = userDatabase.cursor()
         now = dt.datetime.utcnow()
-        uptime = (now - start_time).total_seconds()
+        uptime = (now - self.bot.start_time).total_seconds()
         count = 0
         entries = []
         vocations = []
