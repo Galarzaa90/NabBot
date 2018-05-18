@@ -60,12 +60,12 @@ class NabBot(commands.Bot):
 
     async def on_command(self, ctx: commands.Context):
         """Called when a command is used. Used to log commands on a file."""
-        if isinstance(ctx.message.channel, discord.abc.PrivateChannel):
+        if isinstance(ctx.channel, discord.abc.PrivateChannel):
             destination = 'PM'
         else:
             destination = '#{0.channel.name} ({0.guild.name})'.format(ctx.message)
         message_decoded = decode_emoji(ctx.message.content)
-        log.info('Command by {0} in {1}: {2}'.format(ctx.message.author.display_name, destination, message_decoded))
+        log.info('Command by {0} in {1}: {2}'.format(ctx.author.display_name, destination, message_decoded))
 
     async def on_command_error(self, ctx: commands.Context, error):
         """Handles command errors"""
@@ -80,7 +80,7 @@ class NabBot(commands.Bot):
                 return
             log.error(f"Exception in command: {ctx.command.qualified_name}", exc_info=error.original)
             # Bot returns error message on discord if an owner called the command
-            if ctx.message.author.id in config.owner_ids:
+            if ctx.author.id in config.owner_ids:
                 await ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
 
     async def on_message(self, message: discord.Message):

@@ -49,13 +49,13 @@ class Owner:
         """Shutdowns and starts the bot again.
 
         This command can only be used on pms"""
-        if not is_private(ctx.message.channel):
+        if not is_private(ctx.channel):
             return True
         await ctx.send('Restarting...')
         await self.bot.logout()
         log.warning("Restarting NabBot")
         # If it was run using the restarter, this command still works the same
-        os.system("python restart.py {0}".format(ctx.message.author.id))
+        os.system("python restart.py {0}".format(ctx.author.id))
         quit()
 
     @commands.command(name="load")
@@ -92,10 +92,10 @@ class Owner:
             'bot': self.bot,
             'ctx': ctx,
             'message': ctx.message,
-            'guild': ctx.message.guild,
-            'server': ctx.message.guild,
-            'channel': ctx.message.channel,
-            'author': ctx.message.author
+            'guild': ctx.guild,
+            'server': ctx.guild,
+            'channel': ctx.channel,
+            'author': ctx.author
         }
 
         env.update(globals())
@@ -140,7 +140,7 @@ class Owner:
                 return
         guild_admins = list(set([g.owner for g in self.bot.guilds]))
         for admin in guild_admins:
-            await admin.send("{0}\n\t-{1.mention}".format(content, ctx.message.author))
+            await admin.send("{0}\n\t-{1.mention}".format(content, ctx.author))
             pass
         await ctx.send("Message sent to "+join_list(["@"+a.name for a in guild_admins], ", ", " and "))
 
@@ -173,7 +173,7 @@ class Owner:
         await ctx.send('Enter code to execute or evaluate. `exit()` or `quit` to exit.')
         while True:
             def check(m):
-                return m.content.startswith('`') and m.author == ctx.message.author and m.channel == ctx.message.channel
+                return m.content.startswith('`') and m.author == ctx.author and m.channel == ctx.channel
             try:
                 response = await self.bot.wait_for("message", check=check)
             except asyncio.TimeoutError:
@@ -244,7 +244,7 @@ class Owner:
         """Performs a database cleanup
 
         Removes characters that have been deleted and users with no characters or no longer in server."""
-        if not is_private(ctx.message.channel):
+        if not is_private(ctx.channel):
             return True
         c = userDatabase.cursor()
         try:
@@ -396,7 +396,7 @@ class Owner:
                                                       new_char.vocation))
 
                 def check(m):
-                    return m.channel == ctx.message.channel and m.author == ctx.message.author
+                    return m.channel == ctx.channel and m.author == ctx.author
 
                 try:
                     reply = await self.bot.wait_for("message", timeout=50.0, check=check)

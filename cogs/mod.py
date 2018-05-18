@@ -33,13 +33,13 @@ class Mod:
         If it's used directly on a text channel, the bot will delete the command's message and repeat it itself
 
         If it's used on a private message, the bot will ask on which channel he should say the message."""
-        if is_private(ctx.message.channel):
+        if is_private(ctx.channel):
             description_list = []
             channel_list = []
             prev_server = None
             num = 1
             for server in self.bot.guilds:
-                author = self.bot.get_member(ctx.message.author.id, server)
+                author = self.bot.get_member(ctx.author.id, server)
                 bot_member = self.bot.get_member(self.bot.user.id, server)
                 # Skip servers where the command user is not in
                 if author is None:
@@ -50,7 +50,7 @@ class Mod:
                     bot_permissions = bot_member.permissions_in(channel)  # type: discord.Permissions
                     # Check if both the author and the bot have permissions to send messages and add channel to list
                     if (author_permissions.send_messages and bot_permissions.send_messages) and \
-                            (ctx.message.author.id in config.owner_ids or author_permissions.administrator):
+                            (ctx.author.id in config.owner_ids or author_permissions.administrator):
                         separator = ""
                         if prev_server is not server:
                             separator = "---------------\n\t"
@@ -66,7 +66,7 @@ class Mod:
                                 "\n\t".join(["{0}".format(i) for i in description_list]))
 
             def check(m):
-                return m.author == ctx.message.author and m.channel == ctx.message.channel
+                return m.author == ctx.author and m.channel == ctx.channel
             try:
                 answer = await self.bot.wait_for("message",timeout=60.0, check=check)
                 answer = int(answer.content)
@@ -84,7 +84,7 @@ class Mod:
                 await ctx.send("... are you there? Fine, nevermind!")
         else:
             await ctx.message.delete()
-            await ctx.message.channel.send(message)
+            await ctx.channel.send(message)
 
     @commands.command()
     @checks.is_mod()

@@ -90,17 +90,17 @@ def clean_string(ctx: commands.Context, string: str) -> str:
     For message object, there's already a property that does this: message.clean_content"""
     def repl_channel(match):
         channel_id = match.group(0).replace("<", "").replace("#", "").replace(">", "")
-        channel = ctx.message.guild.get_channel(int(channel_id))
+        channel = ctx.guild.get_channel(int(channel_id))
         return "#deleted_channel" if channel is None else "#"+channel.name
 
     def repl_role(match):
         role_id = match.group(0).replace("<", "").replace("@", "").replace("&", "").replace(">", "")
-        role = get_role(ctx.message.guild, int(role_id))
+        role = get_role(ctx.guild, int(role_id))
         return "@deleted_role" if role is None else "@"+role.name
 
     def repl_user(match):
         user_id = match.group(0).replace("<", "").replace("@", "").replace("!", "").replace(">", "")
-        user = ctx.message.guild.get_member(int(user_id))
+        user = ctx.guild.get_member(int(user_id))
         return "@deleted_user" if user is None else "@" + user.display_name
     # Find channel mentions:
     string = re.sub(r"<#\d+>", repl_channel, string)
@@ -119,9 +119,9 @@ def is_lite_mode(ctx: commands.Context) -> bool:
     If the guild is in the lite_guilds list, the context is in lite mode.
     If the guild is in private message, and the message author is in at least ONE guild that is not in lite_guilds, 
     then context is not lite"""
-    if is_private(ctx.message.channel):
-        for g in ctx.bot.get_user_guilds(ctx.message.author.id):
+    if is_private(ctx.channel):
+        for g in ctx.bot.get_user_guilds(ctx.author.id):
             if g.id not in config.lite_servers:
                 return False
     else:
-        return ctx.message.guild in config.lite_servers
+        return ctx.guild in config.lite_servers

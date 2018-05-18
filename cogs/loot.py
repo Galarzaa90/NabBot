@@ -43,7 +43,7 @@ class Loot:
 
         The bot will return a list of the items found along with their values, grouped by NPC.
         If the image is compressed or was taken using Tibia's software render, the bot might struggle finding matches."""
-        author = ctx.message.author
+        author = ctx.author
         if self.parsing_count >= config.loot_max:
             await ctx.send("Sorry, I am already parsing too many loot images, "
                            "please wait a couple of minutes and try again.")
@@ -149,12 +149,12 @@ class Loot:
         # Short message
         short_message = f"I've finished parsing your image {author.mention}." \
                         f"\nThe total value is {total_value:,} gold coins."
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.message.guild)
-        if not is_private(ctx.message.channel) and ctx.message.channel != ask_channel:
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
+        if not is_private(ctx.channel) and ctx.channel != ask_channel:
             short_message += "\nI've also sent you a PM with detailed information."
 
         # Send on ask_channel or PM
-        if ctx.message.channel == ask_channel:
+        if ctx.channel == ask_channel:
             await ctx.send(short_message, embed=embed, file=discord.File(loot_image_overlay, "results.png"))
         else:
             await ctx.send(short_message)
