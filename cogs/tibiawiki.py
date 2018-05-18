@@ -377,7 +377,7 @@ class TibiaWiki:
                     name = "\u200F"
                 embed.add_field(name=name, value="`" + loot + "`")
         if monster["loot"] and not long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.message.guild)
+            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel.name
             else:
@@ -526,7 +526,7 @@ class TibiaWiki:
             embed.add_field(name=name, value=value, inline=not long)
 
         if npcs_too_long or drops_too_long or quests_too_long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.message.guild)
+            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel.name
             else:
@@ -605,7 +605,7 @@ class TibiaWiki:
         embed.description = description
 
         if too_long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.message.guild)
+            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel.name
             else:
@@ -713,7 +713,7 @@ class TibiaWiki:
                     name = f"Teaches ({voc.title()}s)" if i == 0 else "\u200F"
                     embed.add_field(name=name, value=split_field, inline=not len(fields) > 1)
         if too_long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.message.guild)
+            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel.name
             else:

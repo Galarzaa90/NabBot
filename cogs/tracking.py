@@ -541,7 +541,7 @@ class Tracking:
             # If we only have one char, it already contains full data
             if len(chars) > 1:
                 try:
-                    await ctx.message.channel.trigger_typing()
+                    await ctx.channel.trigger_typing()
                     char = await get_character(char.name)
                 except NetworkError:
                     await ctx.send("I'm having network troubles, please try again.")
@@ -750,7 +750,7 @@ class Tracking:
             # If we only have one char, it already contains full data
             if len(chars) > 1:
                 try:
-                    await ctx.message.channel.trigger_typing()
+                    await ctx.channel.trigger_typing()
                     char = await get_character(char.name)
                 except NetworkError:
                     await ctx.send("I'm having network troubles, please try again.")
@@ -861,8 +861,8 @@ class Tracking:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.message.guild)
-        if is_private(ctx.message.channel) or ctx.message.channel == ask_channel:
+        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
+        if is_private(ctx.channel) or ctx.channel == ask_channel:
             per_page = 20
         else:
             per_page = 5
@@ -1020,7 +1020,7 @@ class Tracking:
                 # Do not show the same character that was searched for
                 if char is not None and char.name == player["name"]:
                     continue
-                owner = self.bot.get_member(player["user_id"], ctx.message.guild)
+                owner = self.bot.get_member(player["user_id"], ctx.guild)
                 # If the owner is not in server, skip
                 if owner is None:
                     continue
@@ -1074,7 +1074,7 @@ class Tracking:
         if watched_channel is not None:
             await ctx.send(f"This server already has a watched list channel: {watched_channel.mention}")
             return
-        permissions = ctx.message.channel.permissions_for(ctx.me)  # type: discord.Permissions
+        permissions = ctx.channel.permissions_for(ctx.me)  # type: discord.Permissions
         if not permissions.manage_channels:
             await ctx.send("I need to have `Manage Channels` permissions to use this command.")
         try:

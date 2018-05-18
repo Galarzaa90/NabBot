@@ -24,14 +24,14 @@ class Admin:
     async def diagnose(self, ctx: discord.ext.commands.Context, *, server_name=None):
         """Diagnose the bots permissions and channels"""
         # This will always have at least one server, otherwise this command wouldn't pass the is_admin check.
-        admin_guilds = self.bot.get_user_admin_guilds(ctx.message.author.id)
+        admin_guilds = self.bot.get_user_admin_guilds(ctx.author.id)
 
         if server_name is None:
-            if not is_private(ctx.message.channel):
-                if ctx.message.guild not in admin_guilds:
+            if not is_private(ctx.channel):
+                if ctx.guild not in admin_guilds:
                     await ctx.send("You don't have permissions to diagnose this server.")
                     return
-                guild = ctx.message.guild
+                guild = ctx.guild
             else:
                 if len(admin_guilds) == 1:
                     guild = admin_guilds[0]
@@ -217,12 +217,12 @@ class Admin:
         {bot.name} - The name of the bot
         {bot.mention} - The name of the bot"""
         def check(m):
-            return m.author == ctx.message.author and m.channel == ctx.message.channel
+            return m.author == ctx.author and m.channel == ctx.channel
 
         if message is None:
             current_message = get_server_property("welcome", ctx.guild.id)
             if current_message is None:
-                current_message = config.welcome_pm.format(ctx.message.author, self.bot)
+                current_message = config.welcome_pm.format(ctx.author, self.bot)
                 await ctx.send(f"This server has no custom message, joining members get the default message:\n"
                                f"----------\n{current_message}")
             else:
@@ -606,7 +606,7 @@ class Admin:
             # If we only have one char, it already contains full data
             if len(chars) > 1:
                 try:
-                    await ctx.message.channel.trigger_typing()
+                    await ctx.channel.trigger_typing()
                     char = await get_character(char.name)
                 except NetworkError:
                     await ctx.send("I'm having network troubles, please try again.")

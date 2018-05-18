@@ -103,16 +103,16 @@ class Tibia:
                     return
             else:
                 # Tries to display user's highest level character since there is no character match
-                if is_private(ctx.message.channel):
+                if is_private(ctx.channel):
                     display_name = '@'+user.name
                     user_guilds = self.bot.get_user_guilds(ctx.author.id)
                     user_tibia_worlds = [world for server, world in tracked_worlds.items() if
                                          server in [s.id for s in user_guilds]]
                 else:
-                    if tracked_worlds.get(ctx.message.guild.id) is None:
+                    if tracked_worlds.get(ctx.guild.id) is None:
                         user_tibia_worlds = []
                     else:
-                        user_tibia_worlds = [tracked_worlds[ctx.message.guild.id]]
+                        user_tibia_worlds = [tracked_worlds[ctx.guild.id]]
                 if len(user_tibia_worlds) != 0:
                     placeholders = ", ".join("?" for w in user_tibia_worlds)
                     c = userDatabase.cursor()
@@ -138,7 +138,7 @@ class Tibia:
         else:
             embed = discord.Embed(description="")
             if char is not None:
-                owner = None if char.owner == 0 else self.bot.get_member(char.owner, ctx.message.guild)
+                owner = None if char.owner == 0 else self.bot.get_member(char.owner, ctx.guild)
                 if owner is not None:
                     # Char is owned by a discord user
                     embed = self.get_user_embed(ctx, owner)
@@ -247,7 +247,7 @@ class Tibia:
     @commands.group(aliases=['guildcheck', 'checkguild'], invoke_without_command=True, case_insensitive=True)
     async def guild(self, ctx, *, name:str=None):
         """Checks who is online in a guild"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -347,7 +347,7 @@ class Tibia:
     @guild.command(name="info", aliases=["stats"])
     async def guild_info(self, ctx, *, name: str = None):
         """Shows basic information and stats about a guild"""
-        permissions = ctx.message.channel.permissions_for(self.bot.get_member(self.bot.user.id, ctx.message.guild))
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -569,7 +569,7 @@ class Tibia:
                 row = c.fetchone()
                 if row is None:
                     break
-                user = self.bot.get_member(row["user_id"], ctx.message.guild)
+                user = self.bot.get_member(row["user_id"], ctx.guild)
                 if user is None:
                     continue
                 count += 1
@@ -605,7 +605,7 @@ class Tibia:
             await ctx.send("You must tell me an user's name to look for his/her deaths.")
             return
 
-        if is_private(ctx.message.channel):
+        if is_private(ctx.channel):
             user_servers = self.bot.get_user_guilds(ctx.author.id)
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
@@ -670,7 +670,7 @@ class Tibia:
         """Shows death statistic
         
         A shorter period can be shown by adding week or month"""
-        permissions = ctx.message.channel.permissions_for(ctx.me)
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -767,7 +767,7 @@ class Tibia:
             user_guilds = self.bot.get_user_guilds(ctx.author.id)
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
-            user_guilds = [ctx.message.guild]
+            user_guilds = [ctx.guild]
             user_worlds = [tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
@@ -1041,7 +1041,7 @@ class Tibia:
     @checks.is_not_lite()
     async def timeline_user(self, ctx, *, name: str = None):
         """Shows an users's recent level ups and deaths on his/her characters"""
-        permissions = ctx.message.channel.permissions_for(ctx.me)
+        permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -1710,7 +1710,7 @@ class Tibia:
         if user is None:
             return None
         embed = discord.Embed()
-        if is_private(ctx.message.channel):
+        if is_private(ctx.channel):
             display_name = '@'+user.name
             user_guilds = self.bot.get_user_guilds(ctx.author.id)
             user_tibia_worlds = [world for server, world in tracked_worlds.items() if
@@ -1718,10 +1718,10 @@ class Tibia:
         else:
             display_name = '@'+user.display_name
             embed.colour = user.colour
-            if tracked_worlds.get(ctx.message.guild.id) is None:
+            if tracked_worlds.get(ctx.guild.id) is None:
                 user_tibia_worlds = []
             else:
-                user_tibia_worlds = [tracked_worlds[ctx.message.guild.id]]
+                user_tibia_worlds = [tracked_worlds[ctx.guild.id]]
         if len(user_tibia_worlds) == 0:
             return None
         embed.set_thumbnail(url=user.avatar_url)
