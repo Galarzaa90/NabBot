@@ -10,7 +10,7 @@ from utils.config import config
 from utils.database import *
 from utils.discord import is_private, get_user_avatar
 from utils.general import join_list, log
-from utils.messages import EMOJI
+from utils.emoji import EMOJI
 from utils.tibia import tibia_worlds, get_character, NetworkError, Character, get_voc_abb_and_emoji
 
 

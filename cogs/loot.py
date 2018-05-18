@@ -14,7 +14,8 @@ from utils import checks
 from utils.config import config
 from utils.database import tibiaDatabase, lootDatabase
 from utils.discord import FIELD_VALUE_LIMIT, is_private
-from utils.messages import EMOJI, split_message
+from utils.messages import split_message
+from utils.emoji import EMOJI
 from utils.tibiawiki import get_item
 
 slot = Image.open("./images/slot.png")
