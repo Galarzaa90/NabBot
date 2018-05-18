@@ -20,9 +20,32 @@ def is_admin():
 
 
 def is_mod():
-    """Checks if the author has manage channel permissions
+    """Checks if the author has manage guild permissions"""
+    async def predicate(ctx):
+        return await is_owner_check(ctx) or (await check_guild_permissions(ctx, {'manage_guild': True}) and
+                                             ctx.guild is not None)
+    return commands.check(predicate)
 
-    Mods are based on channel"""
+
+def is_mod_somewhere():
+    """Checks if the author has manage guild permissions in any guild"""
+    async def predicate(ctx):
+        ret = await is_owner_check(ctx)
+        if ret:
+            return True
+        if ctx.guild is not None:
+            return await check_guild_permissions(ctx, {'manage_guild': True})
+        for guild in ctx.bot.get_user_guilds(ctx.author.id):
+            member = guild.get_member(ctx.author.id)
+            permissions = member.guild_permissions
+            if permissions.administrator or permissions.manage_guild:
+                return True
+        return False
+    return commands.check(predicate)
+
+
+def is_channel_mod():
+    """Checks if the author has manage channel permissions"""
     async def predicate(ctx):
         return await is_owner_check(ctx) or (await check_permissions(ctx, {'manage_channels': True}) and
                                              ctx.guild is not None)
