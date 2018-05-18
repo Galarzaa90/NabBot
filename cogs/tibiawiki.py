@@ -107,16 +107,16 @@ class TibiaWiki:
 
     @commands.command(aliases=["npcs"])
     async def npc(self, ctx, *, name: str = None):
-        """Shows information about an NPC
+        """Shows information about a NPC
 
-        Shows an NPC's picture, trade offers and location."""
+        Shows a NPC's picture, trade offers and location."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if name is None:
-            await ctx.send("Tell me the name of an NPC.")
+            await ctx.send("Tell me the name of a NPC.")
             return
 
         npc = get_npc(name)

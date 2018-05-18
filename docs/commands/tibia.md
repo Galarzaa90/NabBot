@@ -43,7 +43,7 @@ It also shows the character's corresponding highscore positions, however, this i
     **/whois Bichæo**  
     ![image](../assets/images/commands/whois_3.png)
     
-    In this case, the name only matches an user, and since no character was matched, their highest level registered character is shown.
+    In this case, the name only matches a user, and since no character was matched, their highest level registered character is shown.
     
     **/whois 115042985778872322**
     ![image](../assets/images/commands/whois_4.png)
