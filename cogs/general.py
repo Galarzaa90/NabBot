@@ -16,7 +16,7 @@ from utils.config import config
 from utils.database import userDatabase, tibiaDatabase, get_server_property, tracked_worlds
 from utils.discord import is_lite_mode, get_region_string, get_role_list, get_role, is_private, clean_string
 from utils.general import parse_uptime, TimeString, single_line, is_numeric, log
-from utils.messages import EMOJI
+from utils.emoji import EMOJI
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
 

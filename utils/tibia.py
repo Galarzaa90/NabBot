@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 
 from utils.config import config
 from utils.database import userDatabase, tibiaDatabase
-from utils.messages import EMOJI
+from utils.emoji import EMOJI
 from .general import log
 
 # Constants

@@ -16,8 +16,8 @@ from utils.config import config
 from utils.database import tracked_worlds_list, userDatabase, tracked_worlds, get_server_property, set_server_property
 from utils.discord import is_private, get_user_avatar, FIELD_VALUE_LIMIT, EMBED_LIMIT
 from utils.general import global_online_list, log, join_list, is_numeric
-from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, EMOJI, \
-    level_messages, split_message
+from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, level_messages, split_message
+from utils.emoji import EMOJI
 from utils.paginator import Paginator, CannotPaginate, VocationPaginator
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
     get_voc_abb, get_character_url, url_guild, \

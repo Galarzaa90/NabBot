@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 
 from utils.config import config
-from .messages import EMOJI
+from utils.emoji import EMOJI
 
 # Discord length limit
 CONTENT_LIMIT = 2000
