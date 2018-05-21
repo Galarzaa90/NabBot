@@ -355,7 +355,14 @@ class TibiaWiki:
             embed.add_field(name="Weak to", value="Nothing")
 
         if monster["bestiary_class"] is not None:
-            embed.add_field(name="Bestiary", value=f"{monster['bestiary_class']} ({monster['bestiary_level']})")
+            difficulties = {
+                "Trivial": EMOJI[":star:"],
+                "Easy": EMOJI[":star:"]*2,
+                "Medium": EMOJI[":star:"]*3,
+                "Hard": EMOJI[":star:"]*4
+            }
+            difficulty = difficulties.get(monster["bestiary_level"], f"({monster['bestiary_level']})")
+            embed.add_field(name="Bestiary Class", value=f"{monster['bestiary_class']}\n{difficulty}")
 
         # If monster drops no loot, we might as well show everything
         if long or not monster["loot"]:

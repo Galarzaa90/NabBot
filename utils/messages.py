@@ -317,7 +317,7 @@ async def send_messageEx(bot, dest, message, embed=False):
 
 
 def html_to_markdown(html_string):
-    """Converts somee html tags to markdown equivalent"""
+    """Converts some html tags to markdown equivalent"""
     # Carriage return
     html_string = html_string.replace("\r", "")
     # Replace <br> tags with line jumps
