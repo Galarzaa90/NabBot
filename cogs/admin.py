@@ -8,7 +8,7 @@ from nabbot import NabBot
 from utils import checks
 from utils.config import config
 from utils.database import *
-from utils.discord import is_private, get_user_avatar
+from utils.discord import get_user_avatar
 from utils.general import join_list, log
 from utils.emoji import EMOJI
 from utils.tibia import tibia_worlds, get_character, NetworkError, Character, get_voc_abb_and_emoji
@@ -21,122 +21,45 @@ class Admin:
 
     @commands.command()
     @checks.is_admin()
-    async def diagnose(self, ctx: discord.ext.commands.Context, *, server_name=None):
-        """Diagnose the bots permissions and channels"""
-        # This will always have at least one server, otherwise this command wouldn't pass the is_admin check.
-        admin_guilds = self.bot.get_user_admin_guilds(ctx.author.id)
-
-        if server_name is None:
-            if not is_private(ctx.channel):
-                if ctx.guild not in admin_guilds:
-                    await ctx.send("You don't have permissions to diagnose this server.")
-                    return
-                guild = ctx.guild
-            else:
-                if len(admin_guilds) == 1:
-                    guild = admin_guilds[0]
-                else:
-                    guild_list = [str(i+1)+": "+admin_guilds[i].name for i in range(len(admin_guilds))]
-                    await ctx.send("Which server do you want to check?\n\t0: *Cancel*\n\t"+"\n\t".join(guild_list))
-
-                    def check(m):
-                        return m.author == ctx.author and m.channel == ctx.channel
-                    try:
-                        answer = await self.bot.wait_for("message", timeout=60.0, check=check)
-                        answer = int(answer.content)
-                        if answer == 0:
-                            await ctx.send("Changed your mind? Typical human.")
-                            return
-                        guild = admin_guilds[answer-1]
-                    except IndexError:
-                        await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
-                        return
-                    except ValueError:
-                        await ctx.send("That's not a number!")
-                        return
-                    except asyncio.TimeoutError:
-                        await ctx.send("I guess you changed your mind.")
-                        return
-        else:
-            guild = self.bot.get_guild_by_name(server_name)
-            if guild is None:
-                await ctx.send("I couldn't find a server with that name.")
-                return
-            if guild not in admin_guilds:
-                await ctx.send("You don't have permissions to diagnose **{0}**.".format(guild.name))
-                return
-
-        if guild is None:
+    @commands.guild_only()
+    async def checkchannel(self, ctx: commands.Context, *, channel: discord.TextChannel = None):
+        """Diagnose the bots perm"""
+        if channel is None:
+            channel = ctx.channel
+        permissions = channel.permissions_for(ctx.me)  # type: discord.Permissions
+        content = f"**Checking {channel.mention}:**"
+        if permissions.administrator:
+            content += f"\n{EMOJI[':white_check_mark:']} I have `Administrator` permission."
+            await ctx.send(content)
             return
-        member = self.bot.get_member(self.bot.user.id, guild)
-        server_perms = member.guild_permissions
+        perm_dict = dict(permissions)
+        check_permissions = {
+            "read_messages": ["error", "I won't be able to see commands in here."],
+            "send_messages": ["error", "I won't be able to respond in here."],
+            "add_reactions": ["error", "Pagination or commands that require emoji confirmation won't work."],
+            "read_message_history": ["error", "I won't be able to see your reactions in commands."],
+            "manage_messages": ["warn", "Command pagination won't work well and I won't be able to delete messages "
+                                        "in the ask channel."],
+            "embed_links": ["error", "I won't be able to show many of my commands."],
+            "attach_files": ["warn", "I won't be able to show images in some of my commands."]
+        }
+        ok = True
+        for k, v in check_permissions.items():
+            level, explain = v
+            if not perm_dict[k]:
+                ok = False
+                perm_name = k.replace("_", " ").title()
+                icon = EMOJI[":x:"] if level == "error" else EMOJI[":warning:"]
+                content += f"\nMissing `{perm_name}` permission"
+                content += f"\n\t{icon} {explain}"
+        if ok:
+            content += f"\n{EMOJI[':white_check_mark:']} All permissions are correct!"
+        await ctx.send(content)
 
-        channels = guild.text_channels
-        not_read_messages = []
-        not_send_messages = []
-        not_add_reactions = []
-        not_read_history = []
-        not_manage_messages = []
-        not_embed_links = []
-        not_attach_files = []
-        not_mention_everyone = []
-        count = 0
-        for channel in channels:
-            count += 1
-            channel_permissions = channel.permissions_for(member)
-            if not channel_permissions.read_messages:
-                not_read_messages.append(channel)
-            if not channel_permissions.send_messages:
-                not_send_messages.append(channel)
-            if not channel_permissions.manage_messages:
-                not_manage_messages.append(channel)
-            if not channel_permissions.embed_links:
-                not_embed_links.append(channel)
-            if not channel_permissions.attach_files:
-                not_attach_files.append(channel)
-            if not channel_permissions.mention_everyone:
-                not_mention_everyone.append(channel)
-            if not channel_permissions.add_reactions:
-                not_add_reactions.append(channel)
-            if not channel_permissions.read_message_history:
-                not_read_history.append(channel)
-
-        channel_lists_list = [not_read_messages, not_send_messages, not_manage_messages, not_embed_links,
-                              not_attach_files, not_mention_everyone, not_add_reactions, not_read_history]
-        permission_names_list = ["Read Messages", "Send Messages", "Manage Messages", "Embed Links", "Attach Files",
-                                 "Mention Everyone", "Add reactions", "Read Message History"]
-        server_wide_list = [server_perms.read_messages, server_perms.send_messages, server_perms.manage_messages,
-                            server_perms.embed_links, server_perms.attach_files, server_perms.mention_everyone,
-                            server_perms.add_reactions, server_perms.read_message_history]
-
-        answer = "Permissions for {0.name}:\n".format(guild)
-        i = 0
-        while i < len(channel_lists_list):
-            answer += "**{0}**\n\t{1} Server wide".format(permission_names_list[i], get_check_emoji(server_wide_list[i]))
-            if len(channel_lists_list[i]) == 0:
-                answer += "\n\t{0} All channels\n".format(get_check_emoji(True))
-            elif len(channel_lists_list[i]) == count:
-                answer += "\n\t All channels\n".format(get_check_emoji(False))
-            else:
-                channel_list = ["#" + x.name for x in channel_lists_list[i]]
-                answer += "\n\t{0} Not in: {1}\n".format(get_check_emoji(False), ",".join(channel_list))
-            i += 1
-
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, guild)
-        answer += "\nAsk channel:\n\t"
-        if ask_channel is not None:
-            answer += "{0} Enabled: {1.mention}".format(get_check_emoji(True), ask_channel)
-        else:
-            answer += "{0} Not enabled".format(get_check_emoji(False))
-
-        log_channel = self.bot.get_channel_by_name(config.log_channel_name, guild)
-        answer += "\nLog channel:\n\t"
-        if log_channel is not None:
-            answer += "{0} Enabled: {1.mention}".format(get_check_emoji(True), log_channel)
-        else:
-            answer += "{0} Not enabled".format(get_check_emoji(False))
-        await ctx.send(answer)
-        return
+    @checkchannel.error
+    async def channel_error(self, ctx, error):
+        if isinstance(error, commands.errors.BadArgument):
+            await ctx.send(error)
 
     @commands.guild_only()
     @checks.is_admin()
@@ -727,10 +650,6 @@ class Admin:
         finally:
             c.close()
             userDatabase.commit()
-
-
-def get_check_emoji(check: bool) -> str:
-    return EMOJI[":white_check_mark:"] if check else EMOJI[":x:"]
 
 
 def setup(bot):

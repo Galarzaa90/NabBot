@@ -562,17 +562,13 @@ class Owner:
         dependencies = req_pattern.findall(requirements)
         for package in dependencies:
             version = pkg_resources.get_distribution(package[0]).version
-            value = f"v{version}"
             if not comp(package[1], StrictVersion(version), StrictVersion(package[2])):
-                value += EMOJI[":x:"]
-                value += f"\n`At least v{package[2]} expected`"
+                value = f"{EMOJI[':x:']}v{version}\n`At least v{package[2]} expected`"
             elif not comp(package[3], StrictVersion(version), StrictVersion(package[4])):
-                value += EMOJI[":exclamation:"]
-                value += f"\n`Only v{package[4]} and below tested`"
+                value = f"{EMOJI[':warning:']}v{version}\n`Only v{package[4]} and below tested`"
             else:
-                value += EMOJI[":white_check_mark:"]
+                value = f"{EMOJI[':white_check_mark:']}v{version}"
             embed.add_field(name=package[0], value=value)
-
         await ctx.send(embed=embed)
 
 
