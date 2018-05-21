@@ -300,6 +300,8 @@ def split_message(message: str, limit: int=2000):
             else:
                 message_list.append(new_message)
                 new_message = ""
+        if new_message:
+            message_list.append(new_message)
         return message_list
 
 

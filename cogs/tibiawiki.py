@@ -307,17 +307,27 @@ class TibiaWiki:
                          url=get_article_url(monster["title"]))
         hp = "?" if monster["hitpoints"] is None else "{0:,}".format(monster["hitpoints"])
         experience = "?" if monster["experience"] is None else "{0:,}".format(monster["experience"])
-        if not (monster["experience"] is None or monster["hitpoints"] is None or monster["hitpoints"] < 0):
-            ratio = "{0:.2f}".format(monster['experience'] / monster['hitpoints'])
-        else:
-            ratio = "?"
-        embed.add_field(name="HP", value=hp)
-        embed.add_field(name="Experience", value=experience)
-        embed.add_field(name="HP/Exp Ratio", value=ratio)
+        speed = "?" if monster["speed"] is None else "{0:,}".format(monster["speed"])
+        embed.description = f"**HP** {hp} | **Exp** {experience} | **Speed** {speed}"
 
         weak = []
         resist = []
         immune = []
+        attributes = {"summon": "Summonable",
+                      "convince": "Convinceable",
+                      "illusionable": "Illusionable",
+                      "pushable" : "Pushable",
+                      "paralysable": "Paralysable",
+                      "see_invisible": "Sees Invisible"
+                     }
+
+        def bool_emoji(value):
+            if bool(value):
+                return EMOJI[":white_check_mark:"]
+            return EMOJI[":negative_squared_cross_mark:"]
+        attributes = "\n".join([f"{bool_emoji(monster[x])} {repl}" for x, repl in attributes.items()
+                                if monster[x] is not None])
+        embed.add_field(name="Attributes", value="Unknown" if not attributes else attributes)
         elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth", "drown", "lifedrain"]
         # Iterate through elemental types
         for index, value in monster.items():
@@ -330,12 +340,6 @@ class TibiaWiki:
                     weak.append([index.title(), monster[index] - 100])
                 elif monster[index] < 100:
                     resist.append([index.title(), monster[index] - 100])
-        # Add paralysis to immunities
-        if monster["paralysable"] == 0:
-            immune.append("Paralysis")
-        if monster["see_invisible"] == 1:
-            immune.append("Invisibility")
-
         if immune:
             embed.add_field(name="Immune to", value="\n".join(immune))
         else:
@@ -349,6 +353,9 @@ class TibiaWiki:
             embed.add_field(name="Weak to", value="\n".join(["+{1}% {0}".format(*i) for i in weak]))
         else:
             embed.add_field(name="Weak to", value="Nothing")
+
+        if monster["bestiary_class"] is not None:
+            embed.add_field(name="Bestiary", value=f"{monster['bestiary_class']} ({monster['bestiary_level']})")
 
         # If monster drops no loot, we might as well show everything
         if long or not monster["loot"]:
@@ -370,7 +377,7 @@ class TibiaWiki:
                 else:
                     item["count"] = ""
                 loot_string += "{chance} {item} {count}\n".format(**item)
-            split_loot = split_message(loot_string, FIELD_VALUE_LIMIT)
+            split_loot = split_message(loot_string, FIELD_VALUE_LIMIT-20)
             for loot in split_loot:
                 if loot == split_loot[0]:
                     name = "Loot"
