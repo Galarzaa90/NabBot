@@ -18,7 +18,7 @@ else:
     shutil.copyfile("data/loot_template.db", LOOTDB)
     lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 19
+DB_LASTVERSION = 20
 
 # Dictionary of worlds tracked by nabbot, key:value = server_id:world
 # Dictionary is populated from database
@@ -243,6 +243,12 @@ def init_database():
                 event_id INTEGER NOT NULL,
                 char_id INTEGER NOT NULL
             );""")
+            db_version += 1
+        if db_version == 19:
+            # Adding reason and author to watched-list
+            c.execute("ALTER TABLE watched_list ADD reason TEXT")
+            c.execute("ALTER TABLE watched_list ADD author INTEGER")
+            c.execute("ALTER TABLE watched_list ADD added INTEGER")
             db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
