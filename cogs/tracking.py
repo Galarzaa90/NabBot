@@ -464,7 +464,7 @@ class Tracking:
                 except discord.HTTPException:
                     log.warning("announce_level: Malformed message.")
 
-    @checks.is_not_lite()
+    @checks.is_in_tracking_world()
     @commands.command(aliases=["i'm", "iam"])
     async def im(self, ctx, *, char_name: str):
         """Lets you add your tibia character(s) for the bot to track.
@@ -614,7 +614,7 @@ class Tracking:
                 embed.colour = discord.Colour.dark_teal()
                 await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
 
-    @checks.is_not_lite()
+    @checks.is_in_tracking_world()
     @commands.command(aliases=["i'mnot"])
     async def imnot(self, ctx, *, name):
         """Removes a character assigned to you
@@ -662,7 +662,7 @@ class Tracking:
             c.close()
 
     @commands.command()
-    @checks.is_not_lite()
+    @checks.is_in_tracking_world()
     async def claim(self, ctx, *, char_name: str=None):
         """Claims a character registered to someone else
 
