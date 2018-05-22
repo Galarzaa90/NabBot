@@ -1100,11 +1100,23 @@ class Tracking:
     @watched.command(name="add", aliases=["addplayer", "addchar"])
     @commands.guild_only()
     @checks.is_admin()
-    async def watched_add(self, ctx, *, name=None):
-        """Adds a character to the watched list"""
-        if name is None:
-            await ctx.send("You need to tell me the name of the person you want to add to the list.")
+    async def watched_add(self, ctx, *, params=None):
+        """Adds a character to the watched list
+
+        A reason can be specified by adding it after the character's name, separated by a comma.
+
+        eg: /watched add character,reason"""
+
+        if params is None:
+            await ctx.send("You need to tell me the name of the person you want to add to the list.\n"
+                           "You can also specify a reason, e.g. `/watched add player,reason`")
             return
+
+        params = params.split(",", 1)
+        name = params[0]
+        reason = None
+        if len(params) > 1:
+            reason = params[1]
 
         world = tracked_worlds.get(ctx.guild.id, None)
         if world is None:
@@ -1114,10 +1126,10 @@ class Tracking:
         try:
             char = await get_character(name)
             if char is None:
-                await ctx.send("I couldn't fetch that character right now, please try again.")
+                await ctx.send("There's no character with that name.")
                 return
         except NetworkError:
-            await ctx.send("There's no character with that name.")
+            await ctx.send("I couldn't fetch that character right now, please try again.")
             return
 
         if char.world != world:
@@ -1142,8 +1154,9 @@ class Tracking:
                 await ctx.send("Ok then, guess you changed your mind.")
                 return
 
-            c.execute("INSERT INTO watched_list(name, server_id, is_guild) VALUES(?, ?, 0)",
-                      (char.name, ctx.guild.id,))
+            c.execute("INSERT INTO watched_list(name, server_id, is_guild, reason, author, added) "
+                      "VALUES(?, ?, 0, ?, ?, ?)",
+                      (char.name, ctx.guild.id, reason, ctx.author.id, time.time()))
             await ctx.send("Character added to the watched list.")
         finally:
             userDatabase.commit()
@@ -1190,15 +1203,22 @@ class Tracking:
     @watched.command(name="addguild")
     @commands.guild_only()
     @checks.is_admin()
-    async def watched_addguild(self, ctx, *, name=None):
+    async def watched_addguild(self, ctx, *, params=None):
         """Adds an entire guild to the watched list
         
         Guilds are displayed in the watched list as a group.
         If a new member joins, he will automatically displayed here,
         on the other hand, if a member leaves, it won't be shown anymore."""
-        if name is None:
-            ctx.send("You need to tell me the name of the guild you want to add.")
+        if params is None:
+            ctx.send("You need to tell me the name of the guild you want to add.\n"
+                     "You can optionally provide a reason, e.g. `/watched addguild guild,reason`")
             return
+
+        params = params.split(",", 1)
+        name = params[0]
+        reason = None
+        if len(params) > 1:
+            reason = params[1]
 
         world = tracked_worlds.get(ctx.guild.id, None)
         if world is None:
@@ -1235,8 +1255,8 @@ class Tracking:
                 await ctx.send("Ok then, guess you changed your mind.")
                 return
 
-            c.execute("INSERT INTO watched_list(name, server_id, is_guild) VALUES(?, ?, 1)",
-                      (guild.name, ctx.guild.id,))
+            c.execute("INSERT INTO watched_list(name, server_id, is_guild, reason, author, added) VALUES(?, ?, 1, ?, ?)",
+                      (guild.name, ctx.guild.id, reason, ctx.author.id, time.time()))
             await ctx.send("Guild added to the watched list.")
         finally:
             userDatabase.commit()
@@ -1335,6 +1355,60 @@ class Tracking:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
+
+    @watched.command(name="info", aliases=["details", "reason"])
+    @commands.guild_only()
+    @checks.is_admin()
+    async def watched_info(self, ctx, *, name: str):
+        """Shows details about a watched list entry"""
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 0 AND name LIKE ? LIMIT 1",
+                      (ctx.guild.id, name))
+            result = c.fetchone()
+            if not result:
+                await ctx.send("There are no characters with that name.")
+                return
+        finally:
+            c.close()
+
+        embed = discord.Embed(title=result["name"])
+        if result["reason"] is not None:
+            embed.description = f"**Reason:** {result['reason']}"
+        author = ctx.guild.get_member(result["author"])
+        if author is not None:
+            embed.set_footer(text=f"{author.name}#{author.discriminator}",
+                             icon_url=get_user_avatar(author))
+        if result["added"] is not None:
+                embed.timestamp = dt.datetime.utcfromtimestamp(result["added"])
+        await ctx.send(embed=embed)
+
+    @watched.command(name="infoguild", aliases=["detailsguild", "reasonguild"])
+    @commands.guild_only()
+    @checks.is_admin()
+    async def watched_guildinfo(self, ctx, *, name: str):
+        """"Shows details about a guild entry in the watched list"""
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 1 AND name LIKE ? LIMIT 1",
+                      (ctx.guild.id, name))
+            result = c.fetchone()
+            if not result:
+                await ctx.send("There are no guilds with that name.")
+                return
+        finally:
+            c.close()
+
+        embed = discord.Embed(title=result["name"])
+        if result["reason"] is not None:
+            embed.description = f"**Reason:** {result['reason']}"
+        author = ctx.guild.get_member(result["author"])
+        if author is not None:
+            embed.set_footer(text=f"{author.name}#{author.discriminator}",
+                             icon_url=get_user_avatar(author))
+        if result["added"] is not None:
+            embed.timestamp = dt.datetime.utcfromtimestamp(result["added"])
+        await ctx.send(embed=embed)
 
     def __unload(self):
         print("cogs.tracking: Cancelling pending tasks...")

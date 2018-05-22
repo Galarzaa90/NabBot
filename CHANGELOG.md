@@ -3,8 +3,11 @@
 ## Version 1.1.0 (Unreleased)
 - New command: `/leave`, to make the bot leave a discord server.
 - New command: `/versions`, shows the current version and the version of dependencies.
-- New command `/searchworld`, to show filterable list of players online in a server.
+- New command: `/searchworld`, to show filterable list of players online in a server.
 - `/monster` now shows monster's attributes and bestiary info.
+- `/diagnose` was renamed to `/checkchannel`, permissions were updated.
+- `/watched add` and `/watched addguild` now can take a reason as a parameter
+- New subcommand: `/watched info` and `/watched infoguild` to show details about a watched list entry.
 - Watched List now uses an embed, meaning the length is 3 times longer.
 - Minor improvements to documentation site.
 - Improvements to server-log to make them have a uniform style.
@@ -26,11 +29,11 @@
 - Improved many commands to use pagination.
 - Added better support for multiple discord servers.
 - Added watchlist feature, to keep track of the online status of certain characters or guilds (also known as "Hunted list").
-- Improved /whois appearance.
-- New commands: /ignore and /unignore, to make it easier to control where NabBot can answer to commands.
+- Improved `/whois` appearance.
+- New commands: `/ignore` and `/unignore`, to make it easier to control where NabBot can answer to commands.
 - Improved the way events work and are displayed.
 - Added event participants, to keep track of which characters are assisting and events, good for organizing team based events like Heart of Destruction.
-- Various changes to /deaths, /levels and /timeline display.
+- Various changes to `/deaths`, `/levels` and `/timeline` display.
 - Items and monsters now show animated gifs.
 - Items now show imbuements slots and materials show for which imbuement they are for.
 - Migrated many services from Tibia.com to TibiaData.com for better reliability.
