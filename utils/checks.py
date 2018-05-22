@@ -52,6 +52,18 @@ def is_channel_mod():
     return commands.check(predicate)
 
 
+def is_tracking_world():
+    """Checks if the current server is tracking a tibia world
+
+    This check implies that the command can only be used in server channels
+    """
+    def predicate(ctx):
+        if ctx.guild is None:
+            return False
+        return ctx.guild.id in ctx.bot.tracked_worlds
+    return commands.check(predicate)
+
+
 def is_not_lite():
     """Checks if the bot is not running in lite mode"""
     def predicate(ctx):

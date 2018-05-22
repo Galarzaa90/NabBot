@@ -13,7 +13,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils import checks
 from utils.config import config
-from utils.database import tracked_worlds, get_server_property, userDatabase
+from utils.database import get_server_property, userDatabase
 from utils.discord import is_private, is_lite_mode
 from utils.general import get_time_diff, join_list, get_brasilia_time_zone, global_online_list, get_local_timezone, log, \
     is_numeric
@@ -107,13 +107,13 @@ class Tibia:
                 if is_private(ctx.channel):
                     display_name = '@'+user.name
                     user_guilds = self.bot.get_user_guilds(ctx.author.id)
-                    user_tibia_worlds = [world for server, world in tracked_worlds.items() if
+                    user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if
                                          server in [s.id for s in user_guilds]]
                 else:
-                    if tracked_worlds.get(ctx.guild.id) is None:
+                    if self.bot.tracked_worlds.get(ctx.guild.id) is None:
                         user_tibia_worlds = []
                     else:
-                        user_tibia_worlds = [tracked_worlds[ctx.guild.id]]
+                        user_tibia_worlds = [self.bot.tracked_worlds[ctx.guild.id]]
                 if len(user_tibia_worlds) != 0:
                     placeholders = ", ".join("?" for w in user_tibia_worlds)
                     c = userDatabase.cursor()
@@ -243,7 +243,6 @@ class Tibia:
                     reply = f"**{lowest_name}** ({lowest_level}) and **{highest_name}** ({highest_level}) can " \
                             f"share experience."
                 await ctx.send(reply+f"\nTheir share range is from level **{low}** to **{high}**.")
-
 
     @commands.group(aliases=['guildcheck', 'checkguild'], invoke_without_command=True, case_insensitive=True)
     async def guild(self, ctx, *, name:str=None):
@@ -430,7 +429,7 @@ class Tibia:
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
             user_guilds = [ctx.guild]
-            user_worlds = [tracked_worlds.get(ctx.guild.id)]
+            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None and name is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
@@ -611,7 +610,7 @@ class Tibia:
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
             user_servers = [ctx.guild]
-            user_worlds = [tracked_worlds.get(ctx.guild.id)]
+            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
@@ -679,7 +678,7 @@ class Tibia:
         if is_private(ctx.channel):
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
-            user_worlds = [tracked_worlds.get(ctx.guild.id)]
+            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
@@ -755,7 +754,7 @@ class Tibia:
     @commands.group(aliases=['levelups', 'lvl', 'level', 'lvls'], invoke_without_command=True, case_insensitive=True)
     @checks.is_not_lite()
     async def levels(self, ctx, *, name: str=None):
-        """Shows a player's or everoyne's recent level ups
+        """Shows a player's or everyone's recent level ups
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
@@ -769,7 +768,7 @@ class Tibia:
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
             user_guilds = [ctx.guild]
-            user_worlds = [tracked_worlds.get(ctx.guild.id)]
+            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
@@ -869,7 +868,7 @@ class Tibia:
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
             user_servers = [ctx.guild]
-            user_worlds = [tracked_worlds.get(ctx.guild.id)]
+            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
@@ -935,7 +934,7 @@ class Tibia:
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
             user_servers = [ctx.guild]
-            user_worlds = [tracked_worlds.get(ctx.guild.id)]
+            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
@@ -1056,7 +1055,7 @@ class Tibia:
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
             user_servers = [ctx.guild]
-            user_worlds = [tracked_worlds.get(ctx.guild.id)]
+            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
@@ -1240,7 +1239,7 @@ class Tibia:
             return
         world = None
         if ctx.guild is not None and len(params) == 1:
-            world = tracked_worlds.get(ctx.guild.id)
+            world = self.bot.tracked_worlds.get(ctx.guild.id)
         elif len(params) == 2:
             world = params[1].title()
             if world not in tibia_worlds:
@@ -1410,7 +1409,7 @@ class Tibia:
             await ctx.send(invalid_arguments)
             return
 
-        tracked_world = None if is_private(ctx.channel) else tracked_worlds.get(ctx.guild.id)
+        tracked_world = None if is_private(ctx.channel) else self.bot.tracked_worlds.get(ctx.guild.id)
         if world_name is None:
             if tracked_world is None:
                 await ctx.send("You must specify the world where you want to look in.")
@@ -1516,8 +1515,8 @@ class Tibia:
         """Shows predictions for bosses"""
         ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
 
-        if world is None and not is_private(ctx.channel) and tracked_worlds.get(ctx.guild.id) is not None:
-            world = tracked_worlds.get(ctx.guild.id)
+        if world is None and not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is not None:
+            world = self.bot.tracked_worlds.get(ctx.guild.id)
         elif world is None:
             await ctx.send("You need to tell me a world's name.")
             return
@@ -1714,15 +1713,15 @@ class Tibia:
         if is_private(ctx.channel):
             display_name = '@'+user.name
             user_guilds = self.bot.get_user_guilds(ctx.author.id)
-            user_tibia_worlds = [world for server, world in tracked_worlds.items() if
+            user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if
                                  server in [s.id for s in user_guilds]]
         else:
             display_name = '@'+user.display_name
             embed.colour = user.colour
-            if tracked_worlds.get(ctx.guild.id) is None:
+            if self.bot.tracked_worlds.get(ctx.guild.id) is None:
                 user_tibia_worlds = []
             else:
-                user_tibia_worlds = [tracked_worlds[ctx.guild.id]]
+                user_tibia_worlds = [self.bot.tracked_worlds[ctx.guild.id]]
         if len(user_tibia_worlds) == 0:
             return None
         embed.set_thumbnail(url=user.avatar_url)

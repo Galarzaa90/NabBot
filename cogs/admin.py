@@ -70,7 +70,7 @@ class Admin:
 
         If no world is passed, it shows this server's current assigned world."""
 
-        current_world = tracked_worlds.get(ctx.guild.id, None)
+        current_world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
             if current_world is None:
                 await ctx.send("This server has no tibia world assigned.")
@@ -95,7 +95,7 @@ class Admin:
                 c.close()
                 userDatabase.commit()
             await ctx.send("This server's tracked world has been removed.")
-            reload_worlds()
+            self.bot.reload_worlds()
             return
 
         world = world.strip().capitalize()
@@ -118,7 +118,7 @@ class Admin:
             con.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'world', ?)",
                         (ctx.guild.id, world,))
             await ctx.send("This server's world has been changed successfully.")
-            reload_worlds()
+            self.bot.reload_worlds()
 
     @commands.guild_only()
     @checks.is_admin()
@@ -375,7 +375,7 @@ class Admin:
             await ctx.send("The correct syntax is: ``/addchar username,character``")
             return
 
-        world = tracked_worlds.get(ctx.guild.id, None)
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
             await ctx.send("This server is not tracking any worlds.")
             return
@@ -423,7 +423,7 @@ class Admin:
                         await ctx.send("This character was reassigned to this user successfully.")
                         userDatabase.commit()
                         for server in user_servers:
-                            world = tracked_worlds.get(server.id, None)
+                            world = self.bot.tracked_worlds.get(server.id, None)
                             if world == char.world:
                                 guild = "No guild" if char.guild is None else char.guild_name
                                 embed.description = "{0.mention} registered:\n\u2023 {1} - Level {2} {3} - **{4}**"\
@@ -442,7 +442,7 @@ class Admin:
                 await ctx.send("**{0}** was registered successfully to this user.".format(char.name))
                 # Log on relevant servers
                 for server in user_servers:
-                    world = tracked_worlds.get(server.id, None)
+                    world = self.bot.tracked_worlds.get(server.id, None)
                     if world == char.world:
                         guild = "No guild" if char.guild is None else char.guild_name
                         embed.description = "{0.mention} registered:\n\u2023 {1}  - Level {2} {3} - **{4}**"\
@@ -468,7 +468,7 @@ class Admin:
 
         # This is equivalent to someone using /stalk addacc on themselves.
         user = ctx.author
-        world = tracked_worlds.get(ctx.guild.id)
+        world = self.bot.tracked_worlds.get(ctx.guild.id)
 
         if world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
@@ -479,7 +479,7 @@ class Admin:
             await ctx.send(f"I couldn't find any users named @{target_name}")
             return
         target_guilds = self.bot.get_user_guilds(target.id)
-        target_guilds = list(filter(lambda x: tracked_worlds.get(x.id) == world, target_guilds))
+        target_guilds = list(filter(lambda x: self.bot.tracked_worlds.get(x.id) == world, target_guilds))
 
         await ctx.trigger_typing()
         try:
@@ -632,7 +632,7 @@ class Admin:
             await ctx.send("**{0}** was removed successfully from **@{1}**.".format(result["name"], username))
             if user is not None:
                 for server in self.bot.get_user_guilds(user.id):
-                    world = tracked_worlds.get(server.id, None)
+                    world = self.bot.tracked_worlds.get(server.id, None)
                     if world != result["world"]:
                         continue
                     if result["guild"] is None:

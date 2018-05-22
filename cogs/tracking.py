@@ -13,7 +13,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils import checks
 from utils.config import config
-from utils.database import tracked_worlds_list, userDatabase, tracked_worlds, get_server_property, set_server_property
+from utils.database import userDatabase, get_server_property, set_server_property
 from utils.discord import is_private, get_user_avatar, FIELD_VALUE_LIMIT, EMBED_LIMIT
 from utils.general import global_online_list, log, join_list, is_numeric
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, level_messages, split_message
@@ -65,11 +65,11 @@ class Tracking:
         #################################################
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
-            if len(tracked_worlds_list) == 0:
+            if len(self.bot.tracked_worlds_list) == 0:
                 # If no worlds are tracked, just sleep, worlds might get registered later
                 await asyncio.sleep(config.highscores_delay)
                 continue
-            for world in tracked_worlds_list:
+            for world in self.bot.tracked_worlds_list:
                 try:
                     for category in HIGHSCORE_CATEGORIES:
                         # Check the last scan time, highscores are updated every server save
@@ -146,7 +146,7 @@ class Tracking:
                 current_world = tibia_worlds.pop()
                 tibia_worlds.insert(0, current_world)
 
-                if current_world.capitalize() not in tracked_worlds_list:
+                if current_world.capitalize() not in self.bot.tracked_worlds_list:
                     await asyncio.sleep(0.1)
                     continue
 
@@ -229,7 +229,7 @@ class Tracking:
                             await self.announce_level(server_char.level, char_name=server_char.name)
                 # Watched List checking
                 # Iterate through servers with tracked world to find one that matches the current world
-                for server, world in tracked_worlds.items():
+                for server, world in self.bot.tracked_worlds.items():
                     if world == current_world:
                         watched_channel_id = get_server_property("watched_channel", server, is_int=True)
                         if watched_channel_id is None:
@@ -407,7 +407,7 @@ class Tracking:
         else:
             message = EMOJI[":skull_crossbones:"] + " " + message
 
-        for guild_id, tracked_world in tracked_worlds.items():
+        for guild_id, tracked_world in self.bot.tracked_worlds.items():
             guild = self.bot.get_guild(guild_id)
             if char.world == tracked_world and guild is not None and guild.get_member(char.owner) is not None:
                 try:
@@ -452,7 +452,7 @@ class Tracking:
         message = format_message(message)
         message = EMOJI[":star2:"] + " " + message
 
-        for server_id, tracked_world in tracked_worlds.items():
+        for server_id, tracked_world in self.bot.tracked_worlds.items():
             server = self.bot.get_guild(server_id)
             if char.world == tracked_world and server is not None and server.get_member(char.owner) is not None:
                 try:
@@ -476,11 +476,11 @@ class Tracking:
         # List of servers the user shares with the bot
         user_guilds = self.bot.get_user_guilds(user.id)
         # List of Tibia worlds tracked in the servers the user is
-        user_tibia_worlds = [world for guild, world in tracked_worlds.items() if guild in [g.id for g in user_guilds]]
+        user_tibia_worlds = [world for guild, world in self.bot.tracked_worlds.items() if guild in [g.id for g in user_guilds]]
         # Remove duplicate entries from list
         user_tibia_worlds = list(set(user_tibia_worlds))
 
-        if not is_private(ctx.channel) and tracked_worlds.get(ctx.guild.id) is None:
+        if not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
 
@@ -570,7 +570,7 @@ class Tracking:
                 # Announce on server log of each server
                 for guild in user_guilds:
                     # Only announce on worlds where the character's world is tracked
-                    if tracked_worlds.get(guild.id, None) == char.world:
+                    if self.bot.tracked_worlds.get(guild.id, None) == char.world:
                         _guild = "No guild" if char.guild is None else char.guild_name
                         voc = get_voc_abb_and_emoji(char.vocation)
                         log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**"\
@@ -584,7 +584,7 @@ class Tracking:
                 # Announce on server log of each server
                 for guild in user_guilds:
                     # Only announce on worlds where the character's world is tracked
-                    if tracked_worlds.get(guild.id, None) == char["world"]:
+                    if self.bot.tracked_worlds.get(guild.id, None) == char["world"]:
                         char["voc"] = get_voc_abb_and_emoji(char["vocation"])
                         if char["guild"] is None:
                             char["guild"] = "No guild"
@@ -646,7 +646,7 @@ class Tracking:
             await ctx.send("**{0}** is no longer registered to you.".format(char["name"]))
 
             user_servers = [s.id for s in self.bot.get_user_guilds(user.id)]
-            for server_id, world in tracked_worlds.items():
+            for server_id, world in self.bot.tracked_worlds.items():
                 if char["world"] == world and server_id in user_servers:
                     if char["guild"] is None:
                         char["guild"] = "No guild"
@@ -677,11 +677,11 @@ class Tracking:
         # List of servers the user shares with the self.bot
         user_guilds = self.bot.get_user_guilds(user.id)
         # List of Tibia worlds tracked in the servers the user is
-        user_tibia_worlds = [world for guild, world in tracked_worlds.items() if guild in [g.id for g in user_guilds]]
+        user_tibia_worlds = [world for guild, world in self.bot.tracked_worlds.items() if guild in [g.id for g in user_guilds]]
         # Remove duplicate entries from list
         user_tibia_worlds = list(set(user_tibia_worlds))
 
-        if not is_private(ctx.channel) and tracked_worlds.get(ctx.guild.id) is None:
+        if not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
 
@@ -779,7 +779,7 @@ class Tracking:
                 # Announce on server log of each server
                 for guild in user_guilds:
                     # Only announce on worlds where the character's world is tracked
-                    if tracked_worlds.get(guild.id, None) == char.world:
+                    if self.bot.tracked_worlds.get(guild.id, None) == char.world:
                         _guild = "No guild" if char.guild is None else char.guild_name
                         voc = get_voc_abb_and_emoji(char.vocation)
                         log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**" \
@@ -793,7 +793,7 @@ class Tracking:
                 # Announce on server log of each server
                 for guild in user_guilds:
                     # Only announce on worlds where the character's world is tracked
-                    if tracked_worlds.get(guild.id, None) == char["world"]:
+                    if self.bot.tracked_worlds.get(guild.id, None) == char["world"]:
                         char["voc"] = get_voc_abb_and_emoji(char["vocation"])
                         if char["guild"] is None:
                             char["guild"] = "No guild"
@@ -824,42 +824,12 @@ class Tracking:
                 await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
 
     @commands.command()
-    @checks.is_not_lite()
-    async def online(self, ctx, world: str = None):
+    @checks.is_tracking_world()
+    async def online(self, ctx):
         """Tells you which users are online on Tibia
 
-        This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated.
-
-        If used in a server, only characters from users of the server are shown
-        If used on PM, and you are on more than one server with different tracked worlds, you need to specify the world"""
-        world = world.capitalize() if world is not None else None
-        if world is not None and world not in tibia_worlds:
-            await ctx.send("That world doesn't exist.")
-            return
-        if is_private(ctx.channel):
-            user_guilds = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = list(set(self.bot.get_user_worlds(ctx.author.id)))
-            if len(user_worlds) == 0:
-                return
-            if len(user_worlds) > 1 and world is None:
-                await ctx.send("You're in more than one server with different worlds, repeat the command with one of "
-                               f"the following world: {', '.join(user_worlds)}")
-                return
-            if len(user_worlds) > 1 and world not in user_worlds:
-                await ctx.send(f"You're not in any servers that track {world}")
-                return
-            if len(user_worlds) == 1:
-                world = user_worlds[0]
-                title = "Users online"
-            else:
-                title = f"Users online in {world}"
-        else:
-            user_guilds = [ctx.guild]
-            world = tracked_worlds.get(ctx.guild.id)
-            title = "Users online"
-            if world is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
+        This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated."""
+        world = self.bot.tracked_worlds.get(ctx.guild.id)
 
         ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
         if is_private(ctx.channel) or ctx.channel == ask_channel:
@@ -876,15 +846,14 @@ class Tracking:
             for char in global_online_list:
                 char_world = char.world
                 name = char.name
-                c.execute("SELECT name, user_id, vocation, ABS(level) as level FROM chars WHERE name LIKE ?",
-                          (name,))
+                c.execute("SELECT name, user_id, vocation, ABS(level) as level FROM chars WHERE name LIKE ?", (name,))
                 row = c.fetchone()
                 if row is None:
                     continue
                 if char_world != world:
                     continue
-                # Only show members on this server or members visible to author if it's a pm
-                owner = self.bot.get_member(row["user_id"], user_guilds)
+                # Skip characters of members not in the server
+                owner = ctx.guild.get_member(row["user_id"])
                 if owner is None:
                     continue
                 row["owner"] = owner.display_name
@@ -900,8 +869,8 @@ class Tracking:
                 else:
                     await ctx.send("There is no one online from Discord.")
                 return
-            pages = VocationPaginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title,
-                                      vocations=vocations)
+            pages = VocationPaginator(self.bot, message=ctx.message, entries=entries, vocations=vocations,
+                                      per_page=per_page, title="Users online")
             try:
                 await pages.paginate()
             except CannotPaginate as e:
@@ -909,9 +878,8 @@ class Tracking:
         finally:
             c.close()
 
-    @commands.guild_only()
     @commands.command(name="searchteam", aliases=["whereteam", "team", "findteam"])
-    @checks.is_not_lite()
+    @checks.is_tracking_world()
     async def find_team(self, ctx, *, params=None):
         """Searches for a registered character that meets the criteria
 
@@ -936,7 +904,7 @@ class Tracking:
                             "/searchteam level\n" \
                             "/searchteam minlevel,maxlevel```"
 
-        tracked_world = tracked_worlds.get(ctx.guild.id)
+        tracked_world = self.bot.tracked_worlds.get(ctx.guild.id)
         if tracked_world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
@@ -1066,7 +1034,7 @@ class Tracking:
             await ctx.send("Channel name cannot contain the special character **·**")
             return
         
-        world = tracked_worlds.get(ctx.guild.id, None)
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
@@ -1118,7 +1086,7 @@ class Tracking:
         if len(params) > 1:
             reason = params[1]
 
-        world = tracked_worlds.get(ctx.guild.id, None)
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
@@ -1170,7 +1138,7 @@ class Tracking:
         if name is None:
             ctx.send("You need to tell me the name of the person you want to remove from the list.")
 
-        world = tracked_worlds.get(ctx.guild.id, None)
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
@@ -1220,7 +1188,7 @@ class Tracking:
         if len(params) > 1:
             reason = params[1]
 
-        world = tracked_worlds.get(ctx.guild.id, None)
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
@@ -1270,7 +1238,7 @@ class Tracking:
         if name is None:
             ctx.send("You need to tell me the name of the guild you want to remove from the list.")
 
-        world = tracked_worlds.get(ctx.guild.id, None)
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
@@ -1307,7 +1275,7 @@ class Tracking:
         """Shows a list of all watched characters
         
         Note that this lists all characters, not just online characters."""
-        world = tracked_worlds.get(ctx.guild.id, None)
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
@@ -1335,7 +1303,7 @@ class Tracking:
         """Shows a list of all watched characters
 
         Note that this lists all characters, not just online characters."""
-        world = tracked_worlds.get(ctx.guild.id, None)
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
