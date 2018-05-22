@@ -175,7 +175,7 @@ class Admin:
             await ctx.send("This message exceeds the character limit! ({0}/{1}".format(len(message), 1200))
             return
         try:
-            unformatted_message = f"{welcome_pm}\n{message}"
+            unformatted_message = f"{config.welcome_pm}\n{message}"
             complete_message = unformatted_message.format(user=ctx.author, server=ctx.guild, bot=self.bot.user,
                                                           owner=ctx.guild.owner)
         except Exception as e:

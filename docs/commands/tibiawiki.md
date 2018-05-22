@@ -31,7 +31,7 @@ For longer replies, the command must be used in the ask channel or via private m
 ---
 
 ## /monster
-**Syntax:** /monster *name*
+**Syntax:** /monster *name*  
 **Other aliases:** /mob, /creature, /mon
 
 Displays information about a specific creature. Health points, experience, resistances and weaknesses, loot drops, etc.

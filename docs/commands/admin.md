@@ -6,22 +6,15 @@ This commands can only be used by the server's owner and users with the `Adminis
     Words in italics are parameters.  
     Parameters enclosed in brackets `[]` are optional.
 
-## /diagnose
-**Syntax:** /diagnose [*name*]
+## /checkchannel
+**Syntax:** /checkchannel [*channel*]
 
-Checks the server and every channel's permissions to check if the bot has the needed permissions to work correctly.
-Also checks if the ask channel and server log channels are set correctly.
-
-If no serverName is specified, it check's the current server.
-If a server name is specified, it checks the permissions for that server. 
-The command can't be used without a server name on private messages.
-
-Note that you must be the owner of the server in order to check. Bot owner can check any server the bot is in.  
+Checks if the current channel or the specified channel has the correct permissions for the bot to work fine.
 
 ??? Summary "Examples"
 
-    **/diagnose** *(on a server called Nab Bot)*  
-    ![image](../assets/images/commands/diagnose.png)
+    **/checkchannel**  
+    ![image](../assets/images/commands/checkchannel.png)
 
 ----
 
