@@ -4,12 +4,12 @@
 - New command: `/leave`, to make the bot leave a discord server.
 - New command: `/versions`, shows the current version and the version of dependencies.
 - New command: `/searchworld`, to show filterable list of players online in a server.
+- New subcommand: `/watched info` and `/watched infoguild` to show details about a watched list entry.
 - `/monster` now shows monster's attributes and bestiary info.
 - `/diagnose` was renamed to `/checkchannel`, permissions were updated.
 - `/watched add` and `/watched addguild` now can take a reason as a parameter
 - `/online` is no longer usable in PMs
 - `/online` and `/searchteam` are hidden from `/help` when no world is tracked in the current server.
-- New subcommand: `/watched info` and `/watched infoguild` to show details about a watched list entry.
 - Watched List now uses an embed, meaning the length is 3 times longer.
 - Minor improvements to documentation site.
 - Improvements to server-log to make them have a uniform style.

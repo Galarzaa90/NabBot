@@ -101,7 +101,7 @@ Online characters are shown first on the list, they also have a 🔹 icon.
 Creates a new text channel for the watched list to be posted. The watch list shows which characters from it are online.
 Entire guilds can be added too.
 
-If no name is specified, the default name `#hunted-list` will be used.
+If no name is specified, the default name `#watched-list` will be used.
 
 When the channel is created, only NabBot and people with `Administrator` permissions can read it.
 You can change the permissions to whatever you see fit afterwards.
@@ -116,16 +116,17 @@ The channel may be renamed at anytime without problems. But if it's deleted, it 
     **Initial message shown in the channel**
     ![image](../assets/images/commands/watched_message_1.png)
     
-    **Message once characters and/or guilds have been added**
+    **Message once characters and/or guilds have been added**  
     ![image](../assets/images/commands/watched_message_2.png)
 
-----
 
 ### /watched add
-**Syntax:** /watched  *name*  
+**Syntax:** /watched  *name*[,*reason*] 
 **Other aliases:** /watched addplayer, /watched addchar
 
 Adds a character to the character list. The character must be in the same world the server is tracking.
+
+A reason can be added optionally, which can be seen using [/watched info](#watched-info)
 
 The bot asks for confirmation before adding, by using emoji reactions: 🇾/🇳.
 
@@ -134,7 +135,6 @@ The bot asks for confirmation before adding, by using emoji reactions: 🇾/🇳
     **/watched add Galarzaa Fidera**  
     ![image](../assets/images/commands/watched_add.png)
     
-----
 
 ### /watched remove
 **Syntax:** /watched remove *name*  
@@ -148,8 +148,8 @@ The bot asks for confirmation before adding, by using emoji reactions: 🇾/🇳
   
     **/watched remove Kaiizokuo**  
     ![image](../assets/images/commands/watched_remove.png)
-    
-    
+
+  
 ### /watched addguild
 **Syntax:** /watched addguild *name*
 
@@ -163,8 +163,7 @@ The bot asks for confirmation before adding, by using emoji reactions: 🇾/🇳
     **/watched addguild Redd Alliance**  
     ![image](../assets/images/commands/watched_addguild.png)
 
-----
-    
+
 ### /watched removeguild
 **Syntax**:  /watched *name*
 
@@ -177,8 +176,7 @@ The bot asks for confirmation before adding, by using emoji reactions: 🇾/🇳
     **/watched removeguild Redd Alliance**  
     ![image](../assets/images/commands/watched_removeguild.png)
 
-----
-    
+
 ### /watched list
 
 Shows a list of all characters currently in the list.
@@ -188,10 +186,9 @@ Shows a list of all characters currently in the list.
     **/watched list**  
     ![image](../assets/images/commands/watched_list.png)
 
-----
-    
-### /watched guildlist
-**Other aliases:** /watched guilds, /watched listguilds
+
+### /watched listguild
+**Other aliases:** /watched guilds, /watched listguilds, /watched guildlist
 
 Shows a list of all guilds currently in the list.
 
@@ -200,3 +197,25 @@ Shows a list of all guilds currently in the list.
     **/watched guildlist**  
     ![image](../assets/images/commands/watched_guilds.png)
     
+
+### /watched info
+**Syntax:**: /watched info *name*  
+**Other aliases:** /watched details, /watched reason
+
+Shows information about a watched list entry.
+
+This shows who added the player, when, and if there's a reason why they were added.
+
+??? Summary "Examples"
+  
+    **/watched info Nezune**  
+    ![image](../assets/images/commands/watched_info.png)
+
+
+### /watched infoguild
+**Syntax:**: /watched info *name*  
+**Other aliases:** /watched detailsguild, /watched reasonguild
+
+Shows information about a watched list guild entry.
+
+This shows who added the guild, when, and if there's a reason why it was added.
