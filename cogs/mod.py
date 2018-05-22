@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils import checks
-from utils.database import userDatabase, tracked_worlds
+from utils.database import userDatabase
 from utils.discord import is_private
 from utils.paginator import Paginator, CannotPaginate
 
@@ -90,7 +90,7 @@ class Mod:
     async def unregistered(self, ctx):
         """Check which users are currently not registered."""
 
-        world = tracked_worlds.get(ctx.guild.id, None)
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         entries = []
         if world is None:
             await ctx.send("This server is not tracking any worlds.")

@@ -20,12 +20,6 @@ else:
 
 DB_LASTVERSION = 20
 
-# Dictionary of worlds tracked by nabbot, key:value = server_id:world
-# Dictionary is populated from database
-# A list version is created from the dictionary
-tracked_worlds = {}
-tracked_worlds_list = []
-
 
 def init_database():
     """Initializes and/or updates the database to the current version"""
@@ -270,29 +264,6 @@ def dict_factory(cursor, row):
 userDatabase.row_factory = dict_factory
 tibiaDatabase.row_factory = dict_factory
 lootDatabase.row_factory = dict_factory
-
-
-def reload_worlds():
-    """Refresh the world list from the database
-
-    This is used to avoid reading the database every time the world list is needed.
-    A global variable holding the world list is loaded on startup and refreshed only when worlds are modified"""
-    c = userDatabase.cursor()
-    tibia_servers_dict_temp = {}
-    try:
-        c.execute("SELECT server_id, value FROM server_properties WHERE name = 'world' ORDER BY value ASC")
-        result = c.fetchall()  # type: Dict
-        del tracked_worlds_list[:]
-        if len(result) > 0:
-            for row in result:
-                if row["value"] not in tracked_worlds_list:
-                    tracked_worlds_list.append(row["value"])
-                tibia_servers_dict_temp[int(row["server_id"])] = row["value"]
-
-        tracked_worlds.clear()
-        tracked_worlds.update(tibia_servers_dict_temp)
-    finally:
-        c.close()
 
 
 def get_server_property(key: str, guild_id: int, default=None, is_int=None):

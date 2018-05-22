@@ -118,7 +118,7 @@ class Owner:
         reply = "I'm in the following servers:"
         for guild in self.bot.guilds:
             reply += "\n\t**{0.name}** - (Owner: {0.owner.name}#{0.owner.discriminator}) - {1} - {2} members"\
-                .format(guild, tracked_worlds.get(guild.id, "No world tracked"), len(guild.members))
+                .format(guild, self.bot.tracked_worlds.get(guild.id, "No world tracked"), len(guild.members))
         await ctx.send(reply)
 
     @commands.command(aliases=["message_admins", "adminsmessage", "msgadmins", "adminsmsg"])
@@ -468,7 +468,7 @@ class Owner:
             await ctx.send(f"Moved **{affected_chars:,}** characters to {new_world}. "
                            f"**{affected_guilds}** discord servers were affected.\n\n"
                            f"Enjoy **{new_world}**! {EMOJI[':fire:']}{EMOJI[':cancer:']}")
-            reload_worlds()
+            self.bot.reload_worlds()
         finally:
             c.close()
             userDatabase.commit()

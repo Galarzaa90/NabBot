@@ -3,13 +3,13 @@ import datetime as dt
 import re
 import sys
 import traceback
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Dict
 
 import discord
 from discord.ext import commands
 
 from utils.config import config
-from utils.database import init_database, userDatabase, reload_worlds, tracked_worlds, get_server_property
+from utils.database import init_database, userDatabase, get_server_property
 from utils.discord import get_region_string, is_private, get_user_avatar
 from utils.general import join_list, get_token
 from utils.general import log
@@ -31,6 +31,11 @@ class NabBot(commands.Bot):
         self.remove_command("help")
         self.members = {}
         self.start_time = dt.datetime.utcnow()
+        # Dictionary of worlds tracked by nabbot, key:value = server_id:world
+        # Dictionary is populated from database
+        # A list version is created from the dictionary
+        self.tracked_worlds = {}
+        self.tracked_worlds_list = []
         self.__version__ = "1.1.0a"
 
     async def on_ready(self):
@@ -67,7 +72,7 @@ class NabBot(commands.Bot):
             destination = '#{0.channel.name} ({0.guild.name})'.format(ctx)
         log.info('Command by {0.author.display_name} in {1}: {0.message.content}'.format(ctx, destination))
 
-    async def on_command_error(self, ctx: commands.Context, error):
+    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):
         """Handles command errors"""
         if isinstance(error, commands.errors.CommandNotFound):
             return
@@ -515,6 +520,28 @@ class NabBot(commands.Bot):
                     pass
         return True
 
+    def reload_worlds(self):
+        """Refresh the world list from the database
+
+        This is used to avoid reading the database every time the world list is needed.
+        A global variable holding the world list is loaded on startup and refreshed only when worlds are modified"""
+        c = userDatabase.cursor()
+        tibia_servers_dict_temp = {}
+        try:
+            c.execute("SELECT server_id, value FROM server_properties WHERE name = 'world' ORDER BY value ASC")
+            result = c.fetchall()  # type: Dict
+            del self.tracked_worlds_list[:]
+            if len(result) > 0:
+                for row in result:
+                    if row["value"] not in self.tracked_worlds_list:
+                        self.tracked_worlds_list.append(row["value"])
+                    tibia_servers_dict_temp[int(row["server_id"])] = row["value"]
+
+            self.tracked_worlds.clear()
+            self.tracked_worlds.update(tibia_servers_dict_temp)
+        finally:
+            c.close()
+
 
 nabbot = None
 
@@ -527,7 +554,7 @@ if __name__ == "__main__":
     nabbot = NabBot()
 
     # List of tracked worlds for NabBot
-    reload_worlds()
+    nabbot.reload_worlds()
     # List of all Tibia worlds
     nabbot.loop.run_until_complete(populate_worlds())
 

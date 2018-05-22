@@ -13,7 +13,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils import checks
 from utils.config import config
-from utils.database import userDatabase, tibiaDatabase, get_server_property, tracked_worlds
+from utils.database import userDatabase, tibiaDatabase, get_server_property
 from utils.discord import is_lite_mode, get_region_string, get_role_list, get_role, is_private, clean_string
 from utils.general import parse_uptime, TimeString, single_line, is_numeric, log
 from utils.emoji import EMOJI
@@ -1181,7 +1181,7 @@ class General:
         if char["user_id"] != ctx.author.id:
             await ctx.send("You can only join with characters registered to you.")
             return
-        world = tracked_worlds.get(event["server"])
+        world = self.bot.tracked_worlds.get(event["server"])
         if world != char["world"]:
             await ctx.send("You can't join with a character from another world.")
             return
@@ -1257,7 +1257,7 @@ class General:
             await ctx.send("That character is not registered.")
             return
 
-        world = tracked_worlds.get(event["server"])
+        world = self.bot.tracked_worlds.get(event["server"])
         if world != char["world"]:
             await ctx.send("You can't add a character from another world.")
             return
