@@ -535,7 +535,7 @@ class Tibia:
             await ctx.send(e)
 
     @deaths.command(name="monster", aliases=["mob", "killer"])
-    @checks.is_not_lite()
+    @checks.is_in_tracking_world()
     async def deaths_monsters(self, ctx, *, name: str=None):
         """Returns a list of the latest kills by that monster"""
         permissions = ctx.channel.permissions_for(ctx.me)
@@ -593,7 +593,7 @@ class Tibia:
             await ctx.send(e)
 
     @deaths.command(name="user")
-    @checks.is_not_lite()
+    @checks.is_in_tracking_world()
     async def deaths_user(self, ctx, *, name: str=None):
         """Shows a user's recent deaths on his/her registered characters"""
         permissions = ctx.channel.permissions_for(ctx.me)
@@ -665,7 +665,7 @@ class Tibia:
             await ctx.send(e)
 
     @deaths.command(name="stats")
-    @checks.is_not_lite()
+    @checks.is_in_tracking_world()
     async def deaths_stats(self, ctx, *, period: str = None):
         """Shows death statistic
         
@@ -752,7 +752,7 @@ class Tibia:
             c.close()
 
     @commands.group(aliases=['levelups', 'lvl', 'level', 'lvls'], invoke_without_command=True, case_insensitive=True)
-    @checks.is_not_lite()
+    @checks.is_in_tracking_world()
     async def levels(self, ctx, *, name: str=None):
         """Shows a player's or everyone's recent level ups
 
@@ -851,7 +851,7 @@ class Tibia:
             await ctx.send(e)
 
     @levels.command(name="user")
-    @checks.is_not_lite()
+    @checks.is_in_tracking_world()
     async def levels_user(self, ctx, *, name: str = None):
         """Shows a user's recent level ups on his/her registered characters"""
         permissions = ctx.channel.permissions_for(ctx.me)
@@ -921,7 +921,7 @@ class Tibia:
             await ctx.send(e)
 
     @commands.group(aliases=["story"], invoke_without_command=True, case_insensitive=True)
-    @checks.is_not_lite()
+    @checks.is_in_tracking_world()
     async def timeline(self, ctx, *, name: str = None):
         """Shows a player's recent level ups and deaths"""
         permissions = ctx.channel.permissions_for(ctx.me)
@@ -1038,7 +1038,7 @@ class Tibia:
             await ctx.send(e)
 
     @timeline.command(name="user")
-    @checks.is_not_lite()
+    @checks.is_in_tracking_world()
     async def timeline_user(self, ctx, *, name: str = None):
         """Shows a users's recent level ups and deaths on his/her characters"""
         permissions = ctx.channel.permissions_for(ctx.me)

@@ -150,13 +150,13 @@ class NabBot(commands.Bot):
         embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
 
         # If server is not tracking worlds, we don't check the database
-        if member.guild.id in config.lite_servers or tracked_worlds.get(member.guild.id) is None:
+        if member.guild.id in config.lite_servers or self.tracked_worlds.get(member.guild.id) is None:
             await self.send_log_message(member.guild, embed=embed)
             return
 
         # Check if user already has characters registered and announce them on log_channel
         # This could be because he rejoined the server or is in another server tracking the same worlds
-        world = tracked_worlds.get(member.guild.id)
+        world = self.tracked_worlds.get(member.guild.id)
         if world is not None:
             c = userDatabase.cursor()
             try:
@@ -422,7 +422,7 @@ class NabBot(commands.Bot):
         guild_list can be passed to search in a specific set of guilds. Note that the user may not belong to them."""
         if guild_list is None:
             guild_list = self.get_user_guilds(user_id)
-        return list(set([world for guild, world in tracked_worlds.items() if guild in [g.id for g in guild_list]]))
+        return list(set([world for guild, world in self.tracked_worlds.items() if guild in [g.id for g in guild_list]]))
 
     def get_channel_or_top(self, guild: discord.Guild, channel_id: int) -> discord.TextChannel:
         """Returns a guild's channel by id, returns none if channel doesn't exist

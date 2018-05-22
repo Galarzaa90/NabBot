@@ -64,6 +64,22 @@ def is_tracking_world():
     return commands.check(predicate)
 
 
+def is_in_tracking_world():
+    """Checks if any of the shared servers track a world
+
+    If used in a server's channel, only that server is considered
+    If used on a private message, all servers are considered
+
+    Similar to is_tracking_world but allows PM usage.
+    This check may be slow and shouldn't be used much"""
+    def predicate(ctx):
+        if ctx.guild is not None:
+            return ctx.guild.id in ctx.bot.tracked_worlds
+        return len(ctx.bot.get_user_worlds(ctx.author.id)) > 0
+
+    return commands.check(predicate)
+
+
 def is_not_lite():
     """Checks if the bot is not running in lite mode"""
     def predicate(ctx):
