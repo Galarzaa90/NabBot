@@ -1296,7 +1296,7 @@ class Tracking:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @watched.command(name="guildlist", aliases=["listguilds", "guilds"])
+    @watched.command(name="listguilds", aliases=["guilds", "guildlist", "listguilds"])
     @commands.guild_only()
     @checks.is_admin()
     async def watched_list_guild(self, ctx):
