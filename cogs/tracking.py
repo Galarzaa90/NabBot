@@ -1224,8 +1224,8 @@ class Tracking:
                 await ctx.send("Ok then, guess you changed your mind.")
                 return
 
-            c.execute("INSERT INTO watched_list(name, server_id, is_guild, reason, author, added) VALUES(?, ?, 1, ?, ?)",
-                      (guild.name, ctx.guild.id, reason, ctx.author.id, time.time()))
+            c.execute("INSERT INTO watched_list(name, server_id, is_guild, reason, author, added)"
+                      "VALUES(?, ?, 1, ?, ?, ?)", (guild.name, ctx.guild.id, reason, ctx.author.id, time.time()))
             await ctx.send("Guild added to the watched list.")
         finally:
             userDatabase.commit()
