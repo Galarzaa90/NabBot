@@ -1,7 +1,10 @@
 import asyncio
+from typing import Union
 
 import discord
+from discord.ext import commands
 
+from nabbot import NabBot
 from utils.discord import is_private
 from utils.tibia import DRUID, SORCERER, PALADIN, KNIGHT
 
@@ -10,7 +13,7 @@ class CannotPaginate(Exception):
     pass
 
 
-class Paginator:
+class Pages:
     """Implements a paginator that queries the user for the
     pagination interface.
 
@@ -23,68 +26,67 @@ class Paginator:
 
     Parameters
     ------------
-    bot
-        The bot instance.
-    message
-        The message that initiated this session.
-    entries
+    ctx: Context
+        The context of the command.
+    entries: List[str]
         A list of entries to paginate.
-    per_page
+    per_page: int
         How many entries show up per page.
+    show_entry_count: bool
+        Whether to show an entry count in the footer.
 
     Attributes
     -----------
     embed: discord.Embed
         The embed object that is being used to send pagination info.
-        Feel free to modify this externally. Only the description,
-        footer fields, and colour are internally modified.
+        Feel free to modify this externally. Only the description
+        and footer fields are internally modified.
     permissions: discord.Permissions
         Our permissions for the channel.
     """
     Empty = discord.Embed.Empty
 
-    def __init__(self, bot: discord.Client, *, message: discord.Message, entries, **kwargs):
-        self.bot = bot
+    def __init__(self, ctx: commands.Context, *, entries, per_page=10, show_entry_count=True, **kwargs):
+        self.bot = ctx.bot  # type: NabBot
         self.entries = entries
-        self.message = message
-        self.author = message.author
-        self.per_page = kwargs.get("per_page", 10)
-        self.current_page = 1
-        self.title = kwargs.get("title",None)
-        self.numerate = kwargs.get("numerate", True)
-        self.description = kwargs.get("description", "")
+        self.message = ctx.message  # type: discord.Message
+        self.channel = ctx.channel  # type: discord.TextChannel
+        self.author = ctx.author  # type: Union[discord.User, discord.Member]
+        self.per_page = per_page
         pages, left_over = divmod(len(self.entries), self.per_page)
         if left_over:
             pages += 1
         self.maximum_pages = pages
         self.embed = discord.Embed()
-        author = kwargs.get("author", None)
-        if author is not None:
-            self.embed.set_author(name=author, icon_url=kwargs.get("author_icon", discord.Embed.Empty),
-                                  url=kwargs.get("author_url", discord.Embed.Empty))
-        color = kwargs.get("color", None)
-        if color is not None:
-            self.embed.colour = color
-        self.paginating = len(entries) > self.per_page
+        self.paginating = len(entries) > per_page
+        self.show_entry_count = show_entry_count
         self.reaction_emojis = [
             ('\N{BLACK LEFT-POINTING TRIANGLE}', self.previous_page),
             ('\N{BLACK RIGHT-POINTING TRIANGLE}', self.next_page),
-            ('\U000023F9', self.stop_pages)
+            ('\N{BLACK SQUARE FOR STOP}', self.stop_pages)
         ]
-        guild = self.message.guild
-        if guild is not None:
-            self.permissions = self.message.channel.permissions_for(guild.me)
+
+        # Added for NabBot
+        self.header = kwargs.get("header", "")
+
+        self.current_page = 1
+        if ctx.guild is not None:
+            self.permissions = self.channel.permissions_for(ctx.guild.me)
         else:
-            self.permissions = discord.Permissions.all()
+            self.permissions = self.channel.permissions_for(ctx.bot.user)
 
         if not self.permissions.embed_links:
             raise CannotPaginate('Bot does not have embed links permission.')
 
-        if not self.permissions.add_reactions:
-            raise CannotPaginate('Bot does not have add reactions permission.')
+        if not self.permissions.send_messages:
+            raise CannotPaginate('Bot cannot send messages.')
 
-        if not self.permissions.read_message_history:
-            raise CannotPaginate('Bot does not have read message history permission.')
+        if self.paginating:
+            if not self.permissions.add_reactions:
+                raise CannotPaginate('Bot does not have add reactions permission.')
+
+            if not self.permissions.read_message_history:
+                raise CannotPaginate('Bot does not have read message history permission.')
 
     def get_page(self, page):
         base = (page - 1) * self.per_page
@@ -94,30 +96,31 @@ class Paginator:
         self.current_page = page
         entries = self.get_page(page)
         p = []
-        if self.numerate:
-            for t in enumerate(entries, 1 + ((page - 1) * self.per_page)):
-                p.append('%s. %s' % t)
-        else:
-            for t in entries:
-                p.append(t)
-        self.embed.set_footer(text='Page %s/%s (%s entries)' % (page, self.maximum_pages, len(self.entries)))
-        if self.title:
-            self.embed.title = self.title
+        for index, entry in enumerate(entries, 1 + ((page - 1) * self.per_page)):
+            p.append(f'{index}. {entry}')
 
-        self.embed.description = self.description+"\n"+'\n'.join(p)
+        if self.maximum_pages > 1:
+            if self.show_entry_count:
+                text = f'Page {page}/{self.maximum_pages} ({len(self.entries)} entries)'
+            else:
+                text = f'Page {page}/{self.maximum_pages}'
+
+            self.embed.set_footer(text=text)
+
         if not self.paginating:
-            return await self.message.channel.send(embed=self.embed)
-            
+            self.embed.description = '\n'.join(p)
+            return await self.channel.send(embed=self.embed)
+
         if not first:
-            return await self.message.edit(embed=self.embed)
+            self.embed.description = '\n'.join(p)
+            await self.message.edit(embed=self.embed)
+            return
 
-        # verify we can actually use the pagination session
-        if not self.permissions.add_reactions:
-            raise CannotPaginate('Bot does not have add reactions permission.')
-        if not self.permissions.read_message_history:
-            raise CannotPaginate("Bot does not have read message history permission.")
-
-        self.message = await self.message.channel.send(embed=self.embed)
+        # Added for nabBot
+        self.embed.description = self.header + "\n" + '\n'.join(p)
+        # Original
+        # self.embed.description = '\n'.join(p)
+        self.message = await self.channel.send(embed=self.embed)
         for (reaction, _) in self.reaction_emojis:
             if self.maximum_pages == 2 and reaction in ('\u23ed', '\u23ee'):
                 # no |<< or >>| buttons if we only have two pages
@@ -125,7 +128,7 @@ class Paginator:
                 # it from the default set
                 continue
             # Stop reaction doesn't work on PMs so do not add it
-            if is_private(self.message.channel) and reaction == '\U000023F9':
+            if is_private(self.message.channel) and reaction == '\N{BLACK SQUARE FOR STOP}':
                 continue
             await self.message.add_reaction(reaction)
 
@@ -162,14 +165,13 @@ class Paginator:
                 await self.message.clear_reactions()
         except:
             pass
-        await self.show_page(1)
         self.paginating = False
 
     def react_check(self, reaction: discord.Reaction, user: discord.User):
-        if reaction.message.id != self.message.id:
+        if user is None or user.id != self.author.id:
             return False
 
-        if (not is_private(self.message.channel) and user.id != self.author.id) or user.id == self.bot.user.id:
+        if reaction.message.id != self.message.id:
             return False
 
         for (emoji, func) in self.reaction_emojis:
@@ -180,35 +182,35 @@ class Paginator:
 
     async def paginate(self):
         """Actually paginate the entries and run the interactive loop if necessary."""
-        await self.show_page(1, first=True)
+        first_page = self.show_page(1, first=True)
+        if not self.paginating:
+            await first_page
+        else:
+            self.bot.loop.create_task(first_page)
 
         while self.paginating:
             try:
-                react = await self.bot.wait_for("reaction_add", check=self.react_check, timeout=120.0)
-                try:
-                    # Can't remove other users reactions in DMs
-                    if not is_private(self.message.channel):
-                        await self.message.remove_reaction(react[0].emoji, react[1])
-                except Exception as e:
-                    pass
+                reaction, user = await self.bot.wait_for("reaction_add", check=self.react_check, timeout=120.0)
             except asyncio.TimeoutError:
-                await self.first_page()
                 self.paginating = False
                 try:
-                    # Can't remove other users reactions in DMs
-                    if not is_private(self.message.channel):
-                        await self.message.clear_reactions()
+                    await self.message.clear_reactions()
                 except:
                     pass
                 finally:
                     break
 
+            try:
+                await self.message.remove_reaction(reaction, user)
+            except:
+                pass
+
             await self.match()
 
 
-class VocationPaginator(Paginator):
-    def __init__(self, bot: discord.Client, *, message: discord.Message, entries, vocations, **kwargs):
-        super().__init__(bot, message=message, entries=entries, **kwargs)
+class VocationPages(Pages):
+    def __init__(self, ctx: commands.Context, *, entries, vocations, **kwargs):
+        super().__init__(ctx, entries=entries, **kwargs)
         present_vocations = []
         # Only add vocation filters for the vocations present
         if any(v.lower() in DRUID for v in vocations):

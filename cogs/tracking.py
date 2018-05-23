@@ -18,7 +18,7 @@ from utils.discord import is_private, get_user_avatar, FIELD_VALUE_LIMIT, EMBED_
 from utils.general import global_online_list, log, join_list, is_numeric
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, level_messages, split_message
 from utils.emoji import EMOJI
-from utils.paginator import Paginator, CannotPaginate, VocationPaginator
+from utils.pages import Pages, CannotPaginate, VocationPages
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
     get_voc_abb, get_character_url, url_guild, \
     get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_voc_abb_and_emoji, get_share_range
@@ -869,8 +869,8 @@ class Tracking:
                 else:
                     await ctx.send("There is no one online from Discord.")
                 return
-            pages = VocationPaginator(self.bot, message=ctx.message, entries=entries, vocations=vocations,
-                                      per_page=per_page, title="Users online")
+            pages = VocationPages(ctx, entries=entries, vocations=vocations, per_page=per_page)
+            pages.embed.title= "Users online"
             try:
                 await pages.paginate()
             except CannotPaginate as e:
@@ -1011,8 +1011,9 @@ class Tracking:
                 return
         finally:
             c.close()
-        pages = VocationPaginator(self.bot, message=ctx.message, entries=online_entries + entries, per_page=per_page,
-                                  title=title, vocations=online_vocations + vocations)
+        pages = VocationPages(ctx, entries=online_entries + entries, per_page=per_page,
+                              vocations=online_vocations + vocations)
+        pages.embed.title = title
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -1290,13 +1291,14 @@ class Tracking:
             entries = [f"[{r['name']}]({get_character_url(r['name'])})" for r in results]
         finally:
             c.close()
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, title="Watched Characters")
+        pages = Pages(ctx, entries=entries)
+        pages.embed.title = "Watched Characters"
         try:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @watched.command(name="listguilds", aliases=["guilds", "guildlist", "listguilds"])
+    @watched.command(name="listguilds", aliases=["guilds", "guildlist", "listguild"])
     @commands.guild_only()
     @checks.is_admin()
     async def watched_list_guild(self, ctx):
@@ -1318,7 +1320,8 @@ class Tracking:
             entries = [f"[{r['name']}]({url_guild+urllib.parse.quote(r['name'])})" for r in results]
         finally:
             c.close()
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, title="Watched Guilds")
+        pages = Pages(ctx, entries=entries)
+        pages.embed.title = "Watched Guilds"
         try:
             await pages.paginate()
         except CannotPaginate as e:

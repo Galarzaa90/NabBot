@@ -9,7 +9,7 @@ from nabbot import NabBot
 from utils import checks
 from utils.database import userDatabase
 from utils.discord import is_private
-from utils.paginator import Paginator, CannotPaginate
+from utils.pages import Pages, CannotPaginate
 
 
 class Mod:
@@ -112,7 +112,8 @@ class Mod:
             await ctx.send("There are no unregistered users.")
             return
 
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, title="Unregistered members", per_page=10)
+        pages = Pages(ctx, entries=entries, per_page=10)
+        pages.embed.title = "Unregistered members"
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -151,7 +152,8 @@ class Mod:
         if not entries:
             await ctx.send("There are no ignored channels in this server.")
             return
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, title="Ignored channels")
+        pages = Pages(ctx, entries=entries)
+        pages.embed.title = "Ignored channels"
         try:
             await pages.paginate()
         except CannotPaginate as e:
