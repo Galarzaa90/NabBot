@@ -240,7 +240,7 @@ class Tracking:
                             # This server's watched channel is not available to the bot anymore.
                             continue
                         # Get watched list
-                        c.execute("SELECT * FROM watched_list WHERE server_id = ?", (server,))
+                        c.execute("SELECT * FROM watched_list WHERE server_id = ? ORDER BY is_guild, name", (server,))
                         results = c.fetchall()
                         if not results:
                             # List is empty
