@@ -253,10 +253,11 @@ class Tracking:
                             if watched["is_guild"]:
                                 try:
                                     guild = await get_guild(watched["name"])
-                                    # Todo: Remove deleted guilds from list to avoid unnecessary checks, notify
-                                    if guild is None:
-                                        continue
                                 except NetworkError:
+                                    continue
+                                # If the guild doesn't exist, add it as empty to show it was disbanded
+                                if guild is None:
+                                    guild_online[watched["name"]] = None
                                     continue
                                 # If there's at least one member online, add guild to list
                                 if len(guild.online):
@@ -280,6 +281,9 @@ class Tracking:
                             content = "\n".join(items)
                             for guild, members in guild_online.items():
                                 content += f"\nGuild: **{guild}**\n"
+                                if members is None:
+                                    content += "\t*Guild was disbanded.*"
+                                    continue
                                 content += "\n".join(
                                     [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
                                      for x in members])
