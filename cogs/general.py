@@ -17,7 +17,7 @@ from utils.database import userDatabase, tibiaDatabase, get_server_property
 from utils.discord import is_lite_mode, get_region_string, get_role_list, get_role, is_private, clean_string
 from utils.general import parse_uptime, TimeString, single_line, is_numeric, log
 from utils.emoji import EMOJI
-from utils.paginator import Paginator, CannotPaginate, VocationPaginator
+from utils.pages import Pages, CannotPaginate, VocationPages
 from utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50
@@ -242,7 +242,8 @@ class General:
             per_page = 20
         else:
             per_page = 5
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        pages = Pages(ctx, entries=entries, per_page=per_page)
+        pages.embed.title = title
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -272,8 +273,9 @@ class General:
             per_page = 20
         else:
             per_page = 5
-        pages = Paginator(self.bot, message=ctx.message, entries=role_members, per_page=per_page, title=title,
-                          color=role.colour)
+        pages = Pages(ctx, entries=role_members, per_page=per_page)
+        pages.embed.title = title
+        pages.embed.colour = role.colour
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -301,7 +303,7 @@ class General:
             per_page = 20
         else:
             per_page = 5
-        pages = Paginator(self.bot, message=ctx.message, entries=entries, per_page=per_page, title=title)
+        pages = Pages(ctx, entries=entries, per_page=per_page, title=title)
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -1143,8 +1145,9 @@ class General:
             else:
                 author_name = author.display_name
             author_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
-        pages = VocationPaginator(self.bot, message=ctx.message, entries=entries, per_page=15, title=event["name"],
-                                  author=author_name, author_icon=author_icon, vocations=vocations)
+        pages = VocationPages(ctx, entries=entries, per_page=15, vocations=vocations)
+        pages.embed.title = event["name"]
+        pages.embed.set_author(name=author_name, icon_url=author_icon)
         try:
             await pages.paginate()
         except CannotPaginate as e:

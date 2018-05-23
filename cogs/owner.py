@@ -565,7 +565,7 @@ class Owner:
             if not comp(package[1], StrictVersion(version), StrictVersion(package[2])):
                 value = f"{EMOJI[':x:']}v{version}\n`At least v{package[2]} expected`"
             elif not comp(package[3], StrictVersion(version), StrictVersion(package[4])):
-                value = f"{EMOJI[':warning:']}v{version}\n`Only v{package[4]} and below tested`"
+                value = f"{EMOJI[':warning:']}v{version}\n`Only below v{package[4]} tested`"
             else:
                 value = f"{EMOJI[':white_check_mark:']}v{version}"
             embed.add_field(name=package[0], value=value)
