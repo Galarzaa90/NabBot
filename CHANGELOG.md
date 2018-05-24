@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 1.1.0 (2018-05-23)
+## Version 1.1.0 (2018-05-24)
 - New command: `/leave`, to make the bot leave a discord server.
 - New command: `/versions`, shows the current version and the version of dependencies.
 - New command: `/searchworld`, to show filterable list of players online in a server.
