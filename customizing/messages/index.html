@@ -97,7 +97,7 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="search" autocomplete="off">
     <label class="md-overlay" data-md-component="overlay" for="drawer"></label>
     
-      <a href="#level-up-messages" tabindex="1" class="md-skip">
+      <a href="#messages" tabindex="1" class="md-skip">
         Skip to content
       </a>
     
@@ -218,6 +218,8 @@
         
       
         
+      
+        
   
   
     <li class="md-tabs__item">
@@ -306,6 +308,18 @@
 
 
   <li class="md-nav__item">
+    <a href="../../changelog/" title="Changelog" class="md-nav__link">
+      Changelog
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
     <a href="../../install/" title="Install Guide" class="md-nav__link">
       Install Guide
     </a>
@@ -343,13 +357,13 @@
 
   <li class="md-nav__item md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-5" type="checkbox" id="nav-5">
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
     
-    <label class="md-nav__link" for="nav-5">
+    <label class="md-nav__link" for="nav-6">
       Commands
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-5">
+      <label class="md-nav__title" for="nav-6">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -477,13 +491,13 @@
 
   <li class="md-nav__item md-nav__item--active md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6" checked>
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7" checked>
     
-    <label class="md-nav__link" for="nav-6">
+    <label class="md-nav__link" for="nav-7">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-6">
+      <label class="md-nav__title" for="nav-7">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -512,6 +526,8 @@
     
     <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="toc">
     
+      
+    
     
       <label class="md-nav__link md-nav__link--active" for="toc">
         Messages
@@ -524,6 +540,8 @@
       
 <nav class="md-nav md-nav--secondary">
   
+  
+    
   
   
     <label class="md-nav__title" for="toc">Table of contents</label>
@@ -561,6 +579,18 @@
   </li>
 
         
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../cogs/" title="Cogs" class="md-nav__link">
+      Cogs
+    </a>
+  </li>
+
+        
       </ul>
     </nav>
   </li>
@@ -579,6 +609,8 @@
                     
 <nav class="md-nav md-nav--secondary">
   
+  
+    
   
   
     <label class="md-nav__title" for="toc">Table of contents</label>
@@ -622,9 +654,8 @@
               
                 
                 
-                  <h1>Messages</h1>
-                
-                <p>One of NabBot's main features is the ability to announce when registered characters level up and <del>make fun</del> announce deaths.</p>
+                <h1 id="messages">Messages<a class="headerlink" href="#messages" title="Permanent link">&para;</a></h1>
+<p>One of NabBot's main features is the ability to announce when registered characters level up and <del>make fun</del> announce deaths.</p>
 <p>These messages can be found on <code class="codehilite">utils/messages.py</code>, in the variables <code class="codehilite">level_messages</code>, <code class="codehilite">death_messages_monster</code> and <code class="codehilite">death_messages_player</code>.</p>
 <p>Each list item is made of another list representing each message. The first element, is a number representing the message's weight, or chances to appear.
 The second element is the message itself, with some formatting placeholders that are dynamically replaced.
@@ -721,6 +752,20 @@ This message is for deaths caused by souleaters.</p></details><h2 id="pvp-death-
             </div>
           </a>
         
+        
+          <a href="../cogs/" title="Cogs" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Next
+                </span>
+                Cogs
+              </span>
+            </div>
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-forward md-footer-nav__button"></i>
+            </div>
+          </a>
         
       </nav>
     </div>

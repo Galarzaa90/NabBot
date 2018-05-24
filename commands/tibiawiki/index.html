@@ -97,7 +97,7 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="search" autocomplete="off">
     <label class="md-overlay" data-md-component="overlay" for="drawer"></label>
     
-      <a href="#item" tabindex="1" class="md-skip">
+      <a href="#tibiawiki-commands" tabindex="1" class="md-skip">
         Skip to content
       </a>
     
@@ -218,6 +218,8 @@
         
       
         
+      
+        
   
   
     <li class="md-tabs__item">
@@ -306,6 +308,18 @@
 
 
   <li class="md-nav__item">
+    <a href="../../changelog/" title="Changelog" class="md-nav__link">
+      Changelog
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
     <a href="../../install/" title="Install Guide" class="md-nav__link">
       Install Guide
     </a>
@@ -345,13 +359,13 @@
 
   <li class="md-nav__item md-nav__item--active md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-5" type="checkbox" id="nav-5" checked>
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6" checked>
     
-    <label class="md-nav__link" for="nav-5">
+    <label class="md-nav__link" for="nav-6">
       Commands
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-5">
+      <label class="md-nav__title" for="nav-6">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -404,6 +418,8 @@
     
     <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="toc">
     
+      
+    
     
       <label class="md-nav__link md-nav__link--active" for="toc">
         TibiaWiki commands
@@ -416,6 +432,8 @@
       
 <nav class="md-nav md-nav--secondary">
   
+  
+    
   
   
     <label class="md-nav__title" for="toc">Table of contents</label>
@@ -559,13 +577,13 @@
 
   <li class="md-nav__item md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
     
-    <label class="md-nav__link" for="nav-6">
+    <label class="md-nav__link" for="nav-7">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-6">
+      <label class="md-nav__title" for="nav-7">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -595,6 +613,18 @@
   </li>
 
         
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../customizing/cogs/" title="Cogs" class="md-nav__link">
+      Cogs
+    </a>
+  </li>
+
+        
       </ul>
     </nav>
   </li>
@@ -613,6 +643,8 @@
                     
 <nav class="md-nav md-nav--secondary">
   
+  
+    
   
   
     <label class="md-nav__title" for="toc">Table of contents</label>
@@ -690,9 +722,8 @@
               
                 
                 
-                  <h1>TibiaWiki commands</h1>
-                
-                <p>All the commands that use information from TibiaWiki.<br />
+                <h1 id="tibiawiki-commands">TibiaWiki commands<a class="headerlink" href="#tibiawiki-commands" title="Permanent link">&para;</a></h1>
+<p>All the commands that use information from TibiaWiki.<br />
 Information is read from <code class="codehilite">tibia_database.sql</code>, which is generated from <a href="https://github.com/Galarzaa90/tibiawiki-sql">tibiawiki-sql</a>.</p>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
@@ -711,7 +742,7 @@ For longer replies, the command must be used in the ask channel or via private m
 <strong>/item dragon scale mail</strong><br />
 <img alt="image" src="../../assets/images/commands/item_2.png" /></p></details><hr />
 <h2 id="monster">/monster<a class="headerlink" href="#monster" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> /monster <em>name</em>
+<p><strong>Syntax:</strong> /monster <em>name</em><br />
 <strong>Other aliases:</strong> /mob, /creature, /mon</p>
 <p>Displays information about a specific creature. Health points, experience, resistances and weaknesses, loot drops, etc.</p>
 <p>If used on the ask-channel or private message, the information displayed is longer.</p>
@@ -728,7 +759,7 @@ Information given is shorter unless it's used in the ask channel or private mess
 <h2 id="npc-name">/npc <em>name</em><a class="headerlink" href="#npc-name" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> /npc <em>name</em><br />
 <strong>Other aliases:</strong> /npcs</p>
-<p>Shows information about an NPC. What items do they sell and buy, where are they found and travel destinations.
+<p>Shows information about a NPC. What items do they sell and buy, where are they found and travel destinations.
 More information is displayed if used on the ask channel or on private messages.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/npc rashid</strong> <em>(On a regular channel)</em><br />
 <img alt="image" src="../../assets/images/commands/npc_1.png" /></p><p><strong>/npc captain fearless</strong>  <em>(On an ask channel or private message)</em><br />

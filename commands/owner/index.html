@@ -97,7 +97,7 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="search" autocomplete="off">
     <label class="md-overlay" data-md-component="overlay" for="drawer"></label>
     
-      <a href="#restart" tabindex="1" class="md-skip">
+      <a href="#owner-commands" tabindex="1" class="md-skip">
         Skip to content
       </a>
     
@@ -218,6 +218,8 @@
         
       
         
+      
+        
   
   
     <li class="md-tabs__item">
@@ -306,6 +308,18 @@
 
 
   <li class="md-nav__item">
+    <a href="../../changelog/" title="Changelog" class="md-nav__link">
+      Changelog
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
     <a href="../../install/" title="Install Guide" class="md-nav__link">
       Install Guide
     </a>
@@ -345,13 +359,13 @@
 
   <li class="md-nav__item md-nav__item--active md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-5" type="checkbox" id="nav-5" checked>
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6" checked>
     
-    <label class="md-nav__link" for="nav-5">
+    <label class="md-nav__link" for="nav-6">
       Commands
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-5">
+      <label class="md-nav__title" for="nav-6">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -464,6 +478,8 @@
     
     <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="toc">
     
+      
+    
     
       <label class="md-nav__link md-nav__link--active" for="toc">
         Owner commands
@@ -476,6 +492,8 @@
       
 <nav class="md-nav md-nav--secondary">
   
+  
+    
   
   
     <label class="md-nav__title" for="toc">Table of contents</label>
@@ -544,6 +562,20 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#leave" title="/leave" class="md-nav__link">
+    /leave
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versions" title="/versions" class="md-nav__link">
+    /versions
+  </a>
+  
+</li>
+      
       
       
       
@@ -567,13 +599,13 @@
 
   <li class="md-nav__item md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
     
-    <label class="md-nav__link" for="nav-6">
+    <label class="md-nav__link" for="nav-7">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-6">
+      <label class="md-nav__title" for="nav-7">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -603,6 +635,18 @@
   </li>
 
         
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../customizing/cogs/" title="Cogs" class="md-nav__link">
+      Cogs
+    </a>
+  </li>
+
+        
       </ul>
     </nav>
   </li>
@@ -621,6 +665,8 @@
                     
 <nav class="md-nav md-nav--secondary">
   
+  
+    
   
   
     <label class="md-nav__title" for="toc">Table of contents</label>
@@ -689,6 +735,20 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#leave" title="/leave" class="md-nav__link">
+    /leave
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#versions" title="/versions" class="md-nav__link">
+    /versions
+  </a>
+  
+</li>
+      
       
       
       
@@ -706,9 +766,8 @@
               
                 
                 
-                  <h1>Owner commands</h1>
-                
-                <p>All commands can only be run by users in the <code class="codehilite">owner_ids</code> list or the bot's application owner.</p>
+                <h1 id="owner-commands">Owner commands<a class="headerlink" href="#owner-commands" title="Permanent link">&para;</a></h1>
+<p>All commands can only be run by users in the <code class="codehilite">owner_ids</code> list or the bot's application owner.</p>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
 <p>Words in italics are parameters.<br />
@@ -795,6 +854,28 @@ If all conditions are met, their entries will be merged into one.</p>
 <li>The new name must be a valid character in Tibia.com</li>
 <li>They must have the same vocation, not considering promotions.</li>
 </ul>
+<hr />
+<h2 id="leave">/leave<a class="headerlink" href="#leave" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax</strong>: /leave <em>server</em></p>
+<p>Makes the bot leave the specified server. The server name or its id must be provided.</p>
+<p>The bot will ask for confirmation and will show some information about the server to ensure you're choosing the correct server.</p>
+<p>Once the bot has left the server, it can only join back by using the authentication link.</p>
+<details class="summary"><summary>Example</summary><p><strong>/leave 159815897052086272</strong><br />
+<img alt="image" src="../../assets/images/commands/leave.png" /></p></details><hr />
+<h2 id="versions">/versions<a class="headerlink" href="#versions" title="Permanent link">&para;</a></h2>
+<p>Shows NabBot's version and the versions of all dependencies.</p>
+<p>This command can be useful to find out why the bot is not behaving as it should or for submitting bug reports.</p>
+<p>Currently, discord.py's version can't be controlled because an unreleased version is being used.
+This will change once <code class="codehilite">v1.0.0</code> is <del>finally</del> released.</p>
+<p>For every dependency, an emoji indicates if the requirement is met:</p>
+<ul>
+<li>✅ Indicates that the installed version is in the required range.</li>
+<li>❌ Indicates that the installed version is under the required range. This means some features may not be available.</li>
+<li>❗ Indicates that the installed version is higher than the required range.
+  This is usually not as bad as the previous case, but there may be some incompatibility issues.</li>
+</ul>
+<details class="summary"><summary>Example</summary><p><strong>/versions</strong><br />
+<img alt="image" src="../../assets/images/commands/versions.png" /></p></details>
                 
                   
                 

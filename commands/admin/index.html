@@ -97,7 +97,7 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="search" autocomplete="off">
     <label class="md-overlay" data-md-component="overlay" for="drawer"></label>
     
-      <a href="#diagnose" tabindex="1" class="md-skip">
+      <a href="#admin-commands" tabindex="1" class="md-skip">
         Skip to content
       </a>
     
@@ -218,6 +218,8 @@
         
       
         
+      
+        
   
   
     <li class="md-tabs__item">
@@ -306,6 +308,18 @@
 
 
   <li class="md-nav__item">
+    <a href="../../changelog/" title="Changelog" class="md-nav__link">
+      Changelog
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
     <a href="../../install/" title="Install Guide" class="md-nav__link">
       Install Guide
     </a>
@@ -345,13 +359,13 @@
 
   <li class="md-nav__item md-nav__item--active md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-5" type="checkbox" id="nav-5" checked>
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6" checked>
     
-    <label class="md-nav__link" for="nav-5">
+    <label class="md-nav__link" for="nav-6">
       Commands
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-5">
+      <label class="md-nav__title" for="nav-6">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -452,6 +466,8 @@
     
     <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="toc">
     
+      
+    
     
       <label class="md-nav__link md-nav__link--active" for="toc">
         Admin commands
@@ -465,13 +481,15 @@
 <nav class="md-nav md-nav--secondary">
   
   
+    
+  
   
     <label class="md-nav__title" for="toc">Table of contents</label>
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#diagnose" title="/diagnose" class="md-nav__link">
-    /diagnose
+  <a href="#checkchannel" title="/checkchannel" class="md-nav__link">
+    /checkchannel
   </a>
   
 </li>
@@ -560,13 +578,13 @@
 
   <li class="md-nav__item md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
     
-    <label class="md-nav__link" for="nav-6">
+    <label class="md-nav__link" for="nav-7">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-6">
+      <label class="md-nav__title" for="nav-7">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -596,6 +614,18 @@
   </li>
 
         
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../customizing/cogs/" title="Cogs" class="md-nav__link">
+      Cogs
+    </a>
+  </li>
+
+        
       </ul>
     </nav>
   </li>
@@ -615,13 +645,15 @@
 <nav class="md-nav md-nav--secondary">
   
   
+    
+  
   
     <label class="md-nav__title" for="toc">Table of contents</label>
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#diagnose" title="/diagnose" class="md-nav__link">
-    /diagnose
+  <a href="#checkchannel" title="/checkchannel" class="md-nav__link">
+    /checkchannel
   </a>
   
 </li>
@@ -692,24 +724,18 @@
               
                 
                 
-                  <h1>Admin commands</h1>
-                
-                <p>This commands can only be used by the server's owner and users with the <code class="codehilite">Administrator</code> permission.</p>
+                <h1 id="admin-commands">Admin commands<a class="headerlink" href="#admin-commands" title="Permanent link">&para;</a></h1>
+<p>This commands can only be used by the server's owner and users with the <code class="codehilite">Administrator</code> permission.</p>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
 <p>Words in italics are parameters.<br />
 Parameters enclosed in brackets <code class="codehilite">[]</code> are optional.</p>
 </div>
-<h2 id="diagnose">/diagnose<a class="headerlink" href="#diagnose" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> /diagnose [<em>name</em>]</p>
-<p>Checks the server and every channel's permissions to check if the bot has the needed permissions to work correctly.
-Also checks if the ask channel and server log channels are set correctly.</p>
-<p>If no serverName is specified, it check's the current server.
-If a server name is specified, it checks the permissions for that server. 
-The command can't be used without a server name on private messages.</p>
-<p>Note that you must be the owner of the server in order to check. Bot owner can check any server the bot is in.  </p>
-<details class="summary"><summary>Examples</summary><p><strong>/diagnose</strong> <em>(on a server called Nab Bot)</em><br />
-<img alt="image" src="../../assets/images/commands/diagnose.png" /></p></details><hr />
+<h2 id="checkchannel">/checkchannel<a class="headerlink" href="#checkchannel" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> /checkchannel [<em>channel</em>]</p>
+<p>Checks if the current channel or the specified channel has the correct permissions for the bot to work fine.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/checkchannel</strong><br />
+<img alt="image" src="../../assets/images/commands/checkchannel.png" /></p></details><hr />
 <h2 id="setworld">/setworld<a class="headerlink" href="#setworld" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> /setworld [<em>world</em>] </p>
 <p>Sets the tibia world this server will track. This lets users in this servers add their characters.</p>
