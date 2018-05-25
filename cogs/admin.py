@@ -15,7 +15,7 @@ from utils.tibia import tibia_worlds, get_character, NetworkError, Character, ge
 
 
 class Admin:
-    """Commands for server owners and admins"""
+    """Commands for server owners and admins."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
@@ -23,7 +23,10 @@ class Admin:
     @checks.is_admin()
     @commands.guild_only()
     async def checkchannel(self, ctx: commands.Context, *, channel: discord.TextChannel = None):
-        """Diagnose the bots perm"""
+        """Checks the channel's permissions.
+
+        Makes sure that the bot has all the required permissions to work properly.
+        If no channel is specified, the current one is checked."""
         if channel is None:
             channel = ctx.channel
         permissions = channel.permissions_for(ctx.me)  # type: discord.Permissions
@@ -64,11 +67,13 @@ class Admin:
     @commands.guild_only()
     @checks.is_admin()
     @checks.is_not_lite()
-    @commands.command(name="setworld")
+    @commands.command(name="setworld", aliases="trackworld")
     async def set_world(self, ctx: commands.Context, *, world: str = None):
-        """Sets this server's Tibia world.
+        """Sets or checks the tracked world.
 
-        If no world is passed, it shows this server's current assigned world."""
+        The tracked world is the Tibia world that this discord server is following.
+        Only characters in that world will be registered.
+        If no world is provided, it will check the currently set world."""
 
         current_world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
@@ -125,9 +130,9 @@ class Admin:
     @checks.is_not_lite()
     @commands.command(name="setwelcome")
     async def set_welcome(self, ctx, *, message: str = None):
-        """Changes the messages members get pmed when joining
+        """Set the messages members get PMed when joining.
 
-        A part of the message is already fixed and cannot be changed, but the message can be extended
+        A part of the message is already fixed and cannot be changed, but the message can be extended.
 
         Say "clear" to clear the current message.
 
@@ -197,7 +202,7 @@ class Admin:
         set_server_property("welcome", ctx.guild.id, message)
         await ctx.send("This server's welcome message has been changed successfully.")
 
-    @commands.command(name="seteventchannel", aliases=["setnewschannel", "seteventschannel"])
+    @commands.command(name="seteventchannel", aliases=["setnewschannel"])
     @checks.is_admin()
     @commands.guild_only()
     @checks.is_not_lite()
@@ -279,13 +284,12 @@ class Admin:
                        "If the channel becomes unavailable for me in any way, I will try to use the highest channel"
                        " I can see on the list.")
 
-    @commands.command(name="setlevelsdeathschannel", aliases=["setlevelschannel", "setdeathschannel", "setlevelchannel"
-                                                              "setdeathchannel", "setleveldeathchannel"])
+    @commands.command(name="setlevelsdeathschannel", aliases=["setlevelschannel", "setdeathschannel"])
     @checks.is_admin()
     @commands.guild_only()
     @checks.is_not_lite()
     async def set_levels_deaths_channel(self, ctx: commands.Context, *, name: str = None):
-        """Changes the channel used for level up and deaths
+        """Sets the channel used for level up and deaths.
 
         If no channel is set, the bot will use the top channel it can write on."""
         def check(m):
@@ -366,10 +370,9 @@ class Admin:
     @checks.is_admin()
     @commands.guild_only()
     async def add_char(self, ctx, *, params):
-        """Registers a character to a user
+        """Registers a character to a user.
 
-        The syntax is:
-        /addchar user,character"""
+        params -> user,character"""
         params = params.split(",")
         if len(params) != 2:
             await ctx.send("The correct syntax is: ``/addchar username,character``")
@@ -458,8 +461,7 @@ class Admin:
 
         If a character is hidden, only that character will be added. Characters in other worlds are skipped.
 
-        The syntax is the following:
-        /addacc user,char"""
+        params -> user,character"""
         params = params.split(",")
         if len(params) != 2:
             await ctx.send("The correct syntax is: ``/addacc username,character``")
@@ -545,7 +547,6 @@ class Admin:
 
         reply = ""
         log_reply = dict().fromkeys([server.id for server in target_guilds], "")
-        print(log_reply)
         if len(existent) > 0:
             reply += "\nThe following characters were already registered to @{1}: {0}" \
                 .format(join_list(existent, ", ", " and "), target.display_name)
@@ -607,10 +608,7 @@ class Admin:
     @checks.is_admin()
     @commands.guild_only()
     async def remove_char(self, ctx, *, name):
-        """Removes a registered character.
-
-        The syntax is:
-        /removechar name"""
+        """Removes a registered character."""
         # This could be used to remove deleted chars so we don't need to check anything
         # Except if the char exists in the database...
         c = userDatabase.cursor()
