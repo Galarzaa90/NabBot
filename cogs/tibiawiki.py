@@ -16,24 +16,27 @@ from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, g
 
 
 class TibiaWiki:
-    """TibiaWiki related commands."""
+    """Information about Tibia, provided by TibiaWiki"""
 
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    @commands.command(aliases=['checkprice', 'itemprice'])
-    async def item(self, ctx, *, name: str = None):
-        """Shows an item's information
+    async def __error(self, ctx, error):
+        if isinstance(error, commands.UserInputError):
+            cmd = ctx.bot.get_command('help')
+            command = ctx.command.qualified_name
+            await ctx.invoke(cmd, command=command)
 
-        Shows the item's sprite, attributes, buy and sell offers and creature drops."""
+    @commands.command(aliases=["items", "itemprice"])
+    async def item(self, ctx, *, name: str):
+        """Displays information about an item.
+
+        Shows who buys and sells the item, what creatures drops it and many attributes."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if name is None:
-            await ctx.send("Tell me the name of the item you want to search.")
-            return
         item = get_item(name)
         if item is None:
             await ctx.send("I couldn't find an item with that name.")
@@ -56,11 +59,11 @@ class TibiaWiki:
         else:
             await ctx.send(embed=embed)
 
-    @commands.command(aliases=['mon', 'mob', 'creature'])
-    async def monster(self, ctx, *, name: str = None):
-        """Shows a monster's information
+    @commands.command(aliases=['mob', 'creature'])
+    async def monster(self, ctx, *, name: str):
+        """Displays information about a monster.
 
-        Shows the monster's image, attributes and loot"""
+        Shows the monster's attributes, resistances, loot and more."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -106,17 +109,13 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @commands.command(aliases=["npcs"])
-    async def npc(self, ctx, *, name: str = None):
-        """Shows information about a NPC
+    async def npc(self, ctx, *, name: str):
+        """Displays information about a NPC.
 
-        Shows a NPC's picture, trade offers and location."""
+        Shows the NPC's item offers, locations and more."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if name is None:
-            await ctx.send("Tell me the name of a NPC.")
             return
 
         npc = get_npc(name)
@@ -150,21 +149,17 @@ class TibiaWiki:
         else:
             await ctx.send(embed=embed)
 
-    @commands.command()
-    async def spell(self, ctx, *, name: str = None):
-        """Shows information about a spell
+    @commands.command(aliases=["spells"])
+    async def spell(self, ctx, *, name_or_words: str):
+        """Displays information about a spell.
 
-        Shows a spell's icon, general information, price, npcs that teach it."""
+        Shows the spell's attributes, NPCs that teach it and more."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if name is None:
-            await ctx.send("Tell me the name or words of a spell.")
-            return
-
-        spell = get_spell(name)
+        spell = get_spell(name_or_words)
 
         if spell is None:
             await ctx.send("I don't know any spell with that name or words.")
@@ -187,17 +182,13 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @commands.command(aliases=["achiev"])
-    async def achievement(self, ctx, *, name: str = None):
-        """Shows an achievement's information
+    async def achievement(self, ctx, *, name: str):
+        """Displays an achievement's information.
 
         Shows the achievement's grade, points, description, and instructions on how to unlock."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if name is None:
-            await ctx.send("Tell me the name of the achievement you want to check.")
             return
 
         achievement = get_achievement(name)
@@ -222,11 +213,11 @@ class TibiaWiki:
 
         await ctx.send(embed=embed)
 
-    @commands.group(alises=["keys"], invoke_without_command=True, case_insensitive=True)
-    async def key(self, ctx, number: str = None):
-        """Shows information about a key
+    @commands.group(aliases=["keys"], invoke_without_command=True, case_insensitive=True)
+    async def key(self, ctx, number: str):
+        """Displays information about a key.
 
-        Shows the key's known names, how to obtain it and its uses"""
+        Shows the key's known names, how to obtain it and its uses."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -259,17 +250,13 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @key.command(name="search")
-    async def key_search(self, ctx, *, term: str = None):
-        """Searches for a key by keywords
+    async def key_search(self, ctx, *, term: str):
+        """Searches for a key by keywords.
 
         Search for matches on the key's names, location, origin or uses."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if term is None:
-            await ctx.send("Tell me what do you want to look for.")
             return
 
         keys = search_key(term)

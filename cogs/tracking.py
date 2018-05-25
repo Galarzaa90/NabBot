@@ -18,7 +18,7 @@ from utils.discord import is_private, get_user_avatar, FIELD_VALUE_LIMIT, EMBED_
 from utils.general import global_online_list, log, join_list, is_numeric
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, level_messages, split_message
 from utils.emoji import EMOJI
-from utils.pages import Pages, CannotPaginate, VocationPages
+from utils.paginator import Pages, CannotPaginate, VocationPages
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
     get_voc_abb, get_character_url, url_guild, \
     get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_voc_abb_and_emoji, get_share_range

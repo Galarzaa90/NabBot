@@ -17,7 +17,7 @@ from utils.database import userDatabase, tibiaDatabase, get_server_property
 from utils.discord import is_lite_mode, get_region_string, get_role_list, get_role, is_private, clean_string
 from utils.general import parse_uptime, TimeString, single_line, is_numeric, log
 from utils.emoji import EMOJI
-from utils.pages import Pages, CannotPaginate, VocationPages
+from utils.paginator import Pages, CannotPaginate, VocationPages, HelpPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50
@@ -110,8 +110,30 @@ class General:
             await asyncio.sleep(20)
 
     # Bot commands
-    @commands.command(aliases=["commands"], hidden=True)
-    async def help(self, ctx, *commands: str):
+    @commands.command(name='help')
+    async def _help(self, ctx, *, command: str = None):
+        """Shows help about a command or the bot"""
+
+        try:
+            if command is None:
+                p = await HelpPaginator.from_bot(ctx)
+            else:
+                entity = self.bot.get_cog(command) or self.bot.get_command(command)
+
+                if entity is None:
+                    clean = command.replace('@', '@\u200b')
+                    return await ctx.send(f'Command or category "{clean}" not found.')
+                elif isinstance(entity, commands.Command):
+                    p = await HelpPaginator.from_command(ctx, entity)
+                else:
+                    p = await HelpPaginator.from_cog(ctx, entity)
+
+            await p.paginate()
+        except Exception as e:
+            await ctx.send(e)
+
+    @commands.command(name="oldhelp", hidden=True)
+    async def oldhelp(self, ctx, *commands: str):
         """Shows this message."""
         _mentions_transforms = {
             '@everyone': '@\u200beveryone',
