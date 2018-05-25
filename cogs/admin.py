@@ -67,7 +67,7 @@ class Admin:
     @commands.guild_only()
     @checks.is_admin()
     @checks.is_not_lite()
-    @commands.command(name="setworld", aliases="trackworld")
+    @commands.command(name="setworld", aliases=["trackworld"])
     async def set_world(self, ctx: commands.Context, *, world: str = None):
         """Sets or checks the tracked world.
 
