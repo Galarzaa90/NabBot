@@ -29,6 +29,12 @@ class General:
         self.events_announce_task = self.bot.loop.create_task(self.events_announce())
         self.game_update_task = self.bot.loop.create_task(self.game_update())
 
+    async def __error(self, ctx, error):
+        if isinstance(error, commands.UserInputError):
+            cmd = ctx.bot.get_command('help')
+            command = ctx.command.qualified_name
+            await ctx.invoke(cmd, command=command)
+
     async def game_update(self):
         """Updates the bot's status.
 
@@ -191,7 +197,11 @@ class General:
 
     @commands.command()
     async def choose(self, ctx, *choices: str):
-        """Chooses between multiple choices."""
+        """Chooses between multiple choices.
+
+        Each choice is separated by spaces. For choices that contain spaces surround it with quotes.
+        e.g. "Choice A" ChoiceB "Choice C"
+        """
         if choices is None:
             return
         user = ctx.author
@@ -199,11 +209,11 @@ class General:
 
     @commands.command()
     async def uptime(self, ctx):
-        """Shows how long the bot has been running"""
+        """Shows how long the bot has been running."""
         await ctx.send("I have been running for {0}.".format(parse_uptime(self.bot.start_time, True)))
 
     @commands.guild_only()
-    @commands.command(name="server", aliases=["serverinfo", "server_info"])
+    @commands.command(name="server", aliases=["serverinfo"])
     async def info_server(self, ctx):
         """Shows the server's information."""
         permissions = ctx.channel.permissions_for(ctx.me)
@@ -232,19 +242,19 @@ class General:
 
     @commands.guild_only()
     @commands.command()
-    async def roles(self, ctx: commands.Context, *, user_name: str = None):
-        """Shows a list of roles or a user's roles
+    async def roles(self, ctx: commands.Context, *, user: str = None):
+        """Shows a user's roles or a list of server roles.
 
-        If no user_name is specified, it shows a list of the server's role.
-        If user_name is specified, it shows a list of that user's roles."""
+        If a user is specified, it will list their roles.
+        If user is blank, I will list all the server's roles."""
 
-        if user_name is None:
+        if user is None:
             title = "Roles in this server"
             entries = [r.mention for r in get_role_list(ctx.guild)]
         else:
-            member = self.bot.get_member(user_name, ctx.guild)
+            member = self.bot.get_member(user, ctx.guild)
             if member is None:
-                await ctx.send("I don't see any user named **" + user_name + "**.")
+                await ctx.send("I don't see any user named **" + user + "**.")
                 return
             title = f"Roles for @{member.display_name}"
             entries = []
@@ -274,11 +284,8 @@ class General:
 
     @commands.guild_only()
     @commands.command()
-    async def role(self, ctx, *, name: str = None):
-        """Shows a list of members with that role"""
-        if name is None:
-            await ctx.send("You must tell me the name of a role.")
-            return
+    async def role(self, ctx, *, name: str):
+        """Shows a list of members with that role."""
         role = get_role(ctx.guild, role_name=name)
         if role is None:
             await ctx.send("There's no role with that name in here.")
@@ -306,7 +313,7 @@ class General:
     @commands.guild_only()
     @commands.command(aliases=["norole"])
     async def noroles(self, ctx):
-        """Shows a list of members with no roles"""
+        """Shows a list of members with no roles."""
 
         entries = []
 
@@ -333,7 +340,7 @@ class General:
 
     @commands.command()
     async def about(self, ctx):
-        """Shows information about the bot"""
+        """Shows information about the bot."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -400,15 +407,15 @@ class General:
 
     @commands.group(aliases=["event"], invoke_without_command=True, case_insensitive=True)
     @checks.is_not_lite()
-    async def events(self, ctx, event_id: int=0):
-        """Shows a list of current active events
+    async def events(self, ctx, event_id: int=None):
+        """Shows a list of current active events.
 
-        If a number is specified, it will show details for that event. Same as using /events info"""
+        If a number is specified, it will show details for that event. Same as using `events info`"""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links and not is_private(ctx.channel):
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
-        if event_id != 0:
+        if event_id is not None:
             await ctx.invoke(self.bot.all_commands.get('events').get_command("info"), event_id)
             return
         # Time in seconds the bot will show past events
@@ -472,7 +479,7 @@ class General:
     @checks.is_not_lite()
     @events.command(name="info", aliases=["show", "details"])
     async def event_info(self, ctx, event_id: int):
-        """Displays an event's info
+        """Displays an event's info.
 
         The start time shown in the footer is always displayed in your device's timezone."""
         permissions = ctx.channel.permissions_for(ctx.me)
@@ -507,16 +514,18 @@ class General:
     @checks.is_not_lite()
     @events.command(name="add")
     async def event_add(self, ctx, starts_in: TimeString, *, params):
-        """Adds an event
+        """Creates a new event.
 
-        The syntax is:
-        /event add starts_in name
-        /event add starts_in name,description
+        params -> <name>[,description]
 
-        starts_in means in how much time the event will start since the moment of creation
+        starts_in is in how much time the event will start from the moment of creation.
+        This is done to avoid dealing with different timezones.
+        Just say in how many days/hours/minutes the event is starting.
+
         The time can be set using units such as 'd' for days, 'h' for hours, 'm' for minutes and 'd' for seconds.
-        You can embed links using this syntax: [link title](link url)
         Examples: 1d20h5m, 1d30m, 1h40m, 40m
+
+        The event description is optional, you can also use links like: [link title](link url)
         """
         now = time.time()
         creator = ctx.author.id
@@ -598,9 +607,11 @@ class General:
 
     @events.group(name="edit", invoke_without_command=True, case_insensitive=True)
     async def event_edit(self, ctx):
-        """Edits an event's name, description or time
-        
-        This command by itself does nothing, you must use one of its subcommands."""
+        """Edits an event.
+
+        Use one of the subcommands to edit the event.
+        Only the creator of the event or mods can edit an event.
+        Past events can't be edited."""
         await ctx.send("To edit an event try:\n```"
                        "/event edit name <id> [new_name]\n"
                        "/event edit description <id> [new_description]\n"
@@ -611,11 +622,8 @@ class General:
 
     @event_edit.command(name="name", aliases=["title"])
     @checks.is_not_lite()
-    async def event_edit_name(self, ctx, event_id: int = None, *, new_name=None):
-        """Edits an event's name
-
-        Only the creator of the event or mods can edit an event's name
-        Only upcoming events can be edited"""
+    async def event_edit_name(self, ctx, event_id: int, *, new_name):
+        """Edits an event's name."""
         if event_id is None:
             await ctx.send(f"You need to tell me the id of the event you want to edit."
                            f"\nLike this: `{ctx.message.content} 50` or `{ctx.message.content} 50 new_name`")
@@ -673,10 +681,7 @@ class General:
     @event_edit.command(name="description", aliases=["desc", "details"])
     @checks.is_not_lite()
     async def event_edit_description(self, ctx, event_id: int=None, *, new_description=None):
-        """Edits an event's description
-
-        Only the creator of the event or mods can edit an event's description
-        Only upcoming events can be edited"""
+        """Edits an event's description."""
         if event_id is None:
             await ctx.send(f"You need to tell me the id of the event you want to edit."
                            f"\nLike this: `{ctx.message.content} 50` or `{ctx.message.content} 50 new_description`")
