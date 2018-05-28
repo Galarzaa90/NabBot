@@ -5,7 +5,7 @@ import re
 from typing import Union
 
 import discord
-from discord.ext.commands import Context
+from discord.ext import commands
 
 from nabbot import NabBot
 from utils.discord import is_private
@@ -53,7 +53,7 @@ class Pages:
     """
     Empty = discord.Embed.Empty
 
-    def __init__(self, ctx: Context, *, entries, per_page=10, show_entry_count=True, **kwargs):
+    def __init__(self, ctx: commands.Context, *, entries, per_page=10, show_entry_count=True, **kwargs):
         self.bot = ctx.bot  # type: NabBot
         self.entries = entries
         self.message = ctx.message  # type: discord.Message
@@ -216,7 +216,7 @@ class Pages:
 
 
 class VocationPages(Pages):
-    def __init__(self, ctx: Context, *, entries, vocations, **kwargs):
+    def __init__(self, ctx: commands.Context, *, entries, vocations, **kwargs):
         super().__init__(ctx, entries=entries, **kwargs)
         present_vocations = []
         # Only add vocation filters for the vocations present
@@ -287,8 +287,10 @@ async def _can_run(cmd, ctx):
 def _command_signature(cmd):
     # this is modified from discord.py source
     # which I wrote myself lmao
-
-    result = [cmd.qualified_name]
+    result = []
+    if isinstance(cmd, commands.GroupMixin):
+        result.append('\U000025BC')
+    result.append(cmd.qualified_name)
     if cmd.usage:
         result.append(cmd.usage)
         return ' '.join(result)
@@ -458,20 +460,18 @@ class HelpPaginator(Pages):
     async def show_bot_help(self):
         """shows how to use the bot"""
 
-        self.embed.title = 'Using the bot'
-        self.embed.description = 'Hello! Welcome to the help page.'
+        self.embed.title = 'Command Help'
+        self.embed.description = "Various symbols are used to represent a command's signature and/or show further info."
         self.embed.clear_fields()
 
         entries = (
             ('<argument>', 'This means the argument is __**required**__.'),
             ('[argument]', 'This means the argument is __**optional**__.'),
             ('[A|B]', 'This means the it can be __**either A or B**__.'),
-            ('[argument...]', 'This means you can have multiple arguments.\n' \
-                              'Now that you know the basics, it should be noted that...\n' \
-                              '__**You do not type in the brackets!**__')
+            ('[argument...]', 'This means you can have multiple arguments.\n'),
+            ('\U000025BC', 'This means the command has subcommands.\n'
+                           'Check the command\'s help to see them.')
         )
-
-        self.embed.add_field(name='How do I use this bot?', value='Reading the bot signature is pretty simple.')
 
         for name, value in entries:
             self.embed.add_field(name=name, value=value, inline=False)

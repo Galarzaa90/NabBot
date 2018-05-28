@@ -289,8 +289,9 @@ class Admin:
     @commands.guild_only()
     @checks.is_not_lite()
     async def set_levels_deaths_channel(self, ctx: commands.Context, *, name: str = None):
-        """Sets the channel used for level up and deaths.
+        """Sets or checks the channel used for level up and deaths.
 
+        if no name is provided, the bot will display the current option.
         If no channel is set, the bot will use the top channel it can write on."""
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel

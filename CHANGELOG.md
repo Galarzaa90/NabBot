@@ -1,5 +1,17 @@
 # Changelog
 
+## Version 1.2.0 (Unreleased)
+- New `/help` style, with reaction pagination.
+- Many changes to command names and aliases:
+    - `/item`: `checkprice` alias removed, `items` alias added.
+    - `/monster`: `mon` alias removed.
+    - `/spell`: `spells` alias added.
+    - `/setworld`: `trackworld` alias added.
+    - `/seteventchannel`: `seteventschannel` alias removed.
+    - `/setleveldeathschannel`: `setlevelchannel`, `setdeathchannel`, `setleveldeathchannel` aliases removed.
+    - `/server`: `server_info` alias removed.
+    - `/guild`: `guildcheck` alias removed.
+
 ## Version 1.1.0 (2018-05-24)
 - New command: `/leave`, to make the bot leave a discord server.
 - New command: `/versions`, shows the current version and the version of dependencies.

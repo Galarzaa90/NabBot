@@ -33,11 +33,15 @@ class Tibia:
         self.bot = bot
         self.news_announcements_task = self.bot.loop.create_task(self.scan_news())
 
-    @commands.command(aliases=['check', 'player', 'checkplayer', 'char', 'character'])
-    async def whois(self, ctx, *, name=None):
-        """Tells you a character's or a discord user's information
+    async def __error(self, ctx, error):
+        if isinstance(error, commands.UserInputError):
+            await self.bot.show_help(ctx)
 
-        If it matches a discord user, it displays its registered users
+    @commands.command(aliases=['check', 'char', 'character'])
+    async def whois(self, ctx, *, name):
+        """Tells you a character's or a discord user's information.
+
+        If it matches a discord user, it displays their registered users
         If it matches a character, it displays its information.
 
         Note that the bot has no way to know the characters of a member that just joined.
@@ -45,9 +49,6 @@ class Tibia:
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-        if name is None:
-            await ctx.send("Tell me which character or user you want to check.")
             return
 
         if is_lite_mode(ctx):
@@ -164,19 +165,21 @@ class Tibia:
     async def share(self, ctx, *, param: str=None):
         """Shows the sharing range for that level or character
 
-        There's three ways to use this command:
-        /share level
-        /share char_name
-        /share char_name1,char_name2...char_name5"""
+        params -> level
+        params -> name
+        params -> name1,name2, name3...
+
+        This command can be used in three ways:
+        1. Find the share range of a certain level.
+        2. Find the share range of a character.
+        3. Find the joint share range of a group of characters.
+        """
         invalid_level = ["Invalid level.",
                          "I don't think that's a valid level.",
                          "You're doing it wrong!",
                          "Nope, you can't share with anyone.",
                          "You probably need a couple more levels"
                          ]
-        if param is None:
-            await ctx.send("You need to tell me a level, a character's name, or two character's names.")
-            return
         # Check if param is numeric
         try:
             level = int(param)
@@ -244,15 +247,12 @@ class Tibia:
                             f"share experience."
                 await ctx.send(reply+f"\nTheir share range is from level **{low}** to **{high}**.")
 
-    @commands.group(aliases=['guildcheck', 'checkguild'], invoke_without_command=True, case_insensitive=True)
-    async def guild(self, ctx, *, name:str=None):
-        """Checks who is online in a guild"""
+    @commands.group(aliases=['checkguild'], invoke_without_command=True, case_insensitive=True)
+    async def guild(self, ctx, *, name):
+        """Checks who is online in a guild."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-        if name is None:
-            await ctx.send("Tell me the guild you want me to check.")
             return
 
         try:
@@ -271,8 +271,7 @@ class Tibia:
         if guild.guildhall is not None:
             embed.description += "They own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
                                                                                url_house.format(id=guild.guildhall["id"],
-                                                                                               world=guild.world)
-                                                                                   )
+                                                                                                world=guild.world))
 
         if len(guild.online) < 1:
             embed.description += f"Nobody is online. It has **{len(guild.members)}** members."
@@ -302,9 +301,9 @@ class Tibia:
         embed.add_field(name=current_field, value=result, inline=False)
         await ctx.send(embed=embed)
 
-    @guild.command(name="members", aliases=['ist'])
-    async def guild_members(self, ctx, *, name: str = None):
-        """Shows a list of all guild members
+    @guild.command(name="members", aliases=['list'])
+    async def guild_members(self, ctx, *, name: str):
+        """Shows a list of all guild members.
 
         Online members have a 🔹 icon next to their name."""
         permissions = ctx.channel.permissions_for(ctx.me)
@@ -345,14 +344,11 @@ class Tibia:
             await ctx.send(e)
 
     @guild.command(name="info", aliases=["stats"])
-    async def guild_info(self, ctx, *, name: str = None):
+    async def guild_info(self, ctx, *, name: str):
         """Shows basic information and stats about a guild"""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-        if name is None:
-            await ctx.send("Tell me the guild you want me to check.")
             return
 
         try:
@@ -413,10 +409,10 @@ class Tibia:
 
     @commands.group(aliases=['deathlist', 'death'], invoke_without_command=True, case_insensitive=True)
     async def deaths(self, ctx, *, name: str = None):
-        """Shows a player's or everyone's recent deaths
+        """Shows a character's recent deaths.
 
-        If the character is not tracked (owned by someone), only deaths on tibia.com are shown.
-        Tracked characters show all their saved deaths"""
+        If this discord server is tracking a tibia world, it will show deaths registered to the character.
+        Aditionally, if no name is provided, all recent deaths will be shown."""
         if name is None and is_lite_mode(ctx):
             return
         permissions = ctx.channel.permissions_for(ctx.me)
@@ -537,16 +533,13 @@ class Tibia:
 
     @deaths.command(name="monster", aliases=["mob", "killer"])
     @checks.is_in_tracking_world()
-    async def deaths_monsters(self, ctx, *, name: str=None):
-        """Returns a list of the latest kills by that monster"""
+    async def deaths_monsters(self, ctx, *, name=str):
+        """Returns a list of the latest kills by that monster."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if name is None:
-            await ctx.send("You must tell me a monster's name to look for its kills.")
-            return
         c = userDatabase.cursor()
         count = 0
         entries = []
@@ -596,15 +589,11 @@ class Tibia:
 
     @deaths.command(name="user")
     @checks.is_in_tracking_world()
-    async def deaths_user(self, ctx, *, name: str=None):
-        """Shows a user's recent deaths on his/her registered characters"""
+    async def deaths_user(self, ctx, *, name: str):
+        """Shows a user's recent deaths on his/her registered characters."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if name is None:
-            await ctx.send("You must tell me a user's name to look for his/her deaths.")
             return
 
         if is_private(ctx.channel):
@@ -669,9 +658,9 @@ class Tibia:
     @deaths.command(name="stats")
     @checks.is_in_tracking_world()
     async def deaths_stats(self, ctx, *, period: str = None):
-        """Shows death statistic
+        """Shows death statistic.
         
-        A shorter period can be shown by adding week or month"""
+        A shorter period can be shown by adding week or month."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -756,7 +745,7 @@ class Tibia:
     @commands.group(aliases=['levelups', 'lvl', 'level', 'lvls'], invoke_without_command=True, case_insensitive=True)
     @checks.is_in_tracking_world()
     async def levels(self, ctx, *, name: str=None):
-        """Shows a player's or everyone's recent level ups
+        """Shows a player's or everyone's recent level ups.
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
@@ -855,15 +844,11 @@ class Tibia:
 
     @levels.command(name="user")
     @checks.is_in_tracking_world()
-    async def levels_user(self, ctx, *, name: str = None):
-        """Shows a user's recent level ups on his/her registered characters"""
+    async def levels_user(self, ctx, *, name: str):
+        """Shows a user's recent level ups on his/her registered characters."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if name is None:
-            await ctx.send("You must tell me a user's name to look for his/her level ups.")
             return
 
         if is_private(ctx.channel):
@@ -926,7 +911,7 @@ class Tibia:
     @commands.group(aliases=["story"], invoke_without_command=True, case_insensitive=True)
     @checks.is_in_tracking_world()
     async def timeline(self, ctx, *, name: str = None):
-        """Shows a player's recent level ups and deaths"""
+        """Shows a player's recent level ups and deaths."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -1043,8 +1028,8 @@ class Tibia:
 
     @timeline.command(name="user")
     @checks.is_in_tracking_world()
-    async def timeline_user(self, ctx, *, name: str = None):
-        """Shows a users's recent level ups and deaths on his/her characters"""
+    async def timeline_user(self, ctx, *, name: str):
+        """Shows a users's recent level ups and deaths on his/her characters."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -1122,13 +1107,12 @@ class Tibia:
             await ctx.send(e)
 
     @commands.command()
-    async def stats(self, ctx, *, params: str=None):
-        """Calculates character stats
+    async def stats(self, ctx, *, params=str):
+        """Calculates character stats based on vocation and level.
 
-        There are 3 ways to use this command:
-        /stats player
-        /stats level,vocation
-        /stats vocation,level"""
+        params -> character
+        params -> level,vocation
+        params -> vocation,level"""
         invalid_arguments = "Invalid arguments, examples:\n" \
                             "```/stats player\n" \
                             "/stats level,vocation\n" \
@@ -1202,11 +1186,8 @@ class Tibia:
                                    stats["exp"], stats["exp_tnl"]))
 
     @commands.command(aliases=['bless'])
-    async def blessings(self, ctx, level: int = None):
-        """Calculates the price of blessings at a specific level"""
-        if level is None:
-            await ctx.send("I need a level to tell you blessings's prices")
-            return
+    async def blessings(self, ctx, level: int):
+        """Calculates the price of blessings at a specific level."""
         if level < 1:
             await ctx.send("Very funny... Now tell me a valid level.")
             return
@@ -1221,8 +1202,8 @@ class Tibia:
                        f"**{int(mountain_bless_price*2):,}**.")
 
     @commands.command(aliases=["houses", "guildhall", "gh"])
-    async def house(self, ctx, *, name: str=None):
-        """Shows info for a house or guildhall
+    async def house(self, ctx, *, name: str):
+        """Shows info for a house or guildhall.
 
         By default, it shows the current status of a house for the current tracked world (if any).
         If used on private messages, no world is looked up unless specified.
@@ -1238,9 +1219,6 @@ class Tibia:
             return
         params = name.split("/", 2)
         name = params[0]
-        if name is None:
-            await ctx.send("Tell me the name of the house or guildhall you want to check.")
-            return
         world = None
         if ctx.guild is not None and len(params) == 1:
             world = self.bot.tracked_worlds.get(ctx.guild.id)
@@ -1272,7 +1250,7 @@ class Tibia:
 
     @commands.command(aliases=['serversave', 'ss'])
     async def time(self, ctx):
-        """Displays tibia server's time and time until server save"""
+        """Displays tibia server's time and time until server save."""
         offset = get_tibia_time_zone() - get_local_timezone()
         tibia_time = dt.datetime.now()+dt.timedelta(hours=offset)
         server_save = tibia_time
@@ -1302,11 +1280,8 @@ class Tibia:
         await ctx.send(reply)
 
     @commands.command(name="world")
-    async def world_info(self, ctx, name: str = None):
+    async def world_info(self, ctx, name: str):
         """Shows basic information about a Tibia world"""
-        if name is None:
-            await ctx.send("You must tell me the name of the world you want to check.")
-            return
         try:
             world = await get_world(name)
             if world is None:
@@ -1373,8 +1348,8 @@ class Tibia:
         await ctx.send(embed=embed)
 
     @commands.command(name="searchworld", aliases=["whereworld","findworld"])
-    async def world_search(self, ctx, *, params=None):
-        """Searches for online characters that meet the criteria
+    async def world_search(self, ctx, *, params):
+        """Searches for online characters that meet the criteria.
 
         There are 3 ways to use this command:
         -Find a character in share range with another character:
@@ -1398,10 +1373,6 @@ class Tibia:
                             "```/searchworld charname[,world]\n" \
                             "/searchworld level[,world]\n" \
                             "/searchworld minlevel,maxlevel[,world]```"
-
-        if params is None:
-            await ctx.send(invalid_arguments)
-            return
 
         world_name = None
         params = params.split(",")
@@ -1517,7 +1488,7 @@ class Tibia:
 
     @commands.command()
     async def bosses(self, ctx, world=None):
-        """Shows predictions for bosses"""
+        """Shows predictions for bosses."""
         ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
 
         if world is None and not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is not None:
@@ -1560,11 +1531,11 @@ class Tibia:
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def news(self, ctx, news_id: int=0):
-        """Shows the latest news articles from Tibia.com
+    async def news(self, ctx, news_id: int=None):
+        """Shows the latest news articles from Tibia.com.
 
         If no id is supplied, a list of recent articles is shown, otherwise, a snippet of the article is shown."""
-        if news_id == 0:
+        if news_id is None:
             try:
                 recent_news = await get_recent_news()
                 if recent_news is None:
@@ -1602,13 +1573,13 @@ class Tibia:
             await ctx.send(embed=embed)
 
     @commands.command()
-    async def stamina(self, ctx, current_stamina=None):
+    async def stamina(self, ctx, current_stamina:str):
         """Tells you the time you have to wait to restore stamina.
 
-        In the footer of the embed, the date in your local time is shown."""
-        if current_stamina is None:
-            await ctx.send("You need to tell me your current stamina, in this format: `34:03`.")
-            return
+        To use it, you must provide your current stamina, in this format: `34:03`.
+        The bow will show the time needed to reach full stamina if you were to start sleeping now.
+
+        The footer text shows the time in your timezone where your stamina would be full."""
 
         hour_pattern = re.compile(r"(\d{1,2}):(\d{1,2})")
         match = hour_pattern.match(current_stamina.strip())

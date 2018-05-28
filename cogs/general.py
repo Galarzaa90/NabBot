@@ -31,9 +31,7 @@ class General:
 
     async def __error(self, ctx, error):
         if isinstance(error, commands.UserInputError):
-            cmd = ctx.bot.get_command('help')
-            command = ctx.command.qualified_name
-            await ctx.invoke(cmd, command=command)
+            await self.bot.show_help(ctx)
 
     async def game_update(self):
         """Updates the bot's status.

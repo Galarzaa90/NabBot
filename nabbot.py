@@ -466,6 +466,15 @@ class NabBot(commands.Bot):
         guild = discord.utils.find(lambda m: m.name.lower() == name.lower(), self.guilds)
         return guild
 
+    async def show_help(self, ctx, command=None):
+        """Shows the help command for the specified command if given.
+        If no command is given, then it'll show help for the current
+        command.
+        """
+        cmd = self.get_command('help')
+        command = command or ctx.command.qualified_name
+        await ctx.invoke(cmd, command=command)
+
     @staticmethod
     def get_top_channel(guild: discord.Guild, writeable_only: bool=False) -> Optional[discord.TextChannel]:
         """Returns the highest text channel on the list.
