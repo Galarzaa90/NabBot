@@ -11,6 +11,7 @@
     - `/setleveldeathschannel`: `setlevelchannel`, `setdeathchannel`, `setleveldeathchannel` aliases removed.
     - `/server`: `server_info` alias removed.
     - `/guild`: `guildcheck` alias removed.
+    - `/role`: Renamed to `/rolemembers`,
 
 ## Version 1.1.0 (2018-05-24)
 - New command: `/leave`, to make the bot leave a discord server.

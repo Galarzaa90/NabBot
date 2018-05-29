@@ -1,9 +1,10 @@
+import discord
 from discord.ext import commands
 
 from nabbot import NabBot
 from utils import context
 from utils.config import config
-from utils.discord import get_role_list, is_private, get_role
+from utils.discord import get_role_list, is_private
 from utils.paginator import CannotPaginate, Pages
 
 
@@ -12,6 +13,25 @@ class Roles:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
+    async def __error(self, ctx, error):
+        if isinstance(error, commands.BadArgument):
+            await ctx.send(error)
+
+    @commands.guild_only()
+    @commands.command()
+    async def roleinfo(self, ctx: context.Context, *, role: discord.Role):
+        """Shows details about a role."""
+        embed = discord.Embed(title=role.name, colour=role.colour, timestamp=role.created_at,
+                              description=f"**ID** {role.id}")
+        embed.add_field(name="Members", value=f"{len(role.members):,}")
+        embed.add_field(name="Mentionable", value=f"{role.mentionable}")
+        embed.add_field(name="Hoisted", value=f"{role.hoist}")
+        embed.add_field(name="Position", value=f"{role.position}")
+        embed.add_field(name="Color", value=f"{role.colour}")
+        embed.add_field(name="Mention", value=f"`{role.mention}`")
+        embed.set_footer(text="Created on")
+        await ctx.send(embed=embed)
+
     @commands.guild_only()
     @commands.command()
     async def roles(self, ctx: context.Context, *, user: str = None):
@@ -19,7 +39,6 @@ class Roles:
 
         If a user is specified, it will list their roles.
         If user is blank, I will list all the server's roles."""
-
         if user is None:
             title = "Roles in this server"
             entries = [r.mention for r in get_role_list(ctx.guild)]
@@ -56,9 +75,8 @@ class Roles:
 
     @commands.guild_only()
     @commands.command()
-    async def role(self, ctx, *, name: str):
+    async def rolemembers(self, ctx, *, role: discord.Role):
         """Shows a list of members with that role."""
-        role = get_role(ctx.guild, role_name=name)
         if role is None:
             await ctx.send("There's no role with that name in here.")
             return
