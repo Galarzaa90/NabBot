@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
+from utils import checks, context
 from utils.config import config
 from utils.database import *
 from utils.discord import get_user_avatar
@@ -68,14 +68,14 @@ class Admin:
     @checks.is_admin()
     @checks.is_not_lite()
     @commands.command(name="setworld", aliases=["trackworld"])
-    async def set_world(self, ctx: commands.Context, *, world: str = None):
+    async def set_world(self, ctx: context.Context, *, world: str = None):
         """Sets or checks the tracked world.
 
         The tracked world is the Tibia world that this discord server is following.
         Only characters in that world will be registered.
         If no world is provided, it will check the currently set world."""
 
-        current_world = self.bot.tracked_worlds.get(ctx.guild.id, None)
+        current_world = ctx.world
         if world is None:
             if current_world is None:
                 await ctx.send("This server has no tibia world assigned.")
@@ -85,7 +85,7 @@ class Admin:
 
         if world.lower() in ["clear", "none", "delete", "remove"]:
             message = await ctx.send("Are you sure you want to delete this server's tracked world? `yes/no`")
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, timeout=60)
+            confirm = await ctx.react_confirm(message, timeout=60, use_checkmark=True)
             if confirm is None:
                 await ctx.send("I guess you changed your mind?")
                 return
@@ -109,7 +109,7 @@ class Admin:
             return
         message = await ctx.send(f"Are you sure you want to assign **{world}** to this server? "
                                  f"Previous worlds will be replaced.")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, timeout=60)
+        confirm = await ctx.react_confirm(message, timeout=60)
         if confirm is None:
             await ctx.send("I guess you changed your mind...")
             return

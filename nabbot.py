@@ -8,6 +8,7 @@ from typing import Union, List, Optional, Dict
 import discord
 from discord.ext import commands
 
+from utils import context
 from utils.config import config
 from utils.database import init_database, userDatabase, get_server_property
 from utils.discord import get_region_string, is_private, get_user_avatar
@@ -64,7 +65,27 @@ class NabBot(commands.Bot):
 
         log.info('Bot is online and ready')
 
-    async def on_command(self, ctx: commands.Context):
+    async def on_message(self, message: discord.Message):
+        """Called every time a message is sent on a visible channel."""
+        # Ignore if message is from any bot
+        if message.author.bot:
+            return
+
+        ctx = await self.get_context(message, cls=context.Context)
+        if ctx.command is not None:
+            await self.invoke(ctx)
+            return
+
+        # Delete messages that are not commands in ask-nabbot (if enabled)
+        if config.ask_channel_delete and not is_private(message.channel) \
+                and message.channel.name == config.ask_channel_name:
+            try:
+                await message.delete()
+            except discord.Forbidden:
+                # Bot doesn't have permission to delete message
+                pass
+
+    async def on_command(self, ctx: context.Context):
         """Called when a command is used. Used to log commands on a file."""
         if isinstance(ctx.channel, discord.abc.PrivateChannel):
             destination = 'PM'
@@ -72,7 +93,7 @@ class NabBot(commands.Bot):
             destination = '#{0.channel.name} ({0.guild.name})'.format(ctx)
         log.info('Command by {0.author.display_name} in {1}: {0.message.content}'.format(ctx, destination))
 
-    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):
+    async def on_command_error(self, ctx: context.Context, error: commands.CommandError):
         """Handles command errors"""
         if isinstance(error, commands.errors.CommandNotFound):
             return
@@ -87,25 +108,6 @@ class NabBot(commands.Bot):
             # Bot returns error message on discord if an owner called the command
             if ctx.author.id in config.owner_ids:
                 await ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
-
-    async def on_message(self, message: discord.Message):
-        """Called every time a message is sent on a visible channel."""
-        # Ignore if message is from any bot
-        if message.author.bot:
-            return
-
-        ctx = await self.get_context(message)
-        if ctx.command is not None:
-            await self.invoke(ctx)
-            return
-        # Delete messages that are not commands in ask-nabbot (if enabled)
-        if config.ask_channel_delete and not is_private(message.channel) \
-                and message.channel.name == config.ask_channel_name:
-            try:
-                await message.delete()
-            except discord.Forbidden:
-                # Bot doesn't have permission to delete message
-                pass
 
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
@@ -446,7 +448,10 @@ class NabBot(commands.Bot):
         channel = self.get_channel_by_name(config.log_channel_name, guild)
         if channel is None:
             return
-        await channel.send(content=content, embed=embed)
+        try:
+            await channel.send(content=content, embed=embed)
+        except discord.HTTPException:
+            pass
 
     def get_channel_by_name(self, name: str, guild: discord.Guild) -> discord.TextChannel:
         """Finds a channel by name on all the servers the bot is in.
@@ -489,45 +494,6 @@ class NabBot(commands.Bot):
             if channel.permissions_for(guild.me).send_messages:
                 return channel
         return None
-
-    async def wait_for_confirmation_reaction(self, ctx: commands.Context, message: discord.Message,
-                                             timeout: float=120) -> Optional[bool]:
-        """Waits for the command author (ctx.author) to reply with a Y or N reaction
-
-        Returns True if the user reacted with Y
-        Returns False if the user reacted with N
-        Returns None if the user didn't react at all"""
-        YES_REACTION = '\U0001f1fe'
-        NO_REACTION = '\U0001f1f3'
-        try:
-            await message.add_reaction(YES_REACTION)
-            await message.add_reaction(NO_REACTION)
-        except discord.Forbidden:
-            log.error("wait_for_confirmation_reaction: No permission to add reactions.")
-            return None
-
-        def check_react(reaction: discord.Reaction, user: discord.User):
-            if reaction.message.id != message.id:
-                return False
-            if user.id != ctx.author.id:
-                return False
-            if reaction.emoji not in [NO_REACTION, YES_REACTION]:
-                return False
-            return True
-
-        try:
-            react = await self.wait_for("reaction_add", timeout=timeout, check=check_react)
-            if react[0].emoji == NO_REACTION:
-                return False
-        except asyncio.TimeoutError:
-            return None
-        finally:
-            if not is_private(ctx.channel):
-                try:
-                    await message.clear_reactions()
-                except:
-                    pass
-        return True
 
     def reload_worlds(self):
         """Refresh the world list from the database

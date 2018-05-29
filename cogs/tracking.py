@@ -504,7 +504,7 @@ class Tracking:
         check_other = False
         if len(chars) > 1:
             message = await ctx.send("Do you want to attempt to add the other visible characters in this account?")
-            check_other = await self.bot.wait_for_confirmation_reaction(ctx, message, timeout=60)
+            check_other = await ctx.react_confirm(message, timeout=60)
         if not check_other:
             if check_other is None:
                 await ctx.send("Going to take that as a no... Moving on...")
@@ -639,7 +639,7 @@ class Tracking:
 
             message = await ctx.send("Are you sure you want to unregister **{name}** ({level} {vocation})?"
                                      .format(**char))
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message, timeout=50)
+            confirm = await ctx.react_confirm(message, timeout=50)
             if confirm is None:
                 await ctx.send("I guess you changed your mind.")
                 return
@@ -721,7 +721,7 @@ class Tracking:
         check_other = False
         if len(chars) > 1:
             message = await ctx.send("Do you want to attempt to add the other visible characters in this account?")
-            check_other = await self.bot.wait_for_confirmation_reaction(ctx, message, timeout=60)
+            check_other = await ctx.react_confirm(message, timeout=60)
         if not check_other:
             if check_other is None:
                 await ctx.send("Going to take that as a no... Moving on...")
@@ -1119,7 +1119,7 @@ class Tracking:
 
             message = await ctx.send("Do you want to add **{0.name}** (Level {0.level} {0.vocation}) to the "
                                      "watched list? ".format(char))
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+            confirm = await ctx.react_confirm(message)
             if confirm is None:
                 await ctx.send("You took too long!")
                 return
@@ -1158,7 +1158,7 @@ class Tracking:
                 return
 
             message = await ctx.send(f"Do you want to remove **{name}** from the watched list?")
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+            confirm = await ctx.react_confirm(message)
             if confirm is None:
                 await ctx.send("You took too long!")
                 return
@@ -1220,7 +1220,7 @@ class Tracking:
                 return
 
             message = await ctx.send(f"Do you want to add the guild **{guild.name}** to the watched list?")
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+            confirm = await ctx.react_confirm(message)
             if confirm is None:
                 await ctx.send("You took too long!")
                 return
@@ -1258,7 +1258,7 @@ class Tracking:
                 return
 
             message = await ctx.send(f"Do you want to remove **{name}** from the watched list?")
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+            confirm = await ctx.react_confirm(message)
             if confirm is None:
                 await ctx.send("You took too long!")
                 return

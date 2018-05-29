@@ -581,7 +581,7 @@ class General:
         embed.set_footer(text="Start time")
 
         message = await ctx.send("Is this correct?", embed=embed)
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -654,7 +654,7 @@ class General:
             await ctx.send(f"The name can't be longer than {EVENT_NAME_LIMIT} characters.")
             return
         message = await ctx.send(f"Do you want to change the name of **{event['name']}** to **{new_name}**?")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -716,7 +716,7 @@ class General:
                               timestamp=dt.datetime.utcfromtimestamp(event["start"]))
         embed.set_footer(text="Start time")
         message = await ctx.send("Do you want this to be the new description?", embed=embed)
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -781,7 +781,7 @@ class General:
         embed.set_footer(text="Start time")
         message = await ctx.send(f"This will be the time of your new event in your local time. Is this correct?",
                                  embed=embed)
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -846,7 +846,7 @@ class General:
             await ctx.send("That's not a number...")
             return
         message = await ctx.send(f"Do you want the number of slots of **{event['name']}** to **{slots}**?")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -935,7 +935,7 @@ class General:
             return
 
         message = await ctx.send("Do you want to delete the event **{0}**?".format(event["name"]))
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -1059,7 +1059,7 @@ class General:
                               timestamp=dt.datetime.utcfromtimestamp(now+starts_in.seconds))
         embed.set_footer(text="Start time")
         message = await ctx.send("Ok, so this will be your new event. Is this correct?", embed=embed)
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -1088,7 +1088,7 @@ class General:
             return
         try:
             message = await ctx.send(f"Do you want to subscribe to **{event['name']}**")
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+            confirm = await ctx.react_confirm(message)
             if confirm is None:
                 await ctx.send("You took too long!")
                 return
@@ -1121,7 +1121,7 @@ class General:
                 return
 
             message = await ctx.send(f"Do you want to unsubscribe to **{event['name']}**")
-            confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+            confirm = await ctx.react_confirm(message)
             if confirm is None:
                 await ctx.send("You took too long!")
                 return
@@ -1218,7 +1218,7 @@ class General:
             return
 
         message = await ctx.send(f"Do you want to join the event \'**{event['name']}**\' as **{char['name']}**?")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -1246,7 +1246,7 @@ class General:
             return
 
         message = await ctx.send(f"Do you want to leave **{event['name']}**?")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -1295,7 +1295,7 @@ class General:
 
         message = await ctx.send(f"Do you want to add **{char['name']}** (@{owner.display_name}) "
                                  f"to **{event['name']}**?")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -1334,7 +1334,7 @@ class General:
         owner = self.bot.get_member(char["user_id"], self.bot.get_guild(event_server))
         owner_name = "unknown" if owner is None else owner.display_name
         message = await ctx.send(f"Do you want to remove **{char['name']}** (@**{owner_name}**) from **{event['name']}**?")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return

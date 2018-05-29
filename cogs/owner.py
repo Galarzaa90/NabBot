@@ -450,7 +450,7 @@ class Owner:
         new_world = new_world.capitalize()
         message = await ctx.send(f"Are you sure you want to merge **{old_world}** into **{new_world}**?\n"
                                  f"*This will affect all the Discord servers I'm in, and may be irreversible.*")
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -503,7 +503,7 @@ class Owner:
         embed.timestamp = guild.created_at
 
         message = await ctx.send("Are you sure you want me to leave this server?", embed=embed)
-        confirm = await self.bot.wait_for_confirmation_reaction(ctx, message)
+        confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("Forget it then.")
             return
