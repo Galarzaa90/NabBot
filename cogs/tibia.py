@@ -1577,7 +1577,7 @@ class Tibia:
         """Tells you the time you have to wait to restore stamina.
 
         To use it, you must provide your current stamina, in this format: `34:03`.
-        The bow will show the time needed to reach full stamina if you were to start sleeping now.
+        The bot will show the time needed to reach full stamina if you were to start sleeping now.
 
         The footer text shows the time in your timezone where your stamina would be full."""
 
