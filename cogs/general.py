@@ -14,7 +14,7 @@ from nabbot import NabBot
 from utils import checks
 from utils.config import config
 from utils.database import userDatabase, tibiaDatabase, get_server_property
-from utils.discord import is_lite_mode, get_region_string, is_private, clean_string
+from utils.discord import is_lite_mode, get_region_string, is_private, clean_string, get_user_avatar, get_user_color
 from utils.general import parse_uptime, TimeString, single_line, is_numeric, log
 from utils.emoji import EMOJI
 from utils.paginator import Pages, CannotPaginate, VocationPages, HelpPaginator
@@ -1248,6 +1248,44 @@ class General:
             con.execute("DELETE FROM event_participants WHERE event_id = ? AND char_id = ?", (event_id, joined_char))
             await ctx.send("You successfully left this event.")
             return
+
+    @commands.guild_only()
+    @commands.command()
+    async def quote(self, ctx, message_id: int):
+        """Shows a messages by its ID.
+
+        In order to get a message's id, you need to enable Developer Mode.
+        Developer mode is found in `User Settings > Appearance`.
+        Once enabled, you can right click a message and select **Copy ID**."""
+        channels = ctx.guild.text_channels
+        message = None  # type: discord.Message
+        with ctx.typing():
+            for channel in channels:
+                try:
+                    message = await channel.get_message(message_id)
+                except discord.HTTPException:
+                    continue
+                if message is not None:
+                    break
+        if message is None:
+            await ctx.send("I couldn't find that message.")
+            return
+        if not message.content:
+            await ctx.send("I can't quote embed messages.")
+            return
+        embed = discord.Embed(description=message.content, timestamp=message.created_at)
+        embed.set_author(name=message.author.display_name, icon_url=get_user_avatar(message.author))
+        embed.set_footer(text=f"In #{message.channel.name}")
+        embed.colour = get_user_color(message.author, ctx.guild)
+        if len(message.attachments) >= 1:
+            attachment = message.attachments[0]  # type: discord.Attachment
+            if attachment.height is not None:
+                embed.set_image(url=message.attachments[0].url)
+            else:
+                embed.add_field(name="Attached file",
+                                value=f"[{attachment.filename}]({attachment.url}) ({attachment.size:,} bytes)")
+        await ctx.send(embed=embed)
+
 
     @event_edit_name.error
     @event_edit_description.error
