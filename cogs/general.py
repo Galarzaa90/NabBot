@@ -4,7 +4,7 @@ import random
 import re
 import time
 from contextlib import closing
-from typing import Union, Dict, Optional
+from typing import Union, Dict, Optional, List
 
 import discord
 import psutil
@@ -1256,11 +1256,18 @@ class General:
 
         In order to get a message's id, you need to enable Developer Mode.
         Developer mode is found in `User Settings > Appearance`.
-        Once enabled, you can right click a message and select **Copy ID**."""
-        channels = ctx.guild.text_channels
+        Once enabled, you can right click a message and select **Copy ID**.
+
+        Note that the bot won't attempt to search in channels you can't read."""
+        channels = ctx.guild.text_channels  # type: List[discord.TextChannel]
         message = None  # type: discord.Message
         with ctx.typing():
             for channel in channels:
+                bot_perm = channel.permissions_for(ctx.me)
+                auth_perm = channel.permissions_for(ctx.author)
+                if not(bot_perm.read_message_history and bot_perm.read_messages and
+                       auth_perm.read_message_history and auth_perm.read_messages):
+                    continue
                 try:
                     message = await channel.get_message(message_id)
                 except discord.HTTPException:
@@ -1268,7 +1275,7 @@ class General:
                 if message is not None:
                     break
         if message is None:
-            await ctx.send("I couldn't find that message.")
+            await ctx.send("I can't find that message, or it is in a channel you can't access.")
             return
         if not message.content:
             await ctx.send("I can't quote embed messages.")

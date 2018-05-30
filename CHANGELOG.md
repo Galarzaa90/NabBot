@@ -2,6 +2,7 @@
 
 ## Version 1.2.0 (Unreleased)
 - New `/help` style, with reaction pagination.
+- New `/quote` command, shows a message's content given an id.
 - Many changes to command names and aliases:
     - `/item`: `checkprice` alias removed, `items` alias added.
     - `/monster`: `mon` alias removed.
