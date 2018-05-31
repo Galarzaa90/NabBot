@@ -18,6 +18,11 @@ class Context(commands.Context):
         else:
             return self.bot.tracked_worlds.get(self.guild.id, None)
 
+    @staticmethod
+    def tick(value: bool):
+        """Displays a checkmark or a cross depending on the value."""
+        return CHECK_REACTIONS[int(not value)]
+
     async def react_confirm(self, message: discord.Message, *, timeout=120.0, delete_after=False,
                             use_checkmark=False):
         """Waits for the command author to reply with a Y or N reaction.

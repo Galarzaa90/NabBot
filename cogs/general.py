@@ -3,6 +3,7 @@ import datetime as dt
 import random
 import re
 import time
+from collections import Counter
 from contextlib import closing
 from typing import Union, Dict, Optional, List
 
@@ -218,24 +219,25 @@ class General:
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
-        embed = discord.Embed()
         guild = ctx.guild  # type: discord.Guild
+        embed = discord.Embed(title=guild.name, timestamp=guild.created_at, description=f"**ID** {guild.id}")
+        embed.set_footer(text="Created on")
         embed.set_thumbnail(url=guild.icon_url)
-        embed.description = guild.name
-        # Check if owner has a nickname
-        if guild.owner.name == guild.owner.display_name:
-            owner = "{0.name}#{0.discriminator}".format(guild.owner)
-        else:
-            owner = "{0.display_name}\n({0.name}#{0.discriminator})".format(guild.owner)
-        embed.add_field(name="Owner", value=owner)
-        embed.add_field(name="Created", value=guild.created_at.strftime("%d/%m/%y"))
-        embed.add_field(name="Server Region", value=get_region_string(guild.region))
-        embed.add_field(name="Text channels", value=len(guild.text_channels))
-        embed.add_field(name="Voice channels", value=len(guild.voice_channels))
-        embed.add_field(name="Members", value=guild.member_count)
+        embed.add_field(name="Owner", value=guild.owner.mention)
+        embed.add_field(name="Voice Region", value=get_region_string(guild.region))
+        embed.add_field(name="Channels",
+                        value=f"Text: {len(guild.channels):,}\n"
+                              f"Voice: {len(guild.voice_channels):,}\n"
+                              f"Categories: {len(guild.categories):,}")
+        status_count = Counter(str(m.status) for m in guild.members)
+        embed.add_field(name="Members",
+                        value=f"Total: {len(guild.members):,}\n"
+                              f"Online: {status_count['online']:,}\n"
+                              f"Idle: {status_count['idle']:,}\n"
+                              f"Busy: {status_count['dnd']:,}\n"
+                              f"Offline: {status_count['offline']:,}")
         embed.add_field(name="Roles", value=len(guild.roles))
         embed.add_field(name="Emojis", value=len(guild.emojis))
-        embed.add_field(name="Bot joined", value=guild.me.joined_at.strftime("%d/%m/%y"))
         await ctx.send(embed=embed)
 
     @commands.command()
