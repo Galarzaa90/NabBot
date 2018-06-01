@@ -571,6 +571,15 @@ class Owner:
             embed.add_field(name=package[0], value=value)
         await ctx.send(embed=embed)
 
+    @checks.is_owner()
+    @commands.command()
+    async def ping(self, ctx):
+        """Shows the bot's response times."""
+        resp = await ctx.send('Pong! Loading...')
+        diff = resp.created_at - ctx.message.created_at
+        await resp.edit(content=f'Pong! That took {1000*diff.total_seconds():.1f}ms.\n'
+                                f'Socket latency is {1000*self.bot.latency:.1f}ms')
+
 
 def setup(bot):
     bot.add_cog(Owner(bot))

@@ -533,7 +533,7 @@ class Tibia:
 
     @deaths.command(name="monster", aliases=["mob", "killer"])
     @checks.is_in_tracking_world()
-    async def deaths_monsters(self, ctx, *, name=str):
+    async def deaths_monsters(self, ctx, *, name: str):
         """Returns a list of the latest kills by that monster."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:

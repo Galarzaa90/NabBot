@@ -5,6 +5,7 @@
 - New `/quote` command, shows a message's content given an id.
 - New `/roleinfo` command, shows a role's detailed information.
 - New `/userinfo` command, shows a user's detailed information.
+- New `/ping` command, shows the bot's response times.
 - Made some visual changes to `/serverinfo`
 - Moved role related commands to new Roles cog.
 - Many changes to command names and aliases:
