@@ -3,6 +3,10 @@
 ## Version 1.2.0 (Unreleased)
 - New `/help` style, with reaction pagination.
 - New `/quote` command, shows a message's content given an id.
+- New `/roleinfo` command, shows a role's detailed information.
+- New `/userinfo` command, shows a user's detailed information.
+- Made some visual changes to `/serverinfo`
+- Moved role related commands to new Roles cog.
 - Many changes to command names and aliases:
     - `/item`: `checkprice` alias removed, `items` alias added.
     - `/monster`: `mon` alias removed.
@@ -12,7 +16,8 @@
     - `/setleveldeathschannel`: `setlevelchannel`, `setdeathchannel`, `setleveldeathchannel` aliases removed.
     - `/server`: `server_info` alias removed.
     - `/guild`: `guildcheck` alias removed.
-    - `/role`: Renamed to `/rolemembers`,
+    - `/role`: Renamed to `/rolemembers`.
+    - `/server`: Renamed to `/serverinfo`.
 
 ## Version 1.1.0 (2018-05-24)
 - New command: `/leave`, to make the bot leave a discord server.

@@ -19,9 +19,12 @@ class Context(commands.Context):
             return self.bot.tracked_worlds.get(self.guild.id, None)
 
     @staticmethod
-    def tick(value: bool):
+    def tick(value: bool, label: str=None):
         """Displays a checkmark or a cross depending on the value."""
-        return CHECK_REACTIONS[int(not value)]
+        emoji = CHECK_REACTIONS[int(not value)]
+        if label:
+            return emoji+label
+        return emoji
 
     async def react_confirm(self, message: discord.Message, *, timeout=120.0, delete_after=False,
                             use_checkmark=False):

@@ -212,15 +212,16 @@ class General:
         await ctx.send("I have been running for {0}.".format(parse_uptime(self.bot.start_time, True)))
 
     @commands.guild_only()
-    @commands.command(name="server", aliases=["serverinfo"])
-    async def info_server(self, ctx):
+    @commands.command()
+    async def serverinfo(self, ctx):
         """Shows the server's information."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
         guild = ctx.guild  # type: discord.Guild
-        embed = discord.Embed(title=guild.name, timestamp=guild.created_at, description=f"**ID** {guild.id}")
+        embed = discord.Embed(title=guild.name, timestamp=guild.created_at, description=f"**ID** {guild.id}",
+                              color=discord.Color.blurple())
         embed.set_footer(text="Created on")
         embed.set_thumbnail(url=guild.icon_url)
         embed.add_field(name="Owner", value=guild.owner.mention)
@@ -238,6 +239,38 @@ class General:
                               f"Offline: {status_count['offline']:,}")
         embed.add_field(name="Roles", value=len(guild.roles))
         embed.add_field(name="Emojis", value=len(guild.emojis))
+        await ctx.send(embed=embed)
+
+    @commands.guild_only()
+    @commands.command(aliases=["memberinfo"])
+    async def userinfo(self, ctx, *, user: discord.Member=None):
+        """Shows a user's information."""
+        if user is None:
+            user = ctx.author
+        embed = discord.Embed(title=f"{user.name}#{user.discriminator}",
+                              timestamp=user.joined_at, colour=user.colour)
+        embed.set_thumbnail(url=get_user_avatar(user))
+        embed.set_footer(text="Member since")
+        embed.add_field(name="ID", value=user.id)
+        embed.add_field(name="Created", value=user.created_at)
+        status = []
+        if ctx.guild.owner == user:
+            status.append("Server Owner")
+        if user.guild_permissions.administrator:
+            status.append("Server Admin")
+        if user.guild_permissions.manage_guild:
+            status.append("Server Moderator")
+        if any(c.permissions_for(user).manage_channels for c in ctx.guild.text_channels):
+            status.append("Channel Moderator")
+        if user.bot:
+            status.append("Bot")
+        if not status:
+            status.append("Regular User")
+        embed.add_field(name="User Status", value=", ".join(status), inline=False)
+
+        embed.add_field(name="Servers", value=f"{len(self.bot.get_user_guilds(user.id))} shared")
+        embed.add_field(name="Roles", value=f"{len(user.roles):,}")
+
         await ctx.send(embed=embed)
 
     @commands.command()
