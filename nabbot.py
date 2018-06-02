@@ -146,10 +146,8 @@ class NabBot(commands.Bot):
         pm = (config.welcome_pm+"\n"+server_welcome).format(user=member, server=member.guild, bot=self.user,
                                                             owner=member.guild.owner)
 
-        embed = discord.Embed(description="{0.mention} joined.".format(member))
-        icon_url = get_user_avatar(member)
-        embed.colour = discord.Colour.green()
-        embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
+        embed = discord.Embed(description="{0.mention} joined.".format(member), color=discord.Color.green())
+        embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member), icon_url=get_user_avatar(member))
 
         # If server is not tracking worlds, we don't check the database
         if member.guild.id in config.lite_servers or self.tracked_worlds.get(member.guild.id) is None:
@@ -183,10 +181,8 @@ class NabBot(commands.Bot):
         self.members[member.id].remove(member.guild.id)
         bot_member = member.guild.me  # type: discord.Member
 
-        embed = discord.Embed(description="Left the server or was kicked")
-        icon_url = get_user_avatar(member)
-        embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
-        embed.colour = discord.Colour(0xffff00)
+        embed = discord.Embed(description="Left the server or was kicked", colour=discord.Colour(0xffff00))
+        embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member), icon_url=get_user_avatar(member))
 
         # If bot can see audit log, he can see if it was a kick or member left on it's own
         if bot_member.guild_permissions.view_audit_log:
@@ -197,33 +193,26 @@ class NabBot(commands.Bot):
                     break
                 if entry.target.id == member.id:
                     embed.description = "Kicked"
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
+                                     icon_url=get_user_avatar(entry.user))
                     embed.colour = discord.Colour(0xff0000)
                     if entry.reason:
                         embed.description += f"\n**Reason:** {entry.reason}"
-                    log.info("{0.display_name} (ID:{0.id}) was kicked from {0.guild.name} by {1.display_name}"
-                             .format(member, entry.user))
                     await self.send_log_message(member.guild, embed=embed)
                     return
             embed.description = "Left the server"
-            log.info("{0.display_name} (ID:{0.id}) left {0.guild.name}".format(member))
             await self.send_log_message(member.guild, embed=embed)
             return
         # Otherwise, we are not certain
-        log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.guild.name}".format(member))
         await self.send_log_message(member.guild, embed=embed)
 
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
         now = dt.datetime.utcnow()
-        log_message = "{1.name}#{1.discriminator} (ID:{1.id}) was banned from {0.name}".format(guild, user)
         bot_member = guild.me  # type: discord.Member
 
-        embed = discord.Embed(description="Banned")
-        icon_url = get_user_avatar(user)
-        embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=icon_url)
-        embed.colour = discord.Colour(0x7a0d0d)
+        embed = discord.Embed(description="Banned", color=discord.Color(0x7a0d0d))
+        embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=get_user_avatar(user))
 
         # If bot can see audit log, we can get more details of the ban
         if bot_member.guild_permissions.view_audit_log:
@@ -233,25 +222,20 @@ class NabBot(commands.Bot):
                     # After is broken in the API, so we must check if entry is too old.
                     break
                 if entry.target.id == user.id:
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
+                                     icon_url=get_user_avatar(entry.user))
                     if entry.reason:
                         embed.description += f"\n**Reason:** {entry.reason}"
-                    log_message += f"by {entry.user.name}"
                     break
-        log.warning(log_message)
         await self.send_log_message(guild, embed=embed)
 
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
         now = dt.datetime.utcnow()
-        log_message = "{1.name}#{1.discriminator} (ID:{1.id}) was unbanned from {0.name}".format(guild, user)
         bot_member = guild.me  # type: discord.Member
 
-        embed = discord.Embed(description="Unbanned")
-        icon_url = get_user_avatar(user)
-        embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=icon_url)
-        embed.colour = discord.Colour(0xff9000)
+        embed = discord.Embed(description="Unbanned", color=discord.Color(0xff9000))
+        embed.set_author(name="{0.name}#{0.discriminator} (ID {0.id})".format(user), icon_url=get_user_avatar(user))
 
         if bot_member.guild_permissions.view_audit_log:
             async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.unban,
@@ -260,23 +244,10 @@ class NabBot(commands.Bot):
                     # After is broken in the API, so we must check if entry is too old.
                     break
                 if entry.target.id == user.id:
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
-                    log_message += f"by {entry.user.name}"
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
+                                     icon_url=get_user_avatar(entry.user))
                     break
-        log.warning(log_message)
         await self.send_log_message(guild, embed=embed)
-
-    async def on_message_delete(self, message: discord.Message):
-        """Called every time a message is deleted."""
-        if message.channel.name == config.ask_channel_name:
-            return
-
-        attachment = ""
-        if message.attachments:
-            attachment = "\n\tAttached file: "+message.attachments[0]['filename']
-        log.info("A message by @{0.author.display_name} was deleted in #{0.channel.name} ({0.guild.name}):\n"
-                 "\t'{0.clean_content}'{1}".format(message, attachment))
 
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         """Called every time a member is updated"""
@@ -284,9 +255,8 @@ class NabBot(commands.Bot):
         guild = after.guild
         bot_member = guild.me
 
-        embed = discord.Embed(description=f"{after.mention}: ")
-        embed.set_author(name=f"{after.name}#{after.discriminator}", icon_url=get_user_avatar(after))
-        embed.colour = discord.Colour.blue()
+        embed = discord.Embed(description=f"{after.mention}: ", color=discord.Colour.blue())
+        embed.set_author(name=f"{after.name}#{after.discriminator} (ID: {after.id}(", icon_url=get_user_avatar(after))
         changes = True
         if f"{before.name}#{before.discriminator}" != f"{after.name}#{after.discriminator}":
             embed.description += "Name changed from **{0.name}#{0.discriminator}** to **{1.name}#{1.discriminator}**."\
@@ -323,9 +293,8 @@ class NabBot(commands.Bot):
         guild = after
         bot_member = guild.me
 
-        embed = discord.Embed()
+        embed = discord.Embed(color=discord.Colour(value=0x9b3ee8))
         embed.set_author(name=after.name, icon_url=after.icon_url)
-        embed.colour = discord.Colour(value=0x9b3ee8)
 
         changes = True
         if before.name != after.name:
