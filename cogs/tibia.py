@@ -1107,7 +1107,7 @@ class Tibia:
             await ctx.send(e)
 
     @commands.command()
-    async def stats(self, ctx, *, params=str):
+    async def stats(self, ctx, *, params:str=None):
         """Calculates character stats based on vocation and level.
 
         params -> character
