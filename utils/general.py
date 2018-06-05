@@ -130,9 +130,9 @@ def parse_uptime(start_time, long=False) -> str:
     minutes, seconds = divmod(remainder, 60)
     days, hours = divmod(hours, 24)
     if days:
-        fmt = '{d}d {h}h {m}m {s}s' if not long else '{d} days, {h} hours, {m} minutes, and {s} seconds.'
+        fmt = '{d}d {h}h {m}m {s}s' if not long else '{d} days, {h} hours, {m} minutes, and {s} seconds'
     else:
-        fmt = '{h}h {m}m {s}s' if not long else '{h} hours, {m} minutes, and {s} seconds.'
+        fmt = '{h}h {m}m {s}s' if not long else '{h} hours, {m} minutes, and {s} seconds'
 
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
