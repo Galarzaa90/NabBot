@@ -412,7 +412,7 @@ class Tibia:
         """Shows a character's recent deaths.
 
         If this discord server is tracking a tibia world, it will show deaths registered to the character.
-        Aditionally, if no name is provided, all recent deaths will be shown."""
+        Additionally, if no name is provided, all recent deaths will be shown."""
         if name is None and is_lite_mode(ctx):
             return
         permissions = ctx.channel.permissions_for(ctx.me)

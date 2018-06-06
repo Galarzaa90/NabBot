@@ -17,7 +17,7 @@ command_prefix:
 # Example:
 # command_prefix: []
 # command_mention: true
-command_mention: false
+command_mention: true
 
 # Lite mode:
 # If lite is enabled, all user database related functions are disabled.
@@ -25,7 +25,8 @@ command_mention: false
 # /whois, /deaths have limited functionality
 # Level up and deaths announcements are disabled
 lite_servers:
-  - 253338519143972864
+  - 140054830252163072
+  - 441991938200305674
 
 # Add extra features by adding your own cogs.
 # Example: extra/twitch.py would be added as 'extra.twitch'
@@ -47,7 +48,7 @@ welcome_pm: |
   your level ups and deaths!
 
 # Owners can use mods commands and more sensible commands like /shutdown and restart
-# Mods can register chars and users and use makesay1
+# By default, the bot's application owner is always considered, this array allows adding extra owners
 owner_ids:
   - 162060569803751424
   - 162070610556616705

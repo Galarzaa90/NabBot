@@ -286,29 +286,27 @@ class General:
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
-        lite_mode = is_lite_mode(ctx)
         user_count = 0
         char_count = 0
         deaths_count = 0
         levels_count = 0
-        if not lite_mode:
-            with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT COUNT(*) as count FROM users")
-                result = c.fetchone()
-                if result is not None:
-                    user_count = result["count"]
-                c.execute("SELECT COUNT(*) as count FROM chars")
-                result = c.fetchone()
-                if result is not None:
-                    char_count = result["count"]
-                c.execute("SELECT COUNT(*) as count FROM char_deaths")
-                result = c.fetchone()
-                if result is not None:
-                    deaths_count = result["count"]
-                c.execute("SELECT COUNT(*) as count FROM char_levelups")
-                result = c.fetchone()
-                if result is not None:
-                    levels_count = result["count"]
+        with closing(userDatabase.cursor()) as c:
+            c.execute("SELECT COUNT(*) as count FROM users")
+            result = c.fetchone()
+            if result is not None:
+                user_count = result["count"]
+            c.execute("SELECT COUNT(*) as count FROM chars")
+            result = c.fetchone()
+            if result is not None:
+                char_count = result["count"]
+            c.execute("SELECT COUNT(*) as count FROM char_deaths")
+            result = c.fetchone()
+            if result is not None:
+                deaths_count = result["count"]
+            c.execute("SELECT COUNT(*) as count FROM char_levelups")
+            result = c.fetchone()
+            if result is not None:
+                levels_count = result["count"]
 
         embed = discord.Embed(description="*Beep bop beep bop*. I'm just a bot!")
         embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
@@ -318,14 +316,12 @@ class General:
                                               "\u2023 [Nezune](https://github.com/Nezune)")
         embed.add_field(name="Platform", value="Python " + EMOJI[":snake:"])
         embed.add_field(name="Created", value="March 30th 2016")
-        embed.add_field(name="Servers", value="{0:,}".format(len(self.bot.guilds)))
-        embed.add_field(name="Members", value="{0:,}".format(len(set(self.bot.get_all_members()))))
-        if not lite_mode:
-            embed.add_field(name="Tracked users", value="{0:,}".format(user_count))
-            embed.add_field(name="Tracked chars", value="{0:,}".format(char_count))
-            embed.add_field(name="Tracked deaths", value="{0:,}".format(deaths_count))
-            embed.add_field(name="Tracked level ups", value="{0:,}".format(levels_count))
-
+        embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
+        embed.add_field(name="Members", value=f"{len(list(self.bot.get_all_members())):,}")
+        embed.add_field(name="Tracked users", value=f"{user_count:,}")
+        embed.add_field(name="Tracked chars", value=f"{char_count:,}")
+        embed.add_field(name="Tracked deaths", value=f"{deaths_count:,}")
+        embed.add_field(name="Tracked level ups", value=f"{levels_count:,}")
         embed.add_field(name="Uptime", value=parse_uptime(self.bot.start_time))
         memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
         embed.add_field(name='Memory Usage', value='{:.2f} MiB'.format(memory_usage))
