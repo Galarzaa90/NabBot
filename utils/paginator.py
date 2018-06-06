@@ -287,10 +287,7 @@ async def _can_run(cmd, ctx):
 def _command_signature(cmd):
     # this is modified from discord.py source
     # which I wrote myself lmao
-    result = []
-    if isinstance(cmd, commands.GroupMixin):
-        result.append('\U000025BC')
-    result.append(cmd.qualified_name)
+    result = [cmd.qualified_name]
     if cmd.usage:
         result.append(cmd.usage)
         return ' '.join(result)
@@ -312,7 +309,8 @@ def _command_signature(cmd):
             result.append(f'[{name}...]')
         else:
             result.append(f'<{name}>')
-
+    if isinstance(cmd, commands.GroupMixin):
+        result.append('\U0001f538')
     return ' '.join(result)
 
 
@@ -411,7 +409,7 @@ class HelpPaginator(Pages):
         self.embed.description = self.description
         self.embed.title = self.title
 
-        self.embed.set_footer(text=f'Use "{self.prefix}help command" for more info on a command.')
+        self.embed.set_footer(text=f'Use "{self.prefix}help <command>" for more info on a command.')
 
         signature = _command_signature
 
@@ -469,7 +467,7 @@ class HelpPaginator(Pages):
             ('[argument]', 'This means the argument is __**optional**__.'),
             ('[A|B]', 'This means the it can be __**either A or B**__.'),
             ('[argument...]', 'This means you can have multiple arguments.\n'),
-            ('\U000025BC', 'This means the command has subcommands.\n'
+            ('\U0001f538', 'This means the command has subcommands.\n'
                            'Check the command\'s help to see them.')
         )
 

@@ -243,10 +243,16 @@ class General:
 
     @commands.guild_only()
     @commands.command(aliases=["memberinfo"])
-    async def userinfo(self, ctx, *, user: discord.Member=None):
+    async def userinfo(self, ctx, *, user: str=None):
         """Shows a user's information."""
         if user is None:
             user = ctx.author
+        else:
+            _user = self.bot.get_member(user, ctx.guild)
+            if _user is None:
+                await ctx.send(f"Could not find user `{user}`")
+                return
+            user = _user
         embed = discord.Embed(title=f"{user.name}#{user.discriminator}",
                               timestamp=user.joined_at, colour=user.colour)
         embed.set_thumbnail(url=get_user_avatar(user))

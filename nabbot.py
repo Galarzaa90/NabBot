@@ -256,7 +256,7 @@ class NabBot(commands.Bot):
         bot_member = guild.me
 
         embed = discord.Embed(description=f"{after.mention}: ", color=discord.Colour.blue())
-        embed.set_author(name=f"{after.name}#{after.discriminator} (ID: {after.id}(", icon_url=get_user_avatar(after))
+        embed.set_author(name=f"{after.name}#{after.discriminator} (ID: {after.id})", icon_url=get_user_avatar(after))
         changes = True
         if f"{before.name}#{before.discriminator}" != f"{after.name}#{after.discriminator}":
             embed.description += "Name changed from **{0.name}#{0.discriminator}** to **{1.name}#{1.discriminator}**."\
