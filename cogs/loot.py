@@ -15,7 +15,6 @@ from utils.config import config
 from utils.database import tibiaDatabase, lootDatabase
 from utils.discord import FIELD_VALUE_LIMIT, is_private
 from utils.messages import split_message
-from utils.emoji import EMOJI
 from utils.tibiawiki import get_item
 
 slot = Image.open("./images/slot.png")
@@ -74,7 +73,7 @@ class Loot:
         await ctx.send("I've begun parsing your image, **@{0.display_name}**. "
                        "Please be patient, this may take a few moments.".format(author))
         progress_msg = await ctx.send("Status: ...")
-        progress_bar = await ctx.send(EMOJI[":black_large_square:"] * 10)
+        progress_bar = await ctx.send("⬛" * 10)
 
         loot_list, loot_image_overlay = await loot_scan(loot_image, file_name, progress_msg, progress_bar)
         self.parsing_count -= 1
@@ -115,7 +114,7 @@ class Loot:
                             result = c.fetchone()
                         if result:
                             has_marketable = True
-                            emoji = EMOJI[":gem:"]
+                            emoji = "💎"
                         else:
                             emoji = ""
                         value += "x{1} {0}{3} \u2192 {2:,}gp total.\n".format(
@@ -142,7 +141,7 @@ class Loot:
 
         long_message += "\nThe total loot value is: **{0:,}** gold coins.".format(total_value)
         if has_marketable:
-            long_message += f"\n{EMOJI[':gem:']} Items marked with this are used in imbuements and might be worth " \
+            long_message += f"\n💎 Items marked with this are used in imbuements and might be worth " \
                             f"more in the market."
         embed.description = long_message
         embed.set_image(url="attachment://results.png")
@@ -577,8 +576,8 @@ async def find_slots(loot_image, progress_bar):
     if len(loot_bytes) > 2312:
         progress_percent = 0
         percent_message = ""
-        percent_message += EMOJI[":black_square_button:"] * progress_percent
-        percent_message += EMOJI[":black_large_square:"] * (10 - progress_percent)
+        percent_message += "🔲" * progress_percent
+        percent_message += "⬛" * (10 - progress_percent)
         await progress_bar.edit(content=percent_message)
     x = -1
     y = 0
@@ -590,8 +589,8 @@ async def find_slots(loot_image, progress_bar):
                 if int(y / _lootImage.size[1] * 100 / 10) != progress_percent:
                     progress_percent = int(y / _lootImage.size[1] * 100 / 10)
                     percent_message = ""
-                    percent_message += EMOJI[":black_square_button:"] * progress_percent
-                    percent_message += EMOJI[":black_large_square:"] * (10 - progress_percent)
+                    percent_message += "🔲" * progress_percent
+                    percent_message += "⬛" * (10 - progress_percent)
                     await progress_bar.edit(content=percent_message)
             y += 1
             x = 0
@@ -1111,8 +1110,8 @@ async def loot_scan(loot_image, image_name, progress_msg, progress_bar):
     progress_percent = 0
     percent_message = ""
     quality_warning = 0
-    percent_message += EMOJI[":black_square_button:"] * progress_percent
-    percent_message += EMOJI[":black_large_square:"] * (10 - progress_percent)
+    percent_message += "🔲" * progress_percent
+    percent_message += "⬛" * (10 - progress_percent)
     await progress_msg.edit(content="Status: Scanning items.")
     await progress_bar.edit(content=percent_message)
     for found_slot in slot_list:
@@ -1234,8 +1233,8 @@ async def loot_scan(loot_image, image_name, progress_msg, progress_bar):
         if int(progress / len(slot_list) * 100 / 10) != progress_percent:
             progress_percent = int(progress / len(slot_list) * 100 / 10)
             percent_message = ""
-            percent_message += EMOJI[":black_square_button:"] * progress_percent
-            percent_message += EMOJI[":black_large_square:"] * (10 - progress_percent)
+            percent_message += "🔲" * progress_percent
+            percent_message += "⬛" * (10 - progress_percent)
             await progress_msg.edit(
                 content="Status: Scanning items (" + str(progress) + "/" + str(len(slot_list)) + ").")
             await progress_bar.edit(content=percent_message)

@@ -10,7 +10,6 @@ from utils.config import config
 from utils.database import *
 from utils.discord import get_user_avatar
 from utils.general import join_list, log
-from utils.emoji import EMOJI
 from utils.tibia import tibia_worlds, get_character, NetworkError, Character, get_voc_abb_and_emoji
 
 
@@ -22,7 +21,7 @@ class Admin:
     @commands.command()
     @checks.is_admin()
     @commands.guild_only()
-    async def checkchannel(self, ctx: commands.Context, *, channel: discord.TextChannel = None):
+    async def checkchannel(self, ctx: context.Context, *, channel: discord.TextChannel = None):
         """Checks the channel's permissions.
 
         Makes sure that the bot has all the required permissions to work properly.
@@ -32,7 +31,7 @@ class Admin:
         permissions = channel.permissions_for(ctx.me)  # type: discord.Permissions
         content = f"**Checking {channel.mention}:**"
         if permissions.administrator:
-            content += f"\n{EMOJI[':white_check_mark:']} I have `Administrator` permission."
+            content += f"\n{ctx.tick(True)} I have `Administrator` permission."
             await ctx.send(content)
             return
         perm_dict = dict(permissions)
@@ -52,11 +51,11 @@ class Admin:
             if not perm_dict[k]:
                 ok = False
                 perm_name = k.replace("_", " ").title()
-                icon = EMOJI[":x:"] if level == "error" else EMOJI[":warning:"]
+                icon = ctx.tick(False) if level == "error" else "⚠"
                 content += f"\nMissing `{perm_name}` permission"
                 content += f"\n\t{icon} {explain}"
         if ok:
-            content += f"\n{EMOJI[':white_check_mark:']} All permissions are correct!"
+            content += f"\n{ctx.tick(True)} All permissions are correct!"
         await ctx.send(content)
 
     @checkchannel.error

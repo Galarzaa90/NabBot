@@ -18,7 +18,6 @@ from utils.discord import is_private, is_lite_mode, get_user_avatar
 from utils.general import get_time_diff, join_list, get_brasilia_time_zone, global_online_list, get_local_timezone, log, \
     is_numeric
 from utils.messages import html_to_markdown, get_first_image, split_message
-from utils.emoji import EMOJI
 from utils.paginator import Pages, CannotPaginate, VocationPages
 from utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
     url_house, get_stats, get_map_area, get_tibia_time_zone, get_world, tibia_worlds, get_world_bosses, get_recent_news, \
@@ -330,7 +329,7 @@ class Tibia:
             vocations.append(member["vocation"])
             member["emoji"] = get_voc_emoji(member["vocation"])
             member["vocation"] = get_voc_abb(member["vocation"])
-            member["online"] = EMOJI[":small_blue_diamond:"] if member["status"] == "online" else ""
+            member["online"] = "🔹" if member["status"] == "online" else ""
             entries.append("{rank}\u2014 {online}**{name}** {nick} (Lvl {level} {vocation}{emoji})".format(**member))
         if is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name:
             per_page = 20
@@ -366,7 +365,7 @@ class Tibia:
             embed.description += "\nThey own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
                                                                                url_house.format(id=guild.guildhall["id"],
                                                                                                world=guild.world))
-        applications = f"{EMOJI[':white_check_mark:']} Open" if guild.application else f"{EMOJI[':x:']} Closed"
+        applications = f"{ctx.tick(True)} Open" if guild.application else f"{ctx.tick(False)} Closed"
         embed.add_field(name="Applications", value=applications)
         if guild.homepage is not None:
             embed.add_field(name="Homepage", value=f"[{guild.homepage}]({guild.homepage})")
@@ -964,11 +963,11 @@ class Tibia:
                     row["user"] = user.display_name
                     row["voc_emoji"] = get_voc_emoji(row["vocation"])
                     if row["type"] == "death":
-                        row["emoji"] = EMOJI[":skull:"]
+                        row["emoji"] = "💀"
                         entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - At level **{level}** by {killer} - "
                                        "*{time} ago*".format(**row))
                     else:
-                        row["emoji"] = EMOJI[":star2:"]
+                        row["emoji"] = "🌟"
                         entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - Level **{level}** - *{time} ago*"
                                        .format(**row))
                     if count >= 200:
@@ -1002,12 +1001,12 @@ class Tibia:
                     count += 1
                     row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                     if row["type"] == "death":
-                        row["emoji"] = EMOJI[":skull:"]
+                        row["emoji"] = "💀"
                         entries.append("{emoji} At level **{level}** by {killer} - *{time} ago*"
                                        .format(**row)
                                        )
                     else:
-                        row["emoji"] = EMOJI[":star2:"]
+                        row["emoji"] = "🌟"
                         entries.append("{emoji} Level **{level}** - *{time} ago*".format(**row))
                     if count >= 200:
                         break
@@ -1083,12 +1082,12 @@ class Tibia:
                 row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                 row["voc_emoji"] = get_voc_emoji(row["vocation"])
                 if row["type"] == "death":
-                    row["emoji"] = EMOJI[":skull:"]
+                    row["emoji"] = "💀"
                     entries.append("{emoji}{voc_emoji} {name} - At level **{level}** by {killer} - *{time} ago*"
                                    .format(**row)
                                    )
                 else:
-                    row["emoji"] = EMOJI[":star2:"]
+                    row["emoji"] = "🌟"
                     entries.append("{emoji}{voc_emoji} {name} - Level **{level}** - *{time} ago*".format(**row))
                 if count >= 200:
                     break
@@ -1107,7 +1106,7 @@ class Tibia:
             await ctx.send(e)
 
     @commands.command()
-    async def stats(self, ctx, *, params:str=None):
+    async def stats(self, ctx, *, params: str=None):
         """Calculates character stats based on vocation and level.
 
         params -> character
@@ -1291,10 +1290,10 @@ class Tibia:
             await ctx.send("I'm having connection issues right now.")
             return
 
-        flags = {"North America": EMOJI[":flag_us:"], "South America": EMOJI[":flag_br:"], "Europe": EMOJI[":flag_gb:"]}
-        pvp = {"Optional PvP": EMOJI[":dove:"], "Hardcore PvP": EMOJI[":skull:"], "Open PvP": EMOJI[":crossed_swords:"],
-               "Retro Open PvP": EMOJI[":crossed_swords:"], "Retro Hardcore PvP":  EMOJI[":skull:"]}
-        transfers = {"locked": EMOJI[":lock:"], "blocked": EMOJI[":no_entry_sign:"]}
+        flags = {"North America": "🇺🇸", "South America": "🇧🇷", "Europe": "🇬🇧"}
+        pvp = {"Optional PvP": "🕊️", "Hardcore PvP": "💀", "Open PvP": "⚔",
+               "Retro Open PvP": "⚔", "Retro Hardcore PvP":  "💀"}
+        transfers = {"locked": "🔒", "blocked": "⛔"}
 
         url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
         embed = discord.Embed(url=url, title=name.capitalize())
@@ -1317,7 +1316,7 @@ class Tibia:
         embed.add_field(name="Location", value=f"{flags.get(world.location,'')} {world.location}")
         embed.add_field(name="PvP Type", value=f"{pvp.get(world.pvp_type,'')} {world.pvp_type}")
         if world.premium_type is not None:
-            embed.add_field(name="Premium restricted", value=EMOJI[":white_check_mark:"])
+            embed.add_field(name="Premium restricted", value=ctx.tick(True))
         if world.transfer_type is not None:
             embed.add_field(name="Transfers", value=f"{transfers.get(world.transfer_type,'')} {world.transfer_type}")
 
@@ -1547,8 +1546,8 @@ class Tibia:
             embed.set_footer(text="To see a specific article, use the command /news <id>")
             news_format = "{emoji} `{id}`\t[{news}]({tibiaurl})"
             type_emojis = {
-                "Featured Article": EMOJI[":bookmark_tabs:"],
-                "News": EMOJI[":newspaper:"],
+                "Featured Article": "📑",
+                "News": "📰",
             }
             for news in recent_news:
                 news["emoji"] = type_emojis.get(news["type"], "")
@@ -1678,7 +1677,7 @@ class Tibia:
             highscore_string = highscore_format[highscore["category"]].format(char.his_her,
                                                                               highscore["value"],
                                                                               highscore['rank'])
-            reply += "\n" + EMOJI[":trophy:"] + " {0}".format(highscore_string)
+            reply += "\n🏆 {0}".format(highscore_string)
 
         return reply
 
@@ -1716,7 +1715,7 @@ class Tibia:
             online_list = [x.name for x in global_online_list]
             char_list = []
             for char in characters:
-                char["online"] = EMOJI[":small_blue_diamond:"] if char["name"] in online_list else ""
+                char["online"] = "🔹" if char["name"] in online_list else ""
                 char["vocation"] = get_voc_abb(char["vocation"])
                 char["url"] = url_character + urllib.parse.quote(char["name"].encode('iso-8859-1'))
                 if len(characters) <= 10:

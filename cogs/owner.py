@@ -467,7 +467,7 @@ class Owner:
             c.execute("DELETE FROM highscores WHERE world LIKE ?", (old_world,))
             await ctx.send(f"Moved **{affected_chars:,}** characters to {new_world}. "
                            f"**{affected_guilds}** discord servers were affected.\n\n"
-                           f"Enjoy **{new_world}**! {EMOJI[':fire:']}{EMOJI[':cancer:']}")
+                           f"Enjoy **{new_world}**! 🔥♋")
             self.bot.reload_worlds()
         finally:
             c.close()
@@ -563,11 +563,11 @@ class Owner:
         for package in dependencies:
             version = pkg_resources.get_distribution(package[0]).version
             if not comp(package[1], StrictVersion(version), StrictVersion(package[2])):
-                value = f"{EMOJI[':x:']}v{version}\n`At least v{package[2]} expected`"
+                value = f"{ctx.tick(False)}v{version}\n`At least v{package[2]} expected`"
             elif not comp(package[3], StrictVersion(version), StrictVersion(package[4])):
-                value = f"{EMOJI[':warning:']}v{version}\n`Only below v{package[4]} tested`"
+                value = f"⚠v{version}\n`Only below v{package[4]} tested`"
             else:
-                value = f"{EMOJI[':white_check_mark:']}v{version}"
+                value = f"{ctx.tick(True)}v{version}"
             embed.add_field(name=package[0], value=value)
         await ctx.send(embed=embed)
 

@@ -9,7 +9,6 @@ from utils.config import config
 from utils.discord import is_private, FIELD_VALUE_LIMIT
 from utils.general import join_list
 from utils.messages import split_message
-from utils.emoji import EMOJI
 from utils.tibia import get_map_area
 from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
     get_key, search_key, get_rashid_info, get_mapper_link
@@ -80,7 +79,7 @@ class TibiaWiki:
             await ctx.send(random.choice(["**" + bot_member.display_name + "** is too strong for you to hunt!",
                                           "Sure, you kill *one* child and suddenly you're a monster!",
                                           "I'M NOT A MONSTER",
-                                          "I'm a monster, huh? I'll remember that, human..." + EMOJI[":flame:"],
+                                          "I'm a monster, huh? I'll remember that, human...🔥",
                                           "You misspelled *future ruler of the world*.",
                                           "You're not a good person. You know that, right?",
                                           "I guess we both know that isn't going to happen.",
@@ -207,7 +206,7 @@ class TibiaWiki:
         embed.set_author(name="TibiaWiki",
                          icon_url=WIKI_ICON,
                          url=get_article_url(achievement["name"]))
-        embed.add_field(name="Grade", value=EMOJI[":star:"] * int(achievement["grade"]))
+        embed.add_field(name="Grade", value="⭐" * int(achievement["grade"]))
         embed.add_field(name="Points", value=achievement["points"])
         embed.add_field(name="Spoiler", value=achievement["spoiler"], inline=True)
 
@@ -303,16 +302,12 @@ class TibiaWiki:
         attributes = {"summon": "Summonable",
                       "convince": "Convinceable",
                       "illusionable": "Illusionable",
-                      "pushable" : "Pushable",
+                      "pushable": "Pushable",
                       "paralysable": "Paralysable",
                       "see_invisible": "Sees Invisible"
-                     }
+                      }
 
-        def bool_emoji(value):
-            if bool(value):
-                return EMOJI[":white_check_mark:"]
-            return EMOJI[":negative_squared_cross_mark:"]
-        attributes = "\n".join([f"{bool_emoji(monster[x])} {repl}" for x, repl in attributes.items()
+        attributes = "\n".join([f"{ctx.tick(monster[x])} {repl}" for x, repl in attributes.items()
                                 if monster[x] is not None])
         embed.add_field(name="Attributes", value="Unknown" if not attributes else attributes)
         elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth", "drown", "lifedrain"]
@@ -343,10 +338,10 @@ class TibiaWiki:
 
         if monster["bestiary_class"] is not None:
             difficulties = {
-                "Trivial": EMOJI[":star:"],
-                "Easy": EMOJI[":star:"]*2,
-                "Medium": EMOJI[":star:"]*3,
-                "Hard": EMOJI[":star:"]*4
+                "Trivial": "⭐",
+                "Easy": "⭐⭐",
+                "Medium": "⭐⭐⭐",
+                "Hard": "⭐⭐⭐⭐"
             }
             difficulty = difficulties.get(monster["bestiary_level"], f"({monster['bestiary_level']})")
             embed.add_field(name="Bestiary Class", value=f"{monster['bestiary_class']}\n{difficulty}")

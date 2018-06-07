@@ -17,7 +17,6 @@ from utils.config import config
 from utils.database import userDatabase, tibiaDatabase, get_server_property
 from utils.discord import is_lite_mode, get_region_string, is_private, clean_string, get_user_avatar, get_user_color
 from utils.general import parse_uptime, TimeString, single_line, is_numeric, log
-from utils.emoji import EMOJI
 from utils.paginator import Pages, CannotPaginate, VocationPages, HelpPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
 
@@ -40,10 +39,10 @@ class General:
         A random status is selected every 20 minutes.
         """
         game_list = ["Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2018", "Russian roulette",
-                     "with my toy humans", "with fire"+EMOJI[":fire:"], "God", "innocent", "the part", "hard to get",
+                     "with my toy humans", "with fire🔥", "God", "innocent", "the part", "hard to get",
                      "with my human minions", "Singularity", "Portal 3", "Dank Souls", "you", "01101110", "dumb",
-                     "with GLaDOS " + EMOJI[":blue_heart:"], "with myself", "with your heart", "Generic MOBA",
-                     "Generic Battle Royale", "League of Dota", "my cards right", "out your death in my head"]
+                     "with GLaDOS 💙", "with myself", "with your heart", "Generic MOBA", "Generic Battle Royale",
+                     "League of Dota", "my cards right", "out your death in my head"]
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
             await self.bot.change_presence(activity=discord.Game(name=random.choice(game_list)))
@@ -314,7 +313,7 @@ class General:
         embed.add_field(name="Version", value=self.bot.__version__)
         embed.add_field(name="Authors", value="\u2023 [Galarzaa90](https://github.com/Galarzaa90)\n"
                                               "\u2023 [Nezune](https://github.com/Nezune)")
-        embed.add_field(name="Platform", value="Python " + EMOJI[":snake:"])
+        embed.add_field(name="Platform", value="Python 🐍")
         embed.add_field(name="Created", value="March 30th 2016")
         embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
         embed.add_field(name="Members", value=f"{len(list(self.bot.get_all_members())):,}")

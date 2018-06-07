@@ -17,7 +17,6 @@ from utils.database import userDatabase, get_server_property, set_server_propert
 from utils.discord import is_private, get_user_avatar, FIELD_VALUE_LIMIT, EMBED_LIMIT
 from utils.general import global_online_list, log, join_list, is_numeric
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, level_messages, split_message
-from utils.emoji import EMOJI
 from utils.paginator import Pages, CannotPaginate, VocationPages
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
     get_voc_abb, get_character_url, url_guild, \
@@ -405,11 +404,7 @@ class Tracking:
                       'he_she': char.he_she.lower(), 'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
         message = message.format(**death_info)
         # Format extra stylization
-        message = format_message(message)
-        if death.by_player:
-            message = EMOJI[":skull:"] + " " + message
-        else:
-            message = EMOJI[":skull_crossbones:"] + " " + message
+        message = f"{'💀' if death.by_player else '☠'} {format_message(message)}"
 
         for guild_id, tracked_world in self.bot.tracked_worlds.items():
             guild = self.bot.get_guild(guild_id)
@@ -453,8 +448,7 @@ class Tracking:
         # Format message with level information
         message = message.format(**level_info)
         # Format extra stylization
-        message = format_message(message)
-        message = EMOJI[":star2:"] + " " + message
+        message = f"🌟 {format_message(message)}"
 
         for server_id, tracked_world in self.bot.tracked_worlds.items():
             server = self.bot.get_guild(server_id)
@@ -869,7 +863,7 @@ class Tracking:
 
             if count == 0:
                 if uptime < 90:
-                    await ctx.send("I just started, give me some time to check online lists..." + EMOJI[":clock2:"])
+                    await ctx.send("I just started, give me some time to check online lists...⌛")
                 else:
                     await ctx.send("There is no one online from Discord.")
                 return
@@ -1003,7 +997,7 @@ class Tracking:
                 player["voc"] = get_voc_abb(player["vocation"])
                 line_format = "**{name}** - Level {level} {voc}{emoji} - @**{owner}** {online}"
                 if player["name"] in online_list:
-                    player["online"] = EMOJI[":small_blue_diamond:"]
+                    player["online"] = "🔹"
                     online_entries.append(line_format.format(**player))
                     online_vocations.append(player["vocation"])
                 else:
