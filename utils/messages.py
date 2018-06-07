@@ -4,7 +4,6 @@ import re
 import discord
 
 from utils.config import config
-from utils.emoji import EMOJI
 
 announce_threshold = config.announce_threshold
 
@@ -23,14 +22,14 @@ level_messages = [
     [80, "**{name}** is level {level}, watch out world..."],
     [100, "**{name}** is level {level} now. Noice."],
     [100, "**{name}** has finally made it to level {level}, yay!"],
-    [80, "**{name}** reached level {level}! What a time to be alive..." + EMOJI[":rolling_eyes:"]],
-    [70, "**{name}** got level {level}! So stronk now!" + EMOJI[":muscle:"]],
-    [30, "**{name}** is level {level}" + EMOJI[":cake:"] + "\r\n" +
-     "I'm making a note here:" + EMOJI[":notes:"] + "\r\n" +
-     "Huge success!" + EMOJI[":notes:"] + "\r\n" +
-     "It's hard to overstate my" + EMOJI[":notes:"] + "\r\n" +
-     "Satisfaction" + EMOJI[":robot:"]],
-    [100, "**{name}**, you reached level {level}? Here, have a cookie " + EMOJI[":cookie:"]],
+    [80, "**{name}** reached level {level}! What a time to be alive...🙄"],
+    [70, "**{name}** got level {level}! So stronk now!💪"],
+    [30, "**{name}** is level {level}🍰\r\n" +
+     "I'm making a note here:🎶\r\n" +
+     "Huge success!🎶\r\n" +
+     "It's hard to overstate my🎶\r\n" +
+     "Satisfaction🤖"],
+    [100, "**{name}**, you reached level {level}? Here, have a cookie 🍪"],
     [80, "**{name}** got level {level}. I guess this justifies all those creatures {he_she} murdered."],
     [90, "**{name}** is level {level}. Better than {he_she} was. Better, stronger, faster."],
     [70, "Congrats **{name}** on getting level {level}! Maybe you can solo rats now?"],
@@ -38,7 +37,7 @@ level_messages = [
     # EK Only
     [50, "**{name}** has reached level {level}. That's 9 more mana potions you can carry now!",
      ["Knight", "Elite Knight"], range(100, 999)],
-    [200, "**{name}** is level {level}. Stick them with the pointy end! " + EMOJI[":_dagger:"],
+    [200, "**{name}** is level {level}. Stick them with the pointy end! 🗡️",
      ["Knight", "Elite Knight"], range(100, 999)],
     [200, "**{name}** is a fat level {level} meatwall now. BLOCK FOR ME SENPAI.", ["Knight", "Elite Knight"],
      range(100, 999)],
@@ -47,7 +46,7 @@ level_messages = [
      ["Paladin", "Royal Paladin"], range(100, 999)],
     [150, "Congrats on level {level}, **{name}**. You can stop running around now.",
      ["Paladin", "Royal Paladin"], range(100, 999)],
-    [150, "**{name}** is level {level}. Bullseye!" + EMOJI[":dart:"], ["Paladin", "Royal Paladin"],
+    [150, "**{name}** is level {level}. Bullseye!🎯", ["Paladin", "Royal Paladin"],
      range(100, 999)],
     # MS Only
     [50, "Level {level}, **{name}**? Nice. Don't you wish you were a druid though?",
@@ -57,37 +56,33 @@ level_messages = [
     [150, "**{name}** got level {level}. If {he_she} only stopped missing beams.", ["Sorcerer", "Master Sorcerer"],
      range(23, 999)],
     [150,
-     "**{name}** is level {level}. " + EMOJI[":fire:"] + EMOJI[":fire:"] + "BURN THEM ALL" + EMOJI[":fire:"] +
-     EMOJI[":fire:"] + EMOJI[":fire:"], ["Sorcerer", "Master Sorcerer"], range(100, 999)],
+     "**{name}** is level {level}. 🔥🔥BURN THEM ALL🔥🔥🔥", ["Sorcerer", "Master Sorcerer"], range(100, 999)],
     # ED Only
-    [50, "**{name}** has reached level {level}. Flower power!" + EMOJI[":blossom:"], ["Druid", "Elder Druid"],
+    [50, "**{name}** has reached level {level}. Flower power!🌼", ["Druid", "Elder Druid"],
      range(100, 999)],
     [150, "Congrats on level {level}, **{name}**. Sio plz.", ["Druid", "Elder Druid"], range(100, 999)],
-    [150, "**{name}** is level {level}. " + EMOJI[":fire:"] + EMOJI[
-        ":fire:"] + "BURN THEM ALL... Or... Give them frostbite...?" + EMOJI[":snowflake:"] + EMOJI[":snowflake:"] +
-     EMOJI[":snowflake:"], ["Druid", "Elder Druid"], range(100, 999)],
+    [150, "**{name}** is level {level}. 🔥🔥BURN THEM ALL... Or... Give them frostbite...?❄❄", ["Druid", "Elder Druid"],
+     range(100, 999)],
     # Level specific
-    [20000, "**{name}** is level {level}! UMPs so good " + EMOJI[":wine_glass:"],
+    [20000, "**{name}** is level {level}! UMPs so good 🍷",
      ["Druid", "Elder Druid", "Sorcerer", "Master Sorcerer"], [130]],
-    [20000, "**{name}** is level {level} now! Eternal Winter is coming!" + EMOJI[":snowflake:"],
+    [20000, "**{name}** is level {level} now! Eternal Winter is coming!❄",
      ["Druid", "Elder Druid"], [60]],
-    [20000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature" + EMOJI[":leaves:"] +
-     "... just look at that wrath.",
+    [20000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature🍃🍃... just look at that wrath.",
      ["Druid", "Elder Druid"], [55]],
-    [20000, "**{name}** is now level {level}. Don't forget to buy a Gearwheel Chain!" + EMOJI[":_necklace:"],
+    [20000, "**{name}** is now level {level}. Don't forget to buy a Gearwheel Chain!📿",
      False, [75]],
-    [30000, "**{name}** is level {level}! You can become a ninja now!" + EMOJI[":bust_in_silhouette:"],
+    [30000, "**{name}** is level {level}! You can become a ninja now!👤",
      ["Paladin", "Royal Paladin"], [80]],
-    [30000, "**{name}** is level {level}! Time to get some crystalline arrows!" + EMOJI[":bow_and_arrow:"],
-     ["Paladin", "Royal Paladin"], [90]],
+    [30000, "**{name}** is level {level}! Time to get some crystalline arrows!🏹", ["Paladin", "Royal Paladin"], [90]],
     [20000, "Level {level}, **{name}**? You're finally important enough for me to notice!", False,
      [announce_threshold]],
     [20000, "Congratulations on level {level} **{name}**! Now you're relevant to me. As relevant a human can be anyway",
      False, [announce_threshold]],
-    [20000, "**{name}** is now level {level}! Time to go berserk! " + EMOJI[":anger:"],
+    [20000, "**{name}** is now level {level}! Time to go berserk! 💢",
      ["Knight", "Elite Knight"], [35]],
     [20000, "Congratulations on level {level} **{name}**! Now you can become an umbral master, but is your"
-            " bank account ready?" + EMOJI[":money_with_wings:"], False, [250]],
+            " bank account ready?💸", False, [250]],
     [30000, "**{name}** is level {level}!!!!\r\n" +
      "Sweet, sweet triple digits!", False, [100]],
     [20000, "**{name}** is level {level}!!!!\r\n" +
@@ -108,8 +103,7 @@ death_messages_monster = [
     [100, "RIP **{name}** ({level}), you died the way you lived- inside {killer_article}**{killer}**."],
     [100, "**{name}** ({level}) was just eaten by {killer_article}**{killer}**. Yum."],
     [100, "Silly **{name}** ({level}), I warned you not to play with {killer_article}**{killer}**!"],
-    [100, "/{killer_article}**/{killer}** killed **{name}** at level {level}. Shame " + EMOJI[
-        ":bell:"] + " shame " + EMOJI[":bell:"] + " shame " + EMOJI[":bell:"]],
+    [100, "/{killer_article}**/{killer}** killed **{name}** at level {level}. Shame 🔔 shame 🔔 shame 🔔"],
     [30,
      "**{name}** ({level}) is no more! /{he_she}/ has ceased to be! /{he_she}/'s expired and gone to meet "
      "{his_her} maker! /{he_she}/'s a stiff! Bereft of life, {he_she} rests in peace! If {he_she} hadn't "
@@ -119,16 +113,14 @@ death_messages_monster = [
      "invisible!! THIS IS AN EX-**\{name}/**."],
     [100,
      "RIP **{name}** ({level}), we hardly knew you! (^That ^**{killer}** got to know you pretty well "
-     "though " + EMOJI[":wink:"] + ")"],
-    [80, "A priest, {killer_article}**{killer}** and **{name}** ({level}) walk into a bar. " + EMOJI[
-        ":skull:"] + "ONLY ONE WALKS OUT." + EMOJI[":skull:"]],
+     "though 😉)"],
+    [80, "A priest, {killer_article}**{killer}** and **{name}** ({level}) walk into a bar. 💀ONLY ONE WALKS OUT.💀"],
     [100, "RIP **{name}** ({level}), you were strong. ^The ^**{killer}** was stronger."],
     [100,
      "Oh, there goes **{name}** ({level}), killed by {killer_article}**{killer}**. So young, so full "
      "of life. /{he_she}/ will be miss... oh nevermind, {he_she} respawned already."],
     [100,
-     "Oh look! **{name}** ({level}) died by {killer_article}**{killer}**! What a surprise..." + EMOJI[
-         ":rolling_eyes:"]],
+     "Oh look! **{name}** ({level}) died by {killer_article}**{killer}**! What a surprise...🙄"],
     [100,
      "**{name}** ({level}) was killed by {killer_article}**{killer}**, but we all saw that coming."],
     [100,
@@ -150,8 +142,8 @@ death_messages_monster = [
      "Alas, poor **{name}** ({level}), I knew {him_her} Horatio; a fellow of infinite jest, of most "
      "excellent fancy; {he_she} hath borne me on {his_her} back a thousand times; and now, {he_she} got rekt "
      "by {killer_article}**{killer}**."],
-    [70, "To be or not to be " + EMOJI[":skull:"] + ", that is the-- Well I guess **{name}** ({level}) made "
-                                                    "his choice, or ^that ^**{killer}** chose for him..."],
+    [70, "To be or not to be 💀, that is the-- Well I guess **{name}** ({level}) made his choice, "
+         "or ^that ^**{killer}** chose for him..."],
     [500,
      "**{name}** ({level}) just died to {killer_article}**{killer}**, why did nobody sio {him_her}!?",
      ["Knight", "Elite Knight"]],
@@ -175,24 +167,22 @@ death_messages_monster = [
      "they said.", False, False, ["weakened frazzlemaw", "enfeebled silencer"]],
     [20000, "Another paladin bites the dust! **{killer}** strikes again! Rest in peace **{name}** ({level}).",
      ["Paladin", "Royal Paladin"], False, ["Lady Tenebris"]],
-    [20000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! " + EMOJI[":ghost:"],
+    [20000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! 👻",
      False, False, ["something evil"]],
     [20000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.", False, False, ["death"]],
-    [20000, "They did warn you **{name}** ({level}), you *did* burn " + EMOJI[":fire:"] + EMOJI[
-        ":dragon_face:"] + ".", False, False, ["dragon", "dragon lord"]],
-    [20000, "**{name}** ({level}) died from {killer_article}**{killer}**. Someone forgot the safeword." + EMOJI[":smirk:"],
+    [20000, "They did warn you **{name}** ({level}), you *did* burn 🔥🐲.", False, False, ["dragon", "dragon lord"]],
+    [20000, "**{name}** ({level}) died from {killer_article}**{killer}**. Someone forgot the safeword.😏",
      False, False, ["choking fear"]],
     [20000, "That **{killer}** got really up close and personal with **{name}** ({level}). "
-            "Maybe he thought you were his princess Lumelia?" + EMOJI[":smirk:"],
-     False, False, ["hero"]],
+            "Maybe he thought you were his princess Lumelia?😏", False, False, ["hero"]],
     [20000,
-     "Asian chicks are no joke **{name}** ({level}) " + EMOJI[":hocho:"] + EMOJI[":broken_heart:"] + ".",
+     "Asian chicks are no joke **{name}** ({level}) 🔪💔.",
      False, False, ["midnight asura", "dawnfire asura"]],
     [20000, "**{name}** ({level}) got destroyed by {killer_article}**{killer}**. I bet {he_she} regrets going down"
-           "that hole " + EMOJI[":hole:"], False, range(1, 120), ["breach brood", "dread intruder", "reality reaver",
-                                                                "spark of destruction", "sparkion"]],
+            "that hole 🕳️", False, range(1, 120), ["breach brood", "dread intruder", "reality reaver",
+                                                   "spark of destruction", "sparkion"]],
     [20000,
-     "Watch out for that **{killer}**'s wav... Oh" + EMOJI[":neutral_face:"] + "... Rest in peace **{name}** ({level}).",
+     "Watch out for that **{killer}**'s wav... Oh😐... Rest in peace **{name}** ({level}).",
      False, False, ["hellhound", "hellfire fighter", "dragon lord", "undead dragon", "dragon", "draken spellweaver"]],
     [20000, "**{name}** ({level}) died to {killer_article}**{killer}**! Don't worry, {he_she} didn't have a soul anyway",
      False, False, ["souleater"]],
