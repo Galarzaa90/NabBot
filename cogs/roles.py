@@ -43,7 +43,7 @@ class Roles:
         If user is blank, I will list all the server's roles."""
         if user is None:
             title = "Roles in this server"
-            roles = ctx.guild.roles  # type: List[discord.Role]
+            roles = ctx.guild.roles[:]  # type: List[discord.Role]
             if len(roles) <= 1:
                 await ctx.send("There are no roles in this server.")
                 return
@@ -53,7 +53,7 @@ class Roles:
                 await ctx.send(f"I don't see any user named **{user}**.")
                 return
             title = f"Roles for @{member.display_name}"
-            roles = member.roles  # type: List[discord.Role]
+            roles = member.roles[:]  # type: List[discord.Role]
             if len(roles) <= 1:
                 await ctx.send(f"@**{member.display_name}** has no roles.")
                 return
