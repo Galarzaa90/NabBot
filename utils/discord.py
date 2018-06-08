@@ -27,16 +27,6 @@ def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -
     return None
 
 
-def get_role_list(guild: discord.Guild) -> List[discord.Role]:
-    """Lists all roles within the discord server"""
-    roles = []
-    for role in guild.roles:
-        # Ignore @everyone and NabBot
-        if role.name not in ["@everyone", "Nab Bot"]:
-            roles.append(role)
-    return roles
-
-
 def get_user_color(user: discord.Member, guild: discord.Guild) -> discord.Colour:
     """Gets the user's color based on the highest role with a color"""
     # If it's a PM, server will be none

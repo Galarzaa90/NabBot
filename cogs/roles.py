@@ -1,10 +1,12 @@
+from typing import List
+
 import discord
 from discord.ext import commands
 
 from nabbot import NabBot
 from utils import context
 from utils.config import config
-from utils.discord import get_role_list, is_private
+from utils.discord import is_private
 from utils.paginator import CannotPaginate, Pages
 
 
@@ -41,27 +43,27 @@ class Roles:
         If user is blank, I will list all the server's roles."""
         if user is None:
             title = "Roles in this server"
-            entries = [r.mention for r in get_role_list(ctx.guild)]
+            roles = ctx.guild.roles  # type: List[discord.Role]
+            if len(roles) <= 1:
+                await ctx.send("There are no roles in this server.")
+                return
         else:
             member = self.bot.get_member(user, ctx.guild)
             if member is None:
-                await ctx.send("I don't see any user named **" + user + "**.")
+                await ctx.send(f"I don't see any user named **{user}**.")
                 return
             title = f"Roles for @{member.display_name}"
-            entries = []
-            # Ignoring "default" roles
-            for role in member.roles:
-                if role.name not in ["@everyone", "Nab Bot"]:
-                    entries.append(role.mention)
-
-            # There shouldn't be anyone without active roles, but since people can check for NabBot,
-            # might as well show a specific message.
-            if not entries:
-                await ctx.send(f"There are no active roles for **{member.display_name}**.")
+            roles = member.roles  # type: List[discord.Role]
+            if len(roles) <= 1:
+                await ctx.send(f"@**{member.display_name}** has no roles.")
                 return
+        # Remove @everyone
+        roles.remove(ctx.guild.default_role)
+        # Sorting roles by their position
+        roles = sorted(roles, key=lambda r: r.position, reverse=True)
+        entries = [f"{r.mention} ({len(r.members):,} member{'s' if len(r.members) > 1 else ''})" for r in roles]
 
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
+        if ctx.channel.name == config.ask_channel_name:
             per_page = 20
         else:
             per_page = 5

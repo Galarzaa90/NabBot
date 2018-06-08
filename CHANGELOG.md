@@ -8,6 +8,7 @@
 - New `/ping` command, shows the bot's response times.
 - Made some visual changes to `/serverinfo`
 - Moved role related commands to new Roles cog.
+- `/roles` now sorts results by position and shows members with the role.
 - Many changes to command names and aliases:
     - `/item`: `checkprice` alias removed, `items` alias added.
     - `/monster`: `mon` alias removed.
