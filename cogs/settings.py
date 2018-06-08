@@ -56,14 +56,22 @@ class Settings:
                                   description=ctx.command.short_doc, color=discord.Color.blurple())
             embed.add_field(name="Current value", value=ctx.world, inline=False)
             embed.add_field(name="Accepted values", value="Any Tibia world or `none` to disable.", inline=False)
-            embed.add_field(name="Edit", value=f"`{ctx.prefix}{ctx.invoked_with} [world/none]`")
+            embed.add_field(name="Edit", inline=False,
+                            value=f"`{ctx.prefix}{ctx.command.full_parent_name} {ctx.invoked_with} [world/none]`")
             await ctx.send(embed=embed)
             return
         world = world.strip().capitalize()
-        if world not in tibia_worlds:
-            await ctx.send("There's no world with that name.")
-            return
-        message = await ctx.send(f"Are you sure you want to assign **{world}** to this server?")
+        if world == "None":
+            if ctx.world is None:
+                await ctx.send("This server is already not tracking any world.")
+                return
+            message = await ctx.send(f"Are you sure you want to unassign **{ctx.world}** from this server?")
+            world = None
+        else:
+            if world not in tibia_worlds:
+                await ctx.send("There's no world with that name.")
+                return
+            message = await ctx.send(f"Are you sure you want to assign **{world}** to this server?")
         confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
         if not confirm:
             await ctx.message.delete()
@@ -71,7 +79,10 @@ class Settings:
 
         set_server_property("world", ctx.guild.id, world)
         self.bot.reload_worlds()
-        await ctx.send(f"{ctx.tick(True)} This server is now tracking **{world}**")
+        if world is None:
+            await ctx.send(f"{ctx.tick(True)} This server is no longer tracking any world.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} This server is now tracking **{world}**")
 
 
 def setup(bot):
