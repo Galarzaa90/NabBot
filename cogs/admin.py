@@ -66,67 +66,6 @@ class Admin:
     @commands.guild_only()
     @checks.is_admin()
     @checks.is_not_lite()
-    @commands.command(name="setworld", aliases=["trackworld"])
-    async def set_world(self, ctx: context.Context, *, world: str = None):
-        """Sets or checks the tracked world.
-
-        The tracked world is the Tibia world that this discord server is following.
-        Only characters in that world will be registered.
-        If no world is provided, it will check the currently set world."""
-
-        current_world = ctx.world
-        if world is None:
-            if current_world is None:
-                await ctx.send("This server has no tibia world assigned.")
-            else:
-                await ctx.send(f"This server has **{current_world}** assigned.")
-            return
-
-        if world.lower() in ["clear", "none", "delete", "remove"]:
-            message = await ctx.send("Are you sure you want to delete this server's tracked world? `yes/no`")
-            confirm = await ctx.react_confirm(message, timeout=60, use_checkmark=True)
-            if confirm is None:
-                await ctx.send("I guess you changed your mind?")
-                return
-            if not confirm:
-                await ctx.send("No changes were made then.")
-                return
-
-            c = userDatabase.cursor()
-            try:
-                c.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'world'", (ctx.guild.id,))
-            finally:
-                c.close()
-                userDatabase.commit()
-            await ctx.send("This server's tracked world has been removed.")
-            self.bot.reload_worlds()
-            return
-
-        world = world.strip().capitalize()
-        if world not in tibia_worlds:
-            await ctx.send("There's no world with that name.")
-            return
-        message = await ctx.send(f"Are you sure you want to assign **{world}** to this server? "
-                                 f"Previous worlds will be replaced.")
-        confirm = await ctx.react_confirm(message, timeout=60)
-        if confirm is None:
-            await ctx.send("I guess you changed your mind...")
-            return
-        if not confirm:
-            await ctx.send("No changes were made then.")
-            return
-
-        with userDatabase as con:
-            # Safer to just delete old entry and add new one
-            con.execute("DELETE FROM server_properties WHERE server_id = ? AND name = 'world'", (ctx.guild.id,))
-            con.execute("INSERT INTO server_properties(server_id, name, value) VALUES (?, 'world', ?)",
-                        (ctx.guild.id, world,))
-            await ctx.send("This server's world has been changed successfully.")
-            self.bot.reload_worlds()
-
-    @commands.guild_only()
-    @checks.is_admin()
-    @checks.is_not_lite()
     @commands.command(name="setwelcome")
     async def set_welcome(self, ctx, *, message: str = None):
         """Set the messages members get PMed when joining.

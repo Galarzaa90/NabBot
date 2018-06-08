@@ -18,7 +18,7 @@ from utils.help_format import NabHelpFormat
 from utils.tibia import populate_worlds, tibia_worlds, get_voc_abb_and_emoji
 
 initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot",
-                "cogs.tibiawiki", "cogs.roles"}
+                "cogs.tibiawiki", "cogs.roles", "cogs.settings"}
 
 
 class NabBot(commands.Bot):
@@ -98,7 +98,7 @@ class NabBot(commands.Bot):
         if isinstance(error, commands.errors.CommandNotFound):
             return
         elif isinstance(error, commands.NoPrivateMessage):
-            await ctx.send("This command cannot be used in private messages.")
+            await ctx.send(error)
         elif isinstance(error, commands.CommandInvokeError):
             if isinstance(error.original, discord.HTTPException):
                 log.error(f"Reply to '{ctx.message.clean_content}' was too long.")

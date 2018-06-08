@@ -57,7 +57,9 @@ class Context(commands.Context):
         except asyncio.TimeoutError:
             return None
         finally:
-            if self.guild is not None:
+            if delete_after:
+                await message.delete()
+            elif self.guild is not None:
                 try:
                     await message.clear_reactions()
                 except discord.Forbidden:
