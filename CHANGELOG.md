@@ -10,13 +10,13 @@
 - Moved role related commands to new Roles cog.
 - `/roles` now sorts results by position and shows members with the role.
 - New cog: `Settings`, to change all server specific settings: `/settings`
-    - `/setworld` moved to `/settings world`
+    - `/setworld` moved to `/settings world`.
+    - `/setleveldeathschannel` moved to `/settings levelschannel`.
 - Many changes to command names and aliases:
     - `/item`: `checkprice` alias removed, `items` alias added.
     - `/monster`: `mon` alias removed.
     - `/spell`: `spells` alias added.
     - `/seteventchannel`: `seteventschannel` alias removed.
-    - `/setleveldeathschannel`: `setlevelchannel`, `setdeathchannel`, `setleveldeathchannel` aliases removed.
     - `/server`: `server_info` alias removed.
     - `/guild`: `guildcheck` alias removed.
     - `/role`: Renamed to `/rolemembers`.
