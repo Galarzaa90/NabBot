@@ -230,7 +230,7 @@ class Tracking:
                 # Iterate through servers with tracked world to find one that matches the current world
                 for server, world in self.bot.tracked_worlds.items():
                     if world == current_world:
-                        watched_channel_id = get_server_property("watched_channel", server, is_int=True)
+                        watched_channel_id = get_server_property(server, "watched_channel", is_int=True)
                         if watched_channel_id is None:
                             # This server doesn't have watch list enabled
                             continue
@@ -266,7 +266,7 @@ class Tracking:
                                 if online_char.name == watched["name"]:
                                     # Add to online list
                                     currently_online.append(online_char)
-                        watched_message_id = get_server_property("watched_message", server, is_int=True)
+                        watched_message_id = get_server_property(server, "watched_message", is_int=True)
                         # We try to get the watched message, if the bot can't find it, we just create a new one
                         # This may be because the old message was deleted or this is the first time the list is checked
                         try:
@@ -305,7 +305,7 @@ class Tracking:
                         try:
                             if watched_message is None:
                                 new_watched_message = await watched_channel.send(embed=embed)
-                                set_server_property("watched_message", server, new_watched_message.id)
+                                set_server_property(server, "watched_message", new_watched_message.id)
                             else:
                                 await watched_message.edit(embed=embed)
                             await watched_channel.edit(name=f"{watched_channel.name.split('·', 1)[0]}·{online_count}")
@@ -410,8 +410,8 @@ class Tracking:
             guild = self.bot.get_guild(guild_id)
             if char.world == tracked_world and guild is not None and guild.get_member(char.owner) is not None:
                 try:
-                    channel = self.bot.get_channel_or_top(guild, get_server_property("levels_channel", guild.id,
-                                                                                     is_int=True))
+                    channel = self.bot.get_channel_or_top(guild,
+                                                          get_server_property(guild.id, "levels_channel", is_int=True))
                     await channel.send(message[:1].upper() + message[1:])
                 except discord.Forbidden:
                     log.warning("announce_death: Missing permissions.")
@@ -454,8 +454,8 @@ class Tracking:
             server = self.bot.get_guild(server_id)
             if char.world == tracked_world and server is not None and server.get_member(char.owner) is not None:
                 try:
-                    channel = self.bot.get_channel_or_top(server, get_server_property("levels_channel", server.id,
-                                                                                      is_int=True))
+                    channel = self.bot.get_channel_or_top(server,
+                                                          get_server_property(server.id, "levels_channel", is_int=True))
                     await channel.send(message)
                 except discord.Forbidden:
                     log.warning("announce_level: Missing permissions.")
@@ -829,11 +829,7 @@ class Tracking:
         This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated."""
         world = self.bot.tracked_worlds.get(ctx.guild.id)
 
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
         c = userDatabase.cursor()
         now = dt.datetime.utcnow()
         uptime = (now - self.bot.start_time).total_seconds()
@@ -916,11 +912,7 @@ class Tracking:
         online_entries = []
         online_vocations = []
 
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
 
         char = None
         params = params.split(",")
@@ -1026,7 +1018,7 @@ class Tracking:
         Creates a new channel with the specified name.
         If no name is specified, the default name "watched-list" is used."""
 
-        watched_channel_id = get_server_property("watched_channel", ctx.guild.id, is_int=True)
+        watched_channel_id = get_server_property(ctx.guild.id, "watched_channel", is_int=True)
         watched_channel = self.bot.get_channel(watched_channel_id)
         
         if "·" in name:
@@ -1062,7 +1054,7 @@ class Tracking:
                                "This channel can be renamed freely.\n"
                                "**It is important to not allow anyone to write in here**\n"
                                "*This message can be deleted now.*")
-            set_server_property("watched_channel", ctx.guild.id, channel.id)
+            set_server_property(ctx.guild.id, "watched_channel", channel.id)
 
     @watched.command(name="add", aliases=["addplayer", "addchar"])
     @commands.guild_only()

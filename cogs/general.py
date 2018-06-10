@@ -98,8 +98,10 @@ class General:
                         event["start"] = 'now'
                     message = "**{name}** (by **@{author}**,*ID:{id}*) - Is starting {start}!".format(**event)
                     c.execute("UPDATE events SET status = ? WHERE id = ?", (new_status, event["id"],))
-                    announce_channel = \
-                        self.bot.get_channel_or_top(guild, get_server_property("events_channel", guild.id, is_int=True))
+                    announce_channel_id = get_server_property(guild.id, "events_channel", is_int=True)
+                    if announce_channel_id == 0:
+                        continue
+                    announce_channel = self.bot.get_channel_or_top(guild, announce_channel_id)
                     if announce_channel is not None:
                         await announce_channel.send(message)
                     await self.notify_subscribers(event["id"], message)
@@ -146,8 +148,7 @@ class General:
         _mention_pattern = re.compile('|'.join(_mentions_transforms.keys()))
 
         bot = ctx.bot
-        destination = ctx.channel if is_private(
-            ctx.channel) or ctx.channel.name == config.ask_channel_name else ctx.author
+        destination = ctx.channel if ctx.long else ctx.author
 
         def repl(obj):
             return _mentions_transforms.get(obj.group(0), '')

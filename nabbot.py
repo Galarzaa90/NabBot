@@ -71,21 +71,21 @@ class NabBot(commands.Bot):
         if message.author.bot:
             return
 
-        ctx = await self.get_context(message, cls=context.Context)
+        ctx = await self.get_context(message, cls=context.NabCtx)
         if ctx.command is not None:
             await self.invoke(ctx)
             return
+        server_delete = get_server_property(ctx.guild.id, "commandsonly", is_int=True)
+        global_delete = config.ask_channel_delete
+        if (server_delete is None and global_delete) or server_delete:
+            if ctx.is_askchannel:
+                try:
+                    await message.delete()
+                except discord.Forbidden:
+                    # Bot doesn't have permission to delete message
+                    pass
 
-        # Delete messages that are not commands in ask-nabbot (if enabled)
-        if config.ask_channel_delete and not is_private(message.channel) \
-                and message.channel.name == config.ask_channel_name:
-            try:
-                await message.delete()
-            except discord.Forbidden:
-                # Bot doesn't have permission to delete message
-                pass
-
-    async def on_command(self, ctx: context.Context):
+    async def on_command(self, ctx: context.NabCtx):
         """Called when a command is used. Used to log commands on a file."""
         if isinstance(ctx.channel, discord.abc.PrivateChannel):
             destination = 'PM'
@@ -93,7 +93,7 @@ class NabBot(commands.Bot):
             destination = '#{0.channel.name} ({0.guild.name})'.format(ctx)
         log.info('Command by {0.author.display_name} in {1}: {0.message.content}'.format(ctx, destination))
 
-    async def on_command_error(self, ctx: context.Context, error: commands.CommandError):
+    async def on_command_error(self, ctx: context.NabCtx, error: commands.CommandError):
         """Handles command errors"""
         if isinstance(error, commands.errors.CommandNotFound):
             return
@@ -142,7 +142,7 @@ class NabBot(commands.Bot):
         else:
             self.members[member.id] = [member.guild.id]
 
-        server_welcome = get_server_property("welcome", member.guild.id, "")
+        server_welcome = get_server_property(member.guild.id, "welcome", "")
         pm = (config.welcome_pm+"\n"+server_welcome).format(user=member, server=member.guild, bot=self.user,
                                                             owner=member.guild.owner)
 

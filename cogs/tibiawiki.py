@@ -46,8 +46,7 @@ class TibiaWiki:
             await ctx.send("I couldn't find that item, maybe you meant one of these?", embed=embed)
             return
 
-        long = is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name
-        embed = self.get_item_embed(ctx, item, long)
+        embed = self.get_item_embed(ctx, item, ctx.long)
 
         # Attach item's image only if the bot has permissions
         permissions = ctx.channel.permissions_for(ctx.me)
@@ -96,8 +95,7 @@ class TibiaWiki:
             await ctx.send("I couldn't find that creature, maybe you meant one of these?", embed=embed)
             return
 
-        long = is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name
-        embed = self.get_monster_embed(ctx, monster, long)
+        embed = self.get_monster_embed(ctx, monster, ctx.long)
 
         # Attach monster's image only if the bot has permissions
         if permissions.attach_files and monster["image"] != 0:
@@ -128,8 +126,7 @@ class TibiaWiki:
             await ctx.send("I couldn't find that NPC, maybe you meant one of these?", embed=embed)
             return
 
-        long = is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name
-        embed = self.get_npc_embed(ctx, npc, long)
+        embed = self.get_npc_embed(ctx, npc, ctx.long)
         # Attach spell's image only if the bot has permissions
         if permissions.attach_files:
             files = []
@@ -169,8 +166,7 @@ class TibiaWiki:
             await ctx.send("I couldn't find that spell, maybe you meant one of these?", embed=embed)
             return
 
-        long = is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name
-        embed = self.get_spell_embed(ctx, spell, long)
+        embed = self.get_spell_embed(ctx, spell, ctx.long)
 
         # Attach spell's image only if the bot has permissions
         if permissions.attach_files and spell["image"] != 0:
@@ -374,9 +370,9 @@ class TibiaWiki:
                     name = "\u200F"
                 embed.add_field(name=name, value="`" + loot + "`")
         if monster["loot"] and not long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
+            ask_channel = ctx.ask_channel_name
             if ask_channel:
-                askchannel_string = " or use #" + ask_channel.name
+                askchannel_string = " or use #" + ask_channel
             else:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
@@ -523,9 +519,9 @@ class TibiaWiki:
             embed.add_field(name=name, value=value, inline=not long)
 
         if npcs_too_long or drops_too_long or quests_too_long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
+            ask_channel = ctx.ask_channel_name
             if ask_channel:
-                askchannel_string = " or use #" + ask_channel.name
+                askchannel_string = " or use #" + ask_channel
             else:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
@@ -602,9 +598,9 @@ class TibiaWiki:
         embed.description = description
 
         if too_long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
+            ask_channel = ctx.ask_channel_name
             if ask_channel:
-                askchannel_string = " or use #" + ask_channel.name
+                askchannel_string = " or use #" + ask_channel
             else:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
@@ -710,9 +706,9 @@ class TibiaWiki:
                     name = f"Teaches ({voc.title()}s)" if i == 0 else "\u200F"
                     embed.add_field(name=name, value=split_field, inline=not len(fields) > 1)
         if too_long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
+            ask_channel = ctx.ask_channel_name
             if ask_channel:
-                askchannel_string = " or use #" + ask_channel.name
+                askchannel_string = " or use #" + ask_channel
             else:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))

@@ -21,7 +21,7 @@ class Roles:
 
     @commands.guild_only()
     @commands.command()
-    async def roleinfo(self, ctx: context.Context, *, role: discord.Role):
+    async def roleinfo(self, ctx: context.NabCtx, *, role: discord.Role):
         """Shows details about a role."""
         embed = discord.Embed(title=role.name, colour=role.colour, timestamp=role.created_at,
                               description=f"**ID** {role.id}")
@@ -36,7 +36,7 @@ class Roles:
 
     @commands.guild_only()
     @commands.command()
-    async def roles(self, ctx: context.Context, *, user: str = None):
+    async def roles(self, ctx: context.NabCtx, *, user: str = None):
         """Shows a user's roles or a list of server roles.
 
         If a user is specified, it will list their roles.
@@ -63,10 +63,7 @@ class Roles:
         roles = sorted(roles, key=lambda r: r.position, reverse=True)
         entries = [f"{r.mention} ({len(r.members):,} member{'s' if len(r.members) > 1 else ''})" for r in roles]
 
-        if ctx.channel.name == config.ask_channel_name:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
         try:
@@ -89,11 +86,7 @@ class Roles:
             return
 
         title = "Members with the role '{0.name}'".format(role)
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
         pages = Pages(ctx, entries=role_members, per_page=per_page)
         pages.embed.title = title
         pages.embed.colour = role.colour
@@ -118,11 +111,7 @@ class Roles:
             return
 
         title = "Members with no roles"
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
         pages = Pages(ctx, entries=entries, per_page=per_page, title=title)
         try:
             await pages.paginate()

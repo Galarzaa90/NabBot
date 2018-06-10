@@ -13,6 +13,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils import checks
 from utils.config import config
+from utils.context import NabCtx
 from utils.database import get_server_property, userDatabase
 from utils.discord import is_private, is_lite_mode, get_user_avatar
 from utils.general import get_time_diff, join_list, get_brasilia_time_zone, global_online_list, get_local_timezone, log, \
@@ -331,10 +332,7 @@ class Tibia:
             member["vocation"] = get_voc_abb(member["vocation"])
             member["online"] = "🔹" if member["status"] == "online" else ""
             entries.append("{rank}\u2014 {online}**{name}** {nick} (Lvl {level} {vocation}{emoji})".format(**member))
-        if is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
         pages = VocationPages(ctx, entries=entries, per_page=per_page, vocations=vocations)
         pages.embed.set_author(name=title, icon_url=guild.logo, url=guild.url)
         try:
@@ -435,12 +433,8 @@ class Tibia:
         author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        show_links = False
-        if is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name:
-            per_page = 20
-        else:
-            per_page = 5
-            show_links = True
+        show_links = not ctx.long
+        per_page = 20 if ctx.long else 5
         try:
             if name is None:
                 title = "Latest deaths"
@@ -543,11 +537,7 @@ class Tibia:
         count = 0
         entries = []
         now = time.time()
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
 
         if name[:1] in ["a", "e", "i", "o", "u"]:
             name_with_article = "an "+name
@@ -614,12 +604,7 @@ class Tibia:
         count = 0
         entries = []
         now = time.time()
-
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
 
         try:
             c.execute("SELECT name, world, char_deaths.level, killer, byplayer, date, vocation "
@@ -769,11 +754,7 @@ class Tibia:
         author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
         await ctx.channel.trigger_typing()
         try:
             if name is None:
@@ -869,12 +850,7 @@ class Tibia:
         count = 0
         entries = []
         now = time.time()
-
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
 
         try:
             c.execute("SELECT name, world, char_levelups.level, date, vocation "
@@ -932,11 +908,7 @@ class Tibia:
         author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
         await ctx.channel.trigger_typing()
         try:
             if name is None:
@@ -1057,12 +1029,8 @@ class Tibia:
         entries = []
         count = 0
         now = time.time()
+        per_page = 20 if ctx.long else 5
 
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
-            per_page = 20
-        else:
-            per_page = 5
         await ctx.channel.trigger_typing()
         try:
             title = f"{user.display_name} timeline"
@@ -1412,11 +1380,7 @@ class Tibia:
         entries = []
         vocations = []
         filter_name = ""
-
-        if is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name:
-            per_page = 20
-        else:
-            per_page = 5
+        per_page = 20 if ctx.long else 5
 
         content = ""
         # params[0] could be a character's name, a character's level or one of the level ranges
@@ -1486,10 +1450,8 @@ class Tibia:
             await ctx.send(e)
 
     @commands.command()
-    async def bosses(self, ctx, world=None):
+    async def bosses(self, ctx: NabCtx, world=None):
         """Shows predictions for bosses."""
-        ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-
         if world is None and not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is not None:
             world = self.bot.tracked_worlds.get(ctx.guild.id)
         elif world is None:
@@ -1516,14 +1478,15 @@ class Tibia:
             embed.add_field(name="High Chance - Last seen", value=fields["High Chance"])
         if fields["Low Chance"]:
             embed.add_field(name="Low Chance - Last seen", value=fields["Low Chance"])
-        if is_private(ctx.channel) or ctx.channel == ask_channel:
+        if ctx.long:
             if fields["No Chance"]:
                 embed.add_field(name="No Chance - Expect in", value=fields["No Chance"])
             if fields["Unpredicted"]:
                 embed.add_field(name="Unpredicted - Last seen", value=fields["Unpredicted"])
         else:
+            ask_channel = ctx.ask_channel_name
             if ask_channel:
-                askchannel_string = " or use #" + ask_channel.name
+                askchannel_string = " or use #" + ask_channel
             else:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
@@ -1551,9 +1514,7 @@ class Tibia:
             }
             for news in recent_news:
                 news["emoji"] = type_emojis.get(news["type"], "")
-            limit = 10
-            if is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name:
-                limit = 20
+            limit = 20 if ctx.long else 10
             embed.description = "\n".join([news_format.format(**n) for n in recent_news[:limit]])
             await ctx.send(embed=embed)
         else:
@@ -1565,9 +1526,7 @@ class Tibia:
             except NetworkError:
                 await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
                 return
-            limit = 600
-            if is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name:
-                limit = 1900
+            limit = 1900 if ctx.long else 600
             embed = self.get_article_embed(article, limit)
             await ctx.send(embed=embed)
 
@@ -1804,8 +1763,10 @@ class Tibia:
                 for article in new_articles:
                     log.info("Announcing new article: {id} - {title}".format(**article))
                     for guild in self.bot.guilds:
-                        channel = self.bot.get_channel_or_top(guild, get_server_property("events_channel", guild.id,
-                                                                                         is_int=True))
+                        news_channel_id = get_server_property(guild.id, "news_channel", is_int=True)
+                        if news_channel_id == 0:
+                            continue
+                        channel = self.bot.get_channel_or_top(guild, news_channel_id)
                         try:
                             await channel.send("New article posted on Tibia.com",
                                                embed=self.get_article_embed(article, 400))

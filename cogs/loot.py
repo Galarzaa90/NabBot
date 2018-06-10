@@ -149,12 +149,11 @@ class Loot:
         # Short message
         short_message = f"I've finished parsing your image {author.mention}." \
                         f"\nThe total value is {total_value:,} gold coins."
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if not is_private(ctx.channel) and ctx.channel != ask_channel:
+        if not ctx.long:
             short_message += "\nI've also sent you a PM with detailed information."
 
         # Send on ask_channel or PM
-        if ctx.channel == ask_channel:
+        if ctx.long:
             await ctx.send(short_message, embed=embed, file=discord.File(loot_image_overlay, "results.png"))
         else:
             await ctx.send(short_message)

@@ -21,7 +21,7 @@ class Admin:
     @commands.command()
     @checks.is_admin()
     @commands.guild_only()
-    async def checkchannel(self, ctx: context.Context, *, channel: discord.TextChannel = None):
+    async def checkchannel(self, ctx: context.NabCtx, *, channel: discord.TextChannel = None):
         """Checks the channel's permissions.
 
         Makes sure that the bot has all the required permissions to work properly.
@@ -86,7 +86,7 @@ class Admin:
             return m.author == ctx.author and m.channel == ctx.channel
 
         if message is None:
-            current_message = get_server_property("welcome", ctx.guild.id)
+            current_message = get_server_property(ctx.guild.id, "welcome")
             if current_message is None:
                 current_message = config.welcome_pm.format(ctx.author, self.bot)
                 await ctx.send(f"This server has no custom message, joining members get the default message:\n"
@@ -110,7 +110,7 @@ class Admin:
                 await ctx.send("I guess you changed your mind...")
                 return
 
-            set_server_property("welcome", ctx.guild.id, None)
+            set_server_property(ctx.guild.id, "welcome", None)
             await ctx.send("This server's welcome message was removed.")
             return
 
@@ -137,90 +137,8 @@ class Admin:
             await ctx.send("I guess you changed your mind...")
             return
 
-        set_server_property("welcome", ctx.guild.id, message)
+        set_server_property(ctx.guild.id, "welcome", message)
         await ctx.send("This server's welcome message has been changed successfully.")
-
-    @commands.command(name="seteventchannel", aliases=["setnewschannel"])
-    @checks.is_admin()
-    @commands.guild_only()
-    @checks.is_not_lite()
-    async def set_events_channel(self, ctx: commands.Context, *, name: str = None):
-        """Changes the channel used for the bot's event and news announcements
-
-        If no channel is set, the bot will use the top channel it can write on."""
-        def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
-
-        top_channel = self.bot.get_top_channel(ctx.guild, True)
-        current_channel = get_server_property("events_channel", ctx.guild.id, is_int=True)
-        # Show currently set channel
-        if name is None:
-            if current_channel is None:
-                if top_channel is None:
-                    await ctx.send("This server has no channel set and I can't use any of the channels.")
-                    return
-                await ctx.send(f"This server has no channel set, I use {top_channel.mention} cause it's the highest on "
-                               f"the list I can use.")
-                return
-            channel = ctx.guild.get_channel(int(current_channel))
-            # Channel doesn't exist anymore
-            if channel is None:
-                if top_channel is None:
-                    await ctx.send("The channel previously set doesn't seem to exist anymore and I don't have a "
-                                   "channel to use.")
-                else:
-                    await ctx.send(f"The channel previously set doesn't seem to exist anymore. I'm using "
-                                   f"{top_channel.mention} meanwhile.")
-                return
-            permissions = channel.permissions_for(ctx.me)
-            if not permissions.read_messages or not permissions.send_messages:
-                if top_channel is None:
-                    await ctx.send(f"The channel is {channel.mention}, but I don't have permissions to use it and I "
-                                   f"don't have a channel to use.")
-                else:
-                    await ctx.send(f"The channel is {channel.mention}, but I don't have permissions to use it. "
-                                   f"I'm using {top_channel.mention} meanwhile.")
-                return
-            await ctx.send(f"This server's events channel is {channel.mention}.")
-            return
-
-        if name.lower() in ["clear", "none", "delete", "remove"]:
-            await ctx.send("Are you sure you want to delete this server's events channel? `yes/no`")
-            try:
-                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
-                if reply.content.lower() not in ["yes", "y"]:
-                    await ctx.send("No changes were made then.")
-                    return
-            except asyncio.TimeoutError:
-                await ctx.send("I guess you changed your mind...")
-                return
-            set_server_property("events_channel", ctx.guild.id, None)
-            await ctx.send("This server's events channel was removed.")
-            return
-        try:
-            channel = await commands.TextChannelConverter().convert(ctx, name)
-        except commands.BadArgument:
-            await ctx.send("I couldn't find that channel.")
-            return
-        permissions = channel.permissions_for(ctx.me)
-        if not permissions.read_messages or not permissions.send_messages:
-            await ctx.send("I don't have permission to use {0.mention}.".format(channel))
-            return
-
-        await ctx.send("Are you sure you want {0.mention} as the event announcement channel? `yes/no`".format(channel))
-        try:
-            reply = await self.bot.wait_for("message", timeout=120.0, check=check)
-            if reply.content.lower() not in ["yes", "y"]:
-                await ctx.send("No changes were made then.")
-                return
-        except asyncio.TimeoutError:
-            await ctx.send("I guess you changed your mind...")
-            return
-
-        set_server_property("events_channel", ctx.guild.id, channel.id)
-        await ctx.send("This server's announcement channel was changed successfully.\n"
-                       "If the channel becomes unavailable for me in any way, I will try to use the highest channel"
-                       " I can see on the list.")
 
     @commands.command(name="addchar", aliases=["registerchar"])
     @checks.is_admin()

@@ -12,11 +12,14 @@
 - New cog: `Settings`, to change all server specific settings: `/settings`
     - `/setworld` moved to `/settings world`.
     - `/setleveldeathschannel` moved to `/settings levelschannel`.
+    - `/seteventschannel` moved to `/settings eventschannel`
+    - News channel is now configured separately from Events channel: `/settings newschannel`
+    - Command channel (ask-nabbot) is now configurable.
+    - Tibia news announcements and Events announcements can be disabled entirely.
 - Many changes to command names and aliases:
     - `/item`: `checkprice` alias removed, `items` alias added.
     - `/monster`: `mon` alias removed.
     - `/spell`: `spells` alias added.
-    - `/seteventchannel`: `seteventschannel` alias removed.
     - `/server`: `server_info` alias removed.
     - `/guild`: `guildcheck` alias removed.
     - `/role`: Renamed to `/rolemembers`.
