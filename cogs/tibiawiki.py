@@ -5,7 +5,6 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils.config import config
 from utils.discord import is_private, FIELD_VALUE_LIMIT
 from utils.general import join_list
 from utils.messages import split_message

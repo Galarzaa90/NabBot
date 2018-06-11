@@ -13,7 +13,7 @@ from nabbot import NabBot
 from utils import checks
 from utils.config import config
 from utils.database import tibiaDatabase, lootDatabase
-from utils.discord import FIELD_VALUE_LIMIT, is_private
+from utils.discord import FIELD_VALUE_LIMIT
 from utils.messages import split_message
 from utils.tibiawiki import get_item
 

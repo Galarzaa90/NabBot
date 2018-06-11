@@ -5,8 +5,6 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils import context
-from utils.config import config
-from utils.discord import is_private
 from utils.paginator import CannotPaginate, Pages
 
 

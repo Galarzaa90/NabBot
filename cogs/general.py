@@ -15,9 +15,9 @@ from nabbot import NabBot
 from utils import checks
 from utils.config import config
 from utils.database import userDatabase, tibiaDatabase, get_server_property
-from utils.discord import is_lite_mode, get_region_string, is_private, clean_string, get_user_avatar, get_user_color
+from utils.discord import get_region_string, is_private, clean_string, get_user_avatar, get_user_color
 from utils.general import parse_uptime, TimeString, single_line, is_numeric, log
-from utils.paginator import Pages, CannotPaginate, VocationPages, HelpPaginator
+from utils.paginator import CannotPaginate, VocationPages, HelpPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50
@@ -449,13 +449,11 @@ class General:
         await ctx.send(embed=embed)
 
     @checks.is_not_lite()
-    @events.command(name="add")
+    @events.command(name="add", usage="<starts in> <name>[,description]")
     async def event_add(self, ctx, starts_in: TimeString, *, params):
         """Creates a new event.
 
-        params -> <name>[,description]
-
-        starts_in is in how much time the event will start from the moment of creation.
+        starts in is in how much time the event will start from the moment of creation.
         This is done to avoid dealing with different timezones.
         Just say in how many days/hours/minutes the event is starting.
 

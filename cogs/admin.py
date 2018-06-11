@@ -140,13 +140,11 @@ class Admin:
         set_server_property(ctx.guild.id, "welcome", message)
         await ctx.send("This server's welcome message has been changed successfully.")
 
-    @commands.command(name="addchar", aliases=["registerchar"])
+    @commands.command(name="addchar", aliases=["registerchar"], usage="<user>,<character>")
     @checks.is_admin()
     @commands.guild_only()
     async def add_char(self, ctx, *, params):
-        """Registers a character to a user.
-
-        params -> user,character"""
+        """Registers a character to a user."""
         params = params.split(",")
         if len(params) != 2:
             await ctx.send("The correct syntax is: ``/addchar username,character``")
@@ -227,15 +225,13 @@ class Admin:
                         await self.bot.send_log_message(server, embed=embed)
                 userDatabase.commit()
 
-    @commands.command(name="addacc", aliases=["addaccount"])
+    @commands.command(name="addacc", aliases=["addaccount"], usage="<user>,<character>")
     @checks.is_owner()
     @commands.guild_only()
     async def add_account(self, ctx, *, params):
         """Register a character and all other visible characters to a discord user.
 
-        If a character is hidden, only that character will be added. Characters in other worlds are skipped.
-
-        params -> user,character"""
+        If a character is hidden, only that character will be added. Characters in other worlds are skipped."""
         params = params.split(",")
         if len(params) != 2:
             await ctx.send("The correct syntax is: ``/addacc username,character``")

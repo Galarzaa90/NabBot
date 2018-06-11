@@ -1168,7 +1168,7 @@ class Tibia:
                        f"\nMountain blessings cost **{mountain_bless_price:,}** each, for a total of "
                        f"**{int(mountain_bless_price*2):,}**.")
 
-    @commands.command(aliases=["houses", "guildhall", "gh"])
+    @commands.command(aliases=["houses", "guildhall", "gh"], usage="<name>[/world]")
     async def house(self, ctx, *, name: str):
         """Shows info for a house or guildhall.
 
@@ -1176,9 +1176,6 @@ class Tibia:
         If used on private messages, no world is looked up unless specified.
 
         To specify a world, add the world at the end separated with '/'.
-
-        Example:
-        /house The Tibianic/Antica
         """
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
