@@ -1318,7 +1318,8 @@ class General:
             await ctx.send("I can't quote embed messages.")
             return
         embed = discord.Embed(description=message.content, timestamp=message.created_at)
-        embed.set_author(name=message.author.display_name, icon_url=get_user_avatar(message.author))
+        embed.set_author(name=message.author.display_name, icon_url=get_user_avatar(message.author),
+                         url=message.jump_to_url)
         embed.set_footer(text=f"In #{message.channel.name}")
         embed.colour = get_user_color(message.author, ctx.guild)
         if len(message.attachments) >= 1:
