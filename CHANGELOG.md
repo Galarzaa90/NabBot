@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 1.1.1 (2018-06-12)
+- Added missing items from the Feyrist area to the loot database
+- Fixed an issue causing /loot update to only work the second time it was called
+
 ## Version 1.1.0 (2018-05-24)
 - New command: `/leave`, to make the bot leave a discord server.
 - New command: `/versions`, shows the current version and the version of dependencies.
