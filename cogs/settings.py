@@ -22,6 +22,16 @@ SETTINGS = {
 }
 
 
+class PrefixConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        user_id = ctx.bot.user.id
+        if argument.startswith((f'<@{user_id}>', f'<@!{user_id}>')):
+            raise commands.BadArgument("You can't remove this prefix.")
+        if len(argument) > 20:
+            raise commands.BadArgument("The prefix can't be longer than 20 characters.")
+        return argument
+
+
 class Settings:
     """Commands related to server customization."""
     def __init__(self, bot: NabBot):
@@ -61,13 +71,16 @@ class Settings:
 
     @checks.is_admin()
     @settings.command(name="prefix")
-    async def settings_prefix(self, ctx, prefix: str=None):
+    async def settings_prefix(self, ctx, prefix: PrefixConverter=None):
         """Changes the command prefix for this server.
 
         The prefix are the characters that go before a command's name, in order for the bot to recognize the command.
         A maximum of 5 commands can be set per server.
 
         To remove an existing prefix, use it as a parameter.
+
+        If you want to have a space at the end, such as: `nabbot help`, you have to use double quotes "nabbot ".
+        Multiple words also require using quotes.
 
         Mentioning the bot is always a valid command and can't be changed."""
         prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=list(config.command_prefix))
@@ -96,6 +109,11 @@ class Settings:
             prefixes.append(prefix)
             await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
         set_server_property(ctx.guild.id, "prefixes", prefixes, serialize=True)
+
+    @settings_prefix.error
+    async def prefix_error(self, ctx, error):
+        if isinstance(error, commands.BadArgument):
+            await ctx.send(str(error))
 
     @checks.is_admin()
     @settings.command(name="world")
