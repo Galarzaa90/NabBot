@@ -81,7 +81,10 @@ class NabBot(commands.Bot):
         if ctx.command is not None:
             await self.invoke(ctx)
             return
-        server_delete = get_server_property(ctx.guild.id, "commandsonly", is_int=True)
+        # This is a PM, no further info needed
+        if message.guild is None:
+            return
+        server_delete = get_server_property(message.guild.id, "commandsonly", is_int=True)
         global_delete = config.ask_channel_delete
         if (server_delete is None and global_delete) or server_delete:
             if ctx.is_askchannel:
