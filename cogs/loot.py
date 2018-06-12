@@ -1037,10 +1037,10 @@ async def loot_db_update():
         frames = []
         try:
             imagegif = Image.open(io.BytesIO(bytearray(item['image'])))
-            # v    to save .gif images correctly     v
+            if not os.path.exists("debugimages/" + item['title']):
+                os.makedirs("debugimages/" + item['title'])
             with open("debugimages/" + item["title"] + "/" + item["title"] + '.gif', 'wb') as w:
                 w.write(item['image'])
-            ##############################################
             nframes = 0
             while imagegif:
                 itemImageFrame = clear_black_lines(imagegif.convert("RGBA"))
