@@ -6,6 +6,7 @@
 - New `/roleinfo` command, shows a role's detailed information.
 - New `/userinfo` command, shows a user's detailed information.
 - New `/ping` command, shows the bot's response times.
+- New `/bestiary` command, shows the bestiary classes or creatures that belong to a class.
 - Command prefix is now configurable per server
 - Mention prefix command is now always enabled (e.g. `@NabBot help`)
 - Improvements to the watched list task

@@ -44,6 +44,47 @@ def get_monster(name):
         c.close()
 
 
+def get_bestiary_classes() -> Dict[str, int]:
+    """Gets all the bestiary classes
+
+    :return: The classes and how many creatures it has
+    :rtype: dict(str, int)
+    """
+    rows = tibiaDatabase.execute("SELECT DISTINCT bestiary_class, count(*) as count "
+                                 "FROM creatures WHERE bestiary_class not NUll "
+                                 "GROUP BY bestiary_class ORDER BY bestiary_class")
+    classes = {}
+    for r in rows:
+        classes[r["bestiary_class"]] = r["count"]
+    return classes
+
+
+def get_bestiary_creatures(_class: str) -> Dict[str, str]:
+    """Gets the creatures that belong to a bestiary class
+
+    :param _class: The name of the class
+    :type _class: str
+    :return: The creatures in the class, with their difficulty level.
+    :rtype: dict(str, str)
+    """
+    rows = tibiaDatabase.execute("""
+        SELECT title, bestiary_level
+        FROM creatures
+        WHERE bestiary_class LIKE ?
+        ORDER BY
+            CASE bestiary_level
+                WHEN "Trivial" THEN 0
+                WHEN "Easy" THEN 1
+                WHEN "Medium" THEN 2
+                WHEN "Hard" THEN 3
+            END
+        """, (_class,))
+    creatures = {}
+    for r in rows:
+        creatures[r["title"]] = r["bestiary_level"]
+    return creatures
+
+
 def get_item(name):
     """Returns a dictionary containing an item's info, if no exact match was found, it returns a list of suggestions.
 

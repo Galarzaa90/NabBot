@@ -8,9 +8,10 @@ from nabbot import NabBot
 from utils.discord import is_private, FIELD_VALUE_LIMIT
 from utils.general import join_list
 from utils.messages import split_message
+from utils.paginator import Pages, CannotPaginate
 from utils.tibia import get_map_area
 from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
-    get_key, search_key, get_rashid_info, get_mapper_link
+    get_key, search_key, get_rashid_info, get_mapper_link, get_bestiary_classes, get_bestiary_creatures
 
 
 class TibiaWiki:
@@ -103,6 +104,33 @@ class TibiaWiki:
             await ctx.send(file=discord.File(monster["image"], f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
+
+    @commands.command(usage="[class]")
+    async def bestiary(self, ctx, *, _class: str=None):
+        """Displays a category's creatures or all the categories
+
+        If a category is specified, it will list all the creatures that belong to the category and their level.
+        If no category is specified, it will list all the bestiary categories"""
+        if _class is None:
+            categories = get_bestiary_classes()
+            entries = [f"**{name}** - {count} creatures" for name, count in categories.items()]
+            description = ""
+            title = "Bestiary Classes"
+        else:
+            creatures = get_bestiary_creatures(_class)
+            if not creatures:
+                await ctx.send("There's no class with that name.")
+                return
+            entries = [f"**{name}** - {level}" for name, level in creatures.items()]
+            description = f"Use `{ctx.clean_prefix} monster <name>` to see more info"
+            title = f"Creatures in the {_class.title()} class"
+
+        pages = Pages(ctx, entries=entries, per_page=20 if ctx.long else 10, header=description)
+        pages.embed.title = title
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
 
     @commands.command(aliases=["npcs"])
     async def npc(self, ctx, *, name: str):
@@ -712,6 +740,7 @@ class TibiaWiki:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         return embed
+
 
 
 def setup(bot):

@@ -91,15 +91,7 @@ class NabBot(commands.Bot):
                     # Bot doesn't have permission to delete message
                     pass
 
-    async def on_command(self, ctx: context.NabCtx):
-        """Called when a command is used. Used to log commands on a file."""
-        if isinstance(ctx.channel, discord.abc.PrivateChannel):
-            destination = 'PM'
-        else:
-            destination = '#{0.channel.name} ({0.guild.name})'.format(ctx)
-        log.info('Command by {0.author.display_name} in {1}: {0.message.content}'.format(ctx, destination))
-
-    async def on_command_error(self, ctx: context.NabCtx, error: commands.CommandError):
+    async def on_command_error(self, ctx: context.NabCtx, error):
         """Handles command errors"""
         if isinstance(error, commands.errors.CommandNotFound):
             return
@@ -110,10 +102,9 @@ class NabBot(commands.Bot):
                 log.error(f"Reply to '{ctx.message.clean_content}' was too long.")
                 await ctx.send("Sorry, the message was too long to send.")
                 return
-            log.error(f"Exception in command: {ctx.command.qualified_name}", exc_info=error.original)
-            # Bot returns error message on discord if an owner called the command
-            if ctx.author.id in config.owner_ids:
-                await ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
+            log.error(f"Exception in command: {ctx.message.clean_content}", exc_info=error.original)
+            await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
+                           f'{error.original}```')
 
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
@@ -148,7 +139,7 @@ class NabBot(commands.Bot):
         else:
             self.members[member.id] = [member.guild.id]
 
-        server_welcome = get_server_property(member.guild.id, "welcome", "")
+        server_welcome = get_server_property(member.guild.id, "welcome", default="")
         pm = (config.welcome_pm+"\n"+server_welcome).format(user=member, server=member.guild, bot=self.user,
                                                             owner=member.guild.owner)
 
@@ -183,7 +174,6 @@ class NabBot(commands.Bot):
             await member.send(pm)
         except discord.Forbidden:
             pass
-
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
