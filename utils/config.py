@@ -1,5 +1,6 @@
 import os
 import shutil
+from typing import Tuple
 
 import yaml
 
@@ -29,13 +30,14 @@ KEYS = [
 
 
 class Config:
+
     def __init__(self, **kwargs):
         self.ask_channel_name = kwargs.get("ask_channel_name", "ask-nabbot")
         self.ask_channel_delete = kwargs.get("ask_channel_delete", True)
         self.log_channel_name = kwargs.get("log_channel_name", "server_log")
-        self.command_prefix = kwargs.get("command_prefix", ["/"])
+        self.command_prefix = tuple(kwargs.get("command_prefix", ["/"]))
         if isinstance(self.command_prefix, str):
-            self.command_prefix = [self.command_prefix]
+            self.command_prefix = (self.command_prefix,)
         self.lite_servers = kwargs.get("lite_servers", [])
         self.welcome_pm = kwargs.get("welcome_pm", "")
         self.owner_ids = kwargs.get("owner_ids", [])

@@ -70,7 +70,7 @@ class Settings:
         To remove an existing prefix, use it as a parameter.
 
         Mentioning the bot is always a valid command and can't be changed."""
-        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=config.command_prefix)
+        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=list(config.command_prefix))
         if prefix is None:
             current_value = ", ".join(f"`{p}`" for p in prefixes) if len(prefixes) > 0 else "Mentions only"
             await self.show_info_embed(ctx, current_value, "Any text", "prefix")
