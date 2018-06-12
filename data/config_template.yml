@@ -7,17 +7,13 @@ ask_channel_name: ask-nabbot
 ask_channel_delete: true
 log_channel_name: server-log
 
-# The prefix used for commands, this shouldn't overlap with prefixes of other bots in the same server.
-# It's possible to have multiple command prefixes, but it's not recommended to expand this.
+# The default prefix(es) for commands
+# This setting will affect all servers, but each server can configure its own command prefix,
+# including removing the global ones
+# Mentioning the bot is always a command prefix
 command_prefix:
   - "/"
 
-# If this is enabled, commands can also be called mentioning the bot and then the command name, e.g. @NabBot share 50
-# If this is enabled, and command_prefix is left empty, the bot will only answer to commands via mentions
-# Example:
-# command_prefix: []
-# command_mention: true
-command_mention: true
 
 # Lite mode:
 # If lite is enabled, all user database related functions are disabled.
@@ -67,7 +63,7 @@ loot_max: 6
 announce_threshold: 30
 
 # Delay inbreed server checks
-online_scan_interval: 40
+online_scan_interval: 90
 
 # Delay in between player death checks in seconds
 death_scan_interval: 15

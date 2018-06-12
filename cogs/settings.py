@@ -1,3 +1,5 @@
+from typing import List
+
 import discord
 from discord.ext import commands
 
@@ -13,7 +15,7 @@ SETTINGS = {
     "eventschannel": {"title": "📣 Events channel"},
     "levelschannel": {"title": "🌟☠ Tracking channel", "check":
         lambda ctx: ctx.guild.id not in config.lite_servers},
-    # "prefix": {"title": "❗ Prefix"},
+    "prefix": {"title": "❗ Prefix"},
     # "welcome": {"title": "💬 Welcome message"},
     "askchannel": {"title": "🤖 Command channel"},
     "commandsonly": {"title": "🗑 Command channel - Delete other"},
@@ -37,9 +39,10 @@ class Settings:
                               description=ctx.command.short_doc, color=discord.Color.blurple())
         embed.add_field(name="📄 Current value", value=current_value, inline=False)
         embed.add_field(name="📝 Edit", inline=False,
-                        value=f"`{ctx.prefix}{ctx.command.full_parent_name} {ctx.invoked_with} [{edit_params}]`")
+                        value=f"`{ctx.clean_prefix}{ctx.command.full_parent_name} {ctx.invoked_with} [{edit_params}]`")
         embed.add_field(name="☑ Accepted values", value=accepted_values, inline=False)
-        embed.set_footer(text=f'Use "{ctx.prefix}help {ctx.command.full_parent_name} {ctx.invoked_with}" for more info')
+        embed.set_footer(text=f'Use "{ctx.clean_prefix}help {ctx.command.full_parent_name} {ctx.invoked_with}" '
+                              f'for more info')
         await ctx.send(embed=embed)
 
     @checks.is_admin()
@@ -53,8 +56,46 @@ class Settings:
             if "check" in info:
                 if not info["check"](ctx):
                     continue
-            embed.add_field(name=info["title"], value=f"`{ctx.prefix}{ctx.invoked_with} {name}`")
+            embed.add_field(name=info["title"], value=f"`{ctx.clean_prefix}{ctx.invoked_with} {name}`")
         await ctx.send(embed=embed)
+
+    @checks.is_admin()
+    @settings.command(name="prefix")
+    async def settings_prefix(self, ctx, prefix: str=None):
+        """Changes the command prefix for this server.
+
+        The prefix are the characters that go before a command's name, in order for the bot to recognize the command.
+        A maximum of 5 commands can be set per server.
+
+        To remove an existing prefix, use it as a parameter.
+
+        Mentioning the bot is always a valid command and can't be changed."""
+        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=config.command_prefix)
+        if prefix is None:
+            current_value = ", ".join(f"`{p}`" for p in prefixes) if len(prefixes) > 0 else "Mentions only"
+            await self.show_info_embed(ctx, current_value, "Any text", "prefix")
+            return
+        remove = False
+        if prefix in prefixes:
+            message = await ctx.send(f"Do you want to remove `{prefix}` as a prefix?")
+            remove = True
+        else:
+            if len(prefixes) >= 5:
+                await ctx.send("You can't have more than 5 command prefixes.")
+                return
+            message = await ctx.send(f"Do you want to add `{prefix}` as a prefix?")
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        if remove:
+            prefixes.remove(prefix)
+            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was removed.")
+        else:
+            prefixes.append(prefix)
+            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
+        set_server_property(ctx.guild.id, "prefixes", prefixes, serialize=True)
 
     @checks.is_admin()
     @settings.command(name="world")

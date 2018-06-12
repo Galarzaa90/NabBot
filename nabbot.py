@@ -21,13 +21,19 @@ initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.t
                 "cogs.tibiawiki", "cogs.roles", "cogs.settings"}
 
 
+def _prefix_callable(bot, msg):
+    user_id = bot.user.id
+    base = [f'<@!{user_id}> ', f'<@{user_id}> ']
+    if msg.guild is None:
+        base.extend(config.command_prefix)
+    else:
+        base.extend(get_server_property(msg.guild.id, "prefixes", deserialize=True, default=config.command_prefix))
+    return base
+
+
 class NabBot(commands.Bot):
     def __init__(self):
-        if config.command_mention:
-            command_prefix = commands.when_mentioned_or(*config.command_prefix)
-        else:
-            command_prefix = config.command_prefix
-        super().__init__(command_prefix=command_prefix, description='Mission: Destroy all humans.', pm_help=True,
+        super().__init__(command_prefix=_prefix_callable, description='Mission: Destroy all humans.', pm_help=True,
                          formatter=NabHelpFormat(), case_insensitive=True)
         self.remove_command("help")
         self.members = {}
@@ -173,7 +179,11 @@ class NabBot(commands.Bot):
                 c.close()
 
         await self.send_log_message(member.guild, embed=embed)
-        await member.send(pm)
+        try:
+            await member.send(pm)
+        except discord.Forbidden:
+            pass
+
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""

@@ -265,18 +265,6 @@ class VocationPages(Pages):
         await self.show_page(1)
 
 
-_mention = re.compile(r'<@!?([0-9]{1,19})>')
-
-
-def cleanup_prefix(bot, prefix):
-    m = _mention.match(prefix)
-    if m:
-        user = bot.get_user(int(m.group(1)))
-        if user:
-            return f'@{user.name} '
-    return prefix
-
-
 async def _can_run(cmd, ctx):
     try:
         return await cmd.can_run(ctx)
@@ -333,7 +321,7 @@ class HelpPaginator(Pages):
         self = cls(ctx, entries)
         self.title = f'{cog_name} Commands'
         self.description = inspect.getdoc(cog)
-        self.prefix = cleanup_prefix(ctx.bot, ctx.prefix)
+        self.prefix = ctx.clean_prefix
 
         return self
 
@@ -354,7 +342,7 @@ class HelpPaginator(Pages):
         else:
             self.description = command.help or 'No help given.'
 
-        self.prefix = cleanup_prefix(ctx.bot, ctx.prefix)
+        self.prefix = ctx.clean_prefix
         return self
 
     @classmethod
@@ -385,7 +373,7 @@ class HelpPaginator(Pages):
                 (cog, description, plausible[i:i + per_page]) for i in range(0, len(plausible), per_page))
 
         self = cls(ctx, nested_pages, per_page=1)  # this forces the pagination session
-        self.prefix = cleanup_prefix(ctx.bot, ctx.prefix)
+        self.prefix = ctx.clean_prefix
 
         # swap the get_page implementation with one that supports our style of pagination
         self.get_page = self.get_bot_page

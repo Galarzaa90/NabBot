@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import sqlite3
@@ -266,7 +267,7 @@ tibiaDatabase.row_factory = dict_factory
 lootDatabase.row_factory = dict_factory
 
 
-def get_server_property(guild_id: int, key: str, default=None, is_int=None):
+def get_server_property(guild_id: int, key: str, *, default=None, is_int=None, deserialize=False):
     """Returns a guild's property
 
     :param key: The key of the property to search for
@@ -283,10 +284,12 @@ def get_server_property(guild_id: int, key: str, default=None, is_int=None):
                 return int(result["value"]) if result is not None else default
             except ValueError:
                 return default
-        return result["value"] if result is not None else default
+        if result is None:
+            return default
+        return result["value"] if not deserialize else json.loads(result["value"])
 
 
-def set_server_property(guild_id: int, key: str, value) -> None:
+def set_server_property(guild_id: int, key: str, value, *, serialize=False) -> None:
     """Edits a server property
 
     :param key: The name of the property to change
@@ -297,4 +300,6 @@ def set_server_property(guild_id: int, key: str, value) -> None:
         con.execute("DELETE FROM server_properties WHERE server_id = ? AND name = ?", (guild_id, key))
         if value is None:
             return
+        if serialize:
+            value = json.dumps(value)
         con.execute("INSERT INTO server_properties(name, server_id, value) VALUES(?,?,?)", (key, guild_id, value))

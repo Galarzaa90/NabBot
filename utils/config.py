@@ -25,7 +25,6 @@ KEYS = [
     "network_retry_delay",
     "extra_cogs",
     "command_prefix",
-    "command_mention"
 ]
 
 
@@ -34,8 +33,9 @@ class Config:
         self.ask_channel_name = kwargs.get("ask_channel_name", "ask-nabbot")
         self.ask_channel_delete = kwargs.get("ask_channel_delete", True)
         self.log_channel_name = kwargs.get("log_channel_name", "server_log")
-        self.command_prefix = kwargs.get("command_prefix", "/")
-        self.command_mention = kwargs.get("command_mention", False)
+        self.command_prefix = kwargs.get("command_prefix", ["/"])
+        if isinstance(self.command_prefix, str):
+            self.command_prefix = [self.command_prefix]
         self.lite_servers = kwargs.get("lite_servers", [])
         self.welcome_pm = kwargs.get("welcome_pm", "")
         self.owner_ids = kwargs.get("owner_ids", [])
@@ -45,7 +45,7 @@ class Config:
         self.online_list_expiration = kwargs.get("online_list_expiration", 300)
         self.loot_max = kwargs.get("loot_max", 6)
         self.announce_threshold = kwargs.get("announce_threshold", 30)
-        self.online_scan_interval = kwargs.get("online_scan_interval", 40)
+        self.online_scan_interval = kwargs.get("online_scan_interval", 90)
         self.death_scan_interval = kwargs.get("death_scan_interval", 15)
         self.highscores_delay = kwargs.get("highscores_delay", 45)
         self.highscores_page_delay = kwargs.get("highscores_page_delay", 10)
@@ -81,7 +81,7 @@ class Config:
                 setattr(self, key, _config[key])
         for key in _config:
             if key not in KEYS:
-                print(f"\tExtra entry found: '{key}', ignoring")
+                print(f"\33[34m\tExtra entry found: '{key}', ignoring\033[0m")
         if missing:
             print("\33[35mCheck data/config_template.yml for reference\033[0m")
         print("\tDone")

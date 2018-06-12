@@ -6,10 +6,13 @@
 - New `/roleinfo` command, shows a role's detailed information.
 - New `/userinfo` command, shows a user's detailed information.
 - New `/ping` command, shows the bot's response times.
+- Command prefix is now configurable per server
+- Mention prefix command is now always enabled (e.g. `@NabBot help`)
+- Improvements to the watched list task
 - Made some visual changes to `/serverinfo`
 - Moved role related commands to new Roles cog.
 - `/roles` now sorts results by position and shows members with the role.
-- New cog: `Settings`, to change all server specific settings: `/settings`
+- New command: `/settings`, to change all server specific settings:
     - `/setworld` moved to `/settings world`.
     - `/setleveldeathschannel` moved to `/settings levelschannel`.
     - `/seteventschannel` moved to `/settings eventschannel`

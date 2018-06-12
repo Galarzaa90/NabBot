@@ -16,11 +16,13 @@ from utils.config import config
 from utils.database import userDatabase, get_server_property, set_server_property
 from utils.discord import is_private, get_user_avatar, FIELD_VALUE_LIMIT, EMBED_LIMIT
 from utils.general import global_online_list, log, join_list, is_numeric
-from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, level_messages, split_message
+from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, \
+    level_messages, split_message
 from utils.paginator import Pages, CannotPaginate, VocationPages
 from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
     get_voc_abb, get_character_url, url_guild, \
-    get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_voc_abb_and_emoji, get_share_range
+    get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_voc_abb_and_emoji, get_share_range, \
+    World
 
 
 class Tracking:
@@ -53,7 +55,7 @@ class Tracking:
             except asyncio.CancelledError:
                 # Task was cancelled, so this is fine
                 break
-            except Exception as e:
+            except Exception:
                 log.exception("Task: scan_deaths")
                 continue
 
@@ -69,6 +71,9 @@ class Tracking:
                 await asyncio.sleep(config.highscores_delay)
                 continue
             for world in self.bot.tracked_worlds_list:
+                if world not in tibia_worlds:
+                    log.debug()
+                    await asyncio.sleep(0.1)
                 try:
                     for category in HIGHSCORE_CATEGORIES:
                         # Check the last scan time, highscores are updated every server save
@@ -114,7 +119,7 @@ class Tracking:
                 except asyncio.CancelledError:
                     # Task was cancelled, so this is fine
                     break
-                except Exception as e:
+                except Exception:
                     log.exception("Task: scan_highscores")
                     continue
                 await asyncio.sleep(10)
@@ -134,8 +139,10 @@ class Tracking:
                     log.info("Loaded cached online list")
                 else:
                     log.info("Cached online list is too old, discarding")
-        except (ValueError, FileNotFoundError, pickle.PickleError):
-            log.info("Couldn't fetch cached online list.")
+        except FileNotFoundError:
+            pass
+        except (ValueError, pickle.PickleError):
+            log.info("Couldn't read cached online list.")
             pass
         while not self.bot.is_closed():
             # Open connection to users.db
@@ -159,6 +166,7 @@ class Tracking:
                 if len(current_world_online) == 0:
                     await asyncio.sleep(0.1)
                     continue
+                self.bot.dispatch("world_scanned", world)
                 # Save the online list in file
                 with open("data/online_list.dat", "wb") as f:
                     pickle.dump((global_online_list, time.time()), f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -226,100 +234,109 @@ class Tracking:
                             )
                             # Announce the level up
                             await self.announce_level(server_char.level, char_name=server_char.name)
-                # Watched List checking
-                # Iterate through servers with tracked world to find one that matches the current world
-                for server, world in self.bot.tracked_worlds.items():
-                    if world == current_world:
-                        watched_channel_id = get_server_property(server, "watched_channel", is_int=True)
-                        if watched_channel_id is None:
-                            # This server doesn't have watch list enabled
-                            continue
-                        watched_channel = self.bot.get_channel(watched_channel_id)  # type: discord.abc.Messageable
-                        if watched_channel is None:
-                            # This server's watched channel is not available to the bot anymore.
-                            continue
-                        # Get watched list
-                        c.execute("SELECT * FROM watched_list WHERE server_id = ? ORDER BY is_guild, name", (server,))
-                        results = c.fetchall()
-                        if not results:
-                            # List is empty
-                            continue
-                        # Online watched characters
-                        currently_online = []
-                        # Watched guilds
-                        guild_online = dict()
-                        for watched in results:
-                            if watched["is_guild"]:
-                                try:
-                                    guild = await get_guild(watched["name"])
-                                except NetworkError:
-                                    continue
-                                # If the guild doesn't exist, add it as empty to show it was disbanded
-                                if guild is None:
-                                    guild_online[watched["name"]] = None
-                                    continue
-                                # If there's at least one member online, add guild to list
-                                if len(guild.online):
-                                    guild_online[guild.name] = guild.online
-                            # If it is a character, check if he's in the online list
-                            for online_char in current_world_online:
-                                if online_char.name == watched["name"]:
-                                    # Add to online list
-                                    currently_online.append(online_char)
-                        watched_message_id = get_server_property(server, "watched_message", is_int=True)
-                        # We try to get the watched message, if the bot can't find it, we just create a new one
-                        # This may be because the old message was deleted or this is the first time the list is checked
-                        try:
-                            watched_message = await watched_channel.get_message(watched_message_id)
-                        except (discord.NotFound, discord.HTTPException, discord.Forbidden):
-                            watched_message = None
-                        items = [f"\t{x.name} - Level {x.level} {get_voc_emoji(x.vocation)}" for x in currently_online]
-                        online_count = len(items)
-                        if len(items) > 0 or len(guild_online.keys()) > 0:
-                            description = ""
-                            content = "\n".join(items)
-                            for guild, members in guild_online.items():
-                                content += f"\nGuild: **{guild}**\n"
-                                if members is None:
-                                    content += "\t*Guild was disbanded.*"
-                                    continue
-                                content += "\n".join(
-                                    [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
-                                     for x in members])
-                                online_count += len(members)
-                        else:
-                            description = "There are no watched characters online."
-                            content = ""
-                        # Send new watched message or edit last one
-                        embed = discord.Embed(description=description)
-                        embed.set_footer(text="Last updated")
-                        embed.timestamp = dt.datetime.utcnow()
-                        if content:
-                            if len(content) >= EMBED_LIMIT-50:
-                                content = split_message(content, EMBED_LIMIT-50)[0]
-                                content += "\n*And more...*"
-                            fields = split_message(content, FIELD_VALUE_LIMIT)
-                            for s, split_field in enumerate(fields):
-                                name = "Watched List" if s == 0 else "\u200F"
-                                embed.add_field(name=name, value=split_field, inline=False)
-                        try:
-                            if watched_message is None:
-                                new_watched_message = await watched_channel.send(embed=embed)
-                                set_server_property(server, "watched_message", new_watched_message.id)
-                            else:
-                                await watched_message.edit(embed=embed)
-                            await watched_channel.edit(name=f"{watched_channel.name.split('·', 1)[0]}·{online_count}")
-                        except discord.HTTPException:
-                            pass
             except asyncio.CancelledError:
                 # Task was cancelled, so this is fine
                 break
-            except Exception as e:
+            except Exception:
                 log.exception("scan_online_chars")
                 continue
             finally:
                 userDatabase.commit()
                 c.close()
+
+    async def on_world_scanned(self, scanned_world: World):
+        # Watched List checking
+        # Iterate through servers with tracked world to find one that matches the current world
+        for server, world in self.bot.tracked_worlds.items():
+            if world != scanned_world.name:
+                await asyncio.sleep(0.01)
+                continue
+            if self.bot.get_guild(server) is None:
+                await asyncio.sleep(0.01)
+                continue
+            watched_channel_id = get_server_property(server, "watched_channel", is_int=True)
+            if watched_channel_id is None:
+                # This server doesn't have watch list enabled
+                await asyncio.sleep(0.1)
+                continue
+            watched_channel = self.bot.get_channel(watched_channel_id)  # type: discord.TextChannel
+            if watched_channel is None:
+                # This server's watched channel is not available to the bot anymore.
+                await asyncio.sleep(0.1)
+                continue
+            # Get watched list
+            entries = userDatabase.execute("SELECT * FROM watched_list WHERE server_id = ? "
+                                           "ORDER BY is_guild, name", (server,))
+            if not entries:
+                await asyncio.sleep(0.1)
+                continue
+            # Online watched characters
+            currently_online = []
+            # Watched guilds
+            guild_online = dict()
+            for watched in entries:
+                if watched["is_guild"]:
+                    try:
+                        guild = await get_guild(watched["name"])
+                    except NetworkError:
+                        continue
+                    # If the guild doesn't exist, add it as empty to show it was disbanded
+                    if guild is None:
+                        guild_online[watched["name"]] = None
+                        continue
+                    # If there's at least one member online, add guild to list
+                    if len(guild.online):
+                        guild_online[guild.name] = guild.online
+                # If it is a character, check if he's in the online list
+                for online_char in scanned_world.players_online:
+                    if online_char.name == watched["name"]:
+                        # Add to online list
+                        currently_online.append(online_char)
+            watched_message_id = get_server_property(server, "watched_message", is_int=True)
+            # We try to get the watched message, if the bot can't find it, we just create a new one
+            # This may be because the old message was deleted or this is the first time the list is checked
+            try:
+                watched_message = await watched_channel.get_message(watched_message_id)
+            except discord.HTTPException:
+                watched_message = None
+            items = [f"\t{x.name} - Level {x.level} {get_voc_emoji(x.vocation)}" for x in currently_online]
+            online_count = len(items)
+            if len(items) > 0 or len(guild_online.keys()) > 0:
+                description = ""
+                content = "\n".join(items)
+                for guild, members in guild_online.items():
+                    content += f"\nGuild: **{guild}**\n"
+                    if members is None:
+                        content += "\t*Guild was disbanded.*"
+                        continue
+                    content += "\n".join(
+                        [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
+                         for x in members])
+                    online_count += len(members)
+            else:
+                description = "There are no watched characters online."
+                content = ""
+            # Send new watched message or edit last one
+            embed = discord.Embed(description=description)
+            embed.set_footer(text="Last updated")
+            embed.timestamp = dt.datetime.utcnow()
+            if content:
+                if len(content) >= EMBED_LIMIT - 50:
+                    content = split_message(content, EMBED_LIMIT - 50)[0]
+                    content += "\n*And more...*"
+                fields = split_message(content, FIELD_VALUE_LIMIT)
+                for s, split_field in enumerate(fields):
+                    name = "Watched List" if s == 0 else "\u200F"
+                    embed.add_field(name=name, value=split_field, inline=False)
+            try:
+                if watched_message is None:
+                    new_watched_message = await watched_channel.send(embed=embed)
+                    set_server_property(server, "watched_message", new_watched_message.id)
+                else:
+                    await watched_message.edit(embed=embed)
+                await watched_channel.edit(name=f"{watched_channel.name.split('·', 1)[0]}·{online_count}")
+            except discord.HTTPException:
+                pass
 
     async def check_death(self, character):
         """Checks if the player has new deaths"""
@@ -392,9 +409,12 @@ class Tracking:
         if death.by_player:
             message = weighed_choice(death_messages_player, vocation=char.vocation, level=death.level,
                                      levels_lost=levels_lost)
-        elif death.killer in ["death","energy","earth","fire","Pit Battler","Pit Berserker","Pit Blackling","Pit Brawler","Pit Condemned","Pit Demon","Pit Destroyer","Pit Fiend","Pit Groveller","Pit Grunt","Pit Lord","Pit Maimer","Pit Overlord","Pit Reaver","Pit Scourge"] and levels_lost == 0:
-            #skip element damage deaths unless player lost a level to avoid spam from arena deaths
-            #this will cause a small amount of deaths to not be announced but it's probably worth the tradeoff (ty selken)
+        elif death.killer in ["death", "energy", "earth", "fire", "Pit Battler", "Pit Berserker", "Pit Blackling",
+                              "Pit Brawler", "Pit Condemned", "Pit Demon", "Pit Destroyer", "Pit Fiend",
+                              "Pit Groveller", "Pit Grunt", "Pit Lord", "Pit Maimer", "Pit Overlord", "Pit Reaver",
+                              "Pit Scourge"] and levels_lost == 0:
+            # Skip element damage deaths unless player lost a level to avoid spam from arena deaths
+            # This will cause a small amount of deaths to not be announced but it's probably worth the tradeoff (ty selken)
             return
         else:
             message = weighed_choice(death_messages_monster, vocation=char.vocation, level=death.level,
@@ -474,7 +494,8 @@ class Tracking:
         # List of servers the user shares with the bot
         user_guilds = self.bot.get_user_guilds(user.id)
         # List of Tibia worlds tracked in the servers the user is
-        user_tibia_worlds = [world for guild, world in self.bot.tracked_worlds.items() if guild in [g.id for g in user_guilds]]
+        user_tibia_worlds = [world for guild, world in self.bot.tracked_worlds.items() if
+                             guild in [g.id for g in user_guilds]]
         # Remove duplicate entries from list
         user_tibia_worlds = list(set(user_tibia_worlds))
 
@@ -522,7 +543,8 @@ class Tracking:
                 # Previous owner doesn't exist anymore
                 if owner is None:
                     updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
-                                   'vocation': db_char["vocation"], 'level': db_char['level'], 'guild': db_char['guild']
+                                    'vocation': db_char["vocation"], 'level': db_char['level'],
+                                    'guild': db_char['guild']
                                     })
                     continue
                 # Char already registered to this user
@@ -571,7 +593,7 @@ class Tracking:
                     if self.bot.tracked_worlds.get(guild.id, None) == char.world:
                         _guild = "No guild" if char.guild is None else char.guild_name
                         voc = get_voc_abb_and_emoji(char.vocation)
-                        log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**"\
+                        log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**" \
                             .format(_guild, char, voc)
 
         if len(updated) > 0:
@@ -586,7 +608,7 @@ class Tracking:
                         char["voc"] = get_voc_abb_and_emoji(char["vocation"])
                         if char["guild"] is None:
                             char["guild"] = "No guild"
-                        log_reply[guild.id] += "\n\u2023 {name} - Level {level} {voc} - **{guild}** (Reassigned)".\
+                        log_reply[guild.id] += "\n\u2023 {name} - Level {level} {voc} - **{guild}** (Reassigned)". \
                             format(**char)
 
         for char in updated:
@@ -648,7 +670,7 @@ class Tracking:
                 if char["world"] == world and server_id in user_servers:
                     if char["guild"] is None:
                         char["guild"] = "No guild"
-                    message = "{0} unregistered:\n\u2023 **{1}** - Level {2} {3} - {4}".\
+                    message = "{0} unregistered:\n\u2023 **{1}** - Level {2} {3} - {4}". \
                         format(user.mention, char["name"], char["level"], get_voc_abb_and_emoji(char["vocation"]),
                                char["guild"])
                     embed = discord.Embed(description=message)
@@ -661,7 +683,7 @@ class Tracking:
 
     @commands.command()
     @checks.is_in_tracking_world()
-    async def claim(self, ctx, *, char_name: str=None):
+    async def claim(self, ctx, *, char_name: str = None):
         """Claims a character registered to someone else
 
         To use this command, you must put a specific code on the character's comment.
@@ -675,7 +697,8 @@ class Tracking:
         # List of servers the user shares with the self.bot
         user_guilds = self.bot.get_user_guilds(user.id)
         # List of Tibia worlds tracked in the servers the user is
-        user_tibia_worlds = [world for guild, world in self.bot.tracked_worlds.items() if guild in [g.id for g in user_guilds]]
+        user_tibia_worlds = [world for guild, world in self.bot.tracked_worlds.items() if
+                             guild in [g.id for g in user_guilds]]
         # Remove duplicate entries from list
         user_tibia_worlds = list(set(user_tibia_worlds))
 
@@ -864,7 +887,7 @@ class Tracking:
                     await ctx.send("There is no one online from Discord.")
                 return
             pages = VocationPages(ctx, entries=entries, vocations=vocations, per_page=per_page)
-            pages.embed.title= "Users online"
+            pages.embed.title = "Users online"
             try:
                 await pages.paginate()
             except CannotPaginate as e:
@@ -1020,11 +1043,11 @@ class Tracking:
 
         watched_channel_id = get_server_property(ctx.guild.id, "watched_channel", is_int=True)
         watched_channel = self.bot.get_channel(watched_channel_id)
-        
+
         if "·" in name:
             await ctx.send("Channel name cannot contain the special character **·**")
             return
-        
+
         world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
@@ -1341,7 +1364,7 @@ class Tracking:
             embed.set_footer(text=f"{author.name}#{author.discriminator}",
                              icon_url=get_user_avatar(author))
         if result["added"] is not None:
-                embed.timestamp = dt.datetime.utcfromtimestamp(result["added"])
+            embed.timestamp = dt.datetime.utcfromtimestamp(result["added"])
         await ctx.send(embed=embed)
 
     @watched.command(name="infoguild", aliases=["detailsguild", "reasonguild"])

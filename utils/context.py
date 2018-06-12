@@ -1,4 +1,6 @@
 import asyncio
+import re
+from typing import Union
 
 import discord
 from discord.ext import commands
@@ -6,11 +8,17 @@ from discord.ext import commands
 from utils.config import config
 from utils.database import get_server_property
 
-YES_NO_REACTIONS = ('\U0001f1fe', '\U0001f1f3')
-CHECK_REACTIONS = ('\N{WHITE HEAVY CHECK MARK}', '\N{CROSS MARK}')
-
+YES_NO_REACTIONS = ("🇾", "🇳")
+CHECK_REACTIONS = ("✅", "❌")
+_mention = re.compile(r'<@!?([0-9]{1,19})>')
 
 class NabCtx(commands.Context):
+    guild: discord.Guild
+    message: discord.Message
+    channel: discord.TextChannel
+    author: Union[discord.User, discord.Member]
+    me: Union[discord.Member, discord.ClientUser]
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -30,7 +38,7 @@ class NabCtx(commands.Context):
             return self.bot.tracked_worlds.get(self.guild.id, None)
 
     @property
-    def long(self):
+    def long(self) -> bool:
         """Whether the current context allows long replies or not
 
         Private messages and command channels allow long replies.
@@ -55,6 +63,15 @@ class NabCtx(commands.Context):
         if ask_channel is None:
             return config.ask_channel_name
         return ask_channel.name
+
+    @property
+    def clean_prefix(self) -> str:
+        m = _mention.match(self.prefix)
+        if m:
+            user = self.bot.get_user(int(m.group(1)))
+            if user:
+                return f'@{user.name} '
+        return self.prefix
 
     async def react_confirm(self, message: discord.Message, *, timeout=120.0, delete_after=False,
                             use_checkmark=False):

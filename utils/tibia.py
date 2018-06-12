@@ -262,6 +262,9 @@ class Death:
 
 
 class World:
+    """
+    Represents a Tibia world
+    """
     def __init__(self, name, **kwargs):
         self.name = name
         self.online = kwargs.get("online", 0)
