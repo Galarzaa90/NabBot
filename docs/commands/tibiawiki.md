@@ -1,23 +1,58 @@
 # TibiaWiki commands
 
 All the commands that use information from TibiaWiki.  
-Information is read from `tibia_database.sql`, which is generated from [tibiawiki-sql](https://github.com/Galarzaa90/tibiawiki-sql).
+The information is read generated using [tibiawiki-sql](https://github.com/Galarzaa90/tibiawiki-sql).
 
 !!! info
-    Words in italics are parameters.  
+    Parameters are enclosed with `< >`.   
+    Optional parameters are enclosed in brackets `[]`.
 
 
-## /item
-**Syntax:** /item *name*  
-**Other aliases:** /checkprice, /itemprice
+## achievement
+**Syntax:** `achievement <name>`  
+**Other aliases:** `achiev`
 
-Shows information about an item, their attributes, NPCs that buy and/or sell it (only for the best price), and creatures that drop it and quest where it's given as reward.
+Displays an achievement's information.
 
-The embed's sidebar color shows if a major loot NPC buys it so it can be noted at quick glance.
+Shows the achievement's grade, points, description, and instructions on how to unlock.
+
+??? summary "Examples"
+
+    **/achievement demonic barkeeper**  
+    ![image](../assets/images/commands/achievement.png)
+
+----
+
+## bestiary
+**Syntax:** `bestiary <class>`
+
+Displays a category's creatures or all the categories.
+
+If a category is specified, it will list all the creatures that belong to the category and their level.
+If no category is specified, it will list all the bestiary categories.
+
+??? summary "Examples"
+
+    **/bestiary**  
+    ![image](../assets/images/commands/bestiary_1.png)
+    
+    **/bestiary dragon**  
+    ![image](../assets/images/commands/bestiary_2.png)
+
+----
+
+## item
+**Syntax:** `item <name>`  
+**Other aliases:** `itemprice`
+
+Displays information about an item.
+
+Shows who buys and sells the item, what creatures drops it and many attributes.
+        
+The embed is colored if a major loot NPC buys it, so it can be noted at quick glance.  
 Yellow for Rashid, Blue and Green for Djinns and Purple for gems.
-
-The answer given may be shortened to avoid spam in chats. 
-For longer replies, the command must be used in the ask channel or via private message.
+        
+More information is shown if used in private messages or in the command channel.
 
 ??? summary "Examples"
     
@@ -28,15 +63,51 @@ For longer replies, the command must be used in the ask channel or via private m
     **/item dragon scale mail**  
     ![image](../assets/images/commands/item_2.png)
 
----
+----
 
-## /monster
-**Syntax:** /monster *name*  
-**Other aliases:** /mob, /creature, /mon
+## key
+**Syntax:** `key <number>`  
 
-Displays information about a specific creature. Health points, experience, resistances and weaknesses, loot drops, etc.
+Displays information about a key.
 
-If used on the ask-channel or private message, the information displayed is longer.
+Shows the key's known names, how to obtain it and its uses.
+
+??? summary "Examples"
+
+    **/key 3940**  
+    ![image](../assets/images/commands/key.png)
+
+----
+
+### key search
+**Syntax:** `key search <name>`
+
+Searches for a key by keywords.
+
+Search for matches on the key's names, location, origin or uses.
+
+if there are multiple matches, a list is shown.
+If only one matches, the key's information is shwon directly.
+
+??? summary "Examples"
+
+    **/key search hellgate** *(only one match)*  
+    ![image](../assets/images/commands/key_search_1.png)
+    
+    **/key search fibula** *(multiple matches)*  
+    ![image](../assets/images/commands/key_search_2.png)
+
+----
+    
+## monster
+**Syntax:** `monster <name>`  
+**Other aliases:** `mob`, `creature`
+
+Displays information about a monster.
+
+Shows the monster's attributes, resistances, loot and more.
+
+More information is displayed if used on a private message or in the command channel.
 
 ??? summary "Examples"
 
@@ -50,28 +121,14 @@ If used on the ask-channel or private message, the information displayed is long
 
 ----
 
-## /spell
-**Syntax:** /spell *name/words*
+## npc
+**Syntax:** `npc <name>`
 
-Replies with information on a certain spell like level, vocation(s) required, level required, cost and NPCs that sell it.
-Information given is shorter unless it's used in the ask channel or private messages.
+Displays information about a NPC.
 
-??? summary "Examples"
-
-    **/spell exori gran**  
-    ![image](../assets/images/commands/spell_1.png)
-    
-    **/spell emberwing**  
-    ![image](../assets/images/commands/spell_2.png)
-
-----
-
-## /npc *name*
-**Syntax:** /npc *name*  
-**Other aliases:** /npcs
-
-Shows information about a NPC. What items do they sell and buy, where are they found and travel destinations.
-More information is displayed if used on the ask channel or on private messages.
+Shows the NPC's item offers, their location and their travel destinations.
+        
+More information is displayed if used on private messages or the command channel.
 
 ??? summary "Examples"
 
@@ -83,44 +140,19 @@ More information is displayed if used on the ask channel or on private messages.
 
 ----
 
-## /achievements
-**Syntax:** /achievements *name*  
-**Other aliases:** /achiev
+## spell
+**Syntax:** `spell <name/words>`
 
-Shows information about an achievement.
+Displays information about a spell.
 
-??? summary "Examples"
-
-    **/achievement demonic barkeeper**  
-    ![image](../assets/images/commands/achievement.png)
-    
-----
-
-## /key
-**Syntax:** /key *number*  
-**Other aliases:** /keys
-
-Shows information about a key with a certain number.
+Shows the spell's attributes, NPCs that teach it and more.
+        
+More information is displayed if used on private messages or the command channel.
 
 ??? summary "Examples"
 
-    **/key 3940**  
-    ![image](../assets/images/commands/key.png)
+    **/spell exori gran**  
+    ![image](../assets/images/commands/spell_1.png)
     
-----
-
-### /key search
-**Syntax:** /key search *name*
-
-Searches for keys by keyword. The keyboard might be their common name or the place they're used in.
-If there are multiple coincidences, a list is shown. If only one, the key's information is shown directly.
-
-??? summary "Examples"
-
-    **/key search hellgate** *(only one match)*  
-    ![image](../assets/images/commands/key_search_1.png)
-    
-    **/key search fibula** *(multiple matches)*  
-    ![image](../assets/images/commands/key_search_2.png)
-    
-    
+    **/spell emberwing**  
+    ![image](../assets/images/commands/spell_2.png)

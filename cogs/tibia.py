@@ -830,7 +830,7 @@ class Tibia:
             embed = self.get_article_embed(article, limit)
             await ctx.send(embed=embed)
 
-    @commands.command(name="searchworld", aliases=["whereworld", "findworld"])
+    @commands.command(name="searchworld", aliases=["whereworld", "findworld"], usage="<params>[,world]")
     async def search_world(self, ctx, *, params):
         """Searches for online characters that meet the criteria.
 

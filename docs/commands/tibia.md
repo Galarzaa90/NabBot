@@ -214,7 +214,7 @@ There are 3 ways to use this command:
 
 By default, the tracked world is searched, unless specified at the end of the parameters
 
-You can add the world where you want to look in by adding a comma, followed by the name of the world.
+You can add the world where you want to look in by adding a comma, followed by the name of the world.  
 Example: `searchworld Cachero,Calmera`
 
 ??? Summary "Examples"

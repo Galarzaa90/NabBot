@@ -21,7 +21,7 @@
     - Command channel (ask-nabbot) is now configurable.
     - Tibia news announcements and Events announcements can be disabled entirely.
 - Many changes to command names and aliases:
-    - `/item`: `checkprice` alias removed, `items` alias added.
+    - `/item`: `checkprice` alias removed.
     - `/monster`: `mon` alias removed.
     - `/spell`: `spells` alias added.
     - `/server`: `server_info` alias removed.
@@ -33,6 +33,9 @@
     - `/levels`: `lvl`, `level` and `lvls` aliases removed.
     - `/time`: `ss` alias removed.
     - `/whois`: `player`, `checkplayer` aliases removed
+    - `/npc`: `npcs` alias removed.
+    - `/key`: `keys` alias removed.
+    - `/spell`: `spell` alias removed.
 
 ## Version 1.1.1 (2018-06-12)
 - Added missing items from the Feyrist area to the loot database
