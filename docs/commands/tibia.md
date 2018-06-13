@@ -1,6 +1,6 @@
 # Tibia commands
 
-Commands related to Tibia, specially commands related to tibia.com
+Commands related to Tibia, gathered from information present in Tibia.com
 
 !!! info
     Parameters are enclosed with `< >`.   
@@ -128,25 +128,242 @@ Online members have a 🔹 icon next to their name.
 
 ----
 
+## house
+**Syntax:** `house <name>[/world]`  
+**Other aliases:** `guildhall`
+
+Shows info for a house or guildhall.
+
+By default, it shows the current status of a house for the current tracked world (if any).
+If used on private messages, no world is looked up unless specified.
+
+To specify a world, add the world at the end separated with '/'.
+
+??? Summary "Examples"
+    
+    **/house darashia 8, flat 03**  
+    ![image](../assets/images/commands/house_1.png)
+      
+    **/house caveman shelter/calmera**  
+    ![image](../assets/images/commands/house_2.png)
+
+----
+
+## levels
+**Syntax:** `levels [player]`  
+**Other aliases:** `levelups`
+
+Shows a character's or everyone's recent level ups.
+       
+If a character is specified, it displays a list of its recent level ups.
+If no character is specified, it will show the recent level ups of all registered characters in the server.
+
+This only works for characters registered in the bots database, which are the characters owned
+by the users of this discord server.
+
+??? Summary "Examples"
+
+    **/levels**  
+    ![image](../assets/images/commands/levels_1.png)
+    
+    **/levels Dre amz**  
+    ![image](../assets/images/commands/levels_2.png)
+
+----
+
+### levels user
+**Syntax:** `levels user <name>`  
+
+Shows a user's recent level ups on their registered characters.
+
+??? Summary "Examples"
+    
+    **/levels user Nezune**  
+    ![image](../assets/images/commands/levels_user.png)
+
+----
+
+## news
+**Syntax:** `news [id]`
+
+Shows the latest news articles from Tibia.com.
+
+If no id is supplied, a list of recent articles is shown, otherwise, a snippet of the article is shown.
+
+??? Summary "Examples"
+
+    **/news**    
+    ![image](../assets/images/commands/news_1.png)
+    
+    **/news 4400**  
+    ![image](../assets/images/commands/news_2.png)
+
+----
+
+## searchworld
+**Syntax:** `searchworld <name>[,world]` or `searchworld <level>[,world]` or `searchworld <min>,<max>[,world]`  
+**Other aliases:** `whereworld`, `findworld`
+
+Searches for online characters that meet the criteria.
+
+There are 3 ways to use this command:
+
+- Find a character in share range with another character. (`searchworld <name>`)
+- Find a character in share range with a certain level. (`searchworld <level>`)
+- Find a character in a level range. (`searchworld <min>,<max>`)
+
+By default, the tracked world is searched, unless specified at the end of the parameters
+
+You can add the world where you want to look in by adding a comma, followed by the name of the world.
+Example: `searchworld Cachero,Calmera`
+
+??? Summary "Examples"
+    
+    **/searchworld Galarzaa Fidera**  
+    ![image](../assets/images/commands/searchworld_1.png)
+    
+    **/searchworld Nezune,Calmera**  
+    ![image](../assets/images/commands/searchworld_2.png)
+    
+    **/searchworld 600,700**  
+    ![image](../assets/images/commands/searchworld_3.png)
+
+    **/searchworld 70**  
+    ![image](../assets/images/commands/searchworld_4.png)
+
+----
+
+## share
+**Syntax:** `share <level>` or `share <character>` or `share <char1, char2, ...>`  
+**Other aliases:** `expshare`, `party`
+
+Shows the sharing range for that level or character or list of characters.
+
+This command can be used in three ways:
+
+1. Find the share range of a certain level. (`share <level>`)
+2. Find the share range of a character. (`share <name>`)
+3. Find the joint share range of a group of characters. (`share <name1, name2...>`)
+
+??? summary "Examples"
+
+    **/share 300**  
+    ![image](../assets/images/commands/share_1.png)
+    
+    **/share Galarzaa Fidera**  
+    ![image](../assets/images/commands/share_2.png)
+    
+    **/share Galarzaa Fidera, Nezune, Xzilla**  
+    ![image](../assets/images/commands/share_3.png)
+    
+    **/share Galarzaa Fidera, Topheroo**  
+    ![image](../assets/images/commands/share_4.png)
+
+----
+
+## stamina
+**Syntax:** `stamina <current stamina>`
+
+Tells you the time you have to wait to restore stamina.
+
+To use it, you must provide your current stamina, in this format: `hh:mm`.
+The bot will show the time needed to reach full stamina if you were to start sleeping now.
+
+The footer text shows the time in your timezone where your stamina would be full.
+
+??? Summary "Examples"
+  
+    **/stamina 39:00**  
+    ![image](../assets/images/commands/stamina_1.png)
+    
+    **/stamina 28:32**  
+    ![image](../assets/images/commands/stamina_2.png)
+
+----
+
+## stats
+**Syntax:** `stats <level>,<vocation` or `stats <character>`
+
+Calculates character stats based on vocation and level.
+        
+Shows hitpoints, mana, capacity, total experience and experience to next level.
+
+This command can be used in two ways:
+
+1. To calculate the stats for a certain level and vocation. (`stats <level>,<vocation>`)
+2. To calculate the stats of a character. (`stats <character>`)
+
+??? Summary "Examples"
+      
+    **/stats 543,elder druid**  
+    ![image](../assets/images/commands/stats_1.png)
+        
+    **/stats Galarzaa Fidera**  
+    ![image](../assets/images/commands/stats_2.png)
+
+----
+
+## timeline
+**Syntax:** `timeline [character]`  
+**Other aliases:** `story`
+
+Shows a character's recent level ups and deaths. :flame: :fire:
+
+If no character is provided, the timeline of all registered characters in the server will be shown.
+
+Characters must be registered in order to see their timelines.
+
+- 🌟 Indicates level ups
+- 💀 Indicates deaths
+
+??? Summary "Examples"
+    
+    **/timeline**  
+    ![image](../assets/images/commands/timeline_1.png)
+    
+    **/timeline Fila Bro**  
+    ![image](../assets/images/commands/timeline_2.png)
+
+----
+
+### timeline user
+**Syntax:** `timeline user <name>`
+
+Shows a users's recent level ups and deaths on their characters.
+
+??? Summary "Examples"
+    
+    **/timeline user Pepyto 🍌**  
+    ![image](../assets/images/commands/timeline_user.png)
+
+----
+
+## time
+**Other aliases:** `serversave`
+
+Displays Tibia server's time and time until server save.
+
+??? Summary "Examples"
+    
+    **/time**  
+    ![image](../assets/images/commands/time.png)
+
+----
+
 ## whois
-**Syntax:** whois &lt;character/user&gt;  
-**Other aliases:** /check, /player, /checkplayer, /char, /character
+**Syntax:** `whois <character/user>`  
+**Other aliases:** `check`, `char`, `character`
 
-This commands has 2 functions:  
-
-* It retrieves and displays info about a Tibia character
-* It retrieves the list of characters linked to a discord user
+Shows a character's or a discord user's information.
 
 If the parameter matches a discord user, it displays a list of the characters linked to that user.
-If the parameter matches a character, it will display the character's info, such as level, vocation, guild, world, etc.
+If the parameter matches a character, it will display the character's info
 
 If the character found is registered to a discord user, it will show the owner of the character.
 
-Discord users can be looked for through Usernames, User#Discriminator (i.e. `Galarzaa#8515`) or even user id.
+Users can be looked through their username, user#discriminator or their user id.
 
-Both cases can match simultaneously.
-
-It also shows the character's corresponding highscore positions, however, this is only available for registered characters.
+Additionally, if the character is in the highscores, their ranking will be shown.
 
 ??? summary "Examples"
 
@@ -173,114 +390,12 @@ It also shows the character's corresponding highscore positions, however, this i
 
 ----
 
-## /share
-**Syntax:** /share *level/player*  
-**Other aliases:** /expshare, /party
+## world
+**Syntax:** `world <name>`
 
-There's three different ways to use this command:
-
-1. Providing a single number, shows the share range of a character of that level.
-1. Providing a charater name, shows the share range of that character.
-1. Providing up to 5 character names, separated with commas, shows if they are able to share.
-
-??? summary "Examples"
-
-    **/share 300**  
-    ![image](../assets/images/commands/share_1.png)
-    
-    **/share Galarzaa Fidera**  
-    ![image](../assets/images/commands/share_2.png)
-    
-    **/share Galarzaa Fidera, Nezune, Xzilla**  
-    ![image](../assets/images/commands/share_3.png)
-    
-    **/share Galarzaa Fidera, Topheroo**  
-    ![image](../assets/images/commands/share_4.png)
-
----
-
-
-## /levels
-**Syntax:** /levels [*player*]  
-**Other aliases:** /levelups, /lvl, /level, /lvls
-
-If a player is specified, it displays a list of the player's recent level ups.
-If no player is specified, it will show the recent level ups of all players registered in the database.
-
-??? Summary "Examples"
-
-    **/levels**  
-    ![image](../assets/images/commands/levels_1.png)
-    
-    **/levels Dre amz**  
-    ![image](../assets/images/commands/levels_2.png)
-
-
-
-### /levels user
-**Syntax:** /levels user *name*  
-
-Shows recent levels by all characters registered to a user.
-
-??? Summary "Examples"
-    
-    **/levels user Nezune**  
-    ![image](../assets/images/commands/levels_user.png)
-
-----
-
-## /timeline
-**Syntax:** /timeline [*player*]  
-**Other aliases:** /story
-
-Shows recent levels and deaths by all registered characters.
-If a character name is provided, their level ups and deaths are shown. 
-
-* 🌟 Indicates level ups
-* 💀 Indicates deaths
-
-??? Summary "Examples"
-    
-    **/timeline**  
-    ![image](../assets/images/commands/timeline_1.png)
-    
-    **/timeline Fila Bro**  
-    ![image](../assets/images/commands/timeline_2.png)
-
-----
-
-### /timeline
-**Syntax:** /timeline user *name*
-
-Shows recent levels and deaths by all characters registed to the user.
-
-??? Summary "Examples"
-    
-    **/timeline user Pepyto 🍌**  
-    ![image](../assets/images/commands/timeline_user.png)
-
-----
-
-## /stats
-**Syntax:** /stats *level,vocation*/*charactername*
-
-Replies with the hitpoints, mana, capacity, total experience and experience to next level (at 0% progress) 
-of a character with that level and vocation, or if a character's name was entered, it replies with its stats.
-
-??? Summary "Examples"
-      
-    **/stats 543,elder druid**  
-    ![image](../assets/images/commands/stats_1.png)
+Shows basic information about a Tibia world.
         
-    **/stats Galarzaa Fidera**  
-    ![image](../assets/images/commands/stats_2.png)
-
-----
-
-## /world
-**Syntax:** /world *name*
-
-Displays information about a world like pvp type, online count, location and more.
+Shows information like PvP type, online count, server location vocation distribution, and more.
 
 ??? Summary "Examples"
     
@@ -292,102 +407,14 @@ Displays information about a world like pvp type, online count, location and mor
  
 ----
 
-## /searchworld
-**Syntax:** *See below*  
-**Other aliases:** /whereworld, /findworld
-
-This commands searches for characters currently online that meet a certain criteria.
-
-By default, this command will search in tracked world of the server where it was used.
-If no world is tracked or the command is used on a DM, the world must be specified with an extra parameter at the end.
-
-There's three ways to use the command:
-
-1. Provide a character's name, shows a list of characters in share range. (`/searchworld char[,world]`)
-1. Provide a level, shows a list of characters in share range with that level. (`/searchworld level[,world]`)
-1. Provide two levels, shows a list of characters in that level range. (`/searchworld min,max[,world]`)
-
-??? Summary "Examples"
-    
-    **/searchworld Galarzaa Fidera**  
-    ![image](../assets/images/commands/searchworld_1.png)
-    
-    **/searchworld Nezune,Calmera**  
-    ![image](../assets/images/commands/searchworld_2.png)
-    
-    **/searchworld 600,700**  
-    ![image](../assets/images/commands/searchworld_3.png)
-
-    **/searchworld 70**  
-    ![image](../assets/images/commands/searchworld_4.png)
-
-----
-
-## /news
-**Syntax:** /news [*article_id*]
-
-Displays a list of recent news and articles. Or if an article id is provided, a summary of that article is displayed.
-
-If the command is used on the ask channel or in private, the list or summary displayed will be longer.
-
-??? Summary "Examples"
-
-    **/news**    
-    ![image](../assets/images/commands/news_1.png)
-    
-    **/news 4400**  
-    ![image](../assets/images/commands/news_2.png)
 
 
 
-
-## /house
-**Syntax:** /house *name*[/*world*]  
-**Other aliases:** /houses, /guildhall, /gh
-
-Displays information about a house, including a picture of the a section of the map where it is located.
-It shows the current status of the house in the world the current discord server is tracking.
-
-To specify a different world, add the world after a slash `/`
-
-??? Summary "Examples"
-    
-    **/house darashia 8, flat 03**  
-    ![image](../assets/images/commands/house_1.png)
-      
-    **/house caveman shelter/calmera**  
-    ![image](../assets/images/commands/house_2.png)
-
-----
 
 
 
 
 ----
 
-## /stamina
-**Syntax:** /stamina *current_stamina*
 
-Tells you how much time you have to be offline in order to regain full stamina. You must input your current stamina in this format: `hh:mm`.
 
-At the bottom, you can tell the time in your local timezone in which you would have full stamina if you logout now.
-
-??? Summary "Examples"
-  
-    **/stamina 39:00**  
-    ![image](../assets/images/commands/stamina_1.png)
-    
-    **/stamina 28:32**  
-    ![image](../assets/images/commands/stamina_2.png)
-
-----
-
-## /time
-**Other aliases:** /serversave, /ss
-
-Displays the time in CipSoft's (CET/CEST), Brazil's and Mexico's timezones, the time until server save and Rashid's current city.
-
-??? Summary "Examples"
-    
-    **/time**  
-    ![image](../assets/images/commands/time.png)

@@ -29,6 +29,10 @@
     - `/role`: Renamed to `/rolemembers`.
     - `/server`: Renamed to `/serverinfo`.
     - `/deaths`: `death` alias removed.
+    - `/house`: `houses`, `gh` aliases removed.
+    - `/levels`: `lvl`, `level` and `lvls` aliases removed.
+    - `/time`: `ss` alias removed.
+    - `/whois`: `player`, `checkplayer` aliases removed
 
 ## Version 1.1.1 (2018-06-12)
 - Added missing items from the Feyrist area to the loot database
