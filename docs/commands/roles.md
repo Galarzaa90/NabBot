@@ -1,14 +1,53 @@
 # Roles commands
+Commands related to role management.
 
 !!! info
     Parameters are enclosed with `< >`.   
     Optional parameters are enclosed in brackets `[]`.
 
+## noroles
+**Other aliases:** `norole`
 
-## /roles
-**Syntax:** /roles [*userName*]
+Shows a list of members that have no roles.
 
-Shows a list of roles in the server. If a user is specified, roles assigned to them will be shown instead.
+??? Summary "Examples"
+  
+    **/noroles**  
+    ![image](../assets/images/commands/noroles.png)
+
+----
+
+## roleinfo
+**Syntax:** `roleinfo <role>`
+
+Shows details about a role.
+
+??? Summary "Examples"
+
+    **/roleinfo Redd Alliance**
+    ![image](../assets/images/commands/roleinfo.png)
+
+----
+
+## rolemembers
+**Syntax:** `rolemembers <role>`
+
+Shows a list of members with that role.
+
+??? Summary "Examples"
+  
+    **/rolemembers Vice Leader**  
+    ![image](../assets/images/commands/rolemembers.png)
+
+----
+
+## roles
+**Syntax:** `roles [user]`
+
+Shows a user's roles or a list of server roles.
+
+If a user is specified, it will list their roles.
+If user is blank, I will list all the server's roles.
 
 ??? Summary "Examples"
   
@@ -17,30 +56,5 @@ Shows a list of roles in the server. If a user is specified, roles assigned to t
     
     **/roles Galarzaa**  
     ![image](../assets/images/commands/roles_2.png)
-
-----
-
-## /role
-**Syntax:** /role *roleName*
-
-Shows a list of members that have the specified role.
-
-??? Summary "Examples"
-  
-    **/role Vice Leader**  
-    ![image](../assets/images/commands/role.png)
-
-----
-
-## /noroles
-**Syntax:** /noroles  
-**Other aliases:** /norole
-
-Shows a list of members that have no roles.
-
-??? Summary "Examples"
-  
-    **/noroles**  
-    ![image](../assets/images/commands/noroles.png)
 
 ----

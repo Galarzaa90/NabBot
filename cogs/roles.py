@@ -18,6 +18,29 @@ class Roles:
             await ctx.send(error)
 
     @commands.guild_only()
+    @commands.command(aliases=["norole"])
+    async def noroles(self, ctx):
+        """Shows a list of members with no roles."""
+        entries = []
+
+        for member in ctx.guild.members:
+            # Member only has the @everyone role
+            if len(member.roles) == 1:
+                entries.append(member.mention)
+
+        if not entries:
+            await ctx.send("There are no members without roles.")
+            return
+
+        title = "Members with no roles"
+        per_page = 20 if ctx.long else 5
+        pages = Pages(ctx, entries=entries, per_page=per_page, title=title)
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+    @commands.guild_only()
     @commands.command()
     async def roleinfo(self, ctx: context.NabCtx, *, role: discord.Role):
         """Shows details about a role."""
@@ -34,7 +57,30 @@ class Roles:
 
     @commands.guild_only()
     @commands.command()
-    async def roles(self, ctx: context.NabCtx, *, user: str = None):
+    async def rolemembers(self, ctx, *, role: discord.Role):
+        """Shows a list of members with that role."""
+        if role is None:
+            await ctx.send("There's no role with that name in here.")
+            return
+
+        role_members = [m.mention for m in role.members]
+        if not role_members:
+            await ctx.send("Seems like there are no members with that role.")
+            return
+
+        title = "Members with the role '{0.name}'".format(role)
+        per_page = 20 if ctx.long else 5
+        pages = Pages(ctx, entries=role_members, per_page=per_page)
+        pages.embed.title = title
+        pages.embed.colour = role.colour
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+    @commands.guild_only()
+    @commands.command()
+    async def roles(self, ctx: context.NabCtx, *, user: str=None):
         """Shows a user's roles or a list of server roles.
 
         If a user is specified, it will list their roles.
@@ -70,51 +116,8 @@ class Roles:
             await ctx.send(e)
         return
 
-    @commands.guild_only()
-    @commands.command()
-    async def rolemembers(self, ctx, *, role: discord.Role):
-        """Shows a list of members with that role."""
-        if role is None:
-            await ctx.send("There's no role with that name in here.")
-            return
 
-        role_members = [m.mention for m in role.members]
-        if not role_members:
-            await ctx.send("Seems like there are no members with that role.")
-            return
 
-        title = "Members with the role '{0.name}'".format(role)
-        per_page = 20 if ctx.long else 5
-        pages = Pages(ctx, entries=role_members, per_page=per_page)
-        pages.embed.title = title
-        pages.embed.colour = role.colour
-        try:
-            await pages.paginate()
-        except CannotPaginate as e:
-            await ctx.send(e)
-
-    @commands.guild_only()
-    @commands.command(aliases=["norole"])
-    async def noroles(self, ctx):
-        """Shows a list of members with no roles."""
-        entries = []
-
-        for member in ctx.guild.members:
-            # Member only has the @everyone role
-            if len(member.roles) == 1:
-                entries.append(member.mention)
-
-        if not entries:
-            await ctx.send("There are no members without roles.")
-            return
-
-        title = "Members with no roles"
-        per_page = 20 if ctx.long else 5
-        pages = Pages(ctx, entries=entries, per_page=per_page, title=title)
-        try:
-            await pages.paginate()
-        except CannotPaginate as e:
-            await ctx.send(e)
 
 
 def setup(bot):
