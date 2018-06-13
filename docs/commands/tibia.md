@@ -3,12 +3,133 @@
 Commands related to Tibia, specially commands related to tibia.com
 
 !!! info
-    Words in italics are parameters.  
-    Parameters enclosed in brackets `[]` are optional.
+    Parameters are enclosed with `< >`.   
+    Optional parameters are enclosed in brackets `[]`.
+
+## blessings
+**Usage:** `blessings <level>`  
+**Other aliases:** `bless`
+
+Calculates the price of blessings at a specific level.
+
+For players over level 100, it will also display the cost of the Blessing of the Inquisition.
+
+??? Summary "Examples"
+  
+    **/bless 90**  
+    ![image](../assets/images/commands/bless_1.png)
+    
+    **/bless 140**  
+    ![image](../assets/images/commands/bless_2.png)
+
+----
+
+## deaths
+**Syntax:** `deaths [player]`  
+**Other aliases:** `deathlist`
+
+Shows a character's recent deaths.
+
+If this discord server is tracking a tibia world, it will show deaths registered to the character.
+Additionally, if no name is provided, all recent deaths will be shown.
+
+??? Summary "Examples"
+      
+    **/deaths Xzilla**  
+    ![image](../assets/images/commands/deaths_1.png)
+    
+    **/deaths**  
+    ![image](../assets/images/commands/deaths_2.png)
+
+----
+
+### deaths monster
+**Syntax:** `deaths monster <name>`  
+**Other aliases:** `deaths mob`, `deaths killer`
+
+Shows the latest deaths caused by a specific monster.
+
+??? Summary "Example"
+  
+    **/deaths mob Lloyd**  
+    ![image](../assets/images/commands/deaths_mob.png)
+----
+
+### deaths user
+**Syntax:** `death user <name>`
+
+Shows recent deaths by all characters registered to a user.
+
+??? Summary "Example"
+    
+    **/deaths user Nezune**  
+    ![image](../assets/images/commands/deaths_stats.png)
+
+----
+
+### deaths stats
+**Syntax:** `death stats [week/month]`
+
+Shows death statistics.
+
+Shows the total number of deaths, the characters and users with more deaths, and the most common killers.
+
+To see a shorter period, use `week` or `month` as a parameter.
+
+??? Summary "Example"
+    
+    **/deaths stats**  
+    ![image](../assets/images/commands/deaths_stats.png)
+
+----
+
+## guild
+**Syntax:** `guild <name>`  
+**Other aliases:** `checkguild`
+
+Show's the number of members the guild has and a list of their users.
+It also shows whether the guild has a guildhall or not, and their funding date.
+
+??? summary "Examples"
+
+    **/guild Redd Alliance**  
+    ![image](../assets/images/commands/guild.png)
+
+----
+
+### guild info
+**Syntax:** `guild info <name>`  
+**Other aliases:** `guild stats`
+
+Shows basic information and stats about a guild.
+        
+It shows their description, homepage, guildhall, number of members and more.
+
+??? summary "Examples"
+    
+    **/guild info Bald Dwarfs**  
+    ![image](../assets/images/commands/guildinfo.png)
+
+----
+
+### guild members
+**Syntax:** `guild members <name>`  
+**Other aliases:** `guild list`
+
+Shows a list of all guild members.
+
+Online members have a 🔹 icon next to their name.
 
 
-## /whois
-**Syntax:** /whois *playerName/discordUser*  
+??? summary "Examples"
+    
+    **/guild members Redd Alliance**  
+    ![image](../assets/images/commands/guildmembers.png)
+
+----
+
+## whois
+**Syntax:** whois &lt;character/user&gt;  
 **Other aliases:** /check, /player, /checkplayer, /char, /character
 
 This commands has 2 functions:  
@@ -50,46 +171,7 @@ It also shows the character's corresponding highscore positions, however, this i
     
     In this case, a user id was provided, and it searched for the user with that id.
 
----
-
-## /guild
-**Syntax:** /guild *guildname*  
-**Other aliases:** /guildcheck, /checkguild
-
-Show's the number of members a guild has, and a list of their online users.
-It also shows whether the guild has a guildhall or not, and their founded date.
-
-??? summary "Examples"
-
-    **/guild Redd Alliance**  
-    ![image](../assets/images/commands/guild.png)
-
----
-
-### /guild members
-**Syntax:** /guild *guildname*  
-**Other aliases:** /guild list
-
-Shows a paginated list of all the members of a guild. If they are online, 🔹 is shown next to their name.
-
-??? summary "Examples"
-    
-    **/guild members Redd Alliance**  
-    ![image](../assets/images/commands/guildmembers.png)
-    
----
-
-### /guild info
-**Syntax:** /guild info *guildname*  
-**Other aliases:** /guild stats
-
-Shows basic information about a guild, like their description, homepage, guildhall, number of members of members and more.
-
-??? summary "Examples"
-    
-    **/guild info Bald Dwarfs**  
-    ![image](../assets/images/commands/guildinfo.png)
-
+----
 
 ## /share
 **Syntax:** /share *level/player*  
@@ -117,44 +199,6 @@ There's three different ways to use this command:
 
 ---
 
-## /deaths
-**Syntax:** /deaths [*player*]  
-**Other aliases:** /deathlist, /death
-
-If a player is specified, it displays a list of that player's recent deaths. 
-If no player is specified, it will show the recent deaths of all players registered in the database. 
-The number of entries shown per page is higher in ask channel and private channels.
-
-??? Summary "Examples"
-      
-    **/deaths Xzilla**  
-    ![image](../assets/images/commands/deaths_1.png)
-    
-    **/deaths**  
-    ![image](../assets/images/commands/deaths_2.png)
-
-### /deaths monster
-**Syntax:** /deaths monster *name*  
-**Other aliases:** /deaths mob, /deaths killer
-
-Shows recent deaths by a specific monster or killer.
-
-??? Summary "Example"
-  
-    **/deaths mob Lloyd**  
-    ![image](../assets/images/commands/deaths_mob.png)
-
-### /deaths user
-**Syntax:** /death user *name*
-
-Shows recent deaths by all characters registered to a user.
-
-??? Summary "Example"
-    
-    **/deaths user Nezune**  
-    ![image](../assets/images/commands/deaths_user.png)
-
----
 
 ## /levels
 **Syntax:** /levels [*player*]  
@@ -316,20 +360,7 @@ To specify a different world, add the world after a slash `/`
 
 ----
 
-## /blessings
-**Syntax:** /blessings *level*  
-**Other aliases:** /bless
 
-Replies with the cost of blessings for that level.
-For players over level 100, it will also display the cost of the Blessing of the Inquisition.
-
-??? Summary "Examples"
-  
-    **/bless 90**  
-    ![image](../assets/images/commands/bless_1.png)
-    
-    **/bless 140**  
-    ![image](../assets/images/commands/bless_2.png)
 
 
 ----

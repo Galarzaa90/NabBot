@@ -37,374 +37,69 @@ class Tibia:
         if isinstance(error, commands.UserInputError):
             await self.bot.show_help(ctx)
 
-    @commands.command(aliases=['check', 'char', 'character'])
-    async def whois(self, ctx, *, name):
-        """Tells you a character's or a discord user's information.
+    # Commands
+    @commands.command(aliases=['bless'])
+    async def blessings(self, ctx, level: int):
+        """Calculates the price of blessings for a specific level.
 
-        If it matches a discord user, it displays their registered users
-        If it matches a character, it displays its information.
-
-        Note that the bot has no way to know the characters of a member that just joined.
-        The bot has to be taught about the character's of a user."""
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+        For player over level 100, it will also display the cost of the Blessing of the Inquisition."""
+        if level < 1:
+            await ctx.send("Very funny... Now tell me a valid level.")
             return
+        bless_price = max(2000, 200 * (min(level, 120) - 20))
+        mountain_bless_price = max(2000, 200 * (min(level, 150) - 20))
+        inquisition = ""
+        if level >= 100:
+            inquisition = f"\nBlessing of the Inquisition costs **{int(bless_price*5*1.1):,}** gold coins."
+        await ctx.send(f"At that level you will pay **{bless_price:,}** gold coins per blessing for a total of "
+                       f"**{bless_price*5:,}** gold coins.{inquisition}"
+                       f"\nMountain blessings cost **{mountain_bless_price:,}** each, for a total of "
+                       f"**{int(mountain_bless_price*2):,}**.")
 
-        if is_lite_mode(ctx):
+    @commands.command()
+    async def bosses(self, ctx: NabCtx, world=None):
+        """Shows predictions for bosses."""
+        if world is None and not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is not None:
+            world = self.bot.tracked_worlds.get(ctx.guild.id)
+        elif world is None:
+            await ctx.send("You need to tell me a world's name.")
+            return
+        world = world.title()
+        if world not in tibia_worlds:
+            await ctx.send("That world doesn't exist.")
+            return
+        bosses = await get_world_bosses(world)
+        if type(bosses) is not dict:
+            await ctx.send("Something went wrong")
+        fields = {"High Chance": "", "Low Chance": "", "No Chance": "", "Unpredicted": ""}
+        for boss, info in bosses.items():
             try:
-                char = await get_character(name)
-                if char is None:
-                    await ctx.send("I couldn't find a character with that name")
-                    return
-            except NetworkError:
-                await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
-                return
-            embed = discord.Embed(description=self.get_char_string(char))
-            embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
-            await ctx.send(embed=embed)
-            return
-
-        if name.lower() == ctx.me.display_name.lower():
-            await ctx.invoke(self.bot.all_commands.get('about'))
-            return
-        try:
-            char = await get_character(name)
-        except NetworkError:
-            await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
-            return
-        char_string = self.get_char_string(char)
-        user = self.bot.get_member(name, ctx.guild)
-        embed = self.get_user_embed(ctx, user)
-
-        # No user or char with that name
-        if char is None and user is None:
-            await ctx.send("I don't see any user or character with that name.")
-            return
-        # We found a user
-        if embed is not None:
-            # Check if we found a char too
-            if char is not None:
-                # If it's owned by the user, we append it to the same embed.
-                if char.owner == int(user.id):
-                    embed.add_field(name="Character", value=char_string, inline=False)
-                    if char.last_login is not None:
-                        embed.set_footer(text="Last login")
-                        embed.timestamp = char.last_login
-                    await ctx.send(embed=embed)
-                    return
-                # Not owned by same user, we display a separate embed
-                else:
-                    char_embed = discord.Embed(description=char_string)
-                    char_embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
-                    if char.last_login is not None:
-                        char_embed.set_footer(text="Last login")
-                        char_embed.timestamp = char.last_login
-                    await ctx.send(embed=embed)
-                    await ctx.send(embed=char_embed)
-                    return
-            else:
-                # Tries to display user's highest level character since there is no character match
-                if is_private(ctx.channel):
-                    display_name = '@'+user.name
-                    user_guilds = self.bot.get_user_guilds(ctx.author.id)
-                    user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if
-                                         server in [s.id for s in user_guilds]]
-                else:
-                    if self.bot.tracked_worlds.get(ctx.guild.id) is None:
-                        user_tibia_worlds = []
-                    else:
-                        user_tibia_worlds = [self.bot.tracked_worlds[ctx.guild.id]]
-                if len(user_tibia_worlds) != 0:
-                    placeholders = ", ".join("?" for w in user_tibia_worlds)
-                    c = userDatabase.cursor()
-                    try:
-                        c.execute("SELECT name, ABS(level) as level "
-                                  "FROM chars "
-                                  "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
-                                  tuple(user_tibia_worlds))
-                        character = c.fetchone()
-                    finally:
-                        c.close()
-                    if character:
-                        char = await get_character(character["name"])
-                        char_string = self.get_char_string(char)
-                        if char is not None:
-                            char_embed = discord.Embed(description=char_string)
-                            char_embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
-                            embed.add_field(name="Highest character", value=char_string, inline=False)
-                            if char.last_login is not None:
-                                embed.set_footer(text="Last login")
-                                embed.timestamp = char.last_login
-                await ctx.send(embed=embed)
+                if info["days"] > 1000:
+                    continue
+                info["name"] = boss.title()
+                fields[info["chance"]] += "{name} - {days:,} days.\n".format(**info)
+            except KeyError:
+                continue
+        embed = discord.Embed(title=f"Bosses for {world}")
+        if fields["High Chance"]:
+            embed.add_field(name="High Chance - Last seen", value=fields["High Chance"])
+        if fields["Low Chance"]:
+            embed.add_field(name="Low Chance - Last seen", value=fields["Low Chance"])
+        if ctx.long:
+            if fields["No Chance"]:
+                embed.add_field(name="No Chance - Expect in", value=fields["No Chance"])
+            if fields["Unpredicted"]:
+                embed.add_field(name="Unpredicted - Last seen", value=fields["Unpredicted"])
         else:
-            embed = discord.Embed(description="")
-            if char is not None:
-                owner = None if char.owner == 0 else self.bot.get_member(char.owner, ctx.guild)
-                if owner is not None:
-                    # Char is owned by a discord user
-                    embed = self.get_user_embed(ctx, owner)
-                    if embed is None:
-                        embed = discord.Embed(description="")
-                    embed.add_field(name="Character", value=char_string, inline=False)
-                    if char.last_login is not None:
-                        embed.set_footer(text="Last login")
-                        embed.timestamp = char.last_login
-                    await ctx.send(embed=embed)
-                    return
-                else:
-                    embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
-                    embed.description += char_string
-                    if char.last_login:
-                        embed.set_footer(text="Last login")
-                        embed.timestamp = char.last_login
-
-            await ctx.send(embed=embed)
-
-    @commands.command(aliases=['expshare', 'party'])
-    async def share(self, ctx, *, param: str=None):
-        """Shows the sharing range for that level or character
-
-        params -> level
-        params -> name
-        params -> name1,name2, name3...
-
-        This command can be used in three ways:
-        1. Find the share range of a certain level.
-        2. Find the share range of a character.
-        3. Find the joint share range of a group of characters.
-        """
-        invalid_level = ["Invalid level.",
-                         "I don't think that's a valid level.",
-                         "You're doing it wrong!",
-                         "Nope, you can't share with anyone.",
-                         "You probably need a couple more levels"
-                         ]
-        # Check if param is numeric
-        try:
-            level = int(param)
-            if level < 1:
-                await ctx.send(random.choice(invalid_level))
-                return
-            low, high = get_share_range(level)
-            await ctx.send(f"A level {level} can share experience with levels **{low}** to **{high}**.")
-            return
-        except ValueError:
-            chars = param.split(",")
-            if len(chars) > 5:
-                await ctx.send("I can only check up to 5 characters at a time.")
-                return
-            if len(chars) == 1:
-                with ctx.typing():
-                    try:
-                        char = await get_character(chars[0])
-                        if char is None:
-                            await ctx.send('There is no character with that name.')
-                            return
-                    except NetworkError:
-                        await ctx.send("I'm having connection issues right now, please try again.")
-                        return
-                    name = char.name
-                    level = char.level
-                    low, high = get_share_range(char.level)
-                    await ctx.send(f"**{name}** ({level}) can share experience with levels **{low}** to **{high}**.")
-                    return
-            char_data = []
-            # Check if all characters are the same.
-            if all(x.lower() == chars[0].lower() for x in chars):
-                await ctx.send("I'm not sure if sharing with yourself counts as sharing, but yes, you can share.")
-                return
-            with ctx.typing():
-                for char in chars:
-                    try:
-                        fetched_char = await get_character(char)
-                        if fetched_char is None:
-                            await ctx.send(f"There is no character named **{char}**.")
-                            return
-                    except NetworkError:
-                        await ctx.send("I'm having connection issues, please try again in a bit.")
-                        return
-                    char_data.append(fetched_char)
-                # Sort character list by level ascending
-                char_data = sorted(char_data, key=lambda k: k.level)
-                low, _ = get_share_range(char_data[-1].level)
-                _, high = get_share_range(char_data[0].level)
-                lowest_name = char_data[0].name
-                lowest_level = char_data[0].level
-                highest_name = char_data[-1].name
-                highest_level = char_data[-1].level
-                if low > char_data[0].level:
-                    await ctx.send(f"**{lowest_name}** ({lowest_level}) needs {low-lowest_level} more level"
-                                   f"{'s' if low-lowest_level > 1 else ''} to share experience with **{highest_name}** "
-                                   f"({highest_level}).")
-                    return
-                # If it's more than two, just say they can all share
-                reply = ""
-                if len(chars) > 2:
-                    reply = f"They can all share experience with each other."
-                else:
-                    reply = f"**{lowest_name}** ({lowest_level}) and **{highest_name}** ({highest_level}) can " \
-                            f"share experience."
-                await ctx.send(reply+f"\nTheir share range is from level **{low}** to **{high}**.")
-
-    @commands.group(aliases=['checkguild'], invoke_without_command=True, case_insensitive=True)
-    async def guild(self, ctx, *, name):
-        """Checks who is online in a guild."""
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        try:
-            guild = await get_guild(name)
-            if guild is None:
-                await ctx.send("The guild {0} doesn't exist.".format(name))
-                return
-        except NetworkError:
-            await ctx.send("Can you repeat that? I had some trouble communicating.")
-            return
-
-        embed = discord.Embed()
-        embed.set_author(name="{0.name} ({0.world})".format(guild), url=guild.url, icon_url=tibia_logo)
-        embed.description = ""
-        embed.set_thumbnail(url=guild.logo)
-        if guild.guildhall is not None:
-            embed.description += "They own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
-                                                                               url_house.format(id=guild.guildhall["id"],
-                                                                                                world=guild.world))
-
-        if len(guild.online) < 1:
-            embed.description += f"Nobody is online. It has **{len(guild.members)}** members."
-            await ctx.send(embed=embed)
-            return
-
-        embed.set_footer(text=f"The guild was founded on {guild.founded}")
-
-        plural = ""
-        if len(guild.online) > 1:
-            plural = "s"
-        embed.description += f"It has **{len(guild.online)}** player{plural} online out of **{len(guild.members)}**:"
-        current_field = ""
-        result = ""
-        for member in guild.online:
-            if current_field == "":
-                current_field = member['rank']
-            elif member['rank'] != current_field and member["rank"] != "":
-                embed.add_field(name=current_field, value=result, inline=False)
-                result = ""
-                current_field = member['rank']
-
-            member["nick"] = '(*' + member['nick'] + '*) ' if member['nick'] != '' else ''
-            member["vocation"] = get_voc_abb(member["vocation"])
-
-            result += "{name} {nick}\u2192 {level} {vocation}\n".format(**member)
-        embed.add_field(name=current_field, value=result, inline=False)
+            ask_channel = ctx.ask_channel_name
+            if ask_channel:
+                askchannel_string = " or use #" + ask_channel
+            else:
+                askchannel_string = ""
+            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         await ctx.send(embed=embed)
 
-    @guild.command(name="members", aliases=['list'])
-    async def guild_members(self, ctx, *, name: str):
-        """Shows a list of all guild members.
-
-        Online members have a 🔹 icon next to their name."""
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-        if name is None:
-            await ctx.send("Tell me the guild you want me to check.")
-            return
-
-        try:
-            guild = await get_guild(name)
-            if guild is None:
-                await ctx.send("The guild {0} doesn't exist.".format(name))
-                return
-        except NetworkError:
-            await ctx.send("Can you repeat that? I had some trouble communicating.")
-            return
-        title = "{0.name} ({0.world})".format(guild)
-        entries = []
-        vocations = []
-        for member in guild.members:
-            member["nick"] = '(*' + member['nick'] + '*) ' if member['nick'] != '' else ''
-            vocations.append(member["vocation"])
-            member["emoji"] = get_voc_emoji(member["vocation"])
-            member["vocation"] = get_voc_abb(member["vocation"])
-            member["online"] = "🔹" if member["status"] == "online" else ""
-            entries.append("{rank}\u2014 {online}**{name}** {nick} (Lvl {level} {vocation}{emoji})".format(**member))
-        per_page = 20 if ctx.long else 5
-        pages = VocationPages(ctx, entries=entries, per_page=per_page, vocations=vocations)
-        pages.embed.set_author(name=title, icon_url=guild.logo, url=guild.url)
-        try:
-            await pages.paginate()
-        except CannotPaginate as e:
-            await ctx.send(e)
-
-    @guild.command(name="info", aliases=["stats"])
-    async def guild_info(self, ctx, *, name: str):
-        """Shows basic information and stats about a guild"""
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        try:
-            guild = await get_guild(name)
-            if guild is None:
-                await ctx.send("The guild {0} doesn't exist.".format(name))
-                return
-        except NetworkError:
-            await ctx.send("Can you repeat that? I had some trouble communicating.")
-            return
-        embed = discord.Embed(title=f"{guild.name} ({guild.world})", description=guild.description, url=guild.url)
-        embed.set_thumbnail(url=guild.logo)
-        embed.set_footer(text=f"The guild was founded on {guild.founded}")
-        if guild.guildhall is not None:
-            embed.description += "\nThey own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
-                                                                               url_house.format(id=guild.guildhall["id"],
-                                                                                               world=guild.world))
-        applications = f"{ctx.tick(True)} Open" if guild.application else f"{ctx.tick(False)} Closed"
-        embed.add_field(name="Applications", value=applications)
-        if guild.homepage is not None:
-            embed.add_field(name="Homepage", value=f"[{guild.homepage}]({guild.homepage})")
-        knight = 0
-        paladin = 0
-        sorcerer = 0
-        druid = 0
-        none = 0
-        total_level = 0
-        highest_member = None
-        for member in guild.members:
-            if highest_member is None:
-                highest_member = member
-            elif highest_member["level"] < member["level"]:
-                highest_member = member
-            total_level += member["level"]
-            if "knight" in member["vocation"].lower():
-                knight += 1
-            if "sorcerer" in member["vocation"].lower():
-                sorcerer += 1
-            if "druid" in member["vocation"].lower():
-                druid += 1
-            if "paladin" in member["vocation"].lower():
-                paladin += 1
-            if "none" in member["vocation"].lower():
-                none += 1
-
-        embed.add_field(name="Members online", value=f"{len(guild.online)}/{len(guild.members)}")
-        embed.add_field(name="Average level", value=f"{total_level/len(guild.members):.0f}")
-        embed.add_field(name="Highest member", value="{name} - {level} {emoji}".
-                        format(**highest_member, emoji=get_voc_emoji(highest_member["vocation"])))
-        embed.add_field(name="Vocations distribution", value=f"{knight} {get_voc_emoji('knight')} | "
-                                                             f"{druid} {get_voc_emoji('druid')} | "
-                                                             f"{sorcerer} {get_voc_emoji('sorcerer')} | "
-                                                             f"{paladin} {get_voc_emoji('paladin')} | "
-                                                             f"{none} {get_voc_emoji('none')}",
-                        inline=False)
-
-        await ctx.send(embed=embed)
-
-    @commands.group(aliases=['deathlist', 'death'], invoke_without_command=True, case_insensitive=True)
+    @commands.group(aliases=['deathlist'], invoke_without_command=True, case_insensitive=True)
     async def deaths(self, ctx, *, name: str = None):
         """Shows a character's recent deaths.
 
@@ -527,7 +222,7 @@ class Tibia:
     @deaths.command(name="monster", aliases=["mob", "killer"])
     @checks.is_in_tracking_world()
     async def deaths_monsters(self, ctx, *, name: str):
-        """Returns a list of the latest kills by that monster."""
+        """Shows the latest deaths caused by a specific monster."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -540,9 +235,9 @@ class Tibia:
         per_page = 20 if ctx.long else 5
 
         if name[:1] in ["a", "e", "i", "o", "u"]:
-            name_with_article = "an "+name
+            name_with_article = "an " + name
         else:
-            name_with_article = "a "+name
+            name_with_article = "a " + name
         try:
             c.execute("SELECT char_deaths.level, date, name, user_id, byplayer, killer, vocation "
                       "FROM char_deaths, chars "
@@ -639,12 +334,15 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @deaths.command(name="stats")
+    @deaths.command(name="stats", usage="[week/month]")
     @checks.is_in_tracking_world()
     async def deaths_stats(self, ctx, *, period: str = None):
-        """Shows death statistic.
-        
-        A shorter period can be shown by adding week or month."""
+        """Shows death statistics
+
+        Shows the total number of deaths, the characters and users with more deaths, and the most common killers.
+
+        To see a shorter period, use `week` or `month` as a parameter.
+        """
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -670,7 +368,8 @@ class Tibia:
         else:
             start_date = 0
             description_suffix = ""
-            embed.set_footer(text="For a shorter period, try /death stats week or /deaths stats month")
+            embed.set_footer(text=f"For a shorter period, try {ctx.clean_prefix}{ctx.command.qualified_name} week or "
+                                  f"{ctx.clean_prefix}{ctx.command.qualified_name} month")
         try:
             c.execute("SELECT COUNT() AS total FROM char_deaths WHERE date >= ?", (start_date,))
             total = c.fetchone()["total"]
@@ -725,6 +424,213 @@ class Tibia:
             await ctx.send(embed=embed)
         finally:
             c.close()
+
+    @commands.group(aliases=['checkguild'], invoke_without_command=True, case_insensitive=True)
+    async def guild(self, ctx, *, name):
+        """Shows online characters in a guild.
+
+        Show's the number of members the guild has and a list of their users.
+        It also shows whether the guild has a guildhall or not, and their funding date.
+        """
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        try:
+            guild = await get_guild(name)
+            if guild is None:
+                await ctx.send("The guild {0} doesn't exist.".format(name))
+                return
+        except NetworkError:
+            await ctx.send("Can you repeat that? I had some trouble communicating.")
+            return
+
+        embed = discord.Embed()
+        embed.set_author(name="{0.name} ({0.world})".format(guild), url=guild.url, icon_url=tibia_logo)
+        embed.description = ""
+        embed.set_thumbnail(url=guild.logo)
+        if guild.guildhall is not None:
+            embed.description += "They own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
+                                                                               url_house.format(id=guild.guildhall["id"],
+                                                                                                world=guild.world))
+
+        if len(guild.online) < 1:
+            embed.description += f"Nobody is online. It has **{len(guild.members)}** members."
+            await ctx.send(embed=embed)
+            return
+
+        embed.set_footer(text=f"The guild was founded on {guild.founded}")
+
+        plural = ""
+        if len(guild.online) > 1:
+            plural = "s"
+        embed.description += f"It has **{len(guild.online)}** player{plural} online out of **{len(guild.members)}**:"
+        current_field = ""
+        result = ""
+        for member in guild.online:
+            if current_field == "":
+                current_field = member['rank']
+            elif member['rank'] != current_field and member["rank"] != "":
+                embed.add_field(name=current_field, value=result, inline=False)
+                result = ""
+                current_field = member['rank']
+
+            member["nick"] = '(*' + member['nick'] + '*) ' if member['nick'] != '' else ''
+            member["vocation"] = get_voc_abb(member["vocation"])
+
+            result += "{name} {nick}\u2192 {level} {vocation}\n".format(**member)
+        embed.add_field(name=current_field, value=result, inline=False)
+        await ctx.send(embed=embed)
+
+    @guild.command(name="info", aliases=["stats"])
+    async def guild_info(self, ctx, *, name: str):
+        """Shows basic information and stats about a guild.
+
+        It shows their description, homepage, guildhall, number of members and more."""
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        try:
+            guild = await get_guild(name)
+            if guild is None:
+                await ctx.send("The guild {0} doesn't exist.".format(name))
+                return
+        except NetworkError:
+            await ctx.send("Can you repeat that? I had some trouble communicating.")
+            return
+        embed = discord.Embed(title=f"{guild.name} ({guild.world})", description=guild.description, url=guild.url)
+        embed.set_thumbnail(url=guild.logo)
+        embed.set_footer(text=f"The guild was founded on {guild.founded}")
+        if guild.guildhall is not None:
+            embed.description += "\nThey own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
+                                                                               url_house.format(id=guild.guildhall["id"],
+                                                                                               world=guild.world))
+        applications = f"{ctx.tick(True)} Open" if guild.application else f"{ctx.tick(False)} Closed"
+        embed.add_field(name="Applications", value=applications)
+        if guild.homepage is not None:
+            embed.add_field(name="Homepage", value=f"[{guild.homepage}]({guild.homepage})")
+        knight = 0
+        paladin = 0
+        sorcerer = 0
+        druid = 0
+        none = 0
+        total_level = 0
+        highest_member = None
+        for member in guild.members:
+            if highest_member is None:
+                highest_member = member
+            elif highest_member["level"] < member["level"]:
+                highest_member = member
+            total_level += member["level"]
+            if "knight" in member["vocation"].lower():
+                knight += 1
+            if "sorcerer" in member["vocation"].lower():
+                sorcerer += 1
+            if "druid" in member["vocation"].lower():
+                druid += 1
+            if "paladin" in member["vocation"].lower():
+                paladin += 1
+            if "none" in member["vocation"].lower():
+                none += 1
+
+        embed.add_field(name="Members online", value=f"{len(guild.online)}/{len(guild.members)}")
+        embed.add_field(name="Average level", value=f"{total_level/len(guild.members):.0f}")
+        embed.add_field(name="Highest member", value="{name} - {level} {emoji}".
+                        format(**highest_member, emoji=get_voc_emoji(highest_member["vocation"])))
+        embed.add_field(name="Vocations distribution", value=f"{knight} {get_voc_emoji('knight')} | "
+                                                             f"{druid} {get_voc_emoji('druid')} | "
+                                                             f"{sorcerer} {get_voc_emoji('sorcerer')} | "
+                                                             f"{paladin} {get_voc_emoji('paladin')} | "
+                                                             f"{none} {get_voc_emoji('none')}",
+                        inline=False)
+
+        await ctx.send(embed=embed)
+
+    @guild.command(name="members", aliases=['list'])
+    async def guild_members(self, ctx, *, name: str):
+        """Shows a list of all guild members.
+
+        Online members have a 🔹 icon next to their name."""
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+        if name is None:
+            await ctx.send("Tell me the guild you want me to check.")
+            return
+
+        try:
+            guild = await get_guild(name)
+            if guild is None:
+                await ctx.send("The guild {0} doesn't exist.".format(name))
+                return
+        except NetworkError:
+            await ctx.send("Can you repeat that? I had some trouble communicating.")
+            return
+        title = "{0.name} ({0.world})".format(guild)
+        entries = []
+        vocations = []
+        for member in guild.members:
+            member["nick"] = '(*' + member['nick'] + '*) ' if member['nick'] != '' else ''
+            vocations.append(member["vocation"])
+            member["emoji"] = get_voc_emoji(member["vocation"])
+            member["vocation"] = get_voc_abb(member["vocation"])
+            member["online"] = "🔹" if member["status"] == "online" else ""
+            entries.append("{rank}\u2014 {online}**{name}** {nick} (Lvl {level} {vocation}{emoji})".format(**member))
+        per_page = 20 if ctx.long else 5
+        pages = VocationPages(ctx, entries=entries, per_page=per_page, vocations=vocations)
+        pages.embed.set_author(name=title, icon_url=guild.logo, url=guild.url)
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+    @commands.command(aliases=["houses", "guildhall", "gh"], usage="<name>[/world]")
+    async def house(self, ctx, *, name: str):
+        """Shows info for a house or guildhall.
+
+        By default, it shows the current status of a house for the current tracked world (if any).
+        If used on private messages, no world is looked up unless specified.
+
+        To specify a world, add the world at the end separated with '/'.
+        """
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+        params = name.split("/", 2)
+        name = params[0]
+        world = None
+        if ctx.guild is not None and len(params) == 1:
+            world = self.bot.tracked_worlds.get(ctx.guild.id)
+        elif len(params) == 2:
+            world = params[1].title()
+            if world not in tibia_worlds:
+                await ctx.send("That's not a valid world.")
+                return
+
+        house = await get_house(name, world)
+        if house is None:
+            await ctx.send("I couldn't find a house with that name.")
+            return
+
+        if type(house) is list:
+            embed = discord.Embed(title="Suggestions", description="\n".join(house))
+            await ctx.send("I couldn't find that house, maybe you meant one of these?", embed=embed)
+            return
+
+        # Attach image only if the bot has permissions
+        if permissions.attach_files:
+            filename = re.sub(r"[^A-Za-z0-9]", "", house["name"]) + ".png"
+            mapimage = get_map_area(house["x"], house["y"], house["z"])
+            embed = self.get_house_embed(house)
+            embed.set_image(url=f"attachment://{filename}")
+            await ctx.send(file=discord.File(mapimage, f"{filename}"), embed=embed)
+        else:
+            await ctx.send(embed=self.get_house_embed(house))
 
     @commands.group(aliases=['levelups', 'lvl', 'level', 'lvls'], invoke_without_command=True, case_insensitive=True)
     @checks.is_in_tracking_world()
@@ -882,6 +788,259 @@ class Tibia:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
+
+    @commands.command()
+    async def news(self, ctx, news_id: int=None):
+        """Shows the latest news articles from Tibia.com.
+
+        If no id is supplied, a list of recent articles is shown, otherwise, a snippet of the article is shown."""
+        if news_id is None:
+            try:
+                recent_news = await get_recent_news()
+                if recent_news is None:
+                    await ctx.send("Something went wrong getting recent news.")
+            except NetworkError:
+                await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
+                return
+            embed = discord.Embed(title="Recent news")
+            embed.set_footer(text="To see a specific article, use the command /news <id>")
+            news_format = "{emoji} `{id}`\t[{news}]({tibiaurl})"
+            type_emojis = {
+                "Featured Article": "📑",
+                "News": "📰",
+            }
+            for news in recent_news:
+                news["emoji"] = type_emojis.get(news["type"], "")
+            limit = 20 if ctx.long else 10
+            embed.description = "\n".join([news_format.format(**n) for n in recent_news[:limit]])
+            await ctx.send(embed=embed)
+        else:
+            try:
+                article = await get_news_article(news_id)
+                if article is None:
+                    await ctx.send("There's no article with that id.")
+                    return
+            except NetworkError:
+                await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
+                return
+            limit = 1900 if ctx.long else 600
+            embed = self.get_article_embed(article, limit)
+            await ctx.send(embed=embed)
+
+    @commands.command(aliases=['expshare', 'party'])
+    async def share(self, ctx, *, param: str=None):
+        """Shows the sharing range for that level or character
+
+        params -> level
+        params -> name
+        params -> name1,name2, name3...
+
+        This command can be used in three ways:
+        1. Find the share range of a certain level.
+        2. Find the share range of a character.
+        3. Find the joint share range of a group of characters.
+        """
+        invalid_level = ["Invalid level.",
+                         "I don't think that's a valid level.",
+                         "You're doing it wrong!",
+                         "Nope, you can't share with anyone.",
+                         "You probably need a couple more levels"
+                         ]
+        # Check if param is numeric
+        try:
+            level = int(param)
+            if level < 1:
+                await ctx.send(random.choice(invalid_level))
+                return
+            low, high = get_share_range(level)
+            await ctx.send(f"A level {level} can share experience with levels **{low}** to **{high}**.")
+            return
+        except ValueError:
+            chars = param.split(",")
+            if len(chars) > 5:
+                await ctx.send("I can only check up to 5 characters at a time.")
+                return
+            if len(chars) == 1:
+                with ctx.typing():
+                    try:
+                        char = await get_character(chars[0])
+                        if char is None:
+                            await ctx.send('There is no character with that name.')
+                            return
+                    except NetworkError:
+                        await ctx.send("I'm having connection issues right now, please try again.")
+                        return
+                    name = char.name
+                    level = char.level
+                    low, high = get_share_range(char.level)
+                    await ctx.send(f"**{name}** ({level}) can share experience with levels **{low}** to **{high}**.")
+                    return
+            char_data = []
+            # Check if all characters are the same.
+            if all(x.lower() == chars[0].lower() for x in chars):
+                await ctx.send("I'm not sure if sharing with yourself counts as sharing, but yes, you can share.")
+                return
+            with ctx.typing():
+                for char in chars:
+                    try:
+                        fetched_char = await get_character(char)
+                        if fetched_char is None:
+                            await ctx.send(f"There is no character named **{char}**.")
+                            return
+                    except NetworkError:
+                        await ctx.send("I'm having connection issues, please try again in a bit.")
+                        return
+                    char_data.append(fetched_char)
+                # Sort character list by level ascending
+                char_data = sorted(char_data, key=lambda k: k.level)
+                low, _ = get_share_range(char_data[-1].level)
+                _, high = get_share_range(char_data[0].level)
+                lowest_name = char_data[0].name
+                lowest_level = char_data[0].level
+                highest_name = char_data[-1].name
+                highest_level = char_data[-1].level
+                if low > char_data[0].level:
+                    await ctx.send(f"**{lowest_name}** ({lowest_level}) needs {low-lowest_level} more level"
+                                   f"{'s' if low-lowest_level > 1 else ''} to share experience with **{highest_name}** "
+                                   f"({highest_level}).")
+                    return
+                # If it's more than two, just say they can all share
+                reply = ""
+                if len(chars) > 2:
+                    reply = f"They can all share experience with each other."
+                else:
+                    reply = f"**{lowest_name}** ({lowest_level}) and **{highest_name}** ({highest_level}) can " \
+                            f"share experience."
+                await ctx.send(reply+f"\nTheir share range is from level **{low}** to **{high}**.")
+
+    @commands.command()
+    async def stamina(self, ctx, current_stamina:str):
+        """Tells you the time you have to wait to restore stamina.
+
+        To use it, you must provide your current stamina, in this format: `34:03`.
+        The bot will show the time needed to reach full stamina if you were to start sleeping now.
+
+        The footer text shows the time in your timezone where your stamina would be full."""
+
+        hour_pattern = re.compile(r"(\d{1,2}):(\d{1,2})")
+        match = hour_pattern.match(current_stamina.strip())
+        if not match:
+            await ctx.send("You need to tell me your current stamina, in this format: `34:03`.")
+            return
+        hours = int(match.group(1))
+        minutes = int(match.group(2))
+        if minutes >= 60:
+            await ctx.send("Invalid time, minutes can't be 60 or greater.")
+            return
+        current = dt.timedelta(hours=hours, minutes=minutes)
+        if hours > 42 or (hours == 42 and minutes > 0):
+            await ctx.send("You can't have more than 42 hours of stamina.")
+            return
+        elif hours == 42:
+            await ctx.send("Your stamina is full already.")
+            return
+        # Stamina takes 3 minutes to regenerate one minute until 40 hours.
+        resting_time = max((dt.timedelta(hours=40)-current).total_seconds(), 0)*3
+        # Last two hours of stamina take 10 minutes for a minute
+        resting_time += (dt.timedelta(hours=42)-max(dt.timedelta(hours=40), current)).total_seconds()*10
+
+        hours, remainder = divmod(int(resting_time), 3600)
+        minutes, _ = divmod(remainder, 60)
+        if hours:
+            remaining = f'{hours} hours and {minutes} minutes'
+        else:
+            remaining = f'{minutes} minutes'
+
+        reply = f"You need to rest **{remaining}** to get back to full stamina."
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send(reply)
+            return
+
+        embed = discord.Embed(description=reply)
+        embed.set_footer(text="Full stamina")
+        embed.colour = discord.Color.green()
+        embed.timestamp = dt.datetime.utcnow()+dt.timedelta(seconds=resting_time)
+        await ctx.send(embed=embed)
+
+    @commands.command()
+    async def stats(self, ctx, *, params: str=None):
+        """Calculates character stats based on vocation and level.
+
+        params -> character
+        params -> level,vocation
+        params -> vocation,level"""
+        invalid_arguments = "Invalid arguments, examples:\n" \
+                            "```/stats player\n" \
+                            "/stats level,vocation\n" \
+                            "/stats vocation,level```"
+        if params is None:
+            await ctx.send(invalid_arguments)
+            return
+        params = params.split(",")
+        char = None
+        if len(params) == 1:
+            _digits = re.compile('\d')
+            if _digits.search(params[0]) is not None:
+                await ctx.send(invalid_arguments)
+                return
+            else:
+                try:
+                    char = await get_character(params[0])
+                    if char is None:
+                        await ctx.send("Sorry, can you try it again?")
+                        return
+                except NetworkError:
+                    await ctx.send("Character **{0}** doesn't exist!".format(params[0]))
+                    return
+                level = int(char.level)
+                vocation = char.vocation
+        elif len(params) == 2:
+            try:
+                level = int(params[0])
+                vocation = params[1]
+            except ValueError:
+                try:
+                    level = int(params[1])
+                    vocation = params[0]
+                except ValueError:
+                    await ctx.send(invalid_arguments)
+                    return
+        else:
+            await ctx.send(invalid_arguments)
+            return
+        if level <= 0:
+            await ctx.send("Not even *you* can go down so low!")
+            return
+        if level >= 2000:
+            await ctx.send("Why do you care? You will __**never**__ reach this level " + str(chr(0x1f644)))
+            return
+        try:
+            stats = get_stats(level, vocation)
+        except ValueError as e:
+            await ctx.send(e)
+            return
+
+        if stats["vocation"] == "no vocation":
+            stats["vocation"] = "with no vocation"
+        if char:
+            await ctx.send("**{5}** is a level **{0}** {1}, {6} has:"
+                           "\n\t**{2:,}** HP"
+                           "\n\t**{3:,}** MP"
+                           "\n\t**{4:,}** Capacity"
+                           "\n\t**{7:,}** Total experience"
+                           "\n\t**{8:,}** to next level"
+                           .format(level, char.vocation.lower(), stats["hp"], stats["mp"], stats["cap"],
+                                   char.name, char.he_she.lower(), stats["exp"], stats["exp_tnl"]))
+        else:
+            await ctx.send("A level **{0}** {1} has:"
+                           "\n\t**{2:,}** HP"
+                           "\n\t**{3:,}** MP"
+                           "\n\t**{4:,}** Capacity"
+                           "\n\t**{5:,}** Experience"
+                           "\n\t**{6:,}** to next level"
+                           .format(level, stats["vocation"], stats["hp"], stats["mp"], stats["cap"],
+                                   stats["exp"], stats["exp_tnl"]))
 
     @commands.group(aliases=["story"], invoke_without_command=True, case_insensitive=True)
     @checks.is_in_tracking_world()
@@ -1073,145 +1232,6 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.command()
-    async def stats(self, ctx, *, params: str=None):
-        """Calculates character stats based on vocation and level.
-
-        params -> character
-        params -> level,vocation
-        params -> vocation,level"""
-        invalid_arguments = "Invalid arguments, examples:\n" \
-                            "```/stats player\n" \
-                            "/stats level,vocation\n" \
-                            "/stats vocation,level```"
-        if params is None:
-            await ctx.send(invalid_arguments)
-            return
-        params = params.split(",")
-        char = None
-        if len(params) == 1:
-            _digits = re.compile('\d')
-            if _digits.search(params[0]) is not None:
-                await ctx.send(invalid_arguments)
-                return
-            else:
-                try:
-                    char = await get_character(params[0])
-                    if char is None:
-                        await ctx.send("Sorry, can you try it again?")
-                        return
-                except NetworkError:
-                    await ctx.send("Character **{0}** doesn't exist!".format(params[0]))
-                    return
-                level = int(char.level)
-                vocation = char.vocation
-        elif len(params) == 2:
-            try:
-                level = int(params[0])
-                vocation = params[1]
-            except ValueError:
-                try:
-                    level = int(params[1])
-                    vocation = params[0]
-                except ValueError:
-                    await ctx.send(invalid_arguments)
-                    return
-        else:
-            await ctx.send(invalid_arguments)
-            return
-        if level <= 0:
-            await ctx.send("Not even *you* can go down so low!")
-            return
-        if level >= 2000:
-            await ctx.send("Why do you care? You will __**never**__ reach this level " + str(chr(0x1f644)))
-            return
-        try:
-            stats = get_stats(level, vocation)
-        except ValueError as e:
-            await ctx.send(e)
-            return
-
-        if stats["vocation"] == "no vocation":
-            stats["vocation"] = "with no vocation"
-        if char:
-            await ctx.send("**{5}** is a level **{0}** {1}, {6} has:"
-                           "\n\t**{2:,}** HP"
-                           "\n\t**{3:,}** MP"
-                           "\n\t**{4:,}** Capacity"
-                           "\n\t**{7:,}** Total experience"
-                           "\n\t**{8:,}** to next level"
-                           .format(level, char.vocation.lower(), stats["hp"], stats["mp"], stats["cap"],
-                                   char.name, char.he_she.lower(), stats["exp"], stats["exp_tnl"]))
-        else:
-            await ctx.send("A level **{0}** {1} has:"
-                           "\n\t**{2:,}** HP"
-                           "\n\t**{3:,}** MP"
-                           "\n\t**{4:,}** Capacity"
-                           "\n\t**{5:,}** Experience"
-                           "\n\t**{6:,}** to next level"
-                           .format(level, stats["vocation"], stats["hp"], stats["mp"], stats["cap"],
-                                   stats["exp"], stats["exp_tnl"]))
-
-    @commands.command(aliases=['bless'])
-    async def blessings(self, ctx, level: int):
-        """Calculates the price of blessings at a specific level."""
-        if level < 1:
-            await ctx.send("Very funny... Now tell me a valid level.")
-            return
-        bless_price = max(2000, 200 * (min(level, 120) - 20))
-        mountain_bless_price = max(2000, 200 * (min(level, 150) - 20))
-        inquisition = ""
-        if level >= 100:
-            inquisition = f"\nBlessing of the Inquisition costs **{int(bless_price*5*1.1):,}** gold coins."
-        await ctx.send(f"At that level you will pay **{bless_price:,}** gold coins per blessing for a total of "
-                       f"**{bless_price*5:,}** gold coins.{inquisition}"
-                       f"\nMountain blessings cost **{mountain_bless_price:,}** each, for a total of "
-                       f"**{int(mountain_bless_price*2):,}**.")
-
-    @commands.command(aliases=["houses", "guildhall", "gh"], usage="<name>[/world]")
-    async def house(self, ctx, *, name: str):
-        """Shows info for a house or guildhall.
-
-        By default, it shows the current status of a house for the current tracked world (if any).
-        If used on private messages, no world is looked up unless specified.
-
-        To specify a world, add the world at the end separated with '/'.
-        """
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-        params = name.split("/", 2)
-        name = params[0]
-        world = None
-        if ctx.guild is not None and len(params) == 1:
-            world = self.bot.tracked_worlds.get(ctx.guild.id)
-        elif len(params) == 2:
-            world = params[1].title()
-            if world not in tibia_worlds:
-                await ctx.send("That's not a valid world.")
-                return
-
-        house = await get_house(name, world)
-        if house is None:
-            await ctx.send("I couldn't find a house with that name.")
-            return
-
-        if type(house) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(house))
-            await ctx.send("I couldn't find that house, maybe you meant one of these?", embed=embed)
-            return
-
-        # Attach image only if the bot has permissions
-        if permissions.attach_files:
-            filename = re.sub(r"[^A-Za-z0-9]", "", house["name"]) + ".png"
-            mapimage = get_map_area(house["x"], house["y"], house["z"])
-            embed = self.get_house_embed(house)
-            embed.set_image(url=f"attachment://{filename}")
-            await ctx.send(file=discord.File(mapimage, f"{filename}"), embed=embed)
-        else:
-            await ctx.send(embed=self.get_house_embed(house))
-
     @commands.command(aliases=['serversave', 'ss'])
     async def time(self, ctx):
         """Displays tibia server's time and time until server save."""
@@ -1242,6 +1262,130 @@ class Tibia:
         reply += "\nServer save is in {0}.\nRashid is in **{1}** today."\
             .format(server_save_str, get_rashid_info()["city"])
         await ctx.send(reply)
+
+    @commands.command(aliases=['check', 'char', 'character'])
+    async def whois(self, ctx, *, name):
+        """Tells you a character's or a discord user's information.
+
+        If it matches a discord user, it displays their registered users
+        If it matches a character, it displays its information.
+
+        Note that the bot has no way to know the characters of a member that just joined.
+        The bot has to be taught about the character's of a user."""
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        if is_lite_mode(ctx):
+            try:
+                char = await get_character(name)
+                if char is None:
+                    await ctx.send("I couldn't find a character with that name")
+                    return
+            except NetworkError:
+                await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
+                return
+            embed = discord.Embed(description=self.get_char_string(char))
+            embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
+            await ctx.send(embed=embed)
+            return
+
+        if name.lower() == ctx.me.display_name.lower():
+            await ctx.invoke(self.bot.all_commands.get('about'))
+            return
+        try:
+            char = await get_character(name)
+        except NetworkError:
+            await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
+            return
+        char_string = self.get_char_string(char)
+        user = self.bot.get_member(name, ctx.guild)
+        embed = self.get_user_embed(ctx, user)
+
+        # No user or char with that name
+        if char is None and user is None:
+            await ctx.send("I don't see any user or character with that name.")
+            return
+        # We found a user
+        if embed is not None:
+            # Check if we found a char too
+            if char is not None:
+                # If it's owned by the user, we append it to the same embed.
+                if char.owner == int(user.id):
+                    embed.add_field(name="Character", value=char_string, inline=False)
+                    if char.last_login is not None:
+                        embed.set_footer(text="Last login")
+                        embed.timestamp = char.last_login
+                    await ctx.send(embed=embed)
+                    return
+                # Not owned by same user, we display a separate embed
+                else:
+                    char_embed = discord.Embed(description=char_string)
+                    char_embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
+                    if char.last_login is not None:
+                        char_embed.set_footer(text="Last login")
+                        char_embed.timestamp = char.last_login
+                    await ctx.send(embed=embed)
+                    await ctx.send(embed=char_embed)
+                    return
+            else:
+                # Tries to display user's highest level character since there is no character match
+                if is_private(ctx.channel):
+                    display_name = '@'+user.name
+                    user_guilds = self.bot.get_user_guilds(ctx.author.id)
+                    user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if
+                                         server in [s.id for s in user_guilds]]
+                else:
+                    if self.bot.tracked_worlds.get(ctx.guild.id) is None:
+                        user_tibia_worlds = []
+                    else:
+                        user_tibia_worlds = [self.bot.tracked_worlds[ctx.guild.id]]
+                if len(user_tibia_worlds) != 0:
+                    placeholders = ", ".join("?" for w in user_tibia_worlds)
+                    c = userDatabase.cursor()
+                    try:
+                        c.execute("SELECT name, ABS(level) as level "
+                                  "FROM chars "
+                                  "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
+                                  tuple(user_tibia_worlds))
+                        character = c.fetchone()
+                    finally:
+                        c.close()
+                    if character:
+                        char = await get_character(character["name"])
+                        char_string = self.get_char_string(char)
+                        if char is not None:
+                            char_embed = discord.Embed(description=char_string)
+                            char_embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
+                            embed.add_field(name="Highest character", value=char_string, inline=False)
+                            if char.last_login is not None:
+                                embed.set_footer(text="Last login")
+                                embed.timestamp = char.last_login
+                await ctx.send(embed=embed)
+        else:
+            embed = discord.Embed(description="")
+            if char is not None:
+                owner = None if char.owner == 0 else self.bot.get_member(char.owner, ctx.guild)
+                if owner is not None:
+                    # Char is owned by a discord user
+                    embed = self.get_user_embed(ctx, owner)
+                    if embed is None:
+                        embed = discord.Embed(description="")
+                    embed.add_field(name="Character", value=char_string, inline=False)
+                    if char.last_login is not None:
+                        embed.set_footer(text="Last login")
+                        embed.timestamp = char.last_login
+                    await ctx.send(embed=embed)
+                    return
+                else:
+                    embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
+                    embed.description += char_string
+                    if char.last_login:
+                        embed.set_footer(text="Last login")
+                        embed.timestamp = char.last_login
+
+            await ctx.send(embed=embed)
 
     @commands.command(name="world")
     async def world_info(self, ctx, name: str):
@@ -1446,137 +1590,7 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.command()
-    async def bosses(self, ctx: NabCtx, world=None):
-        """Shows predictions for bosses."""
-        if world is None and not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is not None:
-            world = self.bot.tracked_worlds.get(ctx.guild.id)
-        elif world is None:
-            await ctx.send("You need to tell me a world's name.")
-            return
-        world = world.title()
-        if world not in tibia_worlds:
-            await ctx.send("That world doesn't exist.")
-            return
-        bosses = await get_world_bosses(world)
-        if type(bosses) is not dict:
-            await ctx.send("Something went wrong")
-        fields = {"High Chance": "", "Low Chance": "", "No Chance": "", "Unpredicted": ""}
-        for boss, info in bosses.items():
-            try:
-                if info["days"] > 1000:
-                    continue
-                info["name"] = boss.title()
-                fields[info["chance"]] += "{name} - {days:,} days.\n".format(**info)
-            except KeyError:
-                continue
-        embed = discord.Embed(title=f"Bosses for {world}")
-        if fields["High Chance"]:
-            embed.add_field(name="High Chance - Last seen", value=fields["High Chance"])
-        if fields["Low Chance"]:
-            embed.add_field(name="Low Chance - Last seen", value=fields["Low Chance"])
-        if ctx.long:
-            if fields["No Chance"]:
-                embed.add_field(name="No Chance - Expect in", value=fields["No Chance"])
-            if fields["Unpredicted"]:
-                embed.add_field(name="Unpredicted - Last seen", value=fields["Unpredicted"])
-        else:
-            ask_channel = ctx.ask_channel_name
-            if ask_channel:
-                askchannel_string = " or use #" + ask_channel
-            else:
-                askchannel_string = ""
-            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
-        await ctx.send(embed=embed)
-
-    @commands.command()
-    async def news(self, ctx, news_id: int=None):
-        """Shows the latest news articles from Tibia.com.
-
-        If no id is supplied, a list of recent articles is shown, otherwise, a snippet of the article is shown."""
-        if news_id is None:
-            try:
-                recent_news = await get_recent_news()
-                if recent_news is None:
-                    await ctx.send("Something went wrong getting recent news.")
-            except NetworkError:
-                await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
-                return
-            embed = discord.Embed(title="Recent news")
-            embed.set_footer(text="To see a specific article, use the command /news <id>")
-            news_format = "{emoji} `{id}`\t[{news}]({tibiaurl})"
-            type_emojis = {
-                "Featured Article": "📑",
-                "News": "📰",
-            }
-            for news in recent_news:
-                news["emoji"] = type_emojis.get(news["type"], "")
-            limit = 20 if ctx.long else 10
-            embed.description = "\n".join([news_format.format(**n) for n in recent_news[:limit]])
-            await ctx.send(embed=embed)
-        else:
-            try:
-                article = await get_news_article(news_id)
-                if article is None:
-                    await ctx.send("There's no article with that id.")
-                    return
-            except NetworkError:
-                await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
-                return
-            limit = 1900 if ctx.long else 600
-            embed = self.get_article_embed(article, limit)
-            await ctx.send(embed=embed)
-
-    @commands.command()
-    async def stamina(self, ctx, current_stamina:str):
-        """Tells you the time you have to wait to restore stamina.
-
-        To use it, you must provide your current stamina, in this format: `34:03`.
-        The bot will show the time needed to reach full stamina if you were to start sleeping now.
-
-        The footer text shows the time in your timezone where your stamina would be full."""
-
-        hour_pattern = re.compile(r"(\d{1,2}):(\d{1,2})")
-        match = hour_pattern.match(current_stamina.strip())
-        if not match:
-            await ctx.send("You need to tell me your current stamina, in this format: `34:03`.")
-            return
-        hours = int(match.group(1))
-        minutes = int(match.group(2))
-        if minutes >= 60:
-            await ctx.send("Invalid time, minutes can't be 60 or greater.")
-            return
-        current = dt.timedelta(hours=hours, minutes=minutes)
-        if hours > 42 or (hours == 42 and minutes > 0):
-            await ctx.send("You can't have more than 42 hours of stamina.")
-            return
-        elif hours == 42:
-            await ctx.send("Your stamina is full already.")
-            return
-        # Stamina takes 3 minutes to regenerate one minute until 40 hours.
-        resting_time = max((dt.timedelta(hours=40)-current).total_seconds(), 0)*3
-        # Last two hours of stamina take 10 minutes for a minute
-        resting_time += (dt.timedelta(hours=42)-max(dt.timedelta(hours=40), current)).total_seconds()*10
-
-        hours, remainder = divmod(int(resting_time), 3600)
-        minutes, _ = divmod(remainder, 60)
-        if hours:
-            remaining = f'{hours} hours and {minutes} minutes'
-        else:
-            remaining = f'{minutes} minutes'
-
-        reply = f"You need to rest **{remaining}** to get back to full stamina."
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links:
-            await ctx.send(reply)
-            return
-
-        embed = discord.Embed(description=reply)
-        embed.set_footer(text="Full stamina")
-        embed.colour = discord.Color.green()
-        embed.timestamp = dt.datetime.utcnow()+dt.timedelta(seconds=resting_time)
-        await ctx.send(embed=embed)
-
+    # Utilities
     @staticmethod
     def get_article_embed(article, limit):
         url = f"http://www.tibia.com/news/?subtopic=newsarchive&id={article['id']}"

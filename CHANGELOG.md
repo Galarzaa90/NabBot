@@ -28,6 +28,7 @@
     - `/guild`: `guildcheck` alias removed.
     - `/role`: Renamed to `/rolemembers`.
     - `/server`: Renamed to `/serverinfo`.
+    - `/deaths`: `death` alias removed.
 
 ## Version 1.1.1 (2018-06-12)
 - Added missing items from the Feyrist area to the loot database
