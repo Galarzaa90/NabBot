@@ -37,12 +37,21 @@ class Loot:
         self.parsing_count = 0
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
-    @checks.is_not_lite()
     async def loot(self, ctx):
-        """Scans a loot image and returns it's loot value
+        """Scans an image of a container looking for Tibia items and shows an approximate loot value.
 
-        The bot will return a list of the items found along with their values, grouped by NPC.
-        If the image is compressed or was taken using Tibia's software render, the bot might struggle finding matches."""
+        An image must be attached with the message. The prices used are NPC prices only.
+
+        The image requires the following:
+
+        - Must be a screenshot of inventory windows (backpacks, depots, etc).
+        - Have the original size, the image can't be scaled up or down, however it can be cropped.
+        - The image must show the complete slot.
+        - JPG images are usually not recognized
+        - PNG images with low compression settings take longer to be scanned or aren't detected at all.
+
+        The bot shows the total loot value and a list of the items detected, separated into the NPC that buy them.
+        """
         author = ctx.author
         if self.parsing_count >= config.loot_max:
             await ctx.send("Sorry, I am already parsing too many loot images, "
@@ -159,22 +168,9 @@ class Loot:
             await ctx.send(short_message)
             await ctx.author.send(file=discord.File(loot_image_overlay, "results.png"), embed=embed)
 
-    @loot.command(name="show")
     @checks.is_owner()
-    @checks.is_not_lite()
-    async def loot_show(self, ctx, *, item=None):
-        """Shows item info from loot database."""
-        result, item = await item_show(item)
-        if result is None:
-            await ctx.send("There's no item with that name.")
-            return
-        await ctx.send("Name: {name}, Group: {group}, Priority: {priority}, Value: {value:,}".format(**item),
-                       file=discord.File(result, "results.png"))
-
     @loot.command(name="add")
-    @checks.is_owner()
-    @checks.is_not_lite()
-    async def loot_add(self, ctx, *, item=None):
+    async def loot_add(self, ctx, *, item: str):
         """Adds an image to an existing loot item in the database."""
         if len(ctx.message.attachments) == 0:
             await ctx.send("You need to upload the image you want to add to this item.")
@@ -206,22 +202,15 @@ class Loot:
                                file=discord.File(result, "results.png"))
             return
 
-    @loot.command(name="remove", aliases=["delete", "del"])
-    @checks.is_owner()
-    @checks.is_not_lite()
-    async def loot_remove(self, ctx, *, item=None):
-        """Adds an image to an existing loot item in the database."""
-        result = await item_remove(item)
-        if result is None:
-            await ctx.send("Couldn't find an item with that name.")
-            return
-        else:
-            await ctx.send("Item \"" + result + "\" removed from loot database.")
-            return
+    @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
+    async def loot_legend(self, ctx):
+        """Shows the meaning of the overlayed icons."""
+        with open("./images/legend.png", "r+b") as f:
+            await ctx.send(file=discord.File(f))
+            f.close()
 
-    @loot.command(name="new")
     @checks.is_owner()
-    @checks.is_not_lite()
+    @loot.command(name="new", usage="[item],[group]")
     async def loot_new(self, ctx, *, params=None):
         """Adds a new item to the loot database."""
         if len(ctx.message.attachments) == 0:
@@ -268,25 +257,39 @@ class Loot:
                                file=discord.File(result, "results.png"))
             return
 
-    @loot.command(name="update")
     @checks.is_owner()
-    @checks.is_not_lite()
-    async def loot_update(self, ctx, *, item=None):
+    @loot.command(name="remove", aliases=["delete", "del"])
+    async def loot_remove(self, ctx, *, item: str):
+        """Adds an image to an existing loot item in the database."""
+        result = await item_remove(item)
+        if result is None:
+            await ctx.send("Couldn't find an item with that name.")
+            return
+        else:
+            await ctx.send("Item \"" + result + "\" removed from loot database.")
+            return
+
+    @checks.is_owner()
+    @loot.command(name="show")
+    async def loot_show(self, ctx, *, item: str):
         """Shows item info from loot database."""
+        result, item = await item_show(item)
+        if result is None:
+            await ctx.send("There's no item with that name.")
+            return
+        await ctx.send("Name: {name}, Group: {group}, Priority: {priority}, Value: {value:,}".format(**item),
+                       file=discord.File(result, "results.png"))
+
+    @checks.is_owner()
+    @loot.command(name="update")
+    async def loot_update(self, ctx):
+        """Updates the entire loot database."""
         result = await loot_db_update()
         if result is not None:
             await ctx.send("Added " + str(result) + " items to loot database, check debugimages folder for more info.")
         else:
             await ctx.send("No new items found in tibia_database.")
         return
-
-    @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
-    @checks.is_not_lite()
-    async def loot_legend(self, ctx):
-        """Shows the meaning of the overlayed icons."""
-        with open("./images/legend.png", "r+b") as f:
-            await ctx.send(file=discord.File(f))
-            f.close()
 
 
 def is_transparent(pixel):
