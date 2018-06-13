@@ -48,14 +48,15 @@ pages:
     - FAQ: faq.md
     - Commands:
       - Overview: commands/index.md
+      - Admin commands: commands/admin.md
       - General commands: commands/general.md
+      - Loot commands: commands/loot.md
+      - Mod commands: commands/mod.md
+      - Owner commands: commands/owner.md
+      - Roles commands: commands/roles.md
       - Tibia commands: commands/tibia.md
       - TibiaWiki commands: commands/tibiawiki.md
       - Tracking commands: commands/tracking.md
-      - Loot commands: commands/loot.md
-      - Mod commands: commands/mod.md
-      - Admin commands: commands/admin.md
-      - Owner commands: commands/owner.md
     - Customizing:
       - Configuration: customizing/config.md
       - Messages: customizing/messages.md
