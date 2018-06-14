@@ -49,11 +49,11 @@ Depending on your privacy settings, you (or the owner of the server) should have
 ## Initial configuration
 In order for the bot to have access to most of its features, you must configure the world the server tracks.
 
-Use the command `/setworld`, for example: `/setworld Fidera`. Then the bot will ask for confirmation.
-Once accepted, users can start registering their chars using `\im charName`
+Use the command [settings world](commands/settings.md#settings-world), for example: `/settings world Gladera`. Then the bot will ask for confirmation.
+Once accepted, users can start registering their chars using `\im charName`.
 
 By default, events, level ups and deaths announcements are made on the highest channel available for the bot.
-In order to customize this, you can use the following commands: `/seteventchannel` and `/setleveldeathchannel`.
+In order to customize this, you can use the following commands: `/settings levelschannel`.
 
 The bot usually shortens command replies on public channels to reduce spam a bit.
 Commands used via DM display more information.  
@@ -63,4 +63,4 @@ The bot will give longer responses here and it will delete any message that is n
 Additionally, you can create a channel named **#server-log**. Whenever a user registers characters, they will be shown here, along with their levels and guilds.
 Other changes are shown here, such as users leaving, getting banned, changing display names and more.
 
-Further customization can be done by editing the `config.yml` file. More information [here](customizing/config.md).
+Further customization can be done on a per-server basis by using the command [settings](commands/settings.md#settings).

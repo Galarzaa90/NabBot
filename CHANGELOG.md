@@ -1,4 +1,7 @@
 # Changelog
+## Version 1.2.1 (2018-06-14)
+- Updated mentions of `/setworld` and similar to `/settings world`.
+- If the server owner has PMs disabled when the bot joins, the bot will send the initial message in the server.
 
 ## Version 1.2.0 (2018-06-14)
 - New `/help` style, with reaction pagination.

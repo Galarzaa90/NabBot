@@ -43,7 +43,7 @@ class NabBot(commands.Bot):
         # A list version is created from the dictionary
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
-        self.__version__ = "1.2.0"
+        self.__version__ = "1.2.1"
 
     async def on_ready(self):
         """Called when the bot is ready."""
@@ -112,19 +112,26 @@ class NabBot(commands.Bot):
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
         log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(guild))
-        message = "Hello! I'm now in **{0.name}**. To see my available commands, type \help\n" \
-                  "I will reply to commands from any channel I can see, but if you create a channel called *{1}*," \
+        message = "Hello! I'm now in **{0.name}**. To see my available commands, type `{3}help`\n" \
+                  "I will reply to commands from any channel I can see, but if you create a channel called *{1}*, " \
                   "I will give longer replies and more information there.\n" \
                   "If you want a server log channel, create a channel called *{2}*, I will post logs in there." \
                   "You might want to make it private though.\n" \
-                  "To have all of Nab Bot's features, use `/setworld <tibia_world>`"
-        formatted_message = message.format(guild, config.ask_channel_name, config.log_channel_name)
-        await guild.owner.send(formatted_message)
+                  "To tweak NabBot settings, use `{3}settings` in your server."
+        formatted_message = message.format(guild, config.ask_channel_name, config.log_channel_name, 
+                                           config.command_prefix[0])
         for member in guild.members:
             if member.id in self.members:
                 self.members[member.id].append(guild.id)
             else:
                 self.members[member.id] = [guild.id]
+        try:
+            await guild.owner.send(formatted_message)
+        except discord.Forbidden:
+            # Owner doesn't allow PMs
+            top_channel = self.get_top_channel(guild, True)
+            if top_channel is not None:
+                await top_channel.send(formatted_message)
 
     async def on_guild_remove(self, guild: discord.Guild):
         """Called when the bot leaves a guild (server)."""
