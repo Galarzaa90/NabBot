@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 1.2.0 (Unreleased)
+## Version 1.2.0 (2018-06-14)
 - New `/help` style, with reaction pagination.
 - New `/quote` command, shows a message's content given an id.
 - New `/roleinfo` command, shows a role's detailed information.
