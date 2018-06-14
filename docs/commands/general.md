@@ -6,11 +6,9 @@
 
 
 ## about
-
 Shows information about the bot.
 
 ??? Summary "Examples"
-
     **/about**  
     ![image](../assets/images/commands/about.png)
 
@@ -25,7 +23,6 @@ Each choice is separated by spaces. For choices that contain spaces surround it 
 e.g. "Choice A" ChoiceB "Choice C"
 
 ??? Summary "Examples"
-
     **/choose "Option A" optionb "Option C"**  
     ![image](../assets/images/commands/choose.png)
 
@@ -58,13 +55,10 @@ This means the command has subcommands.
 Check the command's help to see them. 
 
 ??? Summary "Examples"
-
     **/help**  
-    ![image](../assets/images/commands/help_1.png)
-    
+    ![image](../assets/images/commands/help_1.png)  
     **/help guild**  
-    ![image](../assets/images/commands/help_2.png)
-    
+    ![image](../assets/images/commands/help_2.png)  
     **/help guild info**  
     ![image](../assets/images/commands/help_3.png)
 
