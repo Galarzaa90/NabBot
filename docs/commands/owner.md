@@ -17,10 +17,8 @@ If no message is specified at first, the bot will ask for a message to send.
 The message contains a signature to indicate who wrote the message.
 
 ??? Summary "Example"
-
     **/adminsmessage**  
-    ![image](../assets/images/commands/admins_message_1.png)
-    
+    ![image](../assets/images/commands/admins_message_1.png)  
     **After typing the message.**  
     ![image](../assets/images/commands/admins_message_2.png)
 
@@ -37,7 +35,6 @@ This command can be used to run python statements and get the response as a repl
     This command is meant for advanced users and debugging code.
 
 ??? Summary "Example"
-
     **/debug bot.get_member(162060569803751424)**  
     ![image](../assets/images/commands/debug.png)
 
@@ -53,7 +50,6 @@ The bot will ask for confirmation before leaving the server.
 Once the bot has left a server, only a server administrator can add it back.
 
 ??? Summary "Example"
-
     **/leave 159815897052086272**  
     ![image](../assets/images/commands/leave.png)
 
@@ -71,7 +67,6 @@ When loading and unloading cogs in subdirectories, periods (`.`) are used instea
 For example, a cog found in `cogs/tibia.py` would be loaded as `cogs.tibia`.
 
 ??? Summary "Example"
-
     **/load cogs.tibia**  
     ![image](../assets/images/commands/load.png)
 
@@ -94,7 +89,6 @@ Use this with caution as the damage can be irreversible.
 Example: `merge Fidera Gladera`
 
 ??? Summary "Example"
-
     **/merge Fidera Gladera**  
     ![image](../assets/images/commands/merge.png)
 
@@ -124,7 +118,6 @@ In order for the command to work, the following conditions must be met:
 Show's the bot's response times.
 
 ??? Summary "Example"
-
     **/ping**  
     ![image](../assets/images/commands/ping.png)
 
@@ -149,7 +142,6 @@ Shutdowns and starts the bot again.
 Once the bot starts again, it will notify the user that restarted it.
 
 ??? Summary "Example"
-
     **/restart**  
     ![image](../assets/images/commands/restart.png)
 
@@ -159,8 +151,7 @@ Once the bot starts again, it will notify the user that restarted it.
 Shows a list of servers the bot is in.
 
 ??? Summary "Example"
-
-    **/servers*  
+    **/servers**  
     ![image](../assets/images/commands/servers.png)
 
 ----
@@ -174,7 +165,6 @@ Unloads a cog.
     Unloading `cogs.owner` would remove the `/load` command, making it impossible to reload cogs until restarting the bot.
 
 ??? Summary "Example"
-
     **/unload cogs.tibia**  
     ![image](../assets/images/commands/unload.png)
 
@@ -196,6 +186,5 @@ For every dependency, an emoji indicates if the requirement is met:
   This is usually not as bad as the previous case, but there may be some incompatibility issues.
 
 ??? Summary "Example"
-
     **/versions**  
     ![image](../assets/images/commands/versions.png)

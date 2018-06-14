@@ -76,7 +76,6 @@ Check the command's help to see them.
 Shows a list of upcoming and recent events.
 
 ??? Summary "Examples"
-
     **/event**  
     ![image](../assets/images/commands/event.png)
 
@@ -99,7 +98,6 @@ The event description is optional, you can also use links like: `[link title](li
 Once the event is created, the id of the event will be returned. This is used for further edits.
 
 ??? Summary "Example"
-
     **/event add 5h Inquisition Quest,Remember to bring holy water!**  
     **`[TibiaWiki link](http://tibia.wikia.com/wiki/Inquisition_quest)`**  
     ![image](../assets/images/commands/event_add.png)
@@ -116,7 +114,6 @@ Only the creator can add characters to an event.
 If the event is joinable, anyone can join an event using `event join`
 
 ??? Summary "Examples"
-
     **/event addplayer 136 Nezune**  
     ![image](../assets/images/commands/event_addchar.png)
 
@@ -189,7 +186,6 @@ Displays an event's info.
 The start time shown in the footer is always displayed in your device's timezone.
   
 ??? Summary "Examples"
-
     **/event info 136**  
     ![image](../assets/images/commands/event_info.png)
 
@@ -204,7 +200,6 @@ You can only join an event with a character at a time.
 Some events may not be joinable and require the creator to add characters themselves.
 
 ??? Summary "Examples"
-
     **/event join 136 Galarzaa Fidera**  
     ![image](../assets/images/commands/event_join.png)
 
@@ -216,7 +211,6 @@ Some events may not be joinable and require the creator to add characters themse
 Leave an event you were participating in.
 
 ??? Summary "Examples"
-
     **/event leave 136**  
     ![image](../assets/images/commands/event_leave.png)
 
@@ -236,7 +230,6 @@ Instead of using confusing parameters, commas and spaces, this commands has the 
 Shows the list of characters participating in this event.
 
 ??? Summary "Examples"
-
     **/event participants 190**  
     ![image](../assets/images/commands/event_participants.png)
 
@@ -249,7 +242,6 @@ Shows the list of characters participating in this event.
 Deletes or cancels an event.
 
 ??? Summary "Examples"
-
     **/event delete 136**  
     ![image](../assets/images/commands/event_remove.png)
 
@@ -264,7 +256,6 @@ Removes a player from an event.
 Players can remove themselves using `event leave`
 
 ??? Summary "Examples"
-
     **/event addplayer 136 Nezune**  
     ![image](../assets/images/commands/event_removechar.png)
 
@@ -277,7 +268,6 @@ Players can remove themselves using `event leave`
 Subscribe to receive a PM when an event is happening.
 
 ??? Summary "Examples"
-
     **/event sub 136**  
     ![image](../assets/images/commands/event_sub.png)
     
@@ -290,7 +280,6 @@ Subscribe to receive a PM when an event is happening.
 Unsubscribes you from an event.
 
 ??? Summary "Examples"
-
     **/event unsub 136**  
     ![image](../assets/images/commands/event_unsub.png)
 
@@ -308,7 +297,6 @@ Once enabled, you can right click a message and select **Copy ID**.
 Note that the bot won't attempt to search in channels you can't read.
 
 ??? Summary "Examples"
-
     **/quote 343259808889044992**  
     ![image](../assets/images/commands/quote.png)
 
@@ -319,7 +307,6 @@ Note that the bot won't attempt to search in channels you can't read.
 Shows the server's information.
 
 ??? Summary "Examples"
-
     **/serverinfo**  
     ![image](../assets/images/commands/serverinfo.png)
 
@@ -330,6 +317,5 @@ Shows the server's information.
 Shows how long the bot has been running.
 
 ??? Summary "Examples"
-
     **/uptime**  
     ![image](../assets/images/commands/uptime.png)

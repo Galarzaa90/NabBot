@@ -482,214 +482,23 @@ class Tracking:
                 except discord.HTTPException:
                     log.warning("announce_level: Malformed message.")
 
-    @checks.is_in_tracking_world()
-    @commands.command(aliases=["i'm", "iam"])
-    async def im(self, ctx, *, char_name: str):
-        """Lets you add your tibia character(s) for the bot to track.
-
-        If there are other visible characters, the bot will ask for confirmation to add them too."""
-        # This is equivalent to someone using /stalk addacc on themselves.
-
-        user = ctx.author
-        # List of servers the user shares with the bot
-        user_guilds = self.bot.get_user_guilds(user.id)
-        # List of Tibia worlds tracked in the servers the user is
-        user_tibia_worlds = [world for guild, world in self.bot.tracked_worlds.items() if
-                             guild in [g.id for g in user_guilds]]
-        # Remove duplicate entries from list
-        user_tibia_worlds = list(set(user_tibia_worlds))
-
-        if not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
-            return
-
-        if len(user_tibia_worlds) == 0:
-            return
-
-        await ctx.trigger_typing()
-        try:
-            char = await get_character(char_name)
-            if char is None:
-                await ctx.send("That character doesn't exist.")
-                return
-        except NetworkError:
-            await ctx.send("I couldn't fetch the character, please try again.")
-            return
-        chars = char.other_characters
-        check_other = False
-        if len(chars) > 1:
-            message = await ctx.send("Do you want to attempt to add the other visible characters in this account?")
-            check_other = await ctx.react_confirm(message, timeout=60)
-        if not check_other:
-            if check_other is None:
-                await ctx.send("Going to take that as a no... Moving on...")
-            chars = [char]
-
-        skipped = []
-        updated = []
-        added = []  # type: List[Character]
-        existent = []
-        for char in chars:
-            # Skip chars in non-tracked worlds
-            if char.world not in user_tibia_worlds:
-                skipped.append(char)
-                continue
-            with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT name, guild, user_id as owner, vocation, ABS(level) as level, guild FROM chars "
-                          "WHERE name LIKE ?", (char.name,))
-                db_char = c.fetchone()
-            if db_char is not None:
-                owner = self.bot.get_member(db_char["owner"])
-                # Previous owner doesn't exist anymore
-                if owner is None:
-                    updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
-                                    'vocation': db_char["vocation"], 'level': db_char['level'],
-                                    'guild': db_char['guild']
-                                    })
-                    continue
-                # Char already registered to this user
-                elif owner.id == user.id:
-                    existent.append("{0.name} ({0.world})".format(char))
-                    continue
-                # Character is registered to another user, we stop the whole process
-                else:
-                    reply = "Sorry, a character in that account ({0}) is already registered to **{1.display_name}** " \
-                            "({1.name}#{1.discriminator}). Maybe you made a mistake?\n" \
-                            "If that character really belongs to you, try using `/claim {0}`."
-                    await ctx.send(reply.format(db_char["name"], owner))
-                    return
-            # If we only have one char, it already contains full data
-            if len(chars) > 1:
-                try:
-                    await ctx.channel.trigger_typing()
-                    char = await get_character(char.name)
-                except NetworkError:
-                    await ctx.send("I'm having network troubles, please try again.")
-                    return
-            if char.deleted is not None:
-                skipped.append(char)
-                continue
-            added.append(char)
-
-        if len(skipped) == len(chars):
-            reply = "Sorry, I couldn't find any characters from the servers I track ({0})."
-            await ctx.send(reply.format(join_list(user_tibia_worlds, ", ", " and ")))
-            return
-
-        reply = ""
-        log_reply = dict().fromkeys([server.id for server in user_guilds], "")
-        if len(existent) > 0:
-            reply += "\nThe following characters were already registered to you: {0}" \
-                .format(join_list(existent, ", ", " and "))
-
-        if len(added) > 0:
-            reply += "\nThe following characters were added to your account: {0}" \
-                .format(join_list(["{0.name} ({0.world})".format(c) for c in added], ", ", " and "))
-            for char in added:
-                log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char.name, user))
-                # Announce on server log of each server
-                for guild in user_guilds:
-                    # Only announce on worlds where the character's world is tracked
-                    if self.bot.tracked_worlds.get(guild.id, None) == char.world:
-                        _guild = "No guild" if char.guild is None else char.guild_name
-                        voc = get_voc_abb_and_emoji(char.vocation)
-                        log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**" \
-                            .format(_guild, char, voc)
-
-        if len(updated) > 0:
-            reply += "\nThe following characters were reassigned to you: {0}" \
-                .format(join_list(["{name} ({world})".format(**c) for c in updated], ", ", " and "))
-            for char in updated:
-                log.info("Character {0} was reassigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
-                # Announce on server log of each server
-                for guild in user_guilds:
-                    # Only announce on worlds where the character's world is tracked
-                    if self.bot.tracked_worlds.get(guild.id, None) == char["world"]:
-                        char["voc"] = get_voc_abb_and_emoji(char["vocation"])
-                        if char["guild"] is None:
-                            char["guild"] = "No guild"
-                        log_reply[guild.id] += "\n\u2023 {name} - Level {level} {voc} - **{guild}** (Reassigned)". \
-                            format(**char)
-
-        for char in updated:
-            with userDatabase as conn:
-                conn.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
-        for char in added:
-            with userDatabase as conn:
-                conn.execute("INSERT INTO chars (name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
-                             (char.name, char.level * -1, char.vocation, user.id, char.world,
-                              char.guild_name)
-                             )
-
-        with userDatabase as conn:
-            conn.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
-            conn.execute("UPDATE users SET name = ? WHERE id = ?", (user.display_name, user.id,))
-
-        await ctx.send(reply)
-        for server_id, message in log_reply.items():
-            if message:
-                message = user.mention + " registered the following characters: " + message
-                embed = discord.Embed(description=message)
-                embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-                embed.colour = discord.Colour.dark_teal()
-                await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
-
-    @checks.is_in_tracking_world()
-    @commands.command(aliases=["i'mnot"])
-    async def imnot(self, ctx, *, name):
-        """Removes a character assigned to you
-
-        All registered level ups and deaths will be lost forever."""
-        c = userDatabase.cursor()
-        try:
-            c.execute("SELECT id, name, ABS(level) as level, user_id, vocation, world, guild "
-                      "FROM chars WHERE name LIKE ?", (name,))
-            char = c.fetchone()
-            if char is None or char["user_id"] == 0:
-                await ctx.send("There's no character registered with that name.")
-                return
-            user = ctx.author
-            if char["user_id"] != user.id:
-                await ctx.send("The character **{0}** is not registered to you.".format(char["name"]))
-                return
-
-            message = await ctx.send("Are you sure you want to unregister **{name}** ({level} {vocation})?"
-                                     .format(**char))
-            confirm = await ctx.react_confirm(message, timeout=50)
-            if confirm is None:
-                await ctx.send("I guess you changed your mind.")
-                return
-            if not confirm:
-                await ctx.send("No then? Ok.")
-
-            c.execute("UPDATE chars SET user_id = 0 WHERE id = ?", (char["id"],))
-            await ctx.send("**{0}** is no longer registered to you.".format(char["name"]))
-
-            user_servers = [s.id for s in self.bot.get_user_guilds(user.id)]
-            for server_id, world in self.bot.tracked_worlds.items():
-                if char["world"] == world and server_id in user_servers:
-                    if char["guild"] is None:
-                        char["guild"] = "No guild"
-                    message = "{0} unregistered:\n\u2023 **{1}** - Level {2} {3} - {4}". \
-                        format(user.mention, char["name"], char["level"], get_voc_abb_and_emoji(char["vocation"]),
-                               char["guild"])
-                    embed = discord.Embed(description=message)
-                    embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-                    embed.colour = discord.Colour.dark_teal()
-                    await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
-        finally:
-            userDatabase.commit()
-            c.close()
-
+    # Commands
     @commands.command()
     @checks.is_in_tracking_world()
     async def claim(self, ctx, *, char_name: str = None):
-        """Claims a character registered to someone else
+        """Claims a character registered as yours.
 
-        To use this command, you must put a specific code on the character's comment.
-        Use it with no arguments to see the code.
+        Claims a character as yours, even if it is already registered to someone else.
 
-        This allows you to register a character to you, no matter if the character is registered to someone else."""
+        In order for this to work, you have to put a special code in the character's comment.
+        You can see this code by using the command with no parameters. The code looks like this: `/NB-23FC13AC7400000/`
+
+        Once you had set the code, you can use the command with that character, if the code matches, it will be reassigned to you.
+        Note that it may take some time for the code to be visible to NabBot because of caching.
+
+        This code is unique for your discord user, so the code will only work for your discord account and no one else.
+        No one can claim a character of yours unless you put **their** code on your character's comment.
+        """
         user = ctx.author
         claim_pattern = re.compile(r"/NB-([^/]+)/")
         user_code = hex(user.id)[2:].upper()
@@ -844,10 +653,212 @@ class Tracking:
                 embed.colour = discord.Colour.dark_teal()
                 await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
 
+    @checks.is_in_tracking_world()
+    @commands.command(aliases=["i'm", "iam"])
+    async def im(self, ctx, *, char_name: str):
+        """Lets you add your tibia character(s) for the bot to track.
+
+        If there are other visible characters, the bot will ask for confirmation to add them too.
+
+        Charaacters in other worlds other than the currently tracked world are skipped.
+        If it finds a character owned by another user, the whole process will be stopped.
+
+        If a character is already registered to someone else, `claim` can be used."""
+        user = ctx.author
+        # List of servers the user shares with the bot
+        user_guilds = self.bot.get_user_guilds(user.id)
+        # List of Tibia worlds tracked in the servers the user is
+        user_tibia_worlds = [world for guild, world in self.bot.tracked_worlds.items() if
+                             guild in [g.id for g in user_guilds]]
+        # Remove duplicate entries from list
+        user_tibia_worlds = list(set(user_tibia_worlds))
+
+        if not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+
+        if len(user_tibia_worlds) == 0:
+            return
+
+        await ctx.trigger_typing()
+        try:
+            char = await get_character(char_name)
+            if char is None:
+                await ctx.send("That character doesn't exist.")
+                return
+        except NetworkError:
+            await ctx.send("I couldn't fetch the character, please try again.")
+            return
+        chars = char.other_characters
+        check_other = False
+        if len(chars) > 1:
+            message = await ctx.send("Do you want to attempt to add the other visible characters in this account?")
+            check_other = await ctx.react_confirm(message, timeout=60)
+        if not check_other:
+            if check_other is None:
+                await ctx.send("Going to take that as a no... Moving on...")
+            chars = [char]
+
+        skipped = []
+        updated = []
+        added = []  # type: List[Character]
+        existent = []
+        for char in chars:
+            # Skip chars in non-tracked worlds
+            if char.world not in user_tibia_worlds:
+                skipped.append(char)
+                continue
+            with closing(userDatabase.cursor()) as c:
+                c.execute("SELECT name, guild, user_id as owner, vocation, ABS(level) as level, guild FROM chars "
+                          "WHERE name LIKE ?", (char.name,))
+                db_char = c.fetchone()
+            if db_char is not None:
+                owner = self.bot.get_member(db_char["owner"])
+                # Previous owner doesn't exist anymore
+                if owner is None:
+                    updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
+                                    'vocation': db_char["vocation"], 'level': db_char['level'],
+                                    'guild': db_char['guild']
+                                    })
+                    continue
+                # Char already registered to this user
+                elif owner.id == user.id:
+                    existent.append("{0.name} ({0.world})".format(char))
+                    continue
+                # Character is registered to another user, we stop the whole process
+                else:
+                    reply = "Sorry, a character in that account ({0}) is already registered to **{1.display_name}** " \
+                            "({1.name}#{1.discriminator}). Maybe you made a mistake?\n" \
+                            "If that character really belongs to you, try using `/claim {0}`."
+                    await ctx.send(reply.format(db_char["name"], owner))
+                    return
+            # If we only have one char, it already contains full data
+            if len(chars) > 1:
+                try:
+                    await ctx.channel.trigger_typing()
+                    char = await get_character(char.name)
+                except NetworkError:
+                    await ctx.send("I'm having network troubles, please try again.")
+                    return
+            if char.deleted is not None:
+                skipped.append(char)
+                continue
+            added.append(char)
+
+        if len(skipped) == len(chars):
+            reply = "Sorry, I couldn't find any characters from the servers I track ({0})."
+            await ctx.send(reply.format(join_list(user_tibia_worlds, ", ", " and ")))
+            return
+
+        reply = ""
+        log_reply = dict().fromkeys([server.id for server in user_guilds], "")
+        if len(existent) > 0:
+            reply += "\nThe following characters were already registered to you: {0}" \
+                .format(join_list(existent, ", ", " and "))
+
+        if len(added) > 0:
+            reply += "\nThe following characters were added to your account: {0}" \
+                .format(join_list(["{0.name} ({0.world})".format(c) for c in added], ", ", " and "))
+            for char in added:
+                log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char.name, user))
+                # Announce on server log of each server
+                for guild in user_guilds:
+                    # Only announce on worlds where the character's world is tracked
+                    if self.bot.tracked_worlds.get(guild.id, None) == char.world:
+                        _guild = "No guild" if char.guild is None else char.guild_name
+                        voc = get_voc_abb_and_emoji(char.vocation)
+                        log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**" \
+                            .format(_guild, char, voc)
+
+        if len(updated) > 0:
+            reply += "\nThe following characters were reassigned to you: {0}" \
+                .format(join_list(["{name} ({world})".format(**c) for c in updated], ", ", " and "))
+            for char in updated:
+                log.info("Character {0} was reassigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
+                # Announce on server log of each server
+                for guild in user_guilds:
+                    # Only announce on worlds where the character's world is tracked
+                    if self.bot.tracked_worlds.get(guild.id, None) == char["world"]:
+                        char["voc"] = get_voc_abb_and_emoji(char["vocation"])
+                        if char["guild"] is None:
+                            char["guild"] = "No guild"
+                        log_reply[guild.id] += "\n\u2023 {name} - Level {level} {voc} - **{guild}** (Reassigned)". \
+                            format(**char)
+
+        for char in updated:
+            with userDatabase as conn:
+                conn.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (user.id, char['name']))
+        for char in added:
+            with userDatabase as conn:
+                conn.execute("INSERT INTO chars (name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
+                             (char.name, char.level * -1, char.vocation, user.id, char.world,
+                              char.guild_name)
+                             )
+
+        with userDatabase as conn:
+            conn.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
+            conn.execute("UPDATE users SET name = ? WHERE id = ?", (user.display_name, user.id,))
+
+        await ctx.send(reply)
+        for server_id, message in log_reply.items():
+            if message:
+                message = user.mention + " registered the following characters: " + message
+                embed = discord.Embed(description=message)
+                embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
+                embed.colour = discord.Colour.dark_teal()
+                await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
+
+    @checks.is_in_tracking_world()
+    @commands.command(aliases=["i'mnot"])
+    async def imnot(self, ctx, *, name):
+        """Removes a character assigned to you.
+
+        All registered level ups and deaths will be lost forever."""
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT id, name, ABS(level) as level, user_id, vocation, world, guild "
+                      "FROM chars WHERE name LIKE ?", (name,))
+            char = c.fetchone()
+            if char is None or char["user_id"] == 0:
+                await ctx.send("There's no character registered with that name.")
+                return
+            user = ctx.author
+            if char["user_id"] != user.id:
+                await ctx.send("The character **{0}** is not registered to you.".format(char["name"]))
+                return
+
+            message = await ctx.send("Are you sure you want to unregister **{name}** ({level} {vocation})?"
+                                     .format(**char))
+            confirm = await ctx.react_confirm(message, timeout=50)
+            if confirm is None:
+                await ctx.send("I guess you changed your mind.")
+                return
+            if not confirm:
+                await ctx.send("No then? Ok.")
+
+            c.execute("UPDATE chars SET user_id = 0 WHERE id = ?", (char["id"],))
+            await ctx.send("**{0}** is no longer registered to you.".format(char["name"]))
+
+            user_servers = [s.id for s in self.bot.get_user_guilds(user.id)]
+            for server_id, world in self.bot.tracked_worlds.items():
+                if char["world"] == world and server_id in user_servers:
+                    if char["guild"] is None:
+                        char["guild"] = "No guild"
+                    message = "{0} unregistered:\n\u2023 **{1}** - Level {2} {3} - {4}". \
+                        format(user.mention, char["name"], char["level"], get_voc_abb_and_emoji(char["vocation"]),
+                               char["guild"])
+                    embed = discord.Embed(description=message)
+                    embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
+                    embed.colour = discord.Colour.dark_teal()
+                    await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
+        finally:
+            userDatabase.commit()
+            c.close()
+
     @commands.command()
     @checks.is_tracking_world()
     async def online(self, ctx):
-        """Tells you which users are online on Tibia
+        """Tells you which users are online on Tibia.
 
         This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated."""
         world = self.bot.tracked_worlds.get(ctx.guild.id)
@@ -895,22 +906,18 @@ class Tracking:
         finally:
             c.close()
 
-    @commands.command(name="searchteam", aliases=["whereteam", "team", "findteam"])
+    @commands.command(name="searchteam", aliases=["whereteam", "findteam"], usage="<params>")
     @checks.is_tracking_world()
-    async def find_team(self, ctx, *, params=None):
+    async def search_team(self, ctx, *, params=None):
         """Searches for a registered character that meets the criteria
 
         There are 3 ways to use this command:
-        -Find a character in share range with another character:
-        /searchteam charname
 
-        -Find a character in share range with a certain level
-        /searchteam level
+        - Show characters in share range with a specific character. (`searchteam <name>`)
+        - Show characters in share range with a specific level. (`searchteam <level>`)
+        - Show characters in a level range. (`searchteam <min>,<max>`)
 
-        -Find a character in a level range
-        /searchteam min_level,max_level
-
-        Results can be filtered by using the vocation filters: \U00002744\U0001F525\U0001F3F9\U0001F6E1"""
+        Online characters are shown first on the list, they also have a 🔹 icon."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -1032,14 +1039,23 @@ class Tracking:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.group(invoke_without_command=True, aliases=["watchlist", "hunted", "huntedlist"], case_insensitive=True)
+    @commands.group(invoke_without_command=True, aliases=["watchlist", "huntedlist"], case_insensitive=True)
     @checks.is_admin()
     @commands.guild_only()
     async def watched(self, ctx, *, name="watched-list"):
         """Sets the watched list channel for this server
 
-        Creates a new channel with the specified name.
-        If no name is specified, the default name "watched-list" is used."""
+        Creates a new text channel for the watched list to be posted.
+
+        The watch list shows which characters from it are online. Entire guilds can be added too.
+
+        If no name is specified, the default name "watched-list" is used.
+
+        When the channel is created, only the bot and people with `Administrator` role can read it.
+        The permissions can be adjusted afterwards.
+
+        The channel can be renamed at anytime without problems.
+        """
 
         watched_channel_id = get_server_property(ctx.guild.id, "watched_channel", is_int=True)
         watched_channel = self.bot.get_channel(watched_channel_id)
@@ -1079,15 +1095,13 @@ class Tracking:
                                "*This message can be deleted now.*")
             set_server_property(ctx.guild.id, "watched_channel", channel.id)
 
-    @watched.command(name="add", aliases=["addplayer", "addchar"])
+    @watched.command(name="add", aliases=["addplayer", "addchar"], usage="<name>[,reason]")
     @commands.guild_only()
     @checks.is_admin()
     async def watched_add(self, ctx, *, params=None):
-        """Adds a character to the watched list
+        """Adds a character to the watched list.
 
-        A reason can be specified by adding it after the character's name, separated by a comma.
-
-        eg: /watched add character,reason"""
+        A reason can be specified by adding it after the character's name, separated by a comma."""
 
         if params is None:
             await ctx.send("You need to tell me the name of the person you want to add to the list.\n"
@@ -1144,53 +1158,13 @@ class Tracking:
             userDatabase.commit()
             c.close()
 
-    @watched.command(name="remove", aliases=["removeplayer", "removechar"])
-    @commands.guild_only()
-    @checks.is_admin()
-    async def watched_remove(self, ctx, *, name=None):
-        """Removes a character from the watched list"""
-        if name is None:
-            ctx.send("You need to tell me the name of the person you want to remove from the list.")
-
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
-        if world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
-            return
-
-        c = userDatabase.cursor()
-        try:
-            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND name LIKE ? and is_guild = 0",
-                      (ctx.guild.id, name))
-            result = c.fetchone()
-            if result is None:
-                await ctx.send("This character is not in the watched list.")
-                return
-
-            message = await ctx.send(f"Do you want to remove **{name}** from the watched list?")
-            confirm = await ctx.react_confirm(message)
-            if confirm is None:
-                await ctx.send("You took too long!")
-                return
-            if not confirm:
-                await ctx.send("Ok then, guess you changed your mind.")
-                return
-
-            c.execute("DELETE FROM watched_list WHERE server_id = ? AND name LIKE ? AND is_guild = 0",
-                      (ctx.guild.id, name,))
-            await ctx.send("Character removed from the watched list.")
-        finally:
-            userDatabase.commit()
-            c.close()
-
-    @watched.command(name="addguild")
+    @watched.command(name="addguild", usage="<name>[,reason]")
     @commands.guild_only()
     @checks.is_admin()
     async def watched_addguild(self, ctx, *, params=None):
-        """Adds an entire guild to the watched list
-        
-        Guilds are displayed in the watched list as a group.
-        If a new member joins, he will automatically displayed here,
-        on the other hand, if a member leaves, it won't be shown anymore."""
+        """Adds an entire guild to the watched list.
+
+        Guilds are displayed in the watched list as a group."""
         if params is None:
             ctx.send("You need to tell me the name of the guild you want to add.\n"
                      "You can optionally provide a reason, e.g. `/watched addguild guild,reason`")
@@ -1244,11 +1218,165 @@ class Tracking:
             userDatabase.commit()
             c.close()
 
+    @watched.command(name="info", aliases=["details", "reason"])
+    @commands.guild_only()
+    @checks.is_admin()
+    async def watched_info(self, ctx, *, name: str):
+        """Shows information about a watched list entry.
+
+        This shows who added the player, when, and if there's a reason why they were added."""
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 0 AND name LIKE ? LIMIT 1",
+                      (ctx.guild.id, name))
+            result = c.fetchone()
+            if not result:
+                await ctx.send("There are no characters with that name.")
+                return
+        finally:
+            c.close()
+
+        embed = discord.Embed(title=result["name"])
+        if result["reason"] is not None:
+            embed.description = f"**Reason:** {result['reason']}"
+        author = ctx.guild.get_member(result["author"])
+        if author is not None:
+            embed.set_footer(text=f"{author.name}#{author.discriminator}",
+                             icon_url=get_user_avatar(author))
+        if result["added"] is not None:
+            embed.timestamp = dt.datetime.utcfromtimestamp(result["added"])
+        await ctx.send(embed=embed)
+
+    @watched.command(name="infoguild", aliases=["detailsguild", "reasonguild"])
+    @commands.guild_only()
+    @checks.is_admin()
+    async def watched_infoguild(self, ctx, *, name: str):
+        """"Shows details about a guild entry in the watched list.
+
+        This shows who added the player, when, and if there's a reason why they were added."""
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 1 AND name LIKE ? LIMIT 1",
+                      (ctx.guild.id, name))
+            result = c.fetchone()
+            if not result:
+                await ctx.send("There are no guilds with that name.")
+                return
+        finally:
+            c.close()
+
+        embed = discord.Embed(title=result["name"])
+        if result["reason"] is not None:
+            embed.description = f"**Reason:** {result['reason']}"
+        author = ctx.guild.get_member(result["author"])
+        if author is not None:
+            embed.set_footer(text=f"{author.name}#{author.discriminator}",
+                             icon_url=get_user_avatar(author))
+        if result["added"] is not None:
+            embed.timestamp = dt.datetime.utcfromtimestamp(result["added"])
+        await ctx.send(embed=embed)
+
+    @watched.command(name="list")
+    @commands.guild_only()
+    @checks.is_admin()
+    async def watched_list(self, ctx):
+        """Shows a list of all watched characters
+
+        Note that this lists all characters, not just online characters."""
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
+        if world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 0 ORDER BY name ASC",
+                      (ctx.guild.id,))
+            results = c.fetchall()
+            if not results:
+                await ctx.send("There are no characters in the watched list.")
+                return
+            entries = [f"[{r['name']}]({get_character_url(r['name'])})" for r in results]
+        finally:
+            c.close()
+        pages = Pages(ctx, entries=entries)
+        pages.embed.title = "Watched Characters"
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+    @watched.command(name="listguilds", aliases=["guilds", "guildlist"])
+    @commands.guild_only()
+    @checks.is_admin()
+    async def watched_list_guild(self, ctx):
+        """Shows a list of all watched characters
+
+        Note that this lists all characters, not just online characters."""
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
+        if world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 1 ORDER BY name ASC",
+                      (ctx.guild.id,))
+            results = c.fetchall()
+            if not results:
+                await ctx.send("There are no guilds in the watched list.")
+                return
+            entries = [f"[{r['name']}]({url_guild+urllib.parse.quote(r['name'])})" for r in results]
+        finally:
+            c.close()
+        pages = Pages(ctx, entries=entries)
+        pages.embed.title = "Watched Guilds"
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+    @watched.command(name="remove", aliases=["removeplayer", "removechar"])
+    @commands.guild_only()
+    @checks.is_admin()
+    async def watched_remove(self, ctx, *, name=None):
+        """Removes a character from the watched list."""
+        if name is None:
+            ctx.send("You need to tell me the name of the person you want to remove from the list.")
+
+        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
+        if world is None:
+            await ctx.send("This server is not tracking any tibia worlds.")
+            return
+
+        c = userDatabase.cursor()
+        try:
+            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND name LIKE ? and is_guild = 0",
+                      (ctx.guild.id, name))
+            result = c.fetchone()
+            if result is None:
+                await ctx.send("This character is not in the watched list.")
+                return
+
+            message = await ctx.send(f"Do you want to remove **{name}** from the watched list?")
+            confirm = await ctx.react_confirm(message)
+            if confirm is None:
+                await ctx.send("You took too long!")
+                return
+            if not confirm:
+                await ctx.send("Ok then, guess you changed your mind.")
+                return
+
+            c.execute("DELETE FROM watched_list WHERE server_id = ? AND name LIKE ? AND is_guild = 0",
+                      (ctx.guild.id, name,))
+            await ctx.send("Character removed from the watched list.")
+        finally:
+            userDatabase.commit()
+            c.close()
+
     @watched.command(name="removeguild")
     @commands.guild_only()
     @checks.is_admin()
     async def watched_removeguild(self, ctx, *, name=None):
-        """Removes a guild from the watched list"""
+        """Removes a guild from the watched list."""
         if name is None:
             ctx.send("You need to tell me the name of the guild you want to remove from the list.")
 
@@ -1282,117 +1410,6 @@ class Tracking:
             userDatabase.commit()
             c.close()
 
-    @watched.command(name="list")
-    @commands.guild_only()
-    @checks.is_admin()
-    async def watched_list(self, ctx):
-        """Shows a list of all watched characters
-        
-        Note that this lists all characters, not just online characters."""
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
-        if world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
-            return
-        c = userDatabase.cursor()
-        try:
-            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 0 ORDER BY name ASC",
-                      (ctx.guild.id,))
-            results = c.fetchall()
-            if not results:
-                await ctx.send("There are no characters in the watched list.")
-                return
-            entries = [f"[{r['name']}]({get_character_url(r['name'])})" for r in results]
-        finally:
-            c.close()
-        pages = Pages(ctx, entries=entries)
-        pages.embed.title = "Watched Characters"
-        try:
-            await pages.paginate()
-        except CannotPaginate as e:
-            await ctx.send(e)
-
-    @watched.command(name="listguilds", aliases=["guilds", "guildlist", "listguild"])
-    @commands.guild_only()
-    @checks.is_admin()
-    async def watched_list_guild(self, ctx):
-        """Shows a list of all watched characters
-
-        Note that this lists all characters, not just online characters."""
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
-        if world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
-            return
-        c = userDatabase.cursor()
-        try:
-            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 1 ORDER BY name ASC",
-                      (ctx.guild.id,))
-            results = c.fetchall()
-            if not results:
-                await ctx.send("There are no guilds in the watched list.")
-                return
-            entries = [f"[{r['name']}]({url_guild+urllib.parse.quote(r['name'])})" for r in results]
-        finally:
-            c.close()
-        pages = Pages(ctx, entries=entries)
-        pages.embed.title = "Watched Guilds"
-        try:
-            await pages.paginate()
-        except CannotPaginate as e:
-            await ctx.send(e)
-
-    @watched.command(name="info", aliases=["details", "reason"])
-    @commands.guild_only()
-    @checks.is_admin()
-    async def watched_info(self, ctx, *, name: str):
-        """Shows details about a watched list entry"""
-        c = userDatabase.cursor()
-        try:
-            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 0 AND name LIKE ? LIMIT 1",
-                      (ctx.guild.id, name))
-            result = c.fetchone()
-            if not result:
-                await ctx.send("There are no characters with that name.")
-                return
-        finally:
-            c.close()
-
-        embed = discord.Embed(title=result["name"])
-        if result["reason"] is not None:
-            embed.description = f"**Reason:** {result['reason']}"
-        author = ctx.guild.get_member(result["author"])
-        if author is not None:
-            embed.set_footer(text=f"{author.name}#{author.discriminator}",
-                             icon_url=get_user_avatar(author))
-        if result["added"] is not None:
-            embed.timestamp = dt.datetime.utcfromtimestamp(result["added"])
-        await ctx.send(embed=embed)
-
-    @watched.command(name="infoguild", aliases=["detailsguild", "reasonguild"])
-    @commands.guild_only()
-    @checks.is_admin()
-    async def watched_guildinfo(self, ctx, *, name: str):
-        """"Shows details about a guild entry in the watched list"""
-        c = userDatabase.cursor()
-        try:
-            c.execute("SELECT * FROM watched_list WHERE server_id = ? AND is_guild = 1 AND name LIKE ? LIMIT 1",
-                      (ctx.guild.id, name))
-            result = c.fetchone()
-            if not result:
-                await ctx.send("There are no guilds with that name.")
-                return
-        finally:
-            c.close()
-
-        embed = discord.Embed(title=result["name"])
-        if result["reason"] is not None:
-            embed.description = f"**Reason:** {result['reason']}"
-        author = ctx.guild.get_member(result["author"])
-        if author is not None:
-            embed.set_footer(text=f"{author.name}#{author.discriminator}",
-                             icon_url=get_user_avatar(author))
-        if result["added"] is not None:
-            embed.timestamp = dt.datetime.utcfromtimestamp(result["added"])
-        await ctx.send(embed=embed)
 
     def __unload(self):
         print("cogs.tracking: Cancelling pending tasks...")

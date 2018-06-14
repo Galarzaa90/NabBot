@@ -33,7 +33,6 @@ Makes sure that the bot has all the required permissions to work properly.
 If no channel is specified, the current one is checked.
 
 ??? Summary "Examples"
-
     **/checkchannel**  
     ![image](../assets/images/commands/checkchannel.png)
 
@@ -52,10 +51,8 @@ This message can only be edited globally in `config.py`, however, this message c
 Using the command with no parameters shows the current welcome message.
 
 ??? Summary "Examples"
-
     **/setwwelcome**   
-    ![image](../assets/images/commands/setwelcome_1.png)
-    
+    ![image](../assets/images/commands/setwelcome_1.png)  
     **/setwelcome *This is an example message***   
     ![image](../assets/images/commands/setwelcome_2.png)
 

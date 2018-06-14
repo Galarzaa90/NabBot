@@ -15,10 +15,8 @@ Calculates the price of blessings at a specific level.
 For players over level 100, it will also display the cost of the Blessing of the Inquisition.
 
 ??? Summary "Examples"
-  
     **/bless 90**  
-    ![image](../assets/images/commands/bless_1.png)
-    
+    ![image](../assets/images/commands/bless_1.png)  
     **/bless 140**  
     ![image](../assets/images/commands/bless_2.png)
 
@@ -34,10 +32,8 @@ If this discord server is tracking a tibia world, it will show deaths registered
 Additionally, if no name is provided, all recent deaths will be shown.
 
 ??? Summary "Examples"
-      
     **/deaths Xzilla**  
-    ![image](../assets/images/commands/deaths_1.png)
-    
+    ![image](../assets/images/commands/deaths_1.png)  
     **/deaths**  
     ![image](../assets/images/commands/deaths_2.png)
 
@@ -50,9 +46,9 @@ Additionally, if no name is provided, all recent deaths will be shown.
 Shows the latest deaths caused by a specific monster.
 
 ??? Summary "Example"
-  
     **/deaths mob Lloyd**  
     ![image](../assets/images/commands/deaths_mob.png)
+
 ----
 
 ### deaths user
@@ -61,7 +57,6 @@ Shows the latest deaths caused by a specific monster.
 Shows recent deaths by all characters registered to a user.
 
 ??? Summary "Example"
-    
     **/deaths user Nezune**  
     ![image](../assets/images/commands/deaths_stats.png)
 
@@ -77,7 +72,6 @@ Shows the total number of deaths, the characters and users with more deaths, and
 To see a shorter period, use `week` or `month` as a parameter.
 
 ??? Summary "Example"
-    
     **/deaths stats**  
     ![image](../assets/images/commands/deaths_stats.png)
 
@@ -91,7 +85,6 @@ Show's the number of members the guild has and a list of their users.
 It also shows whether the guild has a guildhall or not, and their funding date.
 
 ??? summary "Examples"
-
     **/guild Redd Alliance**  
     ![image](../assets/images/commands/guild.png)
 
@@ -106,7 +99,6 @@ Shows basic information and stats about a guild.
 It shows their description, homepage, guildhall, number of members and more.
 
 ??? summary "Examples"
-    
     **/guild info Bald Dwarfs**  
     ![image](../assets/images/commands/guildinfo.png)
 
@@ -122,7 +114,6 @@ Online members have a 🔹 icon next to their name.
 
 
 ??? summary "Examples"
-    
     **/guild members Redd Alliance**  
     ![image](../assets/images/commands/guildmembers.png)
 
@@ -140,10 +131,8 @@ If used on private messages, no world is looked up unless specified.
 To specify a world, add the world at the end separated with '/'.
 
 ??? Summary "Examples"
-    
     **/house darashia 8, flat 03**  
-    ![image](../assets/images/commands/house_1.png)
-      
+    ![image](../assets/images/commands/house_1.png)  
     **/house caveman shelter/calmera**  
     ![image](../assets/images/commands/house_2.png)
 
@@ -162,10 +151,8 @@ This only works for characters registered in the bots database, which are the ch
 by the users of this discord server.
 
 ??? Summary "Examples"
-
     **/levels**  
-    ![image](../assets/images/commands/levels_1.png)
-    
+    ![image](../assets/images/commands/levels_1.png)  
     **/levels Dre amz**  
     ![image](../assets/images/commands/levels_2.png)
 
@@ -177,7 +164,6 @@ by the users of this discord server.
 Shows a user's recent level ups on their registered characters.
 
 ??? Summary "Examples"
-    
     **/levels user Nezune**  
     ![image](../assets/images/commands/levels_user.png)
 
@@ -191,10 +177,8 @@ Shows the latest news articles from Tibia.com.
 If no id is supplied, a list of recent articles is shown, otherwise, a snippet of the article is shown.
 
 ??? Summary "Examples"
-
     **/news**    
-    ![image](../assets/images/commands/news_1.png)
-    
+    ![image](../assets/images/commands/news_1.png)  
     **/news 4400**  
     ![image](../assets/images/commands/news_2.png)
 
@@ -218,16 +202,12 @@ You can add the world where you want to look in by adding a comma, followed by t
 Example: `searchworld Cachero,Calmera`
 
 ??? Summary "Examples"
-    
     **/searchworld Galarzaa Fidera**  
-    ![image](../assets/images/commands/searchworld_1.png)
-    
+    ![image](../assets/images/commands/searchworld_1.png)  
     **/searchworld Nezune,Calmera**  
-    ![image](../assets/images/commands/searchworld_2.png)
-    
+    ![image](../assets/images/commands/searchworld_2.png)  
     **/searchworld 600,700**  
-    ![image](../assets/images/commands/searchworld_3.png)
-
+    ![image](../assets/images/commands/searchworld_3.png)  
     **/searchworld 70**  
     ![image](../assets/images/commands/searchworld_4.png)
 
@@ -246,16 +226,12 @@ This command can be used in three ways:
 3. Find the joint share range of a group of characters. (`share <name1, name2...>`)
 
 ??? summary "Examples"
-
     **/share 300**  
-    ![image](../assets/images/commands/share_1.png)
-    
+    ![image](../assets/images/commands/share_1.png)  
     **/share Galarzaa Fidera**  
-    ![image](../assets/images/commands/share_2.png)
-    
+    ![image](../assets/images/commands/share_2.png)  
     **/share Galarzaa Fidera, Nezune, Xzilla**  
-    ![image](../assets/images/commands/share_3.png)
-    
+    ![image](../assets/images/commands/share_3.png)  
     **/share Galarzaa Fidera, Topheroo**  
     ![image](../assets/images/commands/share_4.png)
 
@@ -272,10 +248,8 @@ The bot will show the time needed to reach full stamina if you were to start sle
 The footer text shows the time in your timezone where your stamina would be full.
 
 ??? Summary "Examples"
-  
     **/stamina 39:00**  
-    ![image](../assets/images/commands/stamina_1.png)
-    
+    ![image](../assets/images/commands/stamina_1.png)  
     **/stamina 28:32**  
     ![image](../assets/images/commands/stamina_2.png)
 
@@ -294,10 +268,8 @@ This command can be used in two ways:
 2. To calculate the stats of a character. (`stats <character>`)
 
 ??? Summary "Examples"
-      
     **/stats 543,elder druid**  
-    ![image](../assets/images/commands/stats_1.png)
-        
+    ![image](../assets/images/commands/stats_1.png)  
     **/stats Galarzaa Fidera**  
     ![image](../assets/images/commands/stats_2.png)
 
@@ -317,10 +289,8 @@ Characters must be registered in order to see their timelines.
 - 💀 Indicates deaths
 
 ??? Summary "Examples"
-    
     **/timeline**  
-    ![image](../assets/images/commands/timeline_1.png)
-    
+    ![image](../assets/images/commands/timeline_1.png)  
     **/timeline Fila Bro**  
     ![image](../assets/images/commands/timeline_2.png)
 
@@ -332,7 +302,6 @@ Characters must be registered in order to see their timelines.
 Shows a users's recent level ups and deaths on their characters.
 
 ??? Summary "Examples"
-    
     **/timeline user Pepyto 🍌**  
     ![image](../assets/images/commands/timeline_user.png)
 
@@ -343,8 +312,7 @@ Shows a users's recent level ups and deaths on their characters.
 
 Displays Tibia server's time and time until server save.
 
-??? Summary "Examples"
-    
+??? Summary "Examples" 
     **/time**  
     ![image](../assets/images/commands/time.png)
 
@@ -366,26 +334,18 @@ Users can be looked through their username, user#discriminator or their user id.
 Additionally, if the character is in the highscores, their ranking will be shown.
 
 ??? summary "Examples"
-
     **/whois Galarzaa Fidera**  
-    ![image](../assets/images/commands/whois_1.png)
-    
-    In this case, it matched *Galarzaa Fidera* to a character, and that character is registered to user @Galarzaa
-    
+    ![image](../assets/images/commands/whois_1.png)  
+    In this case, it matched *Galarzaa Fidera* to a character, and that character is registered to user @Galarzaa  
     **/whois Galarzaa**  
-    ![image](../assets/images/commands/whois_2.png)
-    
-    In this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed.
-    However, it also matches the character *Galarzaa* which may not be necessarily related to the user.
-    
+    ![image](../assets/images/commands/whois_2.png)  
+    In this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed.  
+    However, it also matches the character *Galarzaa* which may not be necessarily related to the user.  
     **/whois Bichæo**  
-    ![image](../assets/images/commands/whois_3.png)
-    
-    In this case, the name only matches a user, and since no character was matched, their highest level registered character is shown.
-    
+    ![image](../assets/images/commands/whois_3.png)  
+    In this case, the name only matches a user, and since no character was matched, their highest level registered character is shown.  
     **/whois 115042985778872322**
-    ![image](../assets/images/commands/whois_4.png)
-    
+    ![image](../assets/images/commands/whois_4.png)      
     In this case, a user id was provided, and it searched for the user with that id.
 
 ----
@@ -398,10 +358,8 @@ Shows basic information about a Tibia world.
 Shows information like PvP type, online count, server location vocation distribution, and more.
 
 ??? Summary "Examples"
-    
     **/world Fidera**    
-    ![image](../assets/images/commands/world_1.png)
-    
+    ![image](../assets/images/commands/world_1.png)  
     **/world Ferobra**  
     ![image](../assets/images/commands/world_2.png)
  

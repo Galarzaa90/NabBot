@@ -17,7 +17,6 @@ Displays an achievement's information.
 Shows the achievement's grade, points, description, and instructions on how to unlock.
 
 ??? summary "Examples"
-
     **/achievement demonic barkeeper**  
     ![image](../assets/images/commands/achievement.png)
 
@@ -32,10 +31,8 @@ If a category is specified, it will list all the creatures that belong to the ca
 If no category is specified, it will list all the bestiary categories.
 
 ??? summary "Examples"
-
     **/bestiary**  
-    ![image](../assets/images/commands/bestiary_1.png)
-    
+    ![image](../assets/images/commands/bestiary_1.png)  
     **/bestiary dragon**  
     ![image](../assets/images/commands/bestiary_2.png)
 
@@ -55,10 +52,8 @@ Yellow for Rashid, Blue and Green for Djinns and Purple for gems.
 More information is shown if used in private messages or in the command channel.
 
 ??? summary "Examples"
-    
     **/item dragon scale mail**  
-    ![image](../assets/images/commands/item_1.png)
-    
+    ![image](../assets/images/commands/item_1.png)  
     *When used on the ask-channel or private message*  
     **/item dragon scale mail**  
     ![image](../assets/images/commands/item_2.png)
@@ -73,7 +68,6 @@ Displays information about a key.
 Shows the key's known names, how to obtain it and its uses.
 
 ??? summary "Examples"
-
     **/key 3940**  
     ![image](../assets/images/commands/key.png)
 
@@ -90,10 +84,8 @@ if there are multiple matches, a list is shown.
 If only one matches, the key's information is shwon directly.
 
 ??? summary "Examples"
-
     **/key search hellgate** *(only one match)*  
-    ![image](../assets/images/commands/key_search_1.png)
-    
+    ![image](../assets/images/commands/key_search_1.png)  
     **/key search fibula** *(multiple matches)*  
     ![image](../assets/images/commands/key_search_2.png)
 
@@ -110,13 +102,10 @@ Shows the monster's attributes, resistances, loot and more.
 More information is displayed if used on a private message or in the command channel.
 
 ??? summary "Examples"
-
     **/monster Demon** *(On a regular channel)*  
-    ![image](../assets/images/commands/monster_1.png)
-    
+    ![image](../assets/images/commands/monster_1.png)  
     **/monster Demon** *(On an ask channel or private message)*  
-    ![image](../assets/images/commands/monster_2.png)
-    
+    ![image](../assets/images/commands/monster_2.png)  
     (*The bottom of the image has been cropped*)
 
 ----
@@ -131,10 +120,8 @@ Shows the NPC's item offers, their location and their travel destinations.
 More information is displayed if used on private messages or the command channel.
 
 ??? summary "Examples"
-
     **/npc rashid** *(On a regular channel)*  
-    ![image](../assets/images/commands/npc_1.png)
-    
+    ![image](../assets/images/commands/npc_1.png)  
     **/npc captain fearless**  *(On an ask channel or private message)*  
     ![image](../assets/images/commands/npc_2.png)
 
@@ -150,9 +137,7 @@ Shows the spell's attributes, NPCs that teach it and more.
 More information is displayed if used on private messages or the command channel.
 
 ??? summary "Examples"
-
     **/spell exori gran**  
-    ![image](../assets/images/commands/spell_1.png)
-    
+    ![image](../assets/images/commands/spell_1.png)  
     **/spell emberwing**  
     ![image](../assets/images/commands/spell_2.png)

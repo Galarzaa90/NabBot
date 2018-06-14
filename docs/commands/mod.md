@@ -54,7 +54,6 @@ If the parameter is used with no parameters, it unignores the current channel.
 Shows a list of users with no registered characters.
 
 ??? Summary "Example"
-
     **/unregistered**  
     ![image](../assets/images/commands/unregistered.png)
 

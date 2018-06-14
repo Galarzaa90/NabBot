@@ -11,7 +11,6 @@ Commands related to role management.
 Shows a list of members that have no roles.
 
 ??? Summary "Examples"
-  
     **/noroles**  
     ![image](../assets/images/commands/noroles.png)
 
@@ -23,7 +22,6 @@ Shows a list of members that have no roles.
 Shows details about a role.
 
 ??? Summary "Examples"
-
     **/roleinfo Redd Alliance**
     ![image](../assets/images/commands/roleinfo.png)
 
@@ -35,7 +33,6 @@ Shows details about a role.
 Shows a list of members with that role.
 
 ??? Summary "Examples"
-  
     **/rolemembers Vice Leader**  
     ![image](../assets/images/commands/rolemembers.png)
 
@@ -50,10 +47,8 @@ If a user is specified, it will list their roles.
 If user is blank, I will list all the server's roles.
 
 ??? Summary "Examples"
-  
     **/roles**  
-    ![image](../assets/images/commands/roles_1.png)
-    
+    ![image](../assets/images/commands/roles_1.png)  
     **/roles Galarzaa**  
     ![image](../assets/images/commands/roles_2.png)
 
