@@ -1,276 +1,315 @@
 # General commands
 
-!!! note
-    The information contained here refers to the `master` branch, it will be updated to `rewrite` documentation soon.
-
 !!! info
-    Words in italics are parameters.  
-    Parameters enclosed in brackets `[]` are optional.
+    Parameters are enclosed with `< >`.   
+    Optional parameters are enclosed in brackets `[]`.
 
 
-## /help
-**Syntax:** /help *[command]*
-
-Displays commands available to the user.
-
-If a category (a.k.a Cog) is specified, it will show only commands in that category.  
-If a command is specified, it will show more information about that commands, and commands if available.  
-Further help can be obtained by calling help for subcommands.  
+## about
+Shows information about the bot.
 
 ??? Summary "Examples"
-
-    **/help**
-    ![image](../assets/images/commands/help_1.png)  
-    *(The reply is cropped, commands shown depend on caller)*
-    
-    **/help guild**  
-    ![image](../assets/images/commands/help_2.png)
-    
-    **/help guild info**  
-    ![image](../assets/images/commands/help_3.png)
+    **/about**  
+    ![image](../assets/images/commands/about.png)
 
 ----
 
-## /choose
-**Syntax:** /choose *option1 option2 ... optionN*
+## choose
+**Syntax:** `choose <choices..>`
 
-The bot randomly chooses one of the options given.
-Options with spaces in them must be quoted or they will be considered as multiple options.
+Chooses between multiple choices.
+
+Each choice is separated by spaces. For choices that contain spaces surround it with quotes.
+e.g. "Choice A" ChoiceB "Choice C"
 
 ??? Summary "Examples"
-
     **/choose "Option A" optionb "Option C"**  
     ![image](../assets/images/commands/choose.png)
 
 ----
 
-## /uptime
+## help
+**Syntax:** `help [command]`
 
-Shows the time the bot has been running.
+Shows help about a command or the bot.
+        
+- If no command is specified, it will list all available commands
+- If a command is specified, it will show further info, and its subcommands if applicable.
+- If a category is specified, it will show only commands in that *categor*.
+
+Various symbols are used to represent a command's signature and/or show further info.  
+**&lt;argument&gt;**  
+This means the argument is __**required**__.
+
+**[argument]**  
+This means the argument is __**optional**__.
+
+**[A|B]**  
+This means the it can be __**either A or B**__.
+
+**[argument...]**  
+This means you can have __**multiple arguments**__.
+
+🔸  
+This means the command has subcommands.
+Check the command's help to see them. 
 
 ??? Summary "Examples"
-
-    **/uptime**  
-    ![image](../assets/images/commands/uptime.png)
+    **/help**  
+    ![image](../assets/images/commands/help_1.png)  
+    **/help guild**  
+    ![image](../assets/images/commands/help_2.png)  
+    **/help guild info**  
+    ![image](../assets/images/commands/help_3.png)
 
 ----
 
-## /about
-
-Shows various information about the bot.
-
-??? Summary "Examples"
-
-    **/about**  
-    ![image](../assets/images/commands/about.png)
-
-----    
-    
-## /server
-**Other aliases:** /serverinfo, /server_info
-
-Shows information about the current server.
-
-??? Summary "Examples"
-
-    **/server**  
-    ![image](../assets/images/commands/server.png)
-
-----
-
-## /roles
-**Syntax:** /roles [*userName*]
-
-Shows a list of roles in the server. If a user is specified, roles assigned to them will be shown instead.
-
-??? Summary "Examples"
-  
-    **/roles**  
-    ![image](../assets/images/commands/roles_1.png)
-    
-    **/roles Galarzaa**  
-    ![image](../assets/images/commands/roles_2.png)
-
-----
-
-## /role
-**Syntax:** /role *roleName*
-
-Shows a list of members that have the specified role.
-
-??? Summary "Examples"
-  
-    **/role Vice Leader**  
-    ![image](../assets/images/commands/role.png)
-
-----
-
-## /noroles
-**Syntax:** /noroles  
-**Other aliases:** /norole
-
-Shows a list of members that have no roles.
-
-??? Summary "Examples"
-  
-    **/noroles**  
-    ![image](../assets/images/commands/noroles.png)
-
-----
-
-## /events
+## events
+**Other aliases:** `event` 
 
 Shows a list of upcoming and recent events.
 
 ??? Summary "Examples"
-
     **/event**  
     ![image](../assets/images/commands/event.png)
-    
 
-### /events info
-**Syntax**: /events info *id*
-
-Shows details about an event with a specific id. The id can be seen when using /events or after creating an event.
-
-The time shown on the bottom is in the local timezone of the viewer.
-  
-??? Summary "Examples"
-
-    **/event info 136**  
-    ![image](../assets/images/commands/event_info.png)
+----
    
+### events add
+**Syntax**: `events add <starts in> <name>[,description]`
 
-### /events add
-**Syntax**: /events add *starttime* *name[,description]*
+Creates a new event.
 
-Creates an event. The start time must be set by specifying in how much time the event will start from now, e.g. 1d3h20m, 20h4m, 1d20m, 70m.  
+`starts in` is in how much time the event will start from the moment of creation.
+This is done to avoid dealing with different timezones.
+Just say in how many days/hours/minutes the event is starting.
 
-A description for an event is optional. Description can contain links using the following syntax `[title](url)`
+The time can be set using units such as 'd' for days, 'h' for hours, 'm' for minutes and 'd' for seconds.
+Examples: 1d20h5m, 1d30m, 1h40m, 40m
 
-Once the event is created, the id of the event will be returned. This id is used to edits, subscribe or join events.
-Events can only be edited by the creator or by bot admins.
+The event description is optional, you can also use links like: `[link title](link url)`.
 
-Users can only have 2 active events simultaneously.
-
-After using the command, the bot will ask for confirmation and show a preview of the event.
-The start time displayed is based on the viewer's local time.
+Once the event is created, the id of the event will be returned. This is used for further edits.
 
 ??? Summary "Example"
-
     **/event add 5h Inquisition Quest,Remember to bring holy water!**  
     **`[TibiaWiki link](http://tibia.wikia.com/wiki/Inquisition_quest)`**  
     ![image](../assets/images/commands/event_add.png)
 
-### /event delete
-**Syntax**: /event *id*  
-**Other aliases:** /event remove, /event cancel
+----
+
+### event addplayer
+**Syntax:** `event addplayer <id> <character>`  
+**Other aliases:** `event addchar`
+
+Adds a character to an event.
+
+Only the creator can add characters to an event.
+If the event is joinable, anyone can join an event using `event join`
+
+??? Summary "Examples"
+    **/event addplayer 136 Nezune**  
+    ![image](../assets/images/commands/event_addchar.png)
+
+----
+
+### event edit
+
+Use the subcommands to edit the event's properties.
+Only the creator of the event and mods can edit an event.
+Past events can't be edited.
+
+----
+
+#### event edit description
+**Syntax:** `event edit description <id> [new description]`  
+**Other aliases:** `event edit desc`, `event edit details`
+
+Edits an event's description.
+        
+If no new description is provided initially, the bot will ask for one.  
+To remove the description, say `blank`.
+
+----
+
+#### event edit joinable 
+**Syntax:** `event edit joinable <id> [yes/no]`  
+**Other aliases:** `event edit open`
+
+Changes whether anyone can join an event or only the owner may add people.
+
+If an event is joinable, anyone can join using `event join`  .
+Otherwise, the event creator has to add people with `event addplayer`.
+
+----
+
+#### event edit name
+**Syntax:** `event edit name <id> [new name]`  
+**Other aliases:** `event edit title`
+
+Edit's an event's name.
+
+If no new name is provided initially, the bot will ask for one.
+
+----
+
+#### event edit slots
+**Syntax:** `event edit slots <id> [new slots]`  
+**Other aliases:** `event edit size`
+
+Edits an event's number of slots
+
+Slots is the number of characters an event can have. By default this is 0, which means no limit.
+
+----
+
+#### event edit time
+**Syntax:** `event edit time <id> [new start time]`
+
+Edit's an event's start time.
+
+If no new time is provided initially, the bot will ask for one.
+
+----
+
+### events info
+**Syntax**: `events info <id>`
+
+Displays an event's info.
+
+The start time shown in the footer is always displayed in your device's timezone.
+  
+??? Summary "Examples"
+    **/event info 136**  
+    ![image](../assets/images/commands/event_info.png)
+
+----
+    
+### event join
+**Syntax:** `event join <id> <char>`
+
+Join an event with a specific character
+
+You can only join an event with a character at a time.  
+Some events may not be joinable and require the creator to add characters themselves.
+
+??? Summary "Examples"
+    **/event join 136 Galarzaa Fidera**  
+    ![image](../assets/images/commands/event_join.png)
+
+----
+    
+### event leave
+**Syntax:** `event leave <id>`
+
+Leave an event you were participating in.
+
+??? Summary "Examples"
+    **/event leave 136**  
+    ![image](../assets/images/commands/event_leave.png)
+
+----
+
+### event make
+
+Creates an event guiding you step by step
+
+Instead of using confusing parameters, commas and spaces, this commands has the bot ask you step by step.
+
+----
+
+### event participants
+**Syntax:** `event participants <id>`
+
+Shows the list of characters participating in this event.
+
+??? Summary "Examples"
+    **/event participants 190**  
+    ![image](../assets/images/commands/event_participants.png)
+
+----
+
+### event remove
+**Syntax**: `event <id>`  
+**Other aliases:** `event delete`, `event cancel`
 
 Deletes or cancels an event.
 
 ??? Summary "Examples"
-
     **/event delete 136**  
     ![image](../assets/images/commands/event_remove.png)
 
-### /event subscribe
-**Syntax**: /event subscribe *id*  
-**Other aliases:** /event sub
+----
 
-Lets you subscribe to an upcoming event. Meaning you will receive private messages when the event time is close.
+### event removeplayer
+**Syntax:** `event removeplayer <id> <character>`  
+**Other aliases:** `event removechar`
+
+Removes a player from an event.
+
+Players can remove themselves using `event leave`
 
 ??? Summary "Examples"
+    **/event addplayer 136 Nezune**  
+    ![image](../assets/images/commands/event_removechar.png)
 
+----
+
+### event subscribe
+**Syntax**: `event subscribe <id>`  
+**Other aliases:** `event sub`
+
+Subscribe to receive a PM when an event is happening.
+
+??? Summary "Examples"
     **/event sub 136**  
     ![image](../assets/images/commands/event_sub.png)
+    
+----
 
-### /event unsubscribe
-**Syntax**: /event unsubscribe *id*
-**Other aliases:** /event unsub
+### event unsubscribe
+**Syntax**: `event unsubscribe id`  
+**Other aliases:** `event unsub`
 
 Unsubscribes you from an event.
 
 ??? Summary "Examples"
-
     **/event unsub 136**  
     ![image](../assets/images/commands/event_unsub.png)
+
+----
+
+## quote
+**Syntax:** `quote <message id>`
+
+Shows a messages by its ID.
+
+In order to get a message's id, you need to enable Developer Mode.  
+Developer mode is found in `User Settings > Appearance`.  
+Once enabled, you can right click a message and select **Copy ID**.
+
+Note that the bot won't attempt to search in channels you can't read.
+
+??? Summary "Examples"
+    **/quote 343259808889044992**  
+    ![image](../assets/images/commands/quote.png)
+
+----
     
-### /event join
-**Syntax:** /event join *id* *char*
+## serverinfo
 
-Lets you join the event with a character registered to you.
-Events can be set to not joinable and only the creator can add characters.
+Shows the server's information.
 
 ??? Summary "Examples"
+    **/serverinfo**  
+    ![image](../assets/images/commands/serverinfo.png)
 
-    **/event join 136 Galarzaa Fidera**  
-    ![image](../assets/images/commands/event_join.png)
-    
-### /event leave
-**Syntax:** /event leave *id*
+----
 
-Lets you leave an event you had joined before.
+## uptime
 
-??? Summary "Examples"
-
-    **/event leave 136**  
-    ![image](../assets/images/commands/event_leave.png)
-
-### /event addplayer
-**Syntax:** /event addplayer *id* *character*  
-**Other aliases:** /event addchar
-
-Adds someone else's character to the event. Only the event creator can do this.
-
-This is useful for non joinable events, so the creator can control who's going or not.
-
-The character must be registered to someone in the same server.
+Shows how long the bot has been running.
 
 ??? Summary "Examples"
-
-    **/event addplayer 136 Nezune**  
-    ![image](../assets/images/commands/event_addchar.png)
-
-### /event removeplayer
-**Syntax:** /event removeplayer *id* *character*  
-**Other aliases:** /event removechar
-
-Removes someone from the event
-
-??? Summary "Examples"
-
-    **/event addplayer 136 Nezune**  
-    ![image](../assets/images/commands/event_removechar.png)
-
-### /event edit
-####/event edit name
-**Syntax:** /event edit name *id* [*new_name*]
-
-Edit's an event's name. If no new name is provided initially, the bot will ask for one.
-
-####/event edit description
-**Syntax:** /event edit description *id* [*new_description*]
-
-Edit's an event's description. If no new description is provided initially, the bot will ask for one.
-
-To remove an even't description, say `blank`.
-
-####/event edit time
-**Syntax:** /event edit time *id* [*new_time*]
-
-Edit's an event's start time. If no new time is provided initially, the bot will ask for one.
-
-####/event edit joinable 
-**Syntax:** /event edit joinable *id* [*yes_no*]
-
-Sets whether the event is joinable or not.  
-If the event is joinable, anyone can use `/event join`.
-Otherwise, the creator can add characters themselves by using `/event addchar`.
-
-####/event edit slots
-**Syntax:** /event edit slots *id* [*new_slots*]
-
-Sets the number of characters an event can have. By default this is 0, which means no limit.
-
-### /event make
-Guides you step by step through the event making process.
+    **/uptime**  
+    ![image](../assets/images/commands/uptime.png)

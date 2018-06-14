@@ -5,7 +5,6 @@ import discord
 from discord.ext import commands
 
 from utils.config import config
-from utils.emoji import EMOJI
 
 # Discord length limit
 CONTENT_LIMIT = 2000
@@ -28,16 +27,6 @@ def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -
     return None
 
 
-def get_role_list(guild: discord.Guild) -> List[discord.Role]:
-    """Lists all roles within the discord server"""
-    roles = []
-    for role in guild.roles:
-        # Ignore @everyone and NabBot
-        if role.name not in ["@everyone", "Nab Bot"]:
-            roles.append(role)
-    return roles
-
-
 def get_user_color(user: discord.Member, guild: discord.Guild) -> discord.Colour:
     """Gets the user's color based on the highest role with a color"""
     # If it's a PM, server will be none
@@ -58,24 +47,24 @@ def get_user_avatar(user: Union[discord.User, discord.Member]) -> str:
 
 def get_region_string(region: discord.VoiceRegion) -> str:
     """Returns a formatted string for a given VoiceRegion"""
-    regions = {"us-west": EMOJI[":flag_us:"]+"US West",
-               "us-east": EMOJI[":flag_us:"]+"US East",
-               "us-central": EMOJI[":flag_us:"]+"US Central",
-               "us-south": EMOJI[":flag_us:"]+"US South",
-               "eu-west": EMOJI[":flag_eu:"]+"West Europe",
-               "eu-central": EMOJI[":flag_eu:"]+"Central Europe",
-               "singapore": EMOJI[":flag_sg:"]+"Singapore",
-               "london": EMOJI[":flag_gb:"]+"London",
-               "sydney": EMOJI[":flag_au:"]+"Sydney",
-               "amsterdam": EMOJI[":flag_nl:"]+"Amsterdam",
-               "frankfurt": EMOJI[":flag_de:"]+"Frankfurt",
-               "brazil": EMOJI[":flag_br:"]+"Brazil",
-               "japan": EMOJI[":flag_jp:"]+"Japan",
-               "hongkong": EMOJI[":flag_hk:"]+"Hong Kong",
-               "russia": EMOJI[":flag_ru:"]+"Russia",
-               "vip-us-east": EMOJI[":flag_us:"]+"US East (VIP)",
-               "vip-us-west": EMOJI[":flag_us:"]+"US West (VIP)",
-               "vip-amsterdam": EMOJI[":flag_nl:"]+"Amsterdam (VIP)",
+    regions = {"us-west": "🇺🇸US West",
+               "us-east": "🇺🇸US East",
+               "us-central": "🇺🇸US Central",
+               "us-south": "🇺🇸US South",
+               "eu-west": "🇪🇺West Europe",
+               "eu-central": "🇪🇺Central Europe",
+               "singapore": "🇸🇬Singapore",
+               "london": "🇬🇧London",
+               "sydney": "🇦🇺Sydney",
+               "amsterdam": "🇳🇱Amsterdam",
+               "frankfurt": "🇩🇪Frankfurt",
+               "brazil": "🇧🇷Brazil",
+               "japan": "🇯🇵Japan",
+               "hongkong": "🇭🇰Hong Kong",
+               "russia": "🇷🇺Russia",
+               "vip-us-east": "🇺🇸US East (VIP)",
+               "vip-us-west": "🇺🇸US West (VIP)",
+               "vip-amsterdam": "🇳🇱Amsterdam (VIP)",
                }
     return regions.get(str(region), str(region))
 

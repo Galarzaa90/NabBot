@@ -1,11 +1,12 @@
-site_name: 'NabBot'
-site_description: 'A discord bot for the MMO Tibia'
-site_author: 'Allan Galarza'
+site_name: NabBot
+site_description: A Discord bot for the MMO Tibia
+site_author: Allan Galarza
+
 
 theme:
   name: material
   palette:
-    primary: 'deep purple'
+    primary: 'deep-purple'
     accent: 'orange'
   logo: 'assets/images/icon.png'
   favicon: 'assets/images/favicon.ico'
@@ -47,14 +48,16 @@ pages:
     - FAQ: faq.md
     - Commands:
       - Overview: commands/index.md
+      - Admin commands: commands/admin.md
       - General commands: commands/general.md
+      - Loot commands: commands/loot.md
+      - Mod commands: commands/mod.md
+      - Owner commands: commands/owner.md
+      - Roles commands: commands/roles.md
+      - Settings commands: commands/settings.md
       - Tibia commands: commands/tibia.md
       - TibiaWiki commands: commands/tibiawiki.md
       - Tracking commands: commands/tracking.md
-      - Loot commands: commands/loot.md
-      - Mod commands: commands/mod.md
-      - Admin commands: commands/admin.md
-      - Owner commands: commands/owner.md
     - Customizing:
       - Configuration: customizing/config.md
       - Messages: customizing/messages.md

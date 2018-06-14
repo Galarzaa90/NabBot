@@ -7,17 +7,13 @@ ask_channel_name: ask-nabbot
 ask_channel_delete: true
 log_channel_name: server-log
 
-# The prefix used for commands, this shouldn't overlap with prefixes of other bots in the same server.
-# It's possible to have multiple command prefixes, but it's not recommended to expand this.
+# The default prefix(es) for commands
+# This setting will affect all servers, but each server can configure its own command prefix,
+# including removing the global ones
+# Mentioning the bot is always a command prefix
 command_prefix:
   - "/"
 
-# If this is enabled, commands can also be called mentioning the bot and then the command name, e.g. @NabBot share 50
-# If this is enabled, and command_prefix is left empty, the bot will only answer to commands via mentions
-# Example:
-# command_prefix: []
-# command_mention: true
-command_mention: false
 
 # Lite mode:
 # If lite is enabled, all user database related functions are disabled.
@@ -25,7 +21,8 @@ command_mention: false
 # /whois, /deaths have limited functionality
 # Level up and deaths announcements are disabled
 lite_servers:
-  - 253338519143972864
+  - 140054830252163072
+  - 441991938200305674
 
 # Add extra features by adding your own cogs.
 # Example: extra/twitch.py would be added as 'extra.twitch'
@@ -47,7 +44,7 @@ welcome_pm: |
   your level ups and deaths!
 
 # Owners can use mods commands and more sensible commands like /shutdown and restart
-# Mods can register chars and users and use makesay1
+# By default, the bot's application owner is always considered, this array allows adding extra owners
 owner_ids:
   - 162060569803751424
   - 162070610556616705
@@ -66,7 +63,7 @@ loot_max: 6
 announce_threshold: 30
 
 # Delay inbreed server checks
-online_scan_interval: 40
+online_scan_interval: 90
 
 # Delay in between player death checks in seconds
 death_scan_interval: 15

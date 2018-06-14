@@ -8,6 +8,7 @@ from typing import Union, List, Optional, Dict
 import discord
 from discord.ext import commands
 
+from utils import context
 from utils.config import config
 from utils.database import init_database, userDatabase, get_server_property
 from utils.discord import get_region_string, is_private, get_user_avatar
@@ -17,16 +18,22 @@ from utils.help_format import NabHelpFormat
 from utils.tibia import populate_worlds, tibia_worlds, get_voc_abb_and_emoji
 
 initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot",
-                "cogs.tibiawiki"}
+                "cogs.tibiawiki", "cogs.roles", "cogs.settings"}
+
+
+def _prefix_callable(bot, msg):
+    user_id = bot.user.id
+    base = [f'<@!{user_id}> ', f'<@{user_id}> ']
+    if msg.guild is None:
+        base.extend(config.command_prefix)
+    else:
+        base.extend(get_server_property(msg.guild.id, "prefixes", deserialize=True, default=config.command_prefix))
+    return base
 
 
 class NabBot(commands.Bot):
     def __init__(self):
-        if config.command_mention:
-            command_prefix = commands.when_mentioned_or(*config.command_prefix)
-        else:
-            command_prefix = config.command_prefix
-        super().__init__(command_prefix=command_prefix, description='Mission: Destroy all humans.', pm_help=True,
+        super().__init__(command_prefix=_prefix_callable, description='Mission: Destroy all humans.', pm_help=True,
                          formatter=NabHelpFormat(), case_insensitive=True)
         self.remove_command("help")
         self.members = {}
@@ -36,7 +43,7 @@ class NabBot(commands.Bot):
         # A list version is created from the dictionary
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
-        self.__version__ = "1.1.1"
+        self.__version__ = "1.2.0"
 
     async def on_ready(self):
         """Called when the bot is ready."""
@@ -64,48 +71,43 @@ class NabBot(commands.Bot):
 
         log.info('Bot is online and ready')
 
-    async def on_command(self, ctx: commands.Context):
-        """Called when a command is used. Used to log commands on a file."""
-        if isinstance(ctx.channel, discord.abc.PrivateChannel):
-            destination = 'PM'
-        else:
-            destination = '#{0.channel.name} ({0.guild.name})'.format(ctx)
-        log.info('Command by {0.author.display_name} in {1}: {0.message.content}'.format(ctx, destination))
-
-    async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):
-        """Handles command errors"""
-        if isinstance(error, commands.errors.CommandNotFound):
-            return
-        elif isinstance(error, commands.NoPrivateMessage):
-            await ctx.send("This command cannot be used in private messages.")
-        elif isinstance(error, commands.CommandInvokeError):
-            if isinstance(error.original, discord.HTTPException):
-                log.error(f"Reply to '{ctx.message.clean_content}' was too long.")
-                await ctx.send("Sorry, the message was too long to send.")
-                return
-            log.error(f"Exception in command: {ctx.command.qualified_name}", exc_info=error.original)
-            # Bot returns error message on discord if an owner called the command
-            if ctx.author.id in config.owner_ids:
-                await ctx.send('```Py\n{0.__class__.__name__}: {0}```'.format(error.original))
-
     async def on_message(self, message: discord.Message):
         """Called every time a message is sent on a visible channel."""
         # Ignore if message is from any bot
         if message.author.bot:
             return
 
-        ctx = await self.get_context(message)
+        ctx = await self.get_context(message, cls=context.NabCtx)
         if ctx.command is not None:
             await self.invoke(ctx)
             return
-        # Delete messages that are not commands in ask-nabbot (if enabled)
-        if config.ask_channel_delete and not is_private(message.channel) \
-                and message.channel.name == config.ask_channel_name:
-            try:
-                await message.delete()
-            except discord.Forbidden:
-                # Bot doesn't have permission to delete message
-                pass
+        # This is a PM, no further info needed
+        if message.guild is None:
+            return
+        server_delete = get_server_property(message.guild.id, "commandsonly", is_int=True)
+        global_delete = config.ask_channel_delete
+        if (server_delete is None and global_delete) or server_delete:
+            if ctx.is_askchannel:
+                try:
+                    await message.delete()
+                except discord.Forbidden:
+                    # Bot doesn't have permission to delete message
+                    pass
+
+    async def on_command_error(self, ctx: context.NabCtx, error):
+        """Handles command errors"""
+        if isinstance(error, commands.errors.CommandNotFound):
+            return
+        elif isinstance(error, commands.NoPrivateMessage):
+            await ctx.send(error)
+        elif isinstance(error, commands.CommandInvokeError):
+            if isinstance(error.original, discord.HTTPException):
+                log.error(f"Reply to '{ctx.message.clean_content}' was too long.")
+                await ctx.send("Sorry, the message was too long to send.")
+                return
+            log.error(f"Exception in command: {ctx.message.clean_content}", exc_info=error.original)
+            await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
+                           f'{error.original}```')
 
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
@@ -140,14 +142,12 @@ class NabBot(commands.Bot):
         else:
             self.members[member.id] = [member.guild.id]
 
-        server_welcome = get_server_property("welcome", member.guild.id, "")
+        server_welcome = get_server_property(member.guild.id, "welcome", default="")
         pm = (config.welcome_pm+"\n"+server_welcome).format(user=member, server=member.guild, bot=self.user,
                                                             owner=member.guild.owner)
 
-        embed = discord.Embed(description="{0.mention} joined.".format(member))
-        icon_url = get_user_avatar(member)
-        embed.colour = discord.Colour.green()
-        embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
+        embed = discord.Embed(description="{0.mention} joined.".format(member), color=discord.Color.green())
+        embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member), icon_url=get_user_avatar(member))
 
         # If server is not tracking worlds, we don't check the database
         if member.guild.id in config.lite_servers or self.tracked_worlds.get(member.guild.id) is None:
@@ -173,7 +173,10 @@ class NabBot(commands.Bot):
                 c.close()
 
         await self.send_log_message(member.guild, embed=embed)
-        await member.send(pm)
+        try:
+            await member.send(pm)
+        except discord.Forbidden:
+            pass
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
@@ -181,10 +184,8 @@ class NabBot(commands.Bot):
         self.members[member.id].remove(member.guild.id)
         bot_member = member.guild.me  # type: discord.Member
 
-        embed = discord.Embed(description="Left the server or was kicked")
-        icon_url = get_user_avatar(member)
-        embed.set_author(name="{0.name}#{0.discriminator}".format(member), icon_url=icon_url)
-        embed.colour = discord.Colour(0xffff00)
+        embed = discord.Embed(description="Left the server or was kicked", colour=discord.Colour(0xffff00))
+        embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member), icon_url=get_user_avatar(member))
 
         # If bot can see audit log, he can see if it was a kick or member left on it's own
         if bot_member.guild_permissions.view_audit_log:
@@ -195,33 +196,26 @@ class NabBot(commands.Bot):
                     break
                 if entry.target.id == member.id:
                     embed.description = "Kicked"
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
+                                     icon_url=get_user_avatar(entry.user))
                     embed.colour = discord.Colour(0xff0000)
                     if entry.reason:
                         embed.description += f"\n**Reason:** {entry.reason}"
-                    log.info("{0.display_name} (ID:{0.id}) was kicked from {0.guild.name} by {1.display_name}"
-                             .format(member, entry.user))
                     await self.send_log_message(member.guild, embed=embed)
                     return
             embed.description = "Left the server"
-            log.info("{0.display_name} (ID:{0.id}) left {0.guild.name}".format(member))
             await self.send_log_message(member.guild, embed=embed)
             return
         # Otherwise, we are not certain
-        log.info("{0.display_name} (ID:{0.id}) left or was kicked from {0.guild.name}".format(member))
         await self.send_log_message(member.guild, embed=embed)
 
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
         now = dt.datetime.utcnow()
-        log_message = "{1.name}#{1.discriminator} (ID:{1.id}) was banned from {0.name}".format(guild, user)
         bot_member = guild.me  # type: discord.Member
 
-        embed = discord.Embed(description="Banned")
-        icon_url = get_user_avatar(user)
-        embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=icon_url)
-        embed.colour = discord.Colour(0x7a0d0d)
+        embed = discord.Embed(description="Banned", color=discord.Color(0x7a0d0d))
+        embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=get_user_avatar(user))
 
         # If bot can see audit log, we can get more details of the ban
         if bot_member.guild_permissions.view_audit_log:
@@ -231,25 +225,20 @@ class NabBot(commands.Bot):
                     # After is broken in the API, so we must check if entry is too old.
                     break
                 if entry.target.id == user.id:
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
+                                     icon_url=get_user_avatar(entry.user))
                     if entry.reason:
                         embed.description += f"\n**Reason:** {entry.reason}"
-                    log_message += f"by {entry.user.name}"
                     break
-        log.warning(log_message)
         await self.send_log_message(guild, embed=embed)
 
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
         now = dt.datetime.utcnow()
-        log_message = "{1.name}#{1.discriminator} (ID:{1.id}) was unbanned from {0.name}".format(guild, user)
         bot_member = guild.me  # type: discord.Member
 
-        embed = discord.Embed(description="Unbanned")
-        icon_url = get_user_avatar(user)
-        embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=icon_url)
-        embed.colour = discord.Colour(0xff9000)
+        embed = discord.Embed(description="Unbanned", color=discord.Color(0xff9000))
+        embed.set_author(name="{0.name}#{0.discriminator} (ID {0.id})".format(user), icon_url=get_user_avatar(user))
 
         if bot_member.guild_permissions.view_audit_log:
             async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.unban,
@@ -258,23 +247,10 @@ class NabBot(commands.Bot):
                     # After is broken in the API, so we must check if entry is too old.
                     break
                 if entry.target.id == user.id:
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
-                    log_message += f"by {entry.user.name}"
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
+                                     icon_url=get_user_avatar(entry.user))
                     break
-        log.warning(log_message)
         await self.send_log_message(guild, embed=embed)
-
-    async def on_message_delete(self, message: discord.Message):
-        """Called every time a message is deleted."""
-        if message.channel.name == config.ask_channel_name:
-            return
-
-        attachment = ""
-        if message.attachments:
-            attachment = "\n\tAttached file: "+message.attachments[0]['filename']
-        log.info("A message by @{0.author.display_name} was deleted in #{0.channel.name} ({0.guild.name}):\n"
-                 "\t'{0.clean_content}'{1}".format(message, attachment))
 
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         """Called every time a member is updated"""
@@ -282,9 +258,8 @@ class NabBot(commands.Bot):
         guild = after.guild
         bot_member = guild.me
 
-        embed = discord.Embed(description=f"{after.mention}: ")
-        embed.set_author(name=f"{after.name}#{after.discriminator}", icon_url=get_user_avatar(after))
-        embed.colour = discord.Colour.blue()
+        embed = discord.Embed(description=f"{after.mention}: ", color=discord.Colour.blue())
+        embed.set_author(name=f"{after.name}#{after.discriminator} (ID: {after.id})", icon_url=get_user_avatar(after))
         changes = True
         if f"{before.name}#{before.discriminator}" != f"{after.name}#{after.discriminator}":
             embed.description += "Name changed from **{0.name}#{0.discriminator}** to **{1.name}#{1.discriminator}**."\
@@ -321,9 +296,8 @@ class NabBot(commands.Bot):
         guild = after
         bot_member = guild.me
 
-        embed = discord.Embed()
+        embed = discord.Embed(color=discord.Colour(value=0x9b3ee8))
         embed.set_author(name=after.name, icon_url=after.icon_url)
-        embed.colour = discord.Colour(value=0x9b3ee8)
 
         changes = True
         if before.name != after.name:
@@ -446,7 +420,10 @@ class NabBot(commands.Bot):
         channel = self.get_channel_by_name(config.log_channel_name, guild)
         if channel is None:
             return
-        await channel.send(content=content, embed=embed)
+        try:
+            await channel.send(content=content, embed=embed)
+        except discord.HTTPException:
+            pass
 
     def get_channel_by_name(self, name: str, guild: discord.Guild) -> discord.TextChannel:
         """Finds a channel by name on all the servers the bot is in.
@@ -466,6 +443,15 @@ class NabBot(commands.Bot):
         guild = discord.utils.find(lambda m: m.name.lower() == name.lower(), self.guilds)
         return guild
 
+    async def show_help(self, ctx, command=None):
+        """Shows the help command for the specified command if given.
+        If no command is given, then it'll show help for the current
+        command.
+        """
+        cmd = self.get_command('help')
+        command = command or ctx.command.qualified_name
+        await ctx.invoke(cmd, command=command)
+
     @staticmethod
     def get_top_channel(guild: discord.Guild, writeable_only: bool=False) -> Optional[discord.TextChannel]:
         """Returns the highest text channel on the list.
@@ -480,45 +466,6 @@ class NabBot(commands.Bot):
             if channel.permissions_for(guild.me).send_messages:
                 return channel
         return None
-
-    async def wait_for_confirmation_reaction(self, ctx: commands.Context, message: discord.Message,
-                                             timeout: float=120) -> Optional[bool]:
-        """Waits for the command author (ctx.author) to reply with a Y or N reaction
-
-        Returns True if the user reacted with Y
-        Returns False if the user reacted with N
-        Returns None if the user didn't react at all"""
-        YES_REACTION = '\U0001f1fe'
-        NO_REACTION = '\U0001f1f3'
-        try:
-            await message.add_reaction(YES_REACTION)
-            await message.add_reaction(NO_REACTION)
-        except discord.Forbidden:
-            log.error("wait_for_confirmation_reaction: No permission to add reactions.")
-            return None
-
-        def check_react(reaction: discord.Reaction, user: discord.User):
-            if reaction.message.id != message.id:
-                return False
-            if user.id != ctx.author.id:
-                return False
-            if reaction.emoji not in [NO_REACTION, YES_REACTION]:
-                return False
-            return True
-
-        try:
-            react = await self.wait_for("reaction_add", timeout=timeout, check=check_react)
-            if react[0].emoji == NO_REACTION:
-                return False
-        except asyncio.TimeoutError:
-            return None
-        finally:
-            if not is_private(ctx.channel):
-                try:
-                    await message.clear_reactions()
-                except:
-                    pass
-        return True
 
     def reload_worlds(self):
         """Refresh the world list from the database

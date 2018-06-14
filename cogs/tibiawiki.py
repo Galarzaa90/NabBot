@@ -5,199 +5,38 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils.config import config
 from utils.discord import is_private, FIELD_VALUE_LIMIT
 from utils.general import join_list
 from utils.messages import split_message
-from utils.emoji import EMOJI
+from utils.paginator import Pages, CannotPaginate
 from utils.tibia import get_map_area
 from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
-    get_key, search_key, get_rashid_info, get_mapper_link
+    get_key, search_key, get_rashid_info, get_mapper_link, get_bestiary_classes, get_bestiary_creatures
 
 
 class TibiaWiki:
-    """TibiaWiki related commands."""
+    """Commands that show information about Tibia, provided by TibiaWiki.
+
+    The information is read generated using [tibiawiki-sql](https://github.com/Galarzaa90/tibiawiki-sql)."""
 
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    @commands.command(aliases=['checkprice', 'itemprice'])
-    async def item(self, ctx, *, name: str = None):
-        """Shows an item's information
+    async def __error(self, ctx, error):
+        if isinstance(error, commands.UserInputError):
+            cmd = ctx.bot.get_command('help')
+            command = ctx.command.qualified_name
+            await ctx.invoke(cmd, command=command)
 
-        Shows the item's sprite, attributes, buy and sell offers and creature drops."""
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if name is None:
-            await ctx.send("Tell me the name of the item you want to search.")
-            return
-        item = get_item(name)
-        if item is None:
-            await ctx.send("I couldn't find an item with that name.")
-            return
-
-        if type(item) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(item))
-            await ctx.send("I couldn't find that item, maybe you meant one of these?", embed=embed)
-            return
-
-        long = is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name
-        embed = self.get_item_embed(ctx, item, long)
-
-        # Attach item's image only if the bot has permissions
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if permissions.attach_files or item["image"] != 0:
-            filename = re.sub(r"[^A-Za-z0-9]", "", item["name"]) + ".gif"
-            embed.set_thumbnail(url=f"attachment://{filename}")
-            await ctx.send(file=discord.File(item["image"], f"{filename}"), embed=embed)
-        else:
-            await ctx.send(embed=embed)
-
-    @commands.command(aliases=['mon', 'mob', 'creature'])
-    async def monster(self, ctx, *, name: str = None):
-        """Shows a monster's information
-
-        Shows the monster's image, attributes and loot"""
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if name is None:
-            await ctx.send("Tell me the name of the monster you want to search.")
-            return
-        if is_private(ctx.channel):
-            bot_member = self.bot.user
-        else:
-            bot_member = self.bot.get_member(self.bot.user.id, ctx.guild)
-        if name.lower() == bot_member.display_name.lower():
-            await ctx.send(random.choice(["**" + bot_member.display_name + "** is too strong for you to hunt!",
-                                          "Sure, you kill *one* child and suddenly you're a monster!",
-                                          "I'M NOT A MONSTER",
-                                          "I'm a monster, huh? I'll remember that, human..." + EMOJI[":flame:"],
-                                          "You misspelled *future ruler of the world*.",
-                                          "You're not a good person. You know that, right?",
-                                          "I guess we both know that isn't going to happen.",
-                                          "You can't hunt me.",
-                                          "That's funny... If only I was programmed to laugh."]))
-            return
-        monster = get_monster(name)
-        if monster is None:
-            await ctx.send("I couldn't find a monster with that name.")
-            return
-
-        if type(monster) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(monster))
-            await ctx.send("I couldn't find that creature, maybe you meant one of these?", embed=embed)
-            return
-
-        long = is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name
-        embed = self.get_monster_embed(ctx, monster, long)
-
-        # Attach monster's image only if the bot has permissions
-        if permissions.attach_files and monster["image"] != 0:
-            filename = re.sub(r"[^A-Za-z0-9]", "", monster["name"]) + ".gif"
-            embed.set_thumbnail(url=f"attachment://{filename}")
-            await ctx.send(file=discord.File(monster["image"], f"{filename}"), embed=embed)
-        else:
-            await ctx.send(embed=embed)
-
-    @commands.command(aliases=["npcs"])
-    async def npc(self, ctx, *, name: str = None):
-        """Shows information about a NPC
-
-        Shows a NPC's picture, trade offers and location."""
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if name is None:
-            await ctx.send("Tell me the name of a NPC.")
-            return
-
-        npc = get_npc(name)
-
-        if npc is None:
-            await ctx.send("I don't know any NPC with that name.")
-            return
-
-        if type(npc) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(npc))
-            await ctx.send("I couldn't find that NPC, maybe you meant one of these?", embed=embed)
-            return
-
-        long = is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name
-        embed = self.get_npc_embed(ctx, npc, long)
-        # Attach spell's image only if the bot has permissions
-        if permissions.attach_files:
-            files = []
-            if npc["image"] != 0:
-                filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + ".png"
-                embed.set_thumbnail(url=f"attachment://{filename}")
-                files.append(discord.File(npc["image"], filename))
-            if None not in [npc["x"], npc["y"], npc["z"]]:
-                map_filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + "-map.png"
-                map_image = get_map_area(npc["x"], npc["y"], npc["z"])
-                embed.set_image(url=f"attachment://{map_filename}")
-                embed.add_field(name="Location", value=f"[Mapper link]({get_mapper_link(npc['x'],npc['y'],npc['z'])})",
-                                inline=False)
-                files.append(discord.File(map_image, map_filename))
-            await ctx.send(files=files, embed=embed)
-        else:
-            await ctx.send(embed=embed)
-
-    @commands.command()
-    async def spell(self, ctx, *, name: str = None):
-        """Shows information about a spell
-
-        Shows a spell's icon, general information, price, npcs that teach it."""
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if name is None:
-            await ctx.send("Tell me the name or words of a spell.")
-            return
-
-        spell = get_spell(name)
-
-        if spell is None:
-            await ctx.send("I don't know any spell with that name or words.")
-            return
-
-        if type(spell) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(spell))
-            await ctx.send("I couldn't find that spell, maybe you meant one of these?", embed=embed)
-            return
-
-        long = is_private(ctx.channel) or ctx.channel.name == config.ask_channel_name
-        embed = self.get_spell_embed(ctx, spell, long)
-
-        # Attach spell's image only if the bot has permissions
-        if permissions.attach_files and spell["image"] != 0:
-            filename = re.sub(r"[^A-Za-z0-9]", "", spell["name"]) + ".gif"
-            embed.set_thumbnail(url=f"attachment://{filename}")
-            await ctx.send(file=discord.File(spell["image"], f"{filename}"), embed=embed)
-        else:
-            await ctx.send(embed=embed)
-
+    # Commands
     @commands.command(aliases=["achiev"])
-    async def achievement(self, ctx, *, name: str = None):
-        """Shows an achievement's information
+    async def achievement(self, ctx, *, name: str):
+        """Displays an achievement's information.
 
         Shows the achievement's grade, points, description, and instructions on how to unlock."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if name is None:
-            await ctx.send("Tell me the name of the achievement you want to check.")
             return
 
         achievement = get_achievement(name)
@@ -216,17 +55,80 @@ class TibiaWiki:
         embed.set_author(name="TibiaWiki",
                          icon_url=WIKI_ICON,
                          url=get_article_url(achievement["name"]))
-        embed.add_field(name="Grade", value=EMOJI[":star:"] * int(achievement["grade"]))
+        embed.add_field(name="Grade", value="⭐" * int(achievement["grade"]))
         embed.add_field(name="Points", value=achievement["points"])
         embed.add_field(name="Spoiler", value=achievement["spoiler"], inline=True)
 
         await ctx.send(embed=embed)
 
-    @commands.group(alises=["keys"], invoke_without_command=True, case_insensitive=True)
-    async def key(self, ctx, number: str = None):
-        """Shows information about a key
+    @commands.command(usage="[class]")
+    async def bestiary(self, ctx, *, _class: str=None):
+        """Displays a category's creatures or all the categories.
 
-        Shows the key's known names, how to obtain it and its uses"""
+        If a category is specified, it will list all the creatures that belong to the category and their level.
+        If no category is specified, it will list all the bestiary categories."""
+        if _class is None:
+            categories = get_bestiary_classes()
+            entries = [f"**{name}** - {count} creatures" for name, count in categories.items()]
+            description = ""
+            title = "Bestiary Classes"
+        else:
+            creatures = get_bestiary_creatures(_class)
+            if not creatures:
+                await ctx.send("There's no class with that name.")
+                return
+            entries = [f"**{name}** - {level}" for name, level in creatures.items()]
+            description = f"Use `{ctx.clean_prefix} monster <name>` to see more info"
+            title = f"Creatures in the {_class.title()} class"
+
+        pages = Pages(ctx, entries=entries, per_page=20 if ctx.long else 10, header=description)
+        pages.embed.title = title
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+    @commands.command(aliases=["itemprice"])
+    async def item(self, ctx, *, name: str):
+        """Displays information about an item.
+
+        Shows who buys and sells the item, what creatures drops it and many attributes.
+
+        The embed is colored if a major loot NPC buys it, so it can be noted at quick glance.
+        Yellow for Rashid, Blue and Green for Djinns and Purple for gems.
+
+        More information is shown if used in private messages or in the command channel."""
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        item = get_item(name)
+        if item is None:
+            await ctx.send("I couldn't find an item with that name.")
+            return
+
+        if type(item) is list:
+            embed = discord.Embed(title="Suggestions", description="\n".join(item))
+            await ctx.send("I couldn't find that item, maybe you meant one of these?", embed=embed)
+            return
+
+        embed = self.get_item_embed(ctx, item, ctx.long)
+
+        # Attach item's image only if the bot has permissions
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if permissions.attach_files or item["image"] != 0:
+            filename = re.sub(r"[^A-Za-z0-9]", "", item["name"]) + ".gif"
+            embed.set_thumbnail(url=f"attachment://{filename}")
+            await ctx.send(file=discord.File(item["image"], f"{filename}"), embed=embed)
+        else:
+            await ctx.send(embed=embed)
+
+    @commands.group(invoke_without_command=True, case_insensitive=True)
+    async def key(self, ctx, number: str):
+        """Displays information about a key.
+
+        Shows the key's known names, how to obtain it and its uses."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -259,17 +161,16 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @key.command(name="search")
-    async def key_search(self, ctx, *, term: str = None):
-        """Searches for a key by keywords
+    async def key_search(self, ctx, *, term: str):
+        """Searches for a key by keywords.
 
-        Search for matches on the key's names, location, origin or uses."""
+        Search for matches on the key's names, location, origin or uses.
+
+        if there are multiple matches, a list is shown.
+        If only one matches, the key's information is shwon directly."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if term is None:
-            await ctx.send("Tell me what do you want to look for.")
             return
 
         keys = search_key(term)
@@ -297,6 +198,132 @@ class TibiaWiki:
         else:
             await ctx.send(embed=embed)
 
+    @commands.command(aliases=['mob', 'creature'])
+    async def monster(self, ctx, *, name: str):
+        """Displays information about a monster.
+
+        Shows the monster's attributes, resistances, loot and more.
+
+        More information is displayed if used on a private message or in the command channel."""
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        if name is None:
+            await ctx.send("Tell me the name of the monster you want to search.")
+            return
+        if is_private(ctx.channel):
+            bot_member = self.bot.user
+        else:
+            bot_member = self.bot.get_member(self.bot.user.id, ctx.guild)
+        if name.lower() == bot_member.display_name.lower():
+            await ctx.send(random.choice(["**" + bot_member.display_name + "** is too strong for you to hunt!",
+                                          "Sure, you kill *one* child and suddenly you're a monster!",
+                                          "I'M NOT A MONSTER",
+                                          "I'm a monster, huh? I'll remember that, human...🔥",
+                                          "You misspelled *future ruler of the world*.",
+                                          "You're not a good person. You know that, right?",
+                                          "I guess we both know that isn't going to happen.",
+                                          "You can't hunt me.",
+                                          "That's funny... If only I was programmed to laugh."]))
+            return
+        monster = get_monster(name)
+        if monster is None:
+            await ctx.send("I couldn't find a monster with that name.")
+            return
+
+        if type(monster) is list:
+            embed = discord.Embed(title="Suggestions", description="\n".join(monster))
+            await ctx.send("I couldn't find that creature, maybe you meant one of these?", embed=embed)
+            return
+
+        embed = self.get_monster_embed(ctx, monster, ctx.long)
+
+        # Attach monster's image only if the bot has permissions
+        if permissions.attach_files and monster["image"] != 0:
+            filename = re.sub(r"[^A-Za-z0-9]", "", monster["name"]) + ".gif"
+            embed.set_thumbnail(url=f"attachment://{filename}")
+            await ctx.send(file=discord.File(monster["image"], f"{filename}"), embed=embed)
+        else:
+            await ctx.send(embed=embed)
+
+    @commands.command()
+    async def npc(self, ctx, *, name: str):
+        """Displays information about a NPC.
+
+        Shows the NPC's item offers, their location and their travel destinations.
+
+        More information is displayed if used on private messages or the command channel."""
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        npc = get_npc(name)
+
+        if npc is None:
+            await ctx.send("I don't know any NPC with that name.")
+            return
+
+        if type(npc) is list:
+            embed = discord.Embed(title="Suggestions", description="\n".join(npc))
+            await ctx.send("I couldn't find that NPC, maybe you meant one of these?", embed=embed)
+            return
+
+        embed = self.get_npc_embed(ctx, npc, ctx.long)
+        # Attach spell's image only if the bot has permissions
+        if permissions.attach_files:
+            files = []
+            if npc["image"] != 0:
+                filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + ".png"
+                embed.set_thumbnail(url=f"attachment://{filename}")
+                files.append(discord.File(npc["image"], filename))
+            if None not in [npc["x"], npc["y"], npc["z"]]:
+                map_filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + "-map.png"
+                map_image = get_map_area(npc["x"], npc["y"], npc["z"])
+                embed.set_image(url=f"attachment://{map_filename}")
+                embed.add_field(name="Location", value=f"[Mapper link]({get_mapper_link(npc['x'],npc['y'],npc['z'])})",
+                                inline=False)
+                files.append(discord.File(map_image, map_filename))
+            await ctx.send(files=files, embed=embed)
+        else:
+            await ctx.send(embed=embed)
+
+    @commands.command(usage="<name/words>")
+    async def spell(self, ctx, *, name_or_words: str):
+        """Displays information about a spell.
+
+        Shows the spell's attributes, NPCs that teach it and more.
+
+        More information is displayed if used on private messages or the command channel."""
+        permissions = ctx.channel.permissions_for(ctx.me)
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        spell = get_spell(name_or_words)
+
+        if spell is None:
+            await ctx.send("I don't know any spell with that name or words.")
+            return
+
+        if type(spell) is list:
+            embed = discord.Embed(title="Suggestions", description="\n".join(spell))
+            await ctx.send("I couldn't find that spell, maybe you meant one of these?", embed=embed)
+            return
+
+        embed = self.get_spell_embed(ctx, spell, ctx.long)
+
+        # Attach spell's image only if the bot has permissions
+        if permissions.attach_files and spell["image"] != 0:
+            filename = re.sub(r"[^A-Za-z0-9]", "", spell["name"]) + ".gif"
+            embed.set_thumbnail(url=f"attachment://{filename}")
+            await ctx.send(file=discord.File(spell["image"], f"{filename}"), embed=embed)
+        else:
+            await ctx.send(embed=embed)
+
+    # Helper methods
     @staticmethod
     def get_monster_embed(ctx, monster, long):
         """Gets the monster embeds to show in /mob command
@@ -316,16 +343,12 @@ class TibiaWiki:
         attributes = {"summon": "Summonable",
                       "convince": "Convinceable",
                       "illusionable": "Illusionable",
-                      "pushable" : "Pushable",
+                      "pushable": "Pushable",
                       "paralysable": "Paralysable",
                       "see_invisible": "Sees Invisible"
-                     }
+                      }
 
-        def bool_emoji(value):
-            if bool(value):
-                return EMOJI[":white_check_mark:"]
-            return EMOJI[":negative_squared_cross_mark:"]
-        attributes = "\n".join([f"{bool_emoji(monster[x])} {repl}" for x, repl in attributes.items()
+        attributes = "\n".join([f"{ctx.tick(monster[x])} {repl}" for x, repl in attributes.items()
                                 if monster[x] is not None])
         embed.add_field(name="Attributes", value="Unknown" if not attributes else attributes)
         elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth", "drown", "lifedrain"]
@@ -356,10 +379,10 @@ class TibiaWiki:
 
         if monster["bestiary_class"] is not None:
             difficulties = {
-                "Trivial": EMOJI[":star:"],
-                "Easy": EMOJI[":star:"]*2,
-                "Medium": EMOJI[":star:"]*3,
-                "Hard": EMOJI[":star:"]*4
+                "Trivial": "⭐",
+                "Easy": "⭐⭐",
+                "Medium": "⭐⭐⭐",
+                "Hard": "⭐⭐⭐⭐"
             }
             difficulty = difficulties.get(monster["bestiary_level"], f"({monster['bestiary_level']})")
             embed.add_field(name="Bestiary Class", value=f"{monster['bestiary_class']}\n{difficulty}")
@@ -392,14 +415,13 @@ class TibiaWiki:
                     name = "\u200F"
                 embed.add_field(name=name, value="`" + loot + "`")
         if monster["loot"] and not long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
+            ask_channel = ctx.ask_channel_name
             if ask_channel:
-                askchannel_string = " or use #" + ask_channel.name
+                askchannel_string = " or use #" + ask_channel
             else:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         return embed
-
 
     @staticmethod
     def get_key_embed(key):
@@ -541,9 +563,9 @@ class TibiaWiki:
             embed.add_field(name=name, value=value, inline=not long)
 
         if npcs_too_long or drops_too_long or quests_too_long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
+            ask_channel = ctx.ask_channel_name
             if ask_channel:
-                askchannel_string = " or use #" + ask_channel.name
+                askchannel_string = " or use #" + ask_channel
             else:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
@@ -620,9 +642,9 @@ class TibiaWiki:
         embed.description = description
 
         if too_long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
+            ask_channel = ctx.ask_channel_name
             if ask_channel:
-                askchannel_string = " or use #" + ask_channel.name
+                askchannel_string = " or use #" + ask_channel
             else:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
@@ -728,13 +750,14 @@ class TibiaWiki:
                     name = f"Teaches ({voc.title()}s)" if i == 0 else "\u200F"
                     embed.add_field(name=name, value=split_field, inline=not len(fields) > 1)
         if too_long:
-            ask_channel = ctx.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
+            ask_channel = ctx.ask_channel_name
             if ask_channel:
-                askchannel_string = " or use #" + ask_channel.name
+                askchannel_string = " or use #" + ask_channel
             else:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         return embed
+
 
 
 def setup(bot):

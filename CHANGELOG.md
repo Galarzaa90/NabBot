@@ -1,5 +1,44 @@
 # Changelog
 
+## Version 1.2.0 (Unreleased)
+- New `/help` style, with reaction pagination.
+- New `/quote` command, shows a message's content given an id.
+- New `/roleinfo` command, shows a role's detailed information.
+- New `/userinfo` command, shows a user's detailed information.
+- New `/ping` command, shows the bot's response times.
+- New `/bestiary` command, shows the bestiary classes or creatures that belong to a class.
+- Command prefix is now configurable per server
+- Mention prefix command is now always enabled (e.g. `@NabBot help`)
+- Improvements to the watched list task
+- Made some visual changes to `/serverinfo`
+- Moved role related commands to new Roles cog.
+- `/roles` now sorts results by position and shows members with the role.
+- New command: `/settings`, to change all server specific settings:
+    - `/setworld` moved to `/settings world`.
+    - `/setleveldeathschannel` moved to `/settings levelschannel`.
+    - `/seteventschannel` moved to `/settings eventschannel`
+    - News channel is now configured separately from Events channel: `/settings newschannel`
+    - Command channel (ask-nabbot) is now configurable.
+    - Tibia news announcements and Events announcements can be disabled entirely.
+- Many changes to command names and aliases:
+    - `/item`: `checkprice` alias removed.
+    - `/monster`: `mon` alias removed.
+    - `/spell`: `spells` alias added.
+    - `/server`: `server_info` alias removed.
+    - `/guild`: `guildcheck` alias removed.
+    - `/role`: Renamed to `/rolemembers`.
+    - `/server`: Renamed to `/serverinfo`.
+    - `/deaths`: `death` alias removed.
+    - `/house`: `houses`, `gh` aliases removed.
+    - `/levels`: `lvl`, `level` and `lvls` aliases removed.
+    - `/time`: `ss` alias removed.
+    - `/whois`: `player`, `checkplayer` aliases removed
+    - `/npc`: `npcs` alias removed.
+    - `/key`: `keys` alias removed.
+    - `/spell`: `spell` alias removed.
+    - `admins_message`: renamed to `adminsmessage`, removed all aliases, added `notifyadmins`
+    - Many more aliases changes
+
 ## Version 1.1.1 (2018-06-12)
 - Added missing items from the Feyrist area to the loot database
 - Fixed an issue causing /loot update to only work the second time it was called

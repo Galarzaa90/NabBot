@@ -13,9 +13,9 @@ from nabbot import NabBot
 from utils import checks
 from utils.config import config
 from utils.database import tibiaDatabase, lootDatabase
-from utils.discord import FIELD_VALUE_LIMIT, is_private
+from utils.discord import FIELD_VALUE_LIMIT
+from utils.general import log
 from utils.messages import split_message
-from utils.emoji import EMOJI
 from utils.tibiawiki import get_item
 
 slot = Image.open("./images/slot.png")
@@ -38,12 +38,21 @@ class Loot:
         self.parsing_count = 0
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
-    @checks.is_not_lite()
     async def loot(self, ctx):
-        """Scans a loot image and returns it's loot value
+        """Scans an image of a container looking for Tibia items and shows an approximate loot value.
 
-        The bot will return a list of the items found along with their values, grouped by NPC.
-        If the image is compressed or was taken using Tibia's software render, the bot might struggle finding matches."""
+        An image must be attached with the message. The prices used are NPC prices only.
+
+        The image requires the following:
+
+        - Must be a screenshot of inventory windows (backpacks, depots, etc).
+        - Have the original size, the image can't be scaled up or down, however it can be cropped.
+        - The image must show the complete slot.
+        - JPG images are usually not recognized
+        - PNG images with low compression settings take longer to be scanned or aren't detected at all.
+
+        The bot shows the total loot value and a list of the items detected, separated into the NPC that buy them.
+        """
         author = ctx.author
         if self.parsing_count >= config.loot_max:
             await ctx.send("Sorry, I am already parsing too many loot images, "
@@ -62,11 +71,12 @@ class Loot:
         file_name = attachment.url.split("/")[len(attachment.url.split("/")) - 1]
         file_url = attachment.url
         try:
-            with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession() as session:
                 async with session.get(attachment.url) as resp:
                     original_image = await resp.read()
             loot_image = Image.open(io.BytesIO(bytearray(original_image))).convert("RGBA")
         except Exception:
+            log.exception("loot: Couldn't parse image")
             await ctx.send("Either that wasn't an image or I failed to load it, please try again.")
             return
 
@@ -74,7 +84,7 @@ class Loot:
         await ctx.send("I've begun parsing your image, **@{0.display_name}**. "
                        "Please be patient, this may take a few moments.".format(author))
         progress_msg = await ctx.send("Status: ...")
-        progress_bar = await ctx.send(EMOJI[":black_large_square:"] * 10)
+        progress_bar = await ctx.send("⬛" * 10)
 
         loot_list, loot_image_overlay = await loot_scan(loot_image, file_name, progress_msg, progress_bar)
         self.parsing_count -= 1
@@ -115,7 +125,7 @@ class Loot:
                             result = c.fetchone()
                         if result:
                             has_marketable = True
-                            emoji = EMOJI[":gem:"]
+                            emoji = "💎"
                         else:
                             emoji = ""
                         value += "x{1} {0}{3} \u2192 {2:,}gp total.\n".format(
@@ -142,7 +152,7 @@ class Loot:
 
         long_message += "\nThe total loot value is: **{0:,}** gold coins.".format(total_value)
         if has_marketable:
-            long_message += f"\n{EMOJI[':gem:']} Items marked with this are used in imbuements and might be worth " \
+            long_message += f"\n💎 Items marked with this are used in imbuements and might be worth " \
                             f"more in the market."
         embed.description = long_message
         embed.set_image(url="attachment://results.png")
@@ -150,33 +160,19 @@ class Loot:
         # Short message
         short_message = f"I've finished parsing your image {author.mention}." \
                         f"\nThe total value is {total_value:,} gold coins."
-        ask_channel = self.bot.get_channel_by_name(config.ask_channel_name, ctx.guild)
-        if not is_private(ctx.channel) and ctx.channel != ask_channel:
+        if not ctx.long:
             short_message += "\nI've also sent you a PM with detailed information."
 
         # Send on ask_channel or PM
-        if ctx.channel == ask_channel:
+        if ctx.long:
             await ctx.send(short_message, embed=embed, file=discord.File(loot_image_overlay, "results.png"))
         else:
             await ctx.send(short_message)
             await ctx.author.send(file=discord.File(loot_image_overlay, "results.png"), embed=embed)
 
-    @loot.command(name="show")
     @checks.is_owner()
-    @checks.is_not_lite()
-    async def loot_show(self, ctx, *, item=None):
-        """Shows item info from loot database."""
-        result, item = await item_show(item)
-        if result is None:
-            await ctx.send("There's no item with that name.")
-            return
-        await ctx.send("Name: {name}, Group: {group}, Priority: {priority}, Value: {value:,}".format(**item),
-                       file=discord.File(result, "results.png"))
-
     @loot.command(name="add")
-    @checks.is_owner()
-    @checks.is_not_lite()
-    async def loot_add(self, ctx, *, item=None):
+    async def loot_add(self, ctx, *, item: str):
         """Adds an image to an existing loot item in the database."""
         if len(ctx.message.attachments) == 0:
             await ctx.send("You need to upload the image you want to add to this item.")
@@ -208,22 +204,15 @@ class Loot:
                                file=discord.File(result, "results.png"))
             return
 
-    @loot.command(name="remove", aliases=["delete", "del"])
-    @checks.is_owner()
-    @checks.is_not_lite()
-    async def loot_remove(self, ctx, *, item=None):
-        """Adds an image to an existing loot item in the database."""
-        result = await item_remove(item)
-        if result is None:
-            await ctx.send("Couldn't find an item with that name.")
-            return
-        else:
-            await ctx.send("Item \"" + result + "\" removed from loot database.")
-            return
+    @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
+    async def loot_legend(self, ctx):
+        """Shows the meaning of the overlayed icons."""
+        with open("./images/legend.png", "r+b") as f:
+            await ctx.send(file=discord.File(f))
+            f.close()
 
-    @loot.command(name="new")
     @checks.is_owner()
-    @checks.is_not_lite()
+    @loot.command(name="new", usage="[item],[group]")
     async def loot_new(self, ctx, *, params=None):
         """Adds a new item to the loot database."""
         if len(ctx.message.attachments) == 0:
@@ -270,25 +259,39 @@ class Loot:
                                file=discord.File(result, "results.png"))
             return
 
-    @loot.command(name="update")
     @checks.is_owner()
-    @checks.is_not_lite()
-    async def loot_update(self, ctx, *, item=None):
+    @loot.command(name="remove", aliases=["delete", "del"])
+    async def loot_remove(self, ctx, *, item: str):
+        """Adds an image to an existing loot item in the database."""
+        result = await item_remove(item)
+        if result is None:
+            await ctx.send("Couldn't find an item with that name.")
+            return
+        else:
+            await ctx.send("Item \"" + result + "\" removed from loot database.")
+            return
+
+    @checks.is_owner()
+    @loot.command(name="show")
+    async def loot_show(self, ctx, *, item: str):
         """Shows item info from loot database."""
+        result, item = await item_show(item)
+        if result is None:
+            await ctx.send("There's no item with that name.")
+            return
+        await ctx.send("Name: {name}, Group: {group}, Priority: {priority}, Value: {value:,}".format(**item),
+                       file=discord.File(result, "results.png"))
+
+    @checks.is_owner()
+    @loot.command(name="update")
+    async def loot_update(self, ctx):
+        """Updates the entire loot database."""
         result = await loot_db_update()
         if result is not None:
             await ctx.send("Added " + str(result) + " items to loot database, check debugimages folder for more info.")
         else:
             await ctx.send("No new items found in tibia_database.")
         return
-
-    @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
-    @checks.is_not_lite()
-    async def loot_legend(self, ctx):
-        """Shows the meaning of the overlayed icons."""
-        with open("./images/legend.png", "r+b") as f:
-            await ctx.send(file=discord.File(f))
-            f.close()
 
 
 def is_transparent(pixel):
@@ -577,8 +580,8 @@ async def find_slots(loot_image, progress_bar):
     if len(loot_bytes) > 2312:
         progress_percent = 0
         percent_message = ""
-        percent_message += EMOJI[":black_square_button:"] * progress_percent
-        percent_message += EMOJI[":black_large_square:"] * (10 - progress_percent)
+        percent_message += "🔲" * progress_percent
+        percent_message += "⬛" * (10 - progress_percent)
         await progress_bar.edit(content=percent_message)
     x = -1
     y = 0
@@ -590,8 +593,8 @@ async def find_slots(loot_image, progress_bar):
                 if int(y / _lootImage.size[1] * 100 / 10) != progress_percent:
                     progress_percent = int(y / _lootImage.size[1] * 100 / 10)
                     percent_message = ""
-                    percent_message += EMOJI[":black_square_button:"] * progress_percent
-                    percent_message += EMOJI[":black_large_square:"] * (10 - progress_percent)
+                    percent_message += "🔲" * progress_percent
+                    percent_message += "⬛" * (10 - progress_percent)
                     await progress_bar.edit(content=percent_message)
             y += 1
             x = 0
@@ -1037,10 +1040,10 @@ async def loot_db_update():
         frames = []
         try:
             imagegif = Image.open(io.BytesIO(bytearray(item['image'])))
-            if not os.path.exists("debugimages/" + item['title']):
-                os.makedirs("debugimages/" + item['title'])
+            # v    to save .gif images correctly     v
             with open("debugimages/" + item["title"] + "/" + item["title"] + '.gif', 'wb') as w:
                 w.write(item['image'])
+            ##############################################
             nframes = 0
             while imagegif:
                 itemImageFrame = clear_black_lines(imagegif.convert("RGBA"))
@@ -1111,8 +1114,8 @@ async def loot_scan(loot_image, image_name, progress_msg, progress_bar):
     progress_percent = 0
     percent_message = ""
     quality_warning = 0
-    percent_message += EMOJI[":black_square_button:"] * progress_percent
-    percent_message += EMOJI[":black_large_square:"] * (10 - progress_percent)
+    percent_message += "🔲" * progress_percent
+    percent_message += "⬛" * (10 - progress_percent)
     await progress_msg.edit(content="Status: Scanning items.")
     await progress_bar.edit(content=percent_message)
     for found_slot in slot_list:
@@ -1234,8 +1237,8 @@ async def loot_scan(loot_image, image_name, progress_msg, progress_bar):
         if int(progress / len(slot_list) * 100 / 10) != progress_percent:
             progress_percent = int(progress / len(slot_list) * 100 / 10)
             percent_message = ""
-            percent_message += EMOJI[":black_square_button:"] * progress_percent
-            percent_message += EMOJI[":black_large_square:"] * (10 - progress_percent)
+            percent_message += "🔲" * progress_percent
+            percent_message += "⬛" * (10 - progress_percent)
             await progress_msg.edit(
                 content="Status: Scanning items (" + str(progress) + "/" + str(len(slot_list)) + ").")
             await progress_bar.edit(content=percent_message)

@@ -1,44 +1,45 @@
 # Admin commands
-
-This commands can only be used by the server's owner and users with the `Administrator` permission.
+Commands for server owners and admins.  
+Admins are members with the `Administrator` permission.
 
 !!! info
-    Words in italics are parameters.  
-    Parameters enclosed in brackets `[]` are optional.
+    Parameters are enclosed with `< >`.   
+    Optional parameters are enclosed in brackets `[]`.
 
-## /checkchannel
-**Syntax:** /checkchannel [*channel*]
+## addaccount 
+**Syntax:** `addaccount <user>,<character>`  
+**Other aliases:** `addacc`
 
-Checks if the current channel or the specified channel has the correct permissions for the bot to work fine.
+Register a character and all other visible characters to a discord user.
+
+If a character is hidden, only that character will be added. Characters in other worlds are skipped.
+
+----
+
+## addchar
+**Syntax:** `addchar <user>,<character>`  
+**Other aliases:** `registerchar`
+
+Registers a character to a user.
+
+----
+
+## checkchannel
+**Syntax:** `checkchannel [channel]`
+
+Checks the channel's permissions.
+
+Makes sure that the bot has all the required permissions to work properly.
+If no channel is specified, the current one is checked.
 
 ??? Summary "Examples"
-
     **/checkchannel**  
     ![image](../assets/images/commands/checkchannel.png)
 
 ----
 
-## /setworld 
-**Syntax:** /setworld [*world*] 
-
-Sets the tibia world this server will track. This lets users in this servers add their characters.
-
-If the command is used without a world, the bot will just say which world the server is currently tracking.  
-If the command is used with a world, the bot will ask to confirm the change.
-
-??? Summary "Examples"
-
-    **/setworld**   
-    ![image](../assets/images/commands/setworld_1.png)
-    
-    **/setworld Fidera**   
-    ![image](../assets/images/commands/setworld_2.png)
-
-
-----
-
-## /setwelcome
-**Syntax:** /setwelcome [*message*]
+## setwelcome
+**Syntax:** `setwelcome [message]`
 
 Sets the welcome message new users get when joining a server. By default all members receive the following message: 
 ****
@@ -50,10 +51,8 @@ This message can only be edited globally in `config.py`, however, this message c
 Using the command with no parameters shows the current welcome message.
 
 ??? Summary "Examples"
-
     **/setwwelcome**   
-    ![image](../assets/images/commands/setwelcome_1.png)
-    
+    ![image](../assets/images/commands/setwelcome_1.png)  
     **/setwelcome *This is an example message***   
     ![image](../assets/images/commands/setwelcome_2.png)
 
@@ -63,71 +62,8 @@ For more info, use `/help setwelcome`
 
 ----
 
-## /seteventschannel
-**Syntax:** /seteventschannel [*name*]   
-**Other aliases**: /setnewschannel, /seteventschannel
+## removechar
+**Syntax:** `removechar <name>`  
+**Other aliases:** `deletechar`, `unregisterchar`
 
-By default, announcements are made on the highest channel the bot can see. This command can be used to change this channel.
-
-The channel set will be used for event announcements and news announcements. 
-
-When setting a new channel, the bot will check if it has permission to write in there. 
-If at some point the channel becomes deleted or unavailable to the bot in some way, it will keep doing announcements in highest channel again.
-
-When it's used with no parameters, it will show the current assigned channel
-
-??? Summary "Examples"
-
-    **/seteventschannel**   
-    ![image](../assets/images/commands/seteventschannel_1.png)
-    
-    **/seteventschannel #redd-alliance**   
-    ![image](../assets/images/commands/seteventschannel_2.png)
-
-----
-
-## /setlevelsdeathschannels
-**Syntax**: /setlevelsdeathschannels  
-**Other aliases:** /setlevelschannel, /setdeathschannel, /setlevelchannel, /setdeathchannel, /setleveldeathchannel
-
-By default, announcements are made on the highest channel the bot can see. This command can be used to change this channel.
-
-The channel set will be used for level up and deaths messages. 
-
-When setting a new channel, the bot will check if it has permission to write in there. 
-If at some point the channel becomes deleted or unavailable to the bot in some way, it will keep doing announcements in highest channel again.
-
-When it's used with no parameters, it will show the current assigned channel
-
-??? Summary "Examples"
-
-    **/seteventschannel**   
-    ![image](../assets/images/commands/setlevelsdeathschannel_1.png)
-    
-    **/seteventschannel #redd-alliance**   
-    ![image](../assets/images/commands/setlevelsdeathschannel_2.png)
-
-----
-
-## /addchar
-**Syntax:** /addchar *username*,*character*  
-**Other aliases:** /registerchar
-
-Registers a character to a user. This command cannot be used on private channels.
-
-----
-
-## /addacc 
-**Syntax:** /addacc *username*,*character*  
-**Other aliases:** /addaccount
-
-Registers the specified character and all other visible characters in the same account from the tracked world.
-
-
-----
-
-## /removechar
-**Syntax:** /removechar *name*  
-**Other aliases:** /deletechar, /unregisterchar
-
-Unassigns the specified character from its owner.
+Removes a registered character.

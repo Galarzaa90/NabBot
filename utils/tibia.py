@@ -16,7 +16,6 @@ from bs4 import BeautifulSoup
 
 from utils.config import config
 from utils.database import userDatabase, tibiaDatabase
-from utils.emoji import EMOJI
 from .general import log
 
 # Constants
@@ -263,6 +262,9 @@ class Death:
 
 
 class World:
+    """
+    Represents a Tibia world
+    """
     def __init__(self, name, **kwargs):
         self.name = name
         self.online = kwargs.get("online", 0)
@@ -933,15 +935,12 @@ def get_voc_abb(vocation: str) -> str:
 
 def get_voc_emoji(vocation: str) -> str:
     """Given a vocation name, returns a emoji representing it"""
-    emoji = {'none': EMOJI[":hatching_chick:"], 'druid': EMOJI[":snowflake:"], 'sorcerer': EMOJI[":flame:"],
-             'paladin': EMOJI[":archery:"],
-             'knight': EMOJI[":shield:"], 'elder druid': EMOJI[":snowflake:"],
-             'master sorcerer': EMOJI[":flame:"], 'royal paladin': EMOJI[":archery:"],
-             'elite knight': EMOJI[":shield:"]}
+    emoji = {"none": "🐣", "druid": "❄", "sorcerer": "🔥", "paladin": "🏹", "knight": "🛡", "elder druid": "❄",
+             "master sorcerer": "🔥", "royal paladin": "🏹", "elite knight": "🛡"}
     try:
         return emoji[vocation.lower()]
     except KeyError:
-        return EMOJI[":question:"]
+        return "❓"
 
 
 def get_voc_abb_and_emoji(vocation: str) -> str:

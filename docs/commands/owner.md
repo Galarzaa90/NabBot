@@ -1,146 +1,111 @@
 # Owner commands
 
 All commands can only be run by users in the `owner_ids` list or the bot's application owner.
-
 !!! info
-    Words in italics are parameters.  
-    Parameters enclosed in brackets `[]` are optional.
+    Parameters are enclosed with `< >`.   
+    Optional parameters are enclosed in brackets `[]`.
 
-## /restart
-**Other aliases:** /reset
+## adminsmessage
+**Syntax**: `adminsmessage [message]`  
+**Other aliases:** `notifyadmins`
 
-Completely restarts the bot, reloading all code. When used, the bot shutsdown and then restarts itself in 5 seconds.
+Sends a private message to all server owners.
 
-Once the bot starts again, it will notify the user that restarted it.
+Notifies all the owners of the servers where the bot is in.  
+If no message is specified at first, the bot will ask for a message to send.
 
-??? Summary "Example"
-
-    **/restart**  
-    ![image](../assets/images/commands/restart.png)
-
-----
-
-## /unload
-**Syntax**: /unload *name*
-
-Unloads a cog. Cogs are extensions that contain their own commands and tasks.
-
-!!! Note
-    Unloading `cogs.owner` would remove the `/load` command, making it impossible to reload cogs until restarting the bot.
+The message contains a signature to indicate who wrote the message.
 
 ??? Summary "Example"
-
-    **/unload cogs.tibia**  
-    ![image](../assets/images/commands/unload.png)
-
-----
-
-
-## /load
-
-Loads a cog. If there's an error while compiling, it will be displayed here.
-Any cog can be loaded here, including cogs made by user.
-
-When loading and unloading cogs in subdirectories, periods (`.`) are used instead of slashes (`/`).
-For example, a cog found in `cogs/tibia.py` would be loaded as `cogs.tibia`.
-
-
-
-    **/load cogs.tibia**  
-    ![image](../assets/images/commands/load.png)
-
-----
-
-## /debug
-**Syntax:** /debug *code*
-
-Evaluates Python code. This command can be used to run python command and get the response as a reply.
-
-!!! Warning
-    This command is meant for advanced users and debugging code.
-
-??? Summary "Example"
-
-    **/debug bot.get_member(162060569803751424)**  
-    ![image](../assets/images/commands/debug.png)
-
-----
-
-## /repl
-
-Starts a REPL session in the current channel.
-Similar to `/debug`, except this keep an open session where variables are stored.
-
-To exit, type ``exit()``.
-
-!!! Warning
-    This command is meant for advanced users and debugging code.
-
-----
-
-## /servers
-
-Shows a list of servers where the bot is in, along with their owners and tracked world.
-
-??? Summary "Example"
-
-    **/debug bot.get_member(162060569803751424)**  
-    ![image](../assets/images/commands/servers.png)
-
-----
-
-## /admins_message
-**Syntax**: /admins_message [*message*]  
-**Other aliases:** /message_admins, /adminsmessage, /msgadmins, /adminsmsg
-
-Sends a private message to all the server owners of the servers the bot is.
-If no message is specified at first, the command will prompt the user to enter a message to send.
-
-Messages contain a signature to indicate who wrote the message.
-    
-??? Summary "Example"
-
-    **/admins_message**  
-    ![image](../assets/images/commands/admins_message_1.png)
-    
+    **/adminsmessage**  
+    ![image](../assets/images/commands/admins_message_1.png)  
     **After typing the message.**  
     ![image](../assets/images/commands/admins_message_2.png)
 
 ----
 
-## /merge
-**Syntax**: /merge *old_world new_world*
+## debug
+**Syntax:** `debug <code>`
 
-Renames all instances of *old_world* to *new_world*. This is to be used when any worlds NabBot is tracking is going to be merged.
+Evaluates Python code.
 
-This command will update all references of the old world to the new world, so it can continue tracking level ups and deaths in the new world.
+This command can be used to run python statements and get the response as a reply.
 
-This should be done as soon as the world is merged. It is recommended to use it right at the server save before the merge.
+!!! Warning
+    This command is meant for advanced users and debugging code.
 
 ??? Summary "Example"
+    **/debug bot.get_member(162060569803751424)**  
+    ![image](../assets/images/commands/debug.png)
 
-    **/merge Fidera Gladera**  
-    ![image](../assets/images/commands/merge.png)
-    
 ----
 
-## /namelock
-**Syntax**: /namelock *old_name*,*new_name*  
-**Other aliases**: /rename, /namechange
+## leave
+**Syntax**: `leave <server>`
 
-When a character is renamed using a namechange from the store, NabBot updates the references automatically.
-However, when a character is namelocked, all previous references to the old name are gone, like the character was deleted.
+Makes the bot leave a server.
 
-This makes NabBot stop tracking levels and deaths of the character because it has no way of knowing what the new name is.
+The bot will ask for confirmation before leaving the server.
 
-If the user assigns the new named character using [/im](tracking.md#im), he will be left with the character with the old name still assigned, and the character with the new name.
+Once the bot has left a server, only a server administrator can add it back.
 
-In order to fix this, this command must be used.
+??? Summary "Example"
+    **/leave 159815897052086272**  
+    ![image](../assets/images/commands/leave.png)
 
-/namelock will check if the old name redirects to a non existent character to confirm it was namelocked, and will check the new name.
-If all conditions are met, their entries will be merged into one.
+----
 
-**Conditions:**
+## load
+**Syntax:** `load <cog>`
+
+Loads a cog.
+
+If there's an error while compiling, it will be displayed here.  
+Any cog can be loaded here, including cogs made by user.
+
+When loading and unloading cogs in subdirectories, periods (`.`) are used instead of slashes (`/`).
+For example, a cog found in `cogs/tibia.py` would be loaded as `cogs.tibia`.
+
+??? Summary "Example"
+    **/load cogs.tibia**  
+    ![image](../assets/images/commands/load.png)
+
+----
+
+## merge
+**Syntax**: `merge <old world> <new world>`
+
+Renames all references of an old world to a new one.
+
+This command should updates all the database entries, changing all references of the old world to the new one
+
+This updates all characters' worlds and discord guild's tracked worlds to the new world.
+All the highscores entries of the old world will be deleted.
+
+This should be done immediately after the world merge occurs and not before, or else tracking will stop.
+
+Use this with caution as the damage can be irreversible.
+
+Example: `merge Fidera Gladera`
+
+??? Summary "Example"
+    **/merge Fidera Gladera**  
+    ![image](../assets/images/commands/merge.png)
+
+----
+
+## namelock
+**Syntax**: `namelock <old name>,<new name>`   
+**Other aliases**: `rename`, `namechange`
+
+Register the name of a new character that was namelocked.
+
+Characters that get namelocked can't be searched by their old name, so they must be reassigned manually.
+
+If the character got a name change (from the store), searching the old name redirects to the new name, so
+these are usually reassigned automatically.
+
+In order for the command to work, the following conditions must be met:
 
 - The old name must exist in NabBot's characters database.
 - The old name must not be a valid character in Tibia.com
@@ -149,23 +114,63 @@ If all conditions are met, their entries will be merged into one.
 
 ----
 
-## /leave
-**Syntax**: /leave *server*
-
-Makes the bot leave the specified server. The server name or its id must be provided.
-
-The bot will ask for confirmation and will show some information about the server to ensure you're choosing the correct server.
-
-Once the bot has left the server, it can only join back by using the authentication link.
+## ping
+Show's the bot's response times.
 
 ??? Summary "Example"
+    **/ping**  
+    ![image](../assets/images/commands/ping.png)
 
-    **/leave 159815897052086272**  
-    ![image](../assets/images/commands/leave.png)
-    
 ----
 
-##/versions
+## repl
+Starts a REPL session in the current channel.
+
+Similar to `/debug`, except this keep an open session where variables are stored.  
+To exit, type ``exit()``.
+
+!!! Warning
+    This command is meant for advanced users and debugging code.
+
+----
+
+## restart
+**Other aliases:** `reset`
+
+Shutdowns and starts the bot again.
+
+Once the bot starts again, it will notify the user that restarted it.
+
+??? Summary "Example"
+    **/restart**  
+    ![image](../assets/images/commands/restart.png)
+
+----
+
+## servers
+Shows a list of servers the bot is in.
+
+??? Summary "Example"
+    **/servers**  
+    ![image](../assets/images/commands/servers.png)
+
+----
+
+## unload
+**Syntax**: `unload <cog>`
+
+Unloads a cog.
+
+!!! Note
+    Unloading `cogs.owner` would remove the `/load` command, making it impossible to reload cogs until restarting the bot.
+
+??? Summary "Example"
+    **/unload cogs.tibia**  
+    ![image](../assets/images/commands/unload.png)
+
+----
+
+## versions
 Shows NabBot's version and the versions of all dependencies.
 
 This command can be useful to find out why the bot is not behaving as it should or for submitting bug reports.
@@ -181,6 +186,5 @@ For every dependency, an emoji indicates if the requirement is met:
   This is usually not as bad as the previous case, but there may be some incompatibility issues.
 
 ??? Summary "Example"
-
     **/versions**  
     ![image](../assets/images/commands/versions.png)
