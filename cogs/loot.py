@@ -14,6 +14,7 @@ from utils import checks
 from utils.config import config
 from utils.database import tibiaDatabase, lootDatabase
 from utils.discord import FIELD_VALUE_LIMIT
+from utils.general import log
 from utils.messages import split_message
 from utils.tibiawiki import get_item
 
@@ -70,11 +71,12 @@ class Loot:
         file_name = attachment.url.split("/")[len(attachment.url.split("/")) - 1]
         file_url = attachment.url
         try:
-            with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession() as session:
                 async with session.get(attachment.url) as resp:
                     original_image = await resp.read()
             loot_image = Image.open(io.BytesIO(bytearray(original_image))).convert("RGBA")
         except Exception:
+            log.exception("loot: Couldn't parse image")
             await ctx.send("Either that wasn't an image or I failed to load it, please try again.")
             return
 
