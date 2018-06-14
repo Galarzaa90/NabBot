@@ -749,17 +749,17 @@ For detailed explanation on NabBot's permissions, see the <a href="../permission
 Depending on your privacy settings, you (or the owner of the server) should have received a DM by NabBot explaining how to do the inital configuration.</p>
 <h2 id="initial-configuration">Initial configuration<a class="headerlink" href="#initial-configuration" title="Permanent link">&para;</a></h2>
 <p>In order for the bot to have access to most of its features, you must configure the world the server tracks.</p>
-<p>Use the command <code class="codehilite">/setworld</code>, for example: <code class="codehilite">/setworld Fidera</code>. Then the bot will ask for confirmation.
-Once accepted, users can start registering their chars using <code class="codehilite">\im charName</code></p>
+<p>Use the command <a href="../commands/settings/#settings-world">settings world</a>, for example: <code class="codehilite">/settings world Gladera</code>. Then the bot will ask for confirmation.
+Once accepted, users can start registering their chars using <code class="codehilite">\im charName</code>.</p>
 <p>By default, events, level ups and deaths announcements are made on the highest channel available for the bot.
-In order to customize this, you can use the following commands: <code class="codehilite">/seteventchannel</code> and <code class="codehilite">/setleveldeathchannel</code>.</p>
+In order to customize this, you can use the following commands: <code class="codehilite">/settings levelschannel</code>.</p>
 <p>The bot usually shortens command replies on public channels to reduce spam a bit.
 Commands used via DM display more information.<br />
 Alternatively, you can create a channel named <strong>#ask-nabbot</strong>.
 The bot will give longer responses here and it will delete any message that is not a command, leaving this as a channel dedicated to commands.</p>
 <p>Additionally, you can create a channel named <strong>#server-log</strong>. Whenever a user registers characters, they will be shown here, along with their levels and guilds.
 Other changes are shown here, such as users leaving, getting banned, changing display names and more.</p>
-<p>Further customization can be done by editing the <code class="codehilite">config.yml</code> file. More information <a href="../customizing/config/">here</a>.</p>
+<p>Further customization can be done on a per-server basis by using the command <a href="../commands/settings/#settings">settings</a>.</p>
                 
                   
                 
