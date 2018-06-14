@@ -8,7 +8,7 @@ from nabbot import NabBot
 from utils.discord import is_private, FIELD_VALUE_LIMIT
 from utils.general import join_list
 from utils.messages import split_message
-from utils.paginator import Pages, CannotPaginate
+from utils.pages import Pages, CannotPaginate
 from utils.tibia import get_map_area
 from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
     get_key, search_key, get_rashid_info, get_mapper_link, get_bestiary_classes, get_bestiary_creatures

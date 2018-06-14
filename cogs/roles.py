@@ -5,7 +5,7 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils import context
-from utils.paginator import CannotPaginate, Pages
+from utils.pages import CannotPaginate, Pages
 
 
 class Roles:

@@ -19,7 +19,7 @@ from utils.discord import is_private, is_lite_mode, get_user_avatar
 from utils.general import get_time_diff, join_list, get_brasilia_time_zone, global_online_list, get_local_timezone, log, \
     is_numeric
 from utils.messages import html_to_markdown, get_first_image, split_message
-from utils.paginator import Pages, CannotPaginate, VocationPages
+from utils.pages import Pages, CannotPaginate, VocationPages
 from utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
     url_house, get_stats, get_map_area, get_tibia_time_zone, get_world, tibia_worlds, get_world_bosses, get_recent_news, \
     get_news_article, Character, url_guild, highscore_format, get_character_url, url_character, get_house, \

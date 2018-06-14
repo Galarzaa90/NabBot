@@ -9,7 +9,7 @@ from nabbot import NabBot
 from utils import checks
 from utils.database import userDatabase
 from utils.discord import is_private
-from utils.paginator import Pages, CannotPaginate
+from utils.pages import Pages, CannotPaginate
 
 
 class Mod:

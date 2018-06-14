@@ -17,7 +17,7 @@ from utils.config import config
 from utils.database import userDatabase, tibiaDatabase, get_server_property
 from utils.discord import get_region_string, is_private, clean_string, get_user_avatar, get_user_color
 from utils.general import parse_uptime, TimeString, single_line, is_numeric, log
-from utils.paginator import CannotPaginate, VocationPages, HelpPaginator
+from utils.pages import CannotPaginate, VocationPages, HelpPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50

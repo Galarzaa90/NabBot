@@ -364,15 +364,3 @@ Shows information like PvP type, online count, server location vocation distribu
     ![image](../assets/images/commands/world_2.png)
  
 ----
-
-
-
-
-
-
-
-
-----
-
-
-
