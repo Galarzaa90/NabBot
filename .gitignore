@@ -15,5 +15,9 @@ token.txt
 !/data/config_template.yml
 /config.yml
 
+# Any extra cogs added, except for our example cog
 extra/*.py
 !/extra/example.py
+
+# Mkdocs built site
+site/

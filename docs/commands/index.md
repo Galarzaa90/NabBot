@@ -1,9 +1,8 @@
 # Overview
-
 One of the main features of discord bots is being able to respond to commands.
 All commands require a prefix in order to be recognized and to avoid command triggering accidentally.
 
-By default, the command prefix is `/`, this can be changed in the main file by changing `command_prefix`.
+By default, the command prefix is `/` and `@NabBot `, this can be changed in the main file by changing `command_prefix`, or per server using the command [settings prefix](settings.md#settings-prefix).
 
 Commands can be used on any channel where the bot can read and write.
 Some commands may require extra permissions such as `Embed Links` or `Attach Files`, or might not be allowed in private messages.
@@ -11,9 +10,11 @@ Some commands can show longer responses if used in `ask-channel` (by default, #a
 
 For descriptions of each command check the different commands sections in the sidebar.
 
+In discord, you can use the command [help](general.md#help) to see a list of commands. Only commands that you are allowed to use will be shown.
+
 ## Paginator
 
-Some commands responses feature a *paginator* ([based on Rapptz' paginator class](https://github.com/Rapptz/RoboDanny/blob/master/cogs/utils/paginator.py)).
+Some commands responses feature a *paginator* ([based on RoboDany's paginator class](https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/utils/paginator.py)).
 These can be easily spotted by the reactions automatically added to the reply (◀️▶️⏹️).
 These reactions act as buttons, letting you scroll through the results.
 
@@ -27,7 +28,6 @@ Only the user that used the command can turn the pages.
     When used in private messages, the bot has no way of removing your reactions, so you must remove them and add them yourself again.
     
 ## Vocation Filter
-
 Some commands, allow you to filter their character list by vocation. Allowing you to easily find a certain vocation.  
 Similar to Paginator, they have reaction buttons to switch pages (◀️▶️⏹️).
 Additionally, they may have up to 4 vocation emojis to filter:

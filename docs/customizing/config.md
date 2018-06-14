@@ -50,29 +50,14 @@ The prefix `/` can be changed, or even more prefixes can be added like:
 command_prefix:
   - "/"
   - "$"
-command_mention: false
 ```
 
-So the bot would now also answer to `$about` and `$help`.
+So the bot would now also answer to `$about` and `$help`.  
+Note that the bot will always answering by being mentioned, e.g. `@NabBot help`, `@NabBot about`.
 
 It's recommended to keep this list as short as possible, and to make sure it does not overlap with the command prefix of other bots.
 
-!!! note
-    This is a experimental feature, so even if the prefix is changed, many messages will still say you have to use the default prefix.  
-    However, the new command prefixes will work fine.
-    
-
-It's also possible to enable mentions as a prefix using `command_mention`, so the bot will answer to commands like: `@NabBot about`, `@NabBot whois Nezune`.
-
-This can be combined with `command_prefix` to have both working simultaneously, or `command_prefix` can be left blank to only allow the bot to listen to mentions.
-
-??? Summary "Example"
-
-    ```yaml
-    command_prefix: []
-    command_mention: true
-    ``` 
-    In this case, the bot will only answer when mentioned directly.
+This setting can be overriden on a per-server basis by using the command [settings](../commands/settings.md#settings-prefix)
     
 ## Extra cogs
 For more information, see [Cogs](cogs.md)
