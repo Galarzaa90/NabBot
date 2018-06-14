@@ -10,7 +10,7 @@
       <meta name="viewport" content="width=device-width,initial-scale=1">
       <meta http-equiv="x-ua-compatible" content="ie=edge">
       
-        <meta name="description" content="A discord bot for the MMO Tibia">
+        <meta name="description" content="A Discord bot for the MMO Tibia">
       
       
       
@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-0.17.4, mkdocs-material-2.8.0">
+      <meta name="generator" content="mkdocs-0.17.4, mkdocs-material-2.9.0">
     
     
       
@@ -44,9 +44,14 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/application.e8ff00e1.css">
+      <link rel="stylesheet" href="../assets/stylesheets/application.4f4f49e8.css">
       
         <link rel="stylesheet" href="../assets/stylesheets/application-palette.6079476c.css">
+      
+      
+        
+        
+        <meta name="theme-color" content="#7e57c2">
       
     
     
@@ -333,6 +338,13 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#version-120-unreleased" title="Version 1.2.0 (Unreleased)" class="md-nav__link">
+    Version 1.2.0 (Unreleased)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#version-111-2018-06-12" title="Version 1.1.1 (2018-06-12)" class="md-nav__link">
     Version 1.1.1 (2018-06-12)
   </a>
@@ -472,8 +484,80 @@
 
 
   <li class="md-nav__item">
+    <a href="../commands/admin/" title="Admin commands" class="md-nav__link">
+      Admin commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
     <a href="../commands/general/" title="General commands" class="md-nav__link">
       General commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../commands/loot/" title="Loot commands" class="md-nav__link">
+      Loot commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../commands/mod/" title="Mod commands" class="md-nav__link">
+      Mod commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../commands/owner/" title="Owner commands" class="md-nav__link">
+      Owner commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../commands/roles/" title="Roles commands" class="md-nav__link">
+      Roles commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../commands/settings/" title="Settings commands" class="md-nav__link">
+      Settings commands
     </a>
   </li>
 
@@ -510,54 +594,6 @@
   <li class="md-nav__item">
     <a href="../commands/tracking/" title="Tracking commands" class="md-nav__link">
       Tracking commands
-    </a>
-  </li>
-
-        
-          
-          
-          
-
-
-  <li class="md-nav__item">
-    <a href="../commands/loot/" title="Loot commands" class="md-nav__link">
-      Loot commands
-    </a>
-  </li>
-
-        
-          
-          
-          
-
-
-  <li class="md-nav__item">
-    <a href="../commands/mod/" title="Mod commands" class="md-nav__link">
-      Mod commands
-    </a>
-  </li>
-
-        
-          
-          
-          
-
-
-  <li class="md-nav__item">
-    <a href="../commands/admin/" title="Admin commands" class="md-nav__link">
-      Admin commands
-    </a>
-  </li>
-
-        
-          
-          
-          
-
-
-  <li class="md-nav__item">
-    <a href="../commands/owner/" title="Owner commands" class="md-nav__link">
-      Owner commands
     </a>
   </li>
 
@@ -648,6 +684,13 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#version-120-unreleased" title="Version 1.2.0 (Unreleased)" class="md-nav__link">
+    Version 1.2.0 (Unreleased)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#version-111-2018-06-12" title="Version 1.1.1 (2018-06-12)" class="md-nav__link">
     Version 1.1.1 (2018-06-12)
   </a>
@@ -721,6 +764,50 @@
                 
                 
                 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<h2 id="version-120-unreleased">Version 1.2.0 (Unreleased)<a class="headerlink" href="#version-120-unreleased" title="Permanent link">&para;</a></h2>
+<ul>
+<li>New <code class="codehilite">/help</code> style, with reaction pagination.</li>
+<li>New <code class="codehilite">/quote</code> command, shows a message's content given an id.</li>
+<li>New <code class="codehilite">/roleinfo</code> command, shows a role's detailed information.</li>
+<li>New <code class="codehilite">/userinfo</code> command, shows a user's detailed information.</li>
+<li>New <code class="codehilite">/ping</code> command, shows the bot's response times.</li>
+<li>New <code class="codehilite">/bestiary</code> command, shows the bestiary classes or creatures that belong to a class.</li>
+<li>Command prefix is now configurable per server</li>
+<li>Mention prefix command is now always enabled (e.g. <code class="codehilite">@NabBot help</code>)</li>
+<li>Improvements to the watched list task</li>
+<li>Made some visual changes to <code class="codehilite">/serverinfo</code></li>
+<li>Moved role related commands to new Roles cog.</li>
+<li><code class="codehilite">/roles</code> now sorts results by position and shows members with the role.</li>
+<li>New command: <code class="codehilite">/settings</code>, to change all server specific settings:<ul>
+<li><code class="codehilite">/setworld</code> moved to <code class="codehilite">/settings world</code>.</li>
+<li><code class="codehilite">/setleveldeathschannel</code> moved to <code class="codehilite">/settings levelschannel</code>.</li>
+<li><code class="codehilite">/seteventschannel</code> moved to <code class="codehilite">/settings eventschannel</code></li>
+<li>News channel is now configured separately from Events channel: <code class="codehilite">/settings newschannel</code></li>
+<li>Command channel (ask-nabbot) is now configurable.</li>
+<li>Tibia news announcements and Events announcements can be disabled entirely.</li>
+</ul>
+</li>
+<li>Many changes to command names and aliases:<ul>
+<li><code class="codehilite">/item</code>: <code class="codehilite">checkprice</code> alias removed.</li>
+<li><code class="codehilite">/monster</code>: <code class="codehilite">mon</code> alias removed.</li>
+<li><code class="codehilite">/spell</code>: <code class="codehilite">spells</code> alias added.</li>
+<li><code class="codehilite">/server</code>: <code class="codehilite">server_info</code> alias removed.</li>
+<li><code class="codehilite">/guild</code>: <code class="codehilite">guildcheck</code> alias removed.</li>
+<li><code class="codehilite">/role</code>: Renamed to <code class="codehilite">/rolemembers</code>.</li>
+<li><code class="codehilite">/server</code>: Renamed to <code class="codehilite">/serverinfo</code>.</li>
+<li><code class="codehilite">/deaths</code>: <code class="codehilite">death</code> alias removed.</li>
+<li><code class="codehilite">/house</code>: <code class="codehilite">houses</code>, <code class="codehilite">gh</code> aliases removed.</li>
+<li><code class="codehilite">/levels</code>: <code class="codehilite">lvl</code>, <code class="codehilite">level</code> and <code class="codehilite">lvls</code> aliases removed.</li>
+<li><code class="codehilite">/time</code>: <code class="codehilite">ss</code> alias removed.</li>
+<li><code class="codehilite">/whois</code>: <code class="codehilite">player</code>, <code class="codehilite">checkplayer</code> aliases removed</li>
+<li><code class="codehilite">/npc</code>: <code class="codehilite">npcs</code> alias removed.</li>
+<li><code class="codehilite">/key</code>: <code class="codehilite">keys</code> alias removed.</li>
+<li><code class="codehilite">/spell</code>: <code class="codehilite">spell</code> alias removed.</li>
+<li><code class="codehilite">admins_message</code>: renamed to <code class="codehilite">adminsmessage</code>, removed all aliases, added <code class="codehilite">notifyadmins</code></li>
+<li>Many more aliases changes</li>
+</ul>
+</li>
+</ul>
 <h2 id="version-111-2018-06-12">Version 1.1.1 (2018-06-12)<a class="headerlink" href="#version-111-2018-06-12" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Added missing items from the Feyrist area to the loot database</li>

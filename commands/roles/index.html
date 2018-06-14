@@ -40,7 +40,7 @@
     
     
       
-        <title>Admin commands - NabBot</title>
+        <title>Roles commands - NabBot</title>
       
     
     
@@ -102,7 +102,7 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" data-md-component="overlay" for="__drawer"></label>
     
-      <a href="#admin-commands" tabindex="1" class="md-skip">
+      <a href="#roles-commands" tabindex="1" class="md-skip">
         Skip to content
       </a>
     
@@ -128,7 +128,7 @@
                 NabBot
               </span>
               <span class="md-header-nav__topic">
-                Admin commands
+                Roles commands
               </span>
             
           
@@ -392,77 +392,11 @@
           
           
 
-  
 
-
-  <li class="md-nav__item md-nav__item--active">
-    
-    <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-    
-      
-    
-    
-      <label class="md-nav__link md-nav__link--active" for="__toc">
-        Admin commands
-      </label>
-    
-    <a href="./" title="Admin commands" class="md-nav__link md-nav__link--active">
+  <li class="md-nav__item">
+    <a href="../admin/" title="Admin commands" class="md-nav__link">
       Admin commands
     </a>
-    
-      
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">Table of contents</label>
-    <ul class="md-nav__list" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#addaccount" title="addaccount" class="md-nav__link">
-    addaccount
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#addchar" title="addchar" class="md-nav__link">
-    addchar
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#checkchannel" title="checkchannel" class="md-nav__link">
-    checkchannel
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#setwelcome" title="setwelcome" class="md-nav__link">
-    setwelcome
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#removechar" title="removechar" class="md-nav__link">
-    removechar
-  </a>
-  
-</li>
-      
-      
-      
-      
-      
-    </ul>
-  
-</nav>
-    
   </li>
 
         
@@ -518,11 +452,70 @@
           
           
 
+  
 
-  <li class="md-nav__item">
-    <a href="../roles/" title="Roles commands" class="md-nav__link">
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+    
+      
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="__toc">
+        Roles commands
+      </label>
+    
+    <a href="./" title="Roles commands" class="md-nav__link md-nav__link--active">
       Roles commands
     </a>
+    
+      
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#noroles" title="noroles" class="md-nav__link">
+    noroles
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#roleinfo" title="roleinfo" class="md-nav__link">
+    roleinfo
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rolemembers" title="rolemembers" class="md-nav__link">
+    rolemembers
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#roles" title="roles" class="md-nav__link">
+    roles
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+    
   </li>
 
         
@@ -660,36 +653,29 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#addaccount" title="addaccount" class="md-nav__link">
-    addaccount
+  <a href="#noroles" title="noroles" class="md-nav__link">
+    noroles
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#addchar" title="addchar" class="md-nav__link">
-    addchar
+  <a href="#roleinfo" title="roleinfo" class="md-nav__link">
+    roleinfo
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#checkchannel" title="checkchannel" class="md-nav__link">
-    checkchannel
+  <a href="#rolemembers" title="rolemembers" class="md-nav__link">
+    rolemembers
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#setwelcome" title="setwelcome" class="md-nav__link">
-    setwelcome
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#removechar" title="removechar" class="md-nav__link">
-    removechar
+  <a href="#roles" title="roles" class="md-nav__link">
+    roles
   </a>
   
 </li>
@@ -711,51 +697,37 @@
               
                 
                 
-                <h1 id="admin-commands">Admin commands<a class="headerlink" href="#admin-commands" title="Permanent link">&para;</a></h1>
-<p>Commands for server owners and admins.<br />
-Admins are members with the <code class="codehilite">Administrator</code> permission.</p>
+                <h1 id="roles-commands">Roles commands<a class="headerlink" href="#roles-commands" title="Permanent link">&para;</a></h1>
+<p>Commands related to role management.</p>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
 <p>Parameters are enclosed with <code class="codehilite">&lt; &gt;</code>. <br />
 Optional parameters are enclosed in brackets <code class="codehilite">[]</code>.</p>
 </div>
-<h2 id="addaccount">addaccount<a class="headerlink" href="#addaccount" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> <code class="codehilite">addaccount &lt;user&gt;,&lt;character&gt;</code><br />
-<strong>Other aliases:</strong> <code class="codehilite">addacc</code></p>
-<p>Register a character and all other visible characters to a discord user.</p>
-<p>If a character is hidden, only that character will be added. Characters in other worlds are skipped.</p>
-<hr />
-<h2 id="addchar">addchar<a class="headerlink" href="#addchar" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> <code class="codehilite">addchar &lt;user&gt;,&lt;character&gt;</code><br />
-<strong>Other aliases:</strong> <code class="codehilite">registerchar</code></p>
-<p>Registers a character to a user.</p>
-<hr />
-<h2 id="checkchannel">checkchannel<a class="headerlink" href="#checkchannel" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> <code class="codehilite">checkchannel [channel]</code></p>
-<p>Checks the channel's permissions.</p>
-<p>Makes sure that the bot has all the required permissions to work properly.
-If no channel is specified, the current one is checked.</p>
-<details class="summary"><summary>Examples</summary><p><strong>/checkchannel</strong><br />
-<img alt="image" src="../../assets/images/commands/checkchannel.png" /></p></details><hr />
-<h2 id="setwelcome">setwelcome<a class="headerlink" href="#setwelcome" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> <code class="codehilite">setwelcome [message]</code></p>
-<p>Sets the welcome message new users get when joining a server. By default all members receive the following message: </p>
-<hr />
-<p>Welcome to <strong>Server Name</strong>! I'm <strong>NabBot</strong>, to learn more about my commands type <code class="codehilite">/help</code><br />
-Start by telling me who is your Tibia character, say <strong>/im *character_name</strong>* so I can begin tracking your level ups and deaths!</p>
-<hr />
-<p>This message can only be edited globally in <code class="codehilite">config.py</code>, however, this message can be extended for a specific server by using the command.
-Using the command with no parameters shows the current welcome message.</p>
-<details class="summary"><summary>Examples</summary><p><strong>/setwwelcome</strong> <br />
-<img alt="image" src="../../assets/images/commands/setwelcome_1.png" /><br />
-<strong>/setwelcome *This is an example message</strong>* <br />
-<img alt="image" src="../../assets/images/commands/setwelcome_2.png" /></p></details><p>Note that you can use special formatting to show the current user's name, server name, etc.
-For more info, use <code class="codehilite">/help setwelcome</code></p>
-<hr />
-<h2 id="removechar">removechar<a class="headerlink" href="#removechar" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> <code class="codehilite">removechar &lt;name&gt;</code><br />
-<strong>Other aliases:</strong> <code class="codehilite">deletechar</code>, <code class="codehilite">unregisterchar</code></p>
-<p>Removes a registered character.</p>
+<h2 id="noroles">noroles<a class="headerlink" href="#noroles" title="Permanent link">&para;</a></h2>
+<p><strong>Other aliases:</strong> <code class="codehilite">norole</code></p>
+<p>Shows a list of members that have no roles.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/noroles</strong><br />
+<img alt="image" src="../../assets/images/commands/noroles.png" /></p></details><hr />
+<h2 id="roleinfo">roleinfo<a class="headerlink" href="#roleinfo" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> <code class="codehilite"><span class="n">roleinfo</span> <span class="s">&lt;role&gt;</span></code></p>
+<p>Shows details about a role.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/roleinfo Redd Alliance</strong>
+<img alt="image" src="../../assets/images/commands/roleinfo.png" /></p></details><hr />
+<h2 id="rolemembers">rolemembers<a class="headerlink" href="#rolemembers" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> <code class="codehilite"><span class="n">rolemembers</span> <span class="s">&lt;role&gt;</span></code></p>
+<p>Shows a list of members with that role.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/rolemembers Vice Leader</strong><br />
+<img alt="image" src="../../assets/images/commands/rolemembers.png" /></p></details><hr />
+<h2 id="roles">roles<a class="headerlink" href="#roles" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> <code class="codehilite"><span class="n">roles</span> [<span class="n">user</span>]</code></p>
+<p>Shows a user's roles or a list of server roles.</p>
+<p>If a user is specified, it will list their roles.
+If user is blank, I will list all the server's roles.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/roles</strong><br />
+<img alt="image" src="../../assets/images/commands/roles_1.png" /><br />
+<strong>/roles Galarzaa</strong><br />
+<img alt="image" src="../../assets/images/commands/roles_2.png" /></p></details><hr />
                 
                   
                 
@@ -776,7 +748,7 @@ For more info, use <code class="codehilite">/help setwelcome</code></p>
     <div class="md-footer-nav">
       <nav class="md-footer-nav__inner md-grid">
         
-          <a href="../" title="Overview" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+          <a href="../owner/" title="Owner commands" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
             <div class="md-flex__cell md-flex__cell--shrink">
               <i class="md-icon md-icon--arrow-back md-footer-nav__button"></i>
             </div>
@@ -785,19 +757,19 @@ For more info, use <code class="codehilite">/help setwelcome</code></p>
                 <span class="md-footer-nav__direction">
                   Previous
                 </span>
-                Overview
+                Owner commands
               </span>
             </div>
           </a>
         
         
-          <a href="../general/" title="General commands" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+          <a href="../settings/" title="Settings commands" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
             <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
               <span class="md-flex__ellipsis">
                 <span class="md-footer-nav__direction">
                   Next
                 </span>
-                General commands
+                Settings commands
               </span>
             </div>
             <div class="md-flex__cell md-flex__cell--shrink">
