@@ -70,84 +70,138 @@ class Settings:
         await ctx.send(embed=embed)
 
     @checks.is_admin()
-    @settings.command(name="prefix")
-    async def settings_prefix(self, ctx, prefix: PrefixConverter=None):
-        """Changes the command prefix for this server.
+    @settings.command(name="askchannel", aliases=["commandchannel"])
+    async def settings_askchannel(self, ctx, channel: str=None):
+        """Changes the channel where longer replies for commands are given.
 
-        The prefix are the characters that go before a command's name, in order for the bot to recognize the command.
-        A maximum of 5 commands can be set per server.
+        In this channel, pagination commands show more entries at once and command replies in general are longer."""
+        current_channel_id = get_server_property(ctx.guild.id, "ask_channel", is_int=True)
+        current_channel = ctx.guild.get_channel(current_channel_id)
+        if channel is None:
+            if current_channel:
+                perms = current_channel.permissions_for(ctx.me)
+            else:
+                perms = discord.Permissions()
+            ok = False
+            if current_channel_id is None:
+                current_value = f"None."
+            elif current_channel is None:
+                current_value = "Previous channel was deleted."
+            elif not perms.read_messages or not perms.send_messages:
+                current_value = f"{current_channel.mention}, but I can't use the channel."
+            else:
+                current_value = {current_channel.mention}
+                ok = True
 
-        To remove an existing prefix, use it as a parameter.
-
-        If you want to have a space at the end, such as: `nabbot help`, you have to use double quotes "nabbot ".
-        Multiple words also require using quotes.
-
-        Mentioning the bot is always a valid command and can't be changed."""
-        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=list(config.command_prefix))
-        if prefix is None:
-            current_value = ", ".join(f"`{p}`" for p in prefixes) if len(prefixes) > 0 else "Mentions only"
-            await self.show_info_embed(ctx, current_value, "Any text", "prefix")
+            if not ok:
+                current_value += f" By default, I'll use any channel named {config.ask_channel_name}."
+            await self.show_info_embed(ctx, current_value, "A channel's name or id, or `none`.", "channel/none")
             return
-        remove = False
-        if prefix in prefixes:
-            message = await ctx.send(f"Do you want to remove `{prefix}` as a prefix?")
-            remove = True
-        else:
-            if len(prefixes) >= 5:
-                await ctx.send("You can't have more than 5 command prefixes.")
+
+        if channel.lower() == "none":
+            if current_channel_id is None:
+                await ctx.send("There's no command channel set.")
                 return
-            message = await ctx.send(f"Do you want to add `{prefix}` as a prefix?")
+            message = await ctx.send(f"Are you sure you want to delete the set command channel?")
+            new_value = 0
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new commands channel?")
+            new_value = new_channel.id
         confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
         if not confirm:
             await ctx.message.delete()
             return
 
-        if remove:
-            prefixes.remove(prefix)
-            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was removed.")
+        set_server_property(ctx.guild.id, "ask_channel", new_value)
+        if new_value is 0:
+            await ctx.send(f"{ctx.tick(True)} The command channel was deleted."
+                           f"I will still use any channel named **{config.ask_channel_name}**.")
         else:
-            prefixes.append(prefix)
-            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
-        set_server_property(ctx.guild.id, "prefixes", prefixes, serialize=True)
-
-    @settings_prefix.error
-    async def prefix_error(self, ctx, error):
-        if isinstance(error, commands.BadArgument):
-            await ctx.send(str(error))
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used as a command channel.")
 
     @checks.is_admin()
-    @settings.command(name="world")
-    async def settings_world(self, ctx, world: str=None):
-        """Changes the world this discord server tracks.
+    @settings.command(name="commandsonly")
+    async def settings_commandsonly(self, ctx, option: str=None):
+        """Sets whether only commands are allowed in the command channel.
 
-        The tracked world is the Tibia world that this discord server is following.
-        Only characters in that world will be registered."""
-        if world is None:
-            await self.show_info_embed(ctx, ctx.world, "Any Tibia world or `none` to disable.", "world/none")
+        If this is enabled, everything that is not a message will be deleted from the command channel.
+        This allows the channel to be used exclusively for commands.
+
+        If the channel is shared with other command bots, this should be off.
+
+        Note that the bot needs `Manage Messages` permission to delete messages."""
+        def yes_no(choice: bool):
+            return "Yes" if choice else "No"
+        if option is None:
+            current = get_server_property(ctx.guild.id, "commandsonly", is_int=True)
+            if current is None:
+                current_value = f"{yes_no(config.ask_channel_delete)} (Global default)"
+            else:
+                current_value = yes_no(current)
+            await self.show_info_embed(ctx, current_value, "yes/no", "yes/no")
             return
-        world = world.strip().capitalize()
-        if world == "None":
-            if ctx.world is None:
-                await ctx.send("This server is already not tracking any world.")
-                return
-            message = await ctx.send(f"Are you sure you want to unassign **{ctx.world}** from this server?")
-            world = None
+        if option.lower() == "yes":
+            set_server_property(ctx.guild.id, "commandsonly", True)
+            await ctx.send(f"{ctx.tick(True)} I will delete non-commands in the command channel from now on.")
+        elif option.lower() == "no":
+            set_server_property(ctx.guild.id, "commandsonly", False)
+            await ctx.send(f"{ctx.tick(True)} I won't delete non-commands in the command channel from now on.")
         else:
-            if world not in tibia_worlds:
-                await ctx.send("There's no world with that name.")
+            await ctx.send("That's not a valid option, try **yes** or **no**.")
+
+    @checks.is_admin()
+    @settings.command(name="eventschannel")
+    async def settings_eventschannel(self, ctx, channel: str=None):
+        """Changes the channel where upcoming events are announced.
+
+        This is where announcements of events about to happen will be made.
+        By default, the highest channel on the list where the bot can send messages will be used.
+        If the assigned channel is deleted or forbidden, the top channel will be used again.
+
+        If this is disabled, users that subscribed to the event will still receive notifications via PM.
+        """
+        current_channel_id = get_server_property(ctx.guild.id, "events_channel", is_int=True)
+        if channel is None:
+            current_value = self.get_current_channel(ctx, current_channel_id)
+            await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")
+            return
+        if channel.lower() == "disable":
+            if current_channel_id is 0:
+                await ctx.send("Event announcements are already disabled.")
                 return
-            message = await ctx.send(f"Are you sure you want to assign **{world}** to this server?")
+            message = await ctx.send(f"Are you sure you want to disable events announcements?")
+            new_value = 0
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new events channel?")
+            new_value = new_channel.id
         confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
         if not confirm:
             await ctx.message.delete()
             return
 
-        set_server_property(ctx.guild.id, "world", world)
-        self.bot.reload_worlds()
-        if world is None:
-            await ctx.send(f"{ctx.tick(True)} This server is no longer tracking any world.")
+        set_server_property(ctx.guild.id, "events_channel", new_value)
+        if new_value is 0:
+            await ctx.send(f"{ctx.tick(True)} The events channel has been disabled.")
         else:
-            await ctx.send(f"{ctx.tick(True)} This server is now tracking **{world}**")
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for events.")
 
     @checks.is_admin()
     @settings.command(name="levelschannel", aliases=["deathschannel", "trackingchannel"])
@@ -238,138 +292,84 @@ class Settings:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for Tibia news.")
 
     @checks.is_admin()
-    @settings.command(name="eventschannel")
-    async def settings_eventschannel(self, ctx, channel: str=None):
-        """Changes the channel where upcoming events are announced.
+    @settings.command(name="prefix")
+    async def settings_prefix(self, ctx, prefix: PrefixConverter=None):
+        """Changes the command prefix for this server.
 
-        This is where announcements of events about to happen will be made.
-        By default, the highest channel on the list where the bot can send messages will be used.
-        If the assigned channel is deleted or forbidden, the top channel will be used again.
+        The prefix are the characters that go before a command's name, in order for the bot to recognize the command.
+        A maximum of 5 commands can be set per server.
 
-        If this is disabled, users that subscribed to the event will stil receive notifications via PM.
-        """
-        current_channel_id = get_server_property(ctx.guild.id, "events_channel", is_int=True)
-        if channel is None:
-            current_value = self.get_current_channel(ctx, current_channel_id)
-            await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")
+        To remove an existing prefix, use it as a parameter.
+
+        If you want to have a space at the end, such as: `nabbot help`, you have to use double quotes "nabbot ".
+        Multiple words also require using quotes.
+
+        Mentioning the bot is always a valid command and can't be changed."""
+        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=list(config.command_prefix))
+        if prefix is None:
+            current_value = ", ".join(f"`{p}`" for p in prefixes) if len(prefixes) > 0 else "Mentions only"
+            await self.show_info_embed(ctx, current_value, "Any text", "prefix")
             return
-        if channel.lower() == "disable":
-            if current_channel_id is 0:
-                await ctx.send("Event announcements are already disabled.")
-                return
-            message = await ctx.send(f"Are you sure you want to disable events announcements?")
-            new_value = 0
+        remove = False
+        if prefix in prefixes:
+            message = await ctx.send(f"Do you want to remove `{prefix}` as a prefix?")
+            remove = True
         else:
-            try:
-                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
-            except commands.BadArgument:
-                await ctx.send("I couldn't find that channel, are you sure it exists?")
+            if len(prefixes) >= 5:
+                await ctx.send("You can't have more than 5 command prefixes.")
                 return
-            perms = new_channel.permissions_for(ctx.me)
-            if not perms.read_messages or not perms.send_messages:
-                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
-                return
-            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new events channel?")
-            new_value = new_channel.id
+            message = await ctx.send(f"Do you want to add `{prefix}` as a prefix?")
         confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
         if not confirm:
             await ctx.message.delete()
             return
 
-        set_server_property(ctx.guild.id, "events_channel", new_value)
-        if new_value is 0:
-            await ctx.send(f"{ctx.tick(True)} The events channel has been disabled.")
+        if remove:
+            prefixes.remove(prefix)
+            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was removed.")
         else:
-            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for events.")
+            prefixes.append(prefix)
+            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
+        set_server_property(ctx.guild.id, "prefixes", prefixes, serialize=True)
 
     @checks.is_admin()
-    @settings.command(name="askchannel", aliases=["commandchannel"])
-    async def settings_askchannel(self, ctx, channel: str=None):
-        """Changes the channel where longer replies for commands are given.
+    @settings.command(name="world")
+    async def settings_world(self, ctx, world: str=None):
+        """Changes the world this discord server tracks.
 
-        In this channel, pagination commands show more entries at once and command replies in general are longer."""
-        current_channel_id = get_server_property(ctx.guild.id, "ask_channel", is_int=True)
-        current_channel = ctx.guild.get_channel(current_channel_id)
-        if channel is None:
-            if current_channel:
-                perms = current_channel.permissions_for(ctx.me)
-            else:
-                perms = discord.Permissions()
-            ok = False
-            if current_channel_id is None:
-                current_value = f"None."
-            elif current_channel is None:
-                current_value = "Previous channel was deleted."
-            elif not perms.read_messages or not perms.send_messages:
-                current_value = f"{current_channel.mention}, but I can't use the channel."
-            else:
-                current_value = {current_channel.mention}
-                ok = True
-
-            if not ok:
-                current_value += f" By default, I'll use any channel named {config.ask_channel_name}."
-            await self.show_info_embed(ctx, current_value, "A channel's name or id, or `none`.", "channel/none")
+        The tracked world is the Tibia world that this discord server is following.
+        Only characters in that world will be registered."""
+        if world is None:
+            await self.show_info_embed(ctx, ctx.world, "Any Tibia world or `none` to disable.", "world/none")
             return
-
-        if channel.lower() == "none":
-            if current_channel_id is None:
-                await ctx.send("There's no command channel set.")
+        world = world.strip().capitalize()
+        if world == "None":
+            if ctx.world is None:
+                await ctx.send("This server is already not tracking any world.")
                 return
-            message = await ctx.send(f"Are you sure you want to delete the set command channel?")
-            new_value = 0
+            message = await ctx.send(f"Are you sure you want to unassign **{ctx.world}** from this server?")
+            world = None
         else:
-            try:
-                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
-            except commands.BadArgument:
-                await ctx.send("I couldn't find that channel, are you sure it exists?")
+            if world not in tibia_worlds:
+                await ctx.send("There's no world with that name.")
                 return
-            perms = new_channel.permissions_for(ctx.me)
-            if not perms.read_messages or not perms.send_messages:
-                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
-                return
-            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new commands channel?")
-            new_value = new_channel.id
+            message = await ctx.send(f"Are you sure you want to assign **{world}** to this server?")
         confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
         if not confirm:
             await ctx.message.delete()
             return
 
-        set_server_property(ctx.guild.id, "ask_channel", new_value)
-        if new_value is 0:
-            await ctx.send(f"{ctx.tick(True)} The command channel was deleted."
-                           f"I will still use any channel named **{config.ask_channel_name}**.")
+        set_server_property(ctx.guild.id, "world", world)
+        self.bot.reload_worlds()
+        if world is None:
+            await ctx.send(f"{ctx.tick(True)} This server is no longer tracking any world.")
         else:
-            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used as a command channel.")
+            await ctx.send(f"{ctx.tick(True)} This server is now tracking **{world}**")
 
-    @checks.is_admin()
-    @settings.command(name="commandsonly")
-    async def settings_commandsonly(self, ctx, option: str=None):
-        """Sets whether only commands are allowed in the command channel.
-
-        If this is enabled, everything that is not a message will be deleted from the command channel.
-        This allows the channel to be used exclusively for commands.
-
-        If the channel is shared with other command bots, this should be off.
-
-        Note that the bot needs `Manage Messages` permission to delete messages."""
-        def yes_no(choice: bool):
-            return "Yes" if choice else "No"
-        if option is None:
-            current = get_server_property(ctx.guild.id, "commandsonly", is_int=True)
-            if current is None:
-                current_value = f"{yes_no(config.ask_channel_delete)} (Global default)"
-            else:
-                current_value = yes_no(current)
-            await self.show_info_embed(ctx, current_value, "yes/no", "yes/no")
-            return
-        if option.lower() == "yes":
-            set_server_property(ctx.guild.id, "commandsonly", True)
-            await ctx.send(f"{ctx.tick(True)} I will delete non-commands in the command channel from now on.")
-        elif option.lower() == "no":
-            set_server_property(ctx.guild.id, "commandsonly", False)
-            await ctx.send(f"{ctx.tick(True)} I won't delete non-commands in the command channel from now on.")
-        else:
-            await ctx.send("That's not a valid option, try **yes** or **no**.")
+    @settings_prefix.error
+    async def prefix_error(self, ctx, error):
+        if isinstance(error, commands.BadArgument):
+            await ctx.send(str(error))
 
     def get_current_channel(self, ctx, current_channel_id):
         top_channel = self.bot.get_top_channel(ctx.guild, True)

@@ -54,6 +54,7 @@ pages:
       - Mod commands: commands/mod.md
       - Owner commands: commands/owner.md
       - Roles commands: commands/roles.md
+      - Settings commands: commands/settings.md
       - Tibia commands: commands/tibia.md
       - TibiaWiki commands: commands/tibiawiki.md
       - Tracking commands: commands/tracking.md
