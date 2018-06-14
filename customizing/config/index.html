@@ -832,22 +832,13 @@ The prefix <code class="codehilite">/</code> can be changed, or even more prefix
 <div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">command_prefix</span><span class="p p-Indicator">:</span>
   <span class="p p-Indicator">-</span> <span class="s">&quot;/&quot;</span>
   <span class="p p-Indicator">-</span> <span class="s">&quot;$&quot;</span>
-<span class="l l-Scalar l-Scalar-Plain">command_mention</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
 </pre></div>
 
-<p>So the bot would now also answer to <code class="codehilite">$about</code> and <code class="codehilite">$help</code>.</p>
+<p>So the bot would now also answer to <code class="codehilite">$about</code> and <code class="codehilite">$help</code>.<br />
+Note that the bot will always answering by being mentioned, e.g. <code class="codehilite">@NabBot help</code>, <code class="codehilite">@NabBot about</code>.</p>
 <p>It's recommended to keep this list as short as possible, and to make sure it does not overlap with the command prefix of other bots.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>This is a experimental feature, so even if the prefix is changed, many messages will still say you have to use the default prefix.<br />
-However, the new command prefixes will work fine.</p>
-</div>
-<p>It's also possible to enable mentions as a prefix using <code class="codehilite">command_mention</code>, so the bot will answer to commands like: <code class="codehilite">@NabBot about</code>, <code class="codehilite">@NabBot whois Nezune</code>.</p>
-<p>This can be combined with <code class="codehilite">command_prefix</code> to have both working simultaneously, or <code class="codehilite">command_prefix</code> can be left blank to only allow the bot to listen to mentions.</p>
-<details class="summary"><summary>Example</summary><p><div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">command_prefix</span><span class="p p-Indicator">:</span> <span class="p p-Indicator">[]</span>
-<span class="l l-Scalar l-Scalar-Plain">command_mention</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
-</pre></div>
-In this case, the bot will only answer when mentioned directly.</p></details><h2 id="extra-cogs">Extra cogs<a class="headerlink" href="#extra-cogs" title="Permanent link">&para;</a></h2>
+<p>This setting can be overriden on a per-server basis by using the command <a href="../../commands/settings/#settings-prefix">settings</a></p>
+<h2 id="extra-cogs">Extra cogs<a class="headerlink" href="#extra-cogs" title="Permanent link">&para;</a></h2>
 <p>For more information, see <a href="../cogs/">Cogs</a></p>
 <div class="codehilite"><pre><span></span><span class="c1"># Add extra features by adding your own cogs.</span>
 <span class="l l-Scalar l-Scalar-Plain">extra_cogs</span><span class="p p-Indicator">:</span> <span class="p p-Indicator">[]</span>

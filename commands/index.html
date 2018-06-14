@@ -672,13 +672,14 @@
                 <h1 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h1>
 <p>One of the main features of discord bots is being able to respond to commands.
 All commands require a prefix in order to be recognized and to avoid command triggering accidentally.</p>
-<p>By default, the command prefix is <code class="codehilite">/</code>, this can be changed in the main file by changing <code class="codehilite">command_prefix</code>.</p>
+<p>By default, the command prefix is <code class="codehilite">/</code> and <code class="codehilite">@NabBot</code>, this can be changed in the main file by changing <code class="codehilite">command_prefix</code>, or per server using the command <a href="settings/#settings-prefix">settings prefix</a>.</p>
 <p>Commands can be used on any channel where the bot can read and write.
 Some commands may require extra permissions such as <code class="codehilite">Embed Links</code> or <code class="codehilite">Attach Files</code>, or might not be allowed in private messages.
 Some commands can show longer responses if used in <code class="codehilite">ask-channel</code> (by default, #ask-nabbot).</p>
 <p>For descriptions of each command check the different commands sections in the sidebar.</p>
+<p>In discord, you can use the command <a href="general/#help">help</a> to see a list of commands. Only commands that you are allowed to use will be shown.</p>
 <h2 id="paginator">Paginator<a class="headerlink" href="#paginator" title="Permanent link">&para;</a></h2>
-<p>Some commands responses feature a <em>paginator</em> (<a href="https://github.com/Rapptz/RoboDanny/blob/master/cogs/utils/paginator.py">based on Rapptz' paginator class</a>).
+<p>Some commands responses feature a <em>paginator</em> (<a href="https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/utils/paginator.py">based on RoboDany's paginator class</a>).
 These can be easily spotted by the reactions automatically added to the reply (◀️▶️⏹️).
 These reactions act as buttons, letting you scroll through the results.</p>
 <p><img alt="Command with pagination" src="https://cloud.githubusercontent.com/assets/12865379/25454641/12eeba9a-2a82-11e7-8338-6a58d923b6c5.png" /></p>
