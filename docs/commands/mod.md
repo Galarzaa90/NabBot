@@ -1,58 +1,61 @@
 # Mod commands
 
-This commands can only be used by the server's owner and users with the `Manage Channels` permission.
+Commands server moderators.
 
 !!! info
-    Words in italics are parameters.  
-    Parameters enclosed in brackets `[]` are optional.
+    Parameters are enclosed with `< >`.   
+    Optional parameters are enclosed in brackets `[]`.
 
-## /makesay
-**Syntax:** /makesay [*message*]
+## ignore
+**Syntax:** `ignore [channel]`
 
-Makes the bot say a message. This command can be used in two ways.
+Makes the bot ignore a channel
 
-If you use this command on any channel, NabBot will delete your original message and then repeat it itself.
-Note that the bot requries `Manage Messages` permissions in that channel in order to use it effectively.
+Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
 
-Bot owners can use this command on private messages in a more discrete way.
-After using `/makesay Some message`, the bot will look for all the channels it shares with the command author, and where both can
-send messages. The bot will display the list, numbering each channel.  
-The command user must then respond with the number of the channel where they want NabBot to relay the message to.
-Alternatively, they can cancel the operation replying with `0`. The bot will confirm that the message was delivered.
+If the parameter is used with no parameters, it ignores the current channel.
+
+Note that server administrators can bypass this.
 
 ----
 
-## /unregistered
-Shows a list of discord users that have no registered characters.
+### ignore list
+Shows a list of ignored channels.
+
+----
+
+## makesay
+**Syntax:** `makesay <message>`
+
+Makes the bot say a message.
+ 
+If it's used directly on a text channel, the bot will delete the command's message and repeat it itself.  
+Note that deleting the message requires `Manage Messages` permissions in the channel.
+
+If it's used on a private message, the bot will ask on which channel he should say the message.  
+Each channel in the list is numerated, by choosing a number, the message will be sent in the chosen channel.
+
+----
+
+## unignore
+**Syntax:** `unignore [channel]`
+
+Unignores a channel.
+
+If no channel is provided, the current channel will be unignored.
+
+Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
+
+If the parameter is used with no parameters, it unignores the current channel.
+
+----
+
+## unregistered
+Shows a list of users with no registered characters.
 
 ??? Summary "Example"
 
     **/unregistered**  
     ![image](../assets/images/commands/unregistered.png)
-
-----
-
-## /ignore
-**Syntax:** /ignore [*channel*]
-
-Makes the bot ignore commands in a channel. This allows you to have a channel where the bot can still make announcements but
-he won't respond to any commands.
-
-If the command is used with no parameters, the current channel will be ignored, otherwise, the specified channel will be looked for.
-
-Administrators can bypass this.
-
-### /ignore list
-Shows a list of the currently ignored channels in the server.
-
-
-----
-
-## /unignore
-**Syntax:** /unignore [*channel*]
-
-Makes the bot listen to commands in this channel again.
-
-If the command is used with no parameters, the current channel will be unignored, otherwise, the specified channel will be looked for.
 
 ----

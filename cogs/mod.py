@@ -13,7 +13,7 @@ from utils.paginator import Pages, CannotPaginate
 
 
 class Mod:
-    """Commands for bot/server moderators."""
+    """Commands server moderators."""
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.ignored = {}
@@ -24,14 +24,58 @@ class Mod:
                ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_owner_check(ctx) \
                or checks.check_guild_permissions(ctx, {'manage_channels': True})
 
-    # Admin only commands #
+    # Commands
+    @commands.guild_only()
+    @checks.is_channel_mod()
+    @commands.group(invoke_without_command=True, case_insensitive=True)
+    async def ignore(self, ctx, *, channel: discord.TextChannel = None):
+        """Makes the bot ignore a channel.
+
+        Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
+
+        If the parameter is used with no parameters, it ignores the current channel.
+
+        Note that server administrators can bypass this."""
+        if channel is None:
+            channel = ctx.channel
+
+        if channel.id in self.ignored.get(ctx.guild.id, []):
+            await ctx.send(f"{channel.mention} is already ignored.")
+            return
+
+        with userDatabase:
+            userDatabase.execute("INSERT INTO ignored_channels(server_id, channel_id) VALUES(?, ?)",
+                                 (ctx.guild.id, channel.id))
+            await ctx.send(f"{channel.mention} is now ignored.")
+            self.reload_ignored()
+
+    @commands.guild_only()
+    @checks.is_channel_mod()
+    @ignore.command(name="list")
+    async def ignore_list(self, ctx):
+        """Shows a list of ignored channels."""
+        entries = [ctx.guild.get_channel(c).name for c in self.ignored.get(ctx.guild.id, []) if ctx.guild.get_channel(c) is not None]
+        if not entries:
+            await ctx.send("There are no ignored channels in this server.")
+            return
+        pages = Pages(ctx, entries=entries)
+        pages.embed.title = "Ignored channels"
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
     @commands.command()
     @checks.is_mod_somewhere()
     async def makesay(self, ctx: discord.ext.commands.Context, *, message: str):
-        """Makes the bot say a message
-        If it's used directly on a text channel, the bot will delete the command's message and repeat it itself
+        """Makes the bot say a message.
 
-        If it's used on a private message, the bot will ask on which channel he should say the message."""
+        If it's used directly on a text channel, the bot will delete the command's message and repeat it itself.
+        Note that deleting the message requires `Manage Messages` permissions in the channel.
+
+        If it's used on a private message, the bot will ask on which channel he should say the message.
+        Each channel in the list is numerated, by choosing a number, the message will be sent in the chosen channel.
+        """
         if is_private(ctx.channel):
             description_list = []
             channel_list = []
@@ -84,11 +128,35 @@ class Mod:
             await ctx.message.delete()
             await ctx.channel.send(message)
 
+    @commands.guild_only()
+    @checks.is_channel_mod()
     @commands.command()
+    async def unignore(self, ctx, *, channel: discord.TextChannel = None):
+        """Unignores a channel.
+
+        If no channel is provided, the current channel will be unignored.
+
+        Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
+
+        If the parameter is used with no parameters, it unignores the current channel."""
+        if channel is None:
+            channel = ctx.channel
+
+        if channel.id not in self.ignored.get(ctx.guild.id, []):
+            await ctx.send(f"{channel.mention} is not ignored.")
+            return
+
+        with userDatabase:
+            userDatabase.execute("DELETE FROM ignored_channels WHERE channel_id = ?", (channel.id,))
+            await ctx.send(f"{channel.mention} is not ignored anymore.")
+            self.reload_ignored()
+
     @checks.is_channel_mod()
     @commands.guild_only()
+    @checks.is_tracking_world()
+    @commands.command()
     async def unregistered(self, ctx):
-        """Check which users are currently not registered."""
+        """Shows a list of users with no registered characters."""
 
         world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         entries = []
@@ -118,67 +186,6 @@ class Mod:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
-
-    @commands.guild_only()
-    @checks.is_channel_mod()
-    @commands.group(invoke_without_command=True, case_insensitive=True)
-    async def ignore(self, ctx, *, channel: discord.TextChannel = None):
-        """Makes the bot ignore a channel
-
-        Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
-
-        If the parameter is used with no parameters, it ignores the current channel.
-
-        Note that server administrators can bypass this."""
-        if channel is None:
-            channel = ctx.channel
-
-        if channel.id in self.ignored.get(ctx.guild.id, []):
-            await ctx.send(f"{channel.mention} is already ignored.")
-            return
-
-        with userDatabase:
-            userDatabase.execute("INSERT INTO ignored_channels(server_id, channel_id) VALUES(?, ?)",
-                                 (ctx.guild.id, channel.id))
-            await ctx.send(f"{channel.mention} is now ignored.")
-            self.reload_ignored()
-
-    @commands.guild_only()
-    @checks.is_channel_mod()
-    @ignore.command(name="list")
-    async def ignore_list(self, ctx):
-        """Shows a list of ignored channels"""
-        entries = [ctx.guild.get_channel(c).name for c in self.ignored.get(ctx.guild.id, []) if ctx.guild.get_channel(c) is not None]
-        if not entries:
-            await ctx.send("There are no ignored channels in this server.")
-            return
-        pages = Pages(ctx, entries=entries)
-        pages.embed.title = "Ignored channels"
-        try:
-            await pages.paginate()
-        except CannotPaginate as e:
-            await ctx.send(e)
-
-    @commands.guild_only()
-    @checks.is_channel_mod()
-    @commands.command()
-    async def unignore(self, ctx, *, channel: discord.TextChannel = None):
-        """Makes the bot unignore a channel
-
-        Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
-
-        If the parameter is used with no parameters, it unignores the current channel."""
-        if channel is None:
-            channel = ctx.channel
-
-        if channel.id not in self.ignored.get(ctx.guild.id, []):
-            await ctx.send(f"{channel.mention} is not ignored.")
-            return
-
-        with userDatabase:
-            userDatabase.execute("DELETE FROM ignored_channels WHERE channel_id = ?", (channel.id,))
-            await ctx.send(f"{channel.mention} is not ignored anymore.")
-            self.reload_ignored()
 
     @ignore.error
     @unignore.error

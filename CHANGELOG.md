@@ -36,6 +36,7 @@
     - `/npc`: `npcs` alias removed.
     - `/key`: `keys` alias removed.
     - `/spell`: `spell` alias removed.
+    - `admins_message`: renamed to `adminsmessage`, removed all aliases, added `notifyadmins`
 
 ## Version 1.1.1 (2018-06-12)
 - Added missing items from the Feyrist area to the loot database
