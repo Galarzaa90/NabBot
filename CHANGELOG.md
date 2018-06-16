@@ -1,4 +1,9 @@
 # Changelog
+## Version 1.2.2 (Unrealeased)
+- `/unregistered` no longer displays discord bots.
+- Fixed display bug in `/settings askchannel`.
+- Documentation improvements.
+
 ## Version 1.2.1 (2018-06-14)
 - Updated mentions of `/setworld` and similar to `/settings world`.
 - If the server owner has PMs disabled when the bot joins, the bot will send the initial message in the server.

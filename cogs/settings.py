@@ -90,7 +90,7 @@ class Settings:
             elif not perms.read_messages or not perms.send_messages:
                 current_value = f"{current_channel.mention}, but I can't use the channel."
             else:
-                current_value = {current_channel.mention}
+                current_value = current_channel.mention
                 ok = True
 
             if not ok:

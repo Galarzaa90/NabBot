@@ -7,6 +7,7 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils import checks
+from utils.context import NabCtx
 from utils.database import userDatabase
 from utils.discord import is_private
 from utils.pages import Pages, CannotPaginate
@@ -155,27 +156,26 @@ class Mod:
     @commands.guild_only()
     @checks.is_tracking_world()
     @commands.command()
-    async def unregistered(self, ctx):
+    async def unregistered(self, ctx: NabCtx):
         """Shows a list of users with no registered characters."""
-
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         entries = []
-        if world is None:
+        if ctx.world is None:
             await ctx.send("This server is not tracking any worlds.")
             return
 
         with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT user_id FROM chars WHERE world LIKE ? GROUP BY user_id", (world,))
+            c.execute("SELECT user_id FROM chars WHERE world LIKE ? GROUP BY user_id", (ctx.world,))
             result = c.fetchall()
             if len(result) <= 0:
-                await ctx.send("There are no registered characters.")
+                await ctx.send("There are no unregistered users.")
                 return
             users = [i["user_id"] for i in result]
         for member in ctx.guild.members:  # type: discord.Member
-            if member.id == ctx.me.id:
+            # Skip bots
+            if member.bot:
                 continue
             if member.id not in users:
-                entries.append(f"@**{member.display_name}** \u2014 Joined on: **{member.joined_at.date()}**")
+                entries.append(f"@**{member.display_name}** \u2014 Joined: **{member.joined_at.date()}**")
         if len(entries) == 0:
             await ctx.send("There are no unregistered users.")
             return
