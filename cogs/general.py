@@ -289,14 +289,13 @@ class General:
         for page in pages:
             await destination.send(page)
 
+    @commands.guild_only()
     @commands.group(aliases=["event"], invoke_without_command=True, case_insensitive=True, usage="[event id]")
-    @checks.is_not_lite()
     async def events(self, ctx: NabCtx, event_id: int=None):
         """Shows a list of upcoming and recent events.
 
         If a number is specified, it will show details for that event. Same as using `events info`"""
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links and not is_private(ctx.channel):
+        if not ctx.bot_permissions.embed_links and not is_private(ctx.channel):
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
         if event_id is not None:
@@ -305,24 +304,16 @@ class General:
         # Time in seconds the bot will show past events
         time_threshold = 60 * 30
         now = time.time()
-        server = ctx.guild
-        # If this is used on a PM, show events for all shared servers
-        if is_private(ctx.channel):
-            guilds = self.bot.get_user_guilds(ctx.author.id)
-        else:
-            guilds = [ctx.guild]
-        servers_ids = [g.id for g in guilds]
-        placeholders = ", ".join("?" for g in guilds)
         embed = discord.Embed(description="For more info about an event, use `/event info (id)`"
                                           "\nTo receive notifications for an event, use `/event sub (id)`")
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator, start, name, id, server FROM events "
-                      "WHERE start < {0} AND start > {1} AND active = 1 AND server IN ({2}) "
-                      "ORDER by start ASC".format(now, now - time_threshold, placeholders), tuple(servers_ids))
+                      "WHERE start < ? AND start > ? AND active = 1 AND server == ? "
+                      "ORDER by start ASC", (now, now - time_threshold, ctx.guild.id))
             recent_events = c.fetchall()
             c.execute("SELECT creator, start, name, id, server FROM events "
-                      "WHERE start > {0} AND active = 1 AND server IN ({1})"
-                      "ORDER BY start ASC".format(now, placeholders), tuple(servers_ids))
+                      "WHERE start > ? AND active = 1 AND server == ?"
+                      "ORDER BY start ASC", (now, ctx.guild.id))
             upcoming_events = c.fetchall()
         if len(recent_events) + len(upcoming_events) == 0:
             await ctx.send("There are no upcoming events.")
@@ -332,20 +323,20 @@ class General:
             name = "Recent events"
             value = ""
             for event in recent_events:
-                author = self.bot.get_member(event["creator"], server)
-                event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
+                author = ctx.guild.get_member(event["creator"])
+                event["author"] = "unknown" if author is None else author.display_name
                 time_diff = dt.timedelta(seconds=now - event["start"])
                 minutes = round((time_diff.seconds / 60) % 60)
                 event["start_str"] = "Started {0} minutes ago".format(minutes)
-                value += "\n**{name}** (by **@{author}**,*ID:{id}*) - {start_str}".format(**event)
+                value += "\n**{name}** (*ID: {id}*) - by **@{author}** - {start_str}".format(**event)
             embed.add_field(name=name, value=value, inline=False)
         # Upcoming events
         if upcoming_events:
             name = "Upcoming events"
             value = ""
             for event in upcoming_events:
-                author = self.bot.get_member(event["creator"], server)
-                event["author"] = "unknown" if author is None else (author.display_name if server else author.name)
+                author = ctx.guild.get_member(event["creator"])
+                event["author"] = "unknown" if author is None else author.display_name
                 time_diff = dt.timedelta(seconds=event["start"] - now)
                 days, hours, minutes = time_diff.days, time_diff.seconds // 3600, (time_diff.seconds // 60) % 60
                 if days:
@@ -356,11 +347,11 @@ class General:
                     event["start_str"] = 'In {0} minutes'.format(minutes)
                 else:
                     event["start_str"] = 'Starting now!'
-                value += "\n**{name}** (by **@{author}**,*ID:{id}*) - {start_str}".format(**event)
+                value += "\n**{name}** (*ID:{id}*) -  by **@{author}** - {start_str}".format(**event)
             embed.add_field(name=name, value=value, inline=False)
         await ctx.send(embed=embed)
 
-    @checks.is_not_lite()
+    @commands.guild_only()
     @events.command(name="add", usage="<starts in> <name>[,description]")
     async def event_add(self, ctx, starts_in: TimeString, *, params):
         """Creates a new event.
@@ -384,6 +375,7 @@ class General:
         if len(name) > EVENT_NAME_LIMIT:
             await ctx.send(f"The event's name can't be longer than {EVENT_NAME_LIMIT} characters.")
             return
+
         event_description = ""
         if len(params) > 1:
             event_description = clean_string(ctx, params[1])
@@ -391,48 +383,16 @@ class General:
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
             result = c.fetchall()
+
         if len(result) > 1 and creator not in config.owner_ids:
             await ctx.send("You can only have two running events simultaneously. Delete or edit an active event")
             return
-
-        guilds = self.bot.get_user_guilds(creator)
-        # If message is via PM, but user only shares one server, we just consider that server
-        if is_private(ctx.channel) and len(guilds) == 1:
-            guild = guilds[0]
-        # Not a private message, so we just take current guild
-        elif not is_private(ctx.channel):
-            guild = ctx.guild
-        # PM and user shares multiple servers, we must ask him for which server is the event
-        else:
-            await ctx.send("For which server is this event? Choose one (number only)" +
-                           "\n\t0: *Cancel*\n\t" +
-                           "\n\t".join(["{0}: **{1.name}**".format(i + 1, j) for i, j in enumerate(guilds)]))
-
-            def check(m):
-                return m.channel == ctx.channel and m.author == ctx.author
-
-            try:
-                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
-                answer = int(reply.content)
-                if answer == 0:
-                    await ctx.send("Changed your mind? Typical human.")
-                    return
-                guild = guilds[answer - 1]
-            except IndexError:
-                await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
-                return
-            except ValueError:
-                await ctx.send("That's not a valid answer, try the command again.")
-                return
-            except asyncio.TimeoutError:
-                await ctx.send("Nothing? Forget it then.")
-                return
 
         embed = discord.Embed(title=name, description=event_description, timestamp=dt.datetime.utcfromtimestamp(start))
         embed.set_footer(text="Start time")
 
         message = await ctx.send("Is this correct?", embed=embed)
-        confirm = await ctx.react_confirm(message)
+        confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -441,14 +401,14 @@ class General:
             return
         with closing(userDatabase.cursor()) as c:
             c.execute("INSERT INTO events (creator,server,start,name,description) VALUES(?,?,?,?,?)",
-                      (creator, guild.id, start, name, event_description))
+                      (creator, ctx.guild.id, start, name, event_description))
             event_id = c.lastrowid
             userDatabase.commit()
 
         reply = "Event created successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
         await ctx.send(reply.format(name, starts_in.original, event_id))
 
-    @checks.is_not_lite()
+    @commands.guild_only()
     @events.command(name="addplayer", aliases=["addchar"])
     async def event_addplayer(self, ctx, event_id: int, *, character):
         """Adds a character to an event.
@@ -484,7 +444,7 @@ class General:
 
         message = await ctx.send(f"Do you want to add **{char['name']}** (@{owner.display_name}) "
                                  f"to **{event['name']}**?")
-        confirm = await ctx.react_confirm(message)
+        confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -497,6 +457,7 @@ class General:
             await ctx.send(f"You successfully added **{char['name']}** to this event.")
             return
 
+    @commands.guild_only()
     @events.group(name="edit", invoke_without_command=True, case_insensitive=True)
     async def event_edit(self, ctx):
         """Edits an event.
@@ -510,8 +471,8 @@ class General:
         content += "```"
         await ctx.send(content)
 
+    @commands.guild_only()
     @event_edit.command(name="description", aliases=["desc", "details"], usage="<id> [new description]")
-    @checks.is_not_lite()
     async def event_edit_description(self, ctx, event_id: int=None, *, new_description=None):
         """Edits an event's description.
 
@@ -553,7 +514,7 @@ class General:
                               timestamp=dt.datetime.utcfromtimestamp(event["start"]))
         embed.set_footer(text="Start time")
         message = await ctx.send("Do you want this to be the new description?", embed=embed)
-        confirm = await ctx.react_confirm(message)
+        confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -575,8 +536,8 @@ class General:
         await self.notify_subscribers(event_id, f"The description of event **{event['name']}** was changed.",
                                       embed=embed, skip_creator=True)
 
+    @commands.guild_only()
     @event_edit.command(name="joinable", aliases=["open"], usage="<id> [yes/no]")
-    @checks.is_not_lite()
     async def event_edit_joinable(self, ctx, event_id: int, *, yes_no: str=None):
         """Changes whether anyone can join an event or only the owner may add people.
 
@@ -626,8 +587,8 @@ class General:
                 await creator.send(f"Your event **{event['name']}** was changed to **{joinable_string}** "
                                    f"by {ctx.author.mention}.")
 
+    @commands.guild_only()
     @event_edit.command(name="name", aliases=["title"], usage="<id> [new name]")
-    @checks.is_not_lite()
     async def event_edit_name(self, ctx, event_id: int, *, new_name):
         """Edits an event's name.
 
@@ -664,7 +625,7 @@ class General:
             await ctx.send(f"The name can't be longer than {EVENT_NAME_LIMIT} characters.")
             return
         message = await ctx.send(f"Do you want to change the name of **{event['name']}** to **{new_name}**?")
-        confirm = await ctx.react_confirm(message)
+        confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -686,8 +647,8 @@ class General:
         await self.notify_subscribers(event_id, f"The event **{event['name']}** was renamed to **{new_name}**.",
                                       skip_creator=True)
 
+    @commands.guild_only()
     @event_edit.command(name="slots", aliases=["size"], usage="<id> [new slots]")
-    @checks.is_not_lite()
     async def event_edit_slots(self, ctx, event_id: int = None, *, slots=None):
         """Edits an event's number of slots
 
@@ -728,7 +689,7 @@ class General:
             await ctx.send("That's not a number...")
             return
         message = await ctx.send(f"Do you want the number of slots of **{event['name']}** to **{slots}**?")
-        confirm = await ctx.react_confirm(message)
+        confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -748,8 +709,8 @@ class General:
                 await creator.send(f"Your event **{event['name']}** slots were changed to **{slots}** by "
                                    f"{ctx.author.mention}")
 
+    @commands.guild_only()
     @event_edit.command(name="time", aliases=["start"], usage="<id> [new start time]")
-    @checks.is_not_lite()
     async def event_edit_time(self, ctx, event_id: int, starts_in: TimeString=None):
         """Edit's an event's start time.
 
@@ -790,7 +751,7 @@ class General:
         embed.set_footer(text="Start time")
         message = await ctx.send(f"This will be the time of your new event in your local time. Is this correct?",
                                  embed=embed)
-        confirm = await ctx.react_confirm(message)
+        confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -812,7 +773,7 @@ class General:
         await self.notify_subscribers(event_id, f"The start time of **{event['name']}** was changed:", embed=embed,
                                       skip_creator=True)
 
-    @checks.is_not_lite()
+    @commands.guild_only()
     @events.command(name="info", aliases=["show"])
     async def event_info(self, ctx, event_id: int):
         """Displays an event's info.
@@ -847,7 +808,7 @@ class General:
 
         await ctx.send(embed=embed)
 
-    @checks.is_not_lite()
+    @commands.guild_only()
     @events.command(name="join")
     async def event_join(self, ctx, event_id: int, *, character: str):
         """Join an event with a specific character
@@ -900,7 +861,7 @@ class General:
             await ctx.send("You successfully joined this event.")
             return
 
-    @checks.is_not_lite()
+    @commands.guild_only()
     @events.command(name="leave")
     async def event_leave(self, ctx, event_id: int):
         """Leave an event you were participating in."""
@@ -929,19 +890,19 @@ class General:
             return
 
     # TODO: Do not cancel the whole process if a parameter is invalid, retry at that point
-    @checks.is_not_lite()
+    @commands.guild_only()
     @events.command(name="make", aliases=["creator", "maker"])
     async def event_make(self, ctx):
         """Creates an event guiding you step by step
 
         Instead of using confusing parameters, commas and spaces, this commands has the bot ask you step by step."""
-
         def check(m):
             return m.channel == ctx.channel and m.author == ctx.author
 
         author = ctx.author
         creator = author.id
         now = time.time()
+
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
             event = c.fetchall()
@@ -1049,7 +1010,7 @@ class General:
         reply = "Event registered successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
         await ctx.send(reply.format(name, starts_in.original, event_id))
 
-    @checks.is_not_lite()
+    @commands.guild_only()
     @events.command(name="participants")
     async def event_participants(self, ctx, event_id: int):
         """Shows the list of characters participating in this event."""
@@ -1091,7 +1052,7 @@ class General:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @checks.is_not_lite()
+    @commands.guild_only()
     @events.command(name="remove", aliases=["delete", "cancel"])
     async def event_remove(self, ctx, event_id: int):
         """Deletes or cancels an event."""
@@ -1125,7 +1086,7 @@ class General:
         await self.notify_subscribers(event_id, f"The event **{event['name']}** was deleted by {ctx.author.mention}.",
                                       skip_creator=True)
 
-    @checks.is_not_lite()
+    @commands.guild_only()
     @events.command(name="removeplayer", aliases=["removechar"])
     async def event_removeplayer(self, ctx, event_id: int, *, character):
         """Removes a player from an event.
@@ -1163,7 +1124,7 @@ class General:
             await ctx.send("You successfully left this event.")
             return
 
-    @checks.is_not_lite()
+    @commands.guild_only()
     @events.command(name="subscribe", aliases=["sub"])
     async def event_subscribe(self, ctx, event_id: int):
         """Subscribe to receive a PM when an event is happening."""
@@ -1190,7 +1151,7 @@ class General:
             c.close()
             userDatabase.commit()
 
-    @checks.is_not_lite()
+    @commands.guild_only()
     @events.command(name="unsubscribe", aliases=["unsub"])
     async def event_unsubscribe(self, ctx, event_id: int):
         """Unsubscribe to an event."""
