@@ -7,6 +7,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils import checks, context
 from utils.config import config
+from utils.context import NabCtx
 from utils.database import *
 from utils.discord import get_user_avatar
 from utils.general import join_list, log
@@ -20,30 +21,36 @@ class Admin:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    @commands.command(name="addaccount", aliases=["addacc"], usage="<user>,<character>")
-    @checks.is_owner()
+    async def __error(self, ctx, error):
+        if isinstance(error, commands.BadArgument):
+            if not error.args:
+                await ctx.send(f"{ctx.tick(False)} The correct syntax is: "
+                               f"`{ctx.clean_prefix}{ctx.invoked_with} {ctx.usage}`")
+            else:
+                await ctx.send(error)
+
     @commands.guild_only()
-    async def add_account(self, ctx, *, params):
+    @checks.is_owner()
+    @checks.is_tracking_world()
+    @commands.command(name="addaccount", aliases=["addacc"], usage="<user>,<character>")
+    async def add_account(self, ctx: NabCtx, *, params):
         """Register a character and all other visible characters to a discord user.
 
         If a character is hidden, only that character will be added. Characters in other worlds are skipped."""
         params = params.split(",")
         if len(params) != 2:
-            await ctx.send("The correct syntax is: ``/addacc username,character``")
-            return
+            raise commands.BadArgument()
         target_name, char_name = params
 
-        # This is equivalent to someone using /stalk addacc on themselves.
         user = ctx.author
-        world = self.bot.tracked_worlds.get(ctx.guild.id)
-
-        if world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
-            return
+        world = ctx.world
 
         target = self.bot.get_member(target_name, ctx.guild)
         if target is None:
-            await ctx.send(f"I couldn't find any users named @{target_name}")
+            await ctx.send(f"{ctx.tick(False)} I couldn't find any users named @{target_name}")
+            return
+        if target.bot:
+            await ctx.send(f"{ctx.tick(False)} You can't register characters to discord bots!")
             return
         target_guilds = self.bot.get_user_guilds(target.id)
         target_guilds = list(filter(lambda x: self.bot.tracked_worlds.get(x.id) == world, target_guilds))
@@ -172,15 +179,13 @@ class Admin:
     @commands.command(name="addchar", aliases=["registerchar"], usage="<user>,<character>")
     @checks.is_admin()
     @commands.guild_only()
-    async def add_char(self, ctx, *, params):
+    async def add_char(self, ctx: NabCtx, *, params):
         """Registers a character to a user."""
         params = params.split(",")
         if len(params) != 2:
-            await ctx.send("The correct syntax is: ``/addchar username,character``")
-            return
+            raise commands.BadArgument()
 
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
-        if world is None:
+        if ctx.world is None:
             await ctx.send("This server is not tracking any worlds.")
             return
 
@@ -198,7 +203,7 @@ class Admin:
             except NetworkError:
                 await ctx.send("I couldn't fetch the character, please try again.")
                 return
-            if char.world != world:
+            if char.world != ctx.world:
                 await ctx.send("**{0.name}** ({0.world}) is not in a world you can manage.".format(char))
                 return
             if char.deleted is not None:
@@ -257,7 +262,7 @@ class Admin:
     @commands.command()
     @checks.is_admin()
     @commands.guild_only()
-    async def checkchannel(self, ctx: context.NabCtx, *, channel: discord.TextChannel = None):
+    async def checkchannel(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
         """Checks the channel's permissions.
 
         Makes sure that the bot has all the required permissions to work properly.
@@ -417,10 +422,6 @@ class Admin:
             c.close()
             userDatabase.commit()
 
-    @checkchannel.error
-    async def channel_error(self, ctx, error):
-            if isinstance(error, commands.errors.BadArgument):
-                await ctx.send(error)
 
 def setup(bot):
     bot.add_cog(Admin(bot))

@@ -1,6 +1,6 @@
 import asyncio
 import re
-from typing import Union
+from typing import Union, Optional
 
 import discord
 from discord.ext import commands
@@ -12,12 +12,14 @@ YES_NO_REACTIONS = ("🇾", "🇳")
 CHECK_REACTIONS = ("✅", "❌")
 _mention = re.compile(r'<@!?([0-9]{1,19})>')
 
+
 class NabCtx(commands.Context):
     guild: discord.Guild
     message: discord.Message
     channel: discord.TextChannel
     author: Union[discord.User, discord.Member]
     me: Union[discord.Member, discord.ClientUser]
+    command: commands.Command
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -31,7 +33,7 @@ class NabCtx(commands.Context):
         return emoji
 
     @property
-    def world(self):
+    def world(self) -> Optional[str]:
         if self.guild is None:
             return None
         else:
@@ -46,6 +48,32 @@ class NabCtx(commands.Context):
         if self.guild is None:
             return True
         return self.is_askchannel
+
+    @property
+    def usage(self) -> str:
+        """Shows the parameters signature of the invoked command"""
+        if self.command.usage:
+            return self.command.usage
+        else:
+            params = self.command.clean_params
+            if not params:
+                return ''
+            result = []
+            for name, param in params.items():
+                if param.default is not param.empty:
+                    # We don't want None or '' to trigger the [name=value] case and instead it should
+                    # do [name] since [name=None] or [name=] are not exactly useful for the user.
+                    should_print = param.default if isinstance(param.default, str) else param.default is not None
+                    if should_print:
+                        result.append(f'[{name}={param.default!r}]')
+                    else:
+                        result.append(f'[{name}]')
+                elif param.kind == param.VAR_POSITIONAL:
+                    result.append(f'[{name}...]')
+                else:
+                    result.append(f'<{name}>')
+
+            return ' '.join(result)
 
     @property
     def is_askchannel(self):
@@ -66,6 +94,9 @@ class NabCtx(commands.Context):
 
     @property
     def clean_prefix(self) -> str:
+        """Gets the clean prefix used in the command invocation.
+
+        This is used to clean mentions into plain text."""
         m = _mention.match(self.prefix)
         if m:
             user = self.bot.get_user(int(m.group(1)))

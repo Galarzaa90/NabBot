@@ -505,7 +505,7 @@ class General:
         Past events can't be edited."""
         content = "To edit an event, use the subcommands:```"
         for command in ctx.command.commands:  # type: commands.Command
-            content += f"{ctx.clean_prefix}{command.qualified_name} {command.usage}\n"
+            content += f"{ctx.clean_prefix}{command.qualified_name} {ctx.usage}\n"
         content += "```"
         await ctx.send(content)
 

@@ -331,7 +331,7 @@ class NabBot(commands.Bot):
     # ------------ Utility methods ------------
 
     def get_member(self, argument: Union[str, int], guild: Union[discord.Guild, List[discord.Guild]] = None) \
-            -> discord.Member:
+            -> Union[discord.Member, discord.User]:
         """Returns a member matching the arguments provided.
 
         If a guild or guild list is specified, then only members from those guilds will be searched. If no guild is
