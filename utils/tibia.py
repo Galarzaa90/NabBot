@@ -374,7 +374,7 @@ async def get_character(name, tries=5) -> Optional[Character]:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
         raise NetworkError()
     try:
-        url = f"https://api.tibiadata.com/v2/characters/{urllib.parse.quote(name, safe='')}.json"
+        url = f"https://api.tibiadata.com/v2/characters/{urllib.parse.quote(name.strip(), safe='')}.json"
     except UnicodeEncodeError:
         return None
     # Fetch website
