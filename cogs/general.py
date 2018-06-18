@@ -14,6 +14,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils import checks
 from utils.config import config
+from utils.context import NabCtx
 from utils.database import userDatabase, tibiaDatabase, get_server_property
 from utils.discord import get_region_string, is_private, clean_string, get_user_avatar, get_user_color
 from utils.general import parse_uptime, TimeString, single_line, is_numeric, log
@@ -290,7 +291,7 @@ class General:
 
     @commands.group(aliases=["event"], invoke_without_command=True, case_insensitive=True, usage="[event id]")
     @checks.is_not_lite()
-    async def events(self, ctx, event_id: int=None):
+    async def events(self, ctx: NabCtx, event_id: int=None):
         """Shows a list of upcoming and recent events.
 
         If a number is specified, it will show details for that event. Same as using `events info`"""

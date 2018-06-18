@@ -50,6 +50,14 @@ class NabCtx(commands.Context):
         return self.is_askchannel
 
     @property
+    def bot_permissions(self) -> discord.Permissions:
+        return self.channel.permissions_for(self.me)
+
+    @property
+    def author_permissions(self) -> discord.Permissions:
+        return self.channel.permissions_for(self.author)
+
+    @property
     def usage(self) -> str:
         """Shows the parameters signature of the invoked command"""
         if self.command.usage:
