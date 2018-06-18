@@ -29,7 +29,6 @@ class Admin:
             else:
                 await ctx.send(error)
 
-    @commands.guild_only()
     @checks.is_owner()
     @checks.is_tracking_world()
     @commands.command(name="addaccount", aliases=["addacc"], usage="<user>,<character>")
@@ -176,9 +175,9 @@ class Admin:
                 embed.set_footer(text="{0.name}#{0.discriminator}".format(user), icon_url=icon_url)
                 await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
 
-    @commands.command(name="addchar", aliases=["registerchar"], usage="<user>,<character>")
     @checks.is_admin()
-    @commands.guild_only()
+    @checks.is_tracking_world()
+    @commands.command(name="addchar", aliases=["registerchar"], usage="<user>,<character>")
     async def add_char(self, ctx: NabCtx, *, params):
         """Registers a character to a user."""
         params = params.split(",")
@@ -259,9 +258,9 @@ class Admin:
                         await self.bot.send_log_message(server, embed=embed)
                 userDatabase.commit()
 
-    @commands.command()
     @checks.is_admin()
     @commands.guild_only()
+    @commands.command()
     async def checkchannel(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
         """Checks the channel's permissions.
 
@@ -377,9 +376,9 @@ class Admin:
         set_server_property(ctx.guild.id, "welcome", message)
         await ctx.send("This server's welcome message has been changed successfully.")
 
-    @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
     @checks.is_admin()
-    @commands.guild_only()
+    @checks.is_tracking_world()
+    @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
     async def remove_char(self, ctx, *, name):
         """Removes a registered character."""
         # This could be used to remove deleted chars so we don't need to check anything
