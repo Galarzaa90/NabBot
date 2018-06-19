@@ -273,15 +273,18 @@ async def _can_run(cmd, ctx):
 
 
 def _command_signature(cmd):
-    # this is modified from discord.py source
-    # which I wrote myself lmao
     result = [cmd.qualified_name]
     if cmd.usage:
         result.append(cmd.usage)
+
+        if isinstance(cmd, commands.GroupMixin):
+            result.append('\U0001f538')
         return ' '.join(result)
 
     params = cmd.clean_params
     if not params:
+        if isinstance(cmd, commands.GroupMixin):
+            result.append('\U0001f538')
         return ' '.join(result)
 
     for name, param in params.items():

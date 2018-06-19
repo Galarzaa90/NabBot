@@ -87,7 +87,7 @@ class Roles:
         If user is blank, I will list all the server's roles."""
         if user is None:
             title = "Roles in this server"
-            roles = ctx.guild.roles[:]  # type: List[discord.Role]
+            roles: List[discord.Role] = ctx.guild.roles[:]
             if len(roles) <= 1:
                 await ctx.send("There are no roles in this server.")
                 return

@@ -22,6 +22,7 @@ from utils.pages import CannotPaginate, VocationPages, HelpPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50
+EVENT_DESCRIPTION_LIMIT = 400
 
 
 class General:
@@ -472,15 +473,15 @@ class General:
         await ctx.send(content)
 
     @commands.guild_only()
-    @event_edit.command(name="description", aliases=["desc", "details"], usage="<id> [new description]")
-    async def event_edit_description(self, ctx, event_id: int=None, *, new_description=None):
+    @event_edit.command(name="description", aliases=["desc", "details"], usage="<id> <new description>")
+    async def event_edit_description(self, ctx, event_id: int=None, *, new_description):
         """Edits an event's description.
 
         If no new description is provided initially, the bot will ask for one.
         To remove the description, say `blank`."""
         if event_id is None:
             await ctx.send(f"You need to tell me the id of the event you want to edit."
-                           f"\nLike this: `{ctx.message.content} 50` or `{ctx.message.content} 50 new_description`")
+                           f"\nLike this: `{ctx.message.content} 50 new_description`")
             return
         event = self.get_event(ctx, event_id)
         if event is None:
@@ -889,122 +890,130 @@ class General:
             await ctx.send("You successfully left this event.")
             return
 
-    # TODO: Do not cancel the whole process if a parameter is invalid, retry at that point
     @commands.guild_only()
     @events.command(name="make", aliases=["creator", "maker"])
-    async def event_make(self, ctx):
+    async def event_make(self, ctx: NabCtx):
         """Creates an event guiding you step by step
 
         Instead of using confusing parameters, commas and spaces, this commands has the bot ask you step by step."""
-        def check(m):
-            return m.channel == ctx.channel and m.author == ctx.author
-
-        author = ctx.author
-        creator = author.id
         now = time.time()
 
         with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
+            c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (ctx.author.id, now))
             event = c.fetchall()
-        if len(event) > 1 and creator not in config.owner_ids:
+        if len(event) > 1 and ctx.author.id not in config.owner_ids:
             return
-        await ctx.send("Let's create an event. What would you like the name to be? You can `cancel` at any time.")
-
-        try:
-            name = await self.bot.wait_for("message", timeout=120.0, check=check)
-            name = single_line(name.clean_content)
+        msg = await ctx.send("Let's create an event. What would you like the name to be? You can `cancel` at any time.")
+        cancel = False
+        while True:
+            name = await ctx.input(timeout=120.0, clean=True, delete_response=True)
+            if name is None:
+                await ctx.send("Nevermind then.")
+                cancel = True
+                break
+            name = single_line(name)
             if len(name) > EVENT_NAME_LIMIT:
-                await ctx.send(f"The name can't be longer than {EVENT_NAME_LIMIT} characters.")
-                return
-            if name.strip().lower() == "cancel":
-                await ctx.send("Event making cancelled.")
-                return
-        except asyncio.TimeoutError:
-            await ctx.send("...You took to long. Event making cancelled.")
-            return
-
-        await ctx.send("Alright, what description would you like the event to have? "
-                       "`no/none/blank` to leave it empty.")
-
-        try:
-            event_description = await self.bot.wait_for("message", timeout=120.0, check=check)
-            if event_description.content.strip().lower() == "cancel":
-                await ctx.send("Event making cancelled.")
-                return
-            if event_description.content.lower().strip() in ["no", "none","blank"]:
-                await ctx.send("No description then? Alright, now tell me the start time of the event from now. "
-                               "`e.g. 2d1h20m, 2d3h`")
-                event_description = ""
+                await ctx.send(f"The name cannot be longer than {EVENT_NAME_LIMIT} characters. Tell me another name.")
+                continue
+            elif name.strip().lower() == "cancel":
+                await ctx.send("Alright, event making cancelled.")
+                cancel = True
+                break
             else:
-                event_description = event_description.clean_content
-                await ctx.send("Alright, now tell me the start time of the event from now. `e.g. 2d1h20m, 2d3h`")
-        except asyncio.TimeoutError:
-            await ctx.send("...You took too long. Event making cancelled.")
+                break
+        await msg.delete()
+        if cancel:
             return
+
+        embed = discord.Embed(title=name)
+        embed.set_author(name=ctx.author.display_name, icon_url=get_user_avatar(ctx.author))
+        msg = await ctx.send(f"Your event will be named **{name}**.\nNow, what description would you like your event "
+                             f"to have? `none/blank` to leave it empty. Bold, italics and links are supported."
+                             f"\nThis is your event so far:", embed=embed)
 
         while True:
-            try:
-                starts_in = await self.bot.wait_for("message", timeout=120.0, check=check)
-                if starts_in.content.strip().lower() == "cancel":
-                    await ctx.send("Event making cancelled.")
-                    return
-                starts_in = TimeString(starts_in.content)
+            description = await ctx.input(timeout=120.0, delete_response=True)
+            if description is None:
+                await ctx.send(f"You took too long {ctx.author.mention}, event making cancelled.")
+                cancel = True
                 break
-            except commands.BadArgument as e:
-                await ctx.send(f'{e}\nAgain, tell me the start time of the event from now')
-            except asyncio.TimeoutError:
-                await ctx.send("...You took too long. Event making cancelled.")
-                return
+            elif description.strip().lower() == "cancel":
+                await ctx.send("Alright, event making cancelled.")
+                cancel = True
+                break
+            if description.strip().lower() in ["blank", "none"]:
+                description = ""
+            embed.description = description
+            await msg.delete()
+            msg = await ctx.send("Is this right?", embed=embed)
+            confirm = await ctx.react_confirm(msg, timeout=60)
+            if confirm is None:
+                await ctx.send(f"Where did you go {ctx.author.mention}? Ok, event making cancelled.")
+                cancel = True
+                break
+            if confirm is False:
+                await msg.delete()
+                msg = await ctx.send(f"Alright, again, tell me the description you want for your event.\nRemember you "
+                                     f"can `cancel` the process or tell me `blank` to have no description.")
+            else:
+                break
 
-        guilds = self.bot.get_user_guilds(creator)
-        # If message is via PM, but user only shares one server, we just consider that server
-        if is_private(ctx.channel) and len(guilds) == 1:
-            guild = guilds[0]
-        # Not a private message, so we just take current server
-        elif not is_private(ctx.channel):
-            guild = ctx.guild
-        # PM and user shares multiple servers, we must ask him for which server is the event
-        else:
-            await ctx.send("One more question...for which server is this event? Choose one (number only)" +
-                           "\n\t0: *Cancel*\n\t" +
-                           "\n\t".join(["{0}: **{1.name}**".format(i + 1, j) for i, j in enumerate(guilds)]))
-            try:
-                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
-                if is_numeric(reply.content):
-                    answer = int(reply.content)
-                    if answer == 0:
-                        await ctx.send("Changed your mind? Typical human.")
-                        return
-                    guild = guilds[answer - 1]
-                else:
-                    await ctx.send("That's not a valid answer, try the command again.")
-                    return
-            except asyncio.TimeoutError:
-                await ctx.send("Nothing? Forget it then.")
-                return
-            except ValueError:
-                await ctx.send("That isn't even a number!")
-                return
-            except IndexError:
-                await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
-                return
-
-        embed = discord.Embed(title=name, description=event_description,
-                              timestamp=dt.datetime.utcfromtimestamp(now+starts_in.seconds))
-        embed.set_footer(text="Start time")
-        message = await ctx.send("Ok, so this will be your new event. Is this correct?", embed=embed)
-        confirm = await ctx.react_confirm(message)
-        if confirm is None:
-            await ctx.send("You took too long!")
-            return
-        if not confirm:
-            await ctx.send("Alright, no event will be made.")
+        await msg.delete()
+        if cancel:
             return
 
+        msg = await ctx.send(f"Alright, now tell me in how many time will the event start from now. `e.g. 2d1h20m, 4h`"
+                             f"\nThis is your event so far:", embed=embed)
         now = time.time()
+        start_time = now
+        while True:
+            start_str = await ctx.input(timeout=60, delete_response=True)
+            if start_str is None:
+                await ctx.send(f"You took too long {ctx.author.mention}, event making cancelled.")
+                cancel = True
+                break
+            if start_str.lower() == "cancel":
+                await ctx.send("Alright, event making cancelled.")
+                cancel = True
+                break
+            try:
+                starts_in = TimeString(start_str)
+                start_time = now+starts_in.seconds
+            except commands.BadArgument as e:
+                await msg.delete()
+                msg = await ctx.send(f'{e}\nAgain, tell me the start time of the event from now.\n'
+                                     f'You can `cancel` if you want.')
+                continue
+            await msg.delete()
+            msg = await ctx.send("Is this correct in your local timezone?",
+                                 embed=discord.Embed(timestamp=dt.datetime.utcfromtimestamp(start_time)))
+            confirm = await ctx.react_confirm(msg, timeout=60, )
+            if confirm is None:
+                await ctx.send(f"Where did you go {ctx.author.mention}? Ok, event making cancelled.")
+                cancel = True
+                break
+            if confirm is False:
+                await msg.delete()
+                msg = await ctx.send(f"Ok, again, tell me when will the event start.\nRemember you "
+                                     f"can `cancel` the process.")
+            else:
+                break
+
+        await msg.delete()
+        if cancel:
+            return
+
+        embed.timestamp = dt.datetime.utcfromtimestamp(start_time)
+        msg = await ctx.send("This will be your event, confirm that everything is correct and we will be done.",
+                             embed=embed)
+        confirm = await ctx.react_confirm(msg, timeout=120, delete_after=True)
+        if not confirm:
+            await ctx.send("Alright, guess all this was for nothing. Goodbye!")
+            return
+
         with closing(userDatabase.cursor()) as c:
             c.execute("INSERT INTO events (creator,server,start,name,description) VALUES(?,?,?,?,?)",
-                      (creator, guild.id, now + starts_in.seconds, name, event_description))
+                      (ctx.author.id, ctx.guild.id, start_time, name, description))
             event_id = c.lastrowid
             userDatabase.commit()
         reply = "Event registered successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"

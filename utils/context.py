@@ -19,25 +19,62 @@ class NabCtx(commands.Context):
     channel: discord.TextChannel
     author: Union[discord.User, discord.Member]
     me: Union[discord.Member, discord.ClientUser]
-    command: commands.Command
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    @staticmethod
-    def tick(value: bool, label: str = None):
-        """Displays a checkmark or a cross depending on the value."""
-        emoji = CHECK_REACTIONS[int(not value)]
-        if label:
-            return emoji + label
-        return emoji
+    # Properties
+    @property
+    def author_permissions(self) -> discord.Permissions:
+        """Shortcut to check the command author's permission to the current channel.
+
+        :return: The permissions for the author in the current channel.
+        :rtype: discord.Permissions
+        """
+        return self.channel.permissions_for(self.author)
 
     @property
-    def world(self) -> Optional[str]:
+    def ask_channel_name(self) -> Optional[str]:
+        """Gets the name of the ask channel for the current server.
+
+        :return: The name of the ask channel if applicable
+        :rtype: str or None"""
         if self.guild is None:
             return None
-        else:
-            return self.bot.tracked_worlds.get(self.guild.id, None)
+        ask_channel_id = get_server_property(self.guild.id, "ask_channel", is_int=True)
+        ask_channel = self.guild.get_channel(ask_channel_id)
+        if ask_channel is None:
+            return config.ask_channel_name
+        return ask_channel.name
+
+    @property
+    def bot_permissions(self) -> discord.Permissions:
+        """Shortcut to check the bot's permission to the current channel.
+
+        :return: The permissions for the author in the current channel.
+        :rtype: discord.Permissions"""
+        return self.channel.permissions_for(self.me)
+
+    @property
+    def clean_prefix(self) -> str:
+        """Gets the clean prefix used in the command invocation.
+
+        This is used to clean mentions into plain text."""
+        m = _mention.match(self.prefix)
+        if m:
+            user = self.bot.get_user(int(m.group(1)))
+            if user:
+                return f'@{user.name} '
+        return self.prefix
+
+    @property
+    def is_askchannel(self):
+        """Checks if the current channel is the command channel"""
+        ask_channel_id = get_server_property(self.guild.id, "ask_channel", is_int=True)
+        ask_channel = self.guild.get_channel(ask_channel_id)
+        if ask_channel is None:
+            return self.channel.name == config.ask_channel_name
+        return ask_channel == self.channel
 
     @property
     def long(self) -> bool:
@@ -48,14 +85,6 @@ class NabCtx(commands.Context):
         if self.guild is None:
             return True
         return self.is_askchannel
-
-    @property
-    def bot_permissions(self) -> discord.Permissions:
-        return self.channel.permissions_for(self.me)
-
-    @property
-    def author_permissions(self) -> discord.Permissions:
-        return self.channel.permissions_for(self.author)
 
     @property
     def usage(self) -> str:
@@ -84,42 +113,58 @@ class NabCtx(commands.Context):
             return ' '.join(result)
 
     @property
-    def is_askchannel(self):
-        """Checks if the current channel is the command channel"""
-        ask_channel_id = get_server_property(self.guild.id, "ask_channel", is_int=True)
-        ask_channel = self.guild.get_channel(ask_channel_id)
-        if ask_channel is None:
-            return self.channel.name == config.ask_channel_name
-        return ask_channel == self.channel
+    def world(self) -> Optional[str]:
+        """Check the world that is currently being tracked by the guild
 
-    @property
-    def ask_channel_name(self):
-        ask_channel_id = get_server_property(self.guild.id, "ask_channel", is_int=True)
-        ask_channel = self.guild.get_channel(ask_channel_id)
-        if ask_channel is None:
-            return config.ask_channel_name
-        return ask_channel.name
+        :return: The world that the server is tracking.
+        :rtype: str | None
+        """
+        if self.guild is None:
+            return None
+        else:
+            return self.bot.tracked_worlds.get(self.guild.id, None)
 
-    @property
-    def clean_prefix(self) -> str:
-        """Gets the clean prefix used in the command invocation.
+    async def input(self, *, timeout=60.0, clean=False, delete_response=False) \
+            -> Optional[str]:
+        """Waits for text input from the author.
 
-        This is used to clean mentions into plain text."""
-        m = _mention.match(self.prefix)
-        if m:
-            user = self.bot.get_user(int(m.group(1)))
-            if user:
-                return f'@{user.name} '
-        return self.prefix
+        :param timeout: Maximum time to wait for a message.
+        :param clean: Whether the content should be cleaned or not.
+        :param delete_response: Whether to delete the author's message after.
+        :return: The content of the message replied by the author
+        """
+        def check(_message):
+            return _message.channel == self.channel and _message.author == self.author
 
-    async def react_confirm(self, message: discord.Message, *, timeout=120.0, delete_after=False,
+        try:
+            value = await self.bot.wait_for("message", timeout=timeout, check=check)
+            if clean:
+                ret = value.clean_content
+            else:
+                ret = value.content
+            if delete_response:
+                try:
+                    await value.delete()
+                except discord.HTTPException:
+                    pass
+            return ret
+        except asyncio.TimeoutError:
+            return None
+
+    async def react_confirm(self, message: discord.Message, *, timeout=60.0, delete_after=False,
                             use_checkmark=False):
         """Waits for the command author to reply with a Y or N reaction.
 
         Returns True if the user reacted with Y
         Returns False if the user reacted with N
-        Returns None if the user didn't react at all"""
+        Returns None if the user didn't react at all
 
+        :param message: The message that will contain the reactions.
+        :param timeout: The maximum time to wait for reactions
+        :param delete_after: Whether to delete or not the message after finishing.
+        :param use_checkmark: Whether to use or not checkmarks instead of Y/N
+        :return: True if reacted with Y, False if reacted with N, None if timeout.
+        """
         if not self.channel.permissions_for(self.me).add_reactions:
             raise RuntimeError('Bot does not have Add Reactions permission.')
 
@@ -135,7 +180,6 @@ class NabCtx(commands.Context):
             if reaction.emoji not in reactions:
                 return False
             return True
-
         try:
             react = await self.bot.wait_for("reaction_add", timeout=timeout, check=check_react)
             if react[0].emoji == reactions[1]:
@@ -151,3 +195,19 @@ class NabCtx(commands.Context):
                 except discord.Forbidden:
                     pass
         return True
+
+    @staticmethod
+    def tick(value: bool, label: str = None) -> str:
+        """Displays a checkmark or a cross depending on the value.
+
+        :param value: The value to evaluate
+        :type value: bool
+        :param label: An optional label to display
+        :type label: str
+        :return: A checkmark or cross
+        :rtype: str
+        """
+        emoji = CHECK_REACTIONS[int(not value)]
+        if label:
+            return emoji + label
+        return emoji
