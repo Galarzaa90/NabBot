@@ -3,7 +3,7 @@ import datetime as dt
 import re
 import sys
 import traceback
-from typing import Union, List, Optional, Dict
+from typing import Union, List, Optional, Dict, Set
 
 import discord
 from discord.ext import commands
@@ -43,7 +43,7 @@ class NabBot(commands.Bot):
         # A list version is created from the dictionary
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
-        self.__version__ = "1.2.2"
+        self.__version__ = "1.3.0a"
 
     async def on_ready(self):
         """Called when the bot is ready."""
@@ -296,6 +296,59 @@ class NabBot(commands.Bot):
         if changes:
             await self.send_log_message(after.guild, embed=embed)
         return
+
+    async def on_guild_emojis_update(self, guild: discord.Guild, before: List[discord.Emoji],
+                                     after: List[discord.Emoji]):
+        """Called every time an emoji is created, deleted or updated."""
+        now = dt.datetime.utcnow()
+        embed = discord.Embed(color=discord.Color.dark_orange())
+        emoji: discord.Emoji = None
+        # Emoji deleted
+        if len(before) > len(after):
+            emoji = discord.utils.find(lambda e: e not in after, before)
+            if emoji is None:
+                return
+            fix = ":" if emoji.require_colons else ""
+            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
+            embed.description = f"Emoji deleted."
+            action = discord.AuditLogAction.emoji_delete
+        # Emoji added
+        elif len(after) > len(before):
+            emoji = discord.utils.find(lambda e: e not in before, after)
+            if emoji is None:
+                return
+            fix = ":" if emoji.require_colons else ""
+            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
+            embed.description = f"Emoji added."
+            action = discord.AuditLogAction.emoji_create
+        else:
+            old_name = ""
+            for new_emoji in after:
+                for old_emoji in before:
+                    if new_emoji == old_emoji and new_emoji.name != old_emoji.name:
+                        old_name = old_emoji.name
+                        emoji = new_emoji
+                        break
+            if emoji is None:
+                return
+            fix = ":" if emoji.require_colons else ""
+            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
+            embed.description = f"Emoji renamed from `{fix}{old_name}{fix}` to `{fix}{emoji.name}{fix}`"
+            action = discord.AuditLogAction.emoji_update
+
+        # Find author
+        if action is not None and guild.me.guild_permissions.view_audit_log:
+            async for entry in guild.audit_logs(limit=10, reverse=False, action=action,
+                                                after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
+                if abs((entry.created_at - now).total_seconds()) >= 5:
+                    # After is broken in the API, so we must check if entry is too old.
+                    break
+                if entry.target.id == emoji.id:
+                    icon_url = get_user_avatar(entry.user)
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    break
+        if emoji:
+            await self.send_log_message(guild, embed=embed)
 
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
         """Called every time a guild is updated"""

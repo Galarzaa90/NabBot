@@ -1,4 +1,7 @@
 # Changelog
+## Version 1.3.0 (Unreleased)
+- Emoji changes are now displayed on server-log.
+
 ## Version 1.2.2 (2018-06-19)
 - `/unregistered` no longer displays discord bots.
 - Fixed display bug in `/settings askchannel`.
@@ -6,7 +9,7 @@
 - Improved `/event` subcommands in general, they leave less messages behind.
 - Fixed checks for `/watched` subcommands.
 - Removed orphaned `utils/emoji.py`
-- Minor improvements to `/debug` (now handles multiple lines), added `/eval`as alias.
+- Minor improvements to `/debug` (now handles multiple lines), added `/eval` as alias.
 - Documentation improvements.
 
 ## Version 1.2.1 (2018-06-14)
