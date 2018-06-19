@@ -1,5 +1,6 @@
 import inspect
 import platform
+import textwrap
 import traceback
 from contextlib import redirect_stdout
 from distutils.version import StrictVersion
@@ -7,10 +8,10 @@ from distutils.version import StrictVersion
 import pkg_resources
 from discord.ext import commands
 
-# Everything is imported to put it in /debug scope
+# Exposing for /debug command
 from nabbot import NabBot
 from utils import checks
-from utils.config import *
+from utils.config import config
 from utils.database import *
 from utils.discord import *
 from utils.general import *
@@ -26,6 +27,7 @@ class Owner:
     """Commands exclusive to bot owners"""
     def __init__(self, bot: NabBot):
         self.bot = bot
+        self._last_result = None
         self.sessions = set()
 
     @staticmethod
@@ -75,40 +77,62 @@ class Owner:
             pass
         await ctx.send("Message sent to "+join_list(["@"+a.name for a in guild_admins], ", ", " and "))
 
-    @commands.command()
+    @commands.command(aliases=["eval"])
     @checks.is_owner()
-    async def debug(self, ctx, *, code: str):
+    async def debug(self, ctx, *, body: str):
         """Evaluates Python code.
 
-        This command can be used to run python statements and get the response as a reply.
+        This commands lets you evaluate python code. If no errors are returned, the bot will react to the command call.
+        To show the result, you have to use `print()`.
+        Asynchronous functions must be waited for using `await`.
+        To show the results of the last command, use `_`.
         """
-        if "os." in code:
+        if "os." in body:
             await ctx.send("I won't run that.")
             return
-        code = code.strip('` ')
-        python = '```py\n{}\n```'
-
         env = {
-            'bot': self.bot,
-            'ctx': ctx,
-            'message': ctx.message,
-            'guild': ctx.guild,
-            'server': ctx.guild,
-            'channel': ctx.channel,
-            'author': ctx.author
+            "bot": self.bot,
+            "ctx": ctx,
+            "channel": ctx.channel,
+            "author": ctx.author,
+            "server": ctx.guild,
+            "guild": ctx.guild,
+            "message": ctx.message,
+            "_": self._last_result
         }
 
         env.update(globals())
 
-        try:
-            result = eval(code, env)
-            if asyncio.iscoroutine(result):
-                result = await result
-        except Exception:
-            await ctx.send(python.format(traceback.format_exc()))
-            return
+        body = self.cleanup_code(body)
+        stdout = io.StringIO()
 
-        await ctx.send(python.format(result))
+        to_compile = f"async def func():\n{textwrap.indent(body, '  ')}"
+
+        try:
+            exec(to_compile, env)
+        except Exception as e:
+            return await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')
+
+        func = env["func"]
+        try:
+            with redirect_stdout(stdout):
+                ret = await func()
+        except Exception:
+            value = stdout.getvalue()
+            await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
+        else:
+            value = stdout.getvalue()
+            try:
+                await ctx.message.add_reaction('\u2705')
+            except discord.HTTPException:
+                pass
+
+            if ret is None:
+                if value:
+                    await ctx.send(f'```py\n{value}\n```')
+            else:
+                self._last_result = ret
+                await ctx.send(f'```py\n{value}{ret}\n```')
 
     @commands.command()
     @checks.is_owner()
@@ -425,43 +449,43 @@ class Owner:
     async def repl(self, ctx):
         """Starts a REPL session in the current channel.
 
-        Similar to `/debug`, except this keep an open session where variables are stored.
-        To exit, type ``exit()``.
+        Similar to `eval`, but this keeps a running sesion where variables and results are stored.```.
         """
-        msg = ctx.message
-
         variables = {
-            'ctx': ctx,
-            'bot': self.bot,
-            'message': msg,
-            'server': msg.guild,
-            'guild': msg.guild,
-            'channel': msg.channel,
-            'author': msg.author,
+            "ctx": ctx,
+            "bot": self.bot,
+            "message": ctx.message,
+            "server": ctx.guild,
+            "guild": ctx.guild,
+            "channel": ctx.channel,
+            "author": ctx.author,
+            "_": None
         }
 
         variables.update(globals())
 
-        if msg.channel.id in self.sessions:
+        if ctx.channel.id in self.sessions:
             await ctx.send('Already running a REPL session in this channel. Exit it with `quit`.')
             return
 
-        self.sessions.add(msg.channel.id)
+        self.sessions.add(ctx.channel.id)
         await ctx.send('Enter code to execute or evaluate. `exit()` or `quit` to exit.')
+
         while True:
             def check(m):
                 return m.content.startswith('`') and m.author == ctx.author and m.channel == ctx.channel
 
             try:
-                response = await self.bot.wait_for("message", check=check)
+                response = await self.bot.wait_for("message", check=check, timeout=10.0*60.0)
             except asyncio.TimeoutError:
-                return
+                await ctx.send('Exiting REPL session.')
+                self.sessions.remove(ctx.channel.id)
 
             cleaned = self.cleanup_code(response.content)
 
             if cleaned in ('quit', 'exit', 'exit()'):
                 await ctx.send('Exiting.')
-                self.sessions.remove(msg.channel.id)
+                self.sessions.remove(ctx.channel.id)
                 return
 
             executor = exec
@@ -491,27 +515,27 @@ class Owner:
                     result = executor(code, variables)
                     if inspect.isawaitable(result):
                         result = await result
-            except Exception as e:
+            except Exception:
                 value = stdout.getvalue()
-                fmt = '```py\n{}{}\n```'.format(value, traceback.format_exc())
+                fmt = f'```py\n{value}{traceback.format_exc()}\n```'
             else:
                 value = stdout.getvalue()
                 if result is not None:
-                    fmt = '```py\n{}{}\n```'.format(value, result)
+                    fmt = f'```py\n{value}{result}\n```'
                     variables['_'] = result
                 elif value:
-                    fmt = '```py\n{}\n```'.format(value)
+                    fmt = f'```py\n{value}\n```'
 
             try:
                 if fmt is not None:
                     if len(fmt) > 2000:
-                        await msg.channel.send('Content too big to be printed.')
+                        await ctx.send("Content too big to be printed.")
                     else:
-                        await msg.channel.send(fmt)
+                        await ctx.send(fmt)
             except discord.Forbidden:
                 pass
             except discord.HTTPException as e:
-                await msg.channel.send('Unexpected error: `{}`'.format(e))
+                await ctx.send(f'Unexpected error: `{e}`')
 
     @commands.command(aliases=["reset"])
     @checks.is_owner()

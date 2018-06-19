@@ -1405,7 +1405,7 @@ class Tibia:
         await ctx.send(reply)
 
     @commands.command(aliases=['check', 'char', 'character'])
-    async def whois(self, ctx, *, name):
+    async def whois(self, ctx: NabCtx, *, name):
         """Shows a character's or a discord user's information.
 
         If the parameter matches a discord user, it displays a list of the characters linked to that user.
@@ -1417,8 +1417,7 @@ class Tibia:
 
         Additionally, if the character is in the highscores, their ranking will be shown.
         """
-        permissions = ctx.channel.permissions_for(ctx.me)
-        if not permissions.embed_links:
+        if not ctx.bot_permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
@@ -1439,6 +1438,7 @@ class Tibia:
         if name.lower() == ctx.me.display_name.lower():
             await ctx.invoke(self.bot.all_commands.get('about'))
             return
+
         try:
             char = await get_character(name)
         except NetworkError:
@@ -1446,6 +1446,9 @@ class Tibia:
             return
         char_string = self.get_char_string(char)
         user = self.bot.get_member(name, ctx.guild)
+        # If the user is a bot, then don't, just don't
+        if user.bot:
+            user = None
         embed = self.get_user_embed(ctx, user)
 
         # No user or char with that name

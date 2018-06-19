@@ -43,7 +43,7 @@ class NabBot(commands.Bot):
         # A list version is created from the dictionary
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
-        self.__version__ = "1.2.2a"
+        self.__version__ = "1.2.2"
 
     async def on_ready(self):
         """Called when the bot is ready."""

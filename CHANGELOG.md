@@ -1,10 +1,12 @@
 # Changelog
-## Version 1.2.2 (Unrealeased)
+## Version 1.2.2 (2018-06-19)
 - `/unregistered` no longer displays discord bots.
 - Fixed display bug in `/settings askchannel`.
 - Improved `/event make`, no longer aborts on failure, lets the user retry and cleans up messages after.
 - Improved `/event` subcommands in general, they leave less messages behind.
 - Fixed checks for `/watched` subcommands.
+- Removed orphaned `utils/emoji.py`
+- Minor improvements to `/debug` (now handles multiple lines), added `/eval`as alias.
 - Documentation improvements.
 
 ## Version 1.2.1 (2018-06-14)
