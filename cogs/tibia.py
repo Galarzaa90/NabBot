@@ -1447,7 +1447,7 @@ class Tibia:
         char_string = self.get_char_string(char)
         user = self.bot.get_member(name, ctx.guild)
         # If the user is a bot, then don't, just don't
-        if user.bot:
+        if user is not None and user.bot:
             user = None
         embed = self.get_user_embed(ctx, user)
 

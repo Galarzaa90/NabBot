@@ -1,4 +1,7 @@
 # Changelog
+## Version 1.2.3 (2018-06-19)
+- Fixed a bug with `/whois` when a user was not found.
+
 ## Version 1.3.0 (Unreleased)
 - Emoji changes are now displayed on server-log.
 
@@ -9,7 +12,7 @@
 - Improved `/event` subcommands in general, they leave less messages behind.
 - Fixed checks for `/watched` subcommands.
 - Removed orphaned `utils/emoji.py`
-- Minor improvements to `/debug` (now handles multiple lines), added `/eval` as alias.
+- Minor improvements to `/debug` (now handles multiple lines), added `/eval`as alias.
 - Documentation improvements.
 
 ## Version 1.2.1 (2018-06-14)
