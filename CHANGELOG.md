@@ -1,4 +1,7 @@
 # Changelog
+## Version 1.2.3 (2018-06-19)
+- Fixed a bug with `/whois` when a user was not found.
+
 ## Version 1.2.2 (2018-06-19)
 - `/unregistered` no longer displays discord bots.
 - Fixed display bug in `/settings askchannel`.
