@@ -19,6 +19,7 @@ class NabCtx(commands.Context):
     channel: discord.TextChannel
     author: Union[discord.User, discord.Member]
     me: Union[discord.Member, discord.ClientUser]
+    command: commands.Command
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -197,15 +198,12 @@ class NabCtx(commands.Context):
         return True
 
     @staticmethod
-    def tick(value: bool, label: str = None) -> str:
+    def tick(value: bool = True, label: str = None) -> str:
         """Displays a checkmark or a cross depending on the value.
 
         :param value: The value to evaluate
-        :type value: bool
         :param label: An optional label to display
-        :type label: str
         :return: A checkmark or cross
-        :rtype: str
         """
         emoji = CHECK_REACTIONS[int(not value)]
         if label:

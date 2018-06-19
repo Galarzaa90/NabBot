@@ -1039,9 +1039,9 @@ class Tracking:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.group(invoke_without_command=True, aliases=["watchlist", "huntedlist"], case_insensitive=True)
     @checks.is_admin()
-    @commands.guild_only()
+    @checks.is_tracking_world()
+    @commands.group(invoke_without_command=True, aliases=["watchlist", "huntedlist"], case_insensitive=True)
     async def watched(self, ctx, *, name="watched-list"):
         """Sets the watched list channel for this server
 
@@ -1095,9 +1095,9 @@ class Tracking:
                                "*This message can be deleted now.*")
             set_server_property(ctx.guild.id, "watched_channel", channel.id)
 
+    @checks.is_mod()
+    @checks.is_tracking_world()
     @watched.command(name="add", aliases=["addplayer", "addchar"], usage="<name>[,reason]")
-    @commands.guild_only()
-    @checks.is_admin()
     async def watched_add(self, ctx, *, params=None):
         """Adds a character to the watched list.
 
@@ -1158,9 +1158,9 @@ class Tracking:
             userDatabase.commit()
             c.close()
 
+    @checks.is_mod()
+    @checks.is_tracking_world()
     @watched.command(name="addguild", usage="<name>[,reason]")
-    @commands.guild_only()
-    @checks.is_admin()
     async def watched_addguild(self, ctx, *, params=None):
         """Adds an entire guild to the watched list.
 
@@ -1218,9 +1218,9 @@ class Tracking:
             userDatabase.commit()
             c.close()
 
+    @checks.is_mod()
+    @checks.is_tracking_world()
     @watched.command(name="info", aliases=["details", "reason"])
-    @commands.guild_only()
-    @checks.is_admin()
     async def watched_info(self, ctx, *, name: str):
         """Shows information about a watched list entry.
 
@@ -1247,9 +1247,9 @@ class Tracking:
             embed.timestamp = dt.datetime.utcfromtimestamp(result["added"])
         await ctx.send(embed=embed)
 
+    @checks.is_mod()
+    @checks.is_tracking_world()
     @watched.command(name="infoguild", aliases=["detailsguild", "reasonguild"])
-    @commands.guild_only()
-    @checks.is_admin()
     async def watched_infoguild(self, ctx, *, name: str):
         """"Shows details about a guild entry in the watched list.
 
@@ -1276,9 +1276,9 @@ class Tracking:
             embed.timestamp = dt.datetime.utcfromtimestamp(result["added"])
         await ctx.send(embed=embed)
 
+    @checks.is_mod()
+    @checks.is_tracking_world()
     @watched.command(name="list")
-    @commands.guild_only()
-    @checks.is_admin()
     async def watched_list(self, ctx):
         """Shows a list of all watched characters
 
@@ -1305,9 +1305,9 @@ class Tracking:
         except CannotPaginate as e:
             await ctx.send(e)
 
+    @checks.is_mod()
+    @checks.is_tracking_world()
     @watched.command(name="listguilds", aliases=["guilds", "guildlist"])
-    @commands.guild_only()
-    @checks.is_admin()
     async def watched_list_guild(self, ctx):
         """Shows a list of all watched characters
 
@@ -1334,9 +1334,9 @@ class Tracking:
         except CannotPaginate as e:
             await ctx.send(e)
 
+    @checks.is_mod()
+    @checks.is_tracking_world()
     @watched.command(name="remove", aliases=["removeplayer", "removechar"])
-    @commands.guild_only()
-    @checks.is_admin()
     async def watched_remove(self, ctx, *, name=None):
         """Removes a character from the watched list."""
         if name is None:
@@ -1372,9 +1372,9 @@ class Tracking:
             userDatabase.commit()
             c.close()
 
+    @checks.is_mod()
+    @checks.is_tracking_world()
     @watched.command(name="removeguild")
-    @commands.guild_only()
-    @checks.is_admin()
     async def watched_removeguild(self, ctx, *, name=None):
         """Removes a guild from the watched list."""
         if name is None:
@@ -1409,7 +1409,6 @@ class Tracking:
         finally:
             userDatabase.commit()
             c.close()
-
 
     def __unload(self):
         print("cogs.tracking: Cancelling pending tasks...")

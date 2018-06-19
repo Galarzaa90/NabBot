@@ -164,13 +164,16 @@ def is_numeric(s):
         return False
 
 
+class BadTime(commands.BadArgument):
+    pass
+
 class TimeString:
     def __init__(self, argument):
         compiled = re.compile(r"(?:(?P<days>\d+)d)?(?:(?P<hours>\d+)h)?(?:(?P<minutes>\d+)m)?(?:(?P<seconds>\d+)s)?")
         self.original = argument
         match = compiled.match(argument)
         if match is None or not match.group(0):
-            raise commands.BadArgument("That's not a valid time, try something like this: 1d7h or 4h20m")
+            raise BadTime("That's not a valid time, try something like this: 1d7h or 4h20m")
 
         self.seconds = 0
         days = match.group('days')
@@ -187,10 +190,10 @@ class TimeString:
             self.seconds += int(seconds)
 
         if self.seconds < 0:
-            raise commands.BadArgument("I can't go back in time.")
+            raise BadTime("I can't go back in time.")
 
         if self.seconds > (60*60*24*15):
-            raise commands.BadArgument("That's a bit too far in the future... Try less than 15 days.")
+            raise BadTime("That's a bit too far in the future... Try less than 15 days.")
 
 
 if __name__ == "__main__":

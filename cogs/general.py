@@ -12,12 +12,11 @@ import psutil
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
 from utils.config import config
 from utils.context import NabCtx
 from utils.database import userDatabase, tibiaDatabase, get_server_property
 from utils.discord import get_region_string, is_private, clean_string, get_user_avatar, get_user_color
-from utils.general import parse_uptime, TimeString, single_line, is_numeric, log
+from utils.general import parse_uptime, TimeString, single_line, log, BadTime
 from utils.pages import CannotPaginate, VocationPages, HelpPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
 
@@ -31,9 +30,14 @@ class General:
         self.events_announce_task = self.bot.loop.create_task(self.events_announce())
         self.game_update_task = self.bot.loop.create_task(self.game_update())
 
-    async def __error(self, ctx, error):
+    async def __error(self, ctx: NabCtx, error):
+        if isinstance(error, BadTime):
+            await ctx.send(error)
+            return
         if isinstance(error, commands.UserInputError):
-            await self.bot.show_help(ctx)
+            await ctx.send(f"{ctx.tick(False)} The correct syntax is: "
+                           f"`{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
+                           f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
 
     async def game_update(self):
         """Updates the bot's status.
@@ -468,21 +472,17 @@ class General:
         Past events can't be edited."""
         content = "To edit an event, use the subcommands:```"
         for command in ctx.command.commands:  # type: commands.Command
-            content += f"{ctx.clean_prefix}{command.qualified_name} {ctx.usage}\n"
+            content += f"{ctx.clean_prefix}{command.qualified_name} {command.usage}\n"
         content += "```"
         await ctx.send(content)
 
     @commands.guild_only()
-    @event_edit.command(name="description", aliases=["desc", "details"], usage="<id> <new description>")
-    async def event_edit_description(self, ctx, event_id: int=None, *, new_description):
+    @event_edit.command(name="description", aliases=["desc", "details"], usage="<id> [new description]")
+    async def event_edit_description(self, ctx: NabCtx, event_id: int, *, new_description=None):
         """Edits an event's description.
 
         If no new description is provided initially, the bot will ask for one.
         To remove the description, say `blank`."""
-        if event_id is None:
-            await ctx.send(f"You need to tell me the id of the event you want to edit."
-                           f"\nLike this: `{ctx.message.content} 50 new_description`")
-            return
         event = self.get_event(ctx, event_id)
         if event is None:
             await ctx.send("There's no active event with that id.")
@@ -491,20 +491,16 @@ class General:
             await ctx.send("You can only edit your own events.")
             return
 
-        def check(m):
-            return ctx.channel == m.channel and ctx.author == m.author
-
         if new_description is None:
-            await ctx.send(f"What would you like to be the new description of **{event['name']}**?"
-                           f"You can `cancel` this or set a `blank` description.")
-            try:
-                reply = await self.bot.wait_for("message", check=check, timeout=120)
-                new_description = reply.content
-                if new_description.strip().lower() == "cancel":
-                    await ctx.send("Alright, operation cancelled.")
-                    return
-            except asyncio.TimeoutError:
+            msg = await ctx.send(f"What would you like to be the new description of **{event['name']}**?"
+                                 f"You can `cancel` this or set a `blank` description.")
+            new_description = await ctx.input(timeout=120, delete_response=True)
+            await msg.delete()
+            if new_description is None:
                 await ctx.send("Guess you don't want to change the description...")
+                return
+            if new_description.strip().lower() == "cancel":
+                await ctx.send("Alright, operation cancelled.")
                 return
 
         if new_description.strip().lower() == "blank":
@@ -514,6 +510,8 @@ class General:
         embed = discord.Embed(title=event["name"], description=new_description,
                               timestamp=dt.datetime.utcfromtimestamp(event["start"]))
         embed.set_footer(text="Start time")
+        embed.set_author(name=ctx.author.display_name, icon_url=get_user_avatar(ctx.author))
+
         message = await ctx.send("Do you want this to be the new description?", embed=embed)
         confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
@@ -527,9 +525,9 @@ class General:
             conn.execute("UPDATE events SET description = ? WHERE id = ?", (new_description, event_id,))
 
         if event["creator"] == ctx.author.id:
-            await ctx.send("Your event's description was changed successfully.")
+            await ctx.send(f"{ctx.tick()} Your event's description was changed successfully.")
         else:
-            await ctx.send("Event's description changed successfully.")
+            await ctx.send(f"{ctx.tick()} Event's description changed successfully.")
             creator = self.bot.get_member(event["creator"])
             if creator is not None:
                 await creator.send(f"Your event **{event['name']}** had its description changed by {ctx.author.mention}",
@@ -539,16 +537,12 @@ class General:
 
     @commands.guild_only()
     @event_edit.command(name="joinable", aliases=["open"], usage="<id> [yes/no]")
-    async def event_edit_joinable(self, ctx, event_id: int, *, yes_no: str=None):
+    async def event_edit_joinable(self, ctx: NabCtx, event_id: int, *, yes_no: str=None):
         """Changes whether anyone can join an event or only the owner may add people.
 
         If an event is joinable, anyone can join using `event join id`  .
         Otherwise, the event creator has to add people with `event addplayer id`.
         """
-        if event_id is None:
-            await ctx.send(f"You need to tell me the id of the event you want to edit."
-                           f"\nLike this: `{ctx.message.content} 50` or `{ctx.message.content} 50 new_time`")
-            return
         event = self.get_event(ctx, event_id)
         if event is None:
             await ctx.send("There's no active event with that id.")
@@ -561,17 +555,16 @@ class General:
             return ctx.channel == m.channel and ctx.author == m.author
 
         if yes_no is None:
-            await ctx.send(f"Do you want **{event['name']}** to be joinable? `yes/no/cancel`")
-            try:
-                reply = await self.bot.wait_for("message", check=check, timeout=120)
-                new_joinable = reply.content
-                if new_joinable.strip().lower() == "cancel":
-                    await ctx.send("Alright, operation cancelled.")
-                    return
-                joinable = new_joinable.lower() in ["yes", "yeah"]
-            except asyncio.TimeoutError:
+            msg = await ctx.send(f"Do you want **{event['name']}** to be joinable? `yes/no/cancel`")
+            new_joinable = await ctx.input(timeout=120, delete_response=True)
+            await msg.delete()
+            if new_joinable is None:
                 await ctx.send("Guess you don't want to change the time...")
                 return
+            if new_joinable.strip().lower() == "cancel":
+                await ctx.send("Alright, operation cancelled.")
+                return
+            joinable = new_joinable.lower() in ["yes", "yeah"]
         else:
             joinable = yes_no.lower() in ["yes", "yeah"]
         joinable_string = "joinable" if joinable else "not joinable"
@@ -580,9 +573,9 @@ class General:
             conn.execute("UPDATE events SET joinable = ? WHERE id = ?", (joinable, event_id))
 
         if event["creator"] == ctx.author.id:
-            await ctx.send("Your event's was changed succesfully to **{0}**.".format(joinable_string))
+            await ctx.send(f"{ctx.tick()}Your event's was changed succesfully to **{joinable_string}**.")
         else:
-            await ctx.send("Event's time changed successfully.")
+            await ctx.send(f"{ctx.tick} Event is now **{joinable_string}**.")
             creator = self.bot.get_member(event["creator"])
             if creator is not None:
                 await creator.send(f"Your event **{event['name']}** was changed to **{joinable_string}** "
@@ -590,14 +583,10 @@ class General:
 
     @commands.guild_only()
     @event_edit.command(name="name", aliases=["title"], usage="<id> [new name]")
-    async def event_edit_name(self, ctx, event_id: int, *, new_name):
+    async def event_edit_name(self, ctx: NabCtx, event_id: int, *, new_name=None):
         """Edits an event's name.
 
         If no new name is provided initially, the bot will ask for one."""
-        if event_id is None:
-            await ctx.send(f"You need to tell me the id of the event you want to edit."
-                           f"\nLike this: `{ctx.message.content} 50` or `{ctx.message.content} 50 new_name`")
-            return
         event = self.get_event(ctx, event_id)
         if event is None:
             await ctx.send("There's no active event with that id.")
@@ -606,24 +595,21 @@ class General:
             await ctx.send("You can only edit your own events.")
             return
 
-        def check(m):
-            return ctx.channel == m.channel and ctx.author == m.author
-
         if new_name is None:
-            await ctx.send(f"What would you like to be the new name of **{event['name']}**? You can `cancel` this.")
-            try:
-                reply = await self.bot.wait_for("message", check=check, timeout=120)
-                new_name = reply.content
-                if new_name.strip().lower() == "cancel":
-                    await ctx.send("Alright, operation cancelled.")
-                    return
-            except asyncio.TimeoutError:
+            msg = await ctx.send(f"What would you like to be the new name of **{event['name']}**?"
+                                 f"You can `cancel` this.")
+            new_name = await ctx.input(timeout=120, delete_response=True)
+            await msg.delete()
+            if new_name is None:
                 await ctx.send("Guess you don't want to change the name...")
+                return
+            if new_name.strip().lower() == "cancel":
+                await ctx.send("Alright, operation cancelled.")
                 return
 
         new_name = single_line(clean_string(ctx, new_name))
         if len(new_name) > EVENT_NAME_LIMIT:
-            await ctx.send(f"The name can't be longer than {EVENT_NAME_LIMIT} characters.")
+            await ctx.send(f"{ctx.tick(False)} The name can't be longer than {EVENT_NAME_LIMIT} characters.")
             return
         message = await ctx.send(f"Do you want to change the name of **{event['name']}** to **{new_name}**?")
         confirm = await ctx.react_confirm(message, delete_after=True)
@@ -638,9 +624,9 @@ class General:
             conn.execute("UPDATE events SET name = ? WHERE id = ?", (new_name, event_id,))
 
         if event["creator"] == ctx.author.id:
-            await ctx.send(f"Your event was renamed successfully to **{new_name}**.")
+            await ctx.send(f"{ctx.tick()} Your event was renamed successfully to **{new_name}**.")
         else:
-            await ctx.send(f"Event renamed successfully to **{new_name}**.")
+            await ctx.send(f"{ctx.tick()} Event renamed successfully to **{new_name}**.")
             creator = self.bot.get_member(event["creator"])
             if creator is not None:
                 await creator.send(f"Your event **{event['name']}** was renamed to **{new_name}** by "
@@ -650,14 +636,10 @@ class General:
 
     @commands.guild_only()
     @event_edit.command(name="slots", aliases=["size"], usage="<id> [new slots]")
-    async def event_edit_slots(self, ctx, event_id: int = None, *, slots=None):
+    async def event_edit_slots(self, ctx: NabCtx, event_id: int, slots: int=None):
         """Edits an event's number of slots
 
         Slots is the number of characters an event can have. By default this is 0, which means no limit."""
-        if event_id is None:
-            await ctx.send(f"You need to tell me the id of the event you want to edit."
-                           f"\nLike this: `{ctx.message.content} 50` or `{ctx.message.content} 50 new_name`")
-            return
         event = self.get_event(ctx, event_id)
         if event is None:
             await ctx.send("There's no active event with that id.")
@@ -666,28 +648,24 @@ class General:
             await ctx.send("You can only edit your own events.")
             return
 
-        def check(m):
-            return ctx.channel == m.channel and ctx.author == m.author
-
         if slots is None:
-            await ctx.send(f"What would you like to be the new number of slots for  **{event['name']}**? "
-                           f"You can `cancel` this.\n Note that `0` means no slot limit.")
-            try:
-                reply = await self.bot.wait_for("message", check=check, timeout=120)
-                slots = reply.content
-                if slots.strip().lower() == "cancel":
-                    await ctx.send("Alright, operation cancelled.")
-                    return
-            except asyncio.TimeoutError:
+            msg = await ctx.send(f"What would you like to be the new number of slots for  **{event['name']}**? "
+                                 f"You can `cancel` this.\n Note that `0` means no slot limit.")
+            slots = await ctx.input(timeout=120, delete_response=True)
+            await msg.delete()
+            if slots is None:
                 await ctx.send("Guess you don't want to change the name...")
+                return
+            if slots.strip().lower() == "cancel":
+                await ctx.send("Alright, operation cancelled.")
                 return
         try:
             slots = int(slots)
             if slots < 0:
-                await ctx.send("You can't have negative slots!")
+                await ctx.send(f"{ctx.tick(False)} You can't have negative slots!")
                 return
         except ValueError:
-            await ctx.send("That's not a number...")
+            await ctx.send(f"{ctx.tick(False)}That's not a number...")
             return
         message = await ctx.send(f"Do you want the number of slots of **{event['name']}** to **{slots}**?")
         confirm = await ctx.react_confirm(message, delete_after=True)
@@ -702,9 +680,9 @@ class General:
             conn.execute("UPDATE events SET slots = ? WHERE id = ?", (slots, event_id,))
 
         if event["creator"] == ctx.author.id:
-            await ctx.send(f"Your event slots were changed to **{slots}**.")
+            await ctx.send(f"{ctx.tick()} Your event slots were changed to **{slots}**.")
         else:
-            await ctx.send(f"Event slots changed to **{slots}**.")
+            await ctx.send(f"{ctx.tick()} Event slots changed to **{slots}**.")
             creator = self.bot.get_member(event["creator"])
             if creator is not None:
                 await creator.send(f"Your event **{event['name']}** slots were changed to **{slots}** by "
@@ -712,14 +690,10 @@ class General:
 
     @commands.guild_only()
     @event_edit.command(name="time", aliases=["start"], usage="<id> [new start time]")
-    async def event_edit_time(self, ctx, event_id: int, starts_in: TimeString=None):
+    async def event_edit_time(self, ctx: NabCtx, event_id: int, starts_in: TimeString=None):
         """Edit's an event's start time.
 
         If no new time is provided initially, the bot will ask for one."""
-        if event_id is None:
-            await ctx.send(f"You need to tell me the id of the event you want to edit."
-                           f"\nLike this: `{ctx.message.content} 50` or `{ctx.message.content} 50 new_time`")
-            return
         now = time.time()
         event = self.get_event(ctx, event_id)
         if event is None:
@@ -729,28 +703,27 @@ class General:
             await ctx.send("You can only edit your own events.")
             return
 
-        def check(m):
-            return ctx.channel == m.channel and ctx.author == m.author
-
         if starts_in is None:
-            await ctx.send(f"When would you like the new start time of **{event['name']}** be?"
-                           f"You can `cancel` this.\n Examples: `1h20m`, `2d10m`")
+            msg = await ctx.send(f"When would you like the new start time of **{event['name']}** be?"
+                                 f"You can `cancel` this.\n Examples: `1h20m`, `2d10m`")
+
+            new_time = await ctx.input(timeout=120, delete_response=True)
+            await msg.delete()
+            if new_time is None:
+                await ctx.send("Guess you don't want to change the time...")
+                return
+            if new_time.strip().lower() == "cancel":
+                await ctx.send("Alright, operation cancelled.")
+                return
+
             try:
-                reply = await self.bot.wait_for("message", check=check, timeout=120)
-                new_time = reply.content
-                if new_time.strip().lower() == "cancel":
-                    await ctx.send("Alright, operation cancelled.")
-                    return
                 starts_in = TimeString(new_time)
             except commands.BadArgument as e:
                 await ctx.send(str(e))
                 return
-            except asyncio.TimeoutError:
-                await ctx.send("Guess you don't want to change the time...")
-                return
         embed = discord.Embed(title=event["name"], timestamp=dt.datetime.utcfromtimestamp(now+starts_in.seconds))
         embed.set_footer(text="Start time")
-        message = await ctx.send(f"This will be the time of your new event in your local time. Is this correct?",
+        message = await ctx.send(f"This will be the new time of your event in your local time. Is this correct?",
                                  embed=embed)
         confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
@@ -764,9 +737,9 @@ class General:
             conn.execute("UPDATE events SET start = ? WHERE id = ?", (now + starts_in.seconds, event_id,))
 
         if event["creator"] == ctx.author.id:
-            await ctx.send("Your event's start time was changed successfully to **{0}**.".format(starts_in.original))
+            await ctx.send(f"{ctx.tick()}Your event's start time was changed successfully to **{starts_in.original}**.")
         else:
-            await ctx.send("Event's time changed successfully.")
+            await ctx.send(f"{ctx.tick()}Event's time changed successfully.")
             creator = self.bot.get_member(event["creator"])
             if creator is not None:
                 await creator.send(f"The start time of your event **{event['name']}** was changed to "
@@ -1310,31 +1283,6 @@ class General:
         embed.add_field(name="Roles", value=f"{len(user.roles):,}")
 
         await ctx.send(embed=embed)
-
-    @event_edit_name.error
-    @event_edit_description.error
-    @event_edit_time.error
-    @event_edit_joinable.error
-    @event_edit_slots.error
-    @event_participants.error
-    @event_remove.error
-    @event_subscribe.error
-    @event_join.error
-    @event_leave.error
-    @event_addplayer.error
-    @event_removeplayer.error
-    async def event_error(self, ctx, error):
-        if isinstance(error, commands.BadArgument):
-            await ctx.send("Invalid arguments used. `Type /help {0}`".format(ctx.invoked_subcommand))
-        elif isinstance(error, commands.errors.MissingRequiredArgument):
-            await ctx.send("You're missing a required argument. `Type /help {0}`".format(ctx.invoked_subcommand))
-
-
-    @event_add.error
-    @checks.is_not_lite()
-    async def event_add_error(self, ctx, error):
-        if isinstance(error, commands.BadArgument):
-            await ctx.send(str(error))
 
     async def notify_subscribers(self, event_id: int, content, *, embed: discord.Embed=None, skip_creator=False):
         """Sends a message to all users subscribed to an event"""
