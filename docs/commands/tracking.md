@@ -80,7 +80,7 @@ There are 3 ways to use this command:
 - Show characters in share range with a specific level. (`searchteam <level>`)
 - Show characters in a level range. (`searchteam <min>,<max>`)
 
-Online characters are shown first on the list, they also have a 🔹 icon.
+Online characters are shown first on the list, they also have an icon next to them.
 
 ??? Summary "Examples"
     **/searchteam Galarzaa Fidera**  

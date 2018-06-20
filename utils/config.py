@@ -30,6 +30,7 @@ KEYS = [
     "network_retry_delay",
     "extra_cogs",
     "command_prefix",
+    "online_emoji",
     "use_status_emojis",
     "status_emojis"
 ]
@@ -62,6 +63,7 @@ class Config:
         self.highscores_delay = 45
         self.highscores_page_delay = 10
         self.network_retry_delay = 1
+        self.online_emoji = "🔹"
         self.use_status_emojis = False
         self.status_emojis = _DEFAULT_STATUS_EMOJIS
 

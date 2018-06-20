@@ -553,7 +553,7 @@ class Tibia:
     async def guild_members(self, ctx, *, name: str):
         """Shows a list of all guild members.
 
-        Online members have a 🔹 icon next to their name."""
+        Online members have an icon next to their name."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -578,7 +578,7 @@ class Tibia:
             vocations.append(member["vocation"])
             member["emoji"] = get_voc_emoji(member["vocation"])
             member["vocation"] = get_voc_abb(member["vocation"])
-            member["online"] = "🔹" if member["status"] == "online" else ""
+            member["online"] = config.online_emoji if member["status"] == "online" else ""
             entries.append("{rank}\u2014 {online}**{name}** {nick} (Lvl {level} {vocation}{emoji})".format(**member))
         per_page = 20 if ctx.long else 5
         pages = VocationPages(ctx, entries=entries, per_page=per_page, vocations=vocations)
@@ -1700,7 +1700,7 @@ class Tibia:
             online_list = [x.name for x in global_online_list]
             char_list = []
             for char in characters:
-                char["online"] = "🔹" if char["name"] in online_list else ""
+                char["online"] = config.online_emoji if char["name"] in online_list else ""
                 char["vocation"] = get_voc_abb(char["vocation"])
                 char["url"] = url_character + urllib.parse.quote(char["name"].encode('iso-8859-1'))
                 if len(characters) <= 10:

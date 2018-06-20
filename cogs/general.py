@@ -1234,10 +1234,10 @@ class General:
         if config.use_status_emojis:
             embed.add_field(name="Members",
                             value=f"Total: {len(guild.members):,}\n"
-                                  f"{status_count['online']:,} {config.status_emojis['online']}  "
-                                  f"{status_count['idle']:,} {config.status_emojis['idle']} "
-                                  f"{status_count['dnd']:,} {config.status_emojis['dnd']} "
-                                  f"{status_count['offline']:,} {config.status_emojis['offline']}")
+                                  f"{status_count['online']:,}{config.status_emojis['online']}  "
+                                  f"{status_count['idle']:,}{config.status_emojis['idle']} "
+                                  f"{status_count['dnd']:,}{config.status_emojis['dnd']} "
+                                  f"{status_count['offline']:,}{config.status_emojis['offline']}")
         else:
             embed.add_field(name="Members",
                             value=f"Total: {len(guild.members):,}\n"

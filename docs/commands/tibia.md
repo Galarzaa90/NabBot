@@ -110,7 +110,7 @@ It shows their description, homepage, guildhall, number of members and more.
 
 Shows a list of all guild members.
 
-Online members have a 🔹 icon next to their name.
+Online members have an icon next to their name.
 
 
 ??? summary "Examples"

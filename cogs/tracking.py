@@ -917,7 +917,7 @@ class Tracking:
         - Show characters in share range with a specific level. (`searchteam <level>`)
         - Show characters in a level range. (`searchteam <min>,<max>`)
 
-        Online characters are shown first on the list, they also have a 🔹 icon."""
+        Online characters are shown first on the list, they also have an icon."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
@@ -1019,7 +1019,7 @@ class Tracking:
                 player["voc"] = get_voc_abb(player["vocation"])
                 line_format = "**{name}** - Level {level} {voc}{emoji} - @**{owner}** {online}"
                 if player["name"] in online_list:
-                    player["online"] = "🔹"
+                    player["online"] = config.online_emoji
                     online_entries.append(line_format.format(**player))
                     online_vocations.append(player["vocation"])
                 else:
