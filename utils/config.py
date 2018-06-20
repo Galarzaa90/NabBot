@@ -4,7 +4,6 @@ import shutil
 
 import yaml
 import yaml.reader
-from ruamel.yaml import YAML
 
 yaml.reader.Reader.NON_PRINTABLE = re.compile(
     u'[^\x09\x0A\x0D\x20-\x7E\x85\xA0-\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]')
@@ -54,6 +53,7 @@ _DEFAULT_ELEMENTAL_EMOJIS = {
     "death": "💀",
     "holy": "🔱"
 }
+
 
 class Config:
     def __init__(self,):
