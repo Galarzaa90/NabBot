@@ -338,9 +338,6 @@ class TibiaWiki:
         speed = "?" if monster["speed"] is None else "{0:,}".format(monster["speed"])
         embed.description = f"**HP** {hp} | **Exp** {experience} | **Speed** {speed}"
 
-        weak = []
-        resist = []
-        immune = []
         attributes = {"summon": "Summonable",
                       "convince": "Convinceable",
                       "illusionable": "Illusionable",
@@ -354,30 +351,20 @@ class TibiaWiki:
         embed.add_field(name="Attributes", value="Unknown" if not attributes else attributes)
         elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
         # Iterate through elemental types
-        for index, value in monster.items():
-            if index in elements:
-                element = index.title() if not config.use_elemental_emojis else config.elemental_emojis[index]
-                if monster[index] is None:
-                    continue
-                if monster[index] == 0:
-                    immune.append(element)
-                elif monster[index] > 100:
-                    weak.append([element, monster[index] - 100])
-                elif monster[index] < 100:
-                    resist.append([element, monster[index] - 100])
-        if immune:
-            embed.add_field(name="Immune to", value="\n".join(immune))
-        else:
-            embed.add_field(name="Immune to", value="Nothing")
-
-        if resist:
-            embed.add_field(name="Resistant to", value="\n".join(["{1}% {0}".format(*i) for i in resist]))
-        else:
-            embed.add_field(name="Resistant to", value="Nothing")
-        if weak:
-            embed.add_field(name="Weak to", value="\n".join(["+{1}% {0}".format(*i) for i in weak]))
-        else:
-            embed.add_field(name="Weak to", value="Nothing")
+        elemental_modifiers = {}
+        for element in elements:
+            if monster[element] is None or monster[element] == 100:
+                continue
+            elemental_modifiers[element] = monster[element] - 100
+        elemental_modifiers = dict(sorted(elemental_modifiers.items(), key=lambda x: x[1]))
+        if elemental_modifiers:
+            content = ""
+            for element, value in elemental_modifiers.items():
+                if config.use_elemental_emojis:
+                    content += f"\n{config.elemental_emojis[element]} {value:+}%"
+                else:
+                    content += f"\n{value:+}% {element.title()}"
+            embed.add_field(name="Elemental modifiers", value=content)
 
         if monster["bestiary_class"] is not None:
             difficulties = {
