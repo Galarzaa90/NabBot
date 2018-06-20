@@ -75,15 +75,30 @@ highscores_page_delay: 10
 # Delay between retries when there's a network error in seconds
 network_retry_delay: 1
 
-## Custom emojis ##
-
+# Emoji
 # Emoji used to indicate a character is online in various commands
 online_emoji: 🔹
+
+
+# Optional emojis
+# The following are values than can optionally be represented by emojis.
+# If they are set to false, text will be displayed instead.
+
 # Whether to use or not emojis to show discord status in serverinfo command.
-# If it is enabled, it's recommended to use custom emojis, as no unicode emojis really fit.
 use_status_emojis: false
 status_emojis:
   online: 💚
   dnd: ♥
   idle: 💛
   offline: 🖤
+
+# Whether to use emojis to represent elemental damage in spells and monsters info
+use_elemental_emojis: false
+elemental_emojis:
+  physical: ⚔
+  earth: 🌿
+  fire: 🔥
+  energy: ⚡
+  ice: ❄
+  death: 💀
+  holy: 🔱

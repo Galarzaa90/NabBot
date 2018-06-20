@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
+from utils.config import config
 from utils.discord import is_private, FIELD_VALUE_LIMIT
 from utils.general import join_list
 from utils.messages import split_message
@@ -351,18 +352,19 @@ class TibiaWiki:
         attributes = "\n".join([f"{ctx.tick(monster[x])} {repl}" for x, repl in attributes.items()
                                 if monster[x] is not None])
         embed.add_field(name="Attributes", value="Unknown" if not attributes else attributes)
-        elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth", "drown", "lifedrain"]
+        elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
         # Iterate through elemental types
         for index, value in monster.items():
             if index in elements:
+                element = index.title() if not config.use_elemental_emojis else config.elemental_emojis[index]
                 if monster[index] is None:
                     continue
                 if monster[index] == 0:
-                    immune.append(index.title())
+                    immune.append(element)
                 elif monster[index] > 100:
-                    weak.append([index.title(), monster[index] - 100])
+                    weak.append([element, monster[index] - 100])
                 elif monster[index] < 100:
-                    resist.append([index.title(), monster[index] - 100])
+                    resist.append([element, monster[index] - 100])
         if immune:
             embed.add_field(name="Immune to", value="\n".join(immune))
         else:
@@ -638,7 +640,6 @@ class TibiaWiki:
             embed.colour = discord.Colour(0x990000)
         if spell["element"] == "Physical" or spell["element"] == "Bleed":
             embed.colour = discord.Colour(0xF70000)
-
         embed.description = description
 
         if too_long:

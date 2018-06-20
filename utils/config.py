@@ -4,6 +4,7 @@ import shutil
 
 import yaml
 import yaml.reader
+from ruamel.yaml import YAML
 
 yaml.reader.Reader.NON_PRINTABLE = re.compile(
     u'[^\x09\x0A\x0D\x20-\x7E\x85\xA0-\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]')
@@ -32,7 +33,9 @@ KEYS = [
     "command_prefix",
     "online_emoji",
     "use_status_emojis",
-    "status_emojis"
+    "status_emojis",
+    "use_elemental_emojis",
+    "elemental_emojis"
 ]
 
 _DEFAULT_STATUS_EMOJIS = {
@@ -40,6 +43,16 @@ _DEFAULT_STATUS_EMOJIS = {
     "dnd": "♥",
     "idle": "💛",
     "offline": "🖤"
+}
+
+_DEFAULT_ELEMENTAL_EMOJIS = {
+    "physical": "⚔",
+    "earth": "🌿",
+    "fire": "🔥",
+    "energy": "⚡",
+    "ice": "❄",
+    "death": "💀",
+    "holy": "🔱"
 }
 
 class Config:
@@ -66,6 +79,8 @@ class Config:
         self.online_emoji = "🔹"
         self.use_status_emojis = False
         self.status_emojis = _DEFAULT_STATUS_EMOJIS
+        self.use_elemental_emojis = False
+        self.elemental_emojis = _DEFAULT_ELEMENTAL_EMOJIS
 
     def __repr__(self) -> str:
         kwargs = vars(self)
