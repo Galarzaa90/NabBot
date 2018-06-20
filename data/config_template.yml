@@ -74,3 +74,14 @@ highscores_page_delay: 10
 
 # Delay between retries when there's a network error in seconds
 network_retry_delay: 1
+
+# Custom emojis
+
+# Whether to use or not emojis to show discord status in serverinfo command.
+# If it is enabled, it's recommended to use custom emojis, as no unicode emojis really fit.
+use_status_emojis: false
+status_emojis:
+  online: 💚
+  dnd: ♥
+  idle: 💛
+  offline: 🖤

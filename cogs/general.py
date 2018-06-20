@@ -1231,12 +1231,20 @@ class General:
                               f"Voice: {len(guild.voice_channels):,}\n"
                               f"Categories: {len(guild.categories):,}")
         status_count = Counter(str(m.status) for m in guild.members)
-        embed.add_field(name="Members",
-                        value=f"Total: {len(guild.members):,}\n"
-                              f"Online: {status_count['online']:,}\n"
-                              f"Idle: {status_count['idle']:,}\n"
-                              f"Busy: {status_count['dnd']:,}\n"
-                              f"Offline: {status_count['offline']:,}")
+        if config.use_status_emojis:
+            embed.add_field(name="Members",
+                            value=f"Total: {len(guild.members):,}\n"
+                                  f"{status_count['online']:,} {config.status_emojis['online']}  "
+                                  f"{status_count['idle']:,} {config.status_emojis['idle']} "
+                                  f"{status_count['dnd']:,} {config.status_emojis['dnd']} "
+                                  f"{status_count['offline']:,} {config.status_emojis['offline']}")
+        else:
+            embed.add_field(name="Members",
+                            value=f"Total: {len(guild.members):,}\n"
+                                  f"Online: {status_count['online']:,}\n"
+                                  f"Idle: {status_count['idle']:,}\n"
+                                  f"Busy: {status_count['dnd']:,}\n"
+                                  f"Offline: {status_count['offline']:,}")
         embed.add_field(name="Roles", value=len(guild.roles))
         embed.add_field(name="Emojis", value=len(guild.emojis))
         await ctx.send(embed=embed)
