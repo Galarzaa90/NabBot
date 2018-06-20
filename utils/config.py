@@ -31,6 +31,19 @@ KEYS = [
     "extra_cogs",
     "command_prefix",
     "online_emoji",
+    "true_emoji",
+    "false_emoji",
+    "online_emoji",
+    "true_emoji",
+    "false_emoji",
+    "levelup_emoji",
+    "death_emoji",
+    "pvpdeath_emoji",
+    "novoc_emoji",
+    "druid_emoji",
+    "sorcerer_emoji",
+    "paladin_emoji",
+    "knight_emoji",
     "use_status_emojis",
     "status_emojis",
     "use_elemental_emojis",
@@ -77,6 +90,16 @@ class Config:
         self.highscores_page_delay = 10
         self.network_retry_delay = 1
         self.online_emoji = "🔹"
+        self.true_emoji = "✅"
+        self.false_emoji = "❌"
+        self.levelup_emoji = "🌟"
+        self.death_emoji = "☠"
+        self.pvpdeath_emoji = "💀"
+        self.novoc_emoji = "🐣"
+        self.druid_emoji = "❄"
+        self.sorcerer_emoji = "🔥"
+        self.paladin_emoji = "🏹"
+        self.knight_emoji = "🛡"
         self.use_status_emojis = False
         self.status_emojis = _DEFAULT_STATUS_EMOJIS
         self.use_elemental_emojis = False

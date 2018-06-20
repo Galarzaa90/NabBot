@@ -935,8 +935,10 @@ def get_voc_abb(vocation: str) -> str:
 
 def get_voc_emoji(vocation: str) -> str:
     """Given a vocation name, returns a emoji representing it"""
-    emoji = {"none": "🐣", "druid": "❄", "sorcerer": "🔥", "paladin": "🏹", "knight": "🛡", "elder druid": "❄",
-             "master sorcerer": "🔥", "royal paladin": "🏹", "elite knight": "🛡"}
+    emoji = {"none": config.novoc_emoji, "druid": config.druid_emoji, "sorcerer": config.sorcerer_emoji,
+             "paladin": config.paladin_emoji, "knight": config.knight_emoji, "elder druid": config.druid_emoji,
+             "master sorcerer": config.sorcerer_emoji, "royal paladin": config.paladin_emoji,
+             "elite knight": config.knight_emoji}
     try:
         return emoji[vocation.lower()]
     except KeyError:

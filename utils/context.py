@@ -8,8 +8,6 @@ from discord.ext import commands
 from utils.config import config
 from utils.database import get_server_property
 
-YES_NO_REACTIONS = ("🇾", "🇳")
-CHECK_REACTIONS = ("✅", "❌")
 _mention = re.compile(r'<@!?([0-9]{1,19})>')
 
 
@@ -23,6 +21,8 @@ class NabCtx(commands.Context):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.yes_no_reactions = ("🇾", "🇳")
+        self.check_reactions = (config.true_emoji, config.false_emoji)
 
     # Properties
     @property
@@ -169,7 +169,7 @@ class NabCtx(commands.Context):
         if not self.channel.permissions_for(self.me).add_reactions:
             raise RuntimeError('Bot does not have Add Reactions permission.')
 
-        reactions = CHECK_REACTIONS if use_checkmark else YES_NO_REACTIONS
+        reactions = self.check_reactions if use_checkmark else self.yes_no_reactions
         for emoji in reactions:
             await message.add_reaction(emoji)
 
@@ -197,15 +197,14 @@ class NabCtx(commands.Context):
                     pass
         return True
 
-    @staticmethod
-    def tick(value: bool = True, label: str = None) -> str:
+    def tick(self, value: bool = True, label: str = None) -> str:
         """Displays a checkmark or a cross depending on the value.
 
         :param value: The value to evaluate
         :param label: An optional label to display
         :return: A checkmark or cross
         """
-        emoji = CHECK_REACTIONS[int(not value)]
+        emoji = self.check_reactions[int(not value)]
         if label:
             return emoji + label
         return emoji

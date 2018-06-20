@@ -75,9 +75,25 @@ highscores_page_delay: 10
 # Delay between retries when there's a network error in seconds
 network_retry_delay: 1
 
-# Emoji
-# Emoji used to indicate a character is online in various commands
+# Emojis
+# Sets the various emojis used by the bot.
+# Bots can use emojis from any server they are in, animated or not.
+# See the documentation for more information.
+
+# Required emojis
+# These values must always have an emoji to display
 online_emoji: 🔹
+true_emoji: ✅
+false_emoji: ❌
+levelup_emoji: 🌟
+death_emoji: ☠
+pvpdeath_emoji: 💀
+# These emojis are also used in vocation filtering
+novoc_emoji: 🐣
+druid_emoji: ❄
+sorcerer_emoji: 🔥
+paladin_emoji: 🏹
+knight_emoji: 🛡
 
 
 # Optional emojis

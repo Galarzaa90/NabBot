@@ -2,6 +2,11 @@
 
 ## Version 1.3.0 (Unreleased)
 - Emoji changes are now displayed on server-log.
+- Main emojis can be customized now, allowing custom discord emojis
+    - Vocation emojis.
+    - Elemental resistance emojis in `/monster`.
+    - Discord presence emojis in `/serverinfo`.
+    - Checkbox and cross emojis to show boolean flags.
 
 ## Version 1.2.3 (2018-06-19)
 - Fixed a bug with `/whois` when a user was not found.

@@ -424,7 +424,7 @@ class Tracking:
                       'he_she': char.he_she.lower(), 'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
         message = message.format(**death_info)
         # Format extra stylization
-        message = f"{'💀' if death.by_player else '☠'} {format_message(message)}"
+        message = f"{config.pvpdeath_emoji if death.by_player else config.death_emoji} {format_message(message)}"
 
         for guild_id, tracked_world in self.bot.tracked_worlds.items():
             guild = self.bot.get_guild(guild_id)
@@ -468,7 +468,7 @@ class Tracking:
         # Format message with level information
         message = message.format(**level_info)
         # Format extra stylization
-        message = f"🌟 {format_message(message)}"
+        message = f"{config.levelup_emoji} {format_message(message)}"
 
         for server_id, tracked_world in self.bot.tracked_worlds.items():
             server = self.bot.get_guild(server_id)

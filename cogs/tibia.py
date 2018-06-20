@@ -1235,11 +1235,11 @@ class Tibia:
                     row["user"] = user.display_name
                     row["voc_emoji"] = get_voc_emoji(row["vocation"])
                     if row["type"] == "death":
-                        row["emoji"] = "💀"
+                        row["emoji"] = config.death_emoji
                         entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - At level **{level}** by {killer} - "
                                        "*{time} ago*".format(**row))
                     else:
-                        row["emoji"] = "🌟"
+                        row["emoji"] = config.levelup_emoji
                         entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - Level **{level}** - *{time} ago*"
                                        .format(**row))
                     if count >= 200:
@@ -1273,12 +1273,12 @@ class Tibia:
                     count += 1
                     row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                     if row["type"] == "death":
-                        row["emoji"] = "💀"
+                        row["emoji"] = config.death_emoji
                         entries.append("{emoji} At level **{level}** by {killer} - *{time} ago*"
                                        .format(**row)
                                        )
                     else:
-                        row["emoji"] = "🌟"
+                        row["emoji"] = config.levelup_emoji
                         entries.append("{emoji} Level **{level}** - *{time} ago*".format(**row))
                     if count >= 200:
                         break
@@ -1350,12 +1350,12 @@ class Tibia:
                 row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                 row["voc_emoji"] = get_voc_emoji(row["vocation"])
                 if row["type"] == "death":
-                    row["emoji"] = "💀"
+                    row["emoji"] = config.death_emoji
                     entries.append("{emoji}{voc_emoji} {name} - At level **{level}** by {killer} - *{time} ago*"
                                    .format(**row)
                                    )
                 else:
-                    row["emoji"] = "🌟"
+                    row["emoji"] = config.levelup_emoji
                     entries.append("{emoji}{voc_emoji} {name} - Level **{level}** - *{time} ago*".format(**row))
                 if count >= 200:
                     break

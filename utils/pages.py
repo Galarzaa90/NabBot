@@ -8,6 +8,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
+from utils.config import config
 from utils.discord import is_private
 from utils.tibia import DRUID, SORCERER, PALADIN, KNIGHT
 
@@ -137,6 +138,7 @@ class Pages:
             # Stop reaction doesn't work on PMs so do not add it
             if is_private(self.message.channel) and reaction == '\N{BLACK SQUARE FOR STOP}':
                 continue
+            reaction = reaction.replace("<", "").replace(">", "")
             await self.message.add_reaction(reaction)
 
     async def checked_show_page(self, page):
@@ -180,9 +182,8 @@ class Pages:
 
         if reaction.message.id != self.message.id:
             return False
-
         for (emoji, func) in self.reaction_emojis:
-            if reaction.emoji == emoji:
+            if str(reaction.emoji) == emoji:
                 self.match = func
                 return True
         return False
@@ -221,13 +222,13 @@ class VocationPages(Pages):
         present_vocations = []
         # Only add vocation filters for the vocations present
         if any(v.lower() in DRUID for v in vocations):
-            present_vocations.append(('\U00002744', self.filter_druids))
+            present_vocations.append((config.druid_emoji, self.filter_druids))
         if any(v.lower() in SORCERER for v in vocations):
-            present_vocations.append(('\U0001F525', self.filter_sorcerers))
+            present_vocations.append((config.sorcerer_emoji, self.filter_sorcerers))
         if any(v.lower() in PALADIN for v in vocations):
-            present_vocations.append(('\U0001F3F9', self.filter_paladins))
+            present_vocations.append((config.paladin_emoji, self.filter_paladins))
         if any(v.lower() in KNIGHT for v in vocations):
-            present_vocations.append(('\U0001F6E1', self.filter_knights))
+            present_vocations.append((config.knight_emoji, self.filter_knights))
 
         # Only add filters if there's more than one different vocation
         if len(present_vocations) > 1:
@@ -424,7 +425,6 @@ class HelpPaginator(Pages):
                 # we can't forbid it if someone ends up using it but remove
                 # it from the default set
                 continue
-
             await self.message.add_reaction(reaction)
 
     async def show_help(self):
