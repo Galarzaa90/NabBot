@@ -2,6 +2,7 @@ import asyncio
 import io
 import os
 import pickle
+import time
 from contextlib import closing
 
 import aiohttp
@@ -86,7 +87,9 @@ class Loot:
         progress_msg = await ctx.send("Status: ...")
         progress_bar = await ctx.send("⬛" * 10)
 
+        start_time = time.time()
         loot_list, loot_image_overlay = await loot_scan(loot_image, file_name, progress_msg, progress_bar)
+        scan_time = time.time() - start_time
         self.parsing_count -= 1
         embed = discord.Embed()
         long_message = "These are the results for your image: [{0}]({1})".format(file_name, file_url)
@@ -156,6 +159,7 @@ class Loot:
                             f"more in the market."
         embed.description = long_message
         embed.set_image(url="attachment://results.png")
+        embed.set_footer(text=f"Loot scanned in {scan_time:,.2f} seconds.")
 
         # Short message
         short_message = f"I've finished parsing your image {author.mention}." \
