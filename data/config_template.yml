@@ -56,9 +56,6 @@ display_sonora_time: true
 # Cached online list expiration
 online_list_expiration: 300
 
-# Max amount of simultaneous images /loot can try to parse
-loot_max: 6
-
 # Level threshold for announces (level < announceLevel)
 announce_threshold: 30
 

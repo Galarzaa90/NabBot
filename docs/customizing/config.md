@@ -114,15 +114,6 @@ display_brasilia_time: true
 display_sonora_time: true
 ```
 
-This toggles displaying those timezones in the `/time` command.
-
-These keys will be deprecated soon in favour of a more dynamic way to add timezones.
-
-## Loot Max
-```yaml
-loot_max: 6
-```
-
 Specifies how many concurrent loot scanning jobs can be active.
 
 ## Announce Threshold

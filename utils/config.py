@@ -21,7 +21,6 @@ KEYS = [
     "display_brasilia_time",
     "display_sonora_time",
     "online_list_expiration",
-    "loot_max",
     "announce_threshold",
     "online_scan_interval",
     "death_scan_interval",
@@ -82,7 +81,6 @@ class Config:
         self.display_brasilia_time = True
         self.display_sonora_time = True
         self.online_list_expiration = 300
-        self.loot_max = 6
         self.announce_threshold = 30
         self.online_scan_interval = 90
         self.death_scan_interval = 15

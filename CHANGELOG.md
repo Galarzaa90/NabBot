@@ -7,6 +7,8 @@
     - Elemental resistance emojis in `/monster`.
     - Discord presence emojis in `/serverinfo`.
     - Checkbox and cross emojis to show boolean flags.
+- Increased /loot scanning speed
+- Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.
 
 ## Version 1.2.3 (2018-06-19)
 - Fixed a bug with `/whois` when a user was not found.

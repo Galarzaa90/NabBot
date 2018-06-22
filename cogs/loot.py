@@ -1,9 +1,10 @@
-import asyncio
+import functools
 import io
 import os
 import pickle
 import time
 from contextlib import closing
+from typing import Any, List, Dict, Tuple, Optional
 
 import aiohttp
 import discord
@@ -12,7 +13,7 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils import checks
-from utils.config import config
+from utils.context import NabCtx
 from utils.database import tibiaDatabase, lootDatabase
 from utils.discord import FIELD_VALUE_LIMIT
 from utils.general import log
@@ -32,14 +33,31 @@ numbers = [Image.open("./images/0.png"),
            Image.open("./images/8.png"),
            Image.open("./images/9.png")]
 
+group_images = {'Green Djinn': Image.open("./images/Green Djinn.png"),
+                'Blue Djinn': Image.open("./images/Blue Djinn.png"),
+                'Rashid': Image.open("./images/Rashid.png"),
+                'Yasir': Image.open("./images/Yasir.png"),
+                'Tamoril': Image.open("./images/Tamoril.png"),
+                'Jewels': Image.open("./images/Jewels.png"),
+                'Gnomission': Image.open("./images/Gnomission.png"),
+                'Other': Image.open("./images/Other.png"),
+                'NoValue': Image.open("./images/NoValue.png"),
+                'Unknown': Image.open("./images/Unknown.png")}
+
+MIN_SIZE = 34  # Images with a width or height smaller than this are not considered.
+
+
+class LootScanException(commands.CommandError):
+    pass
+
 
 class Loot:
     def __init__(self, bot: NabBot):
         self.bot = bot
-        self.parsing_count = 0
+        self.processing_users = []
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
-    async def loot(self, ctx):
+    async def loot(self, ctx: NabCtx):
         """Scans an image of a container looking for Tibia items and shows an approximate loot value.
 
         An image must be attached with the message. The prices used are NPC prices only.
@@ -54,50 +72,55 @@ class Loot:
 
         The bot shows the total loot value and a list of the items detected, separated into the NPC that buy them.
         """
-        author = ctx.author
-        if self.parsing_count >= config.loot_max:
-            await ctx.send("Sorry, I am already parsing too many loot images, "
-                           "please wait a couple of minutes and try again.")
+        if ctx.author.id in self.processing_users:
+            await ctx.send("I'm already scanning an image for you! Wait for me to finish that one.")
             return
 
         if len(ctx.message.attachments) == 0:
             await ctx.send("You need to upload a picture of your loot and type the command in the comment.")
             return
 
-        attachment = ctx.message.attachments[0]  # type: discord.Attachment
+        attachment: discord.Attachment = ctx.message.attachments[0]
+        if attachment.height is None:
+            await ctx.send("That's not an image!")
+            return
         if attachment.size > 2097152:
             await ctx.send("That image was too big! Try splitting it into smaller images, or cropping out anything "
                            "irrelevant.")
             return
-        file_name = attachment.url.split("/")[len(attachment.url.split("/")) - 1]
-        file_url = attachment.url
+        if attachment.height < MIN_SIZE or attachment.width < MIN_SIZE:
+            await ctx.send("That image is too small to be a loot image.")
+            return
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(attachment.url) as resp:
-                    original_image = await resp.read()
-            loot_image = Image.open(io.BytesIO(bytearray(original_image))).convert("RGBA")
-        except Exception:
+                    loot_image = await resp.read()
+        except aiohttp.ClientError:
             log.exception("loot: Couldn't parse image")
-            await ctx.send("Either that wasn't an image or I failed to load it, please try again.")
+            await ctx.send("I failed to load your image. Please try again.")
             return
 
-        self.parsing_count += 1
-        await ctx.send("I've begun parsing your image, **@{0.display_name}**. "
-                       "Please be patient, this may take a few moments.".format(author))
-        progress_msg = await ctx.send("Status: ...")
-        progress_bar = await ctx.send("⬛" * 10)
-
-        start_time = time.time()
-        loot_list, loot_image_overlay = await loot_scan(loot_image, file_name, progress_msg, progress_bar)
-        scan_time = time.time() - start_time
-        self.parsing_count -= 1
-        embed = discord.Embed()
-        long_message = "These are the results for your image: [{0}]({1})".format(file_name, file_url)
+        await ctx.send(f"I've begun parsing your image, **@{ctx.author.display_name}**. "
+                       "Please be patient, this may take a few moments.")
+        status_msg = await ctx.send("Status: Reading")
+        try:
+            self.processing_users.append(ctx.author.id)
+            start_time = time.time()
+            loot_list, loot_image_overlay = await loot_scan(ctx, loot_image, attachment.filename, status_msg)
+            scan_time = time.time() - start_time
+        except LootScanException as e:
+            await ctx.send(e)
+            return
+        finally:
+            self.processing_users.remove(ctx.author.id)
+        embed = discord.Embed(color=discord.Color.blurple())
+        embed.set_footer(text=f"Loot scanned in {scan_time:,.2f} seconds.")
+        long_message = f"These are the results for your image: [{attachment.filename}]({attachment.url})"
 
         if len(loot_list) == 0:
-            message = "Sorry {0.mention}, I couldn't find any loot in that image. Loot parsing will only work on " \
-                      "high quality images, so make sure your image wasn't compressed."
-            await ctx.send(message.format(author))
+            await ctx.send(f"Sorry {ctx.author.mention}, I couldn't find any loot in that image. Loot parsing will "
+                           f"only work on high quality images, so make sure your image wasn't compressed.")
             return
 
         total_value = 0
@@ -119,7 +142,7 @@ class Loot:
             for item in loot_list:
                 if loot_list[item]['group'] == group and loot_list[item]['group'] != "Unknown":
                     if group == "No Value":
-                        value += "x{1} {0}\n".format(item, loot_list[item]['count'])
+                        value += f"x{loot_list[item]['count']} {item}\n"
                     else:
                         with closing(tibiaDatabase.cursor()) as c:
                             c.execute("SELECT name FROM items, items_attributes "
@@ -142,7 +165,7 @@ class Loot:
             if group == "No Value":
                 name = group
             else:
-                name = "{0} - {1:,} gold".format(group, group_value)
+                name = f"{group} - {group_value:,} gold"
             # Split into multiple fields if they exceed field max length
             split_group = split_message(value, FIELD_VALUE_LIMIT)
             for subgroup in split_group:
@@ -151,18 +174,17 @@ class Loot:
                 embed.add_field(name=name, value=subgroup, inline=False)
 
         if unknown:
-            long_message += "\n*There were {0} unknown items.*\n".format(unknown['count'])
+            long_message += f"\n*There were {unknown['count']} unknown items.*\n"
 
-        long_message += "\nThe total loot value is: **{0:,}** gold coins.".format(total_value)
+        long_message += f"\nThe total loot value is: **{total_value:,}** gold coins."
         if has_marketable:
             long_message += f"\n💎 Items marked with this are used in imbuements and might be worth " \
                             f"more in the market."
         embed.description = long_message
         embed.set_image(url="attachment://results.png")
-        embed.set_footer(text=f"Loot scanned in {scan_time:,.2f} seconds.")
 
         # Short message
-        short_message = f"I've finished parsing your image {author.mention}." \
+        short_message = f"I've finished parsing your image {ctx.author.mention}." \
                         f"\nThe total value is {total_value:,} gold coins."
         if not ctx.long:
             short_message += "\nI've also sent you a PM with detailed information."
@@ -171,8 +193,14 @@ class Loot:
         if ctx.long:
             await ctx.send(short_message, embed=embed, file=discord.File(loot_image_overlay, "results.png"))
         else:
-            await ctx.send(short_message)
-            await ctx.author.send(file=discord.File(loot_image_overlay, "results.png"), embed=embed)
+            try:
+                await ctx.author.send(file=discord.File(loot_image_overlay, "results.png"), embed=embed)
+            except discord.Forbidden:
+                await ctx.send(f"{ctx.tick(False)} {ctx.author.mention}, I tried pming you to send you the results, "
+                               f"but you don't allow private messages from this server.\n"
+                               f"Enable the option and try again, or try the command channel")
+            else:
+                await ctx.send(short_message)
 
     @checks.is_owner()
     @loot.command(name="add")
@@ -298,21 +326,199 @@ class Loot:
         return
 
 
-def is_transparent(pixel):
+def load_image(image_bytes: bytes) -> Image:
+    return Image.open(io.BytesIO(bytearray(image_bytes))).convert("RGBA")
+
+
+async def update_status(msg: discord.Message, status: str, progress: int=None, total: int=None):
+    if progress is None or total is None:
+        percent = None
+    else:
+        percent = int(progress / total * 100 / 10)
+    content = f"**Status:** {status}"
+    if percent is not None:
+        content += f"\n{'🔲'*percent}{'⬛'*(10-percent)}"
+    try:
+        await msg.edit(content=content)
+    except discord.HTTPException:
+        pass
+
+
+async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: discord.Message):
+    try:
+        loot_image : Image.Image = await ctx.execute_async(load_image, image)
+    except Exception:
+        raise LootScanException("Either that wasn't an image or I failed to load it, please try again.")
+
+    debug_output = image_name
+    debug_outputex = 0
+    while os.path.exists(f"loot/debug/{debug_outputex}_{debug_output}"):
+        debug_outputex += 1
+    debug_output = f"{debug_outputex}_{debug_output}"
+
+    loot_image_original = await ctx.execute_async(loot_image.copy)
+
+    await update_status(status_msg, "Detecting item slots")
+
+    slot_list = await ctx.execute_async(find_slots, loot_image)
+    if not slot_list:
+        raise LootScanException("I couldn't find any inventory slots in your image."
+                                " Make sure your image is not stretched out or that overscaling is off.")
+    group_list = {}
+    loot_list = {}
+    unknown_items_list = []
+    lq_items_list = []
+    quality_warning = 0
+    await update_status(status_msg, "Scanning items", 0, 100)
+    count = 0
+    last_percent = 0
+    for found_slot in slot_list:
+        found_item_number, found_item, item_number_image = await ctx.execute_async(number_scan, found_slot['image'])
+        result = "Unknown"
+        quality = 0
+        qz_item = await ctx.execute_async(clear_background, found_item.copy())
+        qz_item_crop = await ctx.execute_async(crop_item, qz_item)
+
+        while result == "Unknown" and quality < 30:
+            found_item_clear = await ctx.execute_async(clear_background, found_item, quality)
+            found_item_crop = crop_item(found_item_clear)
+            # Check if the slot is empty
+            if found_item_crop is None:
+                result = "Empty"
+                quality = 30
+                continue
+            found_item_size = await ctx.execute_async(get_item_size, found_item_crop)
+            found_item_color = await ctx.execute_async(get_item_color, found_item_crop)
+            results = lootDatabase.execute(
+                "SELECT * FROM Items WHERE ((ABS(sizeX - ?) <= 3 AND ABS(sizeY - ?) <= 3) OR ABS(size - ?) <= ?) "
+                "AND (ABS(red - ?)+ABS(green - ?)+ABS(blue - ?) <= ?)",
+                (found_item_crop.size[0], found_item_crop.size[1], found_item_size, 10, found_item_color[0],
+                 found_item_color[1], found_item_color[2], 60 + quality * 2))
+
+            item_list = list(results)
+            for unknownItem in unknown_items_list:
+                if abs(unknownItem['sizeX'] - found_item_crop.size[0]) <= 3 and abs(
+                        unknownItem['sizeY'] - found_item_crop.size[1]) <= 3:
+                    item_list.append(unknownItem)
+            if quality == 0:
+                for lq_item in lq_items_list:
+                    if abs(lq_item['sizeX'] - found_item_crop.size[0]) <= 3 and abs(
+                            lq_item['sizeY'] - found_item_crop.size[1]) <= 3:
+                        item_list.append(lq_item)
+            result = await ctx.execute_async(slot_scan, found_item_crop, item_list, group_list, quality)
+            quality += max(2, int(quality / 2))
+
+        if result == "Unknown":
+            unknown_image = await ctx.execute_async(clear_background, found_slot['image'])
+            unknown_image_copy = await ctx.execute_async(clear_background, found_slot['image'])
+            unknown_image_crop = await ctx.execute_async(crop_item, unknown_image_copy)
+            unknown_image_size = await ctx.execute_async(get_item_size, unknown_image_crop)
+            result = {'name': "Unknown",
+                      'group': "Unknown",
+                      'value': 0,
+                      'priority': 10000000,
+                      'frame': unknown_image_crop,
+                      'sizeX': unknown_image_crop.size[0],
+                      'sizeY': unknown_image_crop.size[1],
+                      'size': unknown_image_size}
+            found_item_number = 1
+            unknown_items_list.append(result)
+            # Save the loot image and the cropped item that couldn't be recognize
+            if not os.path.exists(f"loot/debug/{debug_output}"):
+                os.makedirs(f"loot/debug/{debug_output}")
+                loot_image_original.save(f"loot/debug/{debug_output}/{image_name}", "png")
+            filename = "Unknown"
+            filenameex = 0
+            while os.path.isfile(f"loot/debug/{debug_output}/{filenameex}_{filename}.png"):
+                filenameex += 1
+            # Save with background
+            loot_image.crop(
+                (found_slot['x'] + 1, found_slot['y'] + 1, found_slot['x'] + 33, found_slot['y'] + 33)).save(
+                f"loot/debug/{debug_output}/{filenameex}_{filename}.png", "png")
+            # Save without background
+            unknown_image.save(f"loot/debug/{debug_output}/{filenameex}_{filename}-clean.png",
+                               "png")
+        if type(result) == dict:
+            if quality > 2 and not result in unknown_items_list and not result in lq_items_list:
+                quality_warning += 1
+                if quality_warning == 5:
+                    await status_msg.channel.send("WARNING: You seem to be using a low quality image, or a screenshot "
+                                                  "taken using Tibia's **software** renderer. Some items may not be "
+                                                  "recognized correctly, and overall scanning speed will be slower!")
+                lq_item = result
+                img_byte_arr = io.BytesIO()
+                qz_item.save(img_byte_arr, format='png')
+                img_byte_arr = img_byte_arr.getvalue()
+                lq_item['original'] = result['frame']
+                lq_item['frame'] = pickle.dumps(img_byte_arr)
+                lq_item['sizeX'] = qz_item_crop.size[0]
+                lq_item['sizeY'] = qz_item_crop.size[1]
+                lq_items_list.append(lq_item)
+
+            if result['name'] in loot_list:
+                loot_list[result['name']]['count'] += found_item_number
+            else:
+                loot_list[result['name']] = {'count': found_item_number, 'group': result['group'],
+                                             'value': result['value']}
+
+            if result['group'] != "Unknown":
+                group_list[result['group']] = group_list.get(result['group'], 0) + 100
+                with lootDatabase as c:
+                    c.execute("UPDATE Items SET priority = priority+4 WHERE `name` = ?", (result['name'],))
+                    c.execute("UPDATE Items SET priority = priority+1 WHERE `group` = ?", (result['group'],))
+
+            if result['group'] != "Unknown":
+                if result not in lq_items_list:
+                    detect = pickle.loads(result['frame'])
+                else:
+                    detect = pickle.loads(result['original'])
+                detect = Image.open(io.BytesIO(bytearray(detect)))
+                loot_image.paste(slot, (found_slot['x'], found_slot['y']))
+                detect = Image.alpha_composite(loot_image.crop(
+                    (found_slot['x'] + 1, found_slot['y'] + 1, found_slot['x'] + 33, found_slot['y'] + 33)), detect)
+                if found_item_number > 1:
+                    num = Image.new("RGBA", (32, 32), (255, 255, 255, 0))
+                    num.paste(item_number_image, (7, 21))
+                    detect = Image.alpha_composite(detect, num)
+                loot_image.paste(detect, (found_slot['x'] + 1, found_slot['y'] + 1))
+
+            overlay = Image.alpha_composite(
+                loot_image.crop((found_slot['x'], found_slot['y'], found_slot['x'] + 34, found_slot['y'] + 34)),
+                group_images.get(result['group'], group_images['Other']) if result['value'] > 0 or result[
+                    'group'] == "Unknown" else
+                group_images['NoValue'])
+            loot_image.paste(overlay, (found_slot['x'], found_slot['y']))
+
+        count += 1
+        # Only edit message if percent actually changed, to save time in edits
+        if last_percent != int(count / len(slot_list) * 100 / 10):
+            await update_status(status_msg, f"Scanning items ({count}/{len(slot_list)})", count, len(slot_list))
+        last_percent = int(count / len(slot_list) * 100 / 10)
+    await update_status(status_msg, "Complete!")
+    img_byte_arr = io.BytesIO()
+    await ctx.execute_async(functools.partial(loot_image.save, img_byte_arr, format="png"))
+    img_byte_arr = img_byte_arr.getvalue()
+    return loot_list, img_byte_arr
+
+
+def is_transparent(pixel: Tuple[int, ...]) -> bool:
+    """Checks if a pixel is transparent."""
     if len(pixel) < 4:
         return False
     return pixel[3] == 0
 
 
-def is_number(pixel):
+def is_number(pixel: Tuple[int, ...]) -> bool:
+    """Checks if a pixel is a number."""
     return is_transparent(pixel) and pixel[0] == 255 and pixel[1] == 255 and pixel[2] == 0
 
 
-def is_white(pixel):
+def is_white(pixel: Tuple[int, ...]) -> bool:
+    """Checks if a pixel is white"""
     return pixel[0] == 255 and pixel[1] == 255 and pixel[2] == 255
 
 
-def is_background_color(pixel, quality):
+def is_background_color(pixel: Tuple[int, ...], quality) -> bool:
     low = max(0, 22 - quality * 2)
     high = min(80, 60 + quality)
     colordiff = min(15, 8 + quality)
@@ -321,25 +527,28 @@ def is_background_color(pixel, quality):
            and max(abs(pixel[0] - pixel[1]), abs(pixel[0] - pixel[2]), abs(pixel[1] - pixel[2])) < colordiff
 
 
-def is_empty(pixel):
+def is_empty(pixel: Tuple[int, ...]):
+    """Checks if a pixel can be considered empty."""
     return is_white(pixel) or is_transparent(pixel) or is_number(pixel)
 
 
-def pixel_diff(pixel1, pixel2):
+def pixel_diff(pixel1: Tuple[int, ...], pixel2: Tuple[int, ...]) -> int:
+    """Gets the value difference between two pixels."""
     return abs(pixel1[0] - pixel2[0]) + abs(pixel1[1] - pixel2[1]) + abs(pixel1[2] - pixel2[2])
 
 
-def crop_item(item_image):
+def crop_item(item_image: Image.Image) -> Optional[Image.Image]:
+    """Removes the transparent border around item images."""
     if item_image is None:
-        return item_image, [0, 0]
+        return item_image
     # Top
-    offsety = 0
+    offset_top = 0
     px = 0
     py = 0
     while py < item_image.size[1]:
         item_image_pixel = item_image.getpixel((px, py))
         if not (is_empty(item_image_pixel)):
-            offsety = py
+            offset_top = py
             break
         px += 1
         if px == item_image.size[0]:
@@ -347,13 +556,13 @@ def crop_item(item_image):
             px = 0
 
     # Bottom
-    offsety2 = -1
+    offset_bottom = -1
     px = item_image.size[0] - 1
     py = item_image.size[1] - 1
     while py > 0:
         item_image_pixel = item_image.getpixel((px, py))
         if not (is_empty(item_image_pixel)):
-            offsety2 = py
+            offset_bottom = py
             break
         px -= 1
         if px == 0:
@@ -361,43 +570,47 @@ def crop_item(item_image):
             px = item_image.size[0] - 1
 
     # Left
-    offsetx = 0
+    offset_left = 0
     px = 0
     py = 0
     while px < item_image.size[0]:
         item_image_pixel = item_image.getpixel((px, py))
         if not (is_empty(item_image_pixel)):
-            offsetx = px
+            offset_left = px
             break
         py += 1
         if py == item_image.size[1]:
             px += 1
             py = 0
     # Right
-    offsetx2 = -1
+    offset_right = -1
     px = item_image.size[0] - 1
     py = item_image.size[1] - 1
     while px > 0:
         item_image_pixel = item_image.getpixel((px, py))
         if not (is_empty(item_image_pixel)):
-            offsetx2 = px
+            offset_right = px
             break
         py -= 1
         if py == 0:
             px -= 1
             py = item_image.size[1] - 1
-    if offsetx2 == -1 or offsety2 == -1:
-        return None, [0, 0]
-    item_image = item_image.crop((offsetx, offsety, offsetx2 + 1, offsety2 + 1))
+    if offset_right == -1 or offset_bottom == -1:
+        return None
+    item_image = item_image.crop((offset_left, offset_top, offset_right + 1, offset_bottom + 1))
     return item_image
 
 
-def number_scan(item_image):
-    number1 = item_image.crop((8, 21, 8 + 8, 21 + 10))
-    number2 = item_image.crop((16, 21, 16 + 8, 21 + 10))
-    number3 = item_image.crop((24, 21, 24 + 8, 21 + 10))
-    item_numbers_image = item_image.crop((8, 21, 8 + 8 * 3, 21 + 10))
-    item_numbers = [number1, number2, number3]
+def number_scan(slot_image: Image.Image) -> Tuple[int, Image.Image, Image.Image]:
+    """Scans a slot's image looking for amount digits
+
+    :param slot_image: The image of an inventory slot.
+    :return: A tuple containing the number parsed, the slot's image and the number's image.
+    """
+    digit_hundreds = slot_image.crop((8, 21, 8 + 8, 21 + 10))
+    digit_tens = slot_image.crop((16, 21, 16 + 8, 21 + 10))
+    digit_units = slot_image.crop((24, 21, 24 + 8, 21 + 10))
+    item_numbers = [digit_hundreds, digit_tens, digit_units]
     number_string = ""
     numbers_image = Image.new("RGBA", (24, 10), (255, 255, 255, 0))
     a = 0
@@ -430,15 +643,19 @@ def number_scan(item_image):
     while py < numbers_image.size[1]:
         numbers_image_pixel = numbers_image.getpixel((px, py))
         if not is_transparent(numbers_image_pixel):
-            item_image.putpixel((px + 8, py + 21), (255, 255, 0, 0))
+            slot_image.putpixel((px + 8, py + 21), (255, 255, 0, 0))
         px += 1
         if px == numbers_image.size[0]:
             py += 1
             px = 0
-    return 1 if number_string == "" else int(number_string), item_image, numbers_image
+    return 1 if number_string == "" else int(number_string), slot_image, numbers_image
 
 
-def clear_background(slot_item, quality=0):
+def clear_background(slot_item: Image.Image, quality=0) -> Image.Image:
+    """Clears the background of a slot's image
+
+    :returns: The item's image without the slot's background.
+    """
     px = 0
     py = 0
     while py < slot_item.size[1] and py < slot.size[1]:
@@ -453,7 +670,8 @@ def clear_background(slot_item, quality=0):
     return slot_item
 
 
-def get_item_size(item):
+def get_item_size(item: Image.Image) -> int:
+    """Gets the actual size of an item in pixels."""
     size = item.size[0] * item.size[1]
     empty = 0
     px = 0
@@ -494,7 +712,8 @@ def get_item_size(item):
     return size
 
 
-def get_item_color(item):
+def get_item_color(item: Image.Image) -> Tuple[int, int, int]:
+    """Gets the average color of an item."""
     count = 0
     px = 0
     py = 0
@@ -518,7 +737,7 @@ def get_item_color(item):
     return int(color[0]) - int(color[1]), int(color[0]) - int(color[2]), int(color[1]) - int(color[2])
 
 
-async def slot_scan(slot_item, slot_item_size, item_list, group_list, quality):
+def slot_scan(slot_item, item_list, group_list, quality):
     if slot_item is None:
         return "Empty"
     if quality < 5:
@@ -529,7 +748,6 @@ async def slot_scan(slot_item, slot_item_size, item_list, group_list, quality):
     mismatch_threshold = non_empty_size * (quality * 2)
     silhouette_threshold = non_empty_size * (quality * 0.006)
     for item in item_list:
-        await asyncio.sleep(0.0001)
         if item['name'] == "Unknown":
             item_image = item['frame']
         else:
@@ -574,35 +792,26 @@ async def slot_scan(slot_item, slot_item_size, item_list, group_list, quality):
     return "Unknown"
 
 
-async def find_slots(loot_image, progress_bar):
+def find_slots(loot_image: Image) -> List[Dict[str, Any]]:
+    """Scans through an image, looking for inventory slots
+
+    :param loot_image: An inventory screenshot
+    :return: A list of dictionaries, containing the images and coordinates for every slot.
+    """
     _lootImage = loot_image.copy()
     loot_bytes = loot_image.tobytes()
     slot_list = []
     if loot_image.size[0] < 34 or loot_image.size[1] < 34:
         return slot_list
 
-    if len(loot_bytes) > 2312:
-        progress_percent = 0
-        percent_message = ""
-        percent_message += "🔲" * progress_percent
-        percent_message += "⬛" * (10 - progress_percent)
-        await progress_bar.edit(content=percent_message)
     x = -1
     y = 0
     skip = False
-    for loot_pixel in loot_bytes:
+    for _ in loot_bytes:
         x += 1
         if x + 34 > _lootImage.size[0]:
-            if len(loot_bytes) > 2312:
-                if int(y / _lootImage.size[1] * 100 / 10) != progress_percent:
-                    progress_percent = int(y / _lootImage.size[1] * 100 / 10)
-                    percent_message = ""
-                    percent_message += "🔲" * progress_percent
-                    percent_message += "⬛" * (10 - progress_percent)
-                    await progress_bar.edit(content=percent_message)
             y += 1
             x = 0
-            await asyncio.sleep(0.0001)
         if y + 34 > _lootImage.size[1]:
             break
         if skip:
@@ -1086,174 +1295,6 @@ async def loot_db_update():
     c2.close()
     lootDatabase.commit()
     return newitems or None
-
-
-async def loot_scan(loot_image, image_name, progress_msg, progress_bar):
-    debug_output = image_name
-    debug_outputex = 0
-    while os.path.exists("loot/debug/" + str(debug_outputex) + "_" + debug_output):
-        debug_outputex += 1
-    debug_output = str(debug_outputex) + "_" + debug_output
-
-    loot_image_original = loot_image.copy()
-    group_images = {'Green Djinn': Image.open("./images/Green Djinn.png"),
-                    'Blue Djinn': Image.open("./images/Blue Djinn.png"),
-                    'Rashid': Image.open("./images/Rashid.png"),
-                    'Yasir': Image.open("./images/Yasir.png"),
-                    'Tamoril': Image.open("./images/Tamoril.png"),
-                    'Jewels': Image.open("./images/Jewels.png"),
-                    'Gnomission': Image.open("./images/Gnomission.png"),
-                    'Other': Image.open("./images/Other.png"),
-                    'NoValue': Image.open("./images/NoValue.png"),
-                    'Unknown': Image.open("./images/Unknown.png")}
-
-    await progress_msg.edit(content="Status: Detecting item slots.")
-    slot_list = await find_slots(loot_image, progress_bar)
-    c = lootDatabase.cursor()
-    group_list = {}
-    loot_list = {}
-    unknown_items_list = []
-    lq_items_list = []
-    progress = 0
-    progress_percent = 0
-    percent_message = ""
-    quality_warning = 0
-    percent_message += "🔲" * progress_percent
-    percent_message += "⬛" * (10 - progress_percent)
-    await progress_msg.edit(content="Status: Scanning items.")
-    await progress_bar.edit(content=percent_message)
-    for found_slot in slot_list:
-        found_item_number, found_item, item_number_image = number_scan(found_slot['image'])
-        result = "Unknown"
-        quality = 0
-        qz_item = clear_background(found_item.copy())
-        qz_item_crop = crop_item(qz_item)
-        while result == "Unknown" and quality < 30:
-            found_item_clear = clear_background(found_item, quality)
-            found_item_crop = crop_item(found_item_clear)
-            # Check if the slot is empty
-            if type(found_item_crop) is tuple:
-                result = "Empty"
-                quality = 30
-                continue
-            found_item_size = get_item_size(found_item_crop)
-            found_item_color = get_item_color(found_item_crop)
-            c.execute("SELECT * FROM Items "
-                      "WHERE ((ABS(sizeX - ?) <= 3 AND ABS(sizeY - ?) <= 3) OR ABS(size - ?) <= ?) AND "
-                      "(ABS(red - ?)+ABS(green - ?)+ABS(blue - ?) <= ?)",
-                      (found_item_crop.size[0], found_item_crop.size[1], found_item_size, 10, found_item_color[0],
-                       found_item_color[1], found_item_color[2], 60 + quality * 2,))
-
-            item_list = c.fetchall()
-            for unknownItem in unknown_items_list:
-                if abs(unknownItem['sizeX'] - found_item_crop.size[0]) <= 3 and abs(
-                        unknownItem['sizeY'] - found_item_crop.size[1]) <= 3:
-                    item_list.append(unknownItem)
-            if quality == 0:
-                for lq_item in lq_items_list:
-                    if abs(lq_item['sizeX'] - found_item_crop.size[0]) <= 3 and abs(
-                            lq_item['sizeY'] - found_item_crop.size[1]) <= 3:
-                        item_list.append(lq_item)
-            result = await slot_scan(found_item_crop, found_item_crop.size, item_list, group_list, quality)
-            quality += max(2, int(quality / 2))
-
-        if result == "Unknown":
-            unknown_image = clear_background(found_slot['image'])
-            unknown_image_crop = crop_item(clear_background(found_slot['image']))
-            unknown_image_size = get_item_size(unknown_image_crop)
-            result = {'name': "Unknown",
-                      'group': "Unknown",
-                      'value': 0,
-                      'priority': 10000000,
-                      'frame': unknown_image_crop,
-                      'sizeX': unknown_image_crop.size[0],
-                      'sizeY': unknown_image_crop.size[1],
-                      'size': unknown_image_size}
-            found_item_number = 1
-            unknown_items_list.append(result)
-            # Save the loot image and the cropped item that couldn't be recognize
-            if not os.path.exists("loot/debug/" + debug_output):
-                os.makedirs("loot/debug/" + debug_output)
-                loot_image_original.save("loot/debug/" + debug_output + "/" + image_name, "png")
-            filename = "Unknown"
-            filenameex = 0
-            while os.path.isfile("loot/debug/" + debug_output + "/" + str(filenameex) + "_" + filename + ".png"):
-                filenameex += 1
-            # Save with background
-            loot_image.crop(
-                (found_slot['x'] + 1, found_slot['y'] + 1, found_slot['x'] + 33, found_slot['y'] + 33)).save(
-                "loot/debug/" + debug_output + "/" + str(filenameex) + "_" + filename + ".png", "png")
-            # Save without background
-            unknown_image.save("loot/debug/" + debug_output + "/" + str(filenameex) + "_" + filename + "-clean.png",
-                               "png")
-        if type(result) == dict:
-            if quality > 2 and not result in unknown_items_list and not result in lq_items_list:
-                quality_warning += 1
-                if quality_warning == 5:
-                    await progress_bar.channel.send("WARNING: You seem to be using a low quality image, or a "
-                                                    "screenshot taken using Tibia's **software** renderer. Some "
-                                                    "items may not be recognized correctly, and overall scanning "
-                                                    "speed will be slower!")
-                lq_item = result
-                img_byte_arr = io.BytesIO()
-                qz_item.save(img_byte_arr, format='png')
-                img_byte_arr = img_byte_arr.getvalue()
-                lq_item['original'] = result['frame']
-                lq_item['frame'] = pickle.dumps(img_byte_arr)
-                lq_item['sizeX'] = qz_item_crop.size[0]
-                lq_item['sizeY'] = qz_item_crop.size[1]
-                lq_items_list.append(lq_item)
-
-            if result['name'] in loot_list:
-                loot_list[result['name']]['count'] += found_item_number
-            else:
-                loot_list[result['name']] = {'count': found_item_number, 'group': result['group'],
-                                             'value': result['value']}
-
-            if result['group'] != "Unknown":
-                group_list[result['group']] = group_list.get(result['group'], 0) + 100
-                c.execute("UPDATE Items SET priority = priority+4 WHERE `name` = ?", (result['name'],))
-                c.execute("UPDATE Items SET priority = priority+1 WHERE `group` = ?", (result['group'],))
-
-            if result['group'] != "Unknown":
-                if result not in lq_items_list:
-                    detect = pickle.loads(result['frame'])
-                else:
-                    detect = pickle.loads(result['original'])
-                detect = Image.open(io.BytesIO(bytearray(detect)))
-                loot_image.paste(slot, (found_slot['x'], found_slot['y']))
-                detect = Image.alpha_composite(loot_image.crop(
-                    (found_slot['x'] + 1, found_slot['y'] + 1, found_slot['x'] + 33, found_slot['y'] + 33)), detect)
-                if found_item_number > 1:
-                    num = Image.new("RGBA", (32, 32), (255, 255, 255, 0))
-                    num.paste(item_number_image, (7, 21))
-                    detect = Image.alpha_composite(detect, num)
-                loot_image.paste(detect, (found_slot['x'] + 1, found_slot['y'] + 1))
-
-            overlay = Image.alpha_composite(
-                loot_image.crop((found_slot['x'], found_slot['y'], found_slot['x'] + 34, found_slot['y'] + 34)),
-                group_images.get(result['group'], group_images['Other']) if result['value'] > 0 or result[
-                    'group'] == "Unknown" else
-                group_images['NoValue'])
-            loot_image.paste(overlay, (found_slot['x'], found_slot['y']))
-
-        progress += 1
-        if int(progress / len(slot_list) * 100 / 10) != progress_percent:
-            progress_percent = int(progress / len(slot_list) * 100 / 10)
-            percent_message = ""
-            percent_message += "🔲" * progress_percent
-            percent_message += "⬛" * (10 - progress_percent)
-            await progress_msg.edit(
-                content="Status: Scanning items (" + str(progress) + "/" + str(len(slot_list)) + ").")
-            await progress_bar.edit(content=percent_message)
-        await asyncio.sleep(0.005)
-    await progress_msg.edit(content="Status: Complete!")
-    c.close()
-    lootDatabase.commit()
-    img_byte_arr = io.BytesIO()
-    loot_image.save(img_byte_arr, format='png')
-    img_byte_arr = img_byte_arr.getvalue()
-    return loot_list, img_byte_arr
 
 
 def setup(bot):

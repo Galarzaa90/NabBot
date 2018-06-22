@@ -1,6 +1,6 @@
 import asyncio
 import re
-from typing import Union, Optional
+from typing import Union, Optional, Callable, T
 
 import discord
 from discord.ext import commands
@@ -18,6 +18,7 @@ class NabCtx(commands.Context):
     author: Union[discord.User, discord.Member]
     me: Union[discord.Member, discord.ClientUser]
     command: commands.Command
+    bot: commands.Bot
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -196,6 +197,11 @@ class NabCtx(commands.Context):
                 except discord.Forbidden:
                     pass
         return True
+
+    async def execute_async(self, func: Callable[..., T], *args) -> T:
+        """Executes a synchronous function inside an executor."""
+        ret: T = await self.bot.loop.run_in_executor(None, func, *args)
+        return ret
 
     def tick(self, value: bool = True, label: str = None) -> str:
         """Displays a checkmark or a cross depending on the value.
