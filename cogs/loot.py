@@ -1,4 +1,3 @@
-import functools
 import io
 import os
 import pickle
@@ -22,7 +21,7 @@ from utils.tibiawiki import get_item
 
 DEBUG_FOLDER = "debug/loot"
 slot: Image.Image = Image.open("./images/slot.png")
-slot_border: Image.Image = Image.open("./images/slotborder.png").convert("RGBA").getdata()
+slot_border = Image.open("./images/slotborder.png").convert("RGBA").getdata()
 numbers: List[Image.Image] = [Image.open("./images/0.png"),
                               Image.open("./images/1.png"),
                               Image.open("./images/2.png"),
@@ -46,6 +45,8 @@ group_images: Dict[str, Image.Image] = {'Green Djinn': Image.open("./images/Gree
                                         'Unknown': Image.open("./images/Unknown.png")}
 
 MIN_SIZE = 34  # Images with a width or height smaller than this are not considered.
+
+Pixel = Tuple[int, ...]
 
 
 class LootScanException(commands.CommandError):
@@ -332,11 +333,7 @@ def load_image(image_bytes: bytes) -> Image:
     return Image.open(io.BytesIO(bytearray(image_bytes))).convert("RGBA")
 
 
-async def update_status(msg: discord.Message, status: str, progress: int=None, total: int=None):
-    if progress is None or total is None:
-        percent = None
-    else:
-        percent = int(progress / total * 100 / 10)
+async def update_status(msg: discord.Message, status: str, percent=0):
     content = f"**Status:** {status}"
     if percent is not None:
         content += f"\n{'🔲'*percent}{'⬛'*(10-percent)}"
@@ -365,18 +362,18 @@ async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: disc
     unknown_items = []
     lq_items = []
     quality_warning = 0
-    await update_status(status_msg, "Scanning items", 0, 100)
+    await update_status(status_msg, "Scanning items", 0)
     last_percent = 0
     for i, found_slot in enumerate(slot_list):
         found_item_number, found_item, item_number_image = await ctx.execute_async(number_scan, found_slot['image'])
         result = "Unknown"
         quality = 0
-        qz_item = await ctx.execute_async(clear_background, found_item.copy())
+        qz_item = await ctx.execute_async(clear_background, found_item, copy=True)
         qz_item_crop = await ctx.execute_async(crop_item, qz_item)
 
         while result == "Unknown" and quality < 30:
             found_item_clear = await ctx.execute_async(clear_background, found_item, quality)
-            found_item_crop = crop_item(found_item_clear)
+            found_item_crop = await ctx.execute_async(crop_item, found_item_clear)
             # Check if the slot is empty
             if found_item_crop is None:
                 result = "Empty"
@@ -389,7 +386,6 @@ async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: disc
                 "AND (ABS(red - ?)+ABS(green - ?)+ABS(blue - ?) <= ?)",
                 (found_item_crop.size[0], found_item_crop.size[1], found_item_size, 10, found_item_color[0],
                  found_item_color[1], found_item_color[2], 60 + quality * 2))
-
             item_list = list(results)
             for unknownItem in unknown_items:
                 if abs(unknownItem['sizeX'] - found_item_crop.size[0]) <= 3 and abs(
@@ -405,8 +401,7 @@ async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: disc
 
         if result == "Unknown":
             unknown_image = await ctx.execute_async(clear_background, found_slot['image'])
-            unknown_image_copy = await ctx.execute_async(clear_background, found_slot['image'])
-            unknown_image_crop = await ctx.execute_async(crop_item, unknown_image_copy)
+            unknown_image_crop = await ctx.execute_async(crop_item, unknown_image, copy=True)
             unknown_image_size = await ctx.execute_async(get_item_size, unknown_image_crop)
             result = {'name': "Unknown",
                       'group': "Unknown",
@@ -425,9 +420,9 @@ async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: disc
             # Save with background
             loot_image.crop(
                 (found_slot['x'] + 1, found_slot['y'] + 1, found_slot['x'] + 33, found_slot['y'] + 33)).save(
-                f"{folder_name}/slot_{i}.png", "png")
+                f"{folder_name}/slot_{i+1}.png", "png")
             # Save without background
-            unknown_image.save(f"{folder_name}/slot_{i}_clean.png", "png")
+            unknown_image.save(f"{folder_name}/slot_{i+1}_clean.png", "png")
         if type(result) == dict:
             if quality > 2 and result not in unknown_items and result not in lq_items:
                 quality_warning += 1
@@ -479,60 +474,69 @@ async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: disc
                 group_images['NoValue'])
             loot_image.paste(overlay, (found_slot['x'], found_slot['y']))
         # Only edit message if percent actually changed, to save time in edits
-        if last_percent != int(i+1 / len(slot_list) * 100 / 10):
-            await update_status(status_msg, f"Scanning items ({i+1}/{len(slot_list)})", i+1, len(slot_list))
-        last_percent = int(i+1 / len(slot_list) * 100 / 10)
+        current_percent = int(i+1 / len(slot_list) * 100 / 10)
+        if (current_percent-last_percent) >= 5:
+            await update_status(status_msg, f"Scanning items ({i+1}/{len(slot_list)})", current_percent)
+        last_percent = current_percent
     await update_status(status_msg, "Complete!")
     img_byte_arr = io.BytesIO()
-    await ctx.execute_async(functools.partial(loot_image.save, img_byte_arr, format="png"))
+    await ctx.execute_async(loot_image.save, img_byte_arr, format="png")
     img_byte_arr = img_byte_arr.getvalue()
     return loot_list, img_byte_arr
 
 
-def is_transparent(pixel: Tuple[int, ...]) -> bool:
+def is_transparent(pixel: Pixel) -> bool:
     """Checks if a pixel is transparent."""
     if len(pixel) < 4:
         return False
     return pixel[3] == 0
 
 
-def is_number(pixel: Tuple[int, ...]) -> bool:
+def is_number(pixel: Pixel) -> bool:
     """Checks if a pixel is a number."""
     return is_transparent(pixel) and pixel[0] == 255 and pixel[1] == 255 and pixel[2] == 0
 
 
-def is_white(pixel: Tuple[int, ...]) -> bool:
+def is_white(pixel: Pixel) -> bool:
     """Checks if a pixel is white"""
     return pixel[0] == 255 and pixel[1] == 255 and pixel[2] == 255
 
 
-def is_background_color(pixel: Tuple[int, ...], quality) -> bool:
+def is_background_color(pixel: Pixel, quality) -> bool:
     low = max(0, 22 - quality * 2)
     high = min(80, 60 + quality)
-    colordiff = min(15, 8 + quality)
+    color_diff = min(15, 8 + quality)
     return (pixel[0] >= low and pixel[1] >= low and pixel[2] >= low) \
            and (pixel[0] <= high and pixel[1] <= high and pixel[2] <= high) \
-        and max(abs(pixel[0] - pixel[1]), abs(pixel[0] - pixel[2]), abs(pixel[1] - pixel[2])) < colordiff
+        and max(abs(pixel[0] - pixel[1]), abs(pixel[0] - pixel[2]), abs(pixel[1] - pixel[2])) < color_diff
 
 
-def is_empty(pixel: Tuple[int, ...]):
+def is_empty(pixel: Pixel):
     """Checks if a pixel can be considered empty."""
     return is_white(pixel) or is_transparent(pixel) or is_number(pixel)
 
 
-def pixel_diff(pixel1: Tuple[int, ...], pixel2: Tuple[int, ...]) -> int:
+def get_pixel_diff(pixel1: Pixel, pixel2: Pixel) -> int:
     """Gets the value difference between two pixels."""
     return abs(pixel1[0] - pixel2[0]) + abs(pixel1[1] - pixel2[1]) + abs(pixel1[2] - pixel2[2])
 
 
-def crop_item(item_image: Image.Image) -> Optional[Image.Image]:
-    """Removes the transparent border around item images."""
+def crop_item(item_image: Image.Image, *, copy=False) -> Optional[Image.Image]:
+    """Removes the transparent border around item images.
+
+    :param item_image: The item's image, with no slot background.
+    :param copy: Whether to return a copy or alter the original
+    :return: The cropped's item's image.
+    """
     if item_image is None:
         return item_image
     # Top
     offset_top = 0
     px = 0
     py = 0
+    # Clear reference to previous item
+    if copy:
+        item_image = item_image.copy()
     while py < item_image.size[1]:
         item_image_pixel = item_image.getpixel((px, py))
         if not (is_empty(item_image_pixel)):
@@ -611,7 +615,7 @@ def number_scan(slot_image: Image.Image) -> Tuple[int, Image.Image, Image.Image]
                 item_number_pixel = item_number.getpixel((px, py))
                 number_pixel = number.getpixel((px, py))
                 if not is_transparent(number_pixel):
-                    if not pixel_diff(item_number_pixel, number_pixel) == 0:
+                    if not get_pixel_diff(item_number_pixel, number_pixel) == 0:
                         break
                 px += 1
                 if px == item_number.size[0] or px == number.size[0]:
@@ -639,17 +643,23 @@ def number_scan(slot_image: Image.Image) -> Tuple[int, Image.Image, Image.Image]
     return 1 if number_string == "" else int(number_string), slot_image, numbers_image
 
 
-def clear_background(slot_item: Image.Image, quality=0) -> Image.Image:
-    """Clears the background of a slot's image
+def clear_background(slot_item: Image.Image, quality=0, *, copy=False) -> Image.Image:
+    """Clears the slot's background of an image.
+
+    :param slot_item: The slot's image.
+    :param quality: Only @Nezune knows
+    :param copy: Whether to create a copy or alter the original.
 
     :returns: The item's image without the slot's background.
     """
     px = 0
     py = 0
+    if copy:
+        slot_item = slot_item.copy()
     while py < slot_item.size[1] and py < slot.size[1]:
         slot_item_pixel = slot_item.getpixel((px, py))
         slot_pixel = slot.getpixel((px + 1 + (32 - slot_item.size[0]), py + 1 + (32 - slot_item.size[1])))
-        if pixel_diff(slot_item_pixel, slot_pixel) <= quality:
+        if get_pixel_diff(slot_item_pixel, slot_pixel) <= quality:
             slot_item.putpixel((px, py), (slot_item_pixel[0], slot_item_pixel[1], slot_item_pixel[2], 0))
         px += 1
         if px == slot_item.size[0] or px == slot.size[0]:
@@ -701,7 +711,11 @@ def get_item_size(item: Image.Image) -> int:
 
 
 def get_item_color(item: Image.Image) -> Tuple[int, int, int]:
-    """Gets the average color of an item."""
+    """Gets the average color of an item.
+
+    :param item: The item's image
+    :return: The item's colors
+    """
     count = 0
     px = 0
     py = 0
@@ -764,9 +778,9 @@ def scan_item(slot_item: Image.Image, item_list: List[Dict[str, Any]], groups: D
             if is_empty(item_pixel) == is_empty(slot_item_pixel) is True:
                 silhouette += 0
             elif is_empty(item_pixel) == is_empty(slot_item_pixel) is False:
-                pixeldiff = pixel_diff(slot_item_pixel, item_pixel)
-                if pixeldiff > quality * 6:
-                    mismatch += pixeldiff
+                pixel_diff = get_pixel_diff(slot_item_pixel, item_pixel)
+                if pixel_diff > quality * 6:
+                    mismatch += pixel_diff
             elif is_empty(slot_item_pixel):
                 if is_background_color(item_pixel, quality):
                     silhouette += 0
@@ -798,7 +812,7 @@ def find_slots(loot_image: Image) -> List[Dict[str, Any]]:
     :param loot_image: An inventory screenshot
     :return: A list of dictionaries, containing the images and coordinates for every slot.
     """
-    _lootImage = loot_image.copy()
+    image_copy = loot_image.copy()
     loot_bytes = loot_image.tobytes()
     slot_list = []
     if loot_image.size[0] < 34 or loot_image.size[1] < 34:
@@ -809,19 +823,19 @@ def find_slots(loot_image: Image) -> List[Dict[str, Any]]:
     skip = False
     for _ in loot_bytes:
         x += 1
-        if x + 34 > _lootImage.size[0]:
+        if x + 34 > image_copy.size[0]:
             y += 1
             x = 0
-        if y + 34 > _lootImage.size[1]:
+        if y + 34 > image_copy.size[1]:
             break
         if skip:
             # Skip every other pixel to save time
             skip = False
         else:
-            if x + 34 != _lootImage.size[0]:
+            if x + 34 != image_copy.size[0]:
                 # Can't skip the last part of an image
                 skip = True
-            if pixel_diff(_lootImage.getpixel((x, y)), slot_border[0]) <= 5:
+            if get_pixel_diff(image_copy.getpixel((x, y)), slot_border[0]) <= 5:
                 # If the current pixel looks like a slot
                 s = 0
                 diff = 0
@@ -829,17 +843,17 @@ def find_slots(loot_image: Image) -> List[Dict[str, Any]]:
                 xs = 0
                 ys = 0
 
-                if x != 0 and pixel_diff(_lootImage.getpixel((x - 1, y)), slot_border[0]) <= 5:
+                if x != 0 and get_pixel_diff(image_copy.getpixel((x - 1, y)), slot_border[0]) <= 5:
                     # Make sure we didnt skip the beggining of a slot
                     # go back if we did
                     x -= 1
                     # We also set the next pixel white to avoid looping here forever if this turns out not to be a slot
-                    _lootImage.putpixel((x + 1, y), (255, 255, 255, 255))
+                    image_copy.putpixel((x + 1, y), (255, 255, 255, 255))
                     # and increase the diffmax by one pixel to compensate
                     diffmax += 1
                 while diff <= diffmax:
                     if xs == 0 or xs == 33 or ys == 0 or ys == 33:
-                        if not pixel_diff(_lootImage.getpixel((x + xs, y + ys)), slot_border[s]) == 0:
+                        if not get_pixel_diff(image_copy.getpixel((x + xs, y + ys)), slot_border[s]) == 0:
                             diff += 1
                     s += 1
                     xs += 1
@@ -848,7 +862,7 @@ def find_slots(loot_image: Image) -> List[Dict[str, Any]]:
                         ys += 1
                     if ys == 34:
                         slot_list.append({'image': loot_image.crop((x + 1, y + 1, x + 33, y + 33)), 'x': x, 'y': y})
-                        _lootImage.paste(Image.new("RGBA", (34, 34), (255, 255, 255, 255)), (x, y))
+                        image_copy.paste(Image.new("RGBA", (34, 34), (255, 255, 255, 255)), (x, y))
                         x += 33
                         break
     return slot_list

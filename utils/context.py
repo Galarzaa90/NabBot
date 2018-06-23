@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import re
 from typing import Union, Optional, Callable, T
 
@@ -198,9 +199,9 @@ class NabCtx(commands.Context):
                     pass
         return True
 
-    async def execute_async(self, func: Callable[..., T], *args) -> T:
+    async def execute_async(self, func: Callable[..., T], *args, **kwargs) -> T:
         """Executes a synchronous function inside an executor."""
-        ret: T = await self.bot.loop.run_in_executor(None, func, *args)
+        ret: T = await self.bot.loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
         return ret
 
     def tick(self, value: bool = True, label: str = None) -> str:
