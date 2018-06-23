@@ -4,7 +4,7 @@ import os
 import pickle
 import time
 from contextlib import closing
-from typing import Any, List, Dict, Tuple, Optional
+from typing import Any, List, Dict, Tuple, Optional, Union
 
 import aiohttp
 import discord
@@ -13,6 +13,7 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils import checks
+from utils.config import config
 from utils.context import NabCtx
 from utils.database import tibiaDatabase, lootDatabase
 from utils.discord import FIELD_VALUE_LIMIT
@@ -72,7 +73,7 @@ class Loot:
 
         The bot shows the total loot value and a list of the items detected, separated into the NPC that buy them.
         """
-        if ctx.author.id in self.processing_users:
+        if ctx.author.id in self.processing_users and ctx.author.id not in self.processing_users:
             await ctx.send("I'm already scanning an image for you! Wait for me to finish that one.")
             return
 
@@ -105,6 +106,7 @@ class Loot:
                        "Please be patient, this may take a few moments.")
         status_msg = await ctx.send("Status: Reading")
         try:
+            # Owners are not affected by the limit.
             self.processing_users.append(ctx.author.id)
             start_time = time.time()
             loot_list, loot_image_overlay = await loot_scan(ctx, loot_image, attachment.filename, status_msg)
@@ -405,7 +407,7 @@ async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: disc
                     if abs(lq_item['sizeX'] - found_item_crop.size[0]) <= 3 and abs(
                             lq_item['sizeY'] - found_item_crop.size[1]) <= 3:
                         item_list.append(lq_item)
-            result = await ctx.execute_async(slot_scan, found_item_crop, item_list, group_list, quality)
+            result = await ctx.execute_async(scan_item, found_item_crop, item_list, group_list, quality)
             quality += max(2, int(quality / 2))
 
         if result == "Unknown":
@@ -737,16 +739,28 @@ def get_item_color(item: Image.Image) -> Tuple[int, int, int]:
     return int(color[0]) - int(color[1]), int(color[0]) - int(color[2]), int(color[1]) - int(color[2])
 
 
-def slot_scan(slot_item, item_list, group_list, quality):
+def scan_item(slot_item: Image.Image, item_list: List[Dict[str, Any]], groups: Dict[str, int], quality: int)\
+        -> Union[Dict[str, [Union[str, int]]], str]:
+    """Scans an item's image, and looks for it among similar items in the database.
+
+    :param slot_item: The item's cropped image.
+    :param item_list: The list of similar items.
+    :param groups: The list of possible groups.
+    :param quality: Only @Nezune knows
+    :return: The matched item, represented in a dictionary.
+    """
     if slot_item is None:
         return "Empty"
     if quality < 5:
         quality = 5
-    item_list = sorted(item_list, key=lambda k: min(max(k['value'], 1000), 1) + (
-            (k['priority'] + group_list.get(k['group'], 0)) / 100), reverse=True)
-    non_empty_size = get_item_size(slot_item)
-    mismatch_threshold = non_empty_size * (quality * 2)
-    silhouette_threshold = non_empty_size * (quality * 0.006)
+    item_list = sorted(
+        item_list,
+        key=lambda k: min(max(k['value'], 1000), 1) + ((k['priority'] + groups.get(k['group'], 0)) / 100),
+        reverse=True
+    )
+    item_size = get_item_size(slot_item)
+    mismatch_threshold = item_size * (quality * 2)
+    silhouette_threshold = item_size * (quality * 0.006)
     for item in item_list:
         if item['name'] == "Unknown":
             item_image = item['frame']
@@ -756,28 +770,28 @@ def slot_scan(slot_item, item_list, group_list, quality):
             item_image = crop_item(item_image)
         px = 0
         py = 0
-        missmatch = 0
-        sillhouette = 0
+        mismatch = 0
+        silhouette = 0
         while py < slot_item.size[1] and py < item_image.size[1]:
             slot_item_pixel = slot_item.getpixel((px, py))
             item_pixel = item_image.getpixel((px, py))
             if is_empty(item_pixel) == is_empty(slot_item_pixel) is True:
-                sillhouette += 0
+                silhouette += 0
             elif is_empty(item_pixel) == is_empty(slot_item_pixel) is False:
                 pixeldiff = pixel_diff(slot_item_pixel, item_pixel)
                 if pixeldiff > quality * 6:
-                    missmatch += pixeldiff
+                    mismatch += pixeldiff
             elif is_empty(slot_item_pixel):
                 if is_background_color(item_pixel, quality):
-                    sillhouette += 0
+                    silhouette += 0
                 elif is_number(slot_item_pixel):
-                    sillhouette += 0
+                    silhouette += 0
                 else:
-                    sillhouette += 1
+                    silhouette += 1
             elif is_empty(item_pixel):
-                sillhouette += 1
+                silhouette += 1
 
-            if missmatch > mismatch_threshold or sillhouette > silhouette_threshold:
+            if mismatch > mismatch_threshold or silhouette > silhouette_threshold:
                 break
 
             px += 1
