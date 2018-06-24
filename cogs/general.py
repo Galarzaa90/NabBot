@@ -22,6 +22,7 @@ from utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50
 EVENT_DESCRIPTION_LIMIT = 400
+MAX_EVENTS = 3
 
 
 class General:
@@ -378,7 +379,7 @@ class General:
         params = params.split(",", 1)
         name = single_line(clean_string(ctx, params[0]))
         if len(name) > EVENT_NAME_LIMIT:
-            await ctx.send(f"The event's name can't be longer than {EVENT_NAME_LIMIT} characters.")
+            await ctx.send(f"{ctx.tick(False)} The event's name can't be longer than {EVENT_NAME_LIMIT} characters.")
             return
 
         event_description = ""
@@ -389,8 +390,9 @@ class General:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
             result = c.fetchall()
 
-        if len(result) > 1 and creator not in config.owner_ids:
-            await ctx.send("You can only have two running events simultaneously. Delete or edit an active event")
+        if len(result) >= MAX_EVENTS and creator not in config.owner_ids:
+            await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
+                           f"Delete or edit an active event.")
             return
 
         embed = discord.Embed(title=name, description=event_description, timestamp=dt.datetime.utcfromtimestamp(start))
@@ -410,8 +412,8 @@ class General:
             event_id = c.lastrowid
             userDatabase.commit()
 
-        reply = "Event created successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
-        await ctx.send(reply.format(name, starts_in.original, event_id))
+        await ctx.send(f"{ctx.tick()} Event created successfully.\n\t**{name}** in *{starts_in.original}*.\n"
+                       f"*To edit this event use ID {event_id}*")
 
     @commands.guild_only()
     @events.command(name="addplayer", aliases=["addchar"])
@@ -422,29 +424,29 @@ class General:
         If the event is joinable, anyone can join an event using `event join`"""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only add people to your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only add people to your own events.")
             return
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT * FROM chars WHERE name LIKE ?", (character,))
             char = c.fetchone()
         if event["slots"] != 0 and len(event["participants"]) >= event["slots"]:
-            await ctx.send(f"All the slots for this event has been filled. "
+            await ctx.send(f"{ctx.tick(False)} All the slots for this event has been filled. "
                            f"You can change them by using `/event edit slots {event_id} newSlots`.")
             return
         owner = self.bot.get_member(char["user_id"], ctx.guild)
         if char is None or owner is None:
-            await ctx.send("That character is not registered.")
+            await ctx.send(f"{ctx.tick(False)} That character is not registered.")
             return
 
         world = self.bot.tracked_worlds.get(event["server"])
         if world != char["world"]:
-            await ctx.send("You can't add a character from another world.")
+            await ctx.send(f"{ctx.tick(False)} You can't add a character from another world.")
             return
         if any(owner.id == participant["user_id"] for participant in event["participants"]):
-            await ctx.send(f"A character of @{owner.display_name} is already participating.")
+            await ctx.send(f"{ctx.tick(False)} A character of @{owner.display_name} is already participating.")
             return
 
         message = await ctx.send(f"Do you want to add **{char['name']}** (@{owner.display_name}) "
@@ -459,7 +461,7 @@ class General:
 
         with userDatabase as con:
             con.execute("INSERT INTO event_participants(event_id, char_id) VALUES(?,?)", (event_id, char["id"]))
-            await ctx.send(f"You successfully added **{char['name']}** to this event.")
+            await ctx.send(f"{ctx.tick()} You successfully added **{char['name']}** to this event.")
             return
 
     @commands.guild_only()
@@ -485,10 +487,10 @@ class General:
         To remove the description, say `blank`."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only edit your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
         if new_description is None:
@@ -545,14 +547,11 @@ class General:
         """
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only edit your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
-
-        def check(m):
-            return ctx.channel == m.channel and ctx.author == m.author
 
         if yes_no is None:
             msg = await ctx.send(f"Do you want **{event['name']}** to be joinable? `yes/no/cancel`")
@@ -589,10 +588,10 @@ class General:
         If no new name is provided initially, the bot will ask for one."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only edit your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
         if new_name is None:
@@ -642,10 +641,10 @@ class General:
         Slots is the number of characters an event can have. By default this is 0, which means no limit."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only edit your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
         if slots is None:
@@ -697,10 +696,10 @@ class General:
         now = time.time()
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only edit your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
         if starts_in is None:
@@ -760,7 +759,7 @@ class General:
 
         event = self.get_event(ctx, event_id)
         if not event:
-            await ctx.send("There's no event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no event with that id.")
             return
         guild = self.bot.get_guild(event["server"])
         start = dt.datetime.utcfromtimestamp(event["start"])
@@ -791,7 +790,7 @@ class General:
         Some events may not be joinable and require the creator to add characters themselves."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT * FROM chars WHERE name LIKE ?", (character,))
@@ -802,27 +801,28 @@ class General:
             if participants is None:
                 participants = []
         if event["joinable"] != 1:
-            await ctx.send(f"You can't join this event. Maybe you meant to subscribe? Try `/event sub {event_id}`.")
+            await ctx.send(f"{ctx.tick(False)} You can't join this event."
+                           f"Maybe you meant to subscribe? Try `/event sub {event_id}`.")
             return
         if event["slots"] != 0 and len(participants) >= event["slots"]:
-            await ctx.send("All the slots for this event has been filled.")
+            await ctx.send(f"{ctx.tick(False)} All the slots for this event has been filled.")
             return
         if char is None:
-            await ctx.send("That character is not registered.")
+            await ctx.send(f"{ctx.tick(False)} That character is not registered.")
             return
         if char["user_id"] != ctx.author.id:
-            await ctx.send("You can only join with characters registered to you.")
+            await ctx.send(f"{ctx.tick(False)} You can only join with characters registered to you.")
             return
         world = self.bot.tracked_worlds.get(event["server"])
         if world != char["world"]:
-            await ctx.send("You can't join with a character from another world.")
+            await ctx.send(f"{ctx.tick(False)} You can't join with a character from another world.")
             return
         if any(ctx.author.id == participant["user_id"] for participant in participants):
-            await ctx.send("A character of yours is already in this event.")
+            await ctx.send(f"{ctx.tick(False)} A character of yours is already in this event.")
             return
 
         message = await ctx.send(f"Do you want to join the event \'**{event['name']}**\' as **{char['name']}**?")
-        confirm = await ctx.react_confirm(message)
+        confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -832,7 +832,7 @@ class General:
 
         with userDatabase as con:
             con.execute("INSERT INTO event_participants(event_id, char_id) VALUES(?,?)", (event_id, char["id"]))
-            await ctx.send("You successfully joined this event.")
+            await ctx.send(f"{ctx.tick()} You successfully joined this event.")
             return
 
     @commands.guild_only()
@@ -841,16 +841,16 @@ class General:
         """Leave an event you were participating in."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         joined_char = next((participant["char_id"] for participant in event["participants"]
                            if ctx.author.id == participant["user_id"]), None)
         if joined_char is None:
-            await ctx.send("You haven't joined this event.")
+            await ctx.send(f"{ctx.tick(False)} You haven't joined this event.")
             return
 
         message = await ctx.send(f"Do you want to leave **{event['name']}**?")
-        confirm = await ctx.react_confirm(message)
+        confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -860,7 +860,7 @@ class General:
 
         with userDatabase as con:
             con.execute("DELETE FROM event_participants WHERE event_id = ? AND char_id = ?", (event_id, joined_char))
-            await ctx.send("You successfully left this event.")
+            await ctx.send(f"{ctx.tick()} You successfully left this event.")
             return
 
     @commands.guild_only()
@@ -874,7 +874,9 @@ class General:
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (ctx.author.id, now))
             event = c.fetchall()
-        if len(event) > 1 and ctx.author.id not in config.owner_ids:
+        if len(event) >= MAX_EVENTS and ctx.author.id not in config.owner_ids:
+            await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
+                           f"Delete or edit an active event.")
             return
         msg = await ctx.send("Let's create an event. What would you like the name to be? You can `cancel` at any time.")
         cancel = False
@@ -989,8 +991,8 @@ class General:
                       (ctx.author.id, ctx.guild.id, start_time, name, description))
             event_id = c.lastrowid
             userDatabase.commit()
-        reply = "Event registered successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
-        await ctx.send(reply.format(name, starts_in.original, event_id))
+        await ctx.send(f"{ctx.tick(False)} Event registered successfully.\n\t**{name}** in *{starts_in.original}*.\n"
+                       f"*To edit this event use ID {event_id}*")
 
     @commands.guild_only()
     @events.command(name="participants")
@@ -998,13 +1000,13 @@ class General:
         """Shows the list of characters participating in this event."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if len(event["participants"]) == 0:
             join_prompt = ""
             if event["joinable"] != 0:
                 join_prompt = f" To join, use `/event join {event_id} characterName`."
-            await ctx.send(f"There are no participants in this event.{join_prompt}")
+            await ctx.send(f"{ctx.tick(False)} There are no participants in this event.{join_prompt}")
             return
         entries = []
         vocations = []
@@ -1041,10 +1043,10 @@ class General:
         c = userDatabase.cursor()
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only delete your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only delete your own events.")
             return
 
         message = await ctx.send("Do you want to delete the event **{0}**?".format(event["name"]))
@@ -1059,9 +1061,9 @@ class General:
         with userDatabase as conn:
             conn.execute("UPDATE events SET active = 0 WHERE id = ?", (event_id,))
         if event["creator"] == ctx.author.id:
-            await ctx.send("Your event was deleted successfully.")
+            await ctx.send(f"{ctx.tick()} Your event was deleted successfully.")
         else:
-            await ctx.send("Event deleted successfully.")
+            await ctx.send(f"{ctx.tick()} Event deleted successfully.")
             creator = self.bot.get_member(event["creator"])
             if creator is not None:
                 await creator.send(f"Your event **{event['name']}** was deleted by {ctx.author.mention}.")
@@ -1076,10 +1078,10 @@ class General:
         Players can remove themselves using `event leave`"""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only add people to your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only add people to your own events.")
             return
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT * FROM chars WHERE name LIKE ?", (character,))
@@ -1087,12 +1089,13 @@ class General:
         joined_char = next((participant["char_id"] for participant in event["participants"]
                             if char["id"] == participant["char_id"]), None)
         if joined_char is None:
-            await ctx.send("This character is not in this event.")
+            await ctx.send(f"{ctx.tick(False)} This character is not in this event.")
             return
         event_server = self.bot.get_guild(event["server"])
         owner = self.bot.get_member(char["user_id"], self.bot.get_guild(event_server))
         owner_name = "unknown" if owner is None else owner.display_name
-        message = await ctx.send(f"Do you want to remove **{char['name']}** (@**{owner_name}**) from **{event['name']}**?")
+        message = await ctx.send(f"Do you want to remove **{char['name']}** (@**{owner_name}**) "
+                                 f"from **{event['name']}**?")
         confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -1103,7 +1106,7 @@ class General:
 
         with userDatabase as con:
             con.execute("DELETE FROM event_participants WHERE event_id = ? AND char_id = ?", (event_id, joined_char))
-            await ctx.send("You successfully left this event.")
+            await ctx.send(f"{ctx.tick()} You successfully left this event.")
             return
 
     @commands.guild_only()
@@ -1114,7 +1117,7 @@ class General:
         author = ctx.author
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         try:
             message = await ctx.send(f"Do you want to subscribe to **{event['name']}**")
@@ -1127,7 +1130,8 @@ class General:
                 return
 
             c.execute("INSERT INTO event_subscribers (event_id, user_id) VALUES(?,?)", (event_id, author.id))
-            await ctx.send("You have subscribed successfully to this event. I'll let you know when it's happening.")
+            await ctx.send(f"{ctx.tick()} You have subscribed successfully to this event. "
+                           f"I'll let you know when it's happening.")
 
         finally:
             c.close()
@@ -1141,13 +1145,13 @@ class General:
         author = ctx.author
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         try:
             c.execute("SELECT * FROM event_subscribers WHERE event_id = ? AND user_id = ?", (event_id, author.id))
             subscription = c.fetchone()
             if subscription is None:
-                await ctx.send("You are not subscribed to this event.")
+                await ctx.send(f"{ctx.tick(False)} You are not subscribed to this event.")
                 return
 
             message = await ctx.send(f"Do you want to unsubscribe to **{event['name']}**")
@@ -1160,7 +1164,8 @@ class General:
                 return
 
             c.execute("DELETE FROM event_subscribers WHERE event_id = ? AND user_id = ?", (event_id, author.id))
-            await ctx.send("You have subscribed successfully to this event. I'll let you know when it's happening.")
+            await ctx.send(f"{ctx.tick()} You have subscribed successfully to this event. "
+                           f"I'll let you know when it's happening.")
 
         finally:
             c.close()
@@ -1176,8 +1181,8 @@ class General:
         Once enabled, you can right click a message and select **Copy ID**.
 
         Note that the bot won't attempt to search in channels you can't read."""
-        channels = ctx.guild.text_channels  # type: List[discord.TextChannel]
-        message = None  # type: discord.Message
+        channels: List[discord.TextChannel] = ctx.guild.text_channels
+        message: discord.Message = None
         with ctx.typing():
             for channel in channels:
                 bot_perm = channel.permissions_for(ctx.me)
