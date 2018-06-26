@@ -6,7 +6,7 @@ All commands can only be run by users in the `owner_ids` list or the bot's appli
     Optional parameters are enclosed in brackets `[]`.
 
 ## adminsmessage
-**Syntax**: `adminsmessage [message]`  
+**Syntax:** `adminsmessage [message]`  
 **Other aliases:** `notifyadmins`
 
 Sends a private message to all server owners.
@@ -24,24 +24,27 @@ The message contains a signature to indicate who wrote the message.
 
 ----
 
-## debug
-**Syntax:** `debug <code>`
+## eval
+**Syntax:** `eval <code>`
 
 Evaluates Python code.
 
-This command can be used to run python statements and get the response as a reply.
+This commands lets you evaluate python code. If no errors are returned, the bot will react to the command call.  
+To show the result, you have to use `#!py print()`.  
+Asynchronous functions must be waited for using `#!py await`.  
+To show the results of the last command, use `#!py print(_)`.  
 
 !!! Warning
-    This command is meant for advanced users and debugging code.
+    This command is meant for advanced users and debugging code. Use under your own risk.
 
 ??? Summary "Example"
-    **/debug bot.get_member(162060569803751424)**  
-    ![image](../assets/images/commands/debug.png)
+    **/eval `#!py print(bot.get_member(162060569803751424))`**  
+    ![image](../assets/images/commands/eval.png)
 
 ----
 
 ## leave
-**Syntax**: `leave <server>`
+**Syntax:** `leave <server>`
 
 Makes the bot leave a server.
 
@@ -73,7 +76,7 @@ For example, a cog found in `cogs/tibia.py` would be loaded as `cogs.tibia`.
 ----
 
 ## merge
-**Syntax**: `merge <old world> <new world>`
+**Syntax:** `merge <old world> <new world>`
 
 Renames all references of an old world to a new one.
 
@@ -95,8 +98,8 @@ Example: `merge Fidera Gladera`
 ----
 
 ## namelock
-**Syntax**: `namelock <old name>,<new name>`   
-**Other aliases**: `rename`, `namechange`
+**Syntax:** `namelock <old name>,<new name>`   
+**Other aliases:** `rename`, `namechange`
 
 Register the name of a new character that was namelocked.
 
@@ -157,7 +160,7 @@ Shows a list of servers the bot is in.
 ----
 
 ## unload
-**Syntax**: `unload <cog>`
+**Syntax:** `unload <cog>`
 
 Unloads a cog.
 

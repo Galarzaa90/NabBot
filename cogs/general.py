@@ -196,7 +196,7 @@ class General:
         user = ctx.author
         await ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
-    @commands.command(name='help')
+    @commands.command(name='help', aliases=["commands"])
     async def _help(self, ctx, *, command: str = None):
         """Shows help about a command or the bot.
 

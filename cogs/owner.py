@@ -75,6 +75,7 @@ class Owner:
             pass
         await ctx.send("Message sent to "+join_list(["@"+a.name for a in guild_admins], ", ", " and "))
 
+    # noinspection PyBroadException
     @commands.command(name="eval")
     @checks.is_owner()
     async def _eval(self, ctx: NabCtx, *, body: str):
@@ -83,7 +84,7 @@ class Owner:
         This commands lets you evaluate python code. If no errors are returned, the bot will react to the command call.
         To show the result, you have to use `print()`.
         Asynchronous functions must be waited for using `await`.
-        To show the results of the last command, use `_`.
+        To show the results of the last command, use `print(_)`.
         """
         if "os." in body:
             await ctx.send("I won't run that.")
@@ -121,7 +122,7 @@ class Owner:
         else:
             value = stdout.getvalue()
             try:
-                await ctx.message.add_reaction('\u2705')
+                await ctx.message.add_reaction(config.true_emoji.replace("<", "").replace(">", ""))
             except discord.HTTPException:
                 pass
 
@@ -190,7 +191,7 @@ class Owner:
         """
         try:
             self.bot.load_extension(cog)
-            await ctx.send("Cog loaded successfully.")
+            await ctx.send(f"{ctx.tick()} Cog loaded successfully.")
         except Exception as e:
             await ctx.send('{}: {}'.format(type(e).__name__, e))
 
@@ -440,6 +441,18 @@ class Owner:
         finally:
             userDatabase.commit()
             c.close()
+
+    @commands.command(name="reload")
+    async def reload_cog(self, ctx: NabCtx, *, cog):
+        """Reloads a cog (module)"""
+        # noinspection PyBroadException
+        try:
+            self.bot.unload_extension(cog)
+            self.bot.load_extension(cog)
+        except Exception:
+            await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+        else:
+            await ctx.send(f"{ctx.tick()} Cog reloaded successfully.")
 
     @commands.command(hidden=True)
     @checks.is_owner()

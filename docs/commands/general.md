@@ -29,7 +29,8 @@ e.g. "Choice A" ChoiceB "Choice C"
 ----
 
 ## help
-**Syntax:** `help [command]`
+**Syntax:** `help [command]`  
+**Other aliases:** `commands`
 
 Shows help about a command or the bot.
         
@@ -76,7 +77,7 @@ Shows a list of upcoming and recent events.
 ----
    
 ### events add
-**Syntax**: `events add <starts in> <name>[,description]`
+**Syntax:** `events add <starts in> <name>[,description]`
 
 Creates a new event.
 
@@ -173,7 +174,7 @@ If no new time is provided initially, the bot will ask for one.
 ----
 
 ### events info
-**Syntax**: `events info <id>`
+**Syntax:** `events info <id>`
 
 Displays an event's info.
 
@@ -230,7 +231,7 @@ Shows the list of characters participating in this event.
 ----
 
 ### event remove
-**Syntax**: `event <id>`  
+**Syntax:** `event <id>`  
 **Other aliases:** `event delete`, `event cancel`
 
 Deletes or cancels an event.
@@ -256,7 +257,7 @@ Players can remove themselves using `event leave`
 ----
 
 ### event subscribe
-**Syntax**: `event subscribe <id>`  
+**Syntax:** `event subscribe <id>`  
 **Other aliases:** `event sub`
 
 Subscribe to receive a PM when an event is happening.
@@ -268,7 +269,7 @@ Subscribe to receive a PM when an event is happening.
 ----
 
 ### event unsubscribe
-**Syntax**: `event unsubscribe id`  
+**Syntax:** `event unsubscribe id`  
 **Other aliases:** `event unsub`
 
 Unsubscribes you from an event.
