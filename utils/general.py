@@ -5,13 +5,18 @@ import re
 import time
 from calendar import timegm
 from logging.handlers import TimedRotatingFileHandler
+from typing import Optional
 
+import discord
 from discord.ext import commands
 
 # This is the global online list
 # don't look at it too closely or you'll go blind!
 # characters are added as servername_charactername
 # The list is updated periodically on think() using get_server_online()
+from utils.config import config
+from utils.context import NabCtx
+
 global_online_list = []
 
 # Start logging
@@ -37,6 +42,13 @@ consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
 consoleHandler.setLevel(logging.DEBUG)
 log.addHandler(consoleHandler)
+
+CONTENT_LIMIT = 2000
+DESCRIPTION_LIMIT = 2048
+FIELD_NAME_LIMIT = 256
+FIELD_VALUE_LIMIT = 1024
+FIELD_AMOUNT = 25
+EMBED_LIMIT = 6000
 
 
 def get_token():
@@ -167,6 +179,7 @@ def is_numeric(s):
 class BadTime(commands.BadArgument):
     pass
 
+
 class TimeString:
     def __init__(self, argument):
         compiled = re.compile(r"(?:(?P<days>\d+)d)?(?:(?P<hours>\d+)h)?(?:(?P<minutes>\d+)m)?(?:(?P<seconds>\d+)s)?")
@@ -192,9 +205,77 @@ class TimeString:
         if self.seconds < 0:
             raise BadTime("I can't go back in time.")
 
-        if self.seconds > (60*60*24*15):
-            raise BadTime("That's a bit too far in the future... Try less than 15 days.")
+        if self.seconds > (60*60*24*30):
+            raise BadTime("That's a bit too far in the future... Try less than 30 days.")
 
 
-if __name__ == "__main__":
-    input("To run NabBot, run nabbot.py")
+def get_role(guild: discord.Guild, role_id: int = None, role_name: str = None) -> Optional[discord.Role]:
+    """Returns a role matching the id in a server"""
+    if guild is None:
+        raise ValueError("guild is None")
+    if role_id is None and role_name is None:
+        raise ValueError("Either role_id or role_name must be specified")
+    for role in guild.roles:
+        if role.id == role_id or (role_name is not None and role.name.lower() == role_name.lower()):
+            return role
+    return None
+
+
+def get_user_avatar(user: discord.user.BaseUser) -> str:
+    """Gets the user's avatar url
+
+    If they don't have an avatar set, the default avatar is returned"""
+    return user.avatar_url if user.avatar_url is not None else user.default_avatar_url
+
+
+def get_region_string(region: discord.VoiceRegion) -> str:
+    """Returns a formatted string for a given VoiceRegion"""
+    regions = {"us-west": "🇺🇸US West",
+               "us-east": "🇺🇸US East",
+               "us-central": "🇺🇸US Central",
+               "us-south": "🇺🇸US South",
+               "eu-west": "🇪🇺West Europe",
+               "eu-central": "🇪🇺Central Europe",
+               "singapore": "🇸🇬Singapore",
+               "london": "🇬🇧London",
+               "sydney": "🇦🇺Sydney",
+               "amsterdam": "🇳🇱Amsterdam",
+               "frankfurt": "🇩🇪Frankfurt",
+               "brazil": "🇧🇷Brazil",
+               "japan": "🇯🇵Japan",
+               "hongkong": "🇭🇰Hong Kong",
+               "russia": "🇷🇺Russia",
+               "vip-us-east": "🇺🇸US East (VIP)",
+               "vip-us-west": "🇺🇸US West (VIP)",
+               "vip-amsterdam": "🇳🇱Amsterdam (VIP)",
+               }
+    return regions.get(str(region), str(region))
+
+
+def clean_string(ctx: commands.Context, string: str) -> str:
+    """Turns mentions into plain text
+
+    For message object, there's already a property that does this: message.clean_content"""
+    def repl_channel(match):
+        channel_id = match.group(0).replace("<", "").replace("#", "").replace(">", "")
+        channel = ctx.guild.get_channel(int(channel_id))
+        return "#deleted_channel" if channel is None else "#"+channel.name
+
+    def repl_role(match):
+        role_id = match.group(0).replace("<", "").replace("@", "").replace("&", "").replace(">", "")
+        role = get_role(ctx.guild, int(role_id))
+        return "@deleted_role" if role is None else "@"+role.name
+
+    def repl_user(match):
+        user_id = match.group(0).replace("<", "").replace("@", "").replace("!", "").replace(">", "")
+        user = ctx.guild.get_member(int(user_id))
+        return "@deleted_user" if user is None else "@" + user.display_name
+    # Find channel mentions:
+    string = re.sub(r"<#\d+>", repl_channel, string)
+    # Find role mentions
+    string = re.sub(r"<@&\d+>", repl_role, string)
+    # Find user mentions
+    string = re.sub(r"<@!\d+>", repl_user, string)
+    string = re.sub(r"<@\d+>", repl_user, string)
+    # Clean @everyone and @here
+    return string.replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")

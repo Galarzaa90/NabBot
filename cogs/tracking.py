@@ -13,9 +13,10 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils import checks
 from utils.config import config
+from utils.context import NabCtx
 from utils.database import userDatabase, get_server_property, set_server_property
-from utils.discord import is_private, get_user_avatar, FIELD_VALUE_LIMIT, EMBED_LIMIT
-from utils.general import global_online_list, log, join_list, is_numeric
+from utils.general import global_online_list, log, join_list, is_numeric, FIELD_VALUE_LIMIT, EMBED_LIMIT, \
+    get_user_avatar
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, \
     level_messages, split_message
 from utils.pages import Pages, CannotPaginate, VocationPages
@@ -485,7 +486,7 @@ class Tracking:
     # Commands
     @commands.command()
     @checks.is_in_tracking_world()
-    async def claim(self, ctx, *, char_name: str = None):
+    async def claim(self, ctx: NabCtx, *, char_name: str = None):
         """Claims a character registered as yours.
 
         Claims a character as yours, even if it is already registered to someone else.
@@ -511,7 +512,7 @@ class Tracking:
         # Remove duplicate entries from list
         user_tibia_worlds = list(set(user_tibia_worlds))
 
-        if not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is None:
+        if not ctx.is_private and self.bot.tracked_worlds.get(ctx.guild.id) is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
 
@@ -655,7 +656,7 @@ class Tracking:
 
     @checks.is_in_tracking_world()
     @commands.command(aliases=["i'm", "iam"])
-    async def im(self, ctx, *, char_name: str):
+    async def im(self, ctx: NabCtx, *, char_name: str):
         """Lets you add your tibia character(s) for the bot to track.
 
         If there are other visible characters, the bot will ask for confirmation to add them too.
@@ -673,7 +674,7 @@ class Tracking:
         # Remove duplicate entries from list
         user_tibia_worlds = list(set(user_tibia_worlds))
 
-        if not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is None:
+        if not ctx.is_private and ctx.world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
 

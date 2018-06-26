@@ -9,7 +9,6 @@ from nabbot import NabBot
 from utils import checks
 from utils.context import NabCtx
 from utils.database import userDatabase
-from utils.discord import is_private
 from utils.pages import Pages, CannotPaginate
 
 
@@ -20,9 +19,8 @@ class Mod:
         self.ignored = {}
         self.reload_ignored()
 
-    def __global_check(self, ctx):
-        return is_private(ctx.channel) or \
-               ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_owner_check(ctx) \
+    def __global_check(self, ctx: NabCtx):
+        return ctx.is_private or ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_owner_check(ctx) \
                or checks.check_guild_permissions(ctx, {'manage_channels': True})
 
     # Commands
@@ -68,7 +66,7 @@ class Mod:
 
     @commands.command()
     @checks.is_mod_somewhere()
-    async def makesay(self, ctx: discord.ext.commands.Context, *, message: str):
+    async def makesay(self, ctx: NabCtx, *, message: str):
         """Makes the bot say a message.
 
         If it's used directly on a text channel, the bot will delete the command's message and repeat it itself.
@@ -77,7 +75,7 @@ class Mod:
         If it's used on a private message, the bot will ask on which channel he should say the message.
         Each channel in the list is numerated, by choosing a number, the message will be sent in the chosen channel.
         """
-        if is_private(ctx.channel):
+        if ctx.is_private:
             description_list = []
             channel_list = []
             prev_server = None

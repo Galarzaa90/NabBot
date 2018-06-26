@@ -1,18 +1,17 @@
-import asyncio
 import datetime as dt
 import re
 import sys
 import traceback
-from typing import Union, List, Optional, Dict, Set
+from typing import Union, List, Optional, Dict
 
 import discord
 from discord.ext import commands
 
+import utils
 from utils import context
 from utils.config import config
 from utils.database import init_database, userDatabase, get_server_property
-from utils.discord import get_region_string, is_private, get_user_avatar
-from utils.general import join_list, get_token
+from utils.general import join_list, get_token, get_user_avatar, get_region_string
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.tibia import populate_worlds, tibia_worlds, get_voc_abb_and_emoji

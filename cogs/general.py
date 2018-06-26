@@ -15,8 +15,8 @@ from nabbot import NabBot
 from utils.config import config
 from utils.context import NabCtx
 from utils.database import userDatabase, tibiaDatabase, get_server_property
-from utils.discord import get_region_string, is_private, clean_string, get_user_avatar, get_user_color
-from utils.general import parse_uptime, TimeString, single_line, log, BadTime
+from utils.general import parse_uptime, TimeString, single_line, log, BadTime, get_user_avatar, get_region_string, \
+    clean_string
 from utils.pages import CannotPaginate, VocationPages, HelpPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
 
@@ -301,7 +301,7 @@ class General:
         """Shows a list of upcoming and recent events.
 
         If a number is specified, it will show details for that event. Same as using `events info`"""
-        if not ctx.bot_permissions.embed_links and not is_private(ctx.channel):
+        if not ctx.bot_permissions.embed_links and ctx.is_private:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
         if event_id is not None:
@@ -1202,11 +1202,10 @@ class General:
         if not message.content:
             await ctx.send("I can't quote embed messages.")
             return
-        embed = discord.Embed(description=message.content, timestamp=message.created_at)
+        embed = discord.Embed(description=message.content, timestamp=message.created_at, color=message.author.color)
         embed.set_author(name=message.author.display_name, icon_url=get_user_avatar(message.author),
                          url=message.jump_to_url)
         embed.set_footer(text=f"In #{message.channel.name}")
-        embed.colour = get_user_color(message.author, ctx.guild)
         if len(message.attachments) >= 1:
             attachment = message.attachments[0]  # type: discord.Attachment
             if attachment.height is not None:
@@ -1314,9 +1313,9 @@ class General:
                 continue
             await member.send(content, embed=embed)
 
-    def get_event(self, ctx: commands.Context, event_id: int) -> Optional[Dict[str, Union[int, str]]]:
+    def get_event(self, ctx: NabCtx, event_id: int) -> Optional[Dict[str, Union[int, str]]]:
         # If this is used on a PM, show events for all shared servers
-        if is_private(ctx.channel):
+        if ctx.is_private:
             guilds = self.bot.get_user_guilds(ctx.author.id)
         else:
             guilds = [ctx.guild]

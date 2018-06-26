@@ -1,7 +1,7 @@
 from discord.ext import commands
 
 from utils.config import config
-from utils.discord import is_lite_mode
+from utils.context import NabCtx
 
 
 # Checks
@@ -82,8 +82,8 @@ def is_in_tracking_world():
 
 def is_not_lite():
     """Checks if the bot is not running in lite mode"""
-    def predicate(ctx):
-        return not is_lite_mode(ctx)
+    def predicate(ctx: NabCtx):
+        return not ctx.is_lite
     return commands.check(predicate)
 
 

@@ -1,7 +1,6 @@
 import asyncio
 import inspect
 import itertools
-import re
 from typing import Union
 
 import discord
@@ -9,7 +8,6 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils.config import config
-from utils.discord import is_private
 from utils.tibia import DRUID, SORCERER, PALADIN, KNIGHT
 
 
@@ -136,7 +134,7 @@ class Pages:
                 # it from the default set
                 continue
             # Stop reaction doesn't work on PMs so do not add it
-            if is_private(self.message.channel) and reaction == '\N{BLACK SQUARE FOR STOP}':
+            if isinstance(self.message.channel, discord.abc.PrivateChannel) and reaction == '\N{BLACK SQUARE FOR STOP}':
                 continue
             reaction = reaction.replace("<", "").replace(">", "")
             await self.message.add_reaction(reaction)
@@ -170,7 +168,7 @@ class Pages:
         # await self.bot.delete_message(self.message)
         try:
             # Can't remove reactions in DMs, so don't even try
-            if not is_private(self.message.channel):
+            if not isinstance(self.message.channel, discord.abc.PrivateChannel):
                 await self.message.clear_reactions()
         except:
             pass

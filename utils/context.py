@@ -1,7 +1,7 @@
 import asyncio
 import functools
 import re
-from typing import Union, Optional, Callable, T
+from typing import Union, Optional, Callable, T, Any
 
 import discord
 from discord.ext import commands
@@ -13,13 +13,13 @@ _mention = re.compile(r'<@!?([0-9]{1,19})>')
 
 
 class NabCtx(commands.Context):
+    """An override of :class:`commands.Context` that provides properties and methods for NabBot."""
     guild: discord.Guild
     message: discord.Message
     channel: discord.TextChannel
     author: Union[discord.User, discord.Member]
     me: Union[discord.Member, discord.ClientUser]
     command: commands.Command
-    bot: commands.Bot
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -80,6 +80,26 @@ class NabCtx(commands.Context):
         return ask_channel == self.channel
 
     @property
+    def is_lite(self) -> bool:
+        """Checks if the current context is limited to lite mode.
+
+        If the guild is in the lite_guilds list, the context is in lite mode.
+        If the guild is in private message, and the message author is in at least ONE guild that is not in lite_guilds,
+        then context is not lite"""
+        if self.guild is None:
+            return self.guild.id in config.lite_servers
+        if self.is_private:
+            for g in self.bot.get_user_guilds(self.author.id):
+                if g.id not in config.lite_servers:
+                    return False
+        return False
+
+    @property
+    def is_private(self) -> bool:
+        """Whether the current context is a private channel or not."""
+        return self.guild is None
+
+    @property
     def long(self) -> bool:
         """Whether the current context allows long replies or not
 
@@ -127,6 +147,17 @@ class NabCtx(commands.Context):
         else:
             return self.bot.tracked_worlds.get(self.guild.id, None)
 
+    async def execute_async(self, func: Callable, *args, **kwargs) -> Any:
+        """Executes a synchronous function inside an executor.
+
+        :param func: The function to call inside the executor.
+        :param args: The function's arguments
+        :param kwargs: The function's keyword arguments.
+        :return: The value returned by the function, if any.
+        """
+        ret: T = await self.bot.loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
+        return ret
+
     async def input(self, *, timeout=60.0, clean=False, delete_response=False) \
             -> Optional[str]:
         """Waits for text input from the author.
@@ -155,7 +186,7 @@ class NabCtx(commands.Context):
             return None
 
     async def react_confirm(self, message: discord.Message, *, timeout=60.0, delete_after=False,
-                            use_checkmark=False):
+                            use_checkmark=False) -> Optional[bool]:
         """Waits for the command author to reply with a Y or N reaction.
 
         Returns True if the user reacted with Y
@@ -198,11 +229,6 @@ class NabCtx(commands.Context):
                 except discord.Forbidden:
                     pass
         return True
-
-    async def execute_async(self, func: Callable[..., T], *args, **kwargs) -> T:
-        """Executes a synchronous function inside an executor."""
-        ret: T = await self.bot.loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
-        return ret
 
     def tick(self, value: bool = True, label: str = None) -> str:
         """Displays a checkmark or a cross depending on the value.

@@ -5,12 +5,11 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks, context
+from utils import checks
 from utils.config import config
 from utils.context import NabCtx
 from utils.database import *
-from utils.discord import get_user_avatar
-from utils.general import join_list, log
+from utils.general import join_list, log, get_user_avatar
 from utils.tibia import get_character, NetworkError, Character, get_voc_abb_and_emoji
 
 

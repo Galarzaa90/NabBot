@@ -6,8 +6,8 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils.config import config
-from utils.discord import is_private, FIELD_VALUE_LIMIT
-from utils.general import join_list
+from utils.context import NabCtx
+from utils.general import join_list, FIELD_VALUE_LIMIT
 from utils.messages import split_message
 from utils.pages import Pages, CannotPaginate
 from utils.tibia import get_map_area
@@ -200,7 +200,7 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @commands.command(aliases=['mob', 'creature'])
-    async def monster(self, ctx, *, name: str):
+    async def monster(self, ctx: NabCtx, *, name: str):
         """Displays information about a monster.
 
         Shows the monster's attributes, resistances, loot and more.
@@ -214,7 +214,7 @@ class TibiaWiki:
         if name is None:
             await ctx.send("Tell me the name of the monster you want to search.")
             return
-        if is_private(ctx.channel):
+        if ctx.is_private:
             bot_member = self.bot.user
         else:
             bot_member = self.bot.get_member(self.bot.user.id, ctx.guild)

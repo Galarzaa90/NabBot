@@ -14,8 +14,7 @@ from nabbot import NabBot
 from utils import checks
 from utils.context import NabCtx
 from utils.database import tibiaDatabase, lootDatabase
-from utils.discord import FIELD_VALUE_LIMIT
-from utils.general import log
+from utils.general import log, FIELD_VALUE_LIMIT
 from utils.messages import split_message
 from utils.tibiawiki import get_item
 
@@ -157,7 +156,7 @@ class Loot:
                             emoji = "💎"
                         else:
                             emoji = ""
-                        value += "x{1} {0}{3} \u2192 {2:,}gp total.\n".format(
+                        value += "x{1} {0}{3} \u2192 {2:,}gp total\n".format(
                             item,
                             loot_list[item]['count'],
                             loot_list[item]['count'] * loot_list[item]['value'],
@@ -333,7 +332,7 @@ def load_image(image_bytes: bytes) -> Image:
     return Image.open(io.BytesIO(bytearray(image_bytes))).convert("RGBA")
 
 
-async def update_status(msg: discord.Message, status: str, percent=0):
+async def update_status(msg: discord.Message, status: str, percent: int=None):
     content = f"**Status:** {status}"
     if percent is not None:
         content += f"\n{'🔲'*percent}{'⬛'*(10-percent)}"

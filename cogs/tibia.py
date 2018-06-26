@@ -15,9 +15,8 @@ from utils import checks
 from utils.config import config
 from utils.context import NabCtx
 from utils.database import get_server_property, userDatabase
-from utils.discord import is_private, is_lite_mode, get_user_avatar
 from utils.general import get_time_diff, join_list, get_brasilia_time_zone, global_online_list, get_local_timezone, log, \
-    is_numeric
+    is_numeric, get_user_avatar
 from utils.messages import html_to_markdown, get_first_image, split_message
 from utils.pages import Pages, CannotPaginate, VocationPages
 from utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
@@ -59,8 +58,8 @@ class Tibia:
     @commands.command()
     async def bosses(self, ctx: NabCtx, world=None):
         """Shows predictions for bosses."""
-        if world is None and not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is not None:
-            world = self.bot.tracked_worlds.get(ctx.guild.id)
+        if world is None and not ctx.is_private and ctx.world:
+            world = ctx.world
         elif world is None:
             await ctx.send("You need to tell me a world's name.")
             return
@@ -100,19 +99,19 @@ class Tibia:
         await ctx.send(embed=embed)
 
     @commands.group(aliases=['deathlist'], invoke_without_command=True, case_insensitive=True)
-    async def deaths(self, ctx, *, name: str = None):
+    async def deaths(self, ctx: NabCtx, *, name: str = None):
         """Shows a character's recent deaths.
 
         If this discord server is tracking a tibia world, it will show deaths registered to the character.
         Additionally, if no name is provided, all recent deaths will be shown."""
-        if name is None and is_lite_mode(ctx):
+        if name is None and ctx.is_lite:
             return
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if is_private(ctx.channel):
+        if ctx.is_private:
             user_guilds = self.bot.get_user_guilds(ctx.author.id)
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
@@ -188,7 +187,7 @@ class Tibia:
 
                 c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
                 result = c.fetchone()
-                if result is not None and not is_lite_mode(ctx):
+                if result is not None and not ctx.is_lite:
                     id = result["id"]
                     c.execute("SELECT char_deaths.level, date, byplayer, killer "
                               "FROM char_deaths "
@@ -280,7 +279,7 @@ class Tibia:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if is_private(ctx.channel):
+        if ctx.is_private:
             user_servers = self.bot.get_user_guilds(ctx.author.id)
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
@@ -348,7 +347,7 @@ class Tibia:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if is_private(ctx.channel):
+        if ctx.is_private:
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
             user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
@@ -647,7 +646,7 @@ class Tibia:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if is_private(ctx.channel):
+        if ctx.is_private:
             user_guilds = self.bot.get_user_guilds(ctx.author.id)
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
@@ -740,7 +739,7 @@ class Tibia:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if is_private(ctx.channel):
+        if ctx.is_private:
             user_servers = self.bot.get_user_guilds(ctx.author.id)
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
@@ -831,7 +830,7 @@ class Tibia:
             await ctx.send(embed=embed)
 
     @commands.command(name="searchworld", aliases=["whereworld", "findworld"], usage="<params>[,world]")
-    async def search_world(self, ctx, *, params):
+    async def search_world(self, ctx: NabCtx, *, params):
         """Searches for online characters that meet the criteria.
 
         There are 3 ways to use this command:
@@ -865,7 +864,7 @@ class Tibia:
             await ctx.send(invalid_arguments)
             return
 
-        tracked_world = None if is_private(ctx.channel) else self.bot.tracked_worlds.get(ctx.guild.id)
+        tracked_world = ctx.world
         if world_name is None:
             if tracked_world is None:
                 await ctx.send("You must specify the world where you want to look in.")
@@ -1177,7 +1176,7 @@ class Tibia:
 
     @commands.group(aliases=["story"], invoke_without_command=True, case_insensitive=True)
     @checks.is_in_tracking_world()
-    async def timeline(self, ctx, *, name: str = None):
+    async def timeline(self, ctx: NabCtx, *, name: str = None):
         """Shows a character's recent level ups and deaths.
 
         If no character is provided, the timeline of all registered characters in the server will be shown.
@@ -1187,12 +1186,12 @@ class Tibia:
         - 🌟 Indicates level ups
         - 💀 Indicates deaths
         """
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if is_private(ctx.channel):
+        if ctx.is_private:
             user_servers = self.bot.get_user_guilds(ctx.author.id)
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
@@ -1299,7 +1298,7 @@ class Tibia:
 
     @timeline.command(name="user")
     @checks.is_in_tracking_world()
-    async def timeline_user(self, ctx, *, name: str):
+    async def timeline_user(self, ctx: NabCtx, *, name: str):
         """Shows a users's recent level ups and deaths on their characters."""
         permissions = ctx.channel.permissions_for(ctx.me)
         if not permissions.embed_links:
@@ -1310,7 +1309,7 @@ class Tibia:
             await ctx.send("You must tell me a user's name to look for his/her story.")
             return
 
-        if is_private(ctx.channel):
+        if ctx.is_private:
             user_servers = self.bot.get_user_guilds(ctx.author.id)
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
@@ -1421,7 +1420,7 @@ class Tibia:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
-        if is_lite_mode(ctx):
+        if ctx.is_lite:
             try:
                 char = await get_character(name)
                 if char is None:
@@ -1479,7 +1478,7 @@ class Tibia:
                     return
             else:
                 # Tries to display user's highest level character since there is no character match
-                if is_private(ctx.channel):
+                if ctx.is_private:
                     display_name = '@'+user.name
                     user_guilds = self.bot.get_user_guilds(ctx.author.id)
                     user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if
@@ -1670,7 +1669,7 @@ class Tibia:
         if user is None:
             return None
         embed = discord.Embed()
-        if is_private(ctx.channel):
+        if ctx.is_private:
             display_name = '@'+user.name
             user_guilds = self.bot.get_user_guilds(ctx.author.id)
             user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if

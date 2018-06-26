@@ -11,13 +11,10 @@ from discord.ext import commands
 # Exposing for /debug command
 from nabbot import NabBot
 from utils import checks
-from utils.config import config
-from utils.database import *
-from utils.discord import *
 from utils.general import *
+from utils.general import get_user_avatar
 from utils.messages import *
 from utils.tibia import *
-from utils.tibiawiki import *
 
 req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 dpy_commit = re.compile(r"a\d+\+g([\w]+)")
@@ -356,12 +353,11 @@ class Owner:
     @commands.command(aliases=["clean"])
     @checks.is_owner()
     @checks.is_not_lite()
+    @commands.guild_only()
     async def purge(self, ctx):
         """Performs a database cleanup
 
         Removes characters that have been deleted and users with no characters or no longer in server."""
-        if not is_private(ctx.channel):
-            return True
         c = userDatabase.cursor()
         try:
             c.execute("SELECT id FROM users")
@@ -539,12 +535,11 @@ class Owner:
 
     @commands.command(aliases=["reset"])
     @checks.is_owner()
+    @commands.guild_only()
     async def restart(self, ctx: discord.ext.commands.Context):
         """Shutdowns and starts the bot again.
 
         Once the bot starts again, it will notify the user that restarted it."""
-        if not is_private(ctx.channel):
-            return True
         await ctx.send('Restarting...')
         await self.bot.logout()
         log.warning("Restarting NabBot")
