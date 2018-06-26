@@ -31,11 +31,11 @@ class TibiaWiki:
 
     # Commands
     @commands.command(aliases=["achiev"])
-    async def achievement(self, ctx, *, name: str):
+    async def achievement(self, ctx: NabCtx, *, name: str):
         """Displays an achievement's information.
 
         Shows the achievement's grade, points, description, and instructions on how to unlock."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -63,7 +63,7 @@ class TibiaWiki:
         await ctx.send(embed=embed)
 
     @commands.command(usage="[class]")
-    async def bestiary(self, ctx, *, _class: str=None):
+    async def bestiary(self, ctx: NabCtx, *, _class: str=None):
         """Displays a category's creatures or all the categories.
 
         If a category is specified, it will list all the creatures that belong to the category and their level.
@@ -90,7 +90,7 @@ class TibiaWiki:
             await ctx.send(e)
 
     @commands.command(aliases=["itemprice"])
-    async def item(self, ctx, *, name: str):
+    async def item(self, ctx: NabCtx, *, name: str):
         """Displays information about an item.
 
         Shows who buys and sells the item, what creatures drops it and many attributes.
@@ -99,7 +99,7 @@ class TibiaWiki:
         Yellow for Rashid, Blue and Green for Djinns and Purple for gems.
 
         More information is shown if used in private messages or in the command channel."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -117,7 +117,7 @@ class TibiaWiki:
         embed = self.get_item_embed(ctx, item, ctx.long)
 
         # Attach item's image only if the bot has permissions
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if permissions.attach_files or item["image"] != 0:
             filename = re.sub(r"[^A-Za-z0-9]", "", item["name"]) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
@@ -126,11 +126,11 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @commands.group(invoke_without_command=True, case_insensitive=True)
-    async def key(self, ctx, number: str):
+    async def key(self, ctx: NabCtx, number: str):
         """Displays information about a key.
 
         Shows the key's known names, how to obtain it and its uses."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -162,14 +162,14 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @key.command(name="search")
-    async def key_search(self, ctx, *, term: str):
+    async def key_search(self, ctx: NabCtx, *, term: str):
         """Searches for a key by keywords.
 
         Search for matches on the key's names, location, origin or uses.
 
         if there are multiple matches, a list is shown.
         If only one matches, the key's information is shwon directly."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -206,7 +206,7 @@ class TibiaWiki:
         Shows the monster's attributes, resistances, loot and more.
 
         More information is displayed if used on a private message or in the command channel."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -250,13 +250,13 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @commands.command()
-    async def npc(self, ctx, *, name: str):
+    async def npc(self, ctx: NabCtx, *, name: str):
         """Displays information about a NPC.
 
         Shows the NPC's item offers, their location and their travel destinations.
 
         More information is displayed if used on private messages or the command channel."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -292,13 +292,13 @@ class TibiaWiki:
             await ctx.send(embed=embed)
 
     @commands.command(usage="<name/words>")
-    async def spell(self, ctx, *, name_or_words: str):
+    async def spell(self, ctx: NabCtx, *, name_or_words: str):
         """Displays information about a spell.
 
         Shows the spell's attributes, NPCs that teach it and more.
 
         More information is displayed if used on private messages or the command channel."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -326,7 +326,7 @@ class TibiaWiki:
 
     # Helper methods
     @staticmethod
-    def get_monster_embed(ctx, monster, long):
+    def get_monster_embed(ctx: NabCtx, monster, long):
         """Gets the monster embeds to show in /mob command
         The message is split in two embeds, the second contains loot only and is only shown if long is True"""
         embed = discord.Embed(title=monster["title"], url=get_article_url(monster["title"]))
@@ -431,7 +431,7 @@ class TibiaWiki:
         return embed
 
     @staticmethod
-    def get_item_embed(ctx, item, long):
+    def get_item_embed(ctx: NabCtx, item, long):
         """Gets the item embed to show in /item command"""
         short_limit = 5
         long_limit = 40
@@ -562,7 +562,7 @@ class TibiaWiki:
         return embed
 
     @staticmethod
-    def get_spell_embed(ctx, spell, long):
+    def get_spell_embed(ctx: NabCtx, spell, long):
         """Gets the embed to show in /spell command"""
         short_limit = 5
         too_long = False
@@ -640,7 +640,7 @@ class TibiaWiki:
         return embed
 
     @staticmethod
-    def get_npc_embed(ctx, npc, long):
+    def get_npc_embed(ctx: NabCtx, npc, long):
         """Gets the embed to show in /npc command"""
         short_limit = 5
         long_limit = 100

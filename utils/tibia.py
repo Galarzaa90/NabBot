@@ -53,7 +53,7 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
                     "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
 
 # This is preloaded on startup
-tibia_worlds = []  # type: List[str]
+tibia_worlds: List[str] = []
 
 HIGHSCORE_CATEGORIES = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
                         "magic_ek", "magic_rp", "loyalty", "achievements"]
@@ -86,11 +86,11 @@ class Character:
         self.married_to = kwargs.get("married_to")
         self.guild = kwargs.get("guild")
         self.house = kwargs.get("house")
-        self.last_login = kwargs.get("last_login")  # type: dt.datetime
-        self.deleted = kwargs.get("last_login")  # type: dt.datetime
-        self.online = kwargs.get("online") # type: bool
-        self.achievements = kwargs.get("achivements", []) # type: List[Achievement]
-        self.deaths = kwargs.get("deaths", [])  # type: List[Death]
+        self.last_login: dt.datetime = kwargs.get("last_login")
+        self.deleted: dt.datetime = kwargs.get("last_login")
+        self.online: bool = kwargs.get("online")
+        self.achievements: List[Achievement] = kwargs.get("achivements", [])
+        self.deaths: List[Death] = kwargs.get("deaths", [])
         self.other_characters = kwargs.get("other_characters", [])
         self.account_status = kwargs.get("account_status", 0)
         self.comment = kwargs.get("comment")
@@ -269,14 +269,14 @@ class World:
         self.name = name
         self.online = kwargs.get("online", 0)
         self.record_online = kwargs.get("record_online", 0)
-        self.record_date = None  # type: dt.datetime
+        self.record_date: dt.datetime = None
         self.creation = None
         self.pvp_type = kwargs.get("pvp_type")
         self.premium_type = kwargs.get("premium_type")
         self.transfer_type = kwargs.get("transfer_type")
         self.location = kwargs.get("location")
-        self.players_online = []  # type: List[Character]
-        self.quests = None  # type: List[str]
+        self.players_online: List[Character] = []
+        self.quests: List[str] = None
 
     @classmethod
     def parse_from_tibiadata(cls, name: str, content_json: Dict):

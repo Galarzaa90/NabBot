@@ -11,6 +11,7 @@ from discord.ext import commands
 # Exposing for /debug command
 from nabbot import NabBot
 from utils import checks
+from utils.context import NabCtx
 from utils.general import *
 from utils.general import get_user_avatar
 from utils.messages import *
@@ -46,7 +47,7 @@ class Owner:
     # Commands
     @commands.command(aliases=["notifyadmins"])
     @checks.is_owner()
-    async def admins_message(self, ctx, *, content: str=None):
+    async def admins_message(self, ctx: NabCtx, *, content: str=None):
         """Sends a private message to all server owners.
 
         Notifies all the owners of the servers where the bot is in.
@@ -74,9 +75,9 @@ class Owner:
             pass
         await ctx.send("Message sent to "+join_list(["@"+a.name for a in guild_admins], ", ", " and "))
 
-    @commands.command(aliases=["eval"])
+    @commands.command(name="eval")
     @checks.is_owner()
-    async def debug(self, ctx, *, body: str):
+    async def _eval(self, ctx: NabCtx, *, body: str):
         """Evaluates Python code.
 
         This commands lets you evaluate python code. If no errors are returned, the bot will react to the command call.
@@ -133,7 +134,7 @@ class Owner:
 
     @commands.command()
     @checks.is_owner()
-    async def leave(self, ctx, *, server: str):
+    async def leave(self, ctx: NabCtx, *, server: str):
         """Makes the bot leave a server.
 
         The bot will ask for confirmation before leaving the server.
@@ -178,7 +179,7 @@ class Owner:
 
     @commands.command(name="load")
     @checks.is_owner()
-    async def load_cog(self, ctx, cog: str):
+    async def load_cog(self, ctx: NabCtx, cog: str):
         """Loads a cog.
 
         If there's an error while compiling, it will be displayed here.
@@ -196,7 +197,7 @@ class Owner:
     @commands.command(usage="<old world> <new world>")
     @checks.is_owner()
     @checks.is_not_lite()
-    async def merge(self, ctx, old_world: str, new_world: str):
+    async def merge(self, ctx: NabCtx, old_world: str, new_world: str):
         """Renames all references of an old world to a new one.
 
         This command should updates all the database entries, changing all references of the old world to the new one
@@ -241,7 +242,7 @@ class Owner:
     @checks.is_owner()
     @checks.is_not_lite()
     @commands.guild_only()
-    async def namelock(self, ctx, *, params):
+    async def namelock(self, ctx: NabCtx, *, params):
         """Register the name of a new character that was namelocked.
 
         Characters that get namelocked can't be searched by their old name, so they must be reassigned manually.
@@ -343,7 +344,7 @@ class Owner:
 
     @checks.is_owner()
     @commands.command()
-    async def ping(self, ctx):
+    async def ping(self, ctx: NabCtx):
         """Shows the bot's response times."""
         resp = await ctx.send('Pong! Loading...')
         diff = resp.created_at - ctx.message.created_at
@@ -354,7 +355,7 @@ class Owner:
     @checks.is_owner()
     @checks.is_not_lite()
     @commands.guild_only()
-    async def purge(self, ctx):
+    async def purge(self, ctx: NabCtx):
         """Performs a database cleanup
 
         Removes characters that have been deleted and users with no characters or no longer in server."""
@@ -442,7 +443,7 @@ class Owner:
 
     @commands.command(hidden=True)
     @checks.is_owner()
-    async def repl(self, ctx):
+    async def repl(self, ctx: NabCtx):
         """Starts a REPL session in the current channel.
 
         Similar to `eval`, but this keeps a running sesion where variables and results are stored.```.
@@ -536,7 +537,7 @@ class Owner:
     @commands.command(aliases=["reset"])
     @checks.is_owner()
     @commands.guild_only()
-    async def restart(self, ctx: discord.ext.commands.Context):
+    async def restart(self, ctx: NabCtx):
         """Shutdowns and starts the bot again.
 
         Once the bot starts again, it will notify the user that restarted it."""
@@ -549,7 +550,7 @@ class Owner:
 
     @commands.command()
     @checks.is_owner()
-    async def servers(self, ctx):
+    async def servers(self, ctx: NabCtx):
         """Shows a list of servers the bot is in."""
         reply = "I'm in the following servers:"
         for guild in self.bot.guilds:
@@ -559,7 +560,7 @@ class Owner:
 
     @commands.command(name="unload")
     @checks.is_owner()
-    async def unload_cog(self, ctx, cog: str):
+    async def unload_cog(self, ctx: NabCtx, cog: str):
         """Unloads a cog."""
         try:
             self.bot.unload_extension(cog)
@@ -569,7 +570,7 @@ class Owner:
 
     @commands.command()
     @checks.is_owner()
-    async def versions(self, ctx):
+    async def versions(self, ctx: NabCtx):
         """Shows version info about NabBot and its dependencies.
 
         An X is displayed if the minimum required version is not met, this is likely to cause problems.

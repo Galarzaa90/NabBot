@@ -8,6 +8,7 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils.config import config
+from utils.context import NabCtx
 from utils.tibia import DRUID, SORCERER, PALADIN, KNIGHT
 
 
@@ -52,12 +53,12 @@ class Pages:
     """
     Empty = discord.Embed.Empty
 
-    def __init__(self, ctx: commands.Context, *, entries, per_page=10, show_entry_count=True, **kwargs):
-        self.bot = ctx.bot  # type: NabBot
+    def __init__(self, ctx: NabCtx, *, entries, per_page=10, show_entry_count=True, **kwargs):
+        self.bot: NabBot = ctx.bot
         self.entries = entries
-        self.message = ctx.message  # type: discord.Message
-        self.channel = ctx.channel  # type: discord.TextChannel
-        self.author = ctx.author  # type: Union[discord.User, discord.Member]
+        self.message: discord.Message = ctx.message
+        self.channel: discord.TextChannel = ctx.channel
+        self.author: Union[discord.User, discord.Member] = ctx.author
         self.per_page = per_page
         pages, left_over = divmod(len(self.entries), self.per_page)
         if left_over:

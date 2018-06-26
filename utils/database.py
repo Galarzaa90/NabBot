@@ -278,7 +278,7 @@ def get_server_property(guild_id: int, key: str, *, default=None, is_int=None, d
     """
     with closing(userDatabase.cursor()) as c:
         c.execute("SELECT value FROM server_properties WHERE name = ? and server_id = ?", (key, guild_id))
-        result = c.fetchone()  # type: Dict[str]
+        result: Dict[str] = c.fetchone()
         if is_int:
             try:
                 return int(result["value"]) if result is not None else default

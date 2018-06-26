@@ -1,7 +1,7 @@
 import asyncio
 import functools
 import re
-from typing import Union, Optional, Callable, T, Any
+from typing import Union, Optional, Callable, TypeVar
 
 import discord
 from discord.ext import commands
@@ -10,6 +10,8 @@ from utils.config import config
 from utils.database import get_server_property
 
 _mention = re.compile(r'<@!?([0-9]{1,19})>')
+
+T = TypeVar('T')
 
 
 class NabCtx(commands.Context):
@@ -32,7 +34,6 @@ class NabCtx(commands.Context):
         """Shortcut to check the command author's permission to the current channel.
 
         :return: The permissions for the author in the current channel.
-        :rtype: discord.Permissions
         """
         return self.channel.permissions_for(self.author)
 
@@ -54,8 +55,7 @@ class NabCtx(commands.Context):
     def bot_permissions(self) -> discord.Permissions:
         """Shortcut to check the bot's permission to the current channel.
 
-        :return: The permissions for the author in the current channel.
-        :rtype: discord.Permissions"""
+        :return: The permissions for the author in the current channel."""
         return self.channel.permissions_for(self.me)
 
     @property
@@ -147,7 +147,7 @@ class NabCtx(commands.Context):
         else:
             return self.bot.tracked_worlds.get(self.guild.id, None)
 
-    async def execute_async(self, func: Callable, *args, **kwargs) -> Any:
+    async def execute_async(self, func: Callable[..., T], *args, **kwargs) -> T:
         """Executes a synchronous function inside an executor.
 
         :param func: The function to call inside the executor.
@@ -155,7 +155,7 @@ class NabCtx(commands.Context):
         :param kwargs: The function's keyword arguments.
         :return: The value returned by the function, if any.
         """
-        ret: T = await self.bot.loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
+        ret = await self.bot.loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
         return ret
 
     async def input(self, *, timeout=60.0, clean=False, delete_response=False) \

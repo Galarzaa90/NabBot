@@ -124,9 +124,9 @@ class General:
 
     # Commands
     @commands.command()
-    async def about(self, ctx):
+    async def about(self, ctx: NabCtx):
         """Shows information about the bot."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -748,11 +748,11 @@ class General:
 
     @commands.guild_only()
     @events.command(name="info", aliases=["show"])
-    async def event_info(self, ctx, event_id: int):
+    async def event_info(self, ctx: NabCtx, event_id: int):
         """Displays an event's info.
 
         The start time shown in the footer is always displayed in your device's timezone."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -1010,7 +1010,7 @@ class General:
             return
         entries = []
         vocations = []
-        event_server = self.bot.get_guild(event["server"])  # type: discord.Guild
+        event_server: discord.Guild = self.bot.get_guild(event["server"])
         for char in event["participants"]:
             char["level"] = abs(char["level"])
             char["emoji"] = get_voc_emoji(char["vocation"])
@@ -1173,7 +1173,7 @@ class General:
 
     @commands.guild_only()
     @commands.command()
-    async def quote(self, ctx, message_id: int):
+    async def quote(self, ctx : NabCtx, message_id: int):
         """Shows a messages by its ID.
 
         In order to get a message's id, you need to enable Developer Mode.
@@ -1185,8 +1185,8 @@ class General:
         message: discord.Message = None
         with ctx.typing():
             for channel in channels:
-                bot_perm = channel.permissions_for(ctx.me)
-                auth_perm = channel.permissions_for(ctx.author)
+                bot_perm = ctx.bot_permissions
+                auth_perm = ctx.author_permissions
                 if not(bot_perm.read_message_history and bot_perm.read_messages and
                        auth_perm.read_message_history and auth_perm.read_messages):
                     continue
@@ -1207,7 +1207,7 @@ class General:
                          url=message.jump_to_url)
         embed.set_footer(text=f"In #{message.channel.name}")
         if len(message.attachments) >= 1:
-            attachment = message.attachments[0]  # type: discord.Attachment
+            attachment: discord.Attachment = message.attachments[0]
             if attachment.height is not None:
                 embed.set_image(url=message.attachments[0].url)
             else:
@@ -1217,13 +1217,13 @@ class General:
 
     @commands.guild_only()
     @commands.command()
-    async def serverinfo(self, ctx):
+    async def serverinfo(self, ctx: NabCtx):
         """Shows the server's information."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
-        guild = ctx.guild  # type: discord.Guild
+        guild = ctx.guild
         embed = discord.Embed(title=guild.name, timestamp=guild.created_at, description=f"**ID** {guild.id}",
                               color=discord.Color.blurple())
         embed.set_footer(text="Created on")

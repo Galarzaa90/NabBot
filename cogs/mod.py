@@ -27,7 +27,7 @@ class Mod:
     @commands.guild_only()
     @checks.is_channel_mod()
     @commands.group(invoke_without_command=True, case_insensitive=True)
-    async def ignore(self, ctx, *, channel: discord.TextChannel = None):
+    async def ignore(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
         """Makes the bot ignore a channel.
 
         Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
@@ -51,7 +51,7 @@ class Mod:
     @commands.guild_only()
     @checks.is_channel_mod()
     @ignore.command(name="list")
-    async def ignore_list(self, ctx):
+    async def ignore_list(self, ctx: NabCtx):
         """Shows a list of ignored channels."""
         entries = [ctx.guild.get_channel(c).name for c in self.ignored.get(ctx.guild.id, []) if ctx.guild.get_channel(c) is not None]
         if not entries:
@@ -130,7 +130,7 @@ class Mod:
     @commands.guild_only()
     @checks.is_channel_mod()
     @commands.command()
-    async def unignore(self, ctx, *, channel: discord.TextChannel = None):
+    async def unignore(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
         """Unignores a channel.
 
         If no channel is provided, the current channel will be unignored.
@@ -197,10 +197,10 @@ class Mod:
         This is used to avoid reading the database every time the world list is needed.
         A global variable holding the world list is loaded on startup and refreshed only when worlds are modified"""
         c = userDatabase.cursor()
-        ignored_dict_temp = {}  # type: Dict[int, List[int]]
+        ignored_dict_temp: Dict[int, List[int]] = {}
         try:
             c.execute("SELECT server_id, channel_id FROM ignored_channels")
-            result = c.fetchall()  # type: Dict
+            result: Dict = c.fetchall()
             if len(result) > 0:
                 for row in result:
                     if not ignored_dict_temp.get(row["server_id"]):

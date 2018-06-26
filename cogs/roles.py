@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import context
+from utils.context import NabCtx
 from utils.pages import CannotPaginate, Pages
 
 
@@ -19,7 +19,7 @@ class Roles:
 
     @commands.guild_only()
     @commands.command(aliases=["norole"])
-    async def noroles(self, ctx):
+    async def noroles(self, ctx: NabCtx):
         """Shows a list of members with no roles."""
         entries = []
 
@@ -42,7 +42,7 @@ class Roles:
 
     @commands.guild_only()
     @commands.command()
-    async def roleinfo(self, ctx: context.NabCtx, *, role: discord.Role):
+    async def roleinfo(self, ctx: NabCtx, *, role: discord.Role):
         """Shows details about a role."""
         embed = discord.Embed(title=role.name, colour=role.colour, timestamp=role.created_at,
                               description=f"**ID** {role.id}")
@@ -57,7 +57,7 @@ class Roles:
 
     @commands.guild_only()
     @commands.command()
-    async def rolemembers(self, ctx, *, role: discord.Role):
+    async def rolemembers(self, ctx: NabCtx, *, role: discord.Role):
         """Shows a list of members with that role."""
         if role is None:
             await ctx.send("There's no role with that name in here.")
@@ -80,7 +80,7 @@ class Roles:
 
     @commands.guild_only()
     @commands.command()
-    async def roles(self, ctx: context.NabCtx, *, user: str=None):
+    async def roles(self, ctx: NabCtx, *, user: str=None):
         """Shows a user's roles or a list of server roles.
 
         If a user is specified, it will list their roles.
@@ -97,7 +97,7 @@ class Roles:
                 await ctx.send(f"I don't see any user named **{user}**.")
                 return
             title = f"Roles for @{member.display_name}"
-            roles = member.roles[:]  # type: List[discord.Role]
+            roles: List[discord.Role] = member.roles[:]
             if len(roles) <= 1:
                 await ctx.send(f"@**{member.display_name}** has no roles.")
                 return

@@ -4,6 +4,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils import checks
 from utils.config import config
+from utils.context import NabCtx
 from utils.database import set_server_property, get_server_property
 from utils.tibia import tibia_worlds
 
@@ -42,8 +43,8 @@ class Settings:
         return True
 
     @staticmethod
-    async def show_info_embed(ctx, current_value, accepted_values, edit_params):
-        embed = discord.Embed(title=f"{SETTINGS[ctx.command.name]['title']} - {ctx.me.display_name} settings",
+    async def show_info_embed(ctx: NabCtx, current_value, accepted_values, edit_params):
+        embed = discord.Embed(title=f"{SETTINGS[ctx.command.name]['title']} - Settings",
                               description=ctx.command.short_doc, color=discord.Color.blurple())
         embed.add_field(name="📄 Current value", value=current_value, inline=False)
         embed.add_field(name="📝 Edit", inline=False,
@@ -56,7 +57,7 @@ class Settings:
     @checks.is_admin()
     @commands.guild_only()
     @commands.group(invoke_without_command=True, case_insensitive=True, aliases=["config"])
-    async def settings(self, ctx):
+    async def settings(self, ctx: NabCtx):
         """Checks or sets various server-specific settings."""
         embed = discord.Embed(title=f"{ctx.me.display_name} settings", colour=discord.Color.blurple(),
                               description="Use the subcommands to change the settings for this server.")
@@ -69,7 +70,7 @@ class Settings:
 
     @checks.is_admin()
     @settings.command(name="askchannel", aliases=["commandchannel"])
-    async def settings_askchannel(self, ctx, channel: str=None):
+    async def settings_askchannel(self, ctx: NabCtx, channel: str=None):
         """Changes the channel where longer replies for commands are given.
 
         In this channel, pagination commands show more entries at once and command replies in general are longer."""
@@ -128,7 +129,7 @@ class Settings:
 
     @checks.is_admin()
     @settings.command(name="commandsonly")
-    async def settings_commandsonly(self, ctx, option: str=None):
+    async def settings_commandsonly(self, ctx: NabCtx, option: str=None):
         """Sets whether only commands are allowed in the command channel.
 
         If this is enabled, everything that is not a message will be deleted from the command channel.
@@ -158,7 +159,7 @@ class Settings:
 
     @checks.is_admin()
     @settings.command(name="eventschannel")
-    async def settings_eventschannel(self, ctx, channel: str=None):
+    async def settings_eventschannel(self, ctx: NabCtx, channel: str=None):
         """Changes the channel where upcoming events are announced.
 
         This is where announcements of events about to happen will be made.
@@ -203,7 +204,7 @@ class Settings:
 
     @checks.is_admin()
     @settings.command(name="levelschannel", aliases=["deathschannel", "trackingchannel"])
-    async def settings_levelschannel(self, ctx, channel: str=None):
+    async def settings_levelschannel(self, ctx: NabCtx, channel: str=None):
         """Changes the channel where levelup and deaths are announced.
 
         This is were all level ups and deaths of registered characters will be announced.
@@ -248,7 +249,7 @@ class Settings:
 
     @checks.is_admin()
     @settings.command(name="newschannel")
-    async def settings_newschannel(self, ctx, channel: str=None):
+    async def settings_newschannel(self, ctx: NabCtx, channel: str=None):
         """Changes the channel where Tibia news are announced.
 
         This is where all news and articles posted in Tibia.com will be announced..
@@ -291,7 +292,7 @@ class Settings:
 
     @checks.is_admin()
     @settings.command(name="prefix")
-    async def settings_prefix(self, ctx, prefix: PrefixConverter=None):
+    async def settings_prefix(self, ctx: NabCtx, prefix: PrefixConverter=None):
         """Changes the command prefix for this server.
 
         The prefix are the characters that go before a command's name, in order for the bot to recognize the command.
@@ -332,7 +333,7 @@ class Settings:
 
     @checks.is_admin()
     @settings.command(name="world")
-    async def settings_world(self, ctx, world: str=None):
+    async def settings_world(self, ctx: NabCtx, world: str=None):
         """Changes the world this discord server tracks.
 
         The tracked world is the Tibia world that this discord server is following.
@@ -365,11 +366,11 @@ class Settings:
             await ctx.send(f"{ctx.tick(True)} This server is now tracking **{world}**")
 
     @settings_prefix.error
-    async def prefix_error(self, ctx, error):
+    async def prefix_error(self, ctx: NabCtx, error):
         if isinstance(error, commands.BadArgument):
             await ctx.send(str(error))
 
-    def get_current_channel(self, ctx, current_channel_id):
+    def get_current_channel(self, ctx: NabCtx, current_channel_id):
         top_channel = self.bot.get_top_channel(ctx.guild, True)
         current_channel = ctx.guild.get_channel(current_channel_id)
         if current_channel:

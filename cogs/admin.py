@@ -20,7 +20,7 @@ class Admin:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    async def __error(self, ctx, error):
+    async def __error(self, ctx: NabCtx, error):
         if isinstance(error, commands.BadArgument):
             if not error.args:
                 await ctx.send(f"{ctx.tick(False)} The correct syntax is: "
@@ -69,7 +69,7 @@ class Admin:
             chars = [char]
         skipped = []
         updated = []
-        added = []  # type: List[Character]
+        added: List[Character] = []
         existent = []
         for char in chars:
             # Skip chars in non-tracked worlds
@@ -267,7 +267,7 @@ class Admin:
         If no channel is specified, the current one is checked."""
         if channel is None:
             channel = ctx.channel
-        permissions = channel.permissions_for(ctx.me)  # type: discord.Permissions
+        permissions = ctx.bot_permissions
         content = f"**Checking {channel.mention}:**"
         if permissions.administrator:
             content += f"\n{ctx.tick(True)} I have `Administrator` permission."
@@ -301,7 +301,7 @@ class Admin:
     @checks.is_admin()
     @checks.is_not_lite()
     @commands.command(name="setwelcome")
-    async def set_welcome(self, ctx, *, message: str = None):
+    async def set_welcome(self, ctx: NabCtx, *, message: str = None):
         """Set the messages members get PMed when joining.
 
         A part of the message is already fixed and cannot be changed, but the message can be extended.
@@ -378,7 +378,7 @@ class Admin:
     @checks.is_admin()
     @checks.is_tracking_world()
     @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
-    async def remove_char(self, ctx, *, name):
+    async def remove_char(self, ctx: NabCtx, *, name):
         """Removes a registered character."""
         # This could be used to remove deleted chars so we don't need to check anything
         # Except if the char exists in the database...

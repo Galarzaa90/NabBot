@@ -328,7 +328,7 @@ class Loot:
         return
 
 
-def load_image(image_bytes: bytes) -> Image:
+def load_image(image_bytes: bytes) -> Image.Image:
     return Image.open(io.BytesIO(bytearray(image_bytes))).convert("RGBA")
 
 
@@ -344,7 +344,7 @@ async def update_status(msg: discord.Message, status: str, percent: int=None):
 
 async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: discord.Message):
     try:
-        loot_image: Image.Image = await ctx.execute_async(load_image, image)
+        loot_image = await ctx.execute_async(load_image, image)
     except Exception:
         raise LootScanException("Either that wasn't an image or I failed to load it, please try again.")
 

@@ -32,13 +32,13 @@ class Tibia:
         self.bot = bot
         self.news_announcements_task = self.bot.loop.create_task(self.scan_news())
 
-    async def __error(self, ctx, error):
+    async def __error(self, ctx: NabCtx, error):
         if isinstance(error, commands.UserInputError):
             await self.bot.show_help(ctx)
 
     # Commands
     @commands.command(aliases=['bless'])
-    async def blessings(self, ctx, level: int):
+    async def blessings(self, ctx: NabCtx, level: int):
         """Calculates the price of blessings for a specific level.
 
         For player over level 100, it will also display the cost of the Blessing of the Inquisition."""
@@ -106,7 +106,7 @@ class Tibia:
         Additionally, if no name is provided, all recent deaths will be shown."""
         if name is None and ctx.is_lite:
             return
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -168,7 +168,7 @@ class Tibia:
                 voc_emoji = get_voc_emoji(char.vocation)
                 title = "{1} {0} latest deaths:".format(name, voc_emoji)
                 if ctx.guild is not None and char.owner:
-                    owner = ctx.guild.get_member(char.owner)  # type: discord.Member
+                    owner: discord.Member = ctx.guild.get_member(char.owner)
                     if owner is not None:
                         author = owner.display_name
                         author_icon = owner.avatar_url
@@ -220,9 +220,9 @@ class Tibia:
 
     @deaths.command(name="monster", aliases=["mob", "killer"])
     @checks.is_in_tracking_world()
-    async def deaths_monsters(self, ctx, *, name: str):
+    async def deaths_monsters(self, ctx: NabCtx, *, name: str):
         """Shows the latest deaths caused by a specific monster."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -272,9 +272,9 @@ class Tibia:
 
     @deaths.command(name="user")
     @checks.is_in_tracking_world()
-    async def deaths_user(self, ctx, *, name: str):
+    async def deaths_user(self, ctx: NabCtx, *, name: str):
         """Shows a user's recent deaths on his/her registered characters."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -335,14 +335,14 @@ class Tibia:
 
     @deaths.command(name="stats", usage="[week/month]")
     @checks.is_in_tracking_world()
-    async def deaths_stats(self, ctx, *, period: str = None):
+    async def deaths_stats(self, ctx: NabCtx, *, period: str = None):
         """Shows death statistics
 
         Shows the total number of deaths, the characters and users with more deaths, and the most common killers.
 
         To see a shorter period, use `week` or `month` as a parameter.
         """
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -425,13 +425,13 @@ class Tibia:
             c.close()
 
     @commands.group(aliases=['checkguild'], invoke_without_command=True, case_insensitive=True)
-    async def guild(self, ctx, *, name):
+    async def guild(self, ctx: NabCtx, *, name):
         """Shows online characters in a guild.
 
         Show's the number of members the guild has and a list of their users.
         It also shows whether the guild has a guildhall or not, and their funding date.
         """
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -483,11 +483,11 @@ class Tibia:
         await ctx.send(embed=embed)
 
     @guild.command(name="info", aliases=["stats"])
-    async def guild_info(self, ctx, *, name: str):
+    async def guild_info(self, ctx: NabCtx, *, name: str):
         """Shows basic information and stats about a guild.
 
         It shows their description, homepage, guildhall, number of members and more."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -549,11 +549,11 @@ class Tibia:
         await ctx.send(embed=embed)
 
     @guild.command(name="members", aliases=['list'])
-    async def guild_members(self, ctx, *, name: str):
+    async def guild_members(self, ctx: NabCtx, *, name: str):
         """Shows a list of all guild members.
 
         Online members have an icon next to their name."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -588,7 +588,7 @@ class Tibia:
             await ctx.send(e)
 
     @commands.command(aliases=["guildhall"], usage="<name>[/world]")
-    async def house(self, ctx, *, name: str):
+    async def house(self, ctx: NabCtx, *, name: str):
         """Shows info for a house or guildhall.
 
         By default, it shows the current status of a house for the current tracked world (if any).
@@ -596,7 +596,7 @@ class Tibia:
 
         To specify a world, add the world at the end separated with '/'.
         """
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -633,7 +633,7 @@ class Tibia:
 
     @commands.group(aliases=['levelups'], invoke_without_command=True, case_insensitive=True)
     @checks.is_in_tracking_world()
-    async def levels(self, ctx, *, name: str=None):
+    async def levels(self, ctx: NabCtx, *, name: str=None):
         """Shows a character's or everyone's recent level ups.
 
         If a character is specified, it displays a list of its recent level ups.
@@ -641,7 +641,7 @@ class Tibia:
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -732,9 +732,9 @@ class Tibia:
 
     @levels.command(name="user")
     @checks.is_in_tracking_world()
-    async def levels_user(self, ctx, *, name: str):
+    async def levels_user(self, ctx: NabCtx, *, name: str):
         """Shows a user's recent level ups on their registered characters."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -792,7 +792,7 @@ class Tibia:
             await ctx.send(e)
 
     @commands.command(usage="[id]")
-    async def news(self, ctx, news_id: int=None):
+    async def news(self, ctx: NabCtx, news_id: int=None):
         """Shows the latest news articles from Tibia.com.
 
         If no id is supplied, a list of recent articles is shown, otherwise, a snippet of the article is shown."""
@@ -844,7 +844,7 @@ class Tibia:
         You can add the world where you want to look in by adding a comma, followed by the name of the world.
         Example: `searchworld Cachero,Calmera`
         """
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -963,7 +963,7 @@ class Tibia:
             await ctx.send(e)
 
     @commands.command(aliases=['expshare', 'party'])
-    async def share(self, ctx, *, param: str=None):
+    async def share(self, ctx: NabCtx, *, param: str=None):
         """Shows the sharing range for that level or character or list of characters.
 
         This command can be used in three ways:
@@ -1046,7 +1046,7 @@ class Tibia:
                 await ctx.send(reply+f"\nTheir share range is from level **{low}** to **{high}**.")
 
     @commands.command()
-    async def stamina(self, ctx, current_stamina: str):
+    async def stamina(self, ctx: NabCtx, current_stamina: str):
         """Tells you the time you have to wait to restore stamina.
 
         To use it, you must provide your current stamina, in this format: `hh:mm`.
@@ -1084,7 +1084,7 @@ class Tibia:
             remaining = f'{minutes} minutes'
 
         reply = f"You need to rest **{remaining}** to get back to full stamina."
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send(reply)
             return
@@ -1096,7 +1096,7 @@ class Tibia:
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def stats(self, ctx, *, params: str):
+    async def stats(self, ctx: NabCtx, *, params: str):
         """Calculates character stats based on vocation and level.
 
         Shows hitpoints, mana, capacity, total experience and experience to next level.
@@ -1300,7 +1300,7 @@ class Tibia:
     @checks.is_in_tracking_world()
     async def timeline_user(self, ctx: NabCtx, *, name: str):
         """Shows a users's recent level ups and deaths on their characters."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -1373,7 +1373,7 @@ class Tibia:
             await ctx.send(e)
 
     @commands.command(aliases=['serversave'])
-    async def time(self, ctx):
+    async def time(self, ctx: NabCtx):
         """Displays Tibia server's time and time until server save."""
         offset = get_tibia_time_zone() - get_local_timezone()
         tibia_time = dt.datetime.now()+dt.timedelta(hours=offset)
@@ -1535,7 +1535,7 @@ class Tibia:
             await ctx.send(embed=embed)
 
     @commands.command(name="world")
-    async def world_info(self, ctx, name: str):
+    async def world_info(self, ctx: NabCtx, name: str):
         """Shows basic information about a Tibia world.
 
         Shows information like PvP type, online count, server location vocation distribution, and more."""
@@ -1665,7 +1665,7 @@ class Tibia:
 
         return reply
 
-    def get_user_embed(self, ctx, user: discord.Member) -> Optional[discord.Embed]:
+    def get_user_embed(self, ctx: NabCtx, user: discord.Member) -> Optional[discord.Embed]:
         if user is None:
             return None
         embed = discord.Embed()

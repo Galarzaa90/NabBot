@@ -188,7 +188,7 @@ class NabBot(commands.Bot):
         """Called when a member leaves or is kicked from a guild."""
         now = dt.datetime.utcnow()
         self.members[member.id].remove(member.guild.id)
-        bot_member = member.guild.me  # type: discord.Member
+        bot_member: discord.Member = member.guild.me
 
         embed = discord.Embed(description="Left the server or was kicked", colour=discord.Colour(0xffff00))
         embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member), icon_url=get_user_avatar(member))
@@ -218,7 +218,7 @@ class NabBot(commands.Bot):
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
         now = dt.datetime.utcnow()
-        bot_member = guild.me  # type: discord.Member
+        bot_member: discord.Member = guild.me
 
         embed = discord.Embed(description="Banned", color=discord.Color(0x7a0d0d))
         embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=get_user_avatar(user))
@@ -241,7 +241,7 @@ class NabBot(commands.Bot):
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
         now = dt.datetime.utcnow()
-        bot_member = guild.me  # type: discord.Member
+        bot_member: discord.Member = guild.me
 
         embed = discord.Embed(description="Unbanned", color=discord.Color(0xff9000))
         embed.set_author(name="{0.name}#{0.discriminator} (ID {0.id})".format(user), icon_url=get_user_avatar(user))
@@ -443,7 +443,7 @@ class NabBot(commands.Bot):
         guilds = self.get_user_guilds(user_id)
         ret = []
         for guild in guilds:
-            member = guild.get_member(user_id)  # type: discord.Member
+            member: discord.Member = guild.get_member(user_id)
             if member.guild_permissions.administrator:
                 ret.append(guild)
         return ret
@@ -535,7 +535,7 @@ class NabBot(commands.Bot):
         tibia_servers_dict_temp = {}
         try:
             c.execute("SELECT server_id, value FROM server_properties WHERE name = 'world' ORDER BY value ASC")
-            result = c.fetchall()  # type: Dict
+            result: Dict = c.fetchall()
             del self.tracked_worlds_list[:]
             if len(result) > 0:
                 for row in result:

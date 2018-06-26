@@ -260,7 +260,7 @@ class Tracking:
                 # This server doesn't have watch list enabled
                 await asyncio.sleep(0.1)
                 continue
-            watched_channel = self.bot.get_channel(watched_channel_id)  # type: discord.TextChannel
+            watched_channel: discord.TextChannel = self.bot.get_channel(watched_channel_id)
             if watched_channel is None:
                 # This server's watched channel is not available to the bot anymore.
                 await asyncio.sleep(0.1)
@@ -556,7 +556,7 @@ class Tracking:
 
         skipped = []
         updated = []
-        added = []  # type: List[Character]
+        added: List[Character] = []
         existent = []
         for char in chars:
             # Skip chars in non-tracked worlds
@@ -702,7 +702,7 @@ class Tracking:
 
         skipped = []
         updated = []
-        added = []  # type: List[Character]
+        added: List[Character] = []
         existent = []
         for char in chars:
             # Skip chars in non-tracked worlds
@@ -811,7 +811,7 @@ class Tracking:
 
     @checks.is_in_tracking_world()
     @commands.command(aliases=["i'mnot"])
-    async def imnot(self, ctx, *, name):
+    async def imnot(self, ctx: NabCtx, *, name):
         """Removes a character assigned to you.
 
         All registered level ups and deaths will be lost forever."""
@@ -858,7 +858,7 @@ class Tracking:
 
     @commands.command()
     @checks.is_tracking_world()
-    async def online(self, ctx):
+    async def online(self, ctx: NabCtx):
         """Tells you which users are online on Tibia.
 
         This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated."""
@@ -909,7 +909,7 @@ class Tracking:
 
     @commands.command(name="searchteam", aliases=["whereteam", "findteam"], usage="<params>")
     @checks.is_tracking_world()
-    async def search_team(self, ctx, *, params=None):
+    async def search_team(self, ctx: NabCtx, *, params=None):
         """Searches for a registered character that meets the criteria
 
         There are 3 ways to use this command:
@@ -919,7 +919,7 @@ class Tracking:
         - Show characters in a level range. (`searchteam <min>,<max>`)
 
         Online characters are shown first on the list, they also have an icon."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -1043,7 +1043,7 @@ class Tracking:
     @checks.is_admin()
     @checks.is_tracking_world()
     @commands.group(invoke_without_command=True, aliases=["watchlist", "huntedlist"], case_insensitive=True)
-    async def watched(self, ctx, *, name="watched-list"):
+    async def watched(self, ctx: NabCtx, *, name="watched-list"):
         """Sets the watched list channel for this server
 
         Creates a new text channel for the watched list to be posted.
@@ -1073,7 +1073,7 @@ class Tracking:
         if watched_channel is not None:
             await ctx.send(f"This server already has a watched list channel: {watched_channel.mention}")
             return
-        permissions = ctx.channel.permissions_for(ctx.me)  # type: discord.Permissions
+        permissions = ctx.bot_permissions
         if not permissions.manage_channels:
             await ctx.send("I need to have `Manage Channels` permissions to use this command.")
         try:
@@ -1099,7 +1099,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="add", aliases=["addplayer", "addchar"], usage="<name>[,reason]")
-    async def watched_add(self, ctx, *, params=None):
+    async def watched_add(self, ctx: NabCtx, *, params=None):
         """Adds a character to the watched list.
 
         A reason can be specified by adding it after the character's name, separated by a comma."""
@@ -1162,7 +1162,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="addguild", usage="<name>[,reason]")
-    async def watched_addguild(self, ctx, *, params=None):
+    async def watched_addguild(self, ctx: NabCtx, *, params=None):
         """Adds an entire guild to the watched list.
 
         Guilds are displayed in the watched list as a group."""
@@ -1222,7 +1222,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="info", aliases=["details", "reason"])
-    async def watched_info(self, ctx, *, name: str):
+    async def watched_info(self, ctx: NabCtx, *, name: str):
         """Shows information about a watched list entry.
 
         This shows who added the player, when, and if there's a reason why they were added."""
@@ -1251,7 +1251,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="infoguild", aliases=["detailsguild", "reasonguild"])
-    async def watched_infoguild(self, ctx, *, name: str):
+    async def watched_infoguild(self, ctx: NabCtx, *, name: str):
         """"Shows details about a guild entry in the watched list.
 
         This shows who added the player, when, and if there's a reason why they were added."""
@@ -1280,7 +1280,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="list")
-    async def watched_list(self, ctx):
+    async def watched_list(self, ctx: NabCtx):
         """Shows a list of all watched characters
 
         Note that this lists all characters, not just online characters."""
@@ -1309,7 +1309,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="listguilds", aliases=["guilds", "guildlist"])
-    async def watched_list_guild(self, ctx):
+    async def watched_list_guild(self, ctx: NabCtx):
         """Shows a list of all watched characters
 
         Note that this lists all characters, not just online characters."""
@@ -1338,7 +1338,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="remove", aliases=["removeplayer", "removechar"])
-    async def watched_remove(self, ctx, *, name=None):
+    async def watched_remove(self, ctx: NabCtx, *, name=None):
         """Removes a character from the watched list."""
         if name is None:
             ctx.send("You need to tell me the name of the person you want to remove from the list.")
@@ -1376,7 +1376,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="removeguild")
-    async def watched_removeguild(self, ctx, *, name=None):
+    async def watched_removeguild(self, ctx: NabCtx, *, name=None):
         """Removes a guild from the watched list."""
         if name is None:
             ctx.send("You need to tell me the name of the guild you want to remove from the list.")
