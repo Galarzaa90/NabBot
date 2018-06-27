@@ -86,7 +86,7 @@ class NabCtx(commands.Context):
         If the guild is in the lite_guilds list, the context is in lite mode.
         If the guild is in private message, and the message author is in at least ONE guild that is not in lite_guilds,
         then context is not lite"""
-        if self.guild is None:
+        if self.guild is not None:
             return self.guild.id in config.lite_servers
         if self.is_private:
             for g in self.bot.get_user_guilds(self.author.id):

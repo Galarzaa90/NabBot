@@ -68,12 +68,12 @@ class Loot:
         - Must be a screenshot of inventory windows (backpacks, depots, etc).
         - Have the original size, the image can't be scaled up or down, however it can be cropped.
         - The image must show the complete slot.
-        - JPG images are usually not recognized
+        - JPG images are usually not recognized.
         - PNG images with low compression settings take longer to be scanned or aren't detected at all.
 
         The bot shows the total loot value and a list of the items detected, separated into the NPC that buy them.
         """
-        if ctx.author.id in self.processing_users and ctx.author.id not in self.processing_users:
+        if ctx.author.id in self.processing_users and not checks.is_owner_check(ctx):
             await ctx.send("I'm already scanning an image for you! Wait for me to finish that one.")
             return
 
