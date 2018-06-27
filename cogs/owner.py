@@ -18,7 +18,7 @@ from utils.messages import *
 from utils.tibia import *
 
 req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
-dpy_commit = re.compile(r"a\d+\+g([\w]+)")
+dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")
 
 
 class Owner:
@@ -605,8 +605,12 @@ class Owner:
         discordpy_version = pkg_resources.get_distribution("discord.py").version
         m = dpy_commit.search(discordpy_version)
         if m:
-            discordpy_url = f"https://github.com/Rapptz/discord.py/commit/{m.group(1)}"
-            dpy = f"[v{discordpy_version}]({discordpy_url})"
+            revision, commit = m.groups()
+            is_valid = int(revision) >= self.bot.__min_discord__
+            discordpy_url = f"https://github.com/Rapptz/discord.py/commit/{commit}"
+            dpy = f"{ctx.tick(is_valid)}[v{discordpy_version}]({discordpy_url})"
+            if not is_valid:
+                dpy += f"\n`{self.bot.__min_discord__ - int(revision)} commits behind`"
         else:
             dpy = f"v{discordpy_version}"
 

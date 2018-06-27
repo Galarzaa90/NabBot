@@ -10,7 +10,8 @@
     - Level up and deaths emojis.
 - Increased /loot scanning speed.
 - Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.
-- Command changes:
+- `/version` now checks if the required minimum commit version of discord.py is being used.
+- Command names and aliases changes:
     - `/debug`: renamed to `/eval`.
     - `/help`: Alias `/commands` added.
 
