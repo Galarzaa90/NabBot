@@ -7,7 +7,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils.config import config
 from utils.context import NabCtx
-from utils.general import join_list, FIELD_VALUE_LIMIT, average_color
+from utils.general import join_list, FIELD_VALUE_LIMIT, average_color, is_numeric
 from utils.messages import split_message
 from utils.pages import Pages, CannotPaginate
 from utils.tibia import get_map_area
@@ -89,12 +89,32 @@ class TibiaWiki:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.command()
-    async def imbuement(self, ctx: NabCtx, *, name: str):
+    @commands.command(usage="<name>[,price1[,price2[,price3]]][,tokenprice]")
+    async def imbuement(self, ctx: NabCtx, *, params: str):
+        """Displays information about an imbuement.
+
+        You can optionally provide prices for the materials, in the order of the tier they belong to.
+        Additionally, for Vampirism, Void and Strike imbuements, you can provide the price for gold tokens.
+
+        The total cost will be calculated, as well as the hourly cost.
+        If applicable, it will show the cheapest way to get it using gold tokens.
+        """
         permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
+        params = params.split(",")
+        if len(params) > 5:
+            await ctx.send(f"{ctx.tick(False)} Invalid syntax. The correct syntax is: `{ctx.usage}`.")
+            return
+
+        try:
+            prices = [int(p) for p in params[1:]]
+        except ValueError:
+            await ctx.send(f"{ctx.tick(False)} Invalid syntax. The correct syntax is: `{ctx.usage}`.")
+            return
+
+        name = params[0]
 
         imbuement = get_imbuement(name)
         if imbuement is None:
@@ -106,7 +126,7 @@ class TibiaWiki:
             await ctx.send("I couldn't find that imbuement, maybe you meant one of these?", embed=embed)
             return
 
-        embed = self.get_imbuement_embed(ctx, imbuement, ctx.long)
+        embed = self.get_imbuement_embed(ctx, imbuement, ctx.long, prices)
 
         # Attach imbuement's image only if the bot has permissions
         permissions = ctx.bot_permissions
@@ -493,7 +513,7 @@ class TibiaWiki:
         return embed
 
     @staticmethod
-    def get_imbuement_embed(ctx: NabCtx, imbuement, long):
+    def get_imbuement_embed(ctx: NabCtx, imbuement, long, prices):
         """Gets the item embed to show in /item command"""
         embed = discord.Embed(title=imbuement["name"], url=get_article_url(imbuement["name"]))
         embed.set_author(name="TibiaWiki",
@@ -501,9 +521,73 @@ class TibiaWiki:
                          url=get_article_url(imbuement["name"]))
         embed.add_field(name="Effect", value=imbuement["effect"])
         materials = ""
-        for material in imbuement["materials"]:
-            materials += "\nx{amount} {name}".format(**material)
-        embed.add_field(name="Materials", value=materials)
+        if not prices:
+            embed.set_footer(text=f"Provide material prices to calculate costs."
+                                  f" More info: {ctx.clean_prefix}help {ctx.invoked_with}")
+        elif len(prices) < len(imbuement["materials"]):
+            embed.set_footer(text="Not enough material prices provided for this tier.")
+            prices = []
+        for i, material in enumerate(imbuement["materials"]):
+            price = ""
+            if prices:
+                price = f" ({prices[i]:,} gold each)"
+            materials += "\nx{amount} {name}{price}".format(**material, price=price)
+        if prices:
+            fees = [5000, 25000, 100000]  # Gold fees for each tier
+            fees_100 = [15000, 55000, 150000]  # Gold fees for each tier with 100% chance
+            tiers = {"Basic": 0, "Intricate": 1, "Powerful": 2}  # Tiers order
+            tokens = [2, 4, 6]  # Token cost for materials of each tier
+            tier = tiers[imbuement["tier"]]  # Current tier
+            token_imbuements = ["Vampirism", "Void", "Strike"]  # Imbuements that can be bought with gold tokens
+
+            tier_prices = []  # The total materials cost for each tier
+            materials_cost = 0  # The cost of all materials for the current tier
+            for m, p in zip(imbuement["materials"], prices):
+                materials_cost += m["amount"] * p
+                tier_prices.append(materials_cost)
+
+            def parse_prices(_tier: int, _materials: int):
+                return f"**Materials:** {_materials:,} gold.\n" \
+                       f"**Total:** {_materials+fees[_tier]:,} gold | " \
+                       f"{(_materials+fees[_tier])/20:,.0f} gold/hour\n" \
+                       f"**Total  (100% chance):** {_materials+fees_100[_tier]:,} gold | " \
+                       f"{(_materials+fees_100[_tier])/20:,.0f} gold/hour"
+            # If no gold token price was provided or the imbuement type is not applicable, just show material cost
+            if len(prices)-1 <= tier or imbuement["type"] not in token_imbuements:
+                embed.add_field(name="Materials", value=materials)
+                embed.add_field(name="Cost", value=parse_prices(tier, materials_cost), inline=False)
+                if imbuement["type"] in token_imbuements:
+                    embed.set_footer(text="Add gold token price at the end to find the cheapest option.")
+                return embed
+            token_price = prices[tier+1]  # Gold token's price
+            possible_tokens = "2" if tokens[tier] == 2 else f"2-{tokens[tier]}"
+            embed.add_field(name="Materials", value=f"{materials}\n――――――\n"
+                                                    f"{possible_tokens} Gold Tokens ({token_price:,} gold each)")
+            token_cost = 0  # The total cost of the part that will be bought with tokens
+            cheapeast_tier = -1  # The tier which materials are more expensive than gold tokens.
+            for i in range(tier+1):
+                _token_cost = token_price*tokens[i]
+                if _token_cost < tier_prices[i]:
+                    token_cost = _token_cost
+                    cheapeast_tier = i
+            # Using gold tokens is never cheaper.
+            if cheapeast_tier == -1:
+                embed.add_field(name="Cost", value=f"Getting the materials is cheaper.\n\n"
+                                                   f"{parse_prices(tier, materials_cost)}",
+                                inline=False)
+            # Buying everything with gold tokens is cheaper
+            elif cheapeast_tier == tier:
+                embed.add_field(name="Cost", value=f"Getting all materials with gold tokens is cheaper.\n\n"
+                                                   f"{parse_prices(tier, token_cost)}",
+                                inline=False)
+            else:
+                total_cost = token_cost+tier_prices[cheapeast_tier+1]-tier_prices[cheapeast_tier]
+                embed.add_field(name="Cost", value=f"Getting the materials for **{list(tiers.keys())[cheapeast_tier]} "
+                                                   f"{imbuement['type']}** with gold tokens and buying the rest is "
+                                                   f"cheaper.\n\n{parse_prices(tier, total_cost)}",
+                                inline=False)
+        else:
+            embed.add_field(name="Materials", value=materials)
         return embed
 
     @staticmethod
