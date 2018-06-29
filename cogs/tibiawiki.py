@@ -7,12 +7,12 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils.config import config
 from utils.context import NabCtx
-from utils.general import join_list, FIELD_VALUE_LIMIT
+from utils.general import join_list, FIELD_VALUE_LIMIT, average_color
 from utils.messages import split_message
 from utils.pages import Pages, CannotPaginate
 from utils.tibia import get_map_area
 from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
-    get_key, search_key, get_rashid_info, get_mapper_link, get_bestiary_classes, get_bestiary_creatures
+    get_key, search_key, get_rashid_info, get_mapper_link, get_bestiary_classes, get_bestiary_creatures, get_imbuement
 
 
 class TibiaWiki:
@@ -88,6 +88,36 @@ class TibiaWiki:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
+
+    @commands.command()
+    async def imbuement(self, ctx: NabCtx, *, name: str):
+        permissions = ctx.bot_permissions
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+
+        imbuement = get_imbuement(name)
+        if imbuement is None:
+            await ctx.send("I couldn't find an imbuement with that name.")
+            return
+
+        if type(imbuement) is list:
+            embed = discord.Embed(title="Suggestions", description="\n".join(imbuement))
+            await ctx.send("I couldn't find that imbuement, maybe you meant one of these?", embed=embed)
+            return
+
+        embed = self.get_imbuement_embed(ctx, imbuement, ctx.long)
+
+        # Attach imbuement's image only if the bot has permissions
+        permissions = ctx.bot_permissions
+        if permissions.attach_files or imbuement["image"] != 0:
+            filename = re.sub(r"[^A-Za-z0-9]", "", imbuement["name"]) + ".gif"
+            embed.set_thumbnail(url=f"attachment://{filename}")
+            main_color = await ctx.execute_async(average_color, imbuement["image"])
+            embed.color = discord.Color.from_rgb(*main_color)
+            await ctx.send(file=discord.File(imbuement["image"], f"{filename}"), embed=embed)
+        else:
+            await ctx.send(embed=embed)
 
     @commands.command(aliases=["itemprice"])
     async def item(self, ctx: NabCtx, *, name: str):
@@ -245,6 +275,8 @@ class TibiaWiki:
         if permissions.attach_files and monster["image"] != 0:
             filename = re.sub(r"[^A-Za-z0-9]", "", monster["name"]) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
+            main_color = await ctx.execute_async(average_color, monster["image"])
+            embed.color = discord.Color.from_rgb(*main_color)
             await ctx.send(file=discord.File(monster["image"], f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
@@ -458,6 +490,20 @@ class TibiaWiki:
             embed.add_field(name="Origin", value=key["origin"])
         if key.get("notes") is not None:
             embed.add_field(name="Notes/Use", value=key["notes"])
+        return embed
+
+    @staticmethod
+    def get_imbuement_embed(ctx: NabCtx, imbuement, long):
+        """Gets the item embed to show in /item command"""
+        embed = discord.Embed(title=imbuement["name"], url=get_article_url(imbuement["name"]))
+        embed.set_author(name="TibiaWiki",
+                         icon_url=WIKI_ICON,
+                         url=get_article_url(imbuement["name"]))
+        embed.add_field(name="Effect", value=imbuement["effect"])
+        materials = ""
+        for material in imbuement["materials"]:
+            materials += "\nx{amount} {name}".format(**material)
+        embed.add_field(name="Materials", value=materials)
         return embed
 
     @staticmethod

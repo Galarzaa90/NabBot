@@ -1,13 +1,15 @@
 import datetime as dt
+import io
 import logging
 import os
 import re
 import time
 from calendar import timegm
 from logging.handlers import TimedRotatingFileHandler
-from typing import Optional, List
+from typing import Optional, List, Union, Tuple
 
 import discord
+from PIL import Image
 from discord.ext import commands
 
 # This is the global online list
@@ -136,6 +138,50 @@ def get_local_timezone() -> int:
     u = time.gmtime(time.mktime(t))
     # UTC Offset
     return (timegm(t) - timegm(u)) / 60 / 60
+
+
+def most_frequent_color(image: Union[Image.Image, bytes]) -> Tuple[int, int, int]:
+    """Gets the most frequent color in an image
+
+    The most frequent color is the color that is found the most times in the image. Ties are handled arbitrarily.
+
+    :param image: The image to check, can be either an Image object or the byte content.
+    :return: A tuple with the RGB components of the most frequent color in the image."""
+    if not isinstance(image, Image.Image):
+        image = Image.open(io.BytesIO(bytearray(image)))
+    w, h = image.size
+    image = image.convert("RGBA")
+    pixels = image.getcolors(w * h)
+    most_frequent_pixel = sorted(pixels, key=lambda p: p[0], reverse=True)
+    for count, (r, g, b, a) in most_frequent_pixel:
+        if a < 125 or (r < 15 and g < 15 and b < 15) or (r > 254 and g > 254 and b > 254):
+            continue
+        return r, g, b
+
+
+def average_color(image: Union[Image.Image, bytes]) -> Tuple[int, int, int]:
+    """Gets the average image's color.
+
+    The average color is the average value of each color component (RGB).
+
+    :param image: The image to check, can be either an Image object or the byte content.
+    :return: A tuple with the RGB components of the average color in the image."""
+    if not isinstance(image, Image.Image):
+        image = Image.open(io.BytesIO(bytearray(image)))
+    image = image.convert("RGBA")
+    pixels = image.getdata()
+
+    rs = []
+    gs = []
+    bs = []
+    for r, g, b, a in pixels:
+        # Skip transparent pixels
+        if a == 0:
+            continue
+        rs.append(r)
+        gs.append(g)
+        bs.append(b)
+    return int(sum(rs) / len(rs)), int(sum(gs) / len(gs)), int(sum(bs) / len(bs))
 
 
 def get_n_weekday(year: int, month: int, weekday: int, n: int) -> Optional[dt.date]:

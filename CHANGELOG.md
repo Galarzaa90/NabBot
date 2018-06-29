@@ -10,6 +10,7 @@
     - Level up and deaths emojis.
 - Increased /loot scanning speed.
 - Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.
+- New `/imbuement` command, shows basic information about an imbuement.
 - `/version` now checks if the required minimum commit version of discord.py is being used.
 - `/monster` now shows occurrence, kills required and charm points given.
 - Command name and aliases changes:

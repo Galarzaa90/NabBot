@@ -13,9 +13,9 @@ from nabbot import NabBot
 from utils import checks
 from utils.context import NabCtx
 from utils.general import *
-from utils.general import get_user_avatar
 from utils.messages import *
 from utils.tibia import *
+from utils.tibiawiki import *
 
 req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")

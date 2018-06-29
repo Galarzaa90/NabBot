@@ -146,6 +146,35 @@ def get_item(name):
         c.close()
 
 
+def get_imbuement(name):
+    """Returns a dictionary containing an item's info, if no exact match was found, it returns a list of suggestions.
+
+    The dictionary has the following keys: name, look_text, npcs_sold*, value_sell, npcs_bought*, value_buy.
+        *npcs_sold and npcs_bought are list, each element is a dictionary with the keys: name, city."""
+
+    # Reading item database
+    c = tibiaDatabase.cursor()
+
+    # Search query
+    c.execute("SELECT * FROM imbuements WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
+    result = c.fetchall()
+    if len(result) == 0:
+        return None
+    elif result[0]["name"].lower() == name.lower() or len(result) == 1:
+        imbuement = result[0]
+    else:
+        return [x['name'] for x in result]
+    try:
+        c.execute("SELECT items.title as name, amount "
+                  "FROM imbuements_materials "
+                  "INNER JOIN items on items.id = imbuements_materials.item_id "
+                  "WHERE imbuement_id = ?", (imbuement["id"],))
+        imbuement["materials"] = c.fetchall()
+        return imbuement
+    finally:
+        c.close()
+
+
 def get_rashid_info() -> Dict[str, Union[str, int]]:
     """Returns a dictionary with rashid's info
 
