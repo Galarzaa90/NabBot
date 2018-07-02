@@ -18,6 +18,7 @@ token.txt
 # Any extra cogs added, except for our example cog
 extra/*.py
 !/extra/example.py
+!/extra/tibiammo.py
 
 # Mkdocs built site
 site/
