@@ -35,14 +35,14 @@ class TibiaMMO:
         return role is not None
 
     @commands.command()
-    async def postguild(self, ctx: NabCtx, guild, invite=None, reddit=None, member: discord.Member=None):
+    async def postguild(self, ctx: NabCtx, guild, invite=None, reddit=None, *, member: discord.Member=None):
         """Creates an advertisement post on the reddit guilds channel
 
         Parameters:
         **guild**: The guild's name, if it has multiple words, surround with quotes.
-        **invite**: Invite link to their discord, if available. Type "" to ignore.
-        **reddit**: The reddit's username of the person to contact. Type "" to ignore.
-        **member**: The discord's username of the person to contact. Type "" to ignore. the Must be in server.
+        **invite**: Invite link to their discord, if available. Type - to ignore.
+        **reddit**: The reddit's username of the person to contact. Type - to ignore.
+        **member**: The discord's username of the person to contact. Type - or leave blank to omit.
         """
         await ctx.message.delete()
         with ctx.typing():
@@ -68,12 +68,12 @@ class TibiaMMO:
                                                       f"({get_character_url(guild.members[0]['name'])})")
         if member is not None:
             embed.add_field(name="Discord contact", value=member.mention)
-        if invite is not None:
+        if not invite or invite != "-":
             invite = f"―――――――――――――――――――――\nDiscord Invite: {invite}"
         else:
             invite = "―――――――――――――――――――――"
 
-        if reddit is not None:
+        if not reddit or reddit != "-":
             embed.add_field(name="Reddit contact", value=f"[u/{reddit}](https://reddit.com/u/{reddit})")
         try:
             await channel.send(invite, embed=embed)
