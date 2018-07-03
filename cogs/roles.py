@@ -5,6 +5,7 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils.context import NabCtx
+from utils.converter import InsensitiveRole
 from utils.pages import CannotPaginate, Pages
 
 
@@ -42,8 +43,9 @@ class Roles:
 
     @commands.guild_only()
     @commands.command()
-    async def roleinfo(self, ctx: NabCtx, *, role: discord.Role):
+    async def roleinfo(self, ctx: NabCtx, *, role: InsensitiveRole):
         """Shows details about a role."""
+        role: discord.Role = role
         embed = discord.Embed(title=role.name, colour=role.colour, timestamp=role.created_at,
                               description=f"**ID** {role.id}")
         embed.add_field(name="Members", value=f"{len(role.members):,}")
@@ -57,7 +59,7 @@ class Roles:
 
     @commands.guild_only()
     @commands.command()
-    async def rolemembers(self, ctx: NabCtx, *, role: discord.Role):
+    async def rolemembers(self, ctx: NabCtx, *, role: InsensitiveRole):
         """Shows a list of members with that role."""
         if role is None:
             await ctx.send("There's no role with that name in here.")
@@ -115,9 +117,6 @@ class Roles:
         except CannotPaginate as e:
             await ctx.send(e)
         return
-
-
-
 
 
 def setup(bot):
