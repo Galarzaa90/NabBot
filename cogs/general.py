@@ -1172,6 +1172,30 @@ class General:
             userDatabase.commit()
 
     @commands.guild_only()
+    @commands.has_permissions(manage_roles=True)
+    @commands.command(nam="permissions", aliases=["perms"])
+    async def permissions(self, ctx: NabCtx, member: discord.Member=None, channel: discord.TextChannel=None):
+        """Shows a role's permissions."""
+        member = member or ctx.author
+        channel = channel or ctx.channel
+        guild_permissions = channel.permissions_for(member)
+        embed = discord.Embed(title=f"Permissions in #{channel.name}", colour=member.colour)
+        embed.set_author(name=member.display_name, icon_url=get_user_avatar(member))
+        allowed = []
+        denied = []
+        for name, value in guild_permissions:
+            name = name.replace('_', ' ').replace('guild', 'server').title()
+            if value:
+                allowed.append(name)
+            else:
+                denied.append(name)
+        if allowed:
+            embed.add_field(name=f"{ctx.tick()}Allowed", value="\n".join(allowed))
+        if denied:
+            embed.add_field(name=f"{ctx.tick(False)}Denied", value="\n".join(denied))
+        await ctx.send(embed=embed)
+
+    @commands.guild_only()
     @commands.command()
     async def quote(self, ctx : NabCtx, message_id: int):
         """Shows a messages by its ID.

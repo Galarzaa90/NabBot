@@ -59,7 +59,7 @@ def is_tracking_world():
     """
     def predicate(ctx):
         if ctx.guild is None:
-            return False
+            raise commands.NoPrivateMessage("This command cannot be used in private messages.")
         return ctx.guild.id in ctx.bot.tracked_worlds
     return commands.check(predicate)
 

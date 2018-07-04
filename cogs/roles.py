@@ -42,8 +42,8 @@ class Roles:
             await ctx.send(e)
 
     @commands.guild_only()
-    @commands.command()
-    async def roleinfo(self, ctx: NabCtx, *, role: InsensitiveRole):
+    @commands.command(name="roleinfo")
+    async def role_info(self, ctx: NabCtx, *, role: InsensitiveRole):
         """Shows details about a role."""
         role: discord.Role = role
         embed = discord.Embed(title=role.name, colour=role.colour, timestamp=role.created_at,
@@ -58,9 +58,10 @@ class Roles:
         await ctx.send(embed=embed)
 
     @commands.guild_only()
-    @commands.command()
-    async def rolemembers(self, ctx: NabCtx, *, role: InsensitiveRole):
+    @commands.command(name="rolemembers")
+    async def role_members(self, ctx: NabCtx, *, role: InsensitiveRole):
         """Shows a list of members with that role."""
+        role: discord.Role = role
         if role is None:
             await ctx.send("There's no role with that name in here.")
             return

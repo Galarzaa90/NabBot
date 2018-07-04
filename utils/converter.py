@@ -13,6 +13,7 @@ class InsensitiveRole(IDConverter):
     1. By ID.
     2. By mention.
     3. By name (case insensitive)."""
+
     async def convert(self, ctx, argument) -> discord.Role:
 
         guild = ctx.guild

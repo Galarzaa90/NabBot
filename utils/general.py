@@ -51,9 +51,9 @@ EMBED_LIMIT = 6000
 
 
 def clean_string(ctx: commands.Context, string: str) -> str:
-    """Turns mentions into plain text
+    """Turns mentions into plain text.
 
-    For message object, there's already a property that does this :method:`discord.Message.clean_content`
+    Works exactly like :func:`Message.clean_content`, except this can be used on any string.
 
     :param ctx: The invocation context
     :param string: The string to clean.
