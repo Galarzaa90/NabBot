@@ -1,4 +1,5 @@
 from discord.ext import commands
+from discord.ext.commands import MissingPermissions
 
 from utils.config import config
 from utils.context import NabCtx
@@ -109,3 +110,20 @@ async def check_guild_permissions(ctx, perms, *, check=all):
 
 async def is_owner_check(ctx):
     return ctx.author.id in config.owner_ids or await ctx.bot.is_owner(ctx.author)
+
+
+def has_guild_permissions(**perms):
+    def predicate(ctx):
+        if ctx.guild is None:
+            raise commands.NoPrivateMessage("This command cannot be used in private messages.")
+
+        permissions = ctx.author.guild_permissions
+
+        missing = [perm for perm, value in perms.items() if getattr(permissions, perm, None) != value]
+
+        if not missing:
+            return True
+
+        raise MissingPermissions(missing)
+
+    return commands.check(predicate)

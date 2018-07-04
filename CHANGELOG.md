@@ -8,9 +8,15 @@
     - Discord presence emojis in `/serverinfo`.
     - Checkbox and cross emojis to show boolean flags.
     - Level up and deaths emojis.
+- Added joinable role feature, called groups:
+    - To create a group: `/group add <name>` (requires `Manage Roles` permission)
+    - To join/leave a group: `/group <name`
+    - To see available groups: `/group list`
+    - To delete a group: `/group remove <name>`
 - Increased /loot scanning speed.
 - Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.
 - New `/imbuement` command, shows basic information about an imbuement and if prices are provided, it calculates costs.
+- New `/permissions` command, shows the permissions for a member in a channel.
 - `/version` now checks if the required minimum commit version of discord.py is being used.
 - `/monster` now shows occurrence, kills required and charm points given.
 - Command name and aliases changes:

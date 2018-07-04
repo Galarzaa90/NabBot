@@ -204,6 +204,7 @@ class NabCtx(commands.Context):
 
         reactions = self.check_reactions if use_checkmark else self.yes_no_reactions
         for emoji in reactions:
+            emoji = emoji.replace("<", "").replace(">", "")
             await message.add_reaction(emoji)
 
         def check_react(reaction: discord.Reaction, user: discord.User):
