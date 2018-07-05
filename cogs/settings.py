@@ -280,7 +280,7 @@ class Settings:
                 if len(message) > 1000:
                     await ctx.send(f"{ctx.tick(False)} This message is too long! {len(message):,}/1000 characters.")
                     return
-                formatted = message.format(guild=ctx.guild, bot=self.bot, owner=ctx.guild.owner, user=ctx.author)
+                formatted = message.format(server=ctx.guild, bot=self.bot, owner=ctx.guild.owner, user=ctx.author)
                 msg = await ctx.send("Do you want to set this as the new message?\n"
                                      "*This is how your message would look if **you** joined.*",
                                      embed=discord.Embed(title="Message Preview", colour=discord.Colour.blurple(),
