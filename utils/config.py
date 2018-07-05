@@ -16,7 +16,6 @@ KEYS = [
     "ask_channel_delete",
     "log_channel_name",
     "lite_servers",
-    "welcome_pm",
     "owner_ids",
     "display_brasilia_time",
     "display_sonora_time",
@@ -75,7 +74,6 @@ class Config:
         self.log_channel_name = "server_log"
         self.command_prefix = ("/", )
         self.lite_servers = []
-        self.welcome_pm = ""
         self.owner_ids = []
         self.extra_cogs = []
         self.display_brasilia_time = True

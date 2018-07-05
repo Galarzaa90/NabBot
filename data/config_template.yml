@@ -28,21 +28,6 @@ lite_servers:
 # Example: extra/twitch.py would be added as 'extra.twitch'
 extra_cogs: []
 
-# The welcome message that is sent to members when they join a discord server with NabBot in it
-# The following keyboards can be used:
-# {user.name} - The joining user's name
-# {user.mention} - The joining user's mention
-# {server.name} - The name of the server the member joined.
-# {owner.name} - The name of the owner of the server.
-# {owner.mention} - A mention to the owner of the server.
-# {bot.name} - The name of the bot
-# {bot.mention} - The name of the bot
-welcome_pm: |
-  Welcome to **{server.name}**! I'm **{bot.name}**, to learn more about my commands type `/help`
-
-  Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking
-  your level ups and deaths!
-
 # Owners can use mods commands and more sensible commands like /shutdown and restart
 # By default, the bot's application owner is always considered, this array allows adding extra owners
 owner_ids:

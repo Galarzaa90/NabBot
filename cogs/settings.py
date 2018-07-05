@@ -15,7 +15,8 @@ SETTINGS = {
     "levelschannel": {"title": "🌟☠ Tracking channel", "check":
         lambda ctx: ctx.guild.id not in config.lite_servers},
     "prefix": {"title": "❗ Prefix"},
-    # "welcome": {"title": "💬 Welcome message"},
+    "welcome": {"title": "👋 Welcome message"},
+    "welcomechannel": {"title": "💬 Welcome channel"},
     "askchannel": {"title": "🤖 Command channel"},
     "commandsonly": {"title": "🗑 Command channel - Delete other"},
 }
@@ -248,6 +249,102 @@ class Settings:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used.")
 
     @checks.is_admin()
+    @settings.command(name="welcome")
+    async def settings_welcome(self, ctx: NabCtx, *, message: str = None):
+        """Changes the message new members receive when joining.
+
+        You can use formatting to show dynamic values:
+        - {server} -> The server's name.
+        - {server} -> The server's owner name
+        - {server} -> Mention to the server's owner.
+        - {owner} -> The name of the server owner
+        - {owner.mention} -> Mention the server owner.
+        - {user} -> The name of the user that joined.
+        - {user.mention} -> Mention the user that joined.
+        - {bot} -> The name of the bot
+        - {bot.mention} -> Mention the bot.
+
+        Be sure to change the welcome channel too."""
+        current_message = get_server_property(ctx.guild.id, "welcome")
+        if message is None:
+            await self.show_info_embed(ctx, current_message, "Any text", "message/disable")
+            return
+        if message.lower() == "disable":
+            if current_message is None:
+                await ctx.send("Welcome messages are already disabled.")
+                return
+            msg = await ctx.send("Are you sure you want to disable welcome messages?")
+            new_value = None
+        else:
+            try:
+                if len(message) > 1000:
+                    await ctx.send(f"{ctx.tick(False)} This message is too long! {len(message):,}/1000 characters.")
+                    return
+                formatted = message.format(guild=ctx.guild, bot=self.bot, owner=ctx.guild.owner, user=ctx.author)
+                msg = await ctx.send("Do you want to set this as the new message?\n"
+                                     "*This is how your message would look if **you** joined.*",
+                                     embed=discord.Embed(title="Message Preview", colour=discord.Colour.blurple(),
+                                                         description=formatted))
+                new_value = message
+            except KeyError as e:
+                await ctx.send(f"{ctx.tick(False)} Unknown keyword {e}.")
+                return
+        confirm = await ctx.react_confirm(msg, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+        set_server_property(ctx.guild.id, "welcome", new_value)
+        if new_value is None:
+            await ctx.send(f"{ctx.tick(True)} The welcome message has been disabled.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} Welcome message updated.")
+
+    @checks.is_admin()
+    @settings.command(name="welcomechannel")
+    async def settings_welcomechannel(self, ctx: NabCtx, channel: str = None):
+        """Changes the channel where new members are welcomed.
+
+        A welcome message must be set for this setting to work.
+        If the channel becomes unavailable, private messages will be used.
+
+        Note that private messages are not reliable since new users can have them disabled before joining.
+        To disable this, you must disable welcome messages using `settings welcome`.
+        """
+        current_channel_id = get_server_property(ctx.guild.id, "welcome_channel", is_int=True)
+        if channel is None:
+            current_value = self.get_current_channel(ctx, current_channel_id, pm_fallback=True)
+            await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `private`.", "channel/private")
+            return
+        if channel.lower() == "private":
+            if current_channel_id is None:
+                await ctx.send("Welcome messages are already private.")
+                return
+            message = await ctx.send(f"Are you sure you want to make welcome messages private?")
+            new_value = None
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new welcome channel?")
+            new_value = new_channel.id
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        set_server_property(ctx.guild.id, "welcome_channel", new_value)
+        if new_value is None:
+            await ctx.send(f"{ctx.tick(True)} Welcome messages will be sent privately.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for welcome messages.")
+
+    @checks.is_admin()
     @settings.command(name="newschannel")
     async def settings_newschannel(self, ctx: NabCtx, channel: str=None):
         """Changes the channel where Tibia news are announced.
@@ -370,7 +467,7 @@ class Settings:
         if isinstance(error, commands.BadArgument):
             await ctx.send(str(error))
 
-    def get_current_channel(self, ctx: NabCtx, current_channel_id):
+    def get_current_channel(self, ctx: NabCtx, current_channel_id, pm_fallback=False):
         top_channel = self.bot.get_top_channel(ctx.guild, True)
         current_channel = ctx.guild.get_channel(current_channel_id)
         if current_channel:
@@ -378,7 +475,10 @@ class Settings:
         else:
             perms = discord.Permissions()
         ok = False
-        if current_channel_id == 0:
+        if current_channel_id is None and pm_fallback:
+            current_value = "Private Messages"
+            ok = True
+        elif current_channel_id == 0:
             current_value = "Disabled."
             ok = True
         elif current_channel_id is None:
@@ -392,9 +492,11 @@ class Settings:
             ok = True
 
         if not ok:
+            if pm_fallback:
+                current_value += " I will send direct messages meanwhile."
             # This condition should be impossible to meet, because if the bot can't send messages on any channel,
             # it wouldn't be able to reply to this command in the first place ¯\_(ツ)_/¯
-            if top_channel is None:
+            elif top_channel is None:
                 current_value += " I have no channel to use."
             else:
                 current_value += f" I will use {top_channel.mention} meanwhile."
