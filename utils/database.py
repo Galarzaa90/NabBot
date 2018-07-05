@@ -19,7 +19,7 @@ else:
     shutil.copyfile("data/loot_template.db", LOOTDB)
     lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 21
+DB_LASTVERSION = 22
 
 
 def init_database():
@@ -250,7 +250,15 @@ def init_database():
             c.execute("""CREATE TABLE joinable_roles(
                 server_id INTEGER NOT NULL,
                 role_id INTEGER NOT NULL
-                );""")
+            );""")
+            db_version += 1
+        if db_version == 21:
+            # Autoroles
+            c.execute("""CREATE TABLE auto_roles(
+                server_id INTEGER NOT NULL,
+                role_id INTEGER NOT NULL,
+                guild TEXT NOT NULL
+            );""")
             db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))

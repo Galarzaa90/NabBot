@@ -13,6 +13,7 @@ from typing import List, Union, Dict, Optional
 import aiohttp
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
+from discord.ext import commands
 
 from utils.config import config
 from utils.database import userDatabase, tibiaDatabase
@@ -362,7 +363,7 @@ class Guild:
         return tibia_guild
 
 
-async def get_character(name, tries=5) -> Optional[Character]:
+async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Character]:
     """Fetches a character from TibiaData, parses and returns a Character object
 
     The character object contains all the information available on Tibia.com
@@ -448,6 +449,8 @@ async def get_character(name, tries=5) -> Optional[Character]:
             log.info("{0}'s guild was set to {1} from {2} during get_character()".format(character.name,
                                                                                          character.guild["name"],
                                                                                          result["guild"]))
+            if bot is not None:
+                bot.dispatch("character_change", character.owner)
     return character
 
 

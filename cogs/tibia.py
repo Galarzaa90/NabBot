@@ -1439,7 +1439,7 @@ class Tibia:
             return
 
         try:
-            char = await get_character(name)
+            char = await get_character(name, bot=self.bot)
         except NetworkError:
             await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
             return

@@ -1,4 +1,6 @@
-from typing import List
+import asyncio
+from contextlib import closing
+from typing import List, Dict
 
 import discord
 from discord.ext import commands
@@ -8,7 +10,9 @@ from utils import checks
 from utils.context import NabCtx
 from utils.converter import InsensitiveRole
 from utils.database import userDatabase
+from utils.general import log, get_user_avatar
 from utils.pages import CannotPaginate, Pages
+from utils.tibia import get_guild, NetworkError
 
 
 class Roles:
@@ -32,6 +36,203 @@ class Roles:
         exists = list(result)
         if exists:
             userDatabase.execute("DELETE FROM joinable_roles WHERE role_id = ?", (role.id,))
+
+    async def on_character_change(self, user_id: int):
+        try:
+            with closing(userDatabase.cursor()) as c:
+                guilds_raw = c.execute("SELECT guild FROM chars WHERE user_id = ?", (user_id,)).fetchall()
+                rules_raw = c.execute("SELECT * FROM auto_roles ORDER BY server_id").fetchall()
+                # Flatten list of guilds
+                guilds = set(g['guild'] for g in guilds_raw)
+
+                # Flatten rules
+                rules = {}
+                for rule in rules_raw:
+                    server_id = rule["server_id"]
+                    if server_id not in rules:
+                        rules[rule["server_id"]] = []
+                    rules[server_id].append((rule["role_id"], rule["guild"]))
+                for server, rules in rules.items():
+                    guild: discord.Guild = self.bot.get_guild(server)
+                    if guild is None:
+                        continue
+                    member: discord.Member = guild.get_member(user_id)
+                    if member is None:
+                        continue
+
+                    all_roles = set()
+                    to_add = set()
+                    for role_id, tibia_guild in rules:
+                        role: discord.Role = discord.utils.get(guild.roles, id=role_id)
+                        if role is None:
+                            continue
+                        all_roles.add(role)
+                        if (tibia_guild == "*" and guilds) or tibia_guild in guilds:
+                            to_add.add(role)
+                    to_remove = all_roles-to_add
+                    try:
+                        before_roles = set(member.roles)
+                        await member.remove_roles(*to_remove, reason="Automatic roles")
+                        await member.add_roles(*to_add, reason="Automatic roles")
+                        # A small delay is needed so member.roles is updated with the added possible added roles.
+                        await asyncio.sleep(0.15)
+                        after_roles = set(member.roles)
+
+                        new_roles = after_roles-before_roles
+                        removed_roles = before_roles-after_roles
+                        if new_roles or removed_roles:
+                            embed = discord.Embed(colour=discord.Colour.dark_blue(), title="Autorole changes")
+                            embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member),
+                                             icon_url=get_user_avatar(member))
+                            if new_roles:
+                                embed.add_field(name="Added roles", value=", ".join(r.mention for r in new_roles))
+                            if removed_roles:
+                                embed.add_field(name="Removed roles", value=", ".join(r.mention for r in removed_roles))
+                            await self.bot.send_log_message(guild, embed=embed)
+                    except discord.HTTPException:
+                        pass
+        except Exception:
+            log.exception("Event: character_change")
+
+    @checks.has_guild_permissions(manage_roles=True)
+    @commands.guild_only()
+    @commands.group(case_insensitive=True)
+    async def autorole(self, ctx):
+        """Autorole commands"""
+        pass
+
+    @checks.has_guild_permissions(manage_roles=True)
+    @commands.guild_only()
+    @autorole.command(name="add")
+    async def autorole_add(self, ctx: NabCtx, role: InsensitiveRole, *, guild: str):
+        """Creates a new autorole rule.
+
+        Note that current members will be updated until their characters or guilds change."""
+        role: discord.Role = role
+        name = guild
+        if guild != "*":
+            try:
+                guild = await get_guild(name)
+                if guild is None:
+                    await ctx.send(f"There's no guild named `{name}`")
+                    return
+                name = guild.name
+            except NetworkError:
+                await ctx.send("I'm having network issues, try again later.")
+                return
+
+        result = userDatabase.execute("SELECT * FROM auto_roles WHERE role_id = ? and guild LIKE ?", (role.id, name))
+        exists = list(result)
+        if exists:
+            await ctx.send(f"{ctx.tick(False)} Autorole rule already exists.")
+            return
+
+        # Can't make autorole rule for role higher than the owner's top role
+        top_role: discord.Role = ctx.author.top_role
+        if role >= top_role:
+            await ctx.send(f"{ctx.tick(False)} You can't create an automatic role with a role higher or equals "
+                           f"than your highest.")
+            return
+
+        if name != "*":
+            msg = await ctx.send(f"Members of guild `{name}` will automatically receive the `{role.name}` role. "
+                                 f"Is this correct?")
+        else:
+            msg = await ctx.send(f"All users with registered characters will automatically receive receive the "
+                                 f"`{role.name}` role. Is this correct?")
+        confirm = await ctx.react_confirm(msg, delete_after=True, timeout=60)
+        if not confirm:
+            return
+
+        userDatabase.execute("INSERT INTO auto_roles(server_id, role_id, guild) VALUES(?,?, ?)", (ctx.guild.id, role.id,
+                                                                                                  name))
+        await ctx.send(f"{ctx.tick()} Autorole rule created.")
+
+    @checks.has_guild_permissions(manage_roles=True)
+    @commands.guild_only()
+    @autorole.command(name="list")
+    async def autorole_list(self, ctx: NabCtx):
+        """Shows a list of available groups."""
+        result = userDatabase.execute("SELECT role_id, guild FROM auto_roles WHERE server_id = ?", (ctx.guild.id, ))
+        rules = list(result)
+        if not rules:
+            await ctx.send(f"{ctx.tick(False)} This server has no autorole rules.")
+            return
+
+        flat_rules = [(r['role_id'], r['guild']) for r in rules]
+
+        entries = []
+        for role_id, guild in flat_rules:
+            role: discord.Role = discord.utils.get(ctx.guild.roles, id=role_id)
+            if role is None:
+                continue
+            entries.append(f"{role.mention} — `{guild}`")
+
+        if not entries:
+            await ctx.send(f"{ctx.tick(False)} This server has no autorole rules.")
+            return
+
+        per_page = 20 if ctx.long else 5
+        pages = Pages(ctx, entries=entries, per_page=per_page)
+        pages.embed.title = "Autorole rules"
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+    @checks.has_guild_permissions(manage_roles=True)
+    @commands.guild_only()
+    @commands.cooldown(1, 3600, commands.BucketType.guild)
+    @autorole.command(name="refresh")
+    async def autorole_refresh(self, ctx: NabCtx):
+        """Triggers a refresh on all members.
+
+        This will apply existing rules to all members.
+        Note that guild changes from members that haven't been online won't be detected.
+        Deleted rules won't have any effect.
+
+        This command can only be used once per server every hour.
+        """
+        msg = await ctx.send("This will make me check the guilds of all registered characters to apply existing rules."
+                             "\nNote that character with outdated information won't be updated until they are online "
+                             "again or checked using `whois`\nAre you sure you want this?.")
+        confirm = await ctx.react_confirm(msg, timeout=60, delete_after=True)
+        if not confirm:
+            ctx.command.reset_cooldown(ctx)
+            return
+        msg: discord.Message = await ctx.send("Dispatching events...")
+        for member in ctx.guild.members:
+            self.bot.dispatch("character_change", member.id)
+        try:
+            await msg.edit(content=f"{ctx.tick()} Refresh done, roles will be updated shortly.")
+        except discord.HTTPException:
+            await ctx.send(f"{ctx.tick()} Refresh done, roles will be updated shortly.")
+            pass
+
+
+    @checks.has_guild_permissions(manage_roles=True)
+    @commands.guild_only()
+    @autorole.command(name="remove", aliases=["delete"])
+    async def autorole_remove(self, ctx: NabCtx, role: InsensitiveRole, *, guild: str):
+        """Removes an autorole rule.
+
+        Note that members that currently have the role won't be affected."""
+        group: discord.Role = role
+        result = userDatabase.execute("SELECT * FROM auto_roles WHERE role_id = ? and guild LIKE ?", (group.id, guild))
+        exists = list(result)
+        if not exists:
+            await ctx.send(f"{ctx.tick(False)} That rule doesn't exist.")
+            return
+
+        # Can't modify role higher than the owner's top role
+        top_role: discord.Role = ctx.author.top_role
+        if group >= top_role:
+            await ctx.send(f"{ctx.tick(False)} You can't delete a role rule for a role higher than yours.")
+            return
+
+        await ctx.send(f"{ctx.tick()} Auto role rule removed. "
+                       f"Note that the role won't be removed from current members.")
+        userDatabase.execute("DELETE FROM auto_roles WHERE role_id = ? AND guild LIKE ?", (group.id, guild))
 
     @commands.guild_only()
     @commands.group(invoke_without_command=True, case_insensitive=True)

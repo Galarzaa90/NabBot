@@ -13,6 +13,9 @@
     - To join/leave a group: `/group <name`
     - To see available groups: `/group list`
     - To delete a group: `/group remove <name>`
+- Added automatic roles
+    - Roles are assigned based on the guilds of registered characters.
+    - See `help autorole` for more information on commands.
 - Increased /loot scanning speed.
 - Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.
 - New `/imbuement` command, shows basic information about an imbuement and if prices are provided, it calculates costs.

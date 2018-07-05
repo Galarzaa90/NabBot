@@ -159,8 +159,12 @@ class Tracking:
 
                 await asyncio.sleep(config.online_scan_interval)
                 # Get online list for this server
-                world = await get_world(current_world)
-                if world is None:
+                try:
+                    world = await get_world(current_world)
+                    if world is None:
+                        await asyncio.sleep(0.1)
+                        continue
+                except NetworkError:
                     await asyncio.sleep(0.1)
                     continue
                 current_world_online = world.players_online
@@ -190,7 +194,7 @@ class Tracking:
                     # Check for deaths and level ups when removing from online list
                     try:
                         name = offline_char.name
-                        offline_char = await get_character(name)
+                        offline_char = await get_character(name, bot=self.bot)
                     except NetworkError:
                         log.error(f"scan_online_chars: Could not fetch {name}, NetWorkError")
                         continue
@@ -342,7 +346,7 @@ class Tracking:
     async def check_death(self, character):
         """Checks if the player has new deaths"""
         try:
-            char = await get_character(character)
+            char = await get_character(character, bot=self.bot)
             if char is None:
                 # During server save, characters can't be read sometimes
                 return
@@ -389,7 +393,7 @@ class Tracking:
                 log.error("announce_death: no character or character name passed.")
                 return
             try:
-                char = await get_character(char_name)
+                char = await get_character(char_name, bot=self.bot)
             except NetworkError:
                 log.warning("announce_death: couldn't fetch character (" + char_name + ")")
                 return
@@ -455,7 +459,7 @@ class Tracking:
                 log.error("announce_level: no character or character name passed.")
                 return
             try:
-                char = await get_character(char_name)
+                char = await get_character(char_name, bot=self.bot)
             except NetworkError:
                 log.warning("announce_level: couldn't fetch character (" + char_name + ")")
                 return
@@ -799,15 +803,16 @@ class Tracking:
         with userDatabase as conn:
             conn.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
             conn.execute("UPDATE users SET name = ? WHERE id = ?", (user.display_name, user.id,))
-
         await ctx.send(reply)
         for server_id, message in log_reply.items():
             if message:
+                guild = self.bot.get_guild(server_id)
                 message = user.mention + " registered the following characters: " + message
                 embed = discord.Embed(description=message)
                 embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
                 embed.colour = discord.Colour.dark_teal()
-                await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
+                await self.bot.send_log_message(guild, embed=embed)
+        self.bot.dispatch("character_change", ctx.author.id)
 
     @checks.is_in_tracking_world()
     @commands.command(aliases=["i'mnot"])
@@ -852,6 +857,7 @@ class Tracking:
                     embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
                     embed.colour = discord.Colour.dark_teal()
                     await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
+            self.bot.dispatch("character_change", ctx.author.id)
         finally:
             userDatabase.commit()
             c.close()

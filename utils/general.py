@@ -270,11 +270,11 @@ def get_token():
             return f.read()
 
 
-def get_user_avatar(user: discord.user.BaseUser) -> str:
+def get_user_avatar(user: Union[discord.User, discord.Member]) -> str:
     """Gets the user's avatar url
 
     If they don't have an avatar set, the default avatar is returned.
-
+x
     :param user: The user to get the avatar of
     :return: The avatar's url."""
     return user.avatar_url if user.avatar_url is not None else user.default_avatar_url
