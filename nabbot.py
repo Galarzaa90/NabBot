@@ -175,8 +175,7 @@ class NabBot(commands.Bot):
                         embed.add_field(name="Registered characters", value="\n".join(characters))
                 finally:
                     c.close()
-
-        await self.send_log_message(member.guild, embed=embed)
+            await self.send_log_message(member.guild, embed=embed)
 
         welcome_message = get_server_property(member.guild.id, "welcome")
         welcome_channel_id = get_server_property(member.guild.id, "welcome_channel", is_int=True)
