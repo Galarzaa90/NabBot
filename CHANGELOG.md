@@ -18,6 +18,7 @@
     - See `help autorole` for more information on commands.
 - Increased /loot scanning speed.
 - Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.
+- Welcome message can now be fully customized, including the welcome message channel. Available under `/settings`
 - New `/imbuement` command, shows basic information about an imbuement and if prices are provided, it calculates costs.
 - New `/permissions` command, shows the permissions for a member in a channel.
 - `/version` now checks if the required minimum commit version of discord.py is being used.
@@ -25,6 +26,7 @@
 - Command name and aliases changes:
     - `/debug`: renamed to `/eval`.
     - `/help`: Alias `/commands` added.
+    - `/setwelcome`: Removed.
 
 ## Version 1.2.3 (2018-06-19)
 - Fixed a bug with `/whois` when a user was not found.

@@ -41,10 +41,6 @@ Once the rules have been set, NabBot will start enforcing them whenever certain 
 - A registered character is checked using `/whois` and a guild change is detected.
 - A registered character is checked while online in the level and deaths tracking process.
 
-Note that if a rule is removed, there is currently no way for the bot to undo all the changes done.
-
-It's also worth nothing that if an automatic role is assigned or removed manually, the bot might reassign or remove it automatically.
-
 ## Limitations
 - If a rule is removed, there's currently no way to "undo" that rule, e.g. if the rule for @Guildies is removed,
 NabBot won't remove the role from any users, *unless* there's another rule involving that rule that they don't meet.
