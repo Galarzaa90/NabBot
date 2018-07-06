@@ -36,6 +36,10 @@ class Roles:
         exists = list(result)
         if exists:
             userDatabase.execute("DELETE FROM joinable_roles WHERE role_id = ?", (role.id,))
+        result = userDatabase.execute("SELECT * FROM auto_roles WHERE role_id = ?", (role.id,))
+        exists = list(result)
+        if exists:
+            userDatabase.execute("DELETE FROM auto_roles WHERE role_id = ?", (role.id,))
 
     async def on_character_change(self, user_id: int):
         try:
