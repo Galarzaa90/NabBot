@@ -451,6 +451,15 @@ async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Ch
                                                                                          result["guild"]))
             if bot is not None:
                 bot.dispatch("character_change", character.owner)
+    if character.guild is None and result["guild"] is not None:
+        with userDatabase as conn:
+            conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (None, result["id"],))
+            log.info("{0}'s guild was set to {1} from {2} during get_character()".format(character.name,
+                                                                                         None,
+                                                                                         result["guild"]))
+            if bot is not None:
+                bot.dispatch("character_change", character.owner)
+        
     return character
 
 
