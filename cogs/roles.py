@@ -102,7 +102,9 @@ class Roles:
     @commands.guild_only()
     @commands.group(case_insensitive=True)
     async def autorole(self, ctx):
-        """Autorole commands"""
+        """Autorole commands.
+        
+        All the subcommands require having `Manage Roles` permission."""
         pass
 
     @checks.has_guild_permissions(manage_roles=True)
@@ -161,9 +163,9 @@ class Roles:
 
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
-    @autorole.command(name="list")
+    @autorole.command(name="list", aliases=["rules"])
     async def autorole_list(self, ctx: NabCtx):
-        """Shows a list of available groups."""
+        """Shows a list of autorole rules."""
         result = userDatabase.execute("SELECT role_id, guild FROM auto_roles WHERE server_id = ?", (ctx.guild.id, ))
         rules = list(result)
         if not rules:
@@ -227,6 +229,8 @@ class Roles:
     async def autorole_remove(self, ctx: NabCtx, role: InsensitiveRole, *, guild: str):
         """Removes an autorole rule.
 
+        Role names, mentions and ids are accepted. Role names with multiple words need to be quoted.
+
         Note that members that currently have the role won't be affected."""
         group: discord.Role = role
         result = userDatabase.execute("SELECT * FROM auto_roles WHERE role_id = ? and guild LIKE ?", (group.id, guild))
@@ -287,8 +291,7 @@ class Roles:
     async def group_add(self, ctx: NabCtx, *, name: str):
         """Creates a new group for members to join.
 
-        The group can be a new role that will be created with this command.
-
+        The group can be a new role that will be created with this command.  
         If the name matches an existent role, that role will become joinable.
 
         You need `Manage Roles` permissions to use this command."""
@@ -321,6 +324,32 @@ class Roles:
 
         userDatabase.execute("INSERT INTO joinable_roles(server_id, role_id) VALUES(?,?)", (ctx.guild.id, role.id))
         await ctx.send(f"{ctx.tick()} Group `{role.name}` created successfully.")
+
+    @commands.guild_only()
+    @group.command(name="list")
+    async def group_list(self, ctx: NabCtx):
+        """Shows a list of available groups."""
+        result = userDatabase.execute("SELECT role_id FROM joinable_roles WHERE server_id = ?", (ctx.guild.id, ))
+        groups = list(result)
+        if not groups:
+            await ctx.send(f"{ctx.tick(False)} This server has no joinable groups.")
+            return
+
+        flat_groups = [g['role_id'] for g in groups]
+
+        entries = []
+        roles = ctx.guild.role_hierarchy
+        for role in roles:
+            if role.id in flat_groups:
+                entries.append(f"{role.mention} (`{len(role.members)} members`)")
+
+        per_page = 20 if ctx.long else 5
+        pages = Pages(ctx, entries=entries, per_page=per_page)
+        pages.embed.title = "Joinable groups"
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
 
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
@@ -358,32 +387,6 @@ class Roles:
         else:
             await ctx.send(f"{ctx.tick()} Group `{group.name}` was removed.")
         userDatabase.execute("DELETE FROM joinable_roles WHERE role_id = ?", (group.id,))
-
-    @commands.guild_only()
-    @group.command(name="list")
-    async def group_list(self, ctx: NabCtx):
-        """Shows a list of available groups."""
-        result = userDatabase.execute("SELECT role_id FROM joinable_roles WHERE server_id = ?", (ctx.guild.id, ))
-        groups = list(result)
-        if not groups:
-            await ctx.send(f"{ctx.tick(False)} This server has no joinable groups.")
-            return
-
-        flat_groups = [g['role_id'] for g in groups]
-
-        entries = []
-        roles = ctx.guild.role_hierarchy
-        for role in roles:
-            if role.id in flat_groups:
-                entries.append(f"{role.mention} (`{len(role.members)} members`)")
-
-        per_page = 20 if ctx.long else 5
-        pages = Pages(ctx, entries=entries, per_page=per_page)
-        pages.embed.title = "Joinable groups"
-        try:
-            await pages.paginate()
-        except CannotPaginate as e:
-            await ctx.send(e)
 
     @commands.guild_only()
     @commands.command(aliases=["norole"])
