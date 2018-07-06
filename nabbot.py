@@ -27,6 +27,7 @@ def _prefix_callable(bot, msg):
         base.extend(config.command_prefix)
     else:
         base.extend(get_server_property(msg.guild.id, "prefixes", deserialize=True, default=config.command_prefix))
+    base = sorted(base, reverse=True)
     return base
 
 

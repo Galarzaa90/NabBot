@@ -426,7 +426,7 @@ class Settings:
         else:
             prefixes.append(prefix)
             await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
-        set_server_property(ctx.guild.id, "prefixes", prefixes, serialize=True)
+        set_server_property(ctx.guild.id, "prefixes", sorted(prefixes, reverse=True), serialize=True)
 
     @checks.is_admin()
     @settings.command(name="world")
