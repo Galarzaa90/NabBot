@@ -126,6 +126,8 @@ Removes a group.
 Removes a group, making members unable to join.
 When removing a group, you can optionally delete the role too.
 
+----
+
 ## noroles
 **Other aliases:** `norole`
 

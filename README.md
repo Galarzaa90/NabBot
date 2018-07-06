@@ -28,6 +28,8 @@ Follow the [install guide](https://galarzaa90.github.io/NabBot/install/) on the 
 - Keeps track of registered character's deaths and level ups as a log.
 - Watched list, add characters or guilds to check their online status all the time.
 - Information commands, based on TibiaWiki articles. Items, monsters, NPCs, houses and more.
+- Joinable roles, create roles that any member can join or leave.
+- Autoroles, create roles that are assigned to users automatically based on their registered characters.
 
 ## Documentation
 See https://galarzaa90.github.io/NabBot/

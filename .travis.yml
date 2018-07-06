@@ -6,7 +6,7 @@ python:
   - "3.6"
 install:
   - pip install -U -r requirements.txt
-  - pip install mkdocs mkdocs-material pymdown-extensions
+  - pip install mkdocs mkdocs-material pymdown-extensions git+https://github.com/jdittrich/figureAltCaption.git
 
 script:
 - python -m compileall ./nabbot.py
