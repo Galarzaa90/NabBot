@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import closing
-from typing import List, Dict
+from typing import List
 
 import discord
 from discord.ext import commands
@@ -111,6 +111,13 @@ class Roles:
     async def autorole_add(self, ctx: NabCtx, role: InsensitiveRole, *, guild: str):
         """Creates a new autorole rule.
 
+        Rules consist of a role and a guild name.  
+        When a user has a registered character in said guild, they receive the role.  
+        If they stop having a character in the guild, the role is removed.
+
+        If `*` is used as a guild. It means that the role will be given for having any assigned character.
+
+        Role names, role mentions or role ids are allowed. Role names with multiple words must be quoted.
         Note that current members will be updated until their characters or guilds change."""
         role: discord.Role = role
         name = guild
@@ -142,8 +149,8 @@ class Roles:
             msg = await ctx.send(f"Members of guild `{name}` will automatically receive the `{role.name}` role. "
                                  f"Is this correct?")
         else:
-            msg = await ctx.send(f"All users with registered characters will automatically receive receive the "
-                                 f"`{role.name}` role. Is this correct?")
+            msg = await ctx.send(f"All users with registered characters will automatically receive the `{role.name}` "
+                                 f"role. Is this correct?")
         confirm = await ctx.react_confirm(msg, delete_after=True, timeout=60)
         if not confirm:
             return
