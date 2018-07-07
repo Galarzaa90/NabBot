@@ -126,6 +126,8 @@ class General:
     # Commands
     @commands.command()
     async def about(self, ctx: NabCtx):
+        """Shows basic information about the bot.
+        """
         if not ctx.bot_permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permissions for this command.")
             return
@@ -148,17 +150,16 @@ class General:
         embed.add_field(name="Discord", value="[discord.me/NabBot](https://discord.me/nabbot)")
         embed.add_field(name="Donate", value="[PayPal](https://www.paypal.com/cgi-bin/webscr?"
                                              "cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)")
-        embed.set_footer(text=f"Uptime: {parse_uptime(self.bot.start_time, True)}")
+        embed.set_footer(text=f"Uptime | {parse_uptime(self.bot.start_time, True)}")
         await ctx.send(embed=embed)
 
     @commands.command(name="botinfo")
     async def bot_info(self, ctx: NabCtx):
-        """Shows information about the bot."""
+        """Shows advanced information about the bot."""
         permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
-        user_count = 0
         char_count = 0
         deaths_count = 0
         levels_count = 0
@@ -203,7 +204,7 @@ class General:
                             f"🏓 Ping: **{ping} ms**\n" \
                             f"👾 Servers: **{len(self.bot.guilds):,}**\n" \
                             f"💬 Channels: **{len(list(self.bot.get_all_channels())):,}**\n"\
-                            f"👨 Members: **{len(self.bot.members):,}**\n" \
+                            f"👨 Users: **{len(self.bot.users):,}** \n" \
                             f"👤 Characters: **{char_count:,}**\n" \
                             f"{config.levelup_emoji} Level ups: **{levels_count:,}**\n" \
                             f"{config.death_emoji} Deaths: **{deaths_count:,}**"
