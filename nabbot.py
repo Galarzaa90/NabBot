@@ -33,8 +33,9 @@ def _prefix_callable(bot, msg):
 
 class NabBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=_prefix_callable, description='Mission: Destroy all humans.', pm_help=True,
-                         formatter=NabHelpFormat(), case_insensitive=True)
+        super().__init__(command_prefix=_prefix_callable, case_insensitive=True,
+                         description="Discord bot with functions for the MMORPG Tibia.",
+                         formatter=NabHelpFormat(), pm_help=True)
         self.remove_command("help")
         self.members = {}
         self.start_time = dt.datetime.utcnow()

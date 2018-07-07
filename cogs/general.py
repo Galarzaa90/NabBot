@@ -1,5 +1,6 @@
 import asyncio
 import datetime as dt
+import platform
 import random
 import re
 import time
@@ -125,6 +126,33 @@ class General:
     # Commands
     @commands.command()
     async def about(self, ctx: NabCtx):
+        if not ctx.bot_permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permissions for this command.")
+            return
+        embed = discord.Embed(description=ctx.bot.description, colour=discord.Colour.blurple())
+        embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
+                         icon_url="https://github.com/fluidicon.png")
+        prefixes = list(config.command_prefix)
+        if ctx.guild:
+            prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
+        prefixes_str = "\n".join(f"- `{p}`" for p in prefixes)
+        embed.add_field(name="Prefixes", value=prefixes_str, inline=False)
+        embed.add_field(name="Authors", value="\u2023 [Galarzaa90](https://github.com/Galarzaa90)\n"
+                                              "\u2023 [Nezune](https://github.com/Nezune)")
+        embed.add_field(name="Created", value="March 30th 2016")
+        embed.add_field(name="Version", value=f"v{self.bot.__version__}")
+        embed.add_field(name="Platform", value="Python")
+        embed.add_field(name="Servers", value=f"{len(self.bot.guilds)}")
+        embed.add_field(name="Users", value=f"{len(self.bot.members)}")
+        embed.add_field(name="Website", value="[nabbot.ddns.net](https://galarzaa90.github.io/NabBot/)")
+        embed.add_field(name="Discord", value="[discord.me/NabBot](https://discord.me/nabbot)")
+        embed.add_field(name="Donate", value="[PayPal](https://www.paypal.com/cgi-bin/webscr?"
+                                             "cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)")
+        embed.set_footer(text=f"Uptime: {parse_uptime(self.bot.start_time, True)}")
+        await ctx.send(embed=embed)
+
+    @commands.command(name="botinfo")
+    async def bot_info(self, ctx: NabCtx):
         """Shows information about the bot."""
         permissions = ctx.bot_permissions
         if not permissions.embed_links:
@@ -135,10 +163,6 @@ class General:
         deaths_count = 0
         levels_count = 0
         with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT COUNT(*) as count FROM users")
-            result = c.fetchone()
-            if result is not None:
-                user_count = result["count"]
             c.execute("SELECT COUNT(*) as count FROM chars")
             result = c.fetchone()
             if result is not None:
@@ -152,38 +176,37 @@ class General:
             if result is not None:
                 levels_count = result["count"]
 
-        embed = discord.Embed(description="*Beep bop beep bop*. I'm just a bot!")
+        used_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
+        total_ram = psutil.virtual_memory().total / 1024 ** 2
+        percentage_ram = psutil.Process().memory_percent()
+
+        def ram(value):
+            if value >= 1024:
+                return f"{value/1024:.2f}GB"
+            else:
+                return f"{value:.2f}MB"
+        
+        # Calculate ping
+        t1 = time.perf_counter()
+        await ctx.trigger_typing()
+        t2 = time.perf_counter()
+        ping = round((t2 - t1) * 1000)
+
+        embed = discord.Embed()
         embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
                          icon_url="https://github.com/fluidicon.png")
-        embed.add_field(name="Version", value=self.bot.__version__)
-        embed.add_field(name="Authors", value="\u2023 [Galarzaa90](https://github.com/Galarzaa90)\n"
-                                              "\u2023 [Nezune](https://github.com/Nezune)")
-        embed.add_field(name="Platform", value="Python 🐍")
-        embed.add_field(name="Created", value="March 30th 2016")
-        embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
-        embed.add_field(name="Members", value=f"{len(list(self.bot.get_all_members())):,}")
-        embed.add_field(name="Tracked users", value=f"{user_count:,}")
-        embed.add_field(name="Tracked chars", value=f"{char_count:,}")
-        embed.add_field(name="Tracked deaths", value=f"{deaths_count:,}")
-        embed.add_field(name="Tracked level ups", value=f"{levels_count:,}")
-        embed.add_field(name="Uptime", value=parse_uptime(self.bot.start_time))
-        memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
-        embed.add_field(name='Memory Usage', value='{:.2f} MiB'.format(memory_usage))
-        with closing(tibiaDatabase.cursor()) as c:
-            try:
-                c.execute("SELECT * FROM database_info WHERE key = ?", ("version",))
-                result = c.fetchone()
-                if result:
-                    version = result["value"]
-                c.execute("SELECT * FROM database_info WHERE key = ?", ("generated_date",))
-                result = c.fetchone()
-                if result:
-                    timestamp = float(result["value"])
-                    db_date = dt.datetime.utcfromtimestamp(timestamp)
-                embed.add_field(name="TibiaWiki Database", value=f"{version}, fetched on "
-                                                                 f"{db_date.strftime('%b %d %Y, %H:%M:%S UTC')}")
-            except KeyError:
-                pass
+        embed.description = f"🔰 Version: **{self.bot.__version__}**\n" \
+                            f"⏱ ️Uptime **{parse_uptime(self.bot.start_time)}**\n" \
+                            f"🖥️ OS: **{platform.system()} {platform.release()}**\n" \
+                            f"📉 RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n" \
+                            f"⚙️ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n" \
+                            f"🏓 Ping: **{ping} ms**\n" \
+                            f"👾 Servers: **{len(self.bot.guilds):,}**\n" \
+                            f"💬 Channels: **{len(list(self.bot.get_all_channels())):,}**\n"\
+                            f"👨 Members: **{len(self.bot.members):,}**\n" \
+                            f"👤 Characters: **{char_count:,}**\n" \
+                            f"{config.levelup_emoji} Level ups: **{levels_count:,}**\n" \
+                            f"{config.death_emoji} Deaths: **{deaths_count:,}**"
         await ctx.send(embed=embed)
 
     @commands.command(usage="<choices...>")
