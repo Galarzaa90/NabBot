@@ -144,8 +144,8 @@ class General:
         embed.add_field(name="Created", value="March 30th 2016")
         embed.add_field(name="Version", value=f"v{self.bot.__version__}")
         embed.add_field(name="Platform", value="Python")
-        embed.add_field(name="Servers", value=f"{len(self.bot.guilds)}")
-        embed.add_field(name="Users", value=f"{len(self.bot.members)}")
+        embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
+        embed.add_field(name="Users", value=f"{len(self.bot.users):,}")
         embed.add_field(name="Website", value="[nabbot.ddns.net](https://galarzaa90.github.io/NabBot/)")
         embed.add_field(name="Discord", value="[discord.me/NabBot](https://discord.me/nabbot)")
         embed.add_field(name="Donate", value="[PayPal](https://www.paypal.com/cgi-bin/webscr?"
