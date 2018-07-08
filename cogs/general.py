@@ -17,7 +17,7 @@ from utils.config import config
 from utils.context import NabCtx
 from utils.database import userDatabase, tibiaDatabase, get_server_property
 from utils.general import parse_uptime, TimeString, single_line, log, BadTime, get_user_avatar, get_region_string, \
-    clean_string
+    clean_string, is_numeric
 from utils.pages import CannotPaginate, VocationPages, HelpPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
 
@@ -1262,6 +1262,48 @@ class General:
                 embed.add_field(name="Attached file",
                                 value=f"[{attachment.filename}]({attachment.url}) ({attachment.size:,} bytes)")
         await ctx.send(embed=embed)
+
+    @commands.command(aliases=["dice"], usage="[times][d[sides]]")
+    async def roll(self, ctx: NabCtx, params=None):
+        """Rolls a die.
+
+        By default, it rolls a 6-sided die once.
+        You can specify how many times you want the die to be rolled.
+
+        You can also specify the number of sides of the die, using the format `TdS` where T is times and S is sides."""
+        sides = 6
+        if params is None:
+            times = 1
+        elif is_numeric(params):
+            times = int(params)
+        else:
+            try:
+                times, sides = map(int, params.split('d'))
+            except ValueError:
+                await ctx.send(f"{ctx.tick(False)} Invalid parameter! I'm expecting `<times>d<rolls>`.")
+                return
+        if times == 0:
+            await ctx.send("You want me to roll the die zero times? Ok... There, done.")
+            return
+        if times < 0:
+            await ctx.send(f"{ctx.tick(False)} It's impossible to roll negative times!")
+            return
+        if sides <= 0:
+            await ctx.send(f"{ctx.tick(False)} There's no dice with zero or less sides!")
+            return
+        if times > 20:
+            await ctx.send(f"{ctx.tick(False)} I can't roll the die that many times. Only up to 20.")
+            return
+        if sides > 100:
+            await ctx.send(f"{ctx.tick(False)} I don't have dice with more than 100 sides.")
+            return
+        time_plural = "times" if times > 1 else "time"
+        results = [str(random.randint(1, sides)) for r in range(times)]
+        print(results)
+        result = f"You rolled a **{sides}**-sided die **{times}** {time_plural} and got:\n\t{', '.join(results)}"
+        if sides == 1:
+            result += "\nWho would have thought? 🙄"
+        await ctx.send(result)
 
     @commands.guild_only()
     @commands.command()
