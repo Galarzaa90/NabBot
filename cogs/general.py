@@ -126,8 +126,7 @@ class General:
     # Commands
     @commands.command()
     async def about(self, ctx: NabCtx):
-        """Shows basic information about the bot.
-        """
+        """Shows basic information about the bot."""
         if not ctx.bot_permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permissions for this command.")
             return
@@ -1199,7 +1198,10 @@ class General:
     @commands.has_permissions(manage_roles=True)
     @commands.command(nam="permissions", aliases=["perms"])
     async def permissions(self, ctx: NabCtx, member: discord.Member=None, channel: discord.TextChannel=None):
-        """Shows a role's permissions."""
+        """Shows a member's permissions in the current channel.
+
+        If no member is provided, it will show your permissions.
+        Optionally, a channel can be provided as the second parameter, to check permissions in said channel."""
         member = member or ctx.author
         channel = channel or ctx.channel
         guild_permissions = channel.permissions_for(member)

@@ -5,6 +5,19 @@ Commands server moderators.
 !!! info
     Parameters are enclosed with `< >`.   
     Optional parameters are enclosed in brackets `[]`.
+    
+## cleanup
+**Syntax:** `cleanup [limit=50]`
+
+Cleans the channel from bot commands.
+
+If the bot has `Manage Messages` permission, it will also delete command invocation messages.
+
+??? summary "Examples"
+    **/cleanup**  
+    ![image](../assets/images/commands/cleanup.png)
+    
+----
 
 ## ignore
 **Syntax:** `ignore [channel]`

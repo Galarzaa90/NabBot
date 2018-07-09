@@ -22,6 +22,26 @@ Shows the achievement's grade, points, description, and instructions on how to u
 
 ----
 
+## imbuement
+**Syntax:** `imbuement <name>[,price1[,price2[,price3]]][,tokenprice]`
+
+Displays information about an imbuement.
+
+You can optionally provide prices for the materials, in the order of the tier they belong to.
+Additionally, for Vampirism, Void and Strike imbuements, you can provide the price for gold tokens.
+
+The total cost will be calculated, as well as the hourly cost.
+If applicable, it will show the cheapest way to get it using gold tokens.
+
+
+??? summary "Examples"
+    **/imbuement powerful void,2200,3790,2995,35800**  
+    ![image](../assets/images/commands/imbuement_1.png)  
+    **/imbuement intricate slash**  
+    ![image](../assets/images/commands/imbuement_2.png)
+
+----
+
 ## bestiary
 **Syntax:** `bestiary <class>`
 

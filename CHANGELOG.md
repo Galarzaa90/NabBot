@@ -8,6 +8,7 @@
     - Discord presence emojis in `/serverinfo`.
     - Checkbox and cross emojis to show boolean flags.
     - Level up and deaths emojis.
+    - And more
 - Added joinable role feature, called groups:
     - To create a group: `/group add <name>` (requires `Manage Roles` permission)
     - To join/leave a group: `/group <name`
@@ -21,12 +22,17 @@
 - Welcome message can now be fully customized, including the welcome message channel. Available under `/settings`
 - New `/imbuement` command, shows basic information about an imbuement and if prices are provided, it calculates costs.
 - New `/permissions` command, shows the permissions for a member in a channel.
+- New `/cleanup` command, cleans bot messages and command invocations in the current channel.
+- New `/roll` command, rolls a die and shows the results.
+- New `/botinfo` command, shows advanced information about the bot.
+- `/about` now shows less advanced information, and more general information.
 - `/version` now checks if the required minimum commit version of discord.py is being used.
 - `/monster` now shows occurrence, kills required and charm points given.
 - Command name and aliases changes:
     - `/debug`: renamed to `/eval`.
     - `/help`: Alias `/commands` added.
     - `/setwelcome`: Removed.
+    - `/purge`: Removed.
 
 ## Version 1.2.3 (2018-06-19)
 - Fixed a bug with `/whois` when a user was not found.

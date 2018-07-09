@@ -76,6 +76,12 @@ druid_emoji: ❄
 sorcerer_emoji: 🔥
 paladin_emoji: 🏹
 knight_emoji: 🛡
+# Emojis for bestiary info
+charms_emoji: ⚜
+difficulty_on_emoji: ⭐
+difficulty_off_emoji: ▪
+occurence_on_emoji: 🔹
+occurence_off_emoji: ▪
 
 
 # Optional emojis

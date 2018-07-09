@@ -42,6 +42,11 @@ KEYS = [
     "sorcerer_emoji",
     "paladin_emoji",
     "knight_emoji",
+    "charms_emoji",
+    "difficulty_on_emoji",
+    "difficulty_off_emoji",
+    "occurrence_on_emoji",
+    "occurrence_off_emoji",
     "use_status_emojis",
     "status_emojis",
     "use_elemental_emojis",
@@ -96,6 +101,11 @@ class Config:
         self.sorcerer_emoji = "🔥"
         self.paladin_emoji = "🏹"
         self.knight_emoji = "🛡"
+        self.charms_emoji = "⚜"
+        self.difficulty_on_emoji = "⭐"
+        self.difficulty_off_emoji = "▪"
+        self.occurrence_on_emoji = "🔹"
+        self.occurrence_off_emoji = "▪"
         self.use_status_emojis = False
         self.status_emojis = _DEFAULT_STATUS_EMOJIS
         self.use_elemental_emojis = False

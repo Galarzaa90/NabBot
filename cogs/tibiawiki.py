@@ -420,17 +420,17 @@ class TibiaWiki:
 
         if monster["bestiary_class"] is not None:
             difficulties = {
-                "Harmless": "▪▪▪▪",
-                "Trivial": "⭐▪▪▪",
-                "Easy": "⭐⭐▪▪",
-                "Medium": "⭐⭐⭐▪",
-                "Hard": "⭐⭐⭐⭐"
+                "Harmless": config.difficulty_off_emoji*4,
+                "Trivial": config.difficulty_on_emoji+config.difficulty_off_emoji*3,
+                "Easy": config.difficulty_on_emoji*2+config.difficulty_off_emoji*2,
+                "Medium": config.difficulty_on_emoji*3+config.difficulty_off_emoji,
+                "Hard": config.difficulty_on_emoji*4
             }
             occurrences = {
-                "Common": "🔹▪▪▪",
-                "Uncommon": "🔹🔹▪▪",
-                "Rare": "🔹🔹🔹▪",
-                "Very Rare": "🔹🔹🔹🔹",
+                "Common": config.occurrence_off_emoji*4,
+                "Uncommon": config.occurrence_on_emoji+config.occurrence_off_emoji*3,
+                "Rare": config.occurrence_on_emoji*2+config.occurrence_off_emoji*2,
+                "Very Rare": config.occurrence_on_emoji*4,
             }
             kills = {
                 "Harmless": 25,
@@ -449,12 +449,12 @@ class TibiaWiki:
             difficulty = difficulties.get(monster["bestiary_level"], f"({monster['bestiary_level']})")
             occurrence = occurrences.get(monster["occurrence"], f"")
             required_kills = kills[monster['bestiary_level']]
-            given_points =  points[monster['bestiary_level']]
+            given_points = points[monster['bestiary_level']]
             if monster['occurrence'] == 'Very Rare':
                 required_kills = 5
                 given_points = max(points[monster['bestiary_level']]*2, 5)
             kill_and_points = \
-                f"{required_kills:,} kills | {given_points}⚜️"
+                f"{required_kills:,} kills | {given_points}{config.charms_emoji}️"
             embed.add_field(name="Bestiary Class", value=f"{monster['bestiary_class']}\n{difficulty}\n{occurrence}"
                                                          f"\n{kill_and_points}")
 
