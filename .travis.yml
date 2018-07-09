@@ -4,6 +4,12 @@ cache: pip
 
 python:
   - "3.6"
+  - "3.7-dev"
+
+matrix:
+  allow_failures:
+    - python: "3.7-dev"
+
 install:
   - pip install -U -r requirements.txt
   - pip install mkdocs mkdocs-material pymdown-extensions git+https://github.com/jdittrich/figureAltCaption.git

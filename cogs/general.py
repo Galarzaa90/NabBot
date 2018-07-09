@@ -1221,7 +1221,7 @@ class General:
 
     @commands.guild_only()
     @commands.command()
-    async def quote(self, ctx : NabCtx, message_id: int):
+    async def quote(self, ctx: NabCtx, message_id: int):
         """Shows a messages by its ID.
 
         In order to get a message's id, you need to enable Developer Mode.
@@ -1250,7 +1250,11 @@ class General:
         if not message.content:
             await ctx.send("I can't quote embed messages.")
             return
-        embed = discord.Embed(description=message.content, timestamp=message.created_at, color=message.author.color)
+        embed = discord.Embed(description=message.content, timestamp=message.created_at)
+        try:
+            embed.colour = message.author.colour
+        except AttributeError:
+            pass
         embed.set_author(name=message.author.display_name, icon_url=get_user_avatar(message.author),
                          url=message.jump_url)
         embed.set_footer(text=f"In #{message.channel.name}")
@@ -1299,7 +1303,6 @@ class General:
             return
         time_plural = "times" if times > 1 else "time"
         results = [str(random.randint(1, sides)) for r in range(times)]
-        print(results)
         result = f"You rolled a **{sides}**-sided die **{times}** {time_plural} and got:\n\t{', '.join(results)}"
         if sides == 1:
             result += "\nWho would have thought? 🙄"
