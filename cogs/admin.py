@@ -265,7 +265,7 @@ class Admin:
         If no channel is specified, the current one is checked."""
         if channel is None:
             channel = ctx.channel
-        permissions = ctx.bot_permissions
+        permissions = channel.permissions_for(ctx.me)
         content = f"**Checking {channel.mention}:**"
         if permissions.administrator:
             content += f"\n{ctx.tick(True)} I have `Administrator` permission."
