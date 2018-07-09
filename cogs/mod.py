@@ -7,8 +7,9 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils import checks
+from utils.config import config
 from utils.context import NabCtx
-from utils.database import userDatabase
+from utils.database import userDatabase, get_server_property
 from utils.pages import Pages, CannotPaginate
 
 
@@ -24,6 +25,40 @@ class Mod:
                or checks.check_guild_permissions(ctx, {'manage_channels': True})
 
     # Commands
+    @commands.guild_only()
+    @checks.is_channel_mod()
+    @commands.command()
+    async def cleanup(self, ctx: NabCtx, limit: int=50):
+        """Cleans the channel from bot commands.
+
+        If the bot has `Manage Messages` permission, it will also delete command invocation messages."""
+        messages: List[discord.Message] = []
+        can_manage = ctx.bot_permissions.manage_messages
+        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=config.command_prefix)
+        user_count = 0
+        bot_count = 0
+        async for message in ctx.channel.history(limit=limit):
+            if message.content.startswith(tuple(prefixes)) and can_manage:
+                messages.append(message)
+                user_count += 1
+            elif message.author == ctx.guild.me:
+                messages.append(message)
+                bot_count += 1
+
+        if not messages:
+            return await ctx.send("There are no messages to clean.", delete_after=10)
+
+        if not can_manage:
+            for message in messages:
+                if message.author == ctx.me:
+                    await message.delete()
+            await ctx.send(f"{ctx.tick()} Deleted {bot_count:,} messages.\nCouldn't delete {user_count:,} user "
+                           f"messages because I don't have `Manage Messages` permission.", delete_after=20)
+        else:
+            await ctx.channel.delete_messages(messages)
+            await ctx.send(f"{ctx.tick()} Deleted {len(messages):,} messages.", delete_after=20)
+
+
     @commands.guild_only()
     @checks.is_channel_mod()
     @commands.group(invoke_without_command=True, case_insensitive=True)
