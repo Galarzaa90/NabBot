@@ -1631,6 +1631,8 @@ class Tibia:
         if {"desc", "descending"}.intersection(params):
             reverse = True
 
+        title = "Worlds"
+
         region_filter = None
         if {"eu", "europe"}.intersection(params):
             region_filter = "Europe"
@@ -1638,6 +1640,9 @@ class Tibia:
             region_filter = "South America"
         elif {"northamerica", "na", "usa", "us"}.intersection(params):
             region_filter = "North America"
+
+        if region_filter:
+            title = f"Worlds in {region_filter}"
 
         pvp_filter = None
         if {"optionalpvp", "npvp", "nonpvp", "nopvp"}.intersection(params):
@@ -1651,6 +1656,9 @@ class Tibia:
         elif {"retrohardcore", "retrohardcorepvp"}.intersection(params):
             pvp_filter = "Retro Hardcore PvP"
 
+        if pvp_filter:
+            title = f"{pvp_filter} {title}"
+
         if region_filter:
             worlds = filter(lambda w: w.location == region_filter, worlds)
         if pvp_filter:
@@ -1663,6 +1671,8 @@ class Tibia:
         entries = [f"{w.name} {FLAGS[w.location]}{PVP[w.pvp_type]} - `{w.online_count:,} online`" for w in worlds]
         per_page = 20 if ctx.long else 5
         pages = Pages(ctx, entries=entries, per_page=per_page)
+        pages.embed.title = title
+        pages.embed.colour = discord.Colour.blurple()
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -1680,7 +1690,8 @@ class Tibia:
 
         messages = split_message(content, limit)
         embed.description = messages[0]
-        embed.set_footer(text=f"Posted on {article['date']:%A, %B %d, %Y}")
+        embed.set_author(name="Tibia.com", url="http://www.tibia.com/news/?subtopic=latestnews", icon_url=tibia_logo)
+        embed.set_footer(text=f"ID: {article['id']} | Posted on {article['date']:%A, %B %d, %Y}")
         if len(messages) > 1:
             embed.description += f"\n*[Read more...]({url})*"
         return embed
@@ -1858,7 +1869,7 @@ class Tibia:
                         channel = self.bot.get_channel_or_top(guild, news_channel_id)
                         try:
                             await channel.send("New article posted on Tibia.com",
-                                               embed=self.get_article_embed(article, 400))
+                                               embed=self.get_article_embed(article, 1000))
                         except discord.Forbidden:
                             log.warning("scan_news: Missing permissions.")
                         except discord.HTTPException:
