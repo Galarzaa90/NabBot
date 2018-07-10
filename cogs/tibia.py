@@ -1622,8 +1622,10 @@ class Tibia:
                 return await ctx.send(f"{ctx.tick(False)} Something went wrong...'")
         except NetworkError:
             return await ctx.send(f"{ctx.tick(False)} I'm having network errors, please try again later.'")
-
-        params = query.lower().replace(" ", "").replace("-", "").split(",")
+        if query is None:
+            params = []
+        else:
+            params = query.lower().replace(" ", "").replace("-", "").split(",")
         sort = "name"
         if "online" in params:
             sort = "online_count"
