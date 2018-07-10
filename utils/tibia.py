@@ -277,11 +277,27 @@ class World:
         self.transfer_type = kwargs.get("transfer_type")
         self.location = kwargs.get("location")
         self.players_online: List[Character] = []
+        self.online_count = kwargs.get("online_count", 0)
         self.quests: List[str] = None
+
+    def __repr__(self) -> str:
+        kwargs = vars(self)
+        attributes = ""
+        for k, v in kwargs.items():
+            if k in ["players_online", "name"]:
+                continue
+            if v is None:
+                continue
+            if isinstance(v, int) and v == 0:
+                continue
+            if isinstance(v, list) and len(v) == 0:
+                continue
+            attributes += f", {k} = {v.__repr__()}"
+        return f"World({self.name!r}{attributes})"
 
     @classmethod
     def parse_from_tibiadata(cls, name: str, content_json: Dict):
-        _world = content_json["worlds"]
+        _world = content_json["world"]
         if "error" in _world:
             return None
         world_info = _world["world_information"]
@@ -290,7 +306,10 @@ class World:
         if "online_record" in world_info:
             world.record_online = int(world_info["online_record"]["players"])
             world.record_date = parse_tibiadata_time(world_info["online_record"]["date"])
-        world.creation = world_info["creation_date"]
+        try:
+            world.creation = world_info["creation_date"]
+        except KeyError:
+            return None
         world.location = world_info["location"]
         world.pvp_type = world_info["pvp_type"]
         world.premium_type = world_info.get("premium_type")
@@ -302,6 +321,7 @@ class World:
         for player in _world.get("players_online", []):
             world.players_online.append(Character(player["name"], world.name, level=int(player["level"]),
                                                   vocation=player["vocation"], online=True))
+        world.online_count = len(world.players_online)
         return world
 
 
@@ -509,7 +529,7 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
 
 
 async def get_world(name, tries=5) -> Optional[World]:
-    url = f"https://api.tibiadata.com/v1/worlds/{name}.json"
+    url = f"https://api.tibiadata.com/v2/world/{name}.json"
     name = name.strip()
     if tries == 0:
         log.error("get_world: Couldn't fetch {0}, network error.".format(name))
@@ -1015,7 +1035,7 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
         log.error("get_world_list(): Couldn't fetch TibiaData for the worlds list, network error.")
         return
 
-    url = "https://api.tibiadata.com/v1/worlds.json"
+    url = "https://api.tibiadata.com/v2/worlds.json"
 
     # Fetch website
     try:
@@ -1038,7 +1058,8 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
                 world["online"] = int(world["online"])
             except ValueError:
                 world["online"] = 0
-            worlds.append(World(name=world["name"], online=world["online"], location=world["location"]))
+            worlds.append(World(name=world["name"], online=world["online"], location=world["location"],
+                                pvp_type=world["worldtype"], online_count=world["online"]))
     except KeyError:
         return
     return worlds

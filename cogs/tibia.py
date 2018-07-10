@@ -5,6 +5,7 @@ import random
 import re
 import time
 import urllib.parse
+from operator import attrgetter
 from typing import Optional
 
 import discord
@@ -22,8 +23,14 @@ from utils.pages import Pages, CannotPaginate, VocationPages
 from utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
     url_house, get_stats, get_map_area, get_tibia_time_zone, get_world, tibia_worlds, get_world_bosses, get_recent_news, \
     get_news_article, Character, url_guild, highscore_format, get_character_url, url_character, get_house, \
-    get_voc_abb_and_emoji
+    get_voc_abb_and_emoji, get_world_list
 from utils.tibiawiki import get_rashid_info
+
+
+FLAGS = {"North America": "🇺🇸", "South America": "🇧🇷", "Europe": "🇬🇧"}
+PVP = {"Optional PvP": "🕊️", "Hardcore PvP": "💀", "Open PvP": "⚔",
+       "Retro Open PvP": "⚔", "Retro Hardcore PvP":  "💀"}
+TRANSFERS = {"locked": "🔒", "blocked": "⛔"}
 
 
 class Tibia:
@@ -1548,11 +1555,6 @@ class Tibia:
             await ctx.send("I'm having connection issues right now.")
             return
 
-        flags = {"North America": "🇺🇸", "South America": "🇧🇷", "Europe": "🇬🇧"}
-        pvp = {"Optional PvP": "🕊️", "Hardcore PvP": "💀", "Open PvP": "⚔",
-               "Retro Open PvP": "⚔", "Retro Hardcore PvP":  "💀"}
-        transfers = {"locked": "🔒", "blocked": "⛔"}
-
         url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
         embed = discord.Embed(url=url, title=name.capitalize())
         if world.online == 0:
@@ -1571,12 +1573,12 @@ class Tibia:
         except (IndexError, ValueError):
             pass
 
-        embed.add_field(name="Location", value=f"{flags.get(world.location,'')} {world.location}")
-        embed.add_field(name="PvP Type", value=f"{pvp.get(world.pvp_type,'')} {world.pvp_type}")
+        embed.add_field(name="Location", value=f"{FLAGS.get(world.location,'')} {world.location}")
+        embed.add_field(name="PvP Type", value=f"{PVP.get(world.pvp_type,'')} {world.pvp_type}")
         if world.premium_type is not None:
             embed.add_field(name="Premium restricted", value=ctx.tick(True))
         if world.transfer_type is not None:
-            embed.add_field(name="Transfers", value=f"{transfers.get(world.transfer_type,'')} {world.transfer_type}")
+            embed.add_field(name="Transfers", value=f"{TRANSFERS.get(world.transfer_type,'')} {world.transfer_type}")
 
         knight = 0
         paladin = 0
@@ -1603,6 +1605,68 @@ class Tibia:
                         inline=False)
 
         await ctx.send(embed=embed)
+
+    @commands.command(usage="[query]")
+    async def worlds(self, ctx: NabCtx, query=None):
+        """Shows a list of worlds.
+
+        You can pass a list of parameters separated by commas to change the sorting or filter worlds.
+
+        `online` to sort by online count.
+        `descending` to reverse the order.
+        `europe`, `south america` or `north america` to filter by location.
+        `optional pvp`, `open pvp`, `retro open pvp`, `hardcore pvp` or `retro hardcore pvp` to filter by pvp type."""
+        try:
+            worlds = await get_world_list()
+            if worlds is None:
+                return await ctx.send(f"{ctx.tick(False)} Something went wrong...'")
+        except NetworkError:
+            return await ctx.send(f"{ctx.tick(False)} I'm having network errors, please try again later.'")
+
+        params = query.lower().replace(" ", "").replace("-", "").split(",")
+        sort = "name"
+        if "online" in params:
+            sort = "online_count"
+        reverse = False
+        if {"desc", "descending"}.intersection(params):
+            reverse = True
+
+        region_filter = None
+        if {"eu", "europe"}.intersection(params):
+            region_filter = "Europe"
+        elif {"southamerica", "sa", "brazil", "brasil", "br"}.intersection(params):
+            region_filter = "South America"
+        elif {"northamerica", "na", "usa", "us"}.intersection(params):
+            region_filter = "North America"
+
+        pvp_filter = None
+        if {"optionalpvp", "npvp", "nonpvp", "nopvp"}.intersection(params):
+            pvp_filter = "Optional PvP"
+        elif {"pvp", "openpvp"}.intersection(params):
+            pvp_filter = "Open PvP"
+        elif {"retropvp", "retroopenpvp"}.intersection(params):
+            pvp_filter = "Retro Open PvP"
+        elif {"hardcore", "hardcorepvp", "enforcedpvp"}.intersection(params):
+            pvp_filter = "Hardcore PvP"
+        elif {"retrohardcore", "retrohardcorepvp"}.intersection(params):
+            pvp_filter = "Retro Hardcore PvP"
+
+        if region_filter:
+            worlds = filter(lambda w: w.location == region_filter, worlds)
+        if pvp_filter:
+            worlds = filter(lambda w: w.pvp_type == pvp_filter, worlds)
+
+        worlds = sorted(worlds, key=attrgetter(sort), reverse=reverse)
+        if not worlds:
+            return await ctx.send("There's no worlds matching the query.")
+
+        entries = [f"{w.name} {FLAGS[w.location]}{PVP[w.pvp_type]} - `{w.online_count:,} online`" for w in worlds]
+        per_page = 20 if ctx.long else 5
+        pages = Pages(ctx, entries=entries, per_page=per_page)
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
 
     # Utilities
     @staticmethod

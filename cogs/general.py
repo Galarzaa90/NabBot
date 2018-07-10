@@ -15,7 +15,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils.config import config
 from utils.context import NabCtx
-from utils.database import userDatabase, tibiaDatabase, get_server_property
+from utils.database import userDatabase, get_server_property
 from utils.general import parse_uptime, TimeString, single_line, log, BadTime, get_user_avatar, get_region_string, \
     clean_string, is_numeric
 from utils.pages import CannotPaginate, VocationPages, HelpPaginator

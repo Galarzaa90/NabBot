@@ -7,7 +7,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils.config import config
 from utils.context import NabCtx
-from utils.general import join_list, FIELD_VALUE_LIMIT, average_color, is_numeric
+from utils.general import join_list, FIELD_VALUE_LIMIT, average_color
 from utils.messages import split_message
 from utils.pages import Pages, CannotPaginate
 from utils.tibia import get_map_area
@@ -329,7 +329,7 @@ class TibiaWiki:
         if permissions.attach_files:
             files = []
             if npc["image"] != 0:
-                filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + ".png"
+                filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + ".gif"
                 embed.set_thumbnail(url=f"attachment://{filename}")
                 files.append(discord.File(npc["image"], filename))
             if None not in [npc["x"], npc["y"], npc["z"]]:
@@ -803,7 +803,7 @@ class TibiaWiki:
     def get_npc_embed(ctx: NabCtx, npc, long):
         """Gets the embed to show in /npc command"""
         short_limit = 5
-        long_limit = 100
+        long_limit = 50
         too_long = False
 
         if type(npc) is not dict:
