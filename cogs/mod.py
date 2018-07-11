@@ -32,32 +32,27 @@ class Mod:
         """Cleans the channel from bot commands.
 
         If the bot has `Manage Messages` permission, it will also delete command invocation messages."""
-        messages: List[discord.Message] = []
-        can_manage = ctx.bot_permissions.manage_messages
+        count = 0
         prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=config.command_prefix)
-        user_count = 0
-        bot_count = 0
-        async for message in ctx.channel.history(limit=limit):
-            if message.content.startswith(tuple(prefixes)) and can_manage:
-                messages.append(message)
-                user_count += 1
-            elif message.author == ctx.guild.me:
-                messages.append(message)
-                bot_count += 1
+        # Also skip death and levelup messages from cleanup
+        announce_prefix = (config.levelup_emoji, config.death_emoji, config.pvpdeath_emoji)
+        if ctx.bot_permissions.manage_messages:
+            def check(m: discord.Message):
+                return (m.author == ctx.me and not m.content.startswith(announce_prefix)) or \
+                       m.content.startswith(tuple(prefixes))
 
-        if not messages:
+            deleted = await ctx.channel.purge(limit=limit, check=check)
+            count = len(deleted)
+        else:
+            with ctx.typing():
+                async for msg in ctx.channel.history(limit=limit):
+                    if msg.author == ctx.me:
+                        await msg.delete()
+                        count += 1
+        if not count:
             return await ctx.send("There are no messages to clean.", delete_after=10)
 
-        if not can_manage:
-            for message in messages:
-                if message.author == ctx.me:
-                    await message.delete()
-            await ctx.send(f"{ctx.tick()} Deleted {bot_count:,} messages.\nCouldn't delete {user_count:,} user "
-                           f"messages because I don't have `Manage Messages` permission.", delete_after=20)
-        else:
-            await ctx.channel.delete_messages(messages)
-            await ctx.send(f"{ctx.tick()} Deleted {len(messages):,} messages.", delete_after=20)
-
+        await ctx.send(f"{ctx.tick()} Deleted {count:,} messages.", delete_after=20)
 
     @commands.guild_only()
     @checks.is_channel_mod()
