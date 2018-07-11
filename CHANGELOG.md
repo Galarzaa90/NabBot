@@ -25,9 +25,13 @@
 - New `/cleanup` command, cleans bot messages and command invocations in the current channel.
 - New `/roll` command, rolls a die and shows the results.
 - New `/botinfo` command, shows advanced information about the bot.
+- New `/worlds` command, shows a list of worlds with their location, pvptype and online population, with filtering options.
 - `/about` now shows less advanced information, and more general information.
 - `/version` now checks if the required minimum commit version of discord.py is being used.
 - `/monster` now shows occurrence, kills required and charm points given.
+- `/monster`, `/house`, `/spell`, `/npc`, `/item`, `/imbuement`, `/achievement`
+- Fixed `/checkchannel` ignoring channel parameter.
+- Fixed `/quote` failing when quoting users no longer in server.
 - Command name and aliases changes:
     - `/debug`: renamed to `/eval`.
     - `/help`: Alias `/commands` added.

@@ -594,49 +594,55 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.command(aliases=["guildhall"], usage="<name>[/world]")
+    @commands.command(aliases=["guildhall"], usage="<name>[,world]")
     async def house(self, ctx: NabCtx, *, name: str):
         """Shows info for a house or guildhall.
 
         By default, it shows the current status of a house for the current tracked world (if any).
         If used on private messages, no world is looked up unless specified.
 
-        To specify a world, add the world at the end separated with '/'.
+        To specify a world, add the world at the end separated with a comma.
         """
         permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
-        params = name.split("/", 2)
-        name = params[0]
-        world = None
-        if ctx.guild is not None and len(params) == 1:
-            world = self.bot.tracked_worlds.get(ctx.guild.id)
-        elif len(params) == 2:
-            world = params[1].title()
-            if world not in tibia_worlds:
-                await ctx.send("That's not a valid world.")
-                return
-
+        params = name.split(",")
+        if len(params) > 1:
+            name = ",".join(params[:-1])
+            world = params[-1]
+        else:
+            name = params[0]
+            world = None
+        if world is not None and world.title().strip() not in tibia_worlds:
+            name += f",{world}"
+            world = None
+        if ctx.guild is not None and world is None:
+            world = ctx.world
+        name = name.strip()
+        if world:
+            world = world.strip()
         house = await get_house(name, world)
         if house is None:
-            await ctx.send("I couldn't find a house with that name.")
+            await ctx.send(f"{ctx.tick(False)} I couldn't find a house named `{name}`.")
             return
 
         if type(house) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(house))
-            await ctx.send("I couldn't find that house, maybe you meant one of these?", embed=embed)
-            return
+            name = await ctx.choose(house)
+            if name is None:
+                return
+
+            house = await get_house(name, world)
 
         # Attach image only if the bot has permissions
         if permissions.attach_files:
             filename = re.sub(r"[^A-Za-z0-9]", "", house["name"]) + ".png"
             mapimage = get_map_area(house["x"], house["y"], house["z"])
-            embed = self.get_house_embed(house)
+            embed = self.get_house_embed(ctx, house)
             embed.set_image(url=f"attachment://{filename}")
             await ctx.send(file=discord.File(mapimage, f"{filename}"), embed=embed)
         else:
-            await ctx.send(embed=self.get_house_embed(house))
+            await ctx.send(embed=self.get_house_embed(ctx, house))
 
     @commands.group(aliases=['levelups'], invoke_without_command=True, case_insensitive=True)
     @checks.is_in_tracking_world()
@@ -1791,7 +1797,7 @@ class Tibia:
         return embed
 
     @staticmethod
-    def get_house_embed(house):
+    def get_house_embed(ctx: NabCtx, house):
         """Gets the embed to show in /house command"""
         if type(house) is not dict:
             return
@@ -1825,6 +1831,9 @@ class Tibia:
 
         description += f"\n*[TibiaWiki article](https://tibia.wikia.com/wiki/{urllib.parse.quote(house['name'])})*"
         embed.description = description
+        if "world" not in house:
+            embed.set_footer(text=f"To check a specific world, try: '{ctx.clean_prefix}{ctx.invoked_with} "
+                                  f"{house['name']},{random.choice(tibia_worlds)}'")
         return embed
 
     async def scan_news(self):

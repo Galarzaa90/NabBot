@@ -47,9 +47,10 @@ class TibiaWiki:
             return
 
         if type(achievement) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(achievement))
-            await ctx.send("I couldn't find that achievement, maybe you meant one of these?", embed=embed)
-            return
+            name = await ctx.choose(achievement)
+            if name is None:
+                return
+            achievement = get_achievement(name)
 
         embed = discord.Embed(title=achievement["name"], description=achievement["description"],
                               url=get_article_url(achievement["name"]))
@@ -122,9 +123,10 @@ class TibiaWiki:
             return
 
         if type(imbuement) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(imbuement))
-            await ctx.send("I couldn't find that imbuement, maybe you meant one of these?", embed=embed)
-            return
+            name = await ctx.choose(imbuement)
+            if name is None:
+                return
+            imbuement = get_imbuement(name)
 
         embed = self.get_imbuement_embed(ctx, imbuement, ctx.long, prices)
 
@@ -160,9 +162,10 @@ class TibiaWiki:
             return
 
         if type(item) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(item))
-            await ctx.send("I couldn't find that item, maybe you meant one of these?", embed=embed)
-            return
+            name = await ctx.choose(item)
+            if name is None:
+                return
+            item = get_item(name)
 
         embed = self.get_item_embed(ctx, item, ctx.long)
 
@@ -285,9 +288,10 @@ class TibiaWiki:
             return
 
         if type(monster) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(monster))
-            await ctx.send("I couldn't find that creature, maybe you meant one of these?", embed=embed)
-            return
+            name = await ctx.choose(monster)
+            if name is None:
+                return
+            monster = get_monster(name)
 
         embed = self.get_monster_embed(ctx, monster, ctx.long)
 
@@ -320,9 +324,10 @@ class TibiaWiki:
             return
 
         if type(npc) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(npc))
-            await ctx.send("I couldn't find that NPC, maybe you meant one of these?", embed=embed)
-            return
+            name = await ctx.choose(npc)
+            if name is None:
+                return
+            npc = get_npc(name)
 
         embed = self.get_npc_embed(ctx, npc, ctx.long)
         # Attach spell's image only if the bot has permissions
@@ -362,9 +367,11 @@ class TibiaWiki:
             return
 
         if type(spell) is list:
-            embed = discord.Embed(title="Suggestions", description="\n".join(spell))
-            await ctx.send("I couldn't find that spell, maybe you meant one of these?", embed=embed)
-            return
+            name = await ctx.choose(spell)
+            if name is None:
+                return
+            name = name.split("(")[0].strip()
+            spell = get_spell(name)
 
         embed = self.get_spell_embed(ctx, spell, ctx.long)
 

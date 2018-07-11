@@ -1,7 +1,7 @@
 import asyncio
 import functools
 import re
-from typing import Union, Optional, Callable, TypeVar
+from typing import Union, Optional, Callable, TypeVar, List, Any, Sequence
 
 import discord
 from discord.ext import commands
@@ -146,6 +146,42 @@ class NabCtx(commands.Context):
             return None
         else:
             return self.bot.tracked_worlds.get(self.guild.id, None)
+
+    async def choose(self, matches: Sequence[Any], title="Suggestions"):
+        if len(matches) == 0:
+            raise ValueError('No results found.')
+
+        if len(matches) == 1:
+            return matches[0]
+
+        embed = discord.Embed(colour=discord.Colour.blurple(), title=title,
+                              description='\n'.join(f'{index}: {item}' for index, item in enumerate(matches, 1)))
+
+        msg = await self.send("I couldn't find what you were looking for, maybe you mean one of these?\n"
+                              "**Only say the number** (*0 to cancel*)", embed=embed)
+
+        def check(m: discord.Message):
+            return m.content.isdigit() and m.author.id == self.author.id and m.channel.id == self.channel.id
+        message = None
+        try:
+            message = await self.bot.wait_for('message', check=check, timeout=30.0)
+            index = int(message.content)
+            if index == 0:
+                await self.send("Alright, choosing cancelled.", delete_after=10)
+                return None
+            try:
+                await msg.delete()
+                return matches[index - 1]
+            except IndexError:
+                await self.send(f"{self.tick(False)} That wasn't in the choices.", delete_after=10)
+        except asyncio.TimeoutError:
+            return None
+        finally:
+            try:
+                if message:
+                    await message.delete()
+            except discord.Forbidden:
+                pass
 
     async def execute_async(self, func: Callable[..., T], *args, **kwargs) -> T:
         """Executes a synchronous function inside an executor.

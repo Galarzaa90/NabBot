@@ -7,7 +7,6 @@ from typing import Union, List, Optional, Dict
 import discord
 from discord.ext import commands
 
-import utils
 from utils import context
 from utils.config import config
 from utils.database import init_database, userDatabase, get_server_property
