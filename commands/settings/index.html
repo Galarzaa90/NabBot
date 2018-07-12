@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-0.17.4, mkdocs-material-2.9.1">
+      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.2">
     
     
       
@@ -65,6 +65,8 @@
       
     
     <link rel="stylesheet" href="../../assets/fonts/material-icons.css">
+    
+      <link rel="stylesheet" href="../../assets/css/extra.css">
     
     
   </head>
@@ -229,6 +231,19 @@
   
     <li class="md-tabs__item">
       
+        <a href="../../features/" title="Features" class="md-tabs__link">
+          Features
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
         <a href="../" title="Commands" class="md-tabs__link md-tabs__link--active">
           Commands
         </a>
@@ -359,18 +374,78 @@
       
       
 
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+    
+    <label class="md-nav__link" for="nav-6">
+      Features
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-6">
+        Features
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/" title="Overview" class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/autoroles/" title="Autoroles" class="md-nav__link">
+      Autoroles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/groups/" title="Groups" class="md-nav__link">
+      Groups
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
   
 
 
   <li class="md-nav__item md-nav__item--active md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6" checked>
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7" checked>
     
-    <label class="md-nav__link" for="nav-6">
+    <label class="md-nav__link" for="nav-7">
       Commands
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-6">
+      <label class="md-nav__title" for="nav-7">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -543,6 +618,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#settings-welcome" title="settings welcome" class="md-nav__link">
+    settings welcome
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#settings-welcomechannel" title="settings welcomechannel" class="md-nav__link">
+    settings welcomechannel
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#settings-world" title="settings world" class="md-nav__link">
     settings world
   </a>
@@ -613,13 +702,13 @@
 
   <li class="md-nav__item md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
     
-    <label class="md-nav__link" for="nav-7">
+    <label class="md-nav__link" for="nav-8">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-7">
+      <label class="md-nav__title" for="nav-8">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -737,6 +826,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#settings-welcome" title="settings welcome" class="md-nav__link">
+    settings welcome
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#settings-welcomechannel" title="settings welcomechannel" class="md-nav__link">
+    settings welcomechannel
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#settings-world" title="settings world" class="md-nav__link">
     settings world
   </a>
@@ -810,8 +913,8 @@ If the assigned channel is deleted or forbidden, the top channel will be used ag
 <h3 id="settings-newschannel">settings newschannel<a class="headerlink" href="#settings-newschannel" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">settings newschannel [channel]</code></p>
 <p>Changes the channel where Tibia news are announced.</p>
-<p>This is where all news and articles posted in Tibia.com will be announced..
-By default, the highest channel on the list where the bot can send messages will be used.
+<p>This is where all news and articles posted in Tibia.com will be announced.<br />
+By default, this feature is disabled, you must set a channel to enable it.<br />
 If the assigned channel is deleted or forbidden, the top channel will be used again.</p>
 <hr />
 <h3 id="settings-prefix">settings prefix<a class="headerlink" href="#settings-prefix" title="Permanent link">&para;</a></h3>
@@ -823,6 +926,30 @@ A maximum of 5 commands can be set per server.</p>
 <p>If you want to have a space at the end, such as: <code class="codehilite">nabbot help</code>, you have to use double quotes "nabbot ".
 Multiple words also require using quotes.</p>
 <p>Mentioning the bot is always a valid command and can't be changed."</p>
+<hr />
+<h3 id="settings-welcome">settings welcome<a class="headerlink" href="#settings-welcome" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">settings welcome [message]</code></p>
+<p>Changes the message new members receive when joining.</p>
+<p>This is initially disabled.</p>
+<p>You can use formatting to show dynamic values:
+- {server} -&gt; The server's name.
+- {server} -&gt; The server's owner name
+- {server} -&gt; Mention to the server's owner.
+- {owner} -&gt; The name of the server owner
+- {owner.mention} -&gt; Mention the server owner.
+- {user} -&gt; The name of the user that joined.
+- {user.mention} -&gt; Mention the user that joined.
+- {bot} -&gt; The name of the bot
+- {bot.mention} -&gt; Mention the bot.</p>
+<p>Be sure to change the welcome channel too.</p>
+<hr />
+<h3 id="settings-welcomechannel">settings welcomechannel<a class="headerlink" href="#settings-welcomechannel" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">settings welcomechannel [channel]</code></p>
+<p>Changes the channel where new members are welcomed.</p>
+<p>A welcome message must be set for this setting to work.
+If the channel becomes unavailable, private messages will be used.</p>
+<p>Note that private messages are not reliable since new users can have them disabled before joining.
+To disable this, you must disable welcome messages using <code class="codehilite">settings welcome</code>.</p>
 <hr />
 <h3 id="settings-world">settings world<a class="headerlink" href="#settings-world" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">settings world [world]</code>  </p>
@@ -914,7 +1041,7 @@ Only characters in that world will be registered.</p>
     
       <script src="../../assets/javascripts/application.a59e2a89.js"></script>
       
-      <script>app.initialize({version:"0.17.4",url:{base:"../.."}})</script>
+      <script>app.initialize({version:"0.17.5",url:{base:"../.."}})</script>
       
     
     

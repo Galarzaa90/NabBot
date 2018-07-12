@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-0.17.4, mkdocs-material-2.9.1">
+      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.2">
     
     
       
@@ -65,6 +65,8 @@
       
     
     <link rel="stylesheet" href="../../assets/fonts/material-icons.css">
+    
+      <link rel="stylesheet" href="../../assets/css/extra.css">
     
     
   </head>
@@ -229,6 +231,19 @@
   
     <li class="md-tabs__item">
       
+        <a href="../../features/" title="Features" class="md-tabs__link">
+          Features
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
         <a href="../" title="Commands" class="md-tabs__link md-tabs__link--active">
           Commands
         </a>
@@ -359,18 +374,78 @@
       
       
 
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+    
+    <label class="md-nav__link" for="nav-6">
+      Features
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-6">
+        Features
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/" title="Overview" class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/autoroles/" title="Autoroles" class="md-nav__link">
+      Autoroles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/groups/" title="Groups" class="md-nav__link">
+      Groups
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
   
 
 
   <li class="md-nav__item md-nav__item--active md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6" checked>
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7" checked>
     
-    <label class="md-nav__link" for="nav-6">
+    <label class="md-nav__link" for="nav-7">
       Commands
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-6">
+      <label class="md-nav__title" for="nav-7">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -476,8 +551,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#debug" title="debug" class="md-nav__link">
-    debug
+  <a href="#eval" title="eval" class="md-nav__link">
+    eval
   </a>
   
 </li>
@@ -635,13 +710,13 @@
 
   <li class="md-nav__item md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
     
-    <label class="md-nav__link" for="nav-7">
+    <label class="md-nav__link" for="nav-8">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-7">
+      <label class="md-nav__title" for="nav-8">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -716,8 +791,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#debug" title="debug" class="md-nav__link">
-    debug
+  <a href="#eval" title="eval" class="md-nav__link">
+    eval
   </a>
   
 </li>
@@ -816,7 +891,7 @@
 Optional parameters are enclosed in brackets <code class="codehilite">[]</code>.</p>
 </div>
 <h2 id="adminsmessage">adminsmessage<a class="headerlink" href="#adminsmessage" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax</strong>: <code class="codehilite">adminsmessage [message]</code><br />
+<p><strong>Syntax:</strong> <code class="codehilite">adminsmessage [message]</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">notifyadmins</code></p>
 <p>Sends a private message to all server owners.</p>
 <p>Notifies all the owners of the servers where the bot is in.<br />
@@ -826,18 +901,21 @@ If no message is specified at first, the bot will ask for a message to send.</p>
 <img alt="image" src="../../assets/images/commands/admins_message_1.png" /><br />
 <strong>After typing the message.</strong><br />
 <img alt="image" src="../../assets/images/commands/admins_message_2.png" /></p></details><hr />
-<h2 id="debug">debug<a class="headerlink" href="#debug" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> <code class="codehilite">debug &lt;code&gt;</code></p>
+<h2 id="eval">eval<a class="headerlink" href="#eval" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> <code class="codehilite">eval &lt;code&gt;</code></p>
 <p>Evaluates Python code.</p>
-<p>This command can be used to run python statements and get the response as a reply.</p>
+<p>This commands lets you evaluate python code. If no errors are returned, the bot will react to the command call.<br />
+To show the result, you have to use <code class="codehilite"><span class="k">print</span><span class="p">()</span></code>.<br />
+Asynchronous functions must be waited for using <code class="codehilite"><span class="n">await</span></code>.<br />
+To show the results of the last command, use <code class="codehilite"><span class="k">print</span><span class="p">(</span><span class="n">_</span><span class="p">)</span></code>.  </p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>This command is meant for advanced users and debugging code.</p>
+<p>This command is meant for advanced users and debugging code. Use under your own risk.</p>
 </div>
-<details class="summary"><summary>Example</summary><p><strong>/debug bot.get_member(162060569803751424)</strong><br />
-<img alt="image" src="../../assets/images/commands/debug.png" /></p></details><hr />
+<details class="summary"><summary>Example</summary><p><strong>/eval <code class="codehilite"><span class="k">print</span><span class="p">(</span><span class="n">bot</span><span class="o">.</span><span class="n">get_member</span><span class="p">(</span><span class="mi">162060569803751424</span><span class="p">))</span></code></strong><br />
+<img alt="image" src="../../assets/images/commands/eval.png" /></p></details><hr />
 <h2 id="leave">leave<a class="headerlink" href="#leave" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax</strong>: <code class="codehilite">leave &lt;server&gt;</code></p>
+<p><strong>Syntax:</strong> <code class="codehilite">leave &lt;server&gt;</code></p>
 <p>Makes the bot leave a server.</p>
 <p>The bot will ask for confirmation before leaving the server.</p>
 <p>Once the bot has left a server, only a server administrator can add it back.</p>
@@ -853,7 +931,7 @@ For example, a cog found in <code class="codehilite">cogs/tibia.py</code> would 
 <details class="summary"><summary>Example</summary><p><strong>/load cogs.tibia</strong><br />
 <img alt="image" src="../../assets/images/commands/load.png" /></p></details><hr />
 <h2 id="merge">merge<a class="headerlink" href="#merge" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax</strong>: <code class="codehilite">merge &lt;old world&gt; &lt;new world&gt;</code></p>
+<p><strong>Syntax:</strong> <code class="codehilite">merge &lt;old world&gt; &lt;new world&gt;</code></p>
 <p>Renames all references of an old world to a new one.</p>
 <p>This command should updates all the database entries, changing all references of the old world to the new one</p>
 <p>This updates all characters' worlds and discord guild's tracked worlds to the new world.
@@ -864,8 +942,8 @@ All the highscores entries of the old world will be deleted.</p>
 <details class="summary"><summary>Example</summary><p><strong>/merge Fidera Gladera</strong><br />
 <img alt="image" src="../../assets/images/commands/merge.png" /></p></details><hr />
 <h2 id="namelock">namelock<a class="headerlink" href="#namelock" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax</strong>: <code class="codehilite">namelock &lt;old name&gt;,&lt;new name&gt;</code> <br />
-<strong>Other aliases</strong>: <code class="codehilite">rename</code>, <code class="codehilite">namechange</code></p>
+<p><strong>Syntax:</strong> <code class="codehilite">namelock &lt;old name&gt;,&lt;new name&gt;</code> <br />
+<strong>Other aliases:</strong> <code class="codehilite">rename</code>, <code class="codehilite">namechange</code></p>
 <p>Register the name of a new character that was namelocked.</p>
 <p>Characters that get namelocked can't be searched by their old name, so they must be reassigned manually.</p>
 <p>If the character got a name change (from the store), searching the old name redirects to the new name, so
@@ -902,7 +980,7 @@ To exit, type <code class="codehilite">exit()</code>.</p>
 <details class="summary"><summary>Example</summary><p><strong>/servers</strong><br />
 <img alt="image" src="../../assets/images/commands/servers.png" /></p></details><hr />
 <h2 id="unload">unload<a class="headerlink" href="#unload" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax</strong>: <code class="codehilite">unload &lt;cog&gt;</code></p>
+<p><strong>Syntax:</strong> <code class="codehilite">unload &lt;cog&gt;</code></p>
 <p>Unloads a cog.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1008,7 +1086,7 @@ This will change once <code class="codehilite">v1.0.0</code> is <del>finally</de
     
       <script src="../../assets/javascripts/application.a59e2a89.js"></script>
       
-      <script>app.initialize({version:"0.17.4",url:{base:"../.."}})</script>
+      <script>app.initialize({version:"0.17.5",url:{base:"../.."}})</script>
       
     
     

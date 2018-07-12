@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-0.17.4, mkdocs-material-2.9.1">
+      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.2">
     
     
       
@@ -65,6 +65,8 @@
       
     
     <link rel="stylesheet" href="../../assets/fonts/material-icons.css">
+    
+      <link rel="stylesheet" href="../../assets/css/extra.css">
     
     
   </head>
@@ -229,6 +231,19 @@
   
     <li class="md-tabs__item">
       
+        <a href="../../features/" title="Features" class="md-tabs__link">
+          Features
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
         <a href="../" title="Commands" class="md-tabs__link md-tabs__link--active">
           Commands
         </a>
@@ -359,18 +374,78 @@
       
       
 
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+    
+    <label class="md-nav__link" for="nav-6">
+      Features
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-6">
+        Features
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/" title="Overview" class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/autoroles/" title="Autoroles" class="md-nav__link">
+      Autoroles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/groups/" title="Groups" class="md-nav__link">
+      Groups
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
   
 
 
   <li class="md-nav__item md-nav__item--active md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6" checked>
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7" checked>
     
-    <label class="md-nav__link" for="nav-6">
+    <label class="md-nav__link" for="nav-7">
       Commands
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-6">
+      <label class="md-nav__title" for="nav-7">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -524,6 +599,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#imbuement" title="imbuement" class="md-nav__link">
+    imbuement
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#bestiary" title="bestiary" class="md-nav__link">
     bestiary
   </a>
@@ -613,13 +695,13 @@
 
   <li class="md-nav__item md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
     
-    <label class="md-nav__link" for="nav-7">
+    <label class="md-nav__link" for="nav-8">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-7">
+      <label class="md-nav__title" for="nav-8">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -689,6 +771,13 @@
         <li class="md-nav__item">
   <a href="#achievement" title="achievement" class="md-nav__link">
     achievement
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#imbuement" title="imbuement" class="md-nav__link">
+    imbuement
   </a>
   
 </li>
@@ -780,6 +869,17 @@ Optional parameters are enclosed in brackets <code class="codehilite">[]</code>.
 <p>Shows the achievement's grade, points, description, and instructions on how to unlock.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/achievement demonic barkeeper</strong><br />
 <img alt="image" src="../../assets/images/commands/achievement.png" /></p></details><hr />
+<h2 id="imbuement">imbuement<a class="headerlink" href="#imbuement" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> <code class="codehilite">imbuement &lt;name&gt;[,price1[,price2[,price3]]][,tokenprice]</code></p>
+<p>Displays information about an imbuement.</p>
+<p>You can optionally provide prices for the materials, in the order of the tier they belong to.
+Additionally, for Vampirism, Void and Strike imbuements, you can provide the price for gold tokens.</p>
+<p>The total cost will be calculated, as well as the hourly cost.
+If applicable, it will show the cheapest way to get it using gold tokens.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/imbuement powerful void,2200,3790,2995,35800</strong><br />
+<img alt="image" src="../../assets/images/commands/imbuement_1.png" /><br />
+<strong>/imbuement intricate slash</strong><br />
+<img alt="image" src="../../assets/images/commands/imbuement_2.png" /></p></details><hr />
 <h2 id="bestiary">bestiary<a class="headerlink" href="#bestiary" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">bestiary &lt;class&gt;</code></p>
 <p>Displays a category's creatures or all the categories.</p>
@@ -931,7 +1031,7 @@ If only one matches, the key's information is shwon directly.</p>
     
       <script src="../../assets/javascripts/application.a59e2a89.js"></script>
       
-      <script>app.initialize({version:"0.17.4",url:{base:"../.."}})</script>
+      <script>app.initialize({version:"0.17.5",url:{base:"../.."}})</script>
       
     
     

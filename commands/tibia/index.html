@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-0.17.4, mkdocs-material-2.9.1">
+      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.2">
     
     
       
@@ -65,6 +65,8 @@
       
     
     <link rel="stylesheet" href="../../assets/fonts/material-icons.css">
+    
+      <link rel="stylesheet" href="../../assets/css/extra.css">
     
     
   </head>
@@ -229,6 +231,19 @@
   
     <li class="md-tabs__item">
       
+        <a href="../../features/" title="Features" class="md-tabs__link">
+          Features
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
         <a href="../" title="Commands" class="md-tabs__link md-tabs__link--active">
           Commands
         </a>
@@ -359,18 +374,78 @@
       
       
 
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+    
+    <label class="md-nav__link" for="nav-6">
+      Features
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-6">
+        Features
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/" title="Overview" class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/autoroles/" title="Autoroles" class="md-nav__link">
+      Autoroles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/groups/" title="Groups" class="md-nav__link">
+      Groups
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
   
 
 
   <li class="md-nav__item md-nav__item--active md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6" checked>
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7" checked>
     
-    <label class="md-nav__link" for="nav-6">
+    <label class="md-nav__link" for="nav-7">
       Commands
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-6">
+      <label class="md-nav__title" for="nav-7">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -675,6 +750,13 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#worlds" title="worlds" class="md-nav__link">
+    worlds
+  </a>
+  
+</li>
+      
       
       
       
@@ -722,13 +804,13 @@
 
   <li class="md-nav__item md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
     
-    <label class="md-nav__link" for="nav-7">
+    <label class="md-nav__link" for="nav-8">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-7">
+      <label class="md-nav__title" for="nav-8">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -966,6 +1048,13 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#worlds" title="worlds" class="md-nav__link">
+    worlds
+  </a>
+  
+</li>
+      
       
       
       
@@ -1045,19 +1134,19 @@ It also shows whether the guild has a guildhall or not, and their funding date.<
 <p><strong>Syntax:</strong> <code class="codehilite">guild members &lt;name&gt;</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">guild list</code></p>
 <p>Shows a list of all guild members.</p>
-<p>Online members have a 🔹 icon next to their name.</p>
+<p>Online members have an icon next to their name.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/guild members Redd Alliance</strong><br />
 <img alt="image" src="../../assets/images/commands/guildmembers.png" /></p></details><hr />
 <h2 id="house">house<a class="headerlink" href="#house" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> <code class="codehilite">house &lt;name&gt;[/world]</code><br />
+<p><strong>Syntax:</strong> <code class="codehilite">house &lt;name&gt;[,world]</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">guildhall</code></p>
 <p>Shows info for a house or guildhall.</p>
 <p>By default, it shows the current status of a house for the current tracked world (if any).
 If used on private messages, no world is looked up unless specified.</p>
-<p>To specify a world, add the world at the end separated with '/'.</p>
+<p>To specify a world, add the world at the end separated with a comma.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/house darashia 8, flat 03</strong><br />
 <img alt="image" src="../../assets/images/commands/house_1.png" /><br />
-<strong>/house caveman shelter/calmera</strong><br />
+<strong>/house caveman shelter,calmera</strong><br />
 <img alt="image" src="../../assets/images/commands/house_2.png" /></p></details><hr />
 <h2 id="levels">levels<a class="headerlink" href="#levels" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">levels [player]</code><br />
@@ -1200,6 +1289,22 @@ In this case, a user id was provided, and it searched for the user with that id.
 <img alt="image" src="../../assets/images/commands/world_1.png" /><br />
 <strong>/world Ferobra</strong><br />
 <img alt="image" src="../../assets/images/commands/world_2.png" /></p></details><hr />
+<h2 id="worlds">worlds<a class="headerlink" href="#worlds" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> <code class="codehilite">worlds [query]</code></p>
+<p>Shows a list of worlds.</p>
+<p>You can pass a list of parameters separated by commas to change the sorting or filter worlds.</p>
+<ul>
+<li><code class="codehilite">online</code> to sort by online count.</li>
+<li><code class="codehilite">descending</code> to reverse the order.</li>
+<li><code class="codehilite">europe</code>, <code class="codehilite">south america</code> or <code class="codehilite">north america</code> to filter by location.</li>
+<li><code class="codehilite">optional pvp</code>, <code class="codehilite">open pvp</code>, <code class="codehilite">retro open pvp</code>, <code class="codehilite">hardcore pvp</code> or <code class="codehilite">retro hardcore pvp</code> to filter by pvp type.</li>
+</ul>
+<details class="summary"><summary>Examples</summary><p><strong>/worlds</strong><br />
+<img alt="image" src="../../assets/images/commands/worlds_1.png" /><br />
+<strong>/worlds northamerica,online,descending</strong><br />
+<img alt="image" src="../../assets/images/commands/worlds_2.png" /><br />
+<strong>/worlds southamerica,openpvp,online,descending</strong><br />
+<img alt="image" src="../../assets/images/commands/worlds_3.png" />    </p></details>
                 
                   
                 
@@ -1284,7 +1389,7 @@ In this case, a user id was provided, and it searched for the user with that id.
     
       <script src="../../assets/javascripts/application.a59e2a89.js"></script>
       
-      <script>app.initialize({version:"0.17.4",url:{base:"../.."}})</script>
+      <script>app.initialize({version:"0.17.5",url:{base:"../.."}})</script>
       
     
     

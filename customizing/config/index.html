@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-0.17.4, mkdocs-material-2.9.1">
+      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.2">
     
     
       
@@ -65,6 +65,8 @@
       
     
     <link rel="stylesheet" href="../../assets/fonts/material-icons.css">
+    
+      <link rel="stylesheet" href="../../assets/css/extra.css">
     
     
   </head>
@@ -229,6 +231,19 @@
   
     <li class="md-tabs__item">
       
+        <a href="../../features/" title="Features" class="md-tabs__link">
+          Features
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
         <a href="../../commands/" title="Commands" class="md-tabs__link">
           Commands
         </a>
@@ -365,10 +380,70 @@
       <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
     
     <label class="md-nav__link" for="nav-6">
-      Commands
+      Features
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
       <label class="md-nav__title" for="nav-6">
+        Features
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/" title="Overview" class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/autoroles/" title="Autoroles" class="md-nav__link">
+      Autoroles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/groups/" title="Groups" class="md-nav__link">
+      Groups
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+    
+    <label class="md-nav__link" for="nav-7">
+      Commands
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-7">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -520,13 +595,13 @@
 
   <li class="md-nav__item md-nav__item--active md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7" checked>
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8" checked>
     
-    <label class="md-nav__link" for="nav-7">
+    <label class="md-nav__link" for="nav-8">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-7">
+      <label class="md-nav__title" for="nav-8">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -607,13 +682,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#loot-max" title="Loot Max" class="md-nav__link">
-    Loot Max
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#announce-threshold" title="Announce Threshold" class="md-nav__link">
     Announce Threshold
   </a>
@@ -630,6 +698,13 @@
         <li class="md-nav__item">
   <a href="#scan-intervals" title="Scan intervals" class="md-nav__link">
     Scan intervals
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#emojis" title="Emojis" class="md-nav__link">
+    Emojis
   </a>
   
 </li>
@@ -743,13 +818,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#loot-max" title="Loot Max" class="md-nav__link">
-    Loot Max
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#announce-threshold" title="Announce Threshold" class="md-nav__link">
     Announce Threshold
   </a>
@@ -766,6 +834,13 @@
         <li class="md-nav__item">
   <a href="#scan-intervals" title="Scan intervals" class="md-nav__link">
     Scan intervals
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#emojis" title="Emojis" class="md-nav__link">
+    Emojis
   </a>
   
 </li>
@@ -882,12 +957,6 @@ The owner of the bot's application is always considered even if their id is not 
 <span class="l l-Scalar l-Scalar-Plain">display_sonora_time</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
 </pre></div>
 
-<p>This toggles displaying those timezones in the <code class="codehilite">/time</code> command.</p>
-<p>These keys will be deprecated soon in favour of a more dynamic way to add timezones.</p>
-<h2 id="loot-max">Loot Max<a class="headerlink" href="#loot-max" title="Permanent link">&para;</a></h2>
-<div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">loot_max</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">6</span>
-</pre></div>
-
 <p>Specifies how many concurrent loot scanning jobs can be active.</p>
 <h2 id="announce-threshold">Announce Threshold<a class="headerlink" href="#announce-threshold" title="Permanent link">&para;</a></h2>
 <div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">announce_threshold</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">30</span>
@@ -921,6 +990,68 @@ However, if the data is too old, it must be discarded to prevent errors.</p>
 These were relevant when Tibia.com was used for most of the data, to reduce errors due to CipSoft blocking constant requests.</p>
 <p>Now that TibiaData is used, this is not as relevant, as they use caching.</p>
 <p>This might be removed in future updates.</p>
+<h2 id="emojis">Emojis<a class="headerlink" href="#emojis" title="Permanent link">&para;</a></h2>
+<p>Some information is displayed using emojis, to make it easier to identify at quick glance.
+These emojis can be personalized by editing the configuration file.</p>
+<p>Apart of unicode (standard) emojis, custom discord emojis can be used.
+Discord bots are able to use emojis from any server they are in, anywhere, like they had <a href="https://discordapp.com/nitro">Nitro</a>.</p>
+<p>It is recommended to use custom emojis from a server where no one else can modify them, as this may break NabBot.
+A server dedicated for emojis may be created, inviting the bot for it to use them.</p>
+<p>To use a custom emoji, you have to declare it like: <code class="codehilite">&lt;:name:id&gt;</code>, for example: <code class="codehilite">&lt;:fireDamage:458794525050142740&gt;</code>.
+For animated emojis, you have to add <code class="codehilite">a</code>, example: <code class="codehilite">&lt;a:paladin:45233654759231&gt;</code>.</p>
+<p>To find out the id of an emoji, there's two ways to do it:</p>
+<ol>
+<li>Right click and emoji, select <code class="codehilite">Copy Link</code>, a link like <code class="codehilite">https://cdn.discordapp.com/emojis/458794525050142740.png?v=1</code> will be created.<br />
+   The numeric part is the emoji's id.</li>
+<li>Send a message with the emoji, placing <code class="codehilite">\</code> before, e.g. <code class="codehilite">\:fireDamage:</code>.<br />
+   The resulting message will contain the escaped emoji: <code class="codehilite">&lt;:fireDamage:458794525050142740&gt;</code>.</li>
+</ol>
+<p>Alternatively, if you have the <code class="codehilite">server-log</code> enabled, you can see the id of an emoji when it's created or modified.</p>
+<p>The following are values that always require to have an emoji assigned. These will always default to a unicode emoji.
+<div class="codehilite"><pre><span></span><span class="c1"># Required emojis</span>
+<span class="c1"># These values must always have an emoji to display</span>
+<span class="l l-Scalar l-Scalar-Plain">online_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🔹</span>
+<span class="l l-Scalar l-Scalar-Plain">true_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">✅</span>
+<span class="l l-Scalar l-Scalar-Plain">false_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">❌</span>
+<span class="l l-Scalar l-Scalar-Plain">levelup_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🌟</span>
+<span class="l l-Scalar l-Scalar-Plain">death_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">☠</span>
+<span class="l l-Scalar l-Scalar-Plain">pvpdeath_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">💀</span>
+<span class="c1"># These emojis are also used in vocation filtering</span>
+<span class="l l-Scalar l-Scalar-Plain">novoc_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🐣</span>
+<span class="l l-Scalar l-Scalar-Plain">druid_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">❄</span>
+<span class="l l-Scalar l-Scalar-Plain">sorcerer_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🔥</span>
+<span class="l l-Scalar l-Scalar-Plain">paladin_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🏹</span>
+<span class="l l-Scalar l-Scalar-Plain">knight_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🛡</span>
+<span class="c1"># Emojis for bestiary info</span>
+<span class="l l-Scalar l-Scalar-Plain">charms_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">⚜</span>
+<span class="l l-Scalar l-Scalar-Plain">difficulty_on_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">⭐</span>
+<span class="l l-Scalar l-Scalar-Plain">difficulty_off_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">▪</span>
+<span class="l l-Scalar l-Scalar-Plain">occurence_on_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🔹</span>
+<span class="l l-Scalar l-Scalar-Plain">occurence_off_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">▪</span>
+</pre></div></p>
+<p>The following are optional emojis. By default, these values will show text, for example creature elemental resistances.
+The unicode emojis used by default are only placeholders, and it is advised to use custom emojis that better represent their values.</p>
+<p>The <code class="codehilite">images\emoji</code> folder contains a set of suggested images to use for custom emojis.
+<div class="codehilite"><pre><span></span><span class="c1"># Optional emojis</span>
+<span class="c1"># Whether to use or not emojis to show discord status in serverinfo command.</span>
+<span class="l l-Scalar l-Scalar-Plain">use_status_emojis</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="l l-Scalar l-Scalar-Plain">status_emojis</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">online</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">💚</span>
+  <span class="l l-Scalar l-Scalar-Plain">dnd</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">♥</span>
+  <span class="l l-Scalar l-Scalar-Plain">idle</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">💛</span>
+  <span class="l l-Scalar l-Scalar-Plain">offline</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🖤</span>
+
+<span class="c1"># Whether to use emojis to represent elemental damage in spells and monsters info</span>
+<span class="l l-Scalar l-Scalar-Plain">use_elemental_emojis</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="l l-Scalar l-Scalar-Plain">elemental_emojis</span><span class="p p-Indicator">:</span>
+  <span class="l l-Scalar l-Scalar-Plain">physical</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">⚔</span>
+  <span class="l l-Scalar l-Scalar-Plain">earth</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🌿</span>
+  <span class="l l-Scalar l-Scalar-Plain">fire</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🔥</span>
+  <span class="l l-Scalar l-Scalar-Plain">energy</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">⚡</span>
+  <span class="l l-Scalar l-Scalar-Plain">ice</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">❄</span>
+  <span class="l l-Scalar l-Scalar-Plain">death</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">💀</span>
+  <span class="l l-Scalar l-Scalar-Plain">holy</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🔱</span>
+</pre></div></p>
                 
                   
                     <h2 id="__source">Source</h2>
@@ -1014,7 +1145,7 @@ These were relevant when Tibia.com was used for most of the data, to reduce erro
     
       <script src="../../assets/javascripts/application.a59e2a89.js"></script>
       
-      <script>app.initialize({version:"0.17.4",url:{base:"../.."}})</script>
+      <script>app.initialize({version:"0.17.5",url:{base:"../.."}})</script>
       
     
     

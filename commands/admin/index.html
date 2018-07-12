@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-0.17.4, mkdocs-material-2.9.1">
+      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.2">
     
     
       
@@ -65,6 +65,8 @@
       
     
     <link rel="stylesheet" href="../../assets/fonts/material-icons.css">
+    
+      <link rel="stylesheet" href="../../assets/css/extra.css">
     
     
   </head>
@@ -229,6 +231,19 @@
   
     <li class="md-tabs__item">
       
+        <a href="../../features/" title="Features" class="md-tabs__link">
+          Features
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
         <a href="../" title="Commands" class="md-tabs__link md-tabs__link--active">
           Commands
         </a>
@@ -359,18 +374,78 @@
       
       
 
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+    
+    <label class="md-nav__link" for="nav-6">
+      Features
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-6">
+        Features
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/" title="Overview" class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/autoroles/" title="Autoroles" class="md-nav__link">
+      Autoroles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/groups/" title="Groups" class="md-nav__link">
+      Groups
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
   
 
 
   <li class="md-nav__item md-nav__item--active md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6" checked>
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7" checked>
     
-    <label class="md-nav__link" for="nav-6">
+    <label class="md-nav__link" for="nav-7">
       Commands
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-6">
+      <label class="md-nav__title" for="nav-7">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -437,13 +512,6 @@
         <li class="md-nav__item">
   <a href="#checkchannel" title="checkchannel" class="md-nav__link">
     checkchannel
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#setwelcome" title="setwelcome" class="md-nav__link">
-    setwelcome
   </a>
   
 </li>
@@ -586,13 +654,13 @@
 
   <li class="md-nav__item md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
     
-    <label class="md-nav__link" for="nav-7">
+    <label class="md-nav__link" for="nav-8">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-7">
+      <label class="md-nav__title" for="nav-8">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -681,13 +749,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#setwelcome" title="setwelcome" class="md-nav__link">
-    setwelcome
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#removechar" title="removechar" class="md-nav__link">
     removechar
   </a>
@@ -737,21 +798,6 @@ Optional parameters are enclosed in brackets <code class="codehilite">[]</code>.
 If no channel is specified, the current one is checked.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/checkchannel</strong><br />
 <img alt="image" src="../../assets/images/commands/checkchannel.png" /></p></details><hr />
-<h2 id="setwelcome">setwelcome<a class="headerlink" href="#setwelcome" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> <code class="codehilite">setwelcome [message]</code></p>
-<p>Sets the welcome message new users get when joining a server. By default all members receive the following message: </p>
-<hr />
-<p>Welcome to <strong>Server Name</strong>! I'm <strong>NabBot</strong>, to learn more about my commands type <code class="codehilite">/help</code><br />
-Start by telling me who is your Tibia character, say <strong>/im *character_name</strong>* so I can begin tracking your level ups and deaths!</p>
-<hr />
-<p>This message can only be edited globally in <code class="codehilite">config.py</code>, however, this message can be extended for a specific server by using the command.
-Using the command with no parameters shows the current welcome message.</p>
-<details class="summary"><summary>Examples</summary><p><strong>/setwwelcome</strong> <br />
-<img alt="image" src="../../assets/images/commands/setwelcome_1.png" /><br />
-<strong>/setwelcome *This is an example message</strong>* <br />
-<img alt="image" src="../../assets/images/commands/setwelcome_2.png" /></p></details><p>Note that you can use special formatting to show the current user's name, server name, etc.
-For more info, use <code class="codehilite">/help setwelcome</code></p>
-<hr />
 <h2 id="removechar">removechar<a class="headerlink" href="#removechar" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">removechar &lt;name&gt;</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">deletechar</code>, <code class="codehilite">unregisterchar</code></p>
@@ -840,7 +886,7 @@ For more info, use <code class="codehilite">/help setwelcome</code></p>
     
       <script src="../../assets/javascripts/application.a59e2a89.js"></script>
       
-      <script>app.initialize({version:"0.17.4",url:{base:"../.."}})</script>
+      <script>app.initialize({version:"0.17.5",url:{base:"../.."}})</script>
       
     
     

@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-0.17.4, mkdocs-material-2.9.1">
+      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.2">
     
     
       
@@ -65,6 +65,8 @@
       
     
     <link rel="stylesheet" href="../../assets/fonts/material-icons.css">
+    
+      <link rel="stylesheet" href="../../assets/css/extra.css">
     
     
   </head>
@@ -229,6 +231,19 @@
   
     <li class="md-tabs__item">
       
+        <a href="../../features/" title="Features" class="md-tabs__link">
+          Features
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
         <a href="../" title="Commands" class="md-tabs__link md-tabs__link--active">
           Commands
         </a>
@@ -359,18 +374,78 @@
       
       
 
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+    
+    <label class="md-nav__link" for="nav-6">
+      Features
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-6">
+        Features
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/" title="Overview" class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/autoroles/" title="Autoroles" class="md-nav__link">
+      Autoroles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/groups/" title="Groups" class="md-nav__link">
+      Groups
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
   
 
 
   <li class="md-nav__item md-nav__item--active md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6" checked>
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7" checked>
     
-    <label class="md-nav__link" for="nav-6">
+    <label class="md-nav__link" for="nav-7">
       Commands
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-6">
+      <label class="md-nav__title" for="nav-7">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -655,13 +730,13 @@
 
   <li class="md-nav__item md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
     
-    <label class="md-nav__link" for="nav-7">
+    <label class="md-nav__link" for="nav-8">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-7">
+      <label class="md-nav__title" for="nav-8">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -899,7 +974,7 @@ Also, if it finds a character owned by another user, the whole process will be s
 <li>Show characters in share range with a specific level. (<code class="codehilite">searchteam &lt;level&gt;</code>)</li>
 <li>Show characters in a level range. (<code class="codehilite">searchteam &lt;min&gt;,&lt;max&gt;</code>)</li>
 </ul>
-<p>Online characters are shown first on the list, they also have a 🔹 icon.</p>
+<p>Online characters are shown first on the list, they also have an icon next to them.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/searchteam Galarzaa Fidera</strong><br />
 <img alt="image" src="../../assets/images/commands/searchteam_1.png" /><br />
 <strong>/searchteam 234</strong><br />
@@ -936,14 +1011,14 @@ The permissions can be adjusted afterwards.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/watched addguild Redd Alliance</strong><br />
 <img alt="image" src="../../assets/images/commands/watched_addguild.png" /></p></details><hr />
 <h3 id="watched-info">watched info<a class="headerlink" href="#watched-info" title="Permanent link">&para;</a></h3>
-<p><strong>Syntax:</strong>: <code class="codehilite">watched info &lt;name&gt;</code><br />
+<p><strong>Syntax:</strong> <code class="codehilite">watched info &lt;name&gt;</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">watched details</code>, <code class="codehilite">watched reason</code></p>
 <p>Shows information about a watched list entry.</p>
 <p>This shows who added the player, when, and if there's a reason why they were added.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/watched info Nezune</strong><br />
 <img alt="image" src="../../assets/images/commands/watched_info.png" /></p></details><hr />
 <h3 id="watched-infoguild">watched infoguild<a class="headerlink" href="#watched-infoguild" title="Permanent link">&para;</a></h3>
-<p><strong>Syntax:</strong>: <code class="codehilite">watched info &lt;name&gt;</code><br />
+<p><strong>Syntax:</strong> <code class="codehilite">watched info &lt;name&gt;</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">watched detailsguild</code>, <code class="codehilite">watched reasonguild</code></p>
 <p>Shows details about a guild entry in the watched list.</p>
 <p>This shows who added the player, when, and if there's a reason why they were added.</p>
@@ -965,7 +1040,7 @@ The permissions can be adjusted afterwards.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/watched remove Kaiizokuo</strong><br />
 <img alt="image" src="../../assets/images/commands/watched_remove.png" /></p></details><hr />
 <h3 id="watched-removeguild">watched removeguild<a class="headerlink" href="#watched-removeguild" title="Permanent link">&para;</a></h3>
-<p><strong>Syntax</strong>:  <code class="codehilite">watched removeguild &lt;name&gt;</code></p>
+<p><strong>Syntax:</strong>  <code class="codehilite">watched removeguild &lt;name&gt;</code></p>
 <p>Removes a guild from the watched list.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/watched removeguild Redd Alliance</strong><br />
 <img alt="image" src="../../assets/images/commands/watched_removeguild.png" /></p></details>
@@ -1053,7 +1128,7 @@ The permissions can be adjusted afterwards.</p>
     
       <script src="../../assets/javascripts/application.a59e2a89.js"></script>
       
-      <script>app.initialize({version:"0.17.4",url:{base:"../.."}})</script>
+      <script>app.initialize({version:"0.17.5",url:{base:"../.."}})</script>
       
     
     

@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-0.17.4, mkdocs-material-2.9.1">
+      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.2">
     
     
       
@@ -65,6 +65,8 @@
       
     
     <link rel="stylesheet" href="../assets/fonts/material-icons.css">
+    
+      <link rel="stylesheet" href="../assets/css/extra.css">
     
     
   </head>
@@ -227,6 +229,19 @@
   
     <li class="md-tabs__item">
       
+        <a href="../features/" title="Features" class="md-tabs__link">
+          Features
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
         <a href="../commands/" title="Commands" class="md-tabs__link">
           Commands
         </a>
@@ -336,6 +351,13 @@
   
     <label class="md-nav__title" for="__toc">Table of contents</label>
     <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#version-130-2018-07-12" title="Version 1.3.0 (2018-07-12)" class="md-nav__link">
+    Version 1.3.0 (2018-07-12)
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#version-123-2018-06-19" title="Version 1.2.3 (2018-06-19)" class="md-nav__link">
@@ -478,10 +500,70 @@
       <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
     
     <label class="md-nav__link" for="nav-6">
-      Commands
+      Features
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
       <label class="md-nav__title" for="nav-6">
+        Features
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../features/" title="Overview" class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../features/autoroles/" title="Autoroles" class="md-nav__link">
+      Autoroles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../features/groups/" title="Groups" class="md-nav__link">
+      Groups
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+    
+    <label class="md-nav__link" for="nav-7">
+      Commands
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-7">
         Commands
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -631,13 +713,13 @@
 
   <li class="md-nav__item md-nav__item--nested">
     
-      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
     
-    <label class="md-nav__link" for="nav-7">
+    <label class="md-nav__link" for="nav-8">
       Customizing
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
-      <label class="md-nav__title" for="nav-7">
+      <label class="md-nav__title" for="nav-8">
         Customizing
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
@@ -703,6 +785,13 @@
   
     <label class="md-nav__title" for="__toc">Table of contents</label>
     <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#version-130-2018-07-12" title="Version 1.3.0 (2018-07-12)" class="md-nav__link">
+    Version 1.3.0 (2018-07-12)
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#version-123-2018-06-19" title="Version 1.2.3 (2018-06-19)" class="md-nav__link">
@@ -806,6 +895,55 @@
                 
                 
                 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<h2 id="version-130-2018-07-12">Version 1.3.0 (2018-07-12)<a class="headerlink" href="#version-130-2018-07-12" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Emoji changes are now displayed on server-log.</li>
+<li>Main emojis can be customized now, allowing custom discord emojis<ul>
+<li>Vocation emojis.</li>
+<li>Elemental resistance emojis in <code class="codehilite">/monster</code>.</li>
+<li>Discord presence emojis in <code class="codehilite">/serverinfo</code>.</li>
+<li>Checkbox and cross emojis to show boolean flags.</li>
+<li>Level up and deaths emojis.</li>
+<li>And more</li>
+</ul>
+</li>
+<li>Added joinable role feature, called groups:<ul>
+<li>To create a group: <code class="codehilite">/group add &lt;name&gt;</code> (requires <code class="codehilite">Manage Roles</code> permission)</li>
+<li>To join/leave a group: <code class="codehilite">/group &lt;name</code></li>
+<li>To see available groups: <code class="codehilite">/group list</code></li>
+<li>To delete a group: <code class="codehilite">/group remove &lt;name&gt;</code></li>
+</ul>
+</li>
+<li>Added automatic roles<ul>
+<li>Roles are assigned based on the guilds of registered characters.</li>
+<li>See <code class="codehilite">help autorole</code> for more information on commands.</li>
+</ul>
+</li>
+<li>Increased /loot scanning speed.</li>
+<li>Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.</li>
+<li>Welcome message can now be fully customized, including the welcome message channel. Available under <code class="codehilite">/settings</code></li>
+<li>Welcome messages are no longer enabled by default.</li>
+<li>New <code class="codehilite">/imbuement</code> command, shows basic information about an imbuement and if prices are provided, it calculates costs.</li>
+<li>New <code class="codehilite">/permissions</code> command, shows the permissions for a member in a channel.</li>
+<li>New <code class="codehilite">/cleanup</code> command, cleans bot messages and command invocations in the current channel.</li>
+<li>New <code class="codehilite">/roll</code> command, rolls a die and shows the results.</li>
+<li>New <code class="codehilite">/botinfo</code> command, shows advanced information about the bot.</li>
+<li>New <code class="codehilite">/worlds</code> command, shows a list of worlds with their location, pvptype and online population, with filtering options.</li>
+<li><code class="codehilite">/about</code> now shows less advanced information, and more general information.</li>
+<li><code class="codehilite">/version</code> now checks if the required minimum commit version of discord.py is being used.</li>
+<li><code class="codehilite">/monster</code> now shows occurrence, kills required and charm points given.</li>
+<li><code class="codehilite">/monster</code>, <code class="codehilite">/house</code>, <code class="codehilite">/spell</code>, <code class="codehilite">/npc</code>, <code class="codehilite">/item</code>, <code class="codehilite">/imbuement</code>, <code class="codehilite">/achievement</code></li>
+<li>Fixed <code class="codehilite">/checkchannel</code> ignoring channel parameter.</li>
+<li>Fixed <code class="codehilite">/quote</code> failing when quoting users no longer in server.</li>
+<li>Tibia.com news announcement are now disabled by default, must be enabled per server.</li>
+<li>Command name and aliases changes:<ul>
+<li><code class="codehilite">/debug</code>: renamed to <code class="codehilite">/eval</code>.</li>
+<li><code class="codehilite">/help</code>: Alias <code class="codehilite">/commands</code> added.</li>
+<li><code class="codehilite">/setwelcome</code>: Removed.</li>
+<li><code class="codehilite">/purge</code>: Removed.</li>
+</ul>
+</li>
+</ul>
 <h2 id="version-123-2018-06-19">Version 1.2.3 (2018-06-19)<a class="headerlink" href="#version-123-2018-06-19" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Fixed a bug with <code class="codehilite">/whois</code> when a user was not found.</li>
@@ -1038,7 +1176,7 @@
     
       <script src="../assets/javascripts/application.a59e2a89.js"></script>
       
-      <script>app.initialize({version:"0.17.4",url:{base:".."}})</script>
+      <script>app.initialize({version:"0.17.5",url:{base:".."}})</script>
       
     
     
