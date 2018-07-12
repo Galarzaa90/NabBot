@@ -1,5 +1,6 @@
 import asyncio
 import datetime as dt
+import platform
 import random
 import re
 import time
@@ -14,14 +15,15 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils.config import config
 from utils.context import NabCtx
-from utils.database import userDatabase, tibiaDatabase, get_server_property
-from utils.discord import get_region_string, is_private, clean_string, get_user_avatar, get_user_color
-from utils.general import parse_uptime, TimeString, single_line, log, BadTime
+from utils.database import userDatabase, get_server_property
+from utils.general import parse_uptime, TimeString, single_line, log, BadTime, get_user_avatar, get_region_string, \
+    clean_string, is_numeric
 from utils.pages import CannotPaginate, VocationPages, HelpPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50
 EVENT_DESCRIPTION_LIMIT = 400
+MAX_EVENTS = 3
 
 
 class General:
@@ -123,21 +125,44 @@ class General:
 
     # Commands
     @commands.command()
-    async def about(self, ctx):
-        """Shows information about the bot."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+    async def about(self, ctx: NabCtx):
+        """Shows basic information about the bot."""
+        if not ctx.bot_permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permissions for this command.")
+            return
+        embed = discord.Embed(description=ctx.bot.description, colour=discord.Colour.blurple())
+        embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
+                         icon_url="https://github.com/fluidicon.png")
+        prefixes = list(config.command_prefix)
+        if ctx.guild:
+            prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
+        prefixes_str = "\n".join(f"- `{p}`" for p in prefixes)
+        embed.add_field(name="Prefixes", value=prefixes_str, inline=False)
+        embed.add_field(name="Authors", value="\u2023 [Galarzaa90](https://github.com/Galarzaa90)\n"
+                                              "\u2023 [Nezune](https://github.com/Nezune)")
+        embed.add_field(name="Created", value="March 30th 2016")
+        embed.add_field(name="Version", value=f"v{self.bot.__version__}")
+        embed.add_field(name="Platform", value="Python")
+        embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
+        embed.add_field(name="Users", value=f"{len(self.bot.users):,}")
+        embed.add_field(name="Website", value="[nabbot.ddns.net](https://galarzaa90.github.io/NabBot/)")
+        embed.add_field(name="Discord", value="[discord.me/NabBot](https://discord.me/nabbot)")
+        embed.add_field(name="Donate", value="[PayPal](https://www.paypal.com/cgi-bin/webscr?"
+                                             "cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)")
+        embed.set_footer(text=f"Uptime | {parse_uptime(self.bot.start_time, True)}")
+        await ctx.send(embed=embed)
+
+    @commands.command(name="botinfo")
+    async def bot_info(self, ctx: NabCtx):
+        """Shows advanced information about the bot."""
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
-        user_count = 0
         char_count = 0
         deaths_count = 0
         levels_count = 0
         with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT COUNT(*) as count FROM users")
-            result = c.fetchone()
-            if result is not None:
-                user_count = result["count"]
             c.execute("SELECT COUNT(*) as count FROM chars")
             result = c.fetchone()
             if result is not None:
@@ -151,38 +176,37 @@ class General:
             if result is not None:
                 levels_count = result["count"]
 
-        embed = discord.Embed(description="*Beep bop beep bop*. I'm just a bot!")
+        used_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
+        total_ram = psutil.virtual_memory().total / 1024 ** 2
+        percentage_ram = psutil.Process().memory_percent()
+
+        def ram(value):
+            if value >= 1024:
+                return f"{value/1024:.2f}GB"
+            else:
+                return f"{value:.2f}MB"
+        
+        # Calculate ping
+        t1 = time.perf_counter()
+        await ctx.trigger_typing()
+        t2 = time.perf_counter()
+        ping = round((t2 - t1) * 1000)
+
+        embed = discord.Embed()
         embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
                          icon_url="https://github.com/fluidicon.png")
-        embed.add_field(name="Version", value=self.bot.__version__)
-        embed.add_field(name="Authors", value="\u2023 [Galarzaa90](https://github.com/Galarzaa90)\n"
-                                              "\u2023 [Nezune](https://github.com/Nezune)")
-        embed.add_field(name="Platform", value="Python 🐍")
-        embed.add_field(name="Created", value="March 30th 2016")
-        embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
-        embed.add_field(name="Members", value=f"{len(list(self.bot.get_all_members())):,}")
-        embed.add_field(name="Tracked users", value=f"{user_count:,}")
-        embed.add_field(name="Tracked chars", value=f"{char_count:,}")
-        embed.add_field(name="Tracked deaths", value=f"{deaths_count:,}")
-        embed.add_field(name="Tracked level ups", value=f"{levels_count:,}")
-        embed.add_field(name="Uptime", value=parse_uptime(self.bot.start_time))
-        memory_usage = psutil.Process().memory_full_info().uss / 1024 ** 2
-        embed.add_field(name='Memory Usage', value='{:.2f} MiB'.format(memory_usage))
-        with closing(tibiaDatabase.cursor()) as c:
-            try:
-                c.execute("SELECT * FROM database_info WHERE key = ?", ("version",))
-                result = c.fetchone()
-                if result:
-                    version = result["value"]
-                c.execute("SELECT * FROM database_info WHERE key = ?", ("generated_date",))
-                result = c.fetchone()
-                if result:
-                    timestamp = float(result["value"])
-                    db_date = dt.datetime.utcfromtimestamp(timestamp)
-                embed.add_field(name="TibiaWiki Database", value=f"{version}, fetched on "
-                                                                 f"{db_date.strftime('%b %d %Y, %H:%M:%S UTC')}")
-            except KeyError:
-                pass
+        embed.description = f"🔰 Version: **{self.bot.__version__}**\n" \
+                            f"⏱ ️Uptime **{parse_uptime(self.bot.start_time)}**\n" \
+                            f"🖥️ OS: **{platform.system()} {platform.release()}**\n" \
+                            f"📉 RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n" \
+                            f"⚙️ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n" \
+                            f"🏓 Ping: **{ping} ms**\n" \
+                            f"👾 Servers: **{len(self.bot.guilds):,}**\n" \
+                            f"💬 Channels: **{len(list(self.bot.get_all_channels())):,}**\n"\
+                            f"👨 Users: **{len(self.bot.users):,}** \n" \
+                            f"👤 Characters: **{char_count:,}**\n" \
+                            f"{config.levelup_emoji} Level ups: **{levels_count:,}**\n" \
+                            f"{config.death_emoji} Deaths: **{deaths_count:,}**"
         await ctx.send(embed=embed)
 
     @commands.command(usage="<choices...>")
@@ -195,7 +219,7 @@ class General:
         user = ctx.author
         await ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
-    @commands.command(name='help')
+    @commands.command(name='help', aliases=["commands"])
     async def _help(self, ctx, *, command: str = None):
         """Shows help about a command or the bot.
 
@@ -300,7 +324,7 @@ class General:
         """Shows a list of upcoming and recent events.
 
         If a number is specified, it will show details for that event. Same as using `events info`"""
-        if not ctx.bot_permissions.embed_links and not is_private(ctx.channel):
+        if not ctx.bot_permissions.embed_links and ctx.is_private:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
         if event_id is not None:
@@ -378,7 +402,7 @@ class General:
         params = params.split(",", 1)
         name = single_line(clean_string(ctx, params[0]))
         if len(name) > EVENT_NAME_LIMIT:
-            await ctx.send(f"The event's name can't be longer than {EVENT_NAME_LIMIT} characters.")
+            await ctx.send(f"{ctx.tick(False)} The event's name can't be longer than {EVENT_NAME_LIMIT} characters.")
             return
 
         event_description = ""
@@ -389,8 +413,9 @@ class General:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
             result = c.fetchall()
 
-        if len(result) > 1 and creator not in config.owner_ids:
-            await ctx.send("You can only have two running events simultaneously. Delete or edit an active event")
+        if len(result) >= MAX_EVENTS and creator not in config.owner_ids:
+            await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
+                           f"Delete or edit an active event.")
             return
 
         embed = discord.Embed(title=name, description=event_description, timestamp=dt.datetime.utcfromtimestamp(start))
@@ -410,8 +435,8 @@ class General:
             event_id = c.lastrowid
             userDatabase.commit()
 
-        reply = "Event created successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
-        await ctx.send(reply.format(name, starts_in.original, event_id))
+        await ctx.send(f"{ctx.tick()} Event created successfully.\n\t**{name}** in *{starts_in.original}*.\n"
+                       f"*To edit this event use ID {event_id}*")
 
     @commands.guild_only()
     @events.command(name="addplayer", aliases=["addchar"])
@@ -422,29 +447,29 @@ class General:
         If the event is joinable, anyone can join an event using `event join`"""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only add people to your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only add people to your own events.")
             return
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT * FROM chars WHERE name LIKE ?", (character,))
             char = c.fetchone()
         if event["slots"] != 0 and len(event["participants"]) >= event["slots"]:
-            await ctx.send(f"All the slots for this event has been filled. "
+            await ctx.send(f"{ctx.tick(False)} All the slots for this event has been filled. "
                            f"You can change them by using `/event edit slots {event_id} newSlots`.")
             return
         owner = self.bot.get_member(char["user_id"], ctx.guild)
         if char is None or owner is None:
-            await ctx.send("That character is not registered.")
+            await ctx.send(f"{ctx.tick(False)} That character is not registered.")
             return
 
         world = self.bot.tracked_worlds.get(event["server"])
         if world != char["world"]:
-            await ctx.send("You can't add a character from another world.")
+            await ctx.send(f"{ctx.tick(False)} You can't add a character from another world.")
             return
         if any(owner.id == participant["user_id"] for participant in event["participants"]):
-            await ctx.send(f"A character of @{owner.display_name} is already participating.")
+            await ctx.send(f"{ctx.tick(False)} A character of @{owner.display_name} is already participating.")
             return
 
         message = await ctx.send(f"Do you want to add **{char['name']}** (@{owner.display_name}) "
@@ -459,7 +484,7 @@ class General:
 
         with userDatabase as con:
             con.execute("INSERT INTO event_participants(event_id, char_id) VALUES(?,?)", (event_id, char["id"]))
-            await ctx.send(f"You successfully added **{char['name']}** to this event.")
+            await ctx.send(f"{ctx.tick()} You successfully added **{char['name']}** to this event.")
             return
 
     @commands.guild_only()
@@ -485,10 +510,10 @@ class General:
         To remove the description, say `blank`."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only edit your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
         if new_description is None:
@@ -545,14 +570,11 @@ class General:
         """
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only edit your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
-
-        def check(m):
-            return ctx.channel == m.channel and ctx.author == m.author
 
         if yes_no is None:
             msg = await ctx.send(f"Do you want **{event['name']}** to be joinable? `yes/no/cancel`")
@@ -589,10 +611,10 @@ class General:
         If no new name is provided initially, the bot will ask for one."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only edit your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
         if new_name is None:
@@ -642,10 +664,10 @@ class General:
         Slots is the number of characters an event can have. By default this is 0, which means no limit."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only edit your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
         if slots is None:
@@ -697,10 +719,10 @@ class General:
         now = time.time()
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only edit your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
         if starts_in is None:
@@ -749,18 +771,18 @@ class General:
 
     @commands.guild_only()
     @events.command(name="info", aliases=["show"])
-    async def event_info(self, ctx, event_id: int):
+    async def event_info(self, ctx: NabCtx, event_id: int):
         """Displays an event's info.
 
         The start time shown in the footer is always displayed in your device's timezone."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         event = self.get_event(ctx, event_id)
         if not event:
-            await ctx.send("There's no event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no event with that id.")
             return
         guild = self.bot.get_guild(event["server"])
         start = dt.datetime.utcfromtimestamp(event["start"])
@@ -791,7 +813,7 @@ class General:
         Some events may not be joinable and require the creator to add characters themselves."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT * FROM chars WHERE name LIKE ?", (character,))
@@ -802,27 +824,28 @@ class General:
             if participants is None:
                 participants = []
         if event["joinable"] != 1:
-            await ctx.send(f"You can't join this event. Maybe you meant to subscribe? Try `/event sub {event_id}`.")
+            await ctx.send(f"{ctx.tick(False)} You can't join this event."
+                           f"Maybe you meant to subscribe? Try `/event sub {event_id}`.")
             return
         if event["slots"] != 0 and len(participants) >= event["slots"]:
-            await ctx.send("All the slots for this event has been filled.")
+            await ctx.send(f"{ctx.tick(False)} All the slots for this event has been filled.")
             return
         if char is None:
-            await ctx.send("That character is not registered.")
+            await ctx.send(f"{ctx.tick(False)} That character is not registered.")
             return
         if char["user_id"] != ctx.author.id:
-            await ctx.send("You can only join with characters registered to you.")
+            await ctx.send(f"{ctx.tick(False)} You can only join with characters registered to you.")
             return
         world = self.bot.tracked_worlds.get(event["server"])
         if world != char["world"]:
-            await ctx.send("You can't join with a character from another world.")
+            await ctx.send(f"{ctx.tick(False)} You can't join with a character from another world.")
             return
         if any(ctx.author.id == participant["user_id"] for participant in participants):
-            await ctx.send("A character of yours is already in this event.")
+            await ctx.send(f"{ctx.tick(False)} A character of yours is already in this event.")
             return
 
         message = await ctx.send(f"Do you want to join the event \'**{event['name']}**\' as **{char['name']}**?")
-        confirm = await ctx.react_confirm(message)
+        confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -832,7 +855,7 @@ class General:
 
         with userDatabase as con:
             con.execute("INSERT INTO event_participants(event_id, char_id) VALUES(?,?)", (event_id, char["id"]))
-            await ctx.send("You successfully joined this event.")
+            await ctx.send(f"{ctx.tick()} You successfully joined this event.")
             return
 
     @commands.guild_only()
@@ -841,16 +864,16 @@ class General:
         """Leave an event you were participating in."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         joined_char = next((participant["char_id"] for participant in event["participants"]
                            if ctx.author.id == participant["user_id"]), None)
         if joined_char is None:
-            await ctx.send("You haven't joined this event.")
+            await ctx.send(f"{ctx.tick(False)} You haven't joined this event.")
             return
 
         message = await ctx.send(f"Do you want to leave **{event['name']}**?")
-        confirm = await ctx.react_confirm(message)
+        confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
             return
@@ -860,7 +883,7 @@ class General:
 
         with userDatabase as con:
             con.execute("DELETE FROM event_participants WHERE event_id = ? AND char_id = ?", (event_id, joined_char))
-            await ctx.send("You successfully left this event.")
+            await ctx.send(f"{ctx.tick()} You successfully left this event.")
             return
 
     @commands.guild_only()
@@ -874,7 +897,9 @@ class General:
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (ctx.author.id, now))
             event = c.fetchall()
-        if len(event) > 1 and ctx.author.id not in config.owner_ids:
+        if len(event) >= MAX_EVENTS and ctx.author.id not in config.owner_ids:
+            await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
+                           f"Delete or edit an active event.")
             return
         msg = await ctx.send("Let's create an event. What would you like the name to be? You can `cancel` at any time.")
         cancel = False
@@ -989,8 +1014,8 @@ class General:
                       (ctx.author.id, ctx.guild.id, start_time, name, description))
             event_id = c.lastrowid
             userDatabase.commit()
-        reply = "Event registered successfully.\n\t**{0}** in *{1}*.\n*To edit this event use ID {2}*"
-        await ctx.send(reply.format(name, starts_in.original, event_id))
+        await ctx.send(f"{ctx.tick(False)} Event registered successfully.\n\t**{name}** in *{starts_in.original}*.\n"
+                       f"*To edit this event use ID {event_id}*")
 
     @commands.guild_only()
     @events.command(name="participants")
@@ -998,17 +1023,17 @@ class General:
         """Shows the list of characters participating in this event."""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if len(event["participants"]) == 0:
             join_prompt = ""
             if event["joinable"] != 0:
                 join_prompt = f" To join, use `/event join {event_id} characterName`."
-            await ctx.send(f"There are no participants in this event.{join_prompt}")
+            await ctx.send(f"{ctx.tick(False)} There are no participants in this event.{join_prompt}")
             return
         entries = []
         vocations = []
-        event_server = self.bot.get_guild(event["server"])  # type: discord.Guild
+        event_server: discord.Guild = self.bot.get_guild(event["server"])
         for char in event["participants"]:
             char["level"] = abs(char["level"])
             char["emoji"] = get_voc_emoji(char["vocation"])
@@ -1041,10 +1066,10 @@ class General:
         c = userDatabase.cursor()
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only delete your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only delete your own events.")
             return
 
         message = await ctx.send("Do you want to delete the event **{0}**?".format(event["name"]))
@@ -1059,9 +1084,9 @@ class General:
         with userDatabase as conn:
             conn.execute("UPDATE events SET active = 0 WHERE id = ?", (event_id,))
         if event["creator"] == ctx.author.id:
-            await ctx.send("Your event was deleted successfully.")
+            await ctx.send(f"{ctx.tick()} Your event was deleted successfully.")
         else:
-            await ctx.send("Event deleted successfully.")
+            await ctx.send(f"{ctx.tick()} Event deleted successfully.")
             creator = self.bot.get_member(event["creator"])
             if creator is not None:
                 await creator.send(f"Your event **{event['name']}** was deleted by {ctx.author.mention}.")
@@ -1076,10 +1101,10 @@ class General:
         Players can remove themselves using `event leave`"""
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send("You can only add people to your own events.")
+            await ctx.send(f"{ctx.tick(False)} You can only add people to your own events.")
             return
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT * FROM chars WHERE name LIKE ?", (character,))
@@ -1087,12 +1112,13 @@ class General:
         joined_char = next((participant["char_id"] for participant in event["participants"]
                             if char["id"] == participant["char_id"]), None)
         if joined_char is None:
-            await ctx.send("This character is not in this event.")
+            await ctx.send(f"{ctx.tick(False)} This character is not in this event.")
             return
         event_server = self.bot.get_guild(event["server"])
         owner = self.bot.get_member(char["user_id"], self.bot.get_guild(event_server))
         owner_name = "unknown" if owner is None else owner.display_name
-        message = await ctx.send(f"Do you want to remove **{char['name']}** (@**{owner_name}**) from **{event['name']}**?")
+        message = await ctx.send(f"Do you want to remove **{char['name']}** (@**{owner_name}**) "
+                                 f"from **{event['name']}**?")
         confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -1103,7 +1129,7 @@ class General:
 
         with userDatabase as con:
             con.execute("DELETE FROM event_participants WHERE event_id = ? AND char_id = ?", (event_id, joined_char))
-            await ctx.send("You successfully left this event.")
+            await ctx.send(f"{ctx.tick()} You successfully left this event.")
             return
 
     @commands.guild_only()
@@ -1114,7 +1140,7 @@ class General:
         author = ctx.author
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         try:
             message = await ctx.send(f"Do you want to subscribe to **{event['name']}**")
@@ -1127,7 +1153,8 @@ class General:
                 return
 
             c.execute("INSERT INTO event_subscribers (event_id, user_id) VALUES(?,?)", (event_id, author.id))
-            await ctx.send("You have subscribed successfully to this event. I'll let you know when it's happening.")
+            await ctx.send(f"{ctx.tick()} You have subscribed successfully to this event. "
+                           f"I'll let you know when it's happening.")
 
         finally:
             c.close()
@@ -1141,13 +1168,13 @@ class General:
         author = ctx.author
         event = self.get_event(ctx, event_id)
         if event is None:
-            await ctx.send("There's no active event with that id.")
+            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
         try:
             c.execute("SELECT * FROM event_subscribers WHERE event_id = ? AND user_id = ?", (event_id, author.id))
             subscription = c.fetchone()
             if subscription is None:
-                await ctx.send("You are not subscribed to this event.")
+                await ctx.send(f"{ctx.tick(False)} You are not subscribed to this event.")
                 return
 
             message = await ctx.send(f"Do you want to unsubscribe to **{event['name']}**")
@@ -1160,15 +1187,43 @@ class General:
                 return
 
             c.execute("DELETE FROM event_subscribers WHERE event_id = ? AND user_id = ?", (event_id, author.id))
-            await ctx.send("You have subscribed successfully to this event. I'll let you know when it's happening.")
+            await ctx.send(f"{ctx.tick()} You have subscribed successfully to this event. "
+                           f"I'll let you know when it's happening.")
 
         finally:
             c.close()
             userDatabase.commit()
 
     @commands.guild_only()
+    @commands.has_permissions(manage_roles=True)
+    @commands.command(nam="permissions", aliases=["perms"])
+    async def permissions(self, ctx: NabCtx, member: discord.Member=None, channel: discord.TextChannel=None):
+        """Shows a member's permissions in the current channel.
+
+        If no member is provided, it will show your permissions.
+        Optionally, a channel can be provided as the second parameter, to check permissions in said channel."""
+        member = member or ctx.author
+        channel = channel or ctx.channel
+        guild_permissions = channel.permissions_for(member)
+        embed = discord.Embed(title=f"Permissions in #{channel.name}", colour=member.colour)
+        embed.set_author(name=member.display_name, icon_url=get_user_avatar(member))
+        allowed = []
+        denied = []
+        for name, value in guild_permissions:
+            name = name.replace('_', ' ').replace('guild', 'server').title()
+            if value:
+                allowed.append(name)
+            else:
+                denied.append(name)
+        if allowed:
+            embed.add_field(name=f"{ctx.tick()}Allowed", value="\n".join(allowed))
+        if denied:
+            embed.add_field(name=f"{ctx.tick(False)}Denied", value="\n".join(denied))
+        await ctx.send(embed=embed)
+
+    @commands.guild_only()
     @commands.command()
-    async def quote(self, ctx, message_id: int):
+    async def quote(self, ctx: NabCtx, message_id: int):
         """Shows a messages by its ID.
 
         In order to get a message's id, you need to enable Developer Mode.
@@ -1176,12 +1231,12 @@ class General:
         Once enabled, you can right click a message and select **Copy ID**.
 
         Note that the bot won't attempt to search in channels you can't read."""
-        channels = ctx.guild.text_channels  # type: List[discord.TextChannel]
-        message = None  # type: discord.Message
+        channels: List[discord.TextChannel] = ctx.guild.text_channels
+        message: discord.Message = None
         with ctx.typing():
             for channel in channels:
-                bot_perm = channel.permissions_for(ctx.me)
-                auth_perm = channel.permissions_for(ctx.author)
+                bot_perm = ctx.bot_permissions
+                auth_perm = ctx.author_permissions
                 if not(bot_perm.read_message_history and bot_perm.read_messages and
                        auth_perm.read_message_history and auth_perm.read_messages):
                     continue
@@ -1198,12 +1253,15 @@ class General:
             await ctx.send("I can't quote embed messages.")
             return
         embed = discord.Embed(description=message.content, timestamp=message.created_at)
+        try:
+            embed.colour = message.author.colour
+        except AttributeError:
+            pass
         embed.set_author(name=message.author.display_name, icon_url=get_user_avatar(message.author),
-                         url=message.jump_to_url)
+                         url=message.jump_url)
         embed.set_footer(text=f"In #{message.channel.name}")
-        embed.colour = get_user_color(message.author, ctx.guild)
         if len(message.attachments) >= 1:
-            attachment = message.attachments[0]  # type: discord.Attachment
+            attachment: discord.Attachment = message.attachments[0]
             if attachment.height is not None:
                 embed.set_image(url=message.attachments[0].url)
             else:
@@ -1211,15 +1269,56 @@ class General:
                                 value=f"[{attachment.filename}]({attachment.url}) ({attachment.size:,} bytes)")
         await ctx.send(embed=embed)
 
+    @commands.command(aliases=["dice"], usage="[times][d[sides]]")
+    async def roll(self, ctx: NabCtx, params=None):
+        """Rolls a die.
+
+        By default, it rolls a 6-sided die once.
+        You can specify how many times you want the die to be rolled.
+
+        You can also specify the number of sides of the die, using the format `TdS` where T is times and S is sides."""
+        sides = 6
+        if params is None:
+            times = 1
+        elif is_numeric(params):
+            times = int(params)
+        else:
+            try:
+                times, sides = map(int, params.split('d'))
+            except ValueError:
+                await ctx.send(f"{ctx.tick(False)} Invalid parameter! I'm expecting `<times>d<rolls>`.")
+                return
+        if times == 0:
+            await ctx.send("You want me to roll the die zero times? Ok... There, done.")
+            return
+        if times < 0:
+            await ctx.send(f"{ctx.tick(False)} It's impossible to roll negative times!")
+            return
+        if sides <= 0:
+            await ctx.send(f"{ctx.tick(False)} There's no dice with zero or less sides!")
+            return
+        if times > 20:
+            await ctx.send(f"{ctx.tick(False)} I can't roll the die that many times. Only up to 20.")
+            return
+        if sides > 100:
+            await ctx.send(f"{ctx.tick(False)} I don't have dice with more than 100 sides.")
+            return
+        time_plural = "times" if times > 1 else "time"
+        results = [str(random.randint(1, sides)) for r in range(times)]
+        result = f"You rolled a **{sides}**-sided die **{times}** {time_plural} and got:\n\t{', '.join(results)}"
+        if sides == 1:
+            result += "\nWho would have thought? 🙄"
+        await ctx.send(result)
+
     @commands.guild_only()
     @commands.command()
-    async def serverinfo(self, ctx):
+    async def serverinfo(self, ctx: NabCtx):
         """Shows the server's information."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
-        guild = ctx.guild  # type: discord.Guild
+        guild = ctx.guild
         embed = discord.Embed(title=guild.name, timestamp=guild.created_at, description=f"**ID** {guild.id}",
                               color=discord.Color.blurple())
         embed.set_footer(text="Created on")
@@ -1231,12 +1330,20 @@ class General:
                               f"Voice: {len(guild.voice_channels):,}\n"
                               f"Categories: {len(guild.categories):,}")
         status_count = Counter(str(m.status) for m in guild.members)
-        embed.add_field(name="Members",
-                        value=f"Total: {len(guild.members):,}\n"
-                              f"Online: {status_count['online']:,}\n"
-                              f"Idle: {status_count['idle']:,}\n"
-                              f"Busy: {status_count['dnd']:,}\n"
-                              f"Offline: {status_count['offline']:,}")
+        if config.use_status_emojis:
+            embed.add_field(name="Members",
+                            value=f"Total: {len(guild.members):,}\n"
+                                  f"{status_count['online']:,}{config.status_emojis['online']}  "
+                                  f"{status_count['idle']:,}{config.status_emojis['idle']} "
+                                  f"{status_count['dnd']:,}{config.status_emojis['dnd']} "
+                                  f"{status_count['offline']:,}{config.status_emojis['offline']}")
+        else:
+            embed.add_field(name="Members",
+                            value=f"Total: {len(guild.members):,}\n"
+                                  f"Online: {status_count['online']:,}\n"
+                                  f"Idle: {status_count['idle']:,}\n"
+                                  f"Busy: {status_count['dnd']:,}\n"
+                                  f"Offline: {status_count['offline']:,}")
         embed.add_field(name="Roles", value=len(guild.roles))
         embed.add_field(name="Emojis", value=len(guild.emojis))
         await ctx.send(embed=embed)
@@ -1301,9 +1408,9 @@ class General:
                 continue
             await member.send(content, embed=embed)
 
-    def get_event(self, ctx: commands.Context, event_id: int) -> Optional[Dict[str, Union[int, str]]]:
+    def get_event(self, ctx: NabCtx, event_id: int) -> Optional[Dict[str, Union[int, str]]]:
         # If this is used on a PM, show events for all shared servers
-        if is_private(ctx.channel):
+        if ctx.is_private:
             guilds = self.bot.get_user_guilds(ctx.author.id)
         else:
             guilds = [ctx.guild]

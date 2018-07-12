@@ -110,7 +110,7 @@ It shows their description, homepage, guildhall, number of members and more.
 
 Shows a list of all guild members.
 
-Online members have a 🔹 icon next to their name.
+Online members have an icon next to their name.
 
 
 ??? summary "Examples"
@@ -120,7 +120,7 @@ Online members have a 🔹 icon next to their name.
 ----
 
 ## house
-**Syntax:** `house <name>[/world]`  
+**Syntax:** `house <name>[,world]`  
 **Other aliases:** `guildhall`
 
 Shows info for a house or guildhall.
@@ -128,12 +128,12 @@ Shows info for a house or guildhall.
 By default, it shows the current status of a house for the current tracked world (if any).
 If used on private messages, no world is looked up unless specified.
 
-To specify a world, add the world at the end separated with '/'.
+To specify a world, add the world at the end separated with a comma.
 
 ??? Summary "Examples"
     **/house darashia 8, flat 03**  
     ![image](../assets/images/commands/house_1.png)  
-    **/house caveman shelter/calmera**  
+    **/house caveman shelter,calmera**  
     ![image](../assets/images/commands/house_2.png)
 
 ----
@@ -364,3 +364,23 @@ Shows information like PvP type, online count, server location vocation distribu
     ![image](../assets/images/commands/world_2.png)
  
 ----
+
+## worlds
+**Syntax:** `worlds [query]`
+
+Shows a list of worlds.
+
+You can pass a list of parameters separated by commas to change the sorting or filter worlds.
+
+- `online` to sort by online count.
+- `descending` to reverse the order.
+- `europe`, `south america` or `north america` to filter by location.
+- `optional pvp`, `open pvp`, `retro open pvp`, `hardcore pvp` or `retro hardcore pvp` to filter by pvp type.
+
+??? Summary "Examples"
+    **/worlds**  
+    ![image](../assets/images/commands/worlds_1.png)  
+    **/worlds northamerica,online,descending**  
+    ![image](../assets/images/commands/worlds_2.png)  
+    **/worlds southamerica,openpvp,online,descending**  
+    ![image](../assets/images/commands/worlds_3.png)    

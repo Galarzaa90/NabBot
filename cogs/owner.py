@@ -11,16 +11,14 @@ from discord.ext import commands
 # Exposing for /debug command
 from nabbot import NabBot
 from utils import checks
-from utils.config import config
-from utils.database import *
-from utils.discord import *
+from utils.context import NabCtx
 from utils.general import *
 from utils.messages import *
 from utils.tibia import *
 from utils.tibiawiki import *
 
 req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
-dpy_commit = re.compile(r"a\d+\+g([\w]+)")
+dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")
 
 
 class Owner:
@@ -49,7 +47,7 @@ class Owner:
     # Commands
     @commands.command(aliases=["notifyadmins"])
     @checks.is_owner()
-    async def admins_message(self, ctx, *, content: str=None):
+    async def admins_message(self, ctx: NabCtx, *, content: str=None):
         """Sends a private message to all server owners.
 
         Notifies all the owners of the servers where the bot is in.
@@ -77,15 +75,16 @@ class Owner:
             pass
         await ctx.send("Message sent to "+join_list(["@"+a.name for a in guild_admins], ", ", " and "))
 
-    @commands.command(aliases=["eval"])
+    # noinspection PyBroadException
+    @commands.command(name="eval")
     @checks.is_owner()
-    async def debug(self, ctx, *, body: str):
+    async def _eval(self, ctx: NabCtx, *, body: str):
         """Evaluates Python code.
 
         This commands lets you evaluate python code. If no errors are returned, the bot will react to the command call.
         To show the result, you have to use `print()`.
         Asynchronous functions must be waited for using `await`.
-        To show the results of the last command, use `_`.
+        To show the results of the last command, use `print(_)`.
         """
         if "os." in body:
             await ctx.send("I won't run that.")
@@ -123,7 +122,7 @@ class Owner:
         else:
             value = stdout.getvalue()
             try:
-                await ctx.message.add_reaction('\u2705')
+                await ctx.message.add_reaction(config.true_emoji.replace("<", "").replace(">", ""))
             except discord.HTTPException:
                 pass
 
@@ -136,7 +135,7 @@ class Owner:
 
     @commands.command()
     @checks.is_owner()
-    async def leave(self, ctx, *, server: str):
+    async def leave(self, ctx: NabCtx, *, server: str):
         """Makes the bot leave a server.
 
         The bot will ask for confirmation before leaving the server.
@@ -181,7 +180,7 @@ class Owner:
 
     @commands.command(name="load")
     @checks.is_owner()
-    async def load_cog(self, ctx, cog: str):
+    async def load_cog(self, ctx: NabCtx, cog: str):
         """Loads a cog.
 
         If there's an error while compiling, it will be displayed here.
@@ -192,14 +191,14 @@ class Owner:
         """
         try:
             self.bot.load_extension(cog)
-            await ctx.send("Cog loaded successfully.")
+            await ctx.send(f"{ctx.tick()} Cog loaded successfully.")
         except Exception as e:
             await ctx.send('{}: {}'.format(type(e).__name__, e))
 
     @commands.command(usage="<old world> <new world>")
     @checks.is_owner()
     @checks.is_not_lite()
-    async def merge(self, ctx, old_world: str, new_world: str):
+    async def merge(self, ctx: NabCtx, old_world: str, new_world: str):
         """Renames all references of an old world to a new one.
 
         This command should updates all the database entries, changing all references of the old world to the new one
@@ -244,7 +243,7 @@ class Owner:
     @checks.is_owner()
     @checks.is_not_lite()
     @commands.guild_only()
-    async def namelock(self, ctx, *, params):
+    async def namelock(self, ctx: NabCtx, *, params):
         """Register the name of a new character that was namelocked.
 
         Characters that get namelocked can't be searched by their old name, so they must be reassigned manually.
@@ -346,107 +345,28 @@ class Owner:
 
     @checks.is_owner()
     @commands.command()
-    async def ping(self, ctx):
+    async def ping(self, ctx: NabCtx):
         """Shows the bot's response times."""
         resp = await ctx.send('Pong! Loading...')
         diff = resp.created_at - ctx.message.created_at
         await resp.edit(content=f'Pong! That took {1000*diff.total_seconds():.1f}ms.\n'
                                 f'Socket latency is {1000*self.bot.latency:.1f}ms')
 
-    @commands.command(aliases=["clean"])
-    @checks.is_owner()
-    @checks.is_not_lite()
-    async def purge(self, ctx):
-        """Performs a database cleanup
-
-        Removes characters that have been deleted and users with no characters or no longer in server."""
-        if not is_private(ctx.channel):
-            return True
-        c = userDatabase.cursor()
+    @commands.command(name="reload")
+    async def reload_cog(self, ctx: NabCtx, *, cog):
+        """Reloads a cog (module)"""
+        # noinspection PyBroadException
         try:
-            c.execute("SELECT id FROM users")
-            result = c.fetchall()
-            if result is None:
-                await ctx.send("There are no users registered.")
-                return
-            delete_users = list()
-            await ctx.send("Initiating purge...")
-            # Deleting users no longer in server
-            for row in result:
-                user = self.bot.get_member(row["id"])
-                if user is None:
-                    delete_users.append((row["id"],))
-            if len(delete_users) > 0:
-                c.executemany("DELETE FROM users WHERE id = ?", delete_users)
-                await ctx.send("{0} user(s) no longer in the server were removed.".format(c.rowcount))
-
-            # Deleting chars with non-existent user
-            c.execute("SELECT name FROM chars WHERE user_id NOT IN (SELECT id FROM users)")
-            result = c.fetchall()
-            if len(result) >= 1:
-                chars = ["**" + i["name"] + "**" for i in result]
-                reply = "{0} char(s) were assigned to a non-existent user and were deleted:\n\t".format(len(result))
-                reply += "\n\t".join(chars)
-                await ctx.send(reply)
-                c.execute("DELETE FROM chars WHERE user_id NOT IN (SELECT id FROM users)")
-
-            # Removing deleted chars
-            c.execute("SELECT name,level,vocation FROM chars")
-            result = c.fetchall()
-            if result is None:
-                return
-            delete_chars = list()
-            rename_chars = list()
-            # revoc_chars = list()
-            for row in result:
-                char = await get_character(row["name"])
-                if char == ERROR_NETWORK:
-                    await ctx.send("Couldn't fetch **{0}**, skipping...".format(row["name"]))
-                    continue
-                # Char was deleted
-                if char == ERROR_DOESNTEXIST:
-                    delete_chars.append((row["name"],))
-                    await ctx.send("**{0}** doesn't exist, deleting...".format(row["name"]))
-                    continue
-                # Char was renamed
-                if char.name != row["name"]:
-                    rename_chars.append((char.name, row["name"],))
-                    await ctx.send(
-                        "**{0}** was renamed to **{1}**, updating...".format(row["name"], char.name))
-
-            # No need to check if user exists cause those were removed already
-            if len(delete_chars) > 0:
-                c.executemany("DELETE FROM chars WHERE name LIKE ?", delete_chars)
-                await ctx.send("{0} char(s) were removed.".format(c.rowcount))
-            if len(rename_chars) > 0:
-                c.executemany("UPDATE chars SET name = ? WHERE name LIKE ?", rename_chars)
-                await ctx.send("{0} char(s) were renamed.".format(c.rowcount))
-
-            # Remove users with no chars
-            c.execute("SELECT id FROM users WHERE id NOT IN (SELECT user_id FROM chars)")
-            result = c.fetchall()
-            if len(result) >= 1:
-                c.execute("DELETE FROM users WHERE id NOT IN (SELECT user_id FROM chars)")
-                await ctx.send("{0} user(s) with no characters were removed.".format(c.rowcount))
-
-            # Remove level ups of removed characters
-            c.execute("DELETE FROM char_levelups WHERE char_id NOT IN (SELECT id FROM chars)")
-            if c.rowcount > 0:
-                await ctx.send(
-                    "{0} level up registries from removed characters were deleted.".format(c.rowcount))
-            c.execute("DELETE FROM char_deaths WHERE char_id NOT IN (SELECT id FROM chars)")
-            # Remove deaths of removed characters
-            if c.rowcount > 0:
-                await ctx.send("{0} death registries from removed characters were deleted.".format(c.rowcount))
-            await ctx.send("Purge done.")
-            return
-        finally:
-            userDatabase.commit()
-            c.close()
+            self.bot.unload_extension(cog)
+            self.bot.load_extension(cog)
+        except Exception:
+            await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+        else:
+            await ctx.send(f"{ctx.tick()} Cog reloaded successfully.")
 
     @commands.command(hidden=True)
     @checks.is_owner()
-    async def repl(self, ctx):
+    async def repl(self, ctx: NabCtx):
         """Starts a REPL session in the current channel.
 
         Similar to `eval`, but this keeps a running sesion where variables and results are stored.```.
@@ -539,12 +459,11 @@ class Owner:
 
     @commands.command(aliases=["reset"])
     @checks.is_owner()
-    async def restart(self, ctx: discord.ext.commands.Context):
+    @commands.guild_only()
+    async def restart(self, ctx: NabCtx):
         """Shutdowns and starts the bot again.
 
         Once the bot starts again, it will notify the user that restarted it."""
-        if not is_private(ctx.channel):
-            return True
         await ctx.send('Restarting...')
         await self.bot.logout()
         log.warning("Restarting NabBot")
@@ -554,7 +473,7 @@ class Owner:
 
     @commands.command()
     @checks.is_owner()
-    async def servers(self, ctx):
+    async def servers(self, ctx: NabCtx):
         """Shows a list of servers the bot is in."""
         reply = "I'm in the following servers:"
         for guild in self.bot.guilds:
@@ -564,7 +483,7 @@ class Owner:
 
     @commands.command(name="unload")
     @checks.is_owner()
-    async def unload_cog(self, ctx, cog: str):
+    async def unload_cog(self, ctx: NabCtx, cog: str):
         """Unloads a cog."""
         try:
             self.bot.unload_extension(cog)
@@ -574,7 +493,7 @@ class Owner:
 
     @commands.command()
     @checks.is_owner()
-    async def versions(self, ctx):
+    async def versions(self, ctx: NabCtx):
         """Shows version info about NabBot and its dependencies.
 
         An X is displayed if the minimum required version is not met, this is likely to cause problems.
@@ -596,8 +515,12 @@ class Owner:
         discordpy_version = pkg_resources.get_distribution("discord.py").version
         m = dpy_commit.search(discordpy_version)
         if m:
-            discordpy_url = f"https://github.com/Rapptz/discord.py/commit/{m.group(1)}"
-            dpy = f"[v{discordpy_version}]({discordpy_url})"
+            revision, commit = m.groups()
+            is_valid = int(revision) >= self.bot.__min_discord__
+            discordpy_url = f"https://github.com/Rapptz/discord.py/commit/{commit}"
+            dpy = f"{ctx.tick(is_valid)}[v{discordpy_version}]({discordpy_url})"
+            if not is_valid:
+                dpy += f"\n`{self.bot.__min_discord__ - int(revision)} commits behind`"
         else:
             dpy = f"v{discordpy_version}"
 

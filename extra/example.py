@@ -3,7 +3,6 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils import checks
 from utils.config import config
-from utils.discord import is_private
 from utils.tibia import get_character_url
 
 
@@ -38,10 +37,6 @@ class Example:
         output = "Using methods from `nabbot.py`:"
         member = self.bot.get_member(ctx.author.id)
         output += f"\n```py\nself.bot.get_member({ctx.author.id})\n> {member}```"
-
-        output += "\nUsing methods from `utils/discord.py`:"
-        private = is_private(ctx.message)
-        output += f"\n```py\nfrom utils.discord import is_private\nis_private(ctx.message)\n> {private}```"
 
         output += "\nUsing methods from `utils/tibia.py`:"
         url = get_character_url("Galarzaa Fidera")

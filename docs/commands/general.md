@@ -6,13 +6,22 @@
 
 
 ## about
-Shows information about the bot.
+Shows basic information about the bot.
 
 ??? Summary "Examples"
     **/about**  
     ![image](../assets/images/commands/about.png)
 
 ----
+
+## botinfo
+Shows advanced information about the bot.
+
+??? Summary "Examples"
+    **/botinfo**  
+    ![image](../assets/images/commands/botinfo.png)
+
+---
 
 ## choose
 **Syntax:** `choose <choices..>`
@@ -29,7 +38,8 @@ e.g. "Choice A" ChoiceB "Choice C"
 ----
 
 ## help
-**Syntax:** `help [command]`
+**Syntax:** `help [command]`  
+**Other aliases:** `commands`
 
 Shows help about a command or the bot.
         
@@ -76,7 +86,7 @@ Shows a list of upcoming and recent events.
 ----
    
 ### events add
-**Syntax**: `events add <starts in> <name>[,description]`
+**Syntax:** `events add <starts in> <name>[,description]`
 
 Creates a new event.
 
@@ -173,7 +183,7 @@ If no new time is provided initially, the bot will ask for one.
 ----
 
 ### events info
-**Syntax**: `events info <id>`
+**Syntax:** `events info <id>`
 
 Displays an event's info.
 
@@ -230,7 +240,7 @@ Shows the list of characters participating in this event.
 ----
 
 ### event remove
-**Syntax**: `event <id>`  
+**Syntax:** `event <id>`  
 **Other aliases:** `event delete`, `event cancel`
 
 Deletes or cancels an event.
@@ -256,7 +266,7 @@ Players can remove themselves using `event leave`
 ----
 
 ### event subscribe
-**Syntax**: `event subscribe <id>`  
+**Syntax:** `event subscribe <id>`  
 **Other aliases:** `event sub`
 
 Subscribe to receive a PM when an event is happening.
@@ -264,11 +274,11 @@ Subscribe to receive a PM when an event is happening.
 ??? Summary "Examples"
     **/event sub 136**  
     ![image](../assets/images/commands/event_sub.png)
-    
+
 ----
 
 ### event unsubscribe
-**Syntax**: `event unsubscribe id`  
+**Syntax:** `event unsubscribe id`  
 **Other aliases:** `event unsub`
 
 Unsubscribes you from an event.
@@ -276,6 +286,20 @@ Unsubscribes you from an event.
 ??? Summary "Examples"
     **/event unsub 136**  
     ![image](../assets/images/commands/event_unsub.png)
+
+----
+
+## permissions
+**Syntax:** `permissions [member] [channel]`
+
+Shows a member's permissions in the current channel.
+
+If no member is provided, it will show your permissions.  
+Optionally, a channel can be provided as the second parameter, to check permissions in said channel.
+
+??? Summary "Examples"
+    **/permissions Nezune**  
+    ![image](../assets/images/commands/permissions.png)
 
 ----
 
@@ -296,6 +320,26 @@ Note that the bot won't attempt to search in channels you can't read.
 
 ----
     
+## roll
+**Syntax:** `roll [times][d[sides]]`
+
+Rolls a die.
+
+By default, it rolls a 6-sided die once.
+You can specify how many times you want the die to be rolled.
+
+You can also specify the number of sides of the die, using the format `TdS` where T is times and S is sides.
+
+??? Summary "Examples"
+    **/roll**  
+    ![image](../assets/images/commands/roll_1.png)  
+    **/roll 10**  
+    ![image](../assets/images/commands/roll_1.png)  
+    **/roll 7d20**  
+    ![image](../assets/images/commands/roll_1.png)    
+
+----   
+ 
 ## serverinfo
 
 Shows the server's information.

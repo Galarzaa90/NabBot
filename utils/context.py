@@ -1,6 +1,7 @@
 import asyncio
+import functools
 import re
-from typing import Union, Optional
+from typing import Union, Optional, Callable, TypeVar, List, Any, Sequence
 
 import discord
 from discord.ext import commands
@@ -8,12 +9,13 @@ from discord.ext import commands
 from utils.config import config
 from utils.database import get_server_property
 
-YES_NO_REACTIONS = ("🇾", "🇳")
-CHECK_REACTIONS = ("✅", "❌")
 _mention = re.compile(r'<@!?([0-9]{1,19})>')
+
+T = TypeVar('T')
 
 
 class NabCtx(commands.Context):
+    """An override of :class:`commands.Context` that provides properties and methods for NabBot."""
     guild: discord.Guild
     message: discord.Message
     channel: discord.TextChannel
@@ -23,6 +25,8 @@ class NabCtx(commands.Context):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.yes_no_reactions = ("🇾", "🇳")
+        self.check_reactions = (config.true_emoji, config.false_emoji)
 
     # Properties
     @property
@@ -30,7 +34,6 @@ class NabCtx(commands.Context):
         """Shortcut to check the command author's permission to the current channel.
 
         :return: The permissions for the author in the current channel.
-        :rtype: discord.Permissions
         """
         return self.channel.permissions_for(self.author)
 
@@ -52,8 +55,7 @@ class NabCtx(commands.Context):
     def bot_permissions(self) -> discord.Permissions:
         """Shortcut to check the bot's permission to the current channel.
 
-        :return: The permissions for the author in the current channel.
-        :rtype: discord.Permissions"""
+        :return: The permissions for the author in the current channel."""
         return self.channel.permissions_for(self.me)
 
     @property
@@ -76,6 +78,26 @@ class NabCtx(commands.Context):
         if ask_channel is None:
             return self.channel.name == config.ask_channel_name
         return ask_channel == self.channel
+
+    @property
+    def is_lite(self) -> bool:
+        """Checks if the current context is limited to lite mode.
+
+        If the guild is in the lite_guilds list, the context is in lite mode.
+        If the guild is in private message, and the message author is in at least ONE guild that is not in lite_guilds,
+        then context is not lite"""
+        if self.guild is not None:
+            return self.guild.id in config.lite_servers
+        if self.is_private:
+            for g in self.bot.get_user_guilds(self.author.id):
+                if g.id not in config.lite_servers:
+                    return False
+        return False
+
+    @property
+    def is_private(self) -> bool:
+        """Whether the current context is a private channel or not."""
+        return self.guild is None
 
     @property
     def long(self) -> bool:
@@ -125,6 +147,53 @@ class NabCtx(commands.Context):
         else:
             return self.bot.tracked_worlds.get(self.guild.id, None)
 
+    async def choose(self, matches: Sequence[Any], title="Suggestions"):
+        if len(matches) == 0:
+            raise ValueError('No results found.')
+
+        if len(matches) == 1:
+            return matches[0]
+
+        embed = discord.Embed(colour=discord.Colour.blurple(), title=title,
+                              description='\n'.join(f'{index}: {item}' for index, item in enumerate(matches, 1)))
+
+        msg = await self.send("I couldn't find what you were looking for, maybe you mean one of these?\n"
+                              "**Only say the number** (*0 to cancel*)", embed=embed)
+
+        def check(m: discord.Message):
+            return m.content.isdigit() and m.author.id == self.author.id and m.channel.id == self.channel.id
+        message = None
+        try:
+            message = await self.bot.wait_for('message', check=check, timeout=30.0)
+            index = int(message.content)
+            if index == 0:
+                await self.send("Alright, choosing cancelled.", delete_after=10)
+                return None
+            try:
+                await msg.delete()
+                return matches[index - 1]
+            except IndexError:
+                await self.send(f"{self.tick(False)} That wasn't in the choices.", delete_after=10)
+        except asyncio.TimeoutError:
+            return None
+        finally:
+            try:
+                if message:
+                    await message.delete()
+            except discord.Forbidden:
+                pass
+
+    async def execute_async(self, func: Callable[..., T], *args, **kwargs) -> T:
+        """Executes a synchronous function inside an executor.
+
+        :param func: The function to call inside the executor.
+        :param args: The function's arguments
+        :param kwargs: The function's keyword arguments.
+        :return: The value returned by the function, if any.
+        """
+        ret = await self.bot.loop.run_in_executor(None, functools.partial(func, *args, **kwargs))
+        return ret
+
     async def input(self, *, timeout=60.0, clean=False, delete_response=False) \
             -> Optional[str]:
         """Waits for text input from the author.
@@ -153,7 +222,7 @@ class NabCtx(commands.Context):
             return None
 
     async def react_confirm(self, message: discord.Message, *, timeout=60.0, delete_after=False,
-                            use_checkmark=False):
+                            use_checkmark=False) -> Optional[bool]:
         """Waits for the command author to reply with a Y or N reaction.
 
         Returns True if the user reacted with Y
@@ -169,8 +238,9 @@ class NabCtx(commands.Context):
         if not self.channel.permissions_for(self.me).add_reactions:
             raise RuntimeError('Bot does not have Add Reactions permission.')
 
-        reactions = CHECK_REACTIONS if use_checkmark else YES_NO_REACTIONS
+        reactions = self.check_reactions if use_checkmark else self.yes_no_reactions
         for emoji in reactions:
+            emoji = emoji.replace("<", "").replace(">", "")
             await message.add_reaction(emoji)
 
         def check_react(reaction: discord.Reaction, user: discord.User):
@@ -197,15 +267,14 @@ class NabCtx(commands.Context):
                     pass
         return True
 
-    @staticmethod
-    def tick(value: bool = True, label: str = None) -> str:
+    def tick(self, value: bool = True, label: str = None) -> str:
         """Displays a checkmark or a cross depending on the value.
 
         :param value: The value to evaluate
         :param label: An optional label to display
         :return: A checkmark or cross
         """
-        emoji = CHECK_REACTIONS[int(not value)]
+        emoji = self.check_reactions[int(not value)]
         if label:
             return emoji + label
         return emoji

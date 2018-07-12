@@ -5,6 +5,19 @@ Commands server moderators.
 !!! info
     Parameters are enclosed with `< >`.   
     Optional parameters are enclosed in brackets `[]`.
+    
+## cleanup
+**Syntax:** `cleanup [limit=50]`
+
+Cleans the channel from bot commands.
+
+If the bot has `Manage Messages` permission, it will also delete command invocation messages.
+
+??? summary "Examples"
+    **/cleanup**  
+    ![image](../assets/images/commands/cleanup.png)
+    
+----
 
 ## ignore
 **Syntax:** `ignore [channel]`
@@ -13,7 +26,7 @@ Makes the bot ignore a channel
 
 Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
 
-If the parameter is used with no parameters, it ignores the current channel.
+If the command is used with no parameters, it ignores the current channel.
 
 Note that server administrators can bypass this.
 
@@ -46,7 +59,7 @@ If no channel is provided, the current channel will be unignored.
 
 Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
 
-If the parameter is used with no parameters, it unignores the current channel.
+If the command is used with no parameters, it unignores the current channel.
 
 ----
 

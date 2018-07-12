@@ -28,21 +28,6 @@ lite_servers:
 # Example: extra/twitch.py would be added as 'extra.twitch'
 extra_cogs: []
 
-# The welcome message that is sent to members when they join a discord server with NabBot in it
-# The following keyboards can be used:
-# {user.name} - The joining user's name
-# {user.mention} - The joining user's mention
-# {server.name} - The name of the server the member joined.
-# {owner.name} - The name of the owner of the server.
-# {owner.mention} - A mention to the owner of the server.
-# {bot.name} - The name of the bot
-# {bot.mention} - The name of the bot
-welcome_pm: |
-  Welcome to **{server.name}**! I'm **{bot.name}**, to learn more about my commands type `/help`
-
-  Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking
-  your level ups and deaths!
-
 # Owners can use mods commands and more sensible commands like /shutdown and restart
 # By default, the bot's application owner is always considered, this array allows adding extra owners
 owner_ids:
@@ -55,9 +40,6 @@ display_sonora_time: true
 
 # Cached online list expiration
 online_list_expiration: 300
-
-# Max amount of simultaneous images /loot can try to parse
-loot_max: 6
 
 # Level threshold for announces (level < announceLevel)
 announce_threshold: 30
@@ -74,3 +56,53 @@ highscores_page_delay: 10
 
 # Delay between retries when there's a network error in seconds
 network_retry_delay: 1
+
+# Emojis
+# Sets the various emojis used by the bot.
+# Bots can use emojis from any server they are in, animated or not.
+# See the documentation for more information.
+
+# Required emojis
+# These values must always have an emoji to display
+online_emoji: 🔹
+true_emoji: ✅
+false_emoji: ❌
+levelup_emoji: 🌟
+death_emoji: ☠
+pvpdeath_emoji: 💀
+# These emojis are also used in vocation filtering
+novoc_emoji: 🐣
+druid_emoji: ❄
+sorcerer_emoji: 🔥
+paladin_emoji: 🏹
+knight_emoji: 🛡
+# Emojis for bestiary info
+charms_emoji: ⚜
+difficulty_on_emoji: ⭐
+difficulty_off_emoji: ▪
+occurence_on_emoji: 🔹
+occurence_off_emoji: ▪
+
+
+# Optional emojis
+# The following are values than can optionally be represented by emojis.
+# If they are set to false, text will be displayed instead.
+
+# Whether to use or not emojis to show discord status in serverinfo command.
+use_status_emojis: false
+status_emojis:
+  online: 💚
+  dnd: ♥
+  idle: 💛
+  offline: 🖤
+
+# Whether to use emojis to represent elemental damage in spells and monsters info
+use_elemental_emojis: false
+elemental_emojis:
+  physical: ⚔
+  earth: 🌿
+  fire: 🔥
+  energy: ⚡
+  ice: ❄
+  death: 💀
+  holy: 🔱

@@ -1,7 +1,8 @@
 from discord.ext import commands
+from discord.ext.commands import MissingPermissions
 
 from utils.config import config
-from utils.discord import is_lite_mode
+from utils.context import NabCtx
 
 
 # Checks
@@ -59,7 +60,7 @@ def is_tracking_world():
     """
     def predicate(ctx):
         if ctx.guild is None:
-            return False
+            raise commands.NoPrivateMessage("This command cannot be used in private messages.")
         return ctx.guild.id in ctx.bot.tracked_worlds
     return commands.check(predicate)
 
@@ -82,8 +83,8 @@ def is_in_tracking_world():
 
 def is_not_lite():
     """Checks if the bot is not running in lite mode"""
-    def predicate(ctx):
-        return not is_lite_mode(ctx)
+    def predicate(ctx: NabCtx):
+        return not ctx.is_lite
     return commands.check(predicate)
 
 
@@ -109,3 +110,20 @@ async def check_guild_permissions(ctx, perms, *, check=all):
 
 async def is_owner_check(ctx):
     return ctx.author.id in config.owner_ids or await ctx.bot.is_owner(ctx.author)
+
+
+def has_guild_permissions(**perms):
+    def predicate(ctx):
+        if ctx.guild is None:
+            raise commands.NoPrivateMessage("This command cannot be used in private messages.")
+
+        permissions = ctx.author.guild_permissions
+
+        missing = [perm for perm, value in perms.items() if getattr(permissions, perm, None) != value]
+
+        if not missing:
+            return True
+
+        raise MissingPermissions(missing)
+
+    return commands.check(predicate)

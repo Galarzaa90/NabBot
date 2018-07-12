@@ -13,6 +13,9 @@ theme:
   feature:
     tabs: true
 
+extra_css:
+  - assets/css/extra.css
+
 markdown_extensions:
   - toc:
         permalink: true
@@ -23,6 +26,7 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.tilde
   - meta
+  - figureAltCaption
 
 
 google_analytics:
@@ -46,6 +50,10 @@ pages:
     - Install Guide: install.md
     - Permissions: permissions.md
     - FAQ: faq.md
+    - Features:
+      - Overview: features/index.md
+      - Autoroles: features/autoroles.md
+      - Groups: features/groups.md
     - Commands:
       - Overview: commands/index.md
       - Admin commands: commands/admin.md

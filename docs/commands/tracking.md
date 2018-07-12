@@ -80,7 +80,7 @@ There are 3 ways to use this command:
 - Show characters in share range with a specific level. (`searchteam <level>`)
 - Show characters in a level range. (`searchteam <min>,<max>`)
 
-Online characters are shown first on the list, they also have a 🔹 icon.
+Online characters are shown first on the list, they also have an icon next to them.
 
 ??? Summary "Examples"
     **/searchteam Galarzaa Fidera**  
@@ -148,7 +148,7 @@ Guilds are displayed in the watched list as a group.
 ----
 
 ### watched info
-**Syntax:**: `watched info <name>`  
+**Syntax:** `watched info <name>`  
 **Other aliases:** `watched details`, `watched reason`
 
 Shows information about a watched list entry.
@@ -162,7 +162,7 @@ This shows who added the player, when, and if there's a reason why they were add
 ----
 
 ### watched infoguild
-**Syntax:**: `watched info <name>`  
+**Syntax:** `watched info <name>`  
 **Other aliases:** `watched detailsguild`, `watched reasonguild`
 
 Shows details about a guild entry in the watched list.
@@ -207,7 +207,7 @@ Removes a character from the watched list.
 ----  
 
 ### watched removeguild
-**Syntax**:  `watched removeguild <name>`
+**Syntax:**  `watched removeguild <name>`
 
 Removes a guild from the watched list.
 

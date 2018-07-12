@@ -1,14 +1,14 @@
 import asyncio
 import inspect
 import itertools
-import re
 from typing import Union
 
 import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils.discord import is_private
+from utils.config import config
+from utils.context import NabCtx
 from utils.tibia import DRUID, SORCERER, PALADIN, KNIGHT
 
 
@@ -53,12 +53,12 @@ class Pages:
     """
     Empty = discord.Embed.Empty
 
-    def __init__(self, ctx: commands.Context, *, entries, per_page=10, show_entry_count=True, **kwargs):
-        self.bot = ctx.bot  # type: NabBot
+    def __init__(self, ctx: NabCtx, *, entries, per_page=10, show_entry_count=True, **kwargs):
+        self.bot: NabBot = ctx.bot
         self.entries = entries
-        self.message = ctx.message  # type: discord.Message
-        self.channel = ctx.channel  # type: discord.TextChannel
-        self.author = ctx.author  # type: Union[discord.User, discord.Member]
+        self.message: discord.Message = ctx.message
+        self.channel: discord.TextChannel = ctx.channel
+        self.author: Union[discord.User, discord.Member] = ctx.author
         self.per_page = per_page
         pages, left_over = divmod(len(self.entries), self.per_page)
         if left_over:
@@ -135,8 +135,9 @@ class Pages:
                 # it from the default set
                 continue
             # Stop reaction doesn't work on PMs so do not add it
-            if is_private(self.message.channel) and reaction == '\N{BLACK SQUARE FOR STOP}':
+            if isinstance(self.message.channel, discord.abc.PrivateChannel) and reaction == '\N{BLACK SQUARE FOR STOP}':
                 continue
+            reaction = reaction.replace("<", "").replace(">", "")
             await self.message.add_reaction(reaction)
 
     async def checked_show_page(self, page):
@@ -168,7 +169,7 @@ class Pages:
         # await self.bot.delete_message(self.message)
         try:
             # Can't remove reactions in DMs, so don't even try
-            if not is_private(self.message.channel):
+            if not isinstance(self.message.channel, discord.abc.PrivateChannel):
                 await self.message.clear_reactions()
         except:
             pass
@@ -180,9 +181,8 @@ class Pages:
 
         if reaction.message.id != self.message.id:
             return False
-
         for (emoji, func) in self.reaction_emojis:
-            if reaction.emoji == emoji:
+            if str(reaction.emoji) == emoji:
                 self.match = func
                 return True
         return False
@@ -221,13 +221,13 @@ class VocationPages(Pages):
         present_vocations = []
         # Only add vocation filters for the vocations present
         if any(v.lower() in DRUID for v in vocations):
-            present_vocations.append(('\U00002744', self.filter_druids))
+            present_vocations.append((config.druid_emoji, self.filter_druids))
         if any(v.lower() in SORCERER for v in vocations):
-            present_vocations.append(('\U0001F525', self.filter_sorcerers))
+            present_vocations.append((config.sorcerer_emoji, self.filter_sorcerers))
         if any(v.lower() in PALADIN for v in vocations):
-            present_vocations.append(('\U0001F3F9', self.filter_paladins))
+            present_vocations.append((config.paladin_emoji, self.filter_paladins))
         if any(v.lower() in KNIGHT for v in vocations):
-            present_vocations.append(('\U0001F6E1', self.filter_knights))
+            present_vocations.append((config.knight_emoji, self.filter_knights))
 
         # Only add filters if there's more than one different vocation
         if len(present_vocations) > 1:
@@ -424,7 +424,6 @@ class HelpPaginator(Pages):
                 # we can't forbid it if someone ends up using it but remove
                 # it from the default set
                 continue
-
             await self.message.add_reaction(reaction)
 
     async def show_help(self):

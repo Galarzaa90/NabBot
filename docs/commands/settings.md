@@ -70,8 +70,8 @@ If this is disabled, Announcements won't be made, but there will still be tracki
 
 Changes the channel where Tibia news are announced.
 
-This is where all news and articles posted in Tibia.com will be announced..
-By default, the highest channel on the list where the bot can send messages will be used.
+This is where all news and articles posted in Tibia.com will be announced.  
+By default, this feature is disabled, you must set a channel to enable it.  
 If the assigned channel is deleted or forbidden, the top channel will be used again.
 
 ----
@@ -90,6 +90,41 @@ If you want to have a space at the end, such as: `nabbot help`, you have to use 
 Multiple words also require using quotes.
 
 Mentioning the bot is always a valid command and can't be changed."
+
+----
+
+### settings welcome
+**Syntax:** `settings welcome [message]`
+
+Changes the message new members receive when joining.
+        
+This is initially disabled.
+
+You can use formatting to show dynamic values:
+- {server} -> The server's name.
+- {server} -> The server's owner name
+- {server} -> Mention to the server's owner.
+- {owner} -> The name of the server owner
+- {owner.mention} -> Mention the server owner.
+- {user} -> The name of the user that joined.
+- {user.mention} -> Mention the user that joined.
+- {bot} -> The name of the bot
+- {bot.mention} -> Mention the bot.
+
+Be sure to change the welcome channel too.
+
+----
+
+### settings welcomechannel
+**Syntax:** `settings welcomechannel [channel]`
+
+Changes the channel where new members are welcomed.
+
+A welcome message must be set for this setting to work.
+If the channel becomes unavailable, private messages will be used.
+
+Note that private messages are not reliable since new users can have them disabled before joining.
+To disable this, you must disable welcome messages using `settings welcome`.
 
 ----
 

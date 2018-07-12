@@ -1,4 +1,45 @@
 # Changelog
+
+## Version 1.3.0 (2018-07-12)
+- Emoji changes are now displayed on server-log.
+- Main emojis can be customized now, allowing custom discord emojis
+    - Vocation emojis.
+    - Elemental resistance emojis in `/monster`.
+    - Discord presence emojis in `/serverinfo`.
+    - Checkbox and cross emojis to show boolean flags.
+    - Level up and deaths emojis.
+    - And more
+- Added joinable role feature, called groups:
+    - To create a group: `/group add <name>` (requires `Manage Roles` permission)
+    - To join/leave a group: `/group <name`
+    - To see available groups: `/group list`
+    - To delete a group: `/group remove <name>`
+- Added automatic roles
+    - Roles are assigned based on the guilds of registered characters.
+    - See `help autorole` for more information on commands.
+- Increased /loot scanning speed.
+- Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.
+- Welcome message can now be fully customized, including the welcome message channel. Available under `/settings`
+- Welcome messages are no longer enabled by default.
+- New `/imbuement` command, shows basic information about an imbuement and if prices are provided, it calculates costs.
+- New `/permissions` command, shows the permissions for a member in a channel.
+- New `/cleanup` command, cleans bot messages and command invocations in the current channel.
+- New `/roll` command, rolls a die and shows the results.
+- New `/botinfo` command, shows advanced information about the bot.
+- New `/worlds` command, shows a list of worlds with their location, pvptype and online population, with filtering options.
+- `/about` now shows less advanced information, and more general information.
+- `/version` now checks if the required minimum commit version of discord.py is being used.
+- `/monster` now shows occurrence, kills required and charm points given.
+- `/monster`, `/house`, `/spell`, `/npc`, `/item`, `/imbuement`, `/achievement`
+- Fixed `/checkchannel` ignoring channel parameter.
+- Fixed `/quote` failing when quoting users no longer in server.
+- Tibia.com news announcement are now disabled by default, must be enabled per server.
+- Command name and aliases changes:
+    - `/debug`: renamed to `/eval`.
+    - `/help`: Alias `/commands` added.
+    - `/setwelcome`: Removed.
+    - `/purge`: Removed.
+
 ## Version 1.2.3 (2018-06-19)
 - Fixed a bug with `/whois` when a user was not found.
 

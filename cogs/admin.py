@@ -1,16 +1,13 @@
-import asyncio
 from typing import List
 
 import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks, context
-from utils.config import config
+from utils import checks
 from utils.context import NabCtx
 from utils.database import *
-from utils.discord import get_user_avatar
-from utils.general import join_list, log
+from utils.general import join_list, log, get_user_avatar
 from utils.tibia import get_character, NetworkError, Character, get_voc_abb_and_emoji
 
 
@@ -21,7 +18,7 @@ class Admin:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    async def __error(self, ctx, error):
+    async def __error(self, ctx: NabCtx, error):
         if isinstance(error, commands.BadArgument):
             if not error.args:
                 await ctx.send(f"{ctx.tick(False)} The correct syntax is: "
@@ -70,7 +67,7 @@ class Admin:
             chars = [char]
         skipped = []
         updated = []
-        added = []  # type: List[Character]
+        added: List[Character] = []
         existent = []
         for char in chars:
             # Skip chars in non-tracked worlds
@@ -268,7 +265,7 @@ class Admin:
         If no channel is specified, the current one is checked."""
         if channel is None:
             channel = ctx.channel
-        permissions = channel.permissions_for(ctx.me)  # type: discord.Permissions
+        permissions = channel.permissions_for(ctx.me)
         content = f"**Checking {channel.mention}:**"
         if permissions.administrator:
             content += f"\n{ctx.tick(True)} I have `Administrator` permission."
@@ -298,88 +295,11 @@ class Admin:
             content += f"\n{ctx.tick(True)} All permissions are correct!"
         await ctx.send(content)
 
-    @commands.guild_only()
-    @checks.is_admin()
-    @checks.is_not_lite()
-    @commands.command(name="setwelcome")
-    async def set_welcome(self, ctx, *, message: str = None):
-        """Set the messages members get PMed when joining.
-
-        A part of the message is already fixed and cannot be changed, but the message can be extended.
-
-        Say "clear" to clear the current message.
-
-        The following can be used to get dynamically replaced:
-        {user.name} - The joining user's name
-        {user.mention} - The joining user's mention
-        {server.name} - The name of the server the member joined.
-        {owner.name} - The name of the owner of the server.
-        {owner.mention} - A mention to the owner of the server.
-        {bot.name} - The name of the bot
-        {bot.mention} - The name of the bot."""
-
-        def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
-
-        if message is None:
-            current_message = get_server_property(ctx.guild.id, "welcome")
-            if current_message is None:
-                current_message = config.welcome_pm.format(ctx.author, self.bot)
-                await ctx.send(f"This server has no custom message, joining members get the default message:\n"
-                               f"----------\n{current_message}")
-            else:
-                unformatted_message = f"{config.welcome_pm}\n{current_message}"
-                complete_message = unformatted_message.format(user=ctx.author, server=ctx.guild, bot=self.bot.user,
-                                                              owner=ctx.guild.owner)
-                await ctx.send(f"This server has the following welcome message:\n"
-                               f"----------\n``The first two lines can't be changed``\n{complete_message}")
-            return
-        if message.lower() in ["clear", "none", "delete", "remove"]:
-            await ctx.send("Are you sure you want to delete this server's welcome message? `yes/no`\n"
-                           "The default welcome message will still be shown.")
-            try:
-                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
-                if reply.content.lower() not in ["yes", "y"]:
-                    await ctx.send("No changes were made then.")
-                    return
-            except asyncio.TimeoutError:
-                await ctx.send("I guess you changed your mind...")
-                return
-
-            set_server_property(ctx.guild.id, "welcome", None)
-            await ctx.send("This server's welcome message was removed.")
-            return
-
-        if len(message) > 1200:
-            await ctx.send("This message exceeds the character limit! ({0}/{1}".format(len(message), 1200))
-            return
-        try:
-            unformatted_message = f"{config.welcome_pm}\n{message}"
-            complete_message = unformatted_message.format(user=ctx.author, server=ctx.guild, bot=self.bot.user,
-                                                          owner=ctx.guild.owner)
-        except Exception as e:
-            await ctx.send("There is something wrong with your message.\n```{0}```".format(e))
-            return
-
-        await ctx.send("Are you sure you want this as your private welcome message?\n"
-                       "----------\n``The first two lines can't be changed``\n{0}"
-                       .format(complete_message))
-        try:
-            reply = await self.bot.wait_for("message", timeout=120.0, check=check)
-            if reply.content.lower() not in ["yes", "y"]:
-                await ctx.send("No changes were made then.")
-                return
-        except asyncio.TimeoutError:
-            await ctx.send("I guess you changed your mind...")
-            return
-
-        set_server_property(ctx.guild.id, "welcome", message)
-        await ctx.send("This server's welcome message has been changed successfully.")
 
     @checks.is_admin()
     @checks.is_tracking_world()
     @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
-    async def remove_char(self, ctx, *, name):
+    async def remove_char(self, ctx: NabCtx, *, name):
         """Removes a registered character."""
         # This could be used to remove deleted chars so we don't need to check anything
         # Except if the char exists in the database...

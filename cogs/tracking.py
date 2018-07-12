@@ -13,9 +13,10 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils import checks
 from utils.config import config
+from utils.context import NabCtx
 from utils.database import userDatabase, get_server_property, set_server_property
-from utils.discord import is_private, get_user_avatar, FIELD_VALUE_LIMIT, EMBED_LIMIT
-from utils.general import global_online_list, log, join_list, is_numeric
+from utils.general import global_online_list, log, join_list, is_numeric, FIELD_VALUE_LIMIT, EMBED_LIMIT, \
+    get_user_avatar
 from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, \
     level_messages, split_message
 from utils.pages import Pages, CannotPaginate, VocationPages
@@ -158,8 +159,12 @@ class Tracking:
 
                 await asyncio.sleep(config.online_scan_interval)
                 # Get online list for this server
-                world = await get_world(current_world)
-                if world is None:
+                try:
+                    world = await get_world(current_world)
+                    if world is None:
+                        await asyncio.sleep(0.1)
+                        continue
+                except NetworkError:
                     await asyncio.sleep(0.1)
                     continue
                 current_world_online = world.players_online
@@ -189,7 +194,7 @@ class Tracking:
                     # Check for deaths and level ups when removing from online list
                     try:
                         name = offline_char.name
-                        offline_char = await get_character(name)
+                        offline_char = await get_character(name, bot=self.bot)
                     except NetworkError:
                         log.error(f"scan_online_chars: Could not fetch {name}, NetWorkError")
                         continue
@@ -259,7 +264,7 @@ class Tracking:
                 # This server doesn't have watch list enabled
                 await asyncio.sleep(0.1)
                 continue
-            watched_channel = self.bot.get_channel(watched_channel_id)  # type: discord.TextChannel
+            watched_channel: discord.TextChannel = self.bot.get_channel(watched_channel_id)
             if watched_channel is None:
                 # This server's watched channel is not available to the bot anymore.
                 await asyncio.sleep(0.1)
@@ -341,7 +346,7 @@ class Tracking:
     async def check_death(self, character):
         """Checks if the player has new deaths"""
         try:
-            char = await get_character(character)
+            char = await get_character(character, bot=self.bot)
             if char is None:
                 # During server save, characters can't be read sometimes
                 return
@@ -388,7 +393,7 @@ class Tracking:
                 log.error("announce_death: no character or character name passed.")
                 return
             try:
-                char = await get_character(char_name)
+                char = await get_character(char_name, bot=self.bot)
             except NetworkError:
                 log.warning("announce_death: couldn't fetch character (" + char_name + ")")
                 return
@@ -424,7 +429,7 @@ class Tracking:
                       'he_she': char.he_she.lower(), 'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
         message = message.format(**death_info)
         # Format extra stylization
-        message = f"{'💀' if death.by_player else '☠'} {format_message(message)}"
+        message = f"{config.pvpdeath_emoji if death.by_player else config.death_emoji} {format_message(message)}"
 
         for guild_id, tracked_world in self.bot.tracked_worlds.items():
             guild = self.bot.get_guild(guild_id)
@@ -454,7 +459,7 @@ class Tracking:
                 log.error("announce_level: no character or character name passed.")
                 return
             try:
-                char = await get_character(char_name)
+                char = await get_character(char_name, bot=self.bot)
             except NetworkError:
                 log.warning("announce_level: couldn't fetch character (" + char_name + ")")
                 return
@@ -468,7 +473,7 @@ class Tracking:
         # Format message with level information
         message = message.format(**level_info)
         # Format extra stylization
-        message = f"🌟 {format_message(message)}"
+        message = f"{config.levelup_emoji} {format_message(message)}"
 
         for server_id, tracked_world in self.bot.tracked_worlds.items():
             server = self.bot.get_guild(server_id)
@@ -485,7 +490,7 @@ class Tracking:
     # Commands
     @commands.command()
     @checks.is_in_tracking_world()
-    async def claim(self, ctx, *, char_name: str = None):
+    async def claim(self, ctx: NabCtx, *, char_name: str = None):
         """Claims a character registered as yours.
 
         Claims a character as yours, even if it is already registered to someone else.
@@ -511,7 +516,7 @@ class Tracking:
         # Remove duplicate entries from list
         user_tibia_worlds = list(set(user_tibia_worlds))
 
-        if not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is None:
+        if not ctx.is_private and self.bot.tracked_worlds.get(ctx.guild.id) is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
 
@@ -555,7 +560,7 @@ class Tracking:
 
         skipped = []
         updated = []
-        added = []  # type: List[Character]
+        added: List[Character] = []
         existent = []
         for char in chars:
             # Skip chars in non-tracked worlds
@@ -655,7 +660,7 @@ class Tracking:
 
     @checks.is_in_tracking_world()
     @commands.command(aliases=["i'm", "iam"])
-    async def im(self, ctx, *, char_name: str):
+    async def im(self, ctx: NabCtx, *, char_name: str):
         """Lets you add your tibia character(s) for the bot to track.
 
         If there are other visible characters, the bot will ask for confirmation to add them too.
@@ -673,7 +678,7 @@ class Tracking:
         # Remove duplicate entries from list
         user_tibia_worlds = list(set(user_tibia_worlds))
 
-        if not is_private(ctx.channel) and self.bot.tracked_worlds.get(ctx.guild.id) is None:
+        if not ctx.is_private and ctx.world is None:
             await ctx.send("This server is not tracking any tibia worlds.")
             return
 
@@ -701,7 +706,7 @@ class Tracking:
 
         skipped = []
         updated = []
-        added = []  # type: List[Character]
+        added: List[Character] = []
         existent = []
         for char in chars:
             # Skip chars in non-tracked worlds
@@ -798,19 +803,20 @@ class Tracking:
         with userDatabase as conn:
             conn.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (user.id, user.display_name,))
             conn.execute("UPDATE users SET name = ? WHERE id = ?", (user.display_name, user.id,))
-
         await ctx.send(reply)
         for server_id, message in log_reply.items():
             if message:
+                guild = self.bot.get_guild(server_id)
                 message = user.mention + " registered the following characters: " + message
                 embed = discord.Embed(description=message)
                 embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
                 embed.colour = discord.Colour.dark_teal()
-                await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
+                await self.bot.send_log_message(guild, embed=embed)
+        self.bot.dispatch("character_change", ctx.author.id)
 
     @checks.is_in_tracking_world()
     @commands.command(aliases=["i'mnot"])
-    async def imnot(self, ctx, *, name):
+    async def imnot(self, ctx: NabCtx, *, name):
         """Removes a character assigned to you.
 
         All registered level ups and deaths will be lost forever."""
@@ -851,13 +857,14 @@ class Tracking:
                     embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
                     embed.colour = discord.Colour.dark_teal()
                     await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
+            self.bot.dispatch("character_change", ctx.author.id)
         finally:
             userDatabase.commit()
             c.close()
 
     @commands.command()
     @checks.is_tracking_world()
-    async def online(self, ctx):
+    async def online(self, ctx: NabCtx):
         """Tells you which users are online on Tibia.
 
         This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated."""
@@ -908,7 +915,7 @@ class Tracking:
 
     @commands.command(name="searchteam", aliases=["whereteam", "findteam"], usage="<params>")
     @checks.is_tracking_world()
-    async def search_team(self, ctx, *, params=None):
+    async def search_team(self, ctx: NabCtx, *, params=None):
         """Searches for a registered character that meets the criteria
 
         There are 3 ways to use this command:
@@ -917,8 +924,8 @@ class Tracking:
         - Show characters in share range with a specific level. (`searchteam <level>`)
         - Show characters in a level range. (`searchteam <min>,<max>`)
 
-        Online characters are shown first on the list, they also have a 🔹 icon."""
-        permissions = ctx.channel.permissions_for(ctx.me)
+        Online characters are shown first on the list, they also have an icon."""
+        permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
@@ -1019,7 +1026,7 @@ class Tracking:
                 player["voc"] = get_voc_abb(player["vocation"])
                 line_format = "**{name}** - Level {level} {voc}{emoji} - @**{owner}** {online}"
                 if player["name"] in online_list:
-                    player["online"] = "🔹"
+                    player["online"] = config.online_emoji
                     online_entries.append(line_format.format(**player))
                     online_vocations.append(player["vocation"])
                 else:
@@ -1042,7 +1049,7 @@ class Tracking:
     @checks.is_admin()
     @checks.is_tracking_world()
     @commands.group(invoke_without_command=True, aliases=["watchlist", "huntedlist"], case_insensitive=True)
-    async def watched(self, ctx, *, name="watched-list"):
+    async def watched(self, ctx: NabCtx, *, name="watched-list"):
         """Sets the watched list channel for this server
 
         Creates a new text channel for the watched list to be posted.
@@ -1072,7 +1079,7 @@ class Tracking:
         if watched_channel is not None:
             await ctx.send(f"This server already has a watched list channel: {watched_channel.mention}")
             return
-        permissions = ctx.channel.permissions_for(ctx.me)  # type: discord.Permissions
+        permissions = ctx.bot_permissions
         if not permissions.manage_channels:
             await ctx.send("I need to have `Manage Channels` permissions to use this command.")
         try:
@@ -1098,7 +1105,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="add", aliases=["addplayer", "addchar"], usage="<name>[,reason]")
-    async def watched_add(self, ctx, *, params=None):
+    async def watched_add(self, ctx: NabCtx, *, params=None):
         """Adds a character to the watched list.
 
         A reason can be specified by adding it after the character's name, separated by a comma."""
@@ -1161,7 +1168,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="addguild", usage="<name>[,reason]")
-    async def watched_addguild(self, ctx, *, params=None):
+    async def watched_addguild(self, ctx: NabCtx, *, params=None):
         """Adds an entire guild to the watched list.
 
         Guilds are displayed in the watched list as a group."""
@@ -1221,7 +1228,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="info", aliases=["details", "reason"])
-    async def watched_info(self, ctx, *, name: str):
+    async def watched_info(self, ctx: NabCtx, *, name: str):
         """Shows information about a watched list entry.
 
         This shows who added the player, when, and if there's a reason why they were added."""
@@ -1250,7 +1257,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="infoguild", aliases=["detailsguild", "reasonguild"])
-    async def watched_infoguild(self, ctx, *, name: str):
+    async def watched_infoguild(self, ctx: NabCtx, *, name: str):
         """"Shows details about a guild entry in the watched list.
 
         This shows who added the player, when, and if there's a reason why they were added."""
@@ -1279,7 +1286,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="list")
-    async def watched_list(self, ctx):
+    async def watched_list(self, ctx: NabCtx):
         """Shows a list of all watched characters
 
         Note that this lists all characters, not just online characters."""
@@ -1308,7 +1315,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="listguilds", aliases=["guilds", "guildlist"])
-    async def watched_list_guild(self, ctx):
+    async def watched_list_guild(self, ctx: NabCtx):
         """Shows a list of all watched characters
 
         Note that this lists all characters, not just online characters."""
@@ -1337,7 +1344,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="remove", aliases=["removeplayer", "removechar"])
-    async def watched_remove(self, ctx, *, name=None):
+    async def watched_remove(self, ctx: NabCtx, *, name=None):
         """Removes a character from the watched list."""
         if name is None:
             ctx.send("You need to tell me the name of the person you want to remove from the list.")
@@ -1375,7 +1382,7 @@ class Tracking:
     @checks.is_mod()
     @checks.is_tracking_world()
     @watched.command(name="removeguild")
-    async def watched_removeguild(self, ctx, *, name=None):
+    async def watched_removeguild(self, ctx: NabCtx, *, name=None):
         """Removes a guild from the watched list."""
         if name is None:
             ctx.send("You need to tell me the name of the guild you want to remove from the list.")

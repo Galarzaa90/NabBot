@@ -114,15 +114,6 @@ display_brasilia_time: true
 display_sonora_time: true
 ```
 
-This toggles displaying those timezones in the `/time` command.
-
-These keys will be deprecated soon in favour of a more dynamic way to add timezones.
-
-## Loot Max
-```yaml
-loot_max: 6
-```
-
 Specifies how many concurrent loot scanning jobs can be active.
 
 ## Announce Threshold
@@ -166,3 +157,75 @@ These were relevant when Tibia.com was used for most of the data, to reduce erro
 Now that TibiaData is used, this is not as relevant, as they use caching.
 
 This might be removed in future updates.
+
+## Emojis
+Some information is displayed using emojis, to make it easier to identify at quick glance.
+These emojis can be personalized by editing the configuration file.
+
+Apart of unicode (standard) emojis, custom discord emojis can be used.
+Discord bots are able to use emojis from any server they are in, anywhere, like they had [Nitro](https://discordapp.com/nitro).
+
+It is recommended to use custom emojis from a server where no one else can modify them, as this may break NabBot.
+A server dedicated for emojis may be created, inviting the bot for it to use them.
+
+To use a custom emoji, you have to declare it like: `<:name:id>`, for example: `<:fireDamage:458794525050142740>`.
+For animated emojis, you have to add `a`, example: `<a:paladin:45233654759231>`.
+
+To find out the id of an emoji, there's two ways to do it:
+
+1. Right click and emoji, select `Copy Link`, a link like `https://cdn.discordapp.com/emojis/458794525050142740.png?v=1` will be created.  
+   The numeric part is the emoji's id.
+2. Send a message with the emoji, placing `\` before, e.g. `\:fireDamage:`.  
+   The resulting message will contain the escaped emoji: `<:fireDamage:458794525050142740>`.
+   
+Alternatively, if you have the `server-log` enabled, you can see the id of an emoji when it's created or modified.
+
+The following are values that always require to have an emoji assigned. These will always default to a unicode emoji.
+```yaml
+# Required emojis
+# These values must always have an emoji to display
+online_emoji: 🔹
+true_emoji: ✅
+false_emoji: ❌
+levelup_emoji: 🌟
+death_emoji: ☠
+pvpdeath_emoji: 💀
+# These emojis are also used in vocation filtering
+novoc_emoji: 🐣
+druid_emoji: ❄
+sorcerer_emoji: 🔥
+paladin_emoji: 🏹
+knight_emoji: 🛡
+# Emojis for bestiary info
+charms_emoji: ⚜
+difficulty_on_emoji: ⭐
+difficulty_off_emoji: ▪
+occurence_on_emoji: 🔹
+occurence_off_emoji: ▪
+```
+
+The following are optional emojis. By default, these values will show text, for example creature elemental resistances.
+The unicode emojis used by default are only placeholders, and it is advised to use custom emojis that better represent their values.
+
+The `images\emoji` folder contains a set of suggested images to use for custom emojis.
+```yaml
+# Optional emojis
+# Whether to use or not emojis to show discord status in serverinfo command.
+use_status_emojis: false
+status_emojis:
+  online: 💚
+  dnd: ♥
+  idle: 💛
+  offline: 🖤
+
+# Whether to use emojis to represent elemental damage in spells and monsters info
+use_elemental_emojis: false
+elemental_emojis:
+  physical: ⚔
+  earth: 🌿
+  fire: 🔥
+  energy: ⚡
+  ice: ❄
+  death: 💀
+  holy: 🔱
+```

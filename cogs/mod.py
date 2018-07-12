@@ -7,9 +7,9 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils import checks
+from utils.config import config
 from utils.context import NabCtx
-from utils.database import userDatabase
-from utils.discord import is_private
+from utils.database import userDatabase, get_server_property
 from utils.pages import Pages, CannotPaginate
 
 
@@ -20,21 +20,49 @@ class Mod:
         self.ignored = {}
         self.reload_ignored()
 
-    def __global_check(self, ctx):
-        return is_private(ctx.channel) or \
-               ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_owner_check(ctx) \
+    def __global_check(self, ctx: NabCtx):
+        return ctx.is_private or ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_owner_check(ctx) \
                or checks.check_guild_permissions(ctx, {'manage_channels': True})
 
     # Commands
     @commands.guild_only()
     @checks.is_channel_mod()
+    @commands.command()
+    async def cleanup(self, ctx: NabCtx, limit: int=50):
+        """Cleans the channel from bot commands.
+
+        If the bot has `Manage Messages` permission, it will also delete command invocation messages."""
+        count = 0
+        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=config.command_prefix)
+        # Also skip death and levelup messages from cleanup
+        announce_prefix = (config.levelup_emoji, config.death_emoji, config.pvpdeath_emoji)
+        if ctx.bot_permissions.manage_messages:
+            def check(m: discord.Message):
+                return (m.author == ctx.me and not m.content.startswith(announce_prefix)) or \
+                       m.content.startswith(tuple(prefixes))
+
+            deleted = await ctx.channel.purge(limit=limit, check=check)
+            count = len(deleted)
+        else:
+            with ctx.typing():
+                async for msg in ctx.channel.history(limit=limit):
+                    if msg.author == ctx.me:
+                        await msg.delete()
+                        count += 1
+        if not count:
+            return await ctx.send("There are no messages to clean.", delete_after=10)
+
+        await ctx.send(f"{ctx.tick()} Deleted {count:,} messages.", delete_after=20)
+
+    @commands.guild_only()
+    @checks.is_channel_mod()
     @commands.group(invoke_without_command=True, case_insensitive=True)
-    async def ignore(self, ctx, *, channel: discord.TextChannel = None):
+    async def ignore(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
         """Makes the bot ignore a channel.
 
         Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
 
-        If the parameter is used with no parameters, it ignores the current channel.
+        If the command is used with no parameters, it ignores the current channel.
 
         Note that server administrators can bypass this."""
         if channel is None:
@@ -53,7 +81,7 @@ class Mod:
     @commands.guild_only()
     @checks.is_channel_mod()
     @ignore.command(name="list")
-    async def ignore_list(self, ctx):
+    async def ignore_list(self, ctx: NabCtx):
         """Shows a list of ignored channels."""
         entries = [ctx.guild.get_channel(c).name for c in self.ignored.get(ctx.guild.id, []) if ctx.guild.get_channel(c) is not None]
         if not entries:
@@ -68,7 +96,7 @@ class Mod:
 
     @commands.command()
     @checks.is_mod_somewhere()
-    async def makesay(self, ctx: discord.ext.commands.Context, *, message: str):
+    async def makesay(self, ctx: NabCtx, *, message: str):
         """Makes the bot say a message.
 
         If it's used directly on a text channel, the bot will delete the command's message and repeat it itself.
@@ -77,7 +105,7 @@ class Mod:
         If it's used on a private message, the bot will ask on which channel he should say the message.
         Each channel in the list is numerated, by choosing a number, the message will be sent in the chosen channel.
         """
-        if is_private(ctx.channel):
+        if ctx.is_private:
             description_list = []
             channel_list = []
             prev_server = None
@@ -132,14 +160,14 @@ class Mod:
     @commands.guild_only()
     @checks.is_channel_mod()
     @commands.command()
-    async def unignore(self, ctx, *, channel: discord.TextChannel = None):
+    async def unignore(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
         """Unignores a channel.
 
         If no channel is provided, the current channel will be unignored.
 
         Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
 
-        If the parameter is used with no parameters, it unignores the current channel."""
+        If the command is used with no parameters, it unignores the current channel."""
         if channel is None:
             channel = ctx.channel
 
@@ -199,10 +227,10 @@ class Mod:
         This is used to avoid reading the database every time the world list is needed.
         A global variable holding the world list is loaded on startup and refreshed only when worlds are modified"""
         c = userDatabase.cursor()
-        ignored_dict_temp = {}  # type: Dict[int, List[int]]
+        ignored_dict_temp: Dict[int, List[int]] = {}
         try:
             c.execute("SELECT server_id, channel_id FROM ignored_channels")
-            result = c.fetchall()  # type: Dict
+            result: Dict = c.fetchall()
             if len(result) > 0:
                 for row in result:
                     if not ignored_dict_temp.get(row["server_id"]):

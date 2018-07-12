@@ -19,7 +19,7 @@ else:
     shutil.copyfile("data/loot_template.db", LOOTDB)
     lootDatabase = sqlite3.connect(LOOTDB)
 
-DB_LASTVERSION = 20
+DB_LASTVERSION = 22
 
 
 def init_database():
@@ -245,6 +245,21 @@ def init_database():
             c.execute("ALTER TABLE watched_list ADD author INTEGER")
             c.execute("ALTER TABLE watched_list ADD added INTEGER")
             db_version += 1
+        if db_version == 20:
+            # Joinable ranks
+            c.execute("""CREATE TABLE joinable_roles(
+                server_id INTEGER NOT NULL,
+                role_id INTEGER NOT NULL
+            );""")
+            db_version += 1
+        if db_version == 21:
+            # Autoroles
+            c.execute("""CREATE TABLE auto_roles(
+                server_id INTEGER NOT NULL,
+                role_id INTEGER NOT NULL,
+                guild TEXT NOT NULL
+            );""")
+            db_version += 1
         print("Updated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
     finally:
@@ -278,7 +293,7 @@ def get_server_property(guild_id: int, key: str, *, default=None, is_int=None, d
     """
     with closing(userDatabase.cursor()) as c:
         c.execute("SELECT value FROM server_properties WHERE name = ? and server_id = ?", (key, guild_id))
-        result = c.fetchone()  # type: Dict[str]
+        result: Dict[str] = c.fetchone()
         if is_int:
             try:
                 return int(result["value"]) if result is not None else default

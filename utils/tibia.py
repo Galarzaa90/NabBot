@@ -13,6 +13,7 @@ from typing import List, Union, Dict, Optional
 import aiohttp
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
+from discord.ext import commands
 
 from utils.config import config
 from utils.database import userDatabase, tibiaDatabase
@@ -53,7 +54,7 @@ highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on 
                     "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
 
 # This is preloaded on startup
-tibia_worlds = []  # type: List[str]
+tibia_worlds: List[str] = []
 
 HIGHSCORE_CATEGORIES = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
                         "magic_ek", "magic_rp", "loyalty", "achievements"]
@@ -86,11 +87,11 @@ class Character:
         self.married_to = kwargs.get("married_to")
         self.guild = kwargs.get("guild")
         self.house = kwargs.get("house")
-        self.last_login = kwargs.get("last_login")  # type: dt.datetime
-        self.deleted = kwargs.get("last_login")  # type: dt.datetime
-        self.online = kwargs.get("online") # type: bool
-        self.achievements = kwargs.get("achivements", []) # type: List[Achievement]
-        self.deaths = kwargs.get("deaths", [])  # type: List[Death]
+        self.last_login: dt.datetime = kwargs.get("last_login")
+        self.deleted: dt.datetime = kwargs.get("last_login")
+        self.online: bool = kwargs.get("online")
+        self.achievements: List[Achievement] = kwargs.get("achivements", [])
+        self.deaths: List[Death] = kwargs.get("deaths", [])
         self.other_characters = kwargs.get("other_characters", [])
         self.account_status = kwargs.get("account_status", 0)
         self.comment = kwargs.get("comment")
@@ -269,18 +270,34 @@ class World:
         self.name = name
         self.online = kwargs.get("online", 0)
         self.record_online = kwargs.get("record_online", 0)
-        self.record_date = None  # type: dt.datetime
+        self.record_date: dt.datetime = None
         self.creation = None
         self.pvp_type = kwargs.get("pvp_type")
         self.premium_type = kwargs.get("premium_type")
         self.transfer_type = kwargs.get("transfer_type")
         self.location = kwargs.get("location")
-        self.players_online = []  # type: List[Character]
-        self.quests = None  # type: List[str]
+        self.players_online: List[Character] = []
+        self.online_count = kwargs.get("online_count", 0)
+        self.quests: List[str] = None
+
+    def __repr__(self) -> str:
+        kwargs = vars(self)
+        attributes = ""
+        for k, v in kwargs.items():
+            if k in ["players_online", "name"]:
+                continue
+            if v is None:
+                continue
+            if isinstance(v, int) and v == 0:
+                continue
+            if isinstance(v, list) and len(v) == 0:
+                continue
+            attributes += f", {k} = {v.__repr__()}"
+        return f"World({self.name!r}{attributes})"
 
     @classmethod
     def parse_from_tibiadata(cls, name: str, content_json: Dict):
-        _world = content_json["worlds"]
+        _world = content_json["world"]
         if "error" in _world:
             return None
         world_info = _world["world_information"]
@@ -289,7 +306,10 @@ class World:
         if "online_record" in world_info:
             world.record_online = int(world_info["online_record"]["players"])
             world.record_date = parse_tibiadata_time(world_info["online_record"]["date"])
-        world.creation = world_info["creation_date"]
+        try:
+            world.creation = world_info["creation_date"]
+        except KeyError:
+            return None
         world.location = world_info["location"]
         world.pvp_type = world_info["pvp_type"]
         world.premium_type = world_info.get("premium_type")
@@ -301,6 +321,7 @@ class World:
         for player in _world.get("players_online", []):
             world.players_online.append(Character(player["name"], world.name, level=int(player["level"]),
                                                   vocation=player["vocation"], online=True))
+        world.online_count = len(world.players_online)
         return world
 
 
@@ -362,7 +383,7 @@ class Guild:
         return tibia_guild
 
 
-async def get_character(name, tries=5) -> Optional[Character]:
+async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Character]:
     """Fetches a character from TibiaData, parses and returns a Character object
 
     The character object contains all the information available on Tibia.com
@@ -448,6 +469,17 @@ async def get_character(name, tries=5) -> Optional[Character]:
             log.info("{0}'s guild was set to {1} from {2} during get_character()".format(character.name,
                                                                                          character.guild["name"],
                                                                                          result["guild"]))
+            if bot is not None:
+                bot.dispatch("character_change", character.owner)
+    if character.guild is None and result["guild"] is not None:
+        with userDatabase as conn:
+            conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (None, result["id"],))
+            log.info("{0}'s guild was set to {1} from {2} during get_character()".format(character.name,
+                                                                                         None,
+                                                                                         result["guild"]))
+            if bot is not None:
+                bot.dispatch("character_change", character.owner)
+        
     return character
 
 
@@ -497,7 +529,7 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
 
 
 async def get_world(name, tries=5) -> Optional[World]:
-    url = f"https://api.tibiadata.com/v1/worlds/{name}.json"
+    url = f"https://api.tibiadata.com/v2/world/{name}.json"
     name = name.strip()
     if tries == 0:
         log.error("get_world: Couldn't fetch {0}, network error.".format(name))
@@ -935,8 +967,10 @@ def get_voc_abb(vocation: str) -> str:
 
 def get_voc_emoji(vocation: str) -> str:
     """Given a vocation name, returns a emoji representing it"""
-    emoji = {"none": "🐣", "druid": "❄", "sorcerer": "🔥", "paladin": "🏹", "knight": "🛡", "elder druid": "❄",
-             "master sorcerer": "🔥", "royal paladin": "🏹", "elite knight": "🛡"}
+    emoji = {"none": config.novoc_emoji, "druid": config.druid_emoji, "sorcerer": config.sorcerer_emoji,
+             "paladin": config.paladin_emoji, "knight": config.knight_emoji, "elder druid": config.druid_emoji,
+             "master sorcerer": config.sorcerer_emoji, "royal paladin": config.paladin_emoji,
+             "elite knight": config.knight_emoji}
     try:
         return emoji[vocation.lower()]
     except KeyError:
@@ -1001,7 +1035,7 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
         log.error("get_world_list(): Couldn't fetch TibiaData for the worlds list, network error.")
         return
 
-    url = "https://api.tibiadata.com/v1/worlds.json"
+    url = "https://api.tibiadata.com/v2/worlds.json"
 
     # Fetch website
     try:
@@ -1024,7 +1058,8 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
                 world["online"] = int(world["online"])
             except ValueError:
                 world["online"] = 0
-            worlds.append(World(name=world["name"], online=world["online"], location=world["location"]))
+            worlds.append(World(name=world["name"], online=world["online"], location=world["location"],
+                                pvp_type=world["worldtype"], online_count=world["online"]))
     except KeyError:
         return
     return worlds

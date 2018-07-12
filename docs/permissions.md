@@ -28,7 +28,6 @@ Many commands feature Discord embeds.
 These are rich format replies that allow the use of masked links, thumbnails, time stamps, fields, etcetera.
 Denying this permission makes such commands stop working.
 
-
 ## Recommended permissions
 ### Attach Files
 This permission allows the bot to attach files as part of the message.
@@ -46,3 +45,9 @@ This can be useful to have the possibility to make global announcements using `/
 
 ### Manage Channels
 This permission is only needed if you're using the watched-list feature. It lets the bot create the channel and update it's status.
+
+### Manage Roles
+This permission is only needed if want to use groups (joinable roles) and automatic roles.
+
+### Use External Emojis
+This permission is needed if you're going to use custom emojis for the bot messages.

@@ -1,4 +1,3 @@
-import asyncio
 import datetime as dt
 import re
 import sys
@@ -11,8 +10,7 @@ from discord.ext import commands
 from utils import context
 from utils.config import config
 from utils.database import init_database, userDatabase, get_server_property
-from utils.discord import get_region_string, is_private, get_user_avatar
-from utils.general import join_list, get_token
+from utils.general import join_list, get_token, get_user_avatar, get_region_string
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.tibia import populate_worlds, tibia_worlds, get_voc_abb_and_emoji
@@ -28,13 +26,15 @@ def _prefix_callable(bot, msg):
         base.extend(config.command_prefix)
     else:
         base.extend(get_server_property(msg.guild.id, "prefixes", deserialize=True, default=config.command_prefix))
+    base = sorted(base, reverse=True)
     return base
 
 
 class NabBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=_prefix_callable, description='Mission: Destroy all humans.', pm_help=True,
-                         formatter=NabHelpFormat(), case_insensitive=True)
+        super().__init__(command_prefix=_prefix_callable, case_insensitive=True,
+                         description="Discord bot with functions for the MMORPG Tibia.",
+                         formatter=NabHelpFormat(), pm_help=True)
         self.remove_command("help")
         self.members = {}
         self.start_time = dt.datetime.utcnow()
@@ -43,7 +43,8 @@ class NabBot(commands.Bot):
         # A list version is created from the dictionary
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
-        self.__version__ = "1.2.3"
+        self.__version__ = "1.3.0"
+        self.__min_discord__ = 1480
 
     async def on_ready(self):
         """Called when the bot is ready."""
@@ -149,47 +150,61 @@ class NabBot(commands.Bot):
         else:
             self.members[member.id] = [member.guild.id]
 
-        server_welcome = get_server_property(member.guild.id, "welcome", default="")
-        pm = (config.welcome_pm+"\n"+server_welcome).format(user=member, server=member.guild, bot=self.user,
-                                                            owner=member.guild.owner)
-
         embed = discord.Embed(description="{0.mention} joined.".format(member), color=discord.Color.green())
         embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member), icon_url=get_user_avatar(member))
 
+        previously_registered = ""
         # If server is not tracking worlds, we don't check the database
         if member.guild.id in config.lite_servers or self.tracked_worlds.get(member.guild.id) is None:
             await self.send_log_message(member.guild, embed=embed)
+        else:
+            # Check if user already has characters registered and announce them on log_channel
+            # This could be because he rejoined the server or is in another server tracking the same worlds
+            world = self.tracked_worlds.get(member.guild.id)
+            previously_registered = ""
+            if world is not None:
+                c = userDatabase.cursor()
+                try:
+                    c.execute("SELECT name, vocation, ABS(level) as level, guild "
+                              "FROM chars WHERE user_id = ? and world = ?", (member.id, world,))
+                    results = c.fetchall()
+                    if len(results) > 0:
+                        previously_registered = "\n\nYou already have these characters in {0} registered to you: *{1}*"\
+                            .format(world, join_list([r["name"] for r in results], ", ", " and "))
+                        characters = ["\u2023 {name} - Level {level} {voc} - **{guild}**"
+                                      .format(**c, voc=get_voc_abb_and_emoji(c["vocation"])) for c in results]
+                        embed.add_field(name="Registered characters", value="\n".join(characters))
+                finally:
+                    c.close()
+            await self.send_log_message(member.guild, embed=embed)
+
+        welcome_message = get_server_property(member.guild.id, "welcome")
+        welcome_channel_id = get_server_property(member.guild.id, "welcome_channel", is_int=True)
+        if welcome_message is None:
             return
-
-        # Check if user already has characters registered and announce them on log_channel
-        # This could be because he rejoined the server or is in another server tracking the same worlds
-        world = self.tracked_worlds.get(member.guild.id)
-        if world is not None:
-            c = userDatabase.cursor()
-            try:
-                c.execute("SELECT name, vocation, ABS(level) as level, guild "
-                          "FROM chars WHERE user_id = ? and world = ?", (member.id, world,))
-                results = c.fetchall()
-                if len(results) > 0:
-                    pm += "\nYou already have these characters in {0} registered to you: {1}"\
-                        .format(world, join_list([r["name"] for r in results], ", ", " and "))
-                    characters = ["\u2023 {name} - Level {level} {voc} - **{guild}**"
-                                  .format(**c, voc=get_voc_abb_and_emoji(c["vocation"])) for c in results]
-                    embed.add_field(name="Registered characters", value="\n".join(characters))
-            finally:
-                c.close()
-
-        await self.send_log_message(member.guild, embed=embed)
+        message = welcome_message.format(user=member, server=member.guild, bot=self, owner=member.guild.owner)
+        message += previously_registered
+        channel = member.guild.get_channel(welcome_channel_id)
+        # If channel is not found, send via pm as fallback
+        if channel is None:
+            channel = member
         try:
-            await member.send(pm)
+            await channel.send(message)
         except discord.Forbidden:
-            pass
+            try:
+                # If bot has no permissions to send the message on that channel, send on private message
+                # If the channel was already a private message, don't try it again
+                if welcome_channel_id is None:
+                    return
+                await member.send(message)
+            except discord.Forbidden:
+                pass
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
         now = dt.datetime.utcnow()
         self.members[member.id].remove(member.guild.id)
-        bot_member = member.guild.me  # type: discord.Member
+        bot_member: discord.Member = member.guild.me
 
         embed = discord.Embed(description="Left the server or was kicked", colour=discord.Colour(0xffff00))
         embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member), icon_url=get_user_avatar(member))
@@ -219,7 +234,7 @@ class NabBot(commands.Bot):
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
         now = dt.datetime.utcnow()
-        bot_member = guild.me  # type: discord.Member
+        bot_member: discord.Member = guild.me
 
         embed = discord.Embed(description="Banned", color=discord.Color(0x7a0d0d))
         embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=get_user_avatar(user))
@@ -242,7 +257,7 @@ class NabBot(commands.Bot):
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
         now = dt.datetime.utcnow()
-        bot_member = guild.me  # type: discord.Member
+        bot_member: discord.Member = guild.me
 
         embed = discord.Embed(description="Unbanned", color=discord.Color(0xff9000))
         embed.set_author(name="{0.name}#{0.discriminator} (ID {0.id})".format(user), icon_url=get_user_avatar(user))
@@ -296,6 +311,59 @@ class NabBot(commands.Bot):
         if changes:
             await self.send_log_message(after.guild, embed=embed)
         return
+
+    async def on_guild_emojis_update(self, guild: discord.Guild, before: List[discord.Emoji],
+                                     after: List[discord.Emoji]):
+        """Called every time an emoji is created, deleted or updated."""
+        now = dt.datetime.utcnow()
+        embed = discord.Embed(color=discord.Color.dark_orange())
+        emoji: discord.Emoji = None
+        # Emoji deleted
+        if len(before) > len(after):
+            emoji = discord.utils.find(lambda e: e not in after, before)
+            if emoji is None:
+                return
+            fix = ":" if emoji.require_colons else ""
+            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
+            embed.description = f"Emoji deleted."
+            action = discord.AuditLogAction.emoji_delete
+        # Emoji added
+        elif len(after) > len(before):
+            emoji = discord.utils.find(lambda e: e not in before, after)
+            if emoji is None:
+                return
+            fix = ":" if emoji.require_colons else ""
+            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
+            embed.description = f"Emoji added."
+            action = discord.AuditLogAction.emoji_create
+        else:
+            old_name = ""
+            for new_emoji in after:
+                for old_emoji in before:
+                    if new_emoji == old_emoji and new_emoji.name != old_emoji.name:
+                        old_name = old_emoji.name
+                        emoji = new_emoji
+                        break
+            if emoji is None:
+                return
+            fix = ":" if emoji.require_colons else ""
+            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
+            embed.description = f"Emoji renamed from `{fix}{old_name}{fix}` to `{fix}{emoji.name}{fix}`"
+            action = discord.AuditLogAction.emoji_update
+
+        # Find author
+        if action is not None and guild.me.guild_permissions.view_audit_log:
+            async for entry in guild.audit_logs(limit=10, reverse=False, action=action,
+                                                after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
+                if abs((entry.created_at - now).total_seconds()) >= 5:
+                    # After is broken in the API, so we must check if entry is too old.
+                    break
+                if entry.target.id == emoji.id:
+                    icon_url = get_user_avatar(entry.user)
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    break
+        if emoji:
+            await self.send_log_message(guild, embed=embed)
 
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
         """Called every time a guild is updated"""
@@ -391,7 +459,7 @@ class NabBot(commands.Bot):
         guilds = self.get_user_guilds(user_id)
         ret = []
         for guild in guilds:
-            member = guild.get_member(user_id)  # type: discord.Member
+            member: discord.Member = guild.get_member(user_id)
             if member.guild_permissions.administrator:
                 ret.append(guild)
         return ret
@@ -483,7 +551,7 @@ class NabBot(commands.Bot):
         tibia_servers_dict_temp = {}
         try:
             c.execute("SELECT server_id, value FROM server_properties WHERE name = 'world' ORDER BY value ASC")
-            result = c.fetchall()  # type: Dict
+            result: Dict = c.fetchall()
             del self.tracked_worlds_list[:]
             if len(result) > 0:
                 for row in result:
