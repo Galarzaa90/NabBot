@@ -249,9 +249,96 @@ class Settings:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used.")
 
     @checks.is_admin()
+    @settings.command(name="newschannel")
+    async def settings_newschannel(self, ctx: NabCtx, channel: str=None):
+        """Changes the channel where Tibia news are announced.
+
+        This is where all news and articles posted in Tibia.com will be announced.
+        By default, this feature is disabled, you must set a channel to enable it.
+        If the assigned channel is deleted or forbidden, the top channel will be used again.
+        """
+        current_channel_id = get_server_property(ctx.guild.id, "news_channel", is_int=True, default=0)
+        if channel is None:
+            current_value = self.get_current_channel(ctx, current_channel_id)
+            await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")
+            return
+        if channel.lower() == "disable":
+            if current_channel_id is 0:
+                await ctx.send("News announcements are already disabled.")
+                return
+            message = await ctx.send(f"Are you sure you want to disable news announcements?")
+            new_value = 0
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new news channel?")
+            new_value = new_channel.id
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        set_server_property(ctx.guild.id, "news_channel", new_value)
+        if new_value is 0:
+            await ctx.send(f"{ctx.tick(True)} The news channel has been disabled.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for Tibia news.")
+
+    @checks.is_admin()
+    @settings.command(name="prefix")
+    async def settings_prefix(self, ctx: NabCtx, prefix: PrefixConverter=None):
+        """Changes the command prefix for this server.
+
+        The prefix are the characters that go before a command's name, in order for the bot to recognize the command.
+        A maximum of 5 prefixes can be set per server.
+
+        To remove an existing prefix, use it as a parameter.
+
+        If you want to have a space at the end, such as: `nabbot help`, you have to use double quotes "nabbot ".
+        Multiple words also require using quotes.
+
+        Mentioning the bot is always a valid command and can't be changed."""
+        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=list(config.command_prefix))
+        if prefix is None:
+            current_value = ", ".join(f"`{p}`" for p in prefixes) if len(prefixes) > 0 else "Mentions only"
+            await self.show_info_embed(ctx, current_value, "Any text", "prefix")
+            return
+        remove = False
+        if prefix in prefixes:
+            message = await ctx.send(f"Do you want to remove `{prefix}` as a prefix?")
+            remove = True
+        else:
+            if len(prefixes) >= 5:
+                await ctx.send("You can't have more than 5 command prefixes.")
+                return
+            message = await ctx.send(f"Do you want to add `{prefix}` as a prefix?")
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        if remove:
+            prefixes.remove(prefix)
+            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was removed.")
+        else:
+            prefixes.append(prefix)
+            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
+        set_server_property(ctx.guild.id, "prefixes", sorted(prefixes, reverse=True), serialize=True)
+
+
+    @checks.is_admin()
     @settings.command(name="welcome")
     async def settings_welcome(self, ctx: NabCtx, *, message: str = None):
         """Changes the message new members receive when joining.
+
+        This is initially disabled.
 
         You can use formatting to show dynamic values:
         - {server} -> The server's name.
@@ -344,89 +431,6 @@ class Settings:
         else:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for welcome messages.")
 
-    @checks.is_admin()
-    @settings.command(name="newschannel")
-    async def settings_newschannel(self, ctx: NabCtx, channel: str=None):
-        """Changes the channel where Tibia news are announced.
-
-        This is where all news and articles posted in Tibia.com will be announced..
-        By default, the highest channel on the list where the bot can send messages will be used.
-        If the assigned channel is deleted or forbidden, the top channel will be used again.
-        """
-        current_channel_id = get_server_property(ctx.guild.id, "news_channel", is_int=True)
-        if channel is None:
-            current_value = self.get_current_channel(ctx, current_channel_id)
-            await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")
-            return
-        if channel.lower() == "disable":
-            if current_channel_id is 0:
-                await ctx.send("News announcements are already disabled.")
-                return
-            message = await ctx.send(f"Are you sure you want to disable news announcements?")
-            new_value = 0
-        else:
-            try:
-                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
-            except commands.BadArgument:
-                await ctx.send("I couldn't find that channel, are you sure it exists?")
-                return
-            perms = new_channel.permissions_for(ctx.me)
-            if not perms.read_messages or not perms.send_messages:
-                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
-                return
-            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new news channel?")
-            new_value = new_channel.id
-        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
-        if not confirm:
-            await ctx.message.delete()
-            return
-
-        set_server_property(ctx.guild.id, "news_channel", new_value)
-        if new_value is 0:
-            await ctx.send(f"{ctx.tick(True)} The news channel has been disabled.")
-        else:
-            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for Tibia news.")
-
-    @checks.is_admin()
-    @settings.command(name="prefix")
-    async def settings_prefix(self, ctx: NabCtx, prefix: PrefixConverter=None):
-        """Changes the command prefix for this server.
-
-        The prefix are the characters that go before a command's name, in order for the bot to recognize the command.
-        A maximum of 5 commands can be set per server.
-
-        To remove an existing prefix, use it as a parameter.
-
-        If you want to have a space at the end, such as: `nabbot help`, you have to use double quotes "nabbot ".
-        Multiple words also require using quotes.
-
-        Mentioning the bot is always a valid command and can't be changed."""
-        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=list(config.command_prefix))
-        if prefix is None:
-            current_value = ", ".join(f"`{p}`" for p in prefixes) if len(prefixes) > 0 else "Mentions only"
-            await self.show_info_embed(ctx, current_value, "Any text", "prefix")
-            return
-        remove = False
-        if prefix in prefixes:
-            message = await ctx.send(f"Do you want to remove `{prefix}` as a prefix?")
-            remove = True
-        else:
-            if len(prefixes) >= 5:
-                await ctx.send("You can't have more than 5 command prefixes.")
-                return
-            message = await ctx.send(f"Do you want to add `{prefix}` as a prefix?")
-        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
-        if not confirm:
-            await ctx.message.delete()
-            return
-
-        if remove:
-            prefixes.remove(prefix)
-            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was removed.")
-        else:
-            prefixes.append(prefix)
-            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
-        set_server_property(ctx.guild.id, "prefixes", sorted(prefixes, reverse=True), serialize=True)
 
     @checks.is_admin()
     @settings.command(name="world")

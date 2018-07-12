@@ -1874,7 +1874,7 @@ class Tibia:
                 for article in new_articles:
                     log.info("Announcing new article: {id} - {title}".format(**article))
                     for guild in self.bot.guilds:
-                        news_channel_id = get_server_property(guild.id, "news_channel", is_int=True)
+                        news_channel_id = get_server_property(guild.id, "news_channel", is_int=True, default=0)
                         if news_channel_id == 0:
                             continue
                         channel = self.bot.get_channel_or_top(guild, news_channel_id)

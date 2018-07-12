@@ -62,7 +62,7 @@ class Mod:
 
         Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
 
-        If the parameter is used with no parameters, it ignores the current channel.
+        If the command is used with no parameters, it ignores the current channel.
 
         Note that server administrators can bypass this."""
         if channel is None:
@@ -167,7 +167,7 @@ class Mod:
 
         Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
 
-        If the parameter is used with no parameters, it unignores the current channel."""
+        If the command is used with no parameters, it unignores the current channel."""
         if channel is None:
             channel = ctx.channel
 

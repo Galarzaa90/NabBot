@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 1.3.0 (Unreleased)
+## Version 1.3.0 (2018-07-12)
 - Emoji changes are now displayed on server-log.
 - Main emojis can be customized now, allowing custom discord emojis
     - Vocation emojis.
@@ -20,6 +20,7 @@
 - Increased /loot scanning speed.
 - Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.
 - Welcome message can now be fully customized, including the welcome message channel. Available under `/settings`
+- Welcome messages are no longer enabled by default.
 - New `/imbuement` command, shows basic information about an imbuement and if prices are provided, it calculates costs.
 - New `/permissions` command, shows the permissions for a member in a channel.
 - New `/cleanup` command, cleans bot messages and command invocations in the current channel.
@@ -32,6 +33,7 @@
 - `/monster`, `/house`, `/spell`, `/npc`, `/item`, `/imbuement`, `/achievement`
 - Fixed `/checkchannel` ignoring channel parameter.
 - Fixed `/quote` failing when quoting users no longer in server.
+- Tibia.com news announcement are now disabled by default, must be enabled per server.
 - Command name and aliases changes:
     - `/debug`: renamed to `/eval`.
     - `/help`: Alias `/commands` added.
