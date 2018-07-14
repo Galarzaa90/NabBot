@@ -1,4 +1,7 @@
 # Changelog
+## Version 1.3.1 (2018-07-14)
+- Fixed some typos in config_template.yml
+- Added suggested emojis for charms, occurrence and bestiary difficulty.
 
 ## Version 1.3.0 (2018-07-12)
 - Emoji changes are now displayed on server-log.

@@ -200,8 +200,8 @@ knight_emoji: 🛡
 charms_emoji: ⚜
 difficulty_on_emoji: ⭐
 difficulty_off_emoji: ▪
-occurence_on_emoji: 🔹
-occurence_off_emoji: ▪
+occurrence_on_emoji: 🔹
+occurrence_off_emoji: ▪
 ```
 
 The following are optional emojis. By default, these values will show text, for example creature elemental resistances.
