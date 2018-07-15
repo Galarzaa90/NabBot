@@ -1,4 +1,8 @@
 # Changelog
+## Version 1.3.2 (2018-07-15)
+- Monster's occurence was being displayed incorrectly.
+- Updated database to show better update information.
+
 ## Version 1.3.1 (2018-07-14)
 - Fixed some typos in config_template.yml
 - Added suggested emojis for charms, occurrence and bestiary difficulty.

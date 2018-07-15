@@ -434,9 +434,9 @@ class TibiaWiki:
                 "Hard": config.difficulty_on_emoji*4
             }
             occurrences = {
-                "Common": config.occurrence_off_emoji*4,
-                "Uncommon": config.occurrence_on_emoji+config.occurrence_off_emoji*3,
-                "Rare": config.occurrence_on_emoji*2+config.occurrence_off_emoji*2,
+                "Common": config.occurrence_on_emoji*1+config.occurrence_off_emoji*3,
+                "Uncommon": config.occurrence_on_emoji*2+config.occurrence_off_emoji*2,
+                "Rare": config.occurrence_on_emoji*3+config.occurrence_off_emoji*1,
                 "Very Rare": config.occurrence_on_emoji*4,
             }
             kills = {
