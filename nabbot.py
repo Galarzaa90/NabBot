@@ -450,20 +450,6 @@ class NabBot(commands.Bot):
         """Returns a list of the user's shared guilds with the bot"""
         return [self.get_guild(gid) for gid in self.members[user_id]]
 
-    def get_user_admin_guilds(self, user_id: int) -> List[discord.Guild]:
-        """Returns a list of the guilds the user is and admin of and the bot is a member of
-
-        If the user is a bot owner, returns all the guilds the bot is in"""
-        if user_id in config.owner_ids:
-            return list(self.guilds)
-        guilds = self.get_user_guilds(user_id)
-        ret = []
-        for guild in guilds:
-            member: discord.Member = guild.get_member(user_id)
-            if member.guild_permissions.administrator:
-                ret.append(guild)
-        return ret
-
     def get_user_worlds(self, user_id: int, guild_list=None) -> List[str]:
         """Returns a list of all the tibia worlds the user is tracked in.
 

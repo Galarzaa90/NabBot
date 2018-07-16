@@ -1014,7 +1014,7 @@ class General:
                       (ctx.author.id, ctx.guild.id, start_time, name, description))
             event_id = c.lastrowid
             userDatabase.commit()
-        await ctx.send(f"{ctx.tick(False)} Event registered successfully.\n\t**{name}** in *{starts_in.original}*.\n"
+        await ctx.send(f"{ctx.tick()} Event registered successfully.\n\t**{name}** in *{starts_in.original}*.\n"
                        f"*To edit this event use ID {event_id}*")
 
     @commands.guild_only()

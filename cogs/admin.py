@@ -161,7 +161,6 @@ class Admin:
             conn.execute("UPDATE users SET name = ? WHERE id = ?", (target.display_name, target.id,))
 
         await ctx.send(reply)
-        print(log_reply)
         for server_id, message in log_reply.items():
             if message:
                 message = f"{target.mention} registered:" + message
@@ -295,7 +294,6 @@ class Admin:
             content += f"\n{ctx.tick(True)} All permissions are correct!"
         await ctx.send(content)
 
-
     @checks.is_admin()
     @checks.is_tracking_world()
     @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
@@ -305,38 +303,46 @@ class Admin:
         # Except if the char exists in the database...
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT name, user_id, world, ABS(level) as level, vocation, guild "
+            c.execute("SELECT name, user_id, world,"
                       "FROM chars WHERE name LIKE ?", (name,))
             result = c.fetchone()
             if result is None or result["user_id"] == 0:
-                await ctx.send("There's no character with that name registered.")
-                return
+                return await ctx.send("There's no character with that name registered.")
+            if result["world"] != ctx.world:
+                return await ctx.send(f"{ctx.tick(False)} The character **{result['name']}** is in a different world.")
+
             user = self.bot.get_member(result["user_id"])
+            user_guilds: List[discord.Guild] = []
             if user is not None:
-                # User is in another server
-                if ctx.guild.get_member(user.id) is None:
-                    await ctx.send("The character is assigned to someone on another server.")
-                    return
+                user_guilds = self.bot.get_user_guilds(user.id)
+                for guild in user_guilds:
+                    if self.bot.tracked_worlds.get(guild.id, None) != ctx.world:
+                        continue
+                    member: discord.Member = guild.get_member(ctx.author.id)
+                    if member is None or member.guild_permissions.administrator:
+                        await ctx.send(f"{ctx.tick(False)} The user of this server is also in another server tracking "
+                                       f"**{ctx.world}**, where you are not an admin. You can't alter other servers.")
+                        return
             username = "unknown" if user is None else user.display_name
             c.execute("UPDATE chars SET user_id = 0 WHERE name LIKE ?", (name,))
             await ctx.send("**{0}** was removed successfully from **@{1}**.".format(result["name"], username))
-            if user is not None:
-                for server in self.bot.get_user_guilds(user.id):
-                    world = self.bot.tracked_worlds.get(server.id, None)
-                    if world != result["world"]:
-                        continue
-                    if result["guild"] is None:
-                        result["guild"] = "No guild"
-                    log_msg = "{0.mention} unregistered:\n\u2023 {1} - Level {2} {3} - **{4}**". \
-                        format(user, result["name"], result["level"], get_voc_abb_and_emoji(result["vocation"]),
-                               result["guild"])
-                    embed = discord.Embed(description=log_msg)
-                    embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(ctx.author),
-                                     icon_url=get_user_avatar(ctx.author))
-                    embed.colour = discord.Colour.dark_teal()
-                    await self.bot.send_log_message(server, embed=embed)
-            return
+            for server in user_guilds:
+                world = self.bot.tracked_worlds.get(server.id, None)
+                if world != result["world"]:
+                    continue
+                if result["guild"] is None:
+                    result["guild"] = "No guild"
+                log_msg = "{0.mention} unregistered:\n\u2023 {1} - Level {2} {3} - **{4}**". \
+                    format(user, result["name"], result["level"], get_voc_abb_and_emoji(result["vocation"]),
+                           result["guild"])
+
+                embed = discord.Embed(description=log_msg)
+                embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
+                embed.set_footer(text="{0.name}#{0.discriminator}".format(ctx.author),
+                                 icon_url=get_user_avatar(ctx.author))
+                embed.colour = discord.Colour.dark_teal()
+
+                await self.bot.send_log_message(server, embed=embed)
         finally:
             c.close()
             userDatabase.commit()
