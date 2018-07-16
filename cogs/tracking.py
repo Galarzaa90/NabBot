@@ -552,48 +552,50 @@ class Tracking:
         check_other = False
         if len(chars) > 1:
             message = await ctx.send("Do you want to attempt to add the other visible characters in this account?")
-            check_other = await ctx.react_confirm(message, timeout=60)
+            check_other = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if check_other is None:
+            return await ctx.send("You ran out of time, try again."
+                                  "Remember you have to react or click on the reactions.")
         if not check_other:
-            if check_other is None:
-                await ctx.send("Going to take that as a no... Moving on...")
             chars = [char]
 
         skipped = []
         updated = []
         added: List[Character] = []
         existent = []
-        for char in chars:
-            # Skip chars in non-tracked worlds
-            if char.world not in user_tibia_worlds:
-                skipped.append(char)
-                continue
-            with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT name, guild, user_id as owner, vocation, ABS(level) as level, guild FROM chars "
-                          "WHERE name LIKE ?", (char.name,))
-                db_char = c.fetchone()
-            if db_char is not None:
-                owner = self.bot.get_member(db_char["owner"])
-                # Char already registered to this user
-                if owner.id == user.id:
-                    existent.append("{0.name} ({0.world})".format(char))
+        with ctx.typing():
+            for char in chars:
+                # Skip chars in non-tracked worlds
+                if char.world not in user_tibia_worlds:
+                    skipped.append(char)
                     continue
-                else:
-                    updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
-                                    'vocation': db_char["vocation"], 'level': db_char['level'],
-                                    'guild': db_char['guild']
-                                    })
-            # If we only have one char, it already contains full data
-            if len(chars) > 1:
-                try:
-                    await ctx.channel.trigger_typing()
-                    char = await get_character(char.name)
-                except NetworkError:
-                    await ctx.send("I'm having network troubles, please try again.")
-                    return
-            if char.deleted is not None:
-                skipped.append(char)
-                continue
-            added.append(char)
+                with closing(userDatabase.cursor()) as c:
+                    c.execute("SELECT name, guild, user_id as owner, vocation, ABS(level) as level, guild FROM chars "
+                              "WHERE name LIKE ?", (char.name,))
+                    db_char = c.fetchone()
+                if db_char is not None:
+                    owner = self.bot.get_member(db_char["owner"])
+                    # Char already registered to this user
+                    if owner.id == user.id:
+                        existent.append("{0.name} ({0.world})".format(char))
+                        continue
+                    else:
+                        updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
+                                        'vocation': db_char["vocation"], 'level': db_char['level'],
+                                        'guild': db_char['guild']
+                                        })
+                # If we only have one char, it already contains full data
+                if len(chars) > 1:
+                    try:
+                        await ctx.channel.trigger_typing()
+                        char = await get_character(char.name)
+                    except NetworkError:
+                        await ctx.send("I'm having network troubles, please try again.")
+                        return
+                if char.deleted is not None:
+                    skipped.append(char)
+                    continue
+                added.append(char)
 
         if len(skipped) == len(chars):
             reply = "Sorry, I couldn't find any characters from the servers I track ({0})."
@@ -665,7 +667,7 @@ class Tracking:
 
         If there are other visible characters, the bot will ask for confirmation to add them too.
 
-        Charaacters in other worlds other than the currently tracked world are skipped.
+        Characters in other worlds other than the currently tracked world are skipped.
         If it finds a character owned by another user, the whole process will be stopped.
 
         If a character is already registered to someone else, `claim` can be used."""
@@ -698,57 +700,59 @@ class Tracking:
         check_other = False
         if len(chars) > 1:
             message = await ctx.send("Do you want to attempt to add the other visible characters in this account?")
-            check_other = await ctx.react_confirm(message, timeout=60)
+            check_other = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if check_other is None:
+            return await ctx.send("You didn't reply in time, try again."
+                                  "Remember that you have to react or click on the icons.")
         if not check_other:
-            if check_other is None:
-                await ctx.send("Going to take that as a no... Moving on...")
             chars = [char]
 
         skipped = []
         updated = []
         added: List[Character] = []
         existent = []
-        for char in chars:
-            # Skip chars in non-tracked worlds
-            if char.world not in user_tibia_worlds:
-                skipped.append(char)
-                continue
-            with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT name, guild, user_id as owner, vocation, ABS(level) as level, guild FROM chars "
-                          "WHERE name LIKE ?", (char.name,))
-                db_char = c.fetchone()
-            if db_char is not None:
-                owner = self.bot.get_member(db_char["owner"])
-                # Previous owner doesn't exist anymore
-                if owner is None:
-                    updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
-                                    'vocation': db_char["vocation"], 'level': db_char['level'],
-                                    'guild': db_char['guild']
-                                    })
+        with ctx.typing():
+            for char in chars:
+                # Skip chars in non-tracked worlds
+                if char.world not in user_tibia_worlds:
+                    skipped.append(char)
                     continue
-                # Char already registered to this user
-                elif owner.id == user.id:
-                    existent.append("{0.name} ({0.world})".format(char))
+                with closing(userDatabase.cursor()) as c:
+                    c.execute("SELECT name, guild, user_id as owner, vocation, ABS(level) as level, guild "
+                              "FROM chars "
+                              "WHERE name LIKE ?", (char.name,))
+                    db_char = c.fetchone()
+                if db_char is not None:
+                    owner = self.bot.get_member(db_char["owner"])
+                    # Previous owner doesn't exist anymore
+                    if owner is None:
+                        updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
+                                        'vocation': db_char["vocation"], 'level': db_char['level'],
+                                        'guild': db_char['guild']
+                                        })
+                        continue
+                    # Char already registered to this user
+                    elif owner.id == user.id:
+                        existent.append("{0.name} ({0.world})".format(char))
+                        continue
+                    # Character is registered to another user, we stop the whole process
+                    else:
+                        reply = "Sorry, a character in that account ({0}) is already registered to **{1}**.\n" \
+                                "If the character really belongs to you, try using `{2}claim {0}`."
+                        await ctx.send(reply.format(db_char["name"], owner, ctx.clean_prefix))
+                        return
+                # If we only have one char, it already contains full data
+                if len(chars) > 1:
+                    try:
+                        await ctx.channel.trigger_typing()
+                        char = await get_character(char.name)
+                    except NetworkError:
+                        await ctx.send("I'm having network issues, please try again.")
+                        return
+                if char.deleted is not None:
+                    skipped.append(char)
                     continue
-                # Character is registered to another user, we stop the whole process
-                else:
-                    reply = "Sorry, a character in that account ({0}) is already registered to **{1.display_name}** " \
-                            "({1.name}#{1.discriminator}). Maybe you made a mistake?\n" \
-                            "If that character really belongs to you, try using `/claim {0}`."
-                    await ctx.send(reply.format(db_char["name"], owner))
-                    return
-            # If we only have one char, it already contains full data
-            if len(chars) > 1:
-                try:
-                    await ctx.channel.trigger_typing()
-                    char = await get_character(char.name)
-                except NetworkError:
-                    await ctx.send("I'm having network troubles, please try again.")
-                    return
-            if char.deleted is not None:
-                skipped.append(char)
-                continue
-            added.append(char)
+                added.append(char)
 
         if len(skipped) == len(chars):
             reply = "Sorry, I couldn't find any characters from the servers I track ({0})."
@@ -762,7 +766,7 @@ class Tracking:
                 .format(join_list(existent, ", ", " and "))
 
         if len(added) > 0:
-            reply += "\nThe following characters were added to your account: {0}" \
+            reply += "\nThe following characters are now registered to you: {0}" \
                 .format(join_list(["{0.name} ({0.world})".format(c) for c in added], ", ", " and "))
             for char in added:
                 log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char.name, user))
