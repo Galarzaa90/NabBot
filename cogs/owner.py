@@ -1,5 +1,6 @@
 import inspect
 import platform
+import sqlite3
 import textwrap
 import traceback
 from contextlib import redirect_stdout
@@ -470,6 +471,36 @@ class Owner:
         # If it was run using the restarter, this command still works the same
         os.system("python restart.py {0}".format(ctx.author.id))
         quit()
+
+    @commands.command()
+    @checks.is_owner()
+    async def sql(self, ctx: NabCtx, *, query: str):
+        """Executes and shows SQL queries."""
+        query = self.cleanup_code(query)
+
+        try:
+            start = time.perf_counter()
+            results = userDatabase.execute(query).fetchall()
+            dt = (time.perf_counter() - start) * 1000.0
+        except sqlite3.Error:
+            return await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+        rows = len(results)
+        if rows == 0:
+            return await ctx.send(f'`{dt:.2f}ms: {results}`')
+
+        headers = list(results[0].keys())
+        table = TabularData()
+        table.set_columns(headers)
+        table.add_rows(list(r.values()) for r in results)
+        render = table.render()
+
+        fmt = f'```\n{render}\n```\n*Returned {rows} rows in {dt:.2f}ms*'
+        if len(fmt) > 2000:
+            fp = io.BytesIO(fmt.encode('utf-8'))
+            await ctx.send('Too many results to display here', file=discord.File(fp, 'results.txt'))
+        else:
+            await ctx.send(fmt)
+
 
     @commands.command()
     @checks.is_owner()

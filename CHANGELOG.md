@@ -1,4 +1,7 @@
 # Changelog
+## Version 1.4.0 (Unreleased)
+- New `/sql` command, executes a sql query and shows the results, only for the bot owner.
+
 ## Version 1.3.2 (2018-07-15)
 - Monster's occurence was being displayed incorrectly.
 - Updated database to show better update information.
