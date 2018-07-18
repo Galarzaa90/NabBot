@@ -188,7 +188,7 @@ class Settings:
 
         If this is disabled, users that subscribed to the event will still receive notifications via PM.
         """
-        current_channel_id = get_server_property(ctx.guild.id, "events_channel", is_int=True)
+        current_channel_id = get_server_property(ctx.guild.id, "events_channel", is_int=True, default=0)
         if channel is None:
             current_value = self.get_current_channel(ctx, current_channel_id)
             await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")

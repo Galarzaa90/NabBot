@@ -106,7 +106,7 @@ class General:
                         event["start"] = 'now'
                     message = "**{name}** (by **@{author}**,*ID:{id}*) - Is starting {start}!".format(**event)
                     c.execute("UPDATE events SET status = ? WHERE id = ?", (new_status, event["id"],))
-                    announce_channel_id = get_server_property(guild.id, "events_channel", is_int=True)
+                    announce_channel_id = get_server_property(guild.id, "events_channel", is_int=True, default=0)
                     if announce_channel_id == 0:
                         continue
                     announce_channel = self.bot.get_channel_or_top(guild, announce_channel_id)
