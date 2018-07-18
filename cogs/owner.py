@@ -354,6 +354,7 @@ class Owner:
         await resp.edit(content=f'Pong! That took {1000*diff.total_seconds():.1f}ms.\n'
                                 f'Socket latency is {1000*self.bot.latency:.1f}ms')
 
+    @checks.is_owner()
     @commands.command(name="reload")
     async def reload_cog(self, ctx: NabCtx, *, cog):
         """Reloads a cog (module)"""
