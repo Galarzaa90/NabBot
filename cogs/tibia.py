@@ -23,7 +23,7 @@ from utils.pages import Pages, CannotPaginate, VocationPages
 from utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
     url_house, get_stats, get_map_area, get_tibia_time_zone, get_world, tibia_worlds, get_world_bosses, get_recent_news, \
     get_news_article, Character, url_guild, highscore_format, get_character_url, url_character, get_house, \
-    get_voc_abb_and_emoji, get_world_list
+    get_voc_abb_and_emoji, get_world_list, get_highscores, get_highscores_tibiadata
 from utils.tibiawiki import get_rashid_info
 
 
@@ -593,6 +593,77 @@ class Tibia:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
+
+    @commands.command(usage="[world,category[,vocation]]]")
+    async def highscores(self, ctx: NabCtx, *, params=None):
+        """Shows the entries in the highscores.
+
+        If the server is already tracking a world, there's no need to specify a world.
+
+        Available categories are: experience, magic, shielding, distance, sword, club, axe, fist and fishing.
+        Available vocations are: all, paladin, druid, sorcerer, knight."""
+        permissions = ctx.bot_permissions
+        if not permissions.embed_links:
+            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
+            return
+        categories = ["experience", "magic", "shielding", "distance", "sword", "club", "axe", "fist", "fishing",
+                      "achievements","loyalty"]
+        vocations = ["all", "paladin", "druid", "knight", "sorcerer"]
+        if params is None:
+            params = []
+        else:
+            params = params.split(",")
+        world = None
+        if params and params[0].strip().title() in tibia_worlds:
+            world = params[0].strip().title()
+            del params[0]
+        if world is None:
+            world = ctx.world
+        if world is None:
+            return await ctx.send(f"{ctx.tick(False)} You have to specify a world.")
+
+        if not params:
+            category = "experience"
+            vocation = "all"
+
+        else:
+            if params[0].strip().lower() not in categories:
+                return await ctx.send(f"{ctx.tick(False)} Invalid category, valid categories are: "
+                                      f"`{','.join(categories)}`.")
+            category = params[0].strip().lower()
+            del params[0]
+            if not params:
+                vocation = "all"
+            elif params[0].strip().lower() not in vocations:
+                return await ctx.send(f"{ctx.tick(False)} Invalid vocation, valid vocations are: "
+                                      f"`{','.join(vocations)}`.")
+            else:
+                vocation = params[0].strip().lower()
+        with ctx.typing():
+            try:
+                highscores = await get_highscores_tibiadata(world, category, vocation)
+                if highscores is None:
+                    return await ctx.send(f"{ctx.tick(False)} I couldn't find any highscores entries.")
+            except NetworkError:
+                return await ctx.send(f"{ctx.tick(False)} I couldn't fetch the highscores.")
+        entries = []
+        for entry in highscores:
+            entry["voc"] = get_voc_emoji(entry["vocation"])
+            if category == "experience":
+                entries.append("**{name}**{voc} - Level {level} ({points:,} exp)".format(**entry))
+            else:
+                entries.append("**{name}**{voc} - Level {level}".format(**entry))
+        pages = Pages(ctx, entries=entries, per_page=20 if ctx.long else 10)
+        pages.embed.title = f"🏆 {category.title()} highscores for {world}"
+        if vocation != "all":
+            pages.embed.title += f" ({vocation}s)"
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+
+
 
     @commands.command(aliases=["guildhall"], usage="<name>[,world]")
     async def house(self, ctx: NabCtx, *, name: str):

@@ -528,6 +528,34 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
     return score_list
 
 
+async def get_highscores_tibiadata(world, category=None, vocation=None, tries=5):
+    """Gets all the highscores entries of a world, category and vocation."""
+    if vocation is None:
+        vocation = "all"
+    if category is None:
+        category = "experience"
+    url = f"https://api.tibiadata.com/v2/highscores/{world}/{category}/{vocation}.json"
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
+    except Exception:
+        await asyncio.sleep(config.network_retry_delay)
+        return await get_highscores_tibiadata(world, category, vocation, tries - 1)
+    content_json = json.loads(content)
+    try:
+        if not isinstance(content_json["highscores"]["data"], list):
+            return None
+    except KeyError:
+        return None
+    entries = content_json["highscores"]["data"]
+    for entry in entries:
+        entry["vocation"] = entry["voc"]
+        del entry["voc"]
+    return entries
+
+
 async def get_world(name, tries=5) -> Optional[World]:
     url = f"https://api.tibiadata.com/v2/world/{name}.json"
     name = name.strip()

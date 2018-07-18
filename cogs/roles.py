@@ -32,69 +32,64 @@ class Roles:
 
         Removes joinable groups from the database when the role is deleted.
         """
-        result = userDatabase.execute("SELECT * FROM joinable_roles WHERE role_id = ?", (role.id,))
-        exists = list(result)
-        if exists:
-            userDatabase.execute("DELETE FROM joinable_roles WHERE role_id = ?", (role.id,))
-        result = userDatabase.execute("SELECT * FROM auto_roles WHERE role_id = ?", (role.id,))
-        exists = list(result)
-        if exists:
-            userDatabase.execute("DELETE FROM auto_roles WHERE role_id = ?", (role.id,))
+
+        userDatabase.execute("DELETE FROM joinable_roles WHERE role_id = ?", (role.id,))
+        userDatabase.execute("DELETE FROM auto_roles WHERE role_id = ?", (role.id,))
 
     async def on_character_change(self, user_id: int):
         try:
             with closing(userDatabase.cursor()) as c:
                 guilds_raw = c.execute("SELECT guild FROM chars WHERE user_id = ?", (user_id,)).fetchall()
                 rules_raw = c.execute("SELECT * FROM auto_roles ORDER BY server_id").fetchall()
-                # Flatten list of guilds
-                guilds = set(g['guild'] for g in guilds_raw)
+            # Flatten list of guilds
+            guilds = set(g['guild'] for g in guilds_raw)
 
-                # Flatten rules
-                rules = {}
-                for rule in rules_raw:
-                    server_id = rule["server_id"]
-                    if server_id not in rules:
-                        rules[rule["server_id"]] = []
-                    rules[server_id].append((rule["role_id"], rule["guild"]))
-                for server, rules in rules.items():
-                    guild: discord.Guild = self.bot.get_guild(server)
-                    if guild is None:
+            # Flatten rules
+            rules = {}
+            for rule in rules_raw:
+                server_id = rule["server_id"]
+                if server_id not in rules:
+                    rules[rule["server_id"]] = []
+                rules[server_id].append((rule["role_id"], rule["guild"]))
+            for server, rules in rules.items():
+                guild: discord.Guild = self.bot.get_guild(server)
+                if guild is None:
+                    continue
+                member: discord.Member = guild.get_member(user_id)
+                if member is None:
+                    continue
+
+                all_roles = set()
+                to_add = set()
+                for role_id, tibia_guild in rules:
+                    role: discord.Role = discord.utils.get(guild.roles, id=role_id)
+                    if role is None:
                         continue
-                    member: discord.Member = guild.get_member(user_id)
-                    if member is None:
-                        continue
+                    all_roles.add(role)
+                    if (tibia_guild == "*" and guilds) or tibia_guild in guilds:
+                        to_add.add(role)
+                to_remove = all_roles-to_add
+                try:
+                    before_roles = set(member.roles)
+                    await member.remove_roles(*to_remove, reason="Automatic roles")
+                    await member.add_roles(*to_add, reason="Automatic roles")
+                    # A small delay is needed so member.roles is updated with the added possible added roles.
+                    await asyncio.sleep(0.15)
+                    after_roles = set(member.roles)
 
-                    all_roles = set()
-                    to_add = set()
-                    for role_id, tibia_guild in rules:
-                        role: discord.Role = discord.utils.get(guild.roles, id=role_id)
-                        if role is None:
-                            continue
-                        all_roles.add(role)
-                        if (tibia_guild == "*" and guilds) or tibia_guild in guilds:
-                            to_add.add(role)
-                    to_remove = all_roles-to_add
-                    try:
-                        before_roles = set(member.roles)
-                        await member.remove_roles(*to_remove, reason="Automatic roles")
-                        await member.add_roles(*to_add, reason="Automatic roles")
-                        # A small delay is needed so member.roles is updated with the added possible added roles.
-                        await asyncio.sleep(0.15)
-                        after_roles = set(member.roles)
-
-                        new_roles = after_roles-before_roles
-                        removed_roles = before_roles-after_roles
-                        if new_roles or removed_roles:
-                            embed = discord.Embed(colour=discord.Colour.dark_blue(), title="Autorole changes")
-                            embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member),
-                                             icon_url=get_user_avatar(member))
-                            if new_roles:
-                                embed.add_field(name="Added roles", value=", ".join(r.mention for r in new_roles))
-                            if removed_roles:
-                                embed.add_field(name="Removed roles", value=", ".join(r.mention for r in removed_roles))
-                            await self.bot.send_log_message(guild, embed=embed)
-                    except discord.HTTPException:
-                        pass
+                    new_roles = after_roles-before_roles
+                    removed_roles = before_roles-after_roles
+                    if new_roles or removed_roles:
+                        embed = discord.Embed(colour=discord.Colour.dark_blue(), title="Autorole changes")
+                        embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member),
+                                         icon_url=get_user_avatar(member))
+                        if new_roles:
+                            embed.add_field(name="Added roles", value=", ".join(r.mention for r in new_roles))
+                        if removed_roles:
+                            embed.add_field(name="Removed roles", value=", ".join(r.mention for r in removed_roles))
+                        await self.bot.send_log_message(guild, embed=embed)
+                except discord.HTTPException:
+                    pass
         except Exception:
             log.exception("Event: character_change")
 

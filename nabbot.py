@@ -176,6 +176,7 @@ class NabBot(commands.Bot):
                         embed.add_field(name="Registered characters", value="\n".join(characters))
                 finally:
                     c.close()
+            self.dispatch("character_change", member.id)
             await self.send_log_message(member.guild, embed=embed)
 
         welcome_message = get_server_property(member.guild.id, "welcome")

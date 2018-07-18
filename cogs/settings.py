@@ -14,6 +14,7 @@ SETTINGS = {
     "eventschannel": {"title": "📣 Events channel"},
     "levelschannel": {"title": "🌟☠ Tracking channel", "check":
         lambda ctx: ctx.guild.id not in config.lite_servers},
+    "announcelevel": {"title": "📏 Announce Level"},
     "prefix": {"title": "❗ Prefix"},
     "welcome": {"title": "👋 Welcome message"},
     "welcomechannel": {"title": "💬 Welcome channel"},
@@ -68,6 +69,24 @@ class Settings:
                     continue
             embed.add_field(name=info["title"], value=f"`{ctx.clean_prefix}{ctx.invoked_with} {name}`")
         await ctx.send(embed=embed)
+
+    @checks.is_admin()
+    @settings.command(name="announcelevel")
+    async def settings_announcelevel(self, ctx: NabCtx, level: int=None):
+        """Sets the minimum level for death and level up announcements."""
+        current_level = get_server_property(ctx.guild.id, "announce_level", is_int=True)
+        if level is None:
+            if current_level is None:
+                current_value = f"`{config.announce_threshold}` (global default)"
+            else:
+                current_value = f"`{current_level}`"
+            return await self.show_info_embed(ctx, current_value, "Any number greater than 1", "level")
+        if level < 1:
+            return await ctx.send(f"{ctx.tick(False)} Level can't be lower than 1.")
+
+        set_server_property(ctx.guild.id, "announce_level", level)
+        await ctx.send(f"{ctx.tick()} Minimum announce level has been set to `{level}`.")
+
 
     @checks.is_admin()
     @settings.command(name="askchannel", aliases=["commandchannel"])
@@ -332,7 +351,6 @@ class Settings:
             await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
         set_server_property(ctx.guild.id, "prefixes", sorted(prefixes, reverse=True), serialize=True)
 
-
     @checks.is_admin()
     @settings.command(name="welcome")
     async def settings_welcome(self, ctx: NabCtx, *, message: str = None):
@@ -342,8 +360,8 @@ class Settings:
 
         You can use formatting to show dynamic values:
         - {server} -> The server's name.
-        - {server} -> The server's owner name
-        - {server} -> Mention to the server's owner.
+        - {server.owner} -> The server's owner name
+        - {server.owner.mention} -> Mention to the server's owner.
         - {owner} -> The name of the server owner
         - {owner.mention} -> Mention the server owner.
         - {user} -> The name of the user that joined.

@@ -12,6 +12,7 @@ from discord.ext import commands
 # Exposing for /debug command
 from nabbot import NabBot
 from utils import checks
+from utils.database import get_server_property
 from utils.context import NabCtx
 from utils.general import *
 from utils.messages import *

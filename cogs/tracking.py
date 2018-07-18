@@ -386,8 +386,6 @@ class Tracking:
     async def announce_death(self, death: Death, levels_lost=0, char: Character = None, char_name: str = None):
         """Announces a level up on the corresponding servers"""
         # Don't announce for low level players
-        if int(death.level) < config.announce_threshold:
-            return
         if char is None:
             if char_name is None:
                 log.error("announce_death: no character or character name passed.")
@@ -433,7 +431,12 @@ class Tracking:
 
         for guild_id, tracked_world in self.bot.tracked_worlds.items():
             guild = self.bot.get_guild(guild_id)
-            if char.world == tracked_world and guild is not None and guild.get_member(char.owner) is not None:
+            if guild is None:
+                continue
+            min_level = get_server_property(guild_id, "announce_level", is_int=True, default=config.announce_threshold)
+            if death.level < min_level:
+                continue
+            if char.world == tracked_world and guild.get_member(char.owner) is not None:
                 try:
                     channel = self.bot.get_channel_or_top(guild,
                                                           get_server_property(guild.id, "levels_channel", is_int=True))
@@ -451,9 +454,6 @@ class Tracking:
         char_name is a character's name
 
         If char_name is passed, the character is fetched here."""
-        # Don't announce low level players
-        if int(level) < config.announce_threshold:
-            return
         if char is None:
             if char_name is None:
                 log.error("announce_level: no character or character name passed.")
@@ -477,7 +477,12 @@ class Tracking:
 
         for server_id, tracked_world in self.bot.tracked_worlds.items():
             server = self.bot.get_guild(server_id)
-            if char.world == tracked_world and server is not None and server.get_member(char.owner) is not None:
+            if server is None:
+                continue
+            min_level = get_server_property(server_id, "announce_level", is_int=True, default=config.announce_threshold)
+            if char.level < min_level:
+                continue
+            if char.world == tracked_world and server.get_member(char.owner) is not None:
                 try:
                     channel = self.bot.get_channel_or_top(server,
                                                           get_server_property(server.id, "levels_channel", is_int=True))
