@@ -198,15 +198,18 @@ class General:
         embed.description = f"🔰 Version: **{self.bot.__version__}**\n" \
                             f"⏱ ️Uptime **{parse_uptime(self.bot.start_time)}**\n" \
                             f"🖥️ OS: **{platform.system()} {platform.release()}**\n" \
-                            f"📉 RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n" \
-                            f"⚙️ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n" \
-                            f"🏓 Ping: **{ping} ms**\n" \
-                            f"👾 Servers: **{len(self.bot.guilds):,}**\n" \
-                            f"💬 Channels: **{len(list(self.bot.get_all_channels())):,}**\n"\
-                            f"👨 Users: **{len(self.bot.users):,}** \n" \
-                            f"👤 Characters: **{char_count:,}**\n" \
-                            f"{config.levelup_emoji} Level ups: **{levels_count:,}**\n" \
-                            f"{config.death_emoji} Deaths: **{deaths_count:,}**"
+                            f"📉 RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n"
+        try:
+            embed.description += f"⚙️ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n"
+        except AttributeError:
+            pass
+        embed.description += f"🏓 Ping: **{ping} ms**\n" \
+                             f"👾 Servers: **{len(self.bot.guilds):,}**\n" \
+                             f"💬 Channels: **{len(list(self.bot.get_all_channels())):,}**\n"\
+                             f"👨 Users: **{len(self.bot.users):,}** \n" \
+                             f"👤 Characters: **{char_count:,}**\n" \
+                             f"{config.levelup_emoji} Level ups: **{levels_count:,}**\n" \
+                             f"{config.death_emoji} Deaths: **{deaths_count:,}**"
         await ctx.send(embed=embed)
 
     @commands.command(usage="<choices...>")
