@@ -447,9 +447,8 @@ async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: disc
 
             if result['group'] != "Unknown":
                 groups[result['group']] = groups.get(result['group'], 0) + 100
-                with lootDatabase as c:
-                    c.execute("UPDATE Items SET priority = priority+4 WHERE `name` = ?", (result['name'],))
-                    c.execute("UPDATE Items SET priority = priority+1 WHERE `group` = ?", (result['group'],))
+                lootDatabase.execute("UPDATE Items SET priority = priority+4 WHERE `name` = ?", (result['name'],))
+                lootDatabase.execute("UPDATE Items SET priority = priority+1 WHERE `group` = ?", (result['group'],))
 
             if result['group'] != "Unknown":
                 if result not in lq_items:
@@ -478,6 +477,7 @@ async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: disc
             await update_status(status_msg, f"Scanning items ({i+1}/{len(slot_list)})", current_percent)
         last_percent = current_percent
     await update_status(status_msg, "Complete!")
+    lootDatabase.commit()
     img_byte_arr = io.BytesIO()
     await ctx.execute_async(loot_image.save, img_byte_arr, format="png")
     img_byte_arr = img_byte_arr.getvalue()
