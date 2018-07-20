@@ -180,13 +180,9 @@ class Admin:
         if len(params) != 2:
             raise commands.BadArgument()
 
-        if ctx.world is None:
-            await ctx.send("This server is not tracking any worlds.")
-            return
-
         user = self.bot.get_member(params[0], ctx.guild)
         if user is None:
-            await ctx.send("I don't see any user named **{0}** in this server.".format(params[0]))
+            return await ctx.send(f"{ctx.tick(False)} I don't see any user named **{params[0]}** in this server.")
         user_servers = self.bot.get_user_guilds(user.id)
 
         with ctx.typing():
@@ -303,7 +299,7 @@ class Admin:
         # Except if the char exists in the database...
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT name, user_id, world,"
+            c.execute("SELECT name, user_id, world "
                       "FROM chars WHERE name LIKE ?", (name,))
             result = c.fetchone()
             if result is None or result["user_id"] == 0:

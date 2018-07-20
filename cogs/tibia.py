@@ -1684,7 +1684,7 @@ class Tibia:
         await ctx.send(embed=embed)
 
     @commands.command(usage="[query]")
-    async def worlds(self, ctx: NabCtx, query=None):
+    async def worlds(self, ctx: NabCtx, *, query=None):
         """Shows a list of worlds.
 
         You can pass a list of parameters separated by commas to change the sorting or filter worlds.
