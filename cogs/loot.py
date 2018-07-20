@@ -158,7 +158,7 @@ class Loot:
                             result = c.fetchone()
                         if result:
                             has_marketable = True
-                            emoji = "ðŸ’Ž"
+                            emoji = "💎"
                         else:
                             emoji = ""
                         value += "x{1} {0}{3} \u2192 {2:,}gp total\n".format(
@@ -185,7 +185,7 @@ class Loot:
 
         long_message += f"\nThe total loot value is: **{total_value:,}** gold coins."
         if has_marketable:
-            long_message += f"\nðŸ’Ž Items marked with this are used in imbuements and might be worth " \
+            long_message += f"\n💎 Items marked with this are used in imbuements and might be worth " \
                             f"more in the market."
         embed.description = long_message
         embed.set_image(url="attachment://results.png")
@@ -331,7 +331,7 @@ def load_image(image_bytes: bytes) -> Image.Image:
 async def update_status(msg: discord.Message, status: str, percent: int=None):
     content = f"**Status:** {status}"
     if percent is not None:
-        content += f"\n{'ðŸ”²'*percent}{'â¬›'*(10-percent)}"
+        content += f"\n{'🔲'*percent}{'⬛'*(10-percent)}"
     try:
         await msg.edit(content=content)
     except discord.HTTPException:
