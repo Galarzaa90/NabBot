@@ -1,9 +1,10 @@
 import json
 import os
-import shutil
 import sqlite3
 from contextlib import closing
 from typing import Dict
+
+from utils.general import log
 
 # Databases filenames
 USERDB = "data/users.db"
@@ -16,8 +17,8 @@ tibiaDatabase = sqlite3.connect(TIBIADB)
 if os.path.isfile(LOOTDB):
     lootDatabase = sqlite3.connect(LOOTDB)
 else:
-    shutil.copyfile("data/loot_template.db", LOOTDB)
-    lootDatabase = sqlite3.connect(LOOTDB)
+    log.error("Could not find loot.db")
+    exit()
 
 DB_LASTVERSION = 22
 

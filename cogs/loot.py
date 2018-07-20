@@ -1,5 +1,4 @@
 import io
-import os
 import pickle
 import time
 from contextlib import closing
@@ -12,6 +11,7 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils import checks
+from utils.config import config
 from utils.context import NabCtx
 from utils.database import tibiaDatabase, lootDatabase
 from utils.general import log, FIELD_VALUE_LIMIT
@@ -114,7 +114,7 @@ class Loot:
             # Owners are not affected by the limit.
             self.processing_users.append(ctx.author.id)
             start_time = time.time()
-            loot_list, loot_image_overlay = await loot_scan(ctx, loot_image, attachment.filename, status_msg)
+            loot_list, loot_image_overlay = await loot_scan(ctx, loot_image, status_msg)
             scan_time = time.time() - start_time
         except LootScanException as e:
             await ctx.send(e)
@@ -320,31 +320,29 @@ class Loot:
             return
         response = "Name: {name}, Group: {group}\r\n".format(**itemlist[0])
         for item in itemlist:
-            response+="ID: {id}, Size x: {sizeX}, Size y: {sizeY}, Size: {size}, rgb: {red},{green},{blue}, Value_sell: {value_sell:,}, Value_buy: {value_buy:,}\r\n".format(**item)
+            response += "ID: {id}, Size x: {sizeX}, Size y: {sizeY}, Size: {size}, rgb: {red},{green},{blue}, " \
+                       "Value_sell: {value_sell:,}, Value_buy: {value_buy:,}\r\n".format(**item)
         await ctx.send(response,
                        file=discord.File(result, "results.png"))
+
 
 def load_image(image_bytes: bytes) -> Image.Image:
     return Image.open(io.BytesIO(bytearray(image_bytes))).convert("RGBA")
 
 
-async def update_status(msg: discord.Message, status: str, percent: int=None):
+async def update_status(msg: discord.Message, status: str):
     content = f"**Status:** {status}"
-    if percent is not None:
-        content += f"\n{'🔲'*percent}{'⬛'*(10-percent)}"
     try:
         await msg.edit(content=content)
     except discord.HTTPException:
         pass
 
 
-async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: discord.Message):
+async def loot_scan(ctx: NabCtx, image: bytes, status_msg: discord.Message):
     try:
         loot_image = await ctx.execute_async(load_image, image)
     except Exception:
         raise LootScanException("Either that wasn't an image or I failed to load it, please try again.")
-
-    loot_image_original = await ctx.execute_async(loot_image.copy)
 
     await update_status(status_msg, "Detecting item slots")
 
@@ -352,16 +350,16 @@ async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: disc
     if not slot_list:
         raise LootScanException("I couldn't find any inventory slots in your image."
                                 " Make sure your image is not stretched out or that overscaling is off.")
-    groups = {}
     loot_list = {}
-    await update_status(status_msg, "{0} slots found.\r\nIdentifying items, estimated time required {1:.2f} seconds.".format(str(len(slot_list)+1),(len(slot_list)+1)*(sum(scan_speed)/10)))
+    await update_status(status_msg, f"{len(slot_list)+1:,} slots found.\n"
+                                    f"{config.loading_emoji} Identifying items...\n"
+                                    f"Estimated time: {(len(slot_list)+1)*(sum(scan_speed)/10):.2f} seconds.")
     start_time = time.time()
     for i, found_slot in enumerate(slot_list):
         found_item = found_slot['image']
         found_item_number, item_number_image = await ctx.execute_async(number_scan, found_slot['image'])
-        result = "Unknown"
 
-        found_item.paste(number_blank,None,number_blank2.convert("RGBA"))
+        found_item.paste(number_blank, None, number_blank2.convert("RGBA"))
         found_item_clear = await ctx.execute_async(clear_background, found_item)
         found_item_clear = make_transparent(found_item_clear)
 
@@ -369,10 +367,8 @@ async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: disc
 
         # Check if the slot is empty
         if found_item_crop is None:
-            result = "Empty"
             continue
 
-        found_item_size = await ctx.execute_async(get_item_size, found_item_crop)
         found_item_color = await ctx.execute_async(get_item_color, found_item_crop)
 
         results = lootDatabase.execute(
@@ -382,7 +378,7 @@ async def loot_scan(ctx: NabCtx, image: bytes, image_name: str, status_msg: disc
              found_item_color[1], found_item_color[2]))
         item_list = list(results)
 
-        result = await ctx.execute_async(scan_item, found_item_clear, item_list, groups)
+        result = await ctx.execute_async(scan_item, found_item_clear, item_list)
 
         if result == "Unknown":
             unknown_image = await ctx.execute_async(clear_background, found_slot['image'])
@@ -462,6 +458,7 @@ def is_empty(pixel: Pixel):
     """Checks if a pixel can be considered empty."""
     return is_white(pixel) or is_transparent(pixel) or is_number(pixel)
 
+
 def crop_item(item_image: Image.Image, *, copy=False) -> Optional[Image.Image]:
     """Removes the transparent border around item images.
 
@@ -534,7 +531,7 @@ def crop_item(item_image: Image.Image, *, copy=False) -> Optional[Image.Image]:
     return item_image
 
 
-def number_scan(slot_image: Image.Image) -> Tuple[int, Image.Image, Image.Image]:
+def number_scan(slot_image: Image.Image) -> Tuple[int, Any]:
     """Scans a slot's image looking for amount digits
 
     :param slot_image: The image of an inventory slot.
@@ -586,18 +583,20 @@ def number_scan(slot_image: Image.Image) -> Tuple[int, Image.Image, Image.Image]
             px = 0
     return 1 if number_string == "" else int(number_string.replace("k", "000")), numbers_image
 
+
 def make_transparent(slot_item: Image.Image):
     px = 0
     py = 0
     while py < slot_item.size[1] and py < slot.size[1]:
         slot_item_pixel = slot_item.getpixel((px, py))
-        if slot_item_pixel == (255,0,255,255):
+        if slot_item_pixel == (255, 0, 255, 255):
             slot_item.putpixel((px, py), (255, 0, 255, 0))
         px += 1
         if px == slot_item.size[0] or px == slot.size[0]:
             py += 1
             px = 0
     return slot_item
+
 
 def clear_background(slot_item: Image.Image, *, copy=False) -> Image.Image:
     """Clears the slot's background of an image.
@@ -665,7 +664,7 @@ def get_item_size(item: Image.Image) -> int:
     return size
 
 
-def get_item_color(item: Image.Image) -> Tuple[int, int, int, int]:
+def get_item_color(item: Image.Image) -> Tuple[int, int, int]:
     """Gets the average color of an item.
 
     :param item: The item's image
@@ -694,13 +693,11 @@ def get_item_color(item: Image.Image) -> Tuple[int, int, int, int]:
     return int(color[0]), int(color[1]), int(color[2])
 
 
-def scan_item(slot_item: Image.Image, item_list: List[Dict[str, Any]], groups: Dict[str, int])\
-        -> Union[Dict[str, Union[str, int]], str]:
+def scan_item(slot_item: Image.Image, item_list: List[Dict[str, Any]]) -> Union[Dict[str, Union[str, int]], str]:
     """Scans an item's image, and looks for it among similar items in the database.
 
     :param slot_item: The item's cropped image.
     :param item_list: The list of similar items.
-    :param groups: The list of possible groups.
     :return: The matched item, represented in a dictionary.
     """
     results = {}
@@ -733,7 +730,7 @@ def scan_item(slot_item: Image.Image, item_list: List[Dict[str, Any]], groups: D
                 py += 1
                 px = 0
             if py == slot_item.size[1] or py == item_image.size[1]:
-                results[item['id']] = item#return item
+                results[item['id']] = item
 
     result = "Unknown"
     while len(results) > 0:
@@ -741,11 +738,12 @@ def scan_item(slot_item: Image.Image, item_list: List[Dict[str, Any]], groups: D
             result = results.popitem()[1]
             continue
         new = results.popitem()[1]
-        #TODO: optimize this by moving this proccess to database creation
-        #give priority to higher priced items
+        # TODO: optimize this by moving this proccess to database creation
+        # Give priority to higher priced items
         if new['value_sell'] < result['value_sell']: 
             continue
-        #but try to return the lowest non-zero buying price item if no sell value is found (this is the most realiable way to get stuff like paperware to override quest items)
+        # But try to return the lowest non-zero buying price item if no sell value is found
+        # (this is the most realiable way to get stuff like paperware to override quest items)
         elif new['value_sell'] == result['value_sell']: 
             if new['value_buy'] > result['value_buy'] > 0:
                 continue
@@ -801,8 +799,13 @@ def find_slots(loot_image: Image) -> List[Dict[str, Any]]:
                 while diff < diffmax:
                     if xs == 0 or xs == 33 or ys == 0 or ys == 33:
                         if not image_copy.getpixel((x + xs, y + ys)) == slot_border[s] \
-                            and image_copy.getpixel((x + xs, y + ys)) not in [(24,24,24,255),(55,55,55,255),(57,57,57,255),(75,76,76,255),(255, 0, 255, 0)]: 
-                            #^this is a workaround to ignore the bottom-left border of containers, as well as make the skipping work correctly
+                            and image_copy.getpixel((x + xs, y + ys)) not in [(24, 24, 24, 255),
+                                                                              (55, 55, 55, 255),
+                                                                              (57, 57, 57, 255),
+                                                                              (75, 76, 76, 255),
+                                                                              (255, 0, 255, 0)]:
+                            # ^ This is a workaround to ignore the bottom-left border of containers
+                            # as well as make the skipping work correctly
                                 break
                     s += 1
                     xs += 1
@@ -871,10 +874,10 @@ async def item_add(item, frame):
                                         sizeX,sizeY,size,\
                                         red,green,blue) "
                      "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                     (item_list[0]["name"], item_list[0]["group"], item_list[0]["id"],\
-                     item_list[0]["value_sell"], item_list[0]["value_buy"], frame_str,\
-                     frame_crop.size[0], frame_crop.size[1], frame_size,\
-                     frame_color[0], frame_color[1], frame_color[2]))
+                     (item_list[0]["name"], item_list[0]["group"], item_list[0]["id"],
+                      item_list[0]["value_sell"], item_list[0]["value_buy"], frame_str,
+                      frame_crop.size[0], frame_crop.size[1], frame_size,
+                      frame_color[0], frame_color[1], frame_color[2]))
 
     c.execute("SELECT * FROM Items  WHERE name LIKE ?", (item,))
     item_list = c.fetchall()
@@ -891,7 +894,7 @@ async def item_add(item, frame):
     return img_byte_arr
 
 
-async def item_new(item, frame, group, value_sell, value_buy, id):
+async def item_new(item, frame, group, value_sell, value_buy, item_id):
     if item is None or group is None:
         return None
 
@@ -914,9 +917,9 @@ async def item_new(item, frame, group, value_sell, value_buy, id):
                                         sizeX,sizeY,size,\
                                         red,green,blue) "
                      "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                     (item, group, id, \
-                     value_sell, value_buy, frameStr, \
-                     frame_crop.size[0], frame_crop.size[1], frame_size,\
+                     (item, group, item_id,
+                      value_sell, value_buy, frameStr,
+                      frame_crop.size[0], frame_crop.size[1], frame_size,
                       frame_color[0], frame_color[1], frame_color[2]))
 
     c.execute("SELECT * FROM Items WHERE name LIKE ?", (item,))
@@ -933,6 +936,7 @@ async def item_new(item, frame, group, value_sell, value_buy, id):
     img_byte_arr = img_byte_arr.getvalue()
     c.close()
     return img_byte_arr
+
 
 def setup(bot):
     bot.add_cog(Loot(bot))
