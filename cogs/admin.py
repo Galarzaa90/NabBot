@@ -299,7 +299,7 @@ class Admin:
         # Except if the char exists in the database...
         c = userDatabase.cursor()
         try:
-            c.execute("SELECT name, user_id, world "
+            c.execute("SELECT name, user_id, world, guild, abs(level) as level, vocation "
                       "FROM chars WHERE name LIKE ?", (name,))
             result = c.fetchone()
             if result is None or result["user_id"] == 0:
@@ -312,6 +312,8 @@ class Admin:
             if user is not None:
                 user_guilds = self.bot.get_user_guilds(user.id)
                 for guild in user_guilds:
+                    if guild == ctx.guild:
+                        continue
                     if self.bot.tracked_worlds.get(guild.id, None) != ctx.world:
                         continue
                     member: discord.Member = guild.get_member(ctx.author.id)
