@@ -465,6 +465,9 @@ class Tracking:
                 return
             try:
                 char = await get_character(char_name, bot=self.bot)
+                if char is None:
+                    log.warning("announce_level: couldn't fetch character (" + char_name + ")")
+                    return
             except NetworkError:
                 log.warning("announce_level: couldn't fetch character (" + char_name + ")")
                 return

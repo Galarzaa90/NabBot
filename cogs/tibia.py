@@ -1047,7 +1047,7 @@ class Tibia:
             await ctx.send(e)
 
     @commands.command(aliases=['expshare', 'party'])
-    async def share(self, ctx: NabCtx, *, param: str=None):
+    async def share(self, ctx: NabCtx, *, param):
         """Shows the sharing range for that level or character or list of characters.
 
         This command can be used in three ways:

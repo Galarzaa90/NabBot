@@ -456,17 +456,20 @@ class General:
             await ctx.send(f"{ctx.tick(False)} You can only add people to your own events.")
             return
         with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT * FROM chars WHERE name LIKE ?", (character,))
+            c.execute("SELECT * FROM chars WHERE name LIKE ? AND user_id != 0", (character,))
             char = c.fetchone()
         if event["slots"] != 0 and len(event["participants"]) >= event["slots"]:
             await ctx.send(f"{ctx.tick(False)} All the slots for this event has been filled. "
                            f"You can change them by using `/event edit slots {event_id} newSlots`.")
             return
-        owner = self.bot.get_member(char["user_id"], ctx.guild)
-        if char is None or owner is None:
+
+        if char is None:
             await ctx.send(f"{ctx.tick(False)} That character is not registered.")
             return
-
+        owner = self.bot.get_member(char["user_id"], ctx.guild)
+        if owner is None:
+            await ctx.send(f"{ctx.tick(False)} That character is not registered.")
+            return
         world = self.bot.tracked_worlds.get(event["server"])
         if world != char["world"]:
             await ctx.send(f"{ctx.tick(False)} You can't add a character from another world.")
