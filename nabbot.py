@@ -102,13 +102,12 @@ class NabBot(commands.Bot):
         elif isinstance(error, commands.NoPrivateMessage):
             await ctx.send(error)
         elif isinstance(error, commands.CommandInvokeError):
-            if isinstance(error.original, discord.HTTPException):
-                log.error(f"Reply to '{ctx.message.clean_content}' was too long.")
-                await ctx.send("Sorry, the message was too long to send.")
-                return
             log.error(f"Exception in command: {ctx.message.clean_content}", exc_info=error.original)
-            await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
-                           f'{error.original}```')
+            if isinstance(error.original, discord.HTTPException):
+                await ctx.send("Sorry, the message was too long to send.")
+            else:
+                await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
+                               f'{error.original}```')
 
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
