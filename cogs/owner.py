@@ -460,19 +460,14 @@ class Owner:
             except discord.HTTPException as e:
                 await ctx.send(f'Unexpected error: `{e}`')
 
-    @commands.command(aliases=["reset"])
+    @commands.command()
     @checks.is_owner()
-    @commands.guild_only()
-    async def restart(self, ctx: NabCtx):
-        """Shutdowns and starts the bot again.
+    async def shutdown(self, ctx: NabCtx):
+        """Shutdowns the bot again.
 
         Once the bot starts again, it will notify the user that restarted it."""
-        await ctx.send('Restarting...')
+        await ctx.send('Shutting down...')
         await self.bot.logout()
-        log.warning("Restarting NabBot")
-        # If it was run using the restarter, this command still works the same
-        os.system("python restart.py {0}".format(ctx.author.id))
-        quit()
 
     @commands.command()
     @checks.is_owner()
