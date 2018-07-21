@@ -454,7 +454,7 @@ class TibiaWiki:
                 "Hard": 50
             }
             bestiary_class = monster['bestiary_class']
-            if monster["bestiary_level"] is not None and monster["ocurrence"] is not None:
+            if monster["bestiary_level"] is not None and monster["occurrence"] is not None:
                 difficulty = difficulties.get(monster["bestiary_level"], f"({monster['bestiary_level']})")
                 occurrence = occurrences.get(monster["occurrence"], f"")
                 required_kills = kills[monster['bestiary_level']]
