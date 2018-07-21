@@ -180,7 +180,7 @@ class NabCtx(commands.Context):
             try:
                 if message:
                     await message.delete()
-            except discord.Forbidden:
+            except (discord.Forbidden, discord.NotFound):
                 pass
 
     async def execute_async(self, func: Callable[..., T], *args, **kwargs) -> T:
