@@ -34,6 +34,7 @@ class Tracking:
         self.scan_deaths_task = self.bot.loop.create_task(self.scan_deaths())
         self.scan_online_chars_task = bot.loop.create_task(self.scan_online_chars())
         self.scan_highscores_task = bot.loop.create_task(self.scan_highscores())
+        self.world_times = {}
 
     async def scan_deaths(self):
         #################################################
@@ -157,7 +158,10 @@ class Tracking:
                     await asyncio.sleep(0.1)
                     continue
 
-                await asyncio.sleep(config.online_scan_interval)
+                if time.time() - self.world_times.get(current_world.capitalize(), 0) < config.online_scan_interval:
+                    await asyncio.sleep(0.2)
+                    continue
+
                 # Get online list for this server
                 try:
                     world = await get_world(current_world)
@@ -171,6 +175,7 @@ class Tracking:
                 if len(current_world_online) == 0:
                     await asyncio.sleep(0.1)
                     continue
+                self.world_times[world.name] = time.time()
                 self.bot.dispatch("world_scanned", world)
                 # Save the online list in file
                 with open("data/online_list.dat", "wb") as f:
