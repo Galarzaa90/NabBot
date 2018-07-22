@@ -369,13 +369,14 @@ async def loot_scan(ctx: NabCtx, image: bytes, status_msg: discord.Message):
         if found_item_crop is None:
             continue
 
+        found_item_size = await ctx.execute_async(get_item_size, found_item_crop)
         found_item_color = await ctx.execute_async(get_item_color, found_item_crop)
 
         results = lootDatabase.execute(
-            "SELECT * FROM Items WHERE sizeX = ? AND sizeY = ? "
+            "SELECT * FROM Items WHERE sizeX = ? AND sizeY = ?  AND size = ? "
             "AND red = ? AND green = ? AND blue = ?",
-            (found_item_crop.size[0], found_item_crop.size[1], found_item_color[0],
-             found_item_color[1], found_item_color[2]))
+            (found_item_crop.size[0], found_item_crop.size[1], found_item_size,
+             found_item_color[0], found_item_color[1], found_item_color[2]))
         item_list = list(results)
 
         result = await ctx.execute_async(scan_item, found_item_clear, item_list)
@@ -730,27 +731,9 @@ def scan_item(slot_item: Image.Image, item_list: List[Dict[str, Any]]) -> Union[
                 py += 1
                 px = 0
             if py == slot_item.size[1] or py == item_image.size[1]:
-                results[item['id']] = item
+                return item
 
-    result = "Unknown"
-    while len(results) > 0:
-        if result == "Unknown":
-            result = results.popitem()[1]
-            continue
-        new = results.popitem()[1]
-        # TODO: optimize this by moving this proccess to database creation
-        # Give priority to higher priced items
-        if new['value_sell'] < result['value_sell']: 
-            continue
-        # But try to return the lowest non-zero buying price item if no sell value is found
-        # (this is the most realiable way to get stuff like paperware to override quest items)
-        elif new['value_sell'] == result['value_sell']: 
-            if new['value_buy'] > result['value_buy'] > 0:
-                continue
-            elif new['value_buy'] == 0:
-                continue
-        result = new
-    return result
+    return "Unknown"
 
 
 def find_slots(loot_image: Image) -> List[Dict[str, Any]]:
