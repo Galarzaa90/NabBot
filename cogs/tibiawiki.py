@@ -1,5 +1,8 @@
+import datetime as dt
 import random
 import re
+from contextlib import closing
+from typing import Dict
 
 import discord
 from discord.ext import commands
@@ -7,6 +10,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from utils.config import config
 from utils.context import NabCtx
+from utils.database import tibiaDatabase
 from utils.general import join_list, FIELD_VALUE_LIMIT, average_color
 from utils.messages import split_message
 from utils.pages import Pages, CannotPaginate
@@ -382,6 +386,56 @@ class TibiaWiki:
             await ctx.send(file=discord.File(spell["image"], f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
+
+    @commands.command()
+    async def wikistats(self, ctx: NabCtx):
+        """Shows information about the TibiaWiki database."""
+        embed = discord.Embed(colour=discord.Colour.blurple(), title="TibiaWiki database statistics", description="")
+        embed.set_thumbnail(url=WIKI_ICON)
+        version = ""
+        gen_date = None
+        with closing(tibiaDatabase.cursor()) as c:
+            info = c.execute("SELECT * FROM database_info").fetchall()
+            for entry in info:  # type: Dict[str, str]
+                if entry['key'] == "version":
+                    version = f" v{entry['value']}"
+                if entry['key'] == "generated_date":
+                    gen_date = float(entry['value'])
+            achievements = c.execute("SELECT COUNT(*) as count FROM achievements").fetchone()
+            embed.description += f"**‣ Achievements:** {achievements['count']:,}"
+            creatures = c.execute("SELECT COUNT(*) as count FROM creatures").fetchone()
+            embed.description += f"\n**‣ Creatures:** {creatures['count']:,}"
+            creatures_drops = c.execute("SELECT COUNT(*) as count FROM creatures_drops").fetchone()
+            embed.description += f"\n\t**‣ Drops:** {creatures_drops['count']:,}"
+            houses = c.execute("SELECT COUNT(*) as count FROM houses").fetchone()
+            embed.description += f"\n**‣ Houses:** {houses['count']:,}"
+            imbuements = c.execute("SELECT COUNT(*) as count FROM imbuements").fetchone()
+            embed.description += f"\n**‣ Imbuements:** {imbuements['count']:,}"
+            items = c.execute("SELECT COUNT(*) as count FROM items").fetchone()
+            embed.description += f"\n**‣ Items:** {items['count']:,}"
+            items_attributes = c.execute("SELECT COUNT(*) as count FROM items_attributes").fetchone()
+            embed.description += f"\n\t**‣ Attributes:** {items_attributes['count']:,}"
+            items_keys = c.execute("SELECT COUNT(*) as count FROM items_keys").fetchone()
+            embed.description += f"\n\t**‣ Keys:** {items_keys['count']:,}"
+            npcs = c.execute("SELECT COUNT(*) as count FROM npcs").fetchone()
+            embed.description += f"\n**‣ NPCs:** {npcs['count']:,}"
+            npcs_buying = c.execute("SELECT COUNT(*) as count FROM npcs_buying").fetchone()
+            embed.description += f"\n\t**‣ Buy offers:** {npcs_buying['count']:,}"
+            npcs_selling = c.execute("SELECT COUNT(*) as count FROM npcs_selling").fetchone()
+            embed.description += f"\n\t**‣ Sell offers:** {npcs_selling['count']:,}"
+            npcs_destinations = c.execute("SELECT COUNT(*) as count FROM npcs_destinations").fetchone()
+            embed.description += f"\n\t**‣ Destinations:** {npcs_destinations['count']:,}"
+            npcs_spells = c.execute("SELECT COUNT(*) as count FROM npcs_spells").fetchone()
+            embed.description += f"\n\t**‣ Spell offers:** {npcs_spells['count']:,}"
+            quests = c.execute("SELECT COUNT(*) as count FROM quests").fetchone()
+            embed.description += f"\n**‣ Quests:** {quests['count']:,}"
+            spells = c.execute("SELECT COUNT(*) as count FROM spells").fetchone()
+            embed.description += f"\n**‣ Spells:** {spells['count']:,}"
+        embed.set_footer(text=f"Database generation date")
+        embed.timestamp = dt.datetime.utcfromtimestamp(gen_date)
+        embed.set_author(name=f"tibiawiki-sql{version}", icon_url="https://github.com/fluidicon.png",
+                         url="https://github.com/Galarzaa90/tibiawiki-sql")
+        await ctx.send(embed=embed)
 
     # Helper methods
     @staticmethod

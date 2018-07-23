@@ -175,7 +175,10 @@ class Admin:
     @checks.is_tracking_world()
     @commands.command(name="addchar", aliases=["registerchar"], usage="<user>,<character>")
     async def add_char(self, ctx: NabCtx, *, params):
-        """Registers a character to a user."""
+        """Registers a character to a user.
+
+        The character must be in the world you're tracking.
+        If the desired character is already assigned to someone else, the user must use `claim`."""
         params = params.split(",")
         if len(params) != 2:
             raise commands.BadArgument()
@@ -294,7 +297,10 @@ class Admin:
     @checks.is_tracking_world()
     @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
     async def remove_char(self, ctx: NabCtx, *, name):
-        """Removes a registered character."""
+        """Removes a registered character.
+
+        Note that you can only remove chars if they are from users exclusively in your server.
+        You can't remove any characters that would alter other servers NabBot is in."""
         # This could be used to remove deleted chars so we don't need to check anything
         # Except if the char exists in the database...
         c = userDatabase.cursor()

@@ -141,6 +141,7 @@ class NabBot(commands.Bot):
             # Owner doesn't allow PMs
             top_channel = self.get_top_channel(guild, True)
             if top_channel is not None:
+                formatted_message += "\n*I meant to send this privately, but you do not allow private messages.*"
                 await top_channel.send(formatted_message)
 
     async def on_guild_remove(self, guild: discord.Guild):

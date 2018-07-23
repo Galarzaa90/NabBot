@@ -12,6 +12,7 @@ log_channel_name: server-log
 # including removing the global ones
 # Mentioning the bot is always a command prefix
 command_prefix:
+  - "nab."
   - "/"
 
 

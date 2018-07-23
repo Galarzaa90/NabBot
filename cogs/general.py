@@ -53,7 +53,10 @@ class General:
                      "League of Dota", "my cards right", "out your death in my head"]
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
-            await self.bot.change_presence(activity=discord.Game(name=random.choice(game_list)))
+            if random.randint(0, 9) >= 7:
+                await self.bot.change_presence(activity=discord.Game(name=f"in {len(self.bot.guilds)} servers"))
+            else:
+                await self.bot.change_presence(activity=discord.Game(name=random.choice(game_list)))
             await asyncio.sleep(60*20)  # Change game every 20 minutes
 
     async def events_announce(self):
