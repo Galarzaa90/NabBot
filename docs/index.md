@@ -7,6 +7,8 @@ It features commands related to the MMORPG [Tibia](http://www.tibia.com/abouttib
 [![GitHub release](https://img.shields.io/github/release/Galarzaa90/NabBot.svg)](https://github.com/Galarzaa90/NabBot/releases)
 [![Discord](https://img.shields.io/discord/441991938200305674.svg)](https://discord.gg/NmDvhpY)
 
+[![Discord Bots](https://discordbots.org/api/widget/178966653982212096.svg)](https://discordbots.org/bot/178966653982212096)
+
 
 ## Features
 - Characters and guilds lookup.
