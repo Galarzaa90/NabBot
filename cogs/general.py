@@ -219,6 +219,9 @@ class General:
         Each choice is separated by spaces. For choices that contain spaces surround it with quotes.
         e.g. "Choice A" ChoiceB "Choice C"
         """
+        if not choices:
+            await ctx.send(f"{ctx.tick(False)} I can't tell you what to choose if you don't give me choices")
+            return
         user = ctx.author
         await ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 

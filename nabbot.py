@@ -106,8 +106,18 @@ class NabBot(commands.Bot):
             if isinstance(error.original, discord.HTTPException):
                 await ctx.send("Sorry, the message was too long to send.")
             else:
-                await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
-                               f'{error.original}```')
+                if ctx.bot_permissions.embed_links:
+                    embed = discord.Embed(colour=discord.Colour(0xff1414))
+                    embed.set_author(name="Support Server", url="https://discord.gg/NmDvhpY",
+                                     icon_url=self.user.avatar_url)
+                    embed.set_footer(text="Please report this bug in the support server.")
+                    embed.add_field(name=f"{ctx.tick(False)}Command Error",
+                                    value=f"```py\n{error.original.__class__.__name__}: {error.original}```",
+                                    inline=False)
+                    await ctx.send(embed=embed)
+                else:
+                    await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
+                                   f'{error.original}```')
 
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
