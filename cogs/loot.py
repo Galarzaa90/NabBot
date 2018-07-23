@@ -1,5 +1,7 @@
 import io
+import os
 import pickle
+import sqlite3
 import time
 from contextlib import closing
 from typing import Any, List, Dict, Tuple, Optional, Union
@@ -13,11 +15,12 @@ from nabbot import NabBot
 from utils import checks
 from utils.config import config
 from utils.context import NabCtx
-from utils.database import tibiaDatabase, lootDatabase
+from utils.database import tibiaDatabase, dict_factory
 from utils.general import log, FIELD_VALUE_LIMIT
 from utils.messages import split_message
 from utils.tibiawiki import get_item
 
+LOOTDB = "data/loot.db"
 DEBUG_FOLDER = "debug/loot"
 slot: Image.Image = Image.open("./images/slot.png")
 slot_border = Image.open("./images/slotborder.png").convert("RGBA").getdata()
@@ -52,10 +55,15 @@ MIN_WIDTH = 34   # or height smaller than this are not considered.
 
 Pixel = Tuple[int, ...]
 
+if os.path.isfile(LOOTDB):
+    lootDatabase = sqlite3.connect(LOOTDB)
+    lootDatabase.row_factory = dict_factory
+else:
+    log.error("Could not find loot.db")
+    exit()
 
 class LootScanException(commands.CommandError):
     pass
-
 
 class Loot:
     def __init__(self, bot: NabBot):
