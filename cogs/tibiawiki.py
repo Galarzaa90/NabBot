@@ -507,19 +507,20 @@ class TibiaWiki:
                 "Medium": 25,
                 "Hard": 50
             }
-            bestiary_class = monster['bestiary_class']
-            if monster["bestiary_level"] is not None and monster["occurrence"] is not None:
+            bestiary_info = monster['bestiary_class']
+            if monster["bestiary_level"] is not None:
                 difficulty = difficulties.get(monster["bestiary_level"], f"({monster['bestiary_level']})")
-                occurrence = occurrences.get(monster["occurrence"], f"")
                 required_kills = kills[monster['bestiary_level']]
                 given_points = points[monster['bestiary_level']]
+                bestiary_info += f"\n{difficulty}"
+            if monster["occurrence"] is not None:
+                occurrence = occurrences.get(monster["occurrence"], f"")
                 if monster['occurrence'] == 'Very Rare':
                     required_kills = 5
                     given_points = max(points[monster['bestiary_level']]*2, 5)
-                kill_and_points = \
-                    f"{required_kills:,} kills | {given_points}{config.charms_emoji}️"
-                bestiary_class += f"\n{difficulty}\n{occurrence}\n{kill_and_points}"
-            embed.add_field(name="Bestiary Class", value=bestiary_class)
+                bestiary_info += f"\n{occurrence}"
+            bestiary_info += f"\n{required_kills:,} kills | {given_points}{config.charms_emoji}️"
+            embed.add_field(name="Bestiary Class", value=bestiary_info)
 
         # If monster drops no loot, we might as well show everything
         if long or not monster["loot"]:
