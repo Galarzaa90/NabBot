@@ -387,7 +387,7 @@ class TibiaWiki:
         else:
             await ctx.send(embed=embed)
 
-    @commands.command(aliases=["wikinfo"])
+    @commands.command(aliases=["wikiinfo"])
     async def wikistats(self, ctx: NabCtx):
         """Shows information about the TibiaWiki database."""
         embed = discord.Embed(colour=discord.Colour.blurple(), title="TibiaWiki database statistics", description="")

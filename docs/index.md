@@ -26,7 +26,16 @@ It features commands related to the MMORPG [Tibia](http://www.tibia.com/abouttib
 !!! error "Note"
      This is not a cavebot, this bot does not interact with the client in any way, NabBot is a messaging bot. We're not interested in developing cavebots, do not contact us for such reasons.
 
-## Requirements
+## Adding NabBot
+To add NabBot to your server, check out its page at [Discord Bots](https://discordbots.org/bot/178966653982212096)
+and click the **Invite** button. Also remember to **Vote**.
+ 
+Curious about its permissions? Check the [permission explanation](permissions.md).
+ 
+## Hosting NabBot
+You can also host your own instance of NabBot.
+
+### Requirements
 - Python 3.6
 - Python modules:
     - [discord.py (rewrite branch)](https://github.com/Rapptz/discord.py/tree/rewrite)
@@ -36,7 +45,7 @@ It features commands related to the MMORPG [Tibia](http://www.tibia.com/abouttib
     - pyYAML
 - git
  
-## Installing and running
+### Installing and running
 1. Install git
 1. Install the required python modules
     ```bat
@@ -63,3 +72,6 @@ If you like NabBot, you can donate to this project. NabBot and the developers wi
 
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)
+
+
+*[Tibia](http://tibia.com) is made by [CipSoft](https://www.cipsoft.com/), all game related images are copyrighted by [CipSoft GmbH](https://www.cipsoft.com/).*

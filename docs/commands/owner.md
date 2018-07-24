@@ -137,16 +137,8 @@ To exit, type ``exit()``.
 
 ----
 
-## restart
-**Other aliases:** `reset`
-
-Shutdowns and starts the bot again.
-
-Once the bot starts again, it will notify the user that restarted it.
-
-??? Summary "Example"
-    **/restart**  
-    ![image](../assets/images/commands/restart.png)
+## shutdown
+Shutdowns the bot.
 
 ----
 
@@ -156,6 +148,19 @@ Shows a list of servers the bot is in.
 ??? Summary "Example"
     **/servers**  
     ![image](../assets/images/commands/servers.png)
+
+----
+
+## sql
+**Syntax:** `sql <query>`
+
+Executes a SQL query and shows the results.
+
+If the results are too long to display, a text file is generated and uploaded.
+
+??? Summary "Example"
+    **/sql SELECT * FROM chars WHERE user_id = 162060569803751424**  
+    ![image](../assets/images/commands/sql.png)
 
 ----
 

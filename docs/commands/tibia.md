@@ -355,7 +355,7 @@ Additionally, if the character is in the highscores, their ranking will be shown
 
 Shows basic information about a Tibia world.
         
-Shows information like PvP type, online count, server location vocation distribution, and more.
+Shows information like PvP type, online count, server location, vocation distribution, and more.
 
 ??? Summary "Examples"
     **/world Fidera**    

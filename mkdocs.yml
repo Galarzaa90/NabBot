@@ -66,7 +66,7 @@ pages:
       - Tibia commands: commands/tibia.md
       - TibiaWiki commands: commands/tibiawiki.md
       - Tracking commands: commands/tracking.md
-    - Customizing:
-      - Configuration: customizing/config.md
-      - Messages: customizing/messages.md
-      - Cogs: customizing/cogs.md
+    - Hosting:
+      - Configuration: hosting/config.md
+      - Messages: hosting/messages.md
+      - Cogs: hosting/cogs.md

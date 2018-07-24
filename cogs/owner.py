@@ -463,16 +463,16 @@ class Owner:
     @commands.command()
     @checks.is_owner()
     async def shutdown(self, ctx: NabCtx):
-        """Shutdowns the bot again.
-
-        Once the bot starts again, it will notify the user that restarted it."""
+        """Shutdowns the bot."""
         await ctx.send('Shutting down...')
         await self.bot.logout()
 
     @commands.command()
     @checks.is_owner()
     async def sql(self, ctx: NabCtx, *, query: str):
-        """Executes and shows SQL queries."""
+        """Executes a SQL query and shows the results.
+
+        If the results are too long to display, a text file is generated and uploaded."""
         query = self.cleanup_code(query)
 
         try:
