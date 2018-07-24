@@ -1,5 +1,5 @@
 # Changelog
-## Version 1.4.0 (Unreleased)
+## Version 1.4.0 (2018-07-24)
 - `/loot` has been rewritten:
     - Loot database remade from scratch with images extracted directly from the client, all images should now be pixel perfect matches to those taken from in-game screenshots
     - Priority values for items were removed so database can be updated directly (no longer requires template database)
@@ -25,6 +25,7 @@
 - Fixed bug in commands that offer you choices not working in commands channel.
 - Fixed bug in `/choose` when the command was used with no parameters.
 - `/stamina` now considers the 10 minutes you have to be logged off to start regenerating stamina.
+- Removed `/restart` command as it was really system specific and not an universal solution, along with the autorestarting launchers.
 - Command error now contains a link to the support server.
 
 ## Version 1.3.2 (2018-07-15)
