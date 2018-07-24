@@ -1159,6 +1159,8 @@ class Tibia:
         resting_time = max((dt.timedelta(hours=40)-current).total_seconds(), 0)*3
         # Last two hours of stamina take 10 minutes for a minute
         resting_time += (dt.timedelta(hours=42)-max(dt.timedelta(hours=40), current)).total_seconds()*10
+        # You must be logged off 10 minutes before you start gaining stamina
+        resting_time += dt.timedelta(minutes=10).total_seconds()
 
         hours, remainder = divmod(int(resting_time), 3600)
         minutes, _ = divmod(remainder, 60)
@@ -1622,7 +1624,7 @@ class Tibia:
     async def world_info(self, ctx: NabCtx, name: str):
         """Shows basic information about a Tibia world.
 
-        Shows information like PvP type, online count, server location vocation distribution, and more."""
+        Shows information like PvP type, online count, server location, vocation distribution, and more."""
         try:
             world = await get_world(name)
             if world is None:
