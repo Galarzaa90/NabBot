@@ -257,8 +257,8 @@
   
     <li class="md-tabs__item">
       
-        <a href="../../customizing/config/" title="Customizing" class="md-tabs__link">
-          Customizing
+        <a href="../../hosting/config/" title="Hosting" class="md-tabs__link">
+          Hosting
         </a>
       
     </li>
@@ -604,6 +604,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#settings-minlevel" title="settings minlevel" class="md-nav__link">
+    settings minlevel
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#settings-newschannel" title="settings newschannel" class="md-nav__link">
     settings newschannel
   </a>
@@ -705,11 +712,11 @@
       <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
     
     <label class="md-nav__link" for="nav-8">
-      Customizing
+      Hosting
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
       <label class="md-nav__title" for="nav-8">
-        Customizing
+        Hosting
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
         
@@ -720,7 +727,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../../customizing/config/" title="Configuration" class="md-nav__link">
+    <a href="../../hosting/config/" title="Configuration" class="md-nav__link">
       Configuration
     </a>
   </li>
@@ -732,7 +739,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../../customizing/messages/" title="Messages" class="md-nav__link">
+    <a href="../../hosting/messages/" title="Messages" class="md-nav__link">
       Messages
     </a>
   </li>
@@ -744,7 +751,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../../customizing/cogs/" title="Cogs" class="md-nav__link">
+    <a href="../../hosting/cogs/" title="Cogs" class="md-nav__link">
       Cogs
     </a>
   </li>
@@ -807,6 +814,13 @@
           <li class="md-nav__item">
   <a href="#settings-levelschannel" title="settings levelschannel" class="md-nav__link">
     settings levelschannel
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#settings-minlevel" title="settings minlevel" class="md-nav__link">
+    settings minlevel
   </a>
   
 </li>
@@ -897,8 +911,7 @@ This allows the channel to be used exclusively for commands.</p>
 <p><strong>Syntax:</strong> <code class="codehilite">settings eventschannel [channel]</code></p>
 <p>Changes the channel where upcoming events are announced.</p>
 <p>This is where announcements of events about to happen will be made.
-By default, the highest channel on the list where the bot can send messages will be used.
-If the assigned channel is deleted or forbidden, the top channel will be used again.</p>
+If the assigned channel is deleted or forbidden, the top channel will be used.</p>
 <p>If this is disabled, users that subscribed to the event will still receive notifications via PM.</p>
 <hr />
 <h3 id="settings-levelschannel">settings levelschannel<a class="headerlink" href="#settings-levelschannel" title="Permanent link">&para;</a></h3>
@@ -910,12 +923,17 @@ By default, the highest channel on the list where the bot can send messages will
 If the assigned channel is deleted or forbidden, the top channel will be used again.</p>
 <p>If this is disabled, Announcements won't be made, but there will still be tracking.</p>
 <hr />
+<h3 id="settings-minlevel">settings minlevel<a class="headerlink" href="#settings-minlevel" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">settings minlevel [channel]</code><br />
+<strong>Other aliases:</strong> <code class="codehilite">settings announcelevel</code></p>
+<p>Changes the channel where levelup and deaths are announced.</p>
+<p>Level ups and deaths under the minimum level are still and can be seen by checking the character directly.</p>
+<hr />
 <h3 id="settings-newschannel">settings newschannel<a class="headerlink" href="#settings-newschannel" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">settings newschannel [channel]</code></p>
 <p>Changes the channel where Tibia news are announced.</p>
 <p>This is where all news and articles posted in Tibia.com will be announced.<br />
-By default, this feature is disabled, you must set a channel to enable it.<br />
-If the assigned channel is deleted or forbidden, the top channel will be used again.</p>
+If the assigned channel is deleted or forbidden, the top channel will be used.</p>
 <hr />
 <h3 id="settings-prefix">settings prefix<a class="headerlink" href="#settings-prefix" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">settings prefix [prefix]</code>  </p>

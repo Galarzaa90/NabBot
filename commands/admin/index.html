@@ -257,8 +257,8 @@
   
     <li class="md-tabs__item">
       
-        <a href="../../customizing/config/" title="Customizing" class="md-tabs__link">
-          Customizing
+        <a href="../../hosting/config/" title="Hosting" class="md-tabs__link">
+          Hosting
         </a>
       
     </li>
@@ -657,11 +657,11 @@
       <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
     
     <label class="md-nav__link" for="nav-8">
-      Customizing
+      Hosting
     </label>
     <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
       <label class="md-nav__title" for="nav-8">
-        Customizing
+        Hosting
       </label>
       <ul class="md-nav__list" data-md-scrollfix>
         
@@ -672,7 +672,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../../customizing/config/" title="Configuration" class="md-nav__link">
+    <a href="../../hosting/config/" title="Configuration" class="md-nav__link">
       Configuration
     </a>
   </li>
@@ -684,7 +684,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../../customizing/messages/" title="Messages" class="md-nav__link">
+    <a href="../../hosting/messages/" title="Messages" class="md-nav__link">
       Messages
     </a>
   </li>
@@ -696,7 +696,7 @@
 
 
   <li class="md-nav__item">
-    <a href="../../customizing/cogs/" title="Cogs" class="md-nav__link">
+    <a href="../../hosting/cogs/" title="Cogs" class="md-nav__link">
       Cogs
     </a>
   </li>
@@ -790,6 +790,8 @@ Optional parameters are enclosed in brackets <code class="codehilite">[]</code>.
 <p><strong>Syntax:</strong> <code class="codehilite">addchar &lt;user&gt;,&lt;character&gt;</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">registerchar</code></p>
 <p>Registers a character to a user.</p>
+<p>The character must be in the world you're tracking.
+If the desired character is already assigned to someone else, the user must use <code class="codehilite">claim</code>.</p>
 <hr />
 <h2 id="checkchannel">checkchannel<a class="headerlink" href="#checkchannel" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">checkchannel [channel]</code></p>
@@ -801,7 +803,8 @@ If no channel is specified, the current one is checked.</p>
 <h2 id="removechar">removechar<a class="headerlink" href="#removechar" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">removechar &lt;name&gt;</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">deletechar</code>, <code class="codehilite">unregisterchar</code></p>
-<p>Removes a registered character.</p>
+<p>Note that you can only remove chars if they are from users exclusively in your server.
+You can't remove any characters that would alter other servers NabBot is in.</p>
                 
                   
                 
