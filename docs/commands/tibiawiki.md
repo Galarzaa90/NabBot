@@ -161,3 +161,12 @@ More information is displayed if used on private messages or the command channel
     ![image](../assets/images/commands/spell_1.png)  
     **/spell emberwing**  
     ![image](../assets/images/commands/spell_2.png)
+
+## wikistats
+**Other aliases:** `wikiinfo`
+
+Shows information about the TibiaWiki database.
+
+??? summary "Examples"
+    **/wikinfo**  
+    ![image](../assets/images/commands/wikistats.png)

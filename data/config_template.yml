@@ -12,6 +12,7 @@ log_channel_name: server-log
 # including removing the global ones
 # Mentioning the bot is always a command prefix
 command_prefix:
+  - "nab."
   - "/"
 
 
@@ -82,6 +83,8 @@ difficulty_on_emoji: ⭐
 difficulty_off_emoji: ▪
 occurrence_on_emoji: 🔹
 occurrence_off_emoji: ▪
+# Emoji for some loading messages
+loading_emoji: ⏳
 
 # Optional emojis
 # The following are values than can optionally be represented by emojis.

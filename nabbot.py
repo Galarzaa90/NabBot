@@ -43,7 +43,7 @@ class NabBot(commands.Bot):
         # A list version is created from the dictionary
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
-        self.__version__ = "1.3.2"
+        self.__version__ = "1.4.0"
         self.__min_discord__ = 1480
 
     async def on_ready(self):
@@ -102,13 +102,22 @@ class NabBot(commands.Bot):
         elif isinstance(error, commands.NoPrivateMessage):
             await ctx.send(error)
         elif isinstance(error, commands.CommandInvokeError):
-            if isinstance(error.original, discord.HTTPException):
-                log.error(f"Reply to '{ctx.message.clean_content}' was too long.")
-                await ctx.send("Sorry, the message was too long to send.")
-                return
             log.error(f"Exception in command: {ctx.message.clean_content}", exc_info=error.original)
-            await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
-                           f'{error.original}```')
+            if isinstance(error.original, discord.HTTPException):
+                await ctx.send("Sorry, the message was too long to send.")
+            else:
+                if ctx.bot_permissions.embed_links:
+                    embed = discord.Embed(colour=discord.Colour(0xff1414))
+                    embed.set_author(name="Support Server", url="https://discord.gg/NmDvhpY",
+                                     icon_url=self.user.avatar_url)
+                    embed.set_footer(text="Please report this bug in the support server.")
+                    embed.add_field(name=f"{ctx.tick(False)}Command Error",
+                                    value=f"```py\n{error.original.__class__.__name__}: {error.original}```",
+                                    inline=False)
+                    await ctx.send(embed=embed)
+                else:
+                    await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
+                                   f'{error.original}```')
 
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
@@ -132,6 +141,7 @@ class NabBot(commands.Bot):
             # Owner doesn't allow PMs
             top_channel = self.get_top_channel(guild, True)
             if top_channel is not None:
+                formatted_message += "\n*I meant to send this privately, but you do not allow private messages.*"
                 await top_channel.send(formatted_message)
 
     async def on_guild_remove(self, guild: discord.Guild):
@@ -176,6 +186,7 @@ class NabBot(commands.Bot):
                         embed.add_field(name="Registered characters", value="\n".join(characters))
                 finally:
                     c.close()
+            self.dispatch("character_change", member.id)
             await self.send_log_message(member.guild, embed=embed)
 
         welcome_message = get_server_property(member.guild.id, "welcome")
@@ -449,20 +460,6 @@ class NabBot(commands.Bot):
     def get_user_guilds(self, user_id: int) -> List[discord.Guild]:
         """Returns a list of the user's shared guilds with the bot"""
         return [self.get_guild(gid) for gid in self.members[user_id]]
-
-    def get_user_admin_guilds(self, user_id: int) -> List[discord.Guild]:
-        """Returns a list of the guilds the user is and admin of and the bot is a member of
-
-        If the user is a bot owner, returns all the guilds the bot is in"""
-        if user_id in config.owner_ids:
-            return list(self.guilds)
-        guilds = self.get_user_guilds(user_id)
-        ret = []
-        for guild in guilds:
-            member: discord.Member = guild.get_member(user_id)
-            if member.guild_permissions.administrator:
-                ret.append(guild)
-        return ret
 
     def get_user_worlds(self, user_id: int, guild_list=None) -> List[str]:
         """Returns a list of all the tibia worlds the user is tracked in.

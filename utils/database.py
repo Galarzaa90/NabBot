@@ -1,6 +1,4 @@
 import json
-import os
-import shutil
 import sqlite3
 from contextlib import closing
 from typing import Dict
@@ -8,16 +6,9 @@ from typing import Dict
 # Databases filenames
 USERDB = "data/users.db"
 TIBIADB = "data/tibia_database.db"
-LOOTDB = "data/loot.db"
 
 userDatabase = sqlite3.connect(USERDB)
 tibiaDatabase = sqlite3.connect(TIBIADB)
-
-if os.path.isfile(LOOTDB):
-    lootDatabase = sqlite3.connect(LOOTDB)
-else:
-    shutil.copyfile("data/loot_template.db", LOOTDB)
-    lootDatabase = sqlite3.connect(LOOTDB)
 
 DB_LASTVERSION = 22
 
@@ -279,8 +270,6 @@ def dict_factory(cursor, row):
 
 userDatabase.row_factory = dict_factory
 tibiaDatabase.row_factory = dict_factory
-lootDatabase.row_factory = dict_factory
-
 
 def get_server_property(guild_id: int, key: str, *, default=None, is_int=None, deserialize=False):
     """Returns a guild's property

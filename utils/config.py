@@ -43,6 +43,7 @@ KEYS = [
     "paladin_emoji",
     "knight_emoji",
     "charms_emoji",
+    "loading_emoji",
     "difficulty_on_emoji",
     "difficulty_off_emoji",
     "occurrence_on_emoji",
@@ -102,6 +103,7 @@ class Config:
         self.paladin_emoji = "🏹"
         self.knight_emoji = "🛡"
         self.charms_emoji = "⚜"
+        self.loading_emoji = "⏳"
         self.difficulty_on_emoji = "⭐"
         self.difficulty_off_emoji = "▪"
         self.occurrence_on_emoji = "🔹"

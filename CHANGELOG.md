@@ -1,4 +1,33 @@
 # Changelog
+## Version 1.4.0 (2018-07-24)
+- `/loot` has been rewritten:
+    - Loot database remade from scratch with images extracted directly from the client, all images should now be pixel perfect matches to those taken from in-game screenshots
+    - Priority values for items were removed so database can be updated directly (no longer requires template database)
+    - Quality checks removed, now expects pixel perfect images (compressed images or screenshots taken using the software renderer won't be scanned at all).
+    - Number scan updated to properly handle stacks higher than three digits (mostly to be able to scan images taken from the stash, also recognizes the letter K in stack numbers)
+    - Now properly scans slots even if a few pixels at the bottom were cut off or blocked by the window border.
+    - Massive performance improvements.
+- Minimum announce level is now configurable per server (`/settings minlevel`).
+- Event channel is now disabled by default.
+- New configurable emoji: `loading_emoji`
+    - By default ⏳ is used.
+- Removed restart scripts as they were outdated, very platform specific and bad practice.
+- Improved world scanning speed to not be heavily affected by the number of tracked worlds.
+- New `/sql` command, executes a sql query and shows the results, only for the bot owner.
+- New `/wikistats` command, shows you information about the TibiaWiki database used.
+- `/removechar` now only lets you remove chars from users that are only in servers you are an admin in.
+- Fixed bug in `/event make` showing failure icon on success.
+- Fixed bug in `/addchar`, it was not working at all.
+- Fixed bug in `/world` when query included spaces.
+- Fixed bug in `/monster` failing if it was missing some bestiary data.
+- Fixed bug in `/event addplayer` failing when the character was not registered.
+- Fixed error when using `/share` with no parameters.
+- Fixed bug in commands that offer you choices not working in commands channel.
+- Fixed bug in `/choose` when the command was used with no parameters.
+- `/stamina` now considers the 10 minutes you have to be logged off to start regenerating stamina.
+- Removed `/restart` command as it was really system specific and not an universal solution, along with the autorestarting launchers.
+- Command error now contains a link to the support server.
+
 ## Version 1.3.2 (2018-07-15)
 - Monster's occurence was being displayed incorrectly.
 - Updated database to show better update information.

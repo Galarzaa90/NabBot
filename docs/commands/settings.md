@@ -44,8 +44,7 @@ Note that the bot needs `Manage Messages` permission to delete messages.
 Changes the channel where upcoming events are announced.
 
 This is where announcements of events about to happen will be made.
-By default, the highest channel on the list where the bot can send messages will be used.
-If the assigned channel is deleted or forbidden, the top channel will be used again.
+If the assigned channel is deleted or forbidden, the top channel will be used.
 
 If this is disabled, users that subscribed to the event will still receive notifications via PM.
 
@@ -65,14 +64,23 @@ If this is disabled, Announcements won't be made, but there will still be tracki
 
 ----
 
+### settings minlevel
+**Syntax:** `settings minlevel [channel]`  
+**Other aliases:** `settings announcelevel`
+
+Changes the channel where levelup and deaths are announced.
+
+Level ups and deaths under the minimum level are still and can be seen by checking the character directly.
+
+----
+
 ### settings newschannel
 **Syntax:** `settings newschannel [channel]`
 
 Changes the channel where Tibia news are announced.
 
 This is where all news and articles posted in Tibia.com will be announced.  
-By default, this feature is disabled, you must set a channel to enable it.  
-If the assigned channel is deleted or forbidden, the top channel will be used again.
+If the assigned channel is deleted or forbidden, the top channel will be used.
 
 ----
 

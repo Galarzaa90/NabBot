@@ -1,4 +1,3 @@
-
 # NabBot
 Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapptz/discord.py). It features commands related to the MMORPG [Tibia](http://www.tibia.com/news/?subtopic=latestnews).
 
@@ -7,7 +6,15 @@ Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapp
 [![GitHub release](https://img.shields.io/github/release/Galarzaa90/NabBot.svg)](https://github.com/Galarzaa90/NabBot/releases)
 [![Discord](https://img.shields.io/discord/441991938200305674.svg)](https://discord.gg/NmDvhpY)
 
-## Requirements
+[![Discord Bots](https://discordbots.org/api/widget/178966653982212096.svg)](https://discordbots.org/bot/178966653982212096)
+
+## Adding NabBot
+To add NabBot to your server, check out its page at [Discord Bots](https://discordbots.org/bot/178966653982212096)
+and click the **Invite** button. Also remember to **Vote**.
+
+## Hosting NabBot
+You can also host your own instance of NabBot.
+### Requirements
 - Python 3.6
 - Python modules:
     - [discord.py (rewrite branch)](https://github.com/Rapptz/discord.py/tree/rewrite)
@@ -17,19 +24,9 @@ Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapp
     - pyYAML
 - git
 
-## Installing and running
+### Installing and running
 Follow the [install guide](https://galarzaa90.github.io/NabBot/install/) on the official documentation site.
 
-## Current features
-- Characters and guilds lookup.
-- Linking characters to discord users.
-- Level up and deaths announcements.
-- Event management, create timed events with announcements.
-- Keeps track of registered character's deaths and level ups as a log.
-- Watched list, add characters or guilds to check their online status all the time.
-- Information commands, based on TibiaWiki articles. Items, monsters, NPCs, houses and more.
-- Joinable roles, create roles that any member can join or leave.
-- Autoroles, create roles that are assigned to users automatically based on their registered characters.
 
 ## Documentation
 See https://galarzaa90.github.io/NabBot/
@@ -40,7 +37,11 @@ Visit our support server
 [![Support Server](https://discordapp.com/api/guilds/441991938200305674/embed.png)](https://discord.gg/NmDvhpY)
 
 ## Donate
-If you like Nab Bot, you can donate to this project. NabBot and the developers will appreciate it :)
+If you like NabBot, you can donate to this project. NabBot and the developers will appreciate it :)
 
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)
+
+
+
+*[Tibia](http://tibia.com) is made by [CipSoft](https://www.cipsoft.com/), all game related images are copyrighted by [CipSoft GmbH](https://www.cipsoft.com/).*

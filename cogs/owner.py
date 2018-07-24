@@ -1,5 +1,6 @@
 import inspect
 import platform
+import sqlite3
 import textwrap
 import traceback
 from contextlib import redirect_stdout
@@ -11,6 +12,7 @@ from discord.ext import commands
 # Exposing for /debug command
 from nabbot import NabBot
 from utils import checks
+from utils.database import get_server_property
 from utils.context import NabCtx
 from utils.general import *
 from utils.messages import *
@@ -352,6 +354,7 @@ class Owner:
         await resp.edit(content=f'Pong! That took {1000*diff.total_seconds():.1f}ms.\n'
                                 f'Socket latency is {1000*self.bot.latency:.1f}ms')
 
+    @checks.is_owner()
     @commands.command(name="reload")
     async def reload_cog(self, ctx: NabCtx, *, cog):
         """Reloads a cog (module)"""
@@ -457,19 +460,44 @@ class Owner:
             except discord.HTTPException as e:
                 await ctx.send(f'Unexpected error: `{e}`')
 
-    @commands.command(aliases=["reset"])
+    @commands.command()
     @checks.is_owner()
-    @commands.guild_only()
-    async def restart(self, ctx: NabCtx):
-        """Shutdowns and starts the bot again.
-
-        Once the bot starts again, it will notify the user that restarted it."""
-        await ctx.send('Restarting...')
+    async def shutdown(self, ctx: NabCtx):
+        """Shutdowns the bot."""
+        await ctx.send('Shutting down...')
         await self.bot.logout()
-        log.warning("Restarting NabBot")
-        # If it was run using the restarter, this command still works the same
-        os.system("python restart.py {0}".format(ctx.author.id))
-        quit()
+
+    @commands.command()
+    @checks.is_owner()
+    async def sql(self, ctx: NabCtx, *, query: str):
+        """Executes a SQL query and shows the results.
+
+        If the results are too long to display, a text file is generated and uploaded."""
+        query = self.cleanup_code(query)
+
+        try:
+            start = time.perf_counter()
+            results = userDatabase.execute(query).fetchall()
+            dt = (time.perf_counter() - start) * 1000.0
+        except sqlite3.Error:
+            return await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+        rows = len(results)
+        if rows == 0:
+            return await ctx.send(f'`{dt:.2f}ms: {results}`')
+
+        headers = list(results[0].keys())
+        table = TabularData()
+        table.set_columns(headers)
+        table.add_rows(list(r.values()) for r in results)
+        render = table.render()
+
+        fmt = f'```\n{render}\n```\n*Returned {rows} rows in {dt:.2f}ms*'
+        if len(fmt) > 2000:
+            fp = io.BytesIO(fmt.encode('utf-8'))
+            await ctx.send('Too many results to display here', file=discord.File(fp, 'results.txt'))
+        else:
+            await ctx.send(fmt)
+
 
     @commands.command()
     @checks.is_owner()

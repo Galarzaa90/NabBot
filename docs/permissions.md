@@ -28,6 +28,9 @@ Many commands feature Discord embeds.
 These are rich format replies that allow the use of masked links, thumbnails, time stamps, fields, etcetera.
 Denying this permission makes such commands stop working.
 
+### Use External Emojis
+This permission is needed for NabBot to be able to display its custom emojis.
+
 ## Recommended permissions
 ### Attach Files
 This permission allows the bot to attach files as part of the message.
@@ -40,14 +43,9 @@ With this, the bot is able to tell if a member was kicked or left the server on 
 
 This is only relevant for servers that have a `#server-log` channel.
 
-### Mention Everyone
-This can be useful to have the possibility to make global announcements using `/makesay`
-
 ### Manage Channels
 This permission is only needed if you're using the watched-list feature. It lets the bot create the channel and update it's status.
 
 ### Manage Roles
 This permission is only needed if want to use groups (joinable roles) and automatic roles.
 
-### Use External Emojis
-This permission is needed if you're going to use custom emojis for the bot messages.

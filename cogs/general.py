@@ -53,7 +53,10 @@ class General:
                      "League of Dota", "my cards right", "out your death in my head"]
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
-            await self.bot.change_presence(activity=discord.Game(name=random.choice(game_list)))
+            if random.randint(0, 9) >= 7:
+                await self.bot.change_presence(activity=discord.Game(name=f"in {len(self.bot.guilds)} servers"))
+            else:
+                await self.bot.change_presence(activity=discord.Game(name=random.choice(game_list)))
             await asyncio.sleep(60*20)  # Change game every 20 minutes
 
     async def events_announce(self):
@@ -106,7 +109,7 @@ class General:
                         event["start"] = 'now'
                     message = "**{name}** (by **@{author}**,*ID:{id}*) - Is starting {start}!".format(**event)
                     c.execute("UPDATE events SET status = ? WHERE id = ?", (new_status, event["id"],))
-                    announce_channel_id = get_server_property(guild.id, "events_channel", is_int=True)
+                    announce_channel_id = get_server_property(guild.id, "events_channel", is_int=True, default=0)
                     if announce_channel_id == 0:
                         continue
                     announce_channel = self.bot.get_channel_or_top(guild, announce_channel_id)
@@ -198,15 +201,18 @@ class General:
         embed.description = f"🔰 Version: **{self.bot.__version__}**\n" \
                             f"⏱ ️Uptime **{parse_uptime(self.bot.start_time)}**\n" \
                             f"🖥️ OS: **{platform.system()} {platform.release()}**\n" \
-                            f"📉 RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n" \
-                            f"⚙️ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n" \
-                            f"🏓 Ping: **{ping} ms**\n" \
-                            f"👾 Servers: **{len(self.bot.guilds):,}**\n" \
-                            f"💬 Channels: **{len(list(self.bot.get_all_channels())):,}**\n"\
-                            f"👨 Users: **{len(self.bot.users):,}** \n" \
-                            f"👤 Characters: **{char_count:,}**\n" \
-                            f"{config.levelup_emoji} Level ups: **{levels_count:,}**\n" \
-                            f"{config.death_emoji} Deaths: **{deaths_count:,}**"
+                            f"📉 RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n"
+        try:
+            embed.description += f"⚙️ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n"
+        except AttributeError:
+            pass
+        embed.description += f"🏓 Ping: **{ping} ms**\n" \
+                             f"👾 Servers: **{len(self.bot.guilds):,}**\n" \
+                             f"💬 Channels: **{len(list(self.bot.get_all_channels())):,}**\n"\
+                             f"👨 Users: **{len(self.bot.users):,}** \n" \
+                             f"👤 Characters: **{char_count:,}**\n" \
+                             f"{config.levelup_emoji} Level ups: **{levels_count:,}**\n" \
+                             f"{config.death_emoji} Deaths: **{deaths_count:,}**"
         await ctx.send(embed=embed)
 
     @commands.command(usage="<choices...>")
@@ -216,6 +222,9 @@ class General:
         Each choice is separated by spaces. For choices that contain spaces surround it with quotes.
         e.g. "Choice A" ChoiceB "Choice C"
         """
+        if not choices:
+            await ctx.send(f"{ctx.tick(False)} I can't tell you what to choose if you don't give me choices")
+            return
         user = ctx.author
         await ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
@@ -453,17 +462,20 @@ class General:
             await ctx.send(f"{ctx.tick(False)} You can only add people to your own events.")
             return
         with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT * FROM chars WHERE name LIKE ?", (character,))
+            c.execute("SELECT * FROM chars WHERE name LIKE ? AND user_id != 0", (character,))
             char = c.fetchone()
         if event["slots"] != 0 and len(event["participants"]) >= event["slots"]:
             await ctx.send(f"{ctx.tick(False)} All the slots for this event has been filled. "
                            f"You can change them by using `/event edit slots {event_id} newSlots`.")
             return
-        owner = self.bot.get_member(char["user_id"], ctx.guild)
-        if char is None or owner is None:
+
+        if char is None:
             await ctx.send(f"{ctx.tick(False)} That character is not registered.")
             return
-
+        owner = self.bot.get_member(char["user_id"], ctx.guild)
+        if owner is None:
+            await ctx.send(f"{ctx.tick(False)} That character is not registered.")
+            return
         world = self.bot.tracked_worlds.get(event["server"])
         if world != char["world"]:
             await ctx.send(f"{ctx.tick(False)} You can't add a character from another world.")
@@ -1014,7 +1026,7 @@ class General:
                       (ctx.author.id, ctx.guild.id, start_time, name, description))
             event_id = c.lastrowid
             userDatabase.commit()
-        await ctx.send(f"{ctx.tick(False)} Event registered successfully.\n\t**{name}** in *{starts_in.original}*.\n"
+        await ctx.send(f"{ctx.tick()} Event registered successfully.\n\t**{name}** in *{starts_in.original}*.\n"
                        f"*To edit this event use ID {event_id}*")
 
     @commands.guild_only()

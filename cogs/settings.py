@@ -12,8 +12,8 @@ SETTINGS = {
     "world": {"title": "🌐 World", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "newschannel": {"title": "📰 News channel"},
     "eventschannel": {"title": "📣 Events channel"},
-    "levelschannel": {"title": "🌟☠ Tracking channel", "check":
-        lambda ctx: ctx.guild.id not in config.lite_servers},
+    "levelschannel": {"title": "🌟☠ Tracking channel", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
+    "minlevel": {"title": "📏 Min Announce Level", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "prefix": {"title": "❗ Prefix"},
     "welcome": {"title": "👋 Welcome message"},
     "welcomechannel": {"title": "💬 Welcome channel"},
@@ -164,12 +164,11 @@ class Settings:
         """Changes the channel where upcoming events are announced.
 
         This is where announcements of events about to happen will be made.
-        By default, the highest channel on the list where the bot can send messages will be used.
-        If the assigned channel is deleted or forbidden, the top channel will be used again.
+        If the assigned channel is deleted or forbidden, the top channel will be used.
 
         If this is disabled, users that subscribed to the event will still receive notifications via PM.
         """
-        current_channel_id = get_server_property(ctx.guild.id, "events_channel", is_int=True)
+        current_channel_id = get_server_property(ctx.guild.id, "events_channel", is_int=True, default=0)
         if channel is None:
             current_value = self.get_current_channel(ctx, current_channel_id)
             await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")
@@ -249,13 +248,31 @@ class Settings:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used.")
 
     @checks.is_admin()
+    @settings.command(name="minlevel", aliases=["announcelevel"])
+    async def settings_minlevel(self, ctx: NabCtx, level: int=None):
+        """Sets the minimum level for death and level up announcements.
+
+        Level ups and deaths under the minimum level are still and can be seen by checking the character directly."""
+        current_level = get_server_property(ctx.guild.id, "announce_level", is_int=True)
+        if level is None:
+            if current_level is None:
+                current_value = f"`{config.announce_threshold}` (global default)"
+            else:
+                current_value = f"`{current_level}`"
+            return await self.show_info_embed(ctx, current_value, "Any number greater than 1", "level")
+        if level < 1:
+            return await ctx.send(f"{ctx.tick(False)} Level can't be lower than 1.")
+
+        set_server_property(ctx.guild.id, "announce_level", level)
+        await ctx.send(f"{ctx.tick()} Minimum announce level has been set to `{level}`.")
+
+    @checks.is_admin()
     @settings.command(name="newschannel")
     async def settings_newschannel(self, ctx: NabCtx, channel: str=None):
         """Changes the channel where Tibia news are announced.
 
         This is where all news and articles posted in Tibia.com will be announced.
-        By default, this feature is disabled, you must set a channel to enable it.
-        If the assigned channel is deleted or forbidden, the top channel will be used again.
+        If the assigned channel is deleted or forbidden, the top channel will be used.
         """
         current_channel_id = get_server_property(ctx.guild.id, "news_channel", is_int=True, default=0)
         if channel is None:
@@ -332,7 +349,6 @@ class Settings:
             await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
         set_server_property(ctx.guild.id, "prefixes", sorted(prefixes, reverse=True), serialize=True)
 
-
     @checks.is_admin()
     @settings.command(name="welcome")
     async def settings_welcome(self, ctx: NabCtx, *, message: str = None):
@@ -342,8 +358,8 @@ class Settings:
 
         You can use formatting to show dynamic values:
         - {server} -> The server's name.
-        - {server} -> The server's owner name
-        - {server} -> Mention to the server's owner.
+        - {server.owner} -> The server's owner name
+        - {server.owner.mention} -> Mention to the server's owner.
         - {owner} -> The name of the server owner
         - {owner.mention} -> Mention the server owner.
         - {user} -> The name of the user that joined.
@@ -431,8 +447,8 @@ class Settings:
         else:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for welcome messages.")
 
-
     @checks.is_admin()
+    @checks.is_not_lite()
     @settings.command(name="world")
     async def settings_world(self, ctx: NabCtx, world: str=None):
         """Changes the world this discord server tracks.

@@ -9,7 +9,7 @@ loot/
 token.txt
 
 /data/*
-!/data/loot_template.db
+!/data/loot.db
 !/data/tibia_database.db
 !/data/tibia_worlds.json
 !/data/config_template.yml

@@ -22,6 +22,9 @@ If a character is hidden, only that character will be added. Characters in other
 
 Registers a character to a user.
 
+The character must be in the world you're tracking.
+If the desired character is already assigned to someone else, the user must use `claim`.
+
 ----
 
 ## checkchannel
@@ -42,4 +45,5 @@ If no channel is specified, the current one is checked.
 **Syntax:** `removechar <name>`  
 **Other aliases:** `deletechar`, `unregisterchar`
 
-Removes a registered character.
+Note that you can only remove chars if they are from users exclusively in your server.
+You can't remove any characters that would alter other servers NabBot is in.
