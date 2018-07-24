@@ -136,7 +136,7 @@ class TibiaWiki:
 
         # Attach imbuement's image only if the bot has permissions
         permissions = ctx.bot_permissions
-        if permissions.attach_files or imbuement["image"] != 0:
+        if permissions.attach_files and imbuement["image"] is not None:
             filename = re.sub(r"[^A-Za-z0-9]", "", imbuement["name"]) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
             main_color = await ctx.execute_async(average_color, imbuement["image"])
@@ -175,7 +175,7 @@ class TibiaWiki:
 
         # Attach item's image only if the bot has permissions
         permissions = ctx.bot_permissions
-        if permissions.attach_files or item["image"] != 0:
+        if permissions.attach_files and item["image"] is not None:
             filename = re.sub(r"[^A-Za-z0-9]", "", item["name"]) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
             await ctx.send(file=discord.File(item["image"], f"{filename}"), embed=embed)
@@ -211,7 +211,7 @@ class TibiaWiki:
         embed = self.get_key_embed(key)
 
         # Attach key's image only if the bot has permissions
-        if permissions.attach_files and key["image"] != 0:
+        if permissions.attach_files and key["image"] is not None:
             filename = f"Key.gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
             await ctx.send(file=discord.File(key["image"], f"{filename}"), embed=embed)
@@ -249,7 +249,7 @@ class TibiaWiki:
         embed = self.get_key_embed(keys)
 
         # Attach key's image only if the bot has permissions
-        if permissions.attach_files and keys["image"] != 0:
+        if permissions.attach_files and keys["image"] is not None:
             filename = f"Key.gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
             await ctx.send(file=discord.File(keys["image"], f"{filename}"), embed=embed)
@@ -300,7 +300,7 @@ class TibiaWiki:
         embed = self.get_monster_embed(ctx, monster, ctx.long)
 
         # Attach monster's image only if the bot has permissions
-        if permissions.attach_files and monster["image"] != 0:
+        if permissions.attach_files and monster["image"] is not None:
             filename = re.sub(r"[^A-Za-z0-9]", "", monster["name"]) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
             main_color = await ctx.execute_async(average_color, monster["image"])
@@ -337,7 +337,7 @@ class TibiaWiki:
         # Attach spell's image only if the bot has permissions
         if permissions.attach_files:
             files = []
-            if npc["image"] != 0:
+            if npc["image"] is not None:
                 filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + ".gif"
                 embed.set_thumbnail(url=f"attachment://{filename}")
                 files.append(discord.File(npc["image"], filename))
@@ -380,14 +380,14 @@ class TibiaWiki:
         embed = self.get_spell_embed(ctx, spell, ctx.long)
 
         # Attach spell's image only if the bot has permissions
-        if permissions.attach_files and spell["image"] != 0:
+        if permissions.attach_files and spell["image"] is not None:
             filename = re.sub(r"[^A-Za-z0-9]", "", spell["name"]) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
             await ctx.send(file=discord.File(spell["image"], f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.command(aliases=["wikinfo"])
     async def wikistats(self, ctx: NabCtx):
         """Shows information about the TibiaWiki database."""
         embed = discord.Embed(colour=discord.Colour.blurple(), title="TibiaWiki database statistics", description="")
