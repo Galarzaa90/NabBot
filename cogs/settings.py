@@ -12,9 +12,8 @@ SETTINGS = {
     "world": {"title": "🌐 World", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "newschannel": {"title": "📰 News channel"},
     "eventschannel": {"title": "📣 Events channel"},
-    "levelschannel": {"title": "🌟☠ Tracking channel", "check":
-        lambda ctx: ctx.guild.id not in config.lite_servers},
-    "announcelevel": {"title": "📏 Announce Level"},
+    "levelschannel": {"title": "🌟☠ Tracking channel", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
+    "minlevel": {"title": "📏 Min Announce Level", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "prefix": {"title": "❗ Prefix"},
     "welcome": {"title": "👋 Welcome message"},
     "welcomechannel": {"title": "💬 Welcome channel"},
@@ -71,8 +70,8 @@ class Settings:
         await ctx.send(embed=embed)
 
     @checks.is_admin()
-    @settings.command(name="announcelevel")
-    async def settings_announcelevel(self, ctx: NabCtx, level: int=None):
+    @settings.command(name="minlevel", aliases=["announcelevel"])
+    async def settings_minlevel(self, ctx: NabCtx, level: int=None):
         """Sets the minimum level for death and level up announcements."""
         current_level = get_server_property(ctx.guild.id, "announce_level", is_int=True)
         if level is None:
@@ -86,7 +85,6 @@ class Settings:
 
         set_server_property(ctx.guild.id, "announce_level", level)
         await ctx.send(f"{ctx.tick()} Minimum announce level has been set to `{level}`.")
-
 
     @checks.is_admin()
     @settings.command(name="askchannel", aliases=["commandchannel"])
@@ -449,8 +447,8 @@ class Settings:
         else:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for welcome messages.")
 
-
     @checks.is_admin()
+    @checks.is_not_lite()
     @settings.command(name="world")
     async def settings_world(self, ctx: NabCtx, world: str=None):
         """Changes the world this discord server tracks.
