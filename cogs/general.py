@@ -266,7 +266,6 @@ class General:
                     p = await HelpPaginator.from_command(ctx, entity)
                 else:
                     p = await HelpPaginator.from_cog(ctx, entity)
-
             await p.paginate()
         except Exception as e:
             await ctx.send(e)

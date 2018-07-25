@@ -519,7 +519,9 @@ class TibiaWiki:
                     required_kills = 5
                     given_points = max(points[monster['bestiary_level']]*2, 5)
                 bestiary_info += f"\n{occurrence}"
-            bestiary_info += f"\n{required_kills:,} kills | {given_points}{config.charms_emoji}️"
+            if monster["bestiary_level"] is not None:
+
+                bestiary_info += f"\n{required_kills:,} kills | {given_points}{config.charms_emoji}️"
             embed.add_field(name="Bestiary Class", value=bestiary_info)
 
         # If monster drops no loot, we might as well show everything
