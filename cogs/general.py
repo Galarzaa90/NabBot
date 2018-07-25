@@ -13,13 +13,14 @@ import psutil
 from discord.ext import commands
 
 from nabbot import NabBot
+from utils import checks
 from utils.config import config
 from utils.context import NabCtx
 from utils.database import userDatabase, get_server_property
 from utils.general import parse_uptime, TimeString, single_line, log, BadTime, get_user_avatar, get_region_string, \
     clean_string, is_numeric
 from utils.pages import CannotPaginate, VocationPages, HelpPaginator
-from utils.tibia import get_voc_abb, get_voc_emoji
+from utils.tibia import get_voc_abb, get_voc_emoji, tibia_worlds
 
 EVENT_NAME_LIMIT = 50
 EVENT_DESCRIPTION_LIMIT = 400
@@ -127,12 +128,10 @@ class General:
             await asyncio.sleep(20)
 
     # Commands
+    @checks.can_embed()
     @commands.command()
     async def about(self, ctx: NabCtx):
         """Shows basic information about the bot."""
-        if not ctx.bot_permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permissions for this command.")
-            return
         embed = discord.Embed(description=ctx.bot.description, colour=discord.Colour.blurple())
         embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
                          icon_url="https://github.com/fluidicon.png")
@@ -155,13 +154,10 @@ class General:
         embed.set_footer(text=f"Uptime | {parse_uptime(self.bot.start_time, True)}")
         await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.command(name="botinfo")
     async def bot_info(self, ctx: NabCtx):
         """Shows advanced information about the bot."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
         char_count = 0
         deaths_count = 0
         levels_count = 0
@@ -211,6 +207,7 @@ class General:
                              f"💬 Channels: **{len(list(self.bot.get_all_channels())):,}**\n"\
                              f"👨 Users: **{len(self.bot.users):,}** \n" \
                              f"👤 Characters: **{char_count:,}**\n" \
+                             f"🌐 Tracked worlds: **{len(self.bot.tracked_worlds_list)}/{len(tibia_worlds)}**\n" \
                              f"{config.levelup_emoji} Level ups: **{levels_count:,}**\n" \
                              f"{config.death_emoji} Deaths: **{deaths_count:,}**"
         await ctx.send(embed=embed)
@@ -228,6 +225,7 @@ class General:
         user = ctx.author
         await ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
+    @checks.can_embed()
     @commands.command(name='help', aliases=["commands"])
     async def _help(self, ctx, *, command: str = None):
         """Shows help about a command or the bot.
@@ -252,7 +250,6 @@ class General:
         🔸
         This means the command has subcommands.
         Check the command's help to see them."""
-
         try:
             if command is None:
                 p = await HelpPaginator.from_bot(ctx)
@@ -327,14 +324,12 @@ class General:
             await destination.send(page)
 
     @commands.guild_only()
+    @checks.can_embed()
     @commands.group(aliases=["event"], invoke_without_command=True, case_insensitive=True, usage="[event id]")
     async def events(self, ctx: NabCtx, event_id: int=None):
         """Shows a list of upcoming and recent events.
 
         If a number is specified, it will show details for that event. Same as using `events info`"""
-        if not ctx.bot_permissions.embed_links and ctx.is_private:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
         if event_id is not None:
             await ctx.invoke(self.bot.all_commands.get('events').get_command("info"), event_id)
             return
@@ -389,6 +384,7 @@ class General:
         await ctx.send(embed=embed)
 
     @commands.guild_only()
+    @checks.can_embed()
     @events.command(name="add", usage="<starts in> <name>[,description]")
     async def event_add(self, ctx, starts_in: TimeString, *, params):
         """Creates a new event.
@@ -513,6 +509,7 @@ class General:
         await ctx.send(content)
 
     @commands.guild_only()
+    @checks.can_embed()
     @event_edit.command(name="description", aliases=["desc", "details"], usage="<id> [new description]")
     async def event_edit_description(self, ctx: NabCtx, event_id: int, *, new_description=None):
         """Edits an event's description.
@@ -722,6 +719,7 @@ class General:
                                    f"{ctx.author.mention}")
 
     @commands.guild_only()
+    @checks.can_embed()
     @event_edit.command(name="time", aliases=["start"], usage="<id> [new start time]")
     async def event_edit_time(self, ctx: NabCtx, event_id: int, starts_in: TimeString=None):
         """Edit's an event's start time.
@@ -781,6 +779,7 @@ class General:
                                       skip_creator=True)
 
     @commands.guild_only()
+    @checks.can_embed()
     @events.command(name="info", aliases=["show"])
     async def event_info(self, ctx: NabCtx, event_id: int):
         """Displays an event's info.
@@ -898,6 +897,7 @@ class General:
             return
 
     @commands.guild_only()
+    @checks.can_embed()
     @events.command(name="make", aliases=["creator", "maker"])
     async def event_make(self, ctx: NabCtx):
         """Creates an event guiding you step by step
@@ -1029,6 +1029,7 @@ class General:
                        f"*To edit this event use ID {event_id}*")
 
     @commands.guild_only()
+    @checks.can_embed()
     @events.command(name="participants")
     async def event_participants(self, ctx, event_id: int):
         """Shows the list of characters participating in this event."""
@@ -1144,6 +1145,7 @@ class General:
             return
 
     @commands.guild_only()
+    @checks.can_embed()
     @events.command(name="subscribe", aliases=["sub"])
     async def event_subscribe(self, ctx, event_id: int):
         """Subscribe to receive a PM when an event is happening."""
@@ -1207,6 +1209,7 @@ class General:
 
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
+    @checks.can_embed()
     @commands.command(nam="permissions", aliases=["perms"])
     async def permissions(self, ctx: NabCtx, member: discord.Member=None, channel: discord.TextChannel=None):
         """Shows a member's permissions in the current channel.
@@ -1233,6 +1236,7 @@ class General:
         await ctx.send(embed=embed)
 
     @commands.guild_only()
+    @checks.can_embed()
     @commands.command()
     async def quote(self, ctx: NabCtx, message_id: int):
         """Shows a messages by its ID.
@@ -1323,6 +1327,7 @@ class General:
 
     @commands.guild_only()
     @commands.command()
+    @checks.can_embed()
     async def serverinfo(self, ctx: NabCtx):
         """Shows the server's information."""
         permissions = ctx.bot_permissions
@@ -1330,24 +1335,26 @@ class General:
             await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
         guild = ctx.guild
-        embed = discord.Embed(title=guild.name, timestamp=guild.created_at, description=f"**ID** {guild.id}",
-                              color=discord.Color.blurple())
+        embed = discord.Embed(title=guild.name, timestamp=guild.created_at, color=discord.Color.blurple())
         embed.set_footer(text="Created on")
         embed.set_thumbnail(url=guild.icon_url)
+        embed.add_field(name="ID", value=str(guild.id), inline=False)
         embed.add_field(name="Owner", value=guild.owner.mention)
         embed.add_field(name="Voice Region", value=get_region_string(guild.region))
-        embed.add_field(name="Channels",
-                        value=f"Text: {len(guild.channels):,}\n"
-                              f"Voice: {len(guild.voice_channels):,}\n"
-                              f"Categories: {len(guild.categories):,}")
+        embed.add_field(name=f"Channels ({len(guild.text_channels)+len(guild.voice_channels):,})",
+                        value=f"📄 Text: **{len(guild.text_channels):,}**\n"
+                              f"🎙 Voice: **{len(guild.voice_channels):,}**\n"
+                              f"🗂 Categories: **{len(guild.categories):,}**")
         status_count = Counter(str(m.status) for m in guild.members)
+        bot_count = len(list(filter(lambda m: m.bot, guild.members)))
         if config.use_status_emojis:
-            embed.add_field(name="Members",
-                            value=f"Total: {len(guild.members):,}\n"
-                                  f"{status_count['online']:,}{config.status_emojis['online']}  "
-                                  f"{status_count['idle']:,}{config.status_emojis['idle']} "
-                                  f"{status_count['dnd']:,}{config.status_emojis['dnd']} "
-                                  f"{status_count['offline']:,}{config.status_emojis['offline']}")
+            embed.add_field(name=f"Members ({len(guild.members):,})",
+                            value=f"👨 Humans: **{len(guild.members)-bot_count:,}**\n"
+                                  f"🤖 Bots: **{bot_count:,}**\n"
+                                  f"**{status_count['online']:,}**{config.status_emojis['online']} "
+                                  f"**{status_count['idle']:,}**{config.status_emojis['idle']} "
+                                  f"**{status_count['dnd']:,}**{config.status_emojis['dnd']} "
+                                  f"**{status_count['offline']:,}**{config.status_emojis['offline']}")
         else:
             embed.add_field(name="Members",
                             value=f"Total: {len(guild.members):,}\n"
@@ -1355,8 +1362,11 @@ class General:
                                   f"Idle: {status_count['idle']:,}\n"
                                   f"Busy: {status_count['dnd']:,}\n"
                                   f"Offline: {status_count['offline']:,}")
-        embed.add_field(name="Roles", value=len(guild.roles))
-        embed.add_field(name="Emojis", value=len(guild.emojis))
+        embed.add_field(name="Roles", value=f"{len(guild.roles):,}")
+        embed.add_field(name="Emojis", value=f"{len(guild.emojis):,}")
+        if guild.splash_url:
+            embed.add_field(name="Splash screen", value="\u200F", inline=True)
+            embed.set_image(url=guild.splash_url)
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -1365,6 +1375,7 @@ class General:
         await ctx.send("I have been running for {0}.".format(parse_uptime(self.bot.start_time, True)))
 
     @commands.guild_only()
+    @checks.can_embed()
     @commands.command(aliases=["memberinfo"])
     async def userinfo(self, ctx, *, user: str=None):
         """Shows a user's information."""

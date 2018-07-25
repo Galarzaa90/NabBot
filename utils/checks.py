@@ -6,6 +6,9 @@ from utils.context import NabCtx
 
 
 # Checks
+from utils.general import CannotEmbed
+
+
 def is_owner():
     """Check if the author is the bot's owner"""
     async def predicate(ctx):
@@ -78,6 +81,14 @@ def is_in_tracking_world():
             return ctx.guild.id in ctx.bot.tracked_worlds
         return len(ctx.bot.get_user_worlds(ctx.author.id)) > 0
 
+    return commands.check(predicate)
+
+
+def can_embed():
+    def predicate(ctx: NabCtx):
+        if not ctx.bot_permissions.embed_links:
+            raise CannotEmbed()
+        return True
     return commands.check(predicate)
 
 

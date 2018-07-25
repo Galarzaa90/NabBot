@@ -10,7 +10,7 @@ from discord.ext import commands
 from utils import context
 from utils.config import config
 from utils.database import init_database, userDatabase, get_server_property
-from utils.general import join_list, get_token, get_user_avatar, get_region_string
+from utils.general import join_list, get_token, get_user_avatar, get_region_string, CannotEmbed
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.tibia import populate_worlds, tibia_worlds, get_voc_abb_and_emoji
@@ -101,6 +101,8 @@ class NabBot(commands.Bot):
             return
         elif isinstance(error, commands.NoPrivateMessage):
             await ctx.send(error)
+        elif isinstance(error, CannotEmbed):
+            await ctx.send(f"{ctx.tick(False)} Sorry, `Embed Links` permission is required for this command.")
         elif isinstance(error, commands.CommandInvokeError):
             log.error(f"Exception in command: {ctx.message.clean_content}", exc_info=error.original)
             if isinstance(error.original, discord.HTTPException):
