@@ -512,14 +512,34 @@ class Owner:
     @checks.is_owner()
     @checks.can_embed()
     @commands.command()
-    async def servers(self, ctx: NabCtx):
+    async def servers(self, ctx: NabCtx, sort=None):
         """Shows a list of servers the bot is in.
 
-        Further information can be obtained using `serverinfo [id]`"""
+        Further information can be obtained using `serverinfo [id]`.
+
+        Values can be sorted by using one of the following values for sort:
+        - name
+        - members
+        - world
+        - created
+        - joined"""
         entries = []
-        guilds = sorted(self.bot.guilds, key=lambda g: g.name)
+
+        sorters = {
+            "name": (lambda g: g.name, False, lambda g: self.bot.tracked_worlds.get(g.id, 'None')),
+            "members": (lambda g: len(g.members), True, lambda g: f"{len(g.members):,} users"),
+            "world": (lambda g: self.bot.tracked_worlds.get(g.id), False,
+                      lambda g: self.bot.tracked_worlds.get(g.id, 'None')),
+            "created": (lambda g: g.created_at, False, lambda g: f"Created: {g.created_at.date()}"),
+            "joined": (lambda g: g.me.joined_at, False, lambda g: f"Joined: {g.me.joined_at.date()}")
+        }
+        if sort is None:
+            sort = "name"
+        if sort not in sorters:
+            return await ctx.send(f"{ctx.tick(False)} Invalid sort value. Valid values are: `{', '.join(sorters)}`")
+        guilds = sorted(self.bot.guilds, key=sorters[sort][0], reverse=sorters[sort][1])
         for guild in guilds:
-            entries.append(f"**{guild.name}** (ID: **{guild.id}**) - {self.bot.tracked_worlds.get(guild.id, 'None')}")
+            entries.append(f"**{guild.name}** (ID: **{guild.id}**) - {sorters[sort][2](guild)}")
         pages = Pages(ctx, entries=entries, per_page=10)
         pages.embed.title = f"Servers with {ctx.me.name}"
         try:
