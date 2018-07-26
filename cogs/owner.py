@@ -16,6 +16,7 @@ from utils.database import get_server_property
 from utils.context import NabCtx
 from utils.general import *
 from utils.messages import *
+from utils.pages import Pages, CannotPaginate
 from utils.tibia import *
 from utils.tibiawiki import *
 
@@ -508,16 +509,23 @@ class Owner:
         else:
             await ctx.send(fmt)
 
-
-    @commands.command()
     @checks.is_owner()
+    @checks.can_embed()
+    @commands.command()
     async def servers(self, ctx: NabCtx):
-        """Shows a list of servers the bot is in."""
-        reply = "I'm in the following servers:"
-        for guild in self.bot.guilds:
-            reply += "\n\t**{0.name}** - (Owner: {0.owner.name}#{0.owner.discriminator}) - {1} - {2} members"\
-                .format(guild, self.bot.tracked_worlds.get(guild.id, "No world tracked"), len(guild.members))
-        await ctx.send(reply)
+        """Shows a list of servers the bot is in.
+
+        Further information can be obtained using `serverinfo [id]`"""
+        entries = []
+        guilds = sorted(self.bot.guilds, key=lambda g: g.name)
+        for guild in guilds:
+            entries.append(f"**{guild.name}** (ID: **{guild.id}**) - {self.bot.tracked_worlds.get(guild.id, 'None')}")
+        pages = Pages(ctx, entries=entries, per_page=10)
+        pages.embed.title = f"Servers with {ctx.me.name}"
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
 
     @commands.command(name="unload")
     @checks.is_owner()

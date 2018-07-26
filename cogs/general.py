@@ -1331,18 +1331,28 @@ class General:
     @commands.guild_only()
     @commands.command()
     @checks.can_embed()
-    async def serverinfo(self, ctx: NabCtx):
-        """Shows the server's information."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-        guild = ctx.guild
+    async def serverinfo(self, ctx: NabCtx, server=None):
+        """Shows the server's information.
+
+        The bot owner can additionally check the information of a specific server where the bot is.
+        """
+        if await checks.is_owner_check(ctx) and server is not None:
+            try:
+                guild = self.bot.get_guild(int(server))
+                if guild is None:
+                    return await ctx.send(f"{ctx.tick(False)} I'm not in any server with ID {server}.")
+            except ValueError:
+                return await ctx.send(f"{ctx.tick(False)} That is not a valid id.")
+        else:
+            guild = ctx.guild
         embed = discord.Embed(title=guild.name, timestamp=guild.created_at, color=discord.Color.blurple())
         embed.set_footer(text="Created on")
         embed.set_thumbnail(url=guild.icon_url)
         embed.add_field(name="ID", value=str(guild.id), inline=False)
-        embed.add_field(name="Owner", value=guild.owner.mention)
+        if ctx.guild != guild:
+            embed.add_field(name="Owner", value=str(guild.owner))
+        else:
+            embed.add_field(name="Owner", value=guild.owner.mention)
         embed.add_field(name="Voice Region", value=get_region_string(guild.region))
         embed.add_field(name=f"Channels ({len(guild.text_channels)+len(guild.voice_channels):,})",
                         value=f"📄 Text: **{len(guild.text_channels):,}**\n"
@@ -1352,21 +1362,26 @@ class General:
         bot_count = len(list(filter(lambda m: m.bot, guild.members)))
         if config.use_status_emojis:
             embed.add_field(name=f"Members ({len(guild.members):,})",
-                            value=f"👨 Humans: **{len(guild.members)-bot_count:,}**\n"
-                                  f"🤖 Bots: **{bot_count:,}**\n"
-                                  f"**{status_count['online']:,}**{config.status_emojis['online']} "
+                            value=f"**{status_count['online']:,}**{config.status_emojis['online']} "
                                   f"**{status_count['idle']:,}**{config.status_emojis['idle']} "
                                   f"**{status_count['dnd']:,}**{config.status_emojis['dnd']} "
-                                  f"**{status_count['offline']:,}**{config.status_emojis['offline']}")
+                                  f"**{status_count['offline']:,}**{config.status_emojis['offline']}\n"
+                                  f"👨 Humans: **{len(guild.members)-bot_count:,}**\n"
+                                  f"🤖 Bots: **{bot_count:,}**"
+                            )
         else:
-            embed.add_field(name="Members",
-                            value=f"Total: {len(guild.members):,}\n"
-                                  f"Online: {status_count['online']:,}\n"
-                                  f"Idle: {status_count['idle']:,}\n"
-                                  f"Busy: {status_count['dnd']:,}\n"
-                                  f"Offline: {status_count['offline']:,}")
+            embed.add_field(name=f"Members ({len(guild.members):,})",
+                            value=f"Online: **{status_count['online']:,}**\n"
+                                  f"Idle: **{status_count['idle']:,}**\n"
+                                  f"Busy: **{status_count['dnd']:,}**\n"
+                                  f"Offline: **{status_count['offline']:,}**\n"
+                                  f"Humans: **{len(guild.members)-bot_count:,}**\n"
+                                  f"Bots: **{bot_count:,}**"
+                            )
         embed.add_field(name="Roles", value=f"{len(guild.roles):,}")
         embed.add_field(name="Emojis", value=f"{len(guild.emojis):,}")
+        if self.bot.tracked_worlds.get(guild.id):
+            embed.add_field(name="Tracked world", value=self.bot.tracked_worlds.get(guild.id))
         if guild.splash_url:
             embed.add_field(name="Splash screen", value="\u200F", inline=True)
             embed.set_image(url=guild.splash_url)
