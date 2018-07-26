@@ -528,7 +528,7 @@ class Owner:
         sorters = {
             "name": (lambda g: g.name, False, lambda g: self.bot.tracked_worlds.get(g.id, 'None')),
             "members": (lambda g: len(g.members), True, lambda g: f"{len(g.members):,} users"),
-            "world": (lambda g: self.bot.tracked_worlds.get(g.id), False,
+            "world": (lambda g: self.bot.tracked_worlds.get(g.id, "|"), False,
                       lambda g: self.bot.tracked_worlds.get(g.id, 'None')),
             "created": (lambda g: g.created_at, False, lambda g: f"Created: {g.created_at.date()}"),
             "joined": (lambda g: g.me.joined_at, False, lambda g: f"Joined: {g.me.joined_at.date()}")
