@@ -68,6 +68,7 @@ network_retry_delay: 1
 online_emoji: 🔹
 true_emoji: ✅
 false_emoji: ❌
+warn_emoji: ⚠
 levelup_emoji: 🌟
 death_emoji: ☠
 pvpdeath_emoji: 💀

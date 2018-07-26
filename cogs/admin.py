@@ -5,6 +5,7 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from utils import checks
+from utils.config import config
 from utils.context import NabCtx
 from utils.database import *
 from utils.general import join_list, log, get_user_avatar
@@ -43,23 +44,22 @@ class Admin:
 
         target = self.bot.get_member(target_name, ctx.guild)
         if target is None:
-            await ctx.send(f"{ctx.tick(False)} I couldn't find any users named @{target_name}")
-            return
+            return await ctx.send(f"{ctx.tick(False)} I couldn't find any users named @{target_name}")
         if target.bot:
-            await ctx.send(f"{ctx.tick(False)} You can't register characters to discord bots!")
-            return
+            return await ctx.send(f"{ctx.tick(False)} You can't register characters to discord bots!")
+
+        # Get list of the user's shared servers with the bot
         target_guilds = self.bot.get_user_guilds(target.id)
+        # Filter only the servers that follow the same as the current context
         target_guilds = list(filter(lambda x: self.bot.tracked_worlds.get(x.id) == world, target_guilds))
 
-        await ctx.trigger_typing()
+        msg = await ctx.send(f"{config.loading_emoji} Fetching characters...")
         try:
             char = await get_character(char_name)
             if char is None:
-                await ctx.send("That character doesn't exist.")
-                return
+                return await msg.edit(content="That character doesn't exist.")
         except NetworkError:
-            await ctx.send("I couldn't fetch the character, please try again.")
-            return
+            return await msg.edit(content="I couldn't fetch the character, please try again.")
         chars = char.other_characters
         # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
         # searched char, so we don't have to look him up again
@@ -75,7 +75,9 @@ class Admin:
                 skipped.append(char)
                 continue
             with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT name, guild, user_id as owner, abs(level) as level FROM chars WHERE name LIKE ?",
+                c.execute("SELECT name, guild, user_id as owner, abs(level) as level "
+                          "FROM chars "
+                          "WHERE name LIKE ?",
                           (char.name,))
                 db_char = c.fetchone()
             if db_char is not None:
@@ -274,6 +276,7 @@ class Admin:
             "read_messages": ["error", "I won't be able to see commands in here."],
             "send_messages": ["error", "I won't be able to respond in here."],
             "add_reactions": ["error", "Pagination or commands that require emoji confirmation won't work."],
+            "external_emojis": ["warn", "I won't be able to show my emojis in some commands."],
             "read_message_history": ["error", "I won't be able to see your reactions in commands."],
             "manage_messages": ["warn", "Command pagination won't work well and I won't be able to delete messages "
                                         "in the ask channel."],
@@ -286,7 +289,7 @@ class Admin:
             if not perm_dict[k]:
                 ok = False
                 perm_name = k.replace("_", " ").title()
-                icon = ctx.tick(False) if level == "error" else "⚠"
+                icon = ctx.tick(False) if level == "error" else config.warn_emoji
                 content += f"\nMissing `{perm_name}` permission"
                 content += f"\n\t{icon} {explain}"
         if ok:

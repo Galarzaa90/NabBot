@@ -1,4 +1,7 @@
 # Changelog
+## Version 1.4.1 (Unreleased)
+- Small changes to `/userinfo`
+
 ## Version 1.4.0 (2018-07-24)
 - `/loot` has been rewritten:
     - Loot database remade from scratch with images extracted directly from the client, all images should now be pixel perfect matches to those taken from in-game screenshots

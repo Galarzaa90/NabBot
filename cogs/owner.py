@@ -367,6 +367,16 @@ class Owner:
         else:
             await ctx.send(f"{ctx.tick()} Cog reloaded successfully.")
 
+    @checks.is_owner()
+    @commands.command(name="reloadconfig")
+    async def reload_config(self, ctx):
+        """Reloads the configuration file."""
+        try:
+            config.parse()
+            await ctx.send(f"{ctx.tick()} Config file reloaded.")
+        except Exception:
+            await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+
     @commands.command(hidden=True)
     @checks.is_owner()
     async def repl(self, ctx: NabCtx):
@@ -571,7 +581,7 @@ class Owner:
             if not comp(package[1], StrictVersion(version), StrictVersion(package[2])):
                 value = f"{ctx.tick(False)}v{version}\n`At least v{package[2]} expected`"
             elif not comp(package[3], StrictVersion(version), StrictVersion(package[4])):
-                value = f"⚠v{version}\n`Only below v{package[4]} tested`"
+                value = f"{config.warn_emoji}v{version}\n`Only below v{package[4]} tested`"
             else:
                 value = f"{ctx.tick(True)}v{version}"
             embed.add_field(name=package[0], value=value)

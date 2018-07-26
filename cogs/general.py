@@ -144,13 +144,16 @@ class General:
                                               "\u2023 [Nezune](https://github.com/Nezune)")
         embed.add_field(name="Created", value="March 30th 2016")
         embed.add_field(name="Version", value=f"v{self.bot.__version__}")
-        embed.add_field(name="Platform", value="Python")
+        embed.add_field(name="Platform", value="Python "
+                                               "([discord.py](https://github.com/Rapptz/discord.py/tree/rewrite))")
         embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
         embed.add_field(name="Users", value=f"{len(self.bot.users):,}")
-        embed.add_field(name="Website", value="[nabbot.ddns.net](https://galarzaa90.github.io/NabBot/)")
-        embed.add_field(name="Discord", value="[discord.me/NabBot](https://discord.me/nabbot)")
-        embed.add_field(name="Donate", value="[PayPal](https://www.paypal.com/cgi-bin/webscr?"
-                                             "cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)")
+        embed.add_field(name="Links", inline=False,
+                        value=f"[Add to your server](https://discordbots.org/bot/178966653982212096)  |  "
+                              f"[Support Server](https://discord.me/nabbot)  |  "
+                              f"[Docs](https://galarzaa90.github.io/NabBot)  |  "
+                              f"[Donate](https://www.paypal.com/cgi-bin/webscr?"
+                              f"cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)")
         embed.set_footer(text=f"Uptime | {parse_uptime(self.bot.start_time, True)}")
         await ctx.send(embed=embed)
 
@@ -1378,7 +1381,13 @@ class General:
     @checks.can_embed()
     @commands.command(aliases=["memberinfo"])
     async def userinfo(self, ctx, *, user: str=None):
-        """Shows a user's information."""
+        """Shows a user's information.
+
+        About user statutes:
+        - Server Owner: Owner of the server
+        - Server Admin: User with Administrator permission
+        - Server Moderator: User with `Manage Server` permissions.
+        - Channel Moderator: User with `Manage Channels` permissions in at least one channel."""
         if user is None:
             user = ctx.author
         else:
@@ -1387,8 +1396,9 @@ class General:
                 await ctx.send(f"Could not find user `{user}`")
                 return
             user = _user
-        embed = discord.Embed(title=f"{user.name}#{user.discriminator}",
-                              timestamp=user.joined_at, colour=user.colour)
+        embed = discord.Embed(title=f"{user.name}#{user.discriminator}", timestamp=user.joined_at, colour=user.colour)
+        if config.use_status_emojis:
+            embed.title += config.status_emojis[str(user.status)]
         embed.set_thumbnail(url=get_user_avatar(user))
         embed.set_footer(text="Member since")
         embed.add_field(name="ID", value=user.id)
@@ -1410,6 +1420,7 @@ class General:
 
         embed.add_field(name="Servers", value=f"{len(self.bot.get_user_guilds(user.id))} shared")
         embed.add_field(name="Roles", value=f"{len(user.roles):,}")
+        embed.add_field(name="Highest role", value=f"{user.top_role.mention}")
 
         await ctx.send(embed=embed)
 

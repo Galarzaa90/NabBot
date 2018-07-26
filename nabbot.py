@@ -43,7 +43,7 @@ class NabBot(commands.Bot):
         # A list version is created from the dictionary
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
-        self.__version__ = "1.4.0"
+        self.__version__ = "1.4.1a"
         self.__min_discord__ = 1480
 
     async def on_ready(self):
@@ -422,7 +422,8 @@ class NabBot(commands.Bot):
         :return: The member found or None.
         """
         id_regex = re.compile(r'([0-9]{15,21})$')
-        match = id_regex.match(str(argument))
+        mention_regex = re.compile(r'<@!?([0-9]+)>$')
+        match = id_regex.match(str(argument)) or mention_regex.match(str(argument))
         if match is None:
             return self.get_member_named(argument, guild)
         else:
@@ -461,7 +462,10 @@ class NabBot(commands.Bot):
 
     def get_user_guilds(self, user_id: int) -> List[discord.Guild]:
         """Returns a list of the user's shared guilds with the bot"""
-        return [self.get_guild(gid) for gid in self.members[user_id]]
+        try:
+            return [self.get_guild(gid) for gid in self.members[user_id]]
+        except KeyError:
+            return []
 
     def get_user_worlds(self, user_id: int, guild_list=None) -> List[str]:
         """Returns a list of all the tibia worlds the user is tracked in.
@@ -589,6 +593,8 @@ if __name__ == "__main__":
         try:
             nabbot.load_extension(cog)
             print(f"Cog {cog} loaded successfully.")
+        except ModuleNotFoundError:
+            print(f"Could not find cog: {cog}")
         except Exception as e:
             print(f'Cog {cog} failed to load:')
             traceback.print_exc(limit=-1)
@@ -597,6 +603,8 @@ if __name__ == "__main__":
         try:
             nabbot.load_extension(extra)
             print(f"Extra cog {extra} loaded successfully.")
+        except ModuleNotFoundError:
+            print(f"Could not find extra cog: {extra}")
         except Exception as e:
             print(f'Extra og {extra} failed to load:')
             traceback.print_exc(limit=-1)
