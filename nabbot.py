@@ -85,6 +85,18 @@ class NabBot(commands.Bot):
         # This is a PM, no further info needed
         if message.guild is None:
             return
+        if message.content.strip() == f"<@{self.user.id}>":
+            prefixes = list(config.command_prefix)
+            if ctx.guild:
+                prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
+            if prefixes:
+                prefixes_str = ", ".join(f"`{p}`" for p in prefixes)
+                return await ctx.send(f"My command prefixes are: {prefixes_str}, and mentions. "
+                                      f"To see my commands, try: `{prefixes[0]}help.`", delete_after=10)
+            else:
+                return await ctx.send(f"My command prefix is mentions. "
+                                      f"To see my commands, try: `@{self.user.name} help.`", delete_after=10)
+
         server_delete = get_server_property(message.guild.id, "commandsonly", is_int=True)
         global_delete = config.ask_channel_delete
         if (server_delete is None and global_delete) or server_delete:
