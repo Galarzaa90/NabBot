@@ -19,7 +19,8 @@ from utils.config import config
 from utils.context import NabCtx
 from utils.database import userDatabase, get_server_property
 from utils.general import parse_uptime, TimeString, single_line, log, BadTime, get_user_avatar, get_region_string, \
-    clean_string, is_numeric
+    clean_string, is_numeric, FIELD_VALUE_LIMIT
+from utils.messages import split_message
 from utils.pages import CannotPaginate, VocationPages, HelpPaginator
 from utils.tibia import get_voc_abb, get_voc_emoji, tibia_worlds
 
@@ -357,9 +358,23 @@ class General:
             animated = [str(e) for e in emojis if e.animated]
             embed = discord.Embed(title="Custom Emojis", color=discord.Color.blurple())
             if normal:
-                embed.add_field(name="Regular", value="".join(normal))
+                emojis_str = "\n".join(normal)
+                fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
+                for i, value in enumerate(fields):
+                    if i == 0:
+                        name = f"Regular ({len(normal)})"
+                    else:
+                        name = "\u200F"
+                    embed.add_field(name=name, value=value.replace("\n", ""))
             if animated:
-                embed.add_field(name="Animated (Nitro required)", value="".join(animated))
+                emojis_str = "\n".join(animated)
+                fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
+                for i, value in enumerate(fields):
+                    if i == 0:
+                        name = f"Animated (Nitro required) ({len(animated)})"
+                    else:
+                        name = "\u200F"
+                    embed.add_field(name=name, value=value.replace("\n", ""))
         await ctx.send(embed=embed)
 
     @commands.guild_only()
