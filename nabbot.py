@@ -16,7 +16,7 @@ from utils.help_format import NabHelpFormat
 from utils.tibia import populate_worlds, tibia_worlds, get_voc_abb_and_emoji
 
 initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot",
-                "cogs.tibiawiki", "cogs.roles", "cogs.settings"}
+                "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info"}
 
 
 def _prefix_callable(bot, msg):
@@ -415,7 +415,7 @@ class NabBot(commands.Bot):
         if changes:
             if bot_member.guild_permissions.view_audit_log:
                 async for entry in guild.audit_logs(limit=1, reverse=False, action=discord.AuditLogAction.guild_update,
-                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry:
+                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
                     icon_url = get_user_avatar(entry.user)
                     embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
                     break
