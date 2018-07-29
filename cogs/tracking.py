@@ -415,7 +415,7 @@ class Tracking:
 
         # Select a message
         if death.by_player:
-            message = weighed_choice(death_messages_player, vocation=char.vocation, level=death.level,
+            message = weighed_choice(self.ctx, death_messages_player, vocation=char.vocation, level=death.level,
                                      levels_lost=levels_lost)
         elif death.killer in ["death", "energy", "earth", "fire", "Pit Battler", "Pit Berserker", "Pit Blackling",
                               "Pit Brawler", "Pit Condemned", "Pit Demon", "Pit Destroyer", "Pit Fiend",
@@ -425,7 +425,7 @@ class Tracking:
             # This will cause a small amount of deaths to not be announced but it's probably worth the tradeoff (ty selken)
             return
         else:
-            message = weighed_choice(death_messages_monster, vocation=char.vocation, level=death.level,
+            message = weighed_choice(self.ctx, death_messages_monster, vocation=char.vocation, level=death.level,
                                      levels_lost=levels_lost, killer=death.killer)
         # Format message with death information
         death_info = {'name': char.name, 'level': death.level, 'killer': death.killer, 'killer_article': killer_article,
@@ -475,7 +475,7 @@ class Tracking:
         log.info("Announcing level up: {0} ({1})".format(char.name, level))
 
         # Select a message
-        message = weighed_choice(level_messages, vocation=char.vocation, level=level)
+        message = weighed_choice(self.ctx, level_messages, vocation=char.vocation, level=level)
         level_info = {'name': char.name, 'level': level, 'he_she': char.he_she.lower(), 'his_her': char.his_her.lower(),
                       'him_her': char.him_her.lower()}
         # Format message with level information
