@@ -4,6 +4,7 @@ import re
 import discord
 
 from utils.config import config
+from utils.database import get_server_property
 
 announce_threshold = config.announce_threshold
 
@@ -13,6 +14,7 @@ last_messages = [""]*10
 # Message list for announce_level
 # Parameters: {name}, {level} , {he_she}, {his_her}, {him_her}
 # Values in each list element are:
+# Relative chance, message, lambda function as filter (takes ctx, level, voc, killer, levels_lost)
 # Only relative chance and message are mandatory.
 level_messages = [
     [100, "Congratulations to **{name}** on reaching level {level}!"],
@@ -36,68 +38,76 @@ level_messages = [
     [70, "**{name}** is level {level} now! And we all thought {he_she}'d never achieve anything in life."],
     # EK Only
     [50, "**{name}** has reached level {level}. That's 9 more mana potions you can carry now!",
-     ["Knight", "Elite Knight"], range(100, 999)],
+     lambda ctx, level, voc, killer, levels_lost: level >= 100 and "Knight" in voc],
     [200, "**{name}** is level {level}. Stick them with the pointy end! 🗡️",
-     ["Knight", "Elite Knight"], range(100, 999)],
-    [200, "**{name}** is a fat level {level} meatwall now. BLOCK FOR ME SENPAI.", ["Knight", "Elite Knight"],
-     range(100, 999)],
+     lambda ctx, level, voc, killer, levels_lost: level >= 100 and "Knight" in voc],
+    [200, "**{name}** is a fat level {level} meatwall now. BLOCK FOR ME SENPAI.", 
+     lambda ctx, level, voc, killer, levels_lost: level >= 100 and "Knight" in voc],
     # RP Only
     [50, "**{name}** has reached level {level}. But {he_she} still misses arrows...",
-     ["Paladin", "Royal Paladin"], range(100, 999)],
+     lambda ctx, level, voc, killer, levels_lost: level >= 100 and "Paladin" in voc],
     [150, "Congrats on level {level}, **{name}**. You can stop running around now.",
-     ["Paladin", "Royal Paladin"], range(100, 999)],
-    [150, "**{name}** is level {level}. Bullseye!🎯", ["Paladin", "Royal Paladin"],
-     range(100, 999)],
+     lambda ctx, level, voc, killer, levels_lost: level >= 100 and "Paladin" in voc],
+    [150, "**{name}** is level {level}. Bullseye!🎯", 
+     lambda ctx, level, voc, killer, levels_lost: level >= 100 and "Paladin" in voc],
     # MS Only
     [50, "Level {level}, **{name}**? Nice. Don't you wish you were a druid though?",
-     ["Sorcerer", "Master Sorcerer"], range(100, 999)],
-    [150, "**{name}** is level {level}. Watch out for {his_her} SDs!", ["Sorcerer", "Master Sorcerer"],
-     range(45, 999)],
-    [150, "**{name}** got level {level}. If {he_she} only stopped missing beams.", ["Sorcerer", "Master Sorcerer"],
-     range(23, 999)],
+     lambda ctx, level, voc, killer, levels_lost: level >= 100 and "Sorcerer" in voc],
+    [150, "**{name}** is level {level}. Watch out for {his_her} SDs!", 
+     lambda ctx, level, voc, killer, levels_lost: level >= 45 and "Sorcerer" in voc],
+    [150, "**{name}** got level {level}. If {he_she} only stopped missing beams.", 
+     lambda ctx, level, voc, killer, levels_lost: level >= 23 and "Sorcerer" in voc],
     [150,
-     "**{name}** is level {level}. 🔥🔥BURN THEM ALL🔥🔥🔥", ["Sorcerer", "Master Sorcerer"], range(100, 999)],
+     "**{name}** is level {level}. 🔥🔥BURN THEM ALL🔥🔥", 
+     lambda ctx, level, voc, killer, levels_lost: level >= 100 and "Sorcerer" in voc],
     # ED Only
-    [50, "**{name}** has reached level {level}. Flower power!🌼", ["Druid", "Elder Druid"],
-     range(100, 999)],
-    [150, "Congrats on level {level}, **{name}**. Sio plz.", ["Druid", "Elder Druid"], range(100, 999)],
-    [150, "**{name}** is level {level}. 🔥🔥BURN THEM ALL... Or... Give them frostbite...?❄❄", ["Druid", "Elder Druid"],
-     range(100, 999)],
+    [50, "**{name}** has reached level {level}. Flower power!🌼", 
+     lambda ctx, level, voc, killer, levels_lost: level >= 100 and "Druid" in voc],
+    [150, "Congrats on level {level}, **{name}**. Sio plz.", 
+     lambda ctx, level, voc, killer, levels_lost: level >= 100 and "Druid" in voc],
+    [150, "**{name}** is level {level}. 🔥🔥BURN THEM ALL... Or... Give them frostbite...?❄❄", 
+     lambda ctx, level, voc, killer, levels_lost: level >= 100 and "Druid" in voc],
     # Level specific
     [20000, "**{name}** is level {level}! UMPs so good 🍷",
-     ["Druid", "Elder Druid", "Sorcerer", "Master Sorcerer"], [130]],
+     lambda ctx, level, voc, killer, levels_lost: level == 130 and ("Druid" in voc or "Sorcerer" in voc)],
     [20000, "**{name}** is level {level} now! Eternal Winter is coming!❄",
-     ["Druid", "Elder Druid"], [60]],
+     lambda ctx, level, voc, killer, levels_lost: level == 60 and "Druid" in voc],
     [20000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature🍃🍃... just look at that wrath.",
-     ["Druid", "Elder Druid"], [55]],
+     lambda ctx, level, voc, killer, levels_lost: level == 55 and "Druid" in voc],
     [20000, "**{name}** is now level {level}. Don't forget to buy a Gearwheel Chain!📿",
-     False, [75]],
+     lambda ctx, level, voc, killer, levels_lost: level == 75],
     [30000, "**{name}** is level {level}! You can become a ninja now!👤",
-     ["Paladin", "Royal Paladin"], [80]],
-    [30000, "**{name}** is level {level}! Time to get some crystalline arrows!🏹", ["Paladin", "Royal Paladin"], [90]],
-    [20000, "Level {level}, **{name}**? You're finally important enough for me to notice!", False,
-     [announce_threshold]],
-    [20000, "Congratulations on level {level} **{name}**! Now you're relevant to me. As relevant a human can be anyway",
-     False, [announce_threshold]],
+     lambda ctx, level, voc, killer, levels_lost: level == 80 and "Paladin" in voc],
+    [30000, "**{name}** is level {level}! Time to get some crystalline arrows!🏹", 
+     lambda ctx, level, voc, killer, levels_lost: level == 90 and "Paladin" in voc],
+    [20000, "Level {level}, **{name}**? You're finally important enough for me to notice!", 
+     lambda ctx, level, voc, killer, levels_lost: level == get_server_property(ctx.guild.id, "announce_level", is_int=True, default=announce_threshold)],
+    [20000, "Congratulations on level {level} **{name}**! Now you're relevant to me. As relevant a human can be anyway", 
+     lambda ctx, level, voc, killer, levels_lost: level == get_server_property(ctx.guild.id, "announce_level", is_int=True, default=announce_threshold)],
     [20000, "**{name}** is now level {level}! Time to go berserk! 💢",
-     ["Knight", "Elite Knight"], [35]],
+     lambda ctx, level, voc, killer, levels_lost: level == 35 and "Knight" in voc],
     [20000, "Congratulations on level {level} **{name}**! Now you can become an umbral master, but is your"
-            " bank account ready?💸", False, [250]],
+     " bank account ready?💸",  
+     lambda ctx, level, voc, killer, levels_lost: level == 250],
     [30000, "**{name}** is level {level}!!!!\r\n" +
-     "Sweet, sweet triple digits!", False, [100]],
+     "Sweet, sweet triple digits!", 
+     lambda ctx, level, voc, killer, levels_lost: level == 100],
     [20000, "**{name}** is level {level}!!!!\r\n" +
-     "WOOO", False, [100, 200, 300, 400]],
+     "WOOO", 
+     lambda ctx, level, voc, killer, levels_lost: level in (100, 200, 300, 400)],
     [20000, "**{name}** is level {level}!!!!\r\n" +
-     "yaaaay milestone!", False, [100, 200, 300, 400]],
+     "yaaaay milestone!", 
+     lambda ctx, level, voc, killer, levels_lost: level in (100, 200, 300, 400)],
     [20000, "**{name}** is level {level}!!!!\r\n" +
-     "holy crap!", False, [200, 300, 400]]]
+     "holy crap!", 
+     lambda ctx, level, voc, killer, levels_lost: level in (200, 300, 400)]]
 
 # Message list for announce death.
 # Parameters: ({name},{level},{killer},{killer_article},{he_she}, {his_her},{him_her}
 # Additionally, words surrounded by \WORD/ are upper cased, /word\ are lower cased, /Word/ are title cased
 # words surrounded by ^WORD^ are ignored if the next letter found is uppercase (useful for dealing with proper nouns)
 # Values in each list element are:
-# Relative chance, message, vocations filter, levels filters, monsters filter, levels lost filter
+# Relative chance, message, lambda function as filter (takes ctx, level, voc, killer, levels_lost)
 # Only relative chance and message are mandatory.
 death_messages_monster = [
     [100, "RIP **{name}** ({level}), you died the way you lived- inside {killer_article}**{killer}**."],
@@ -135,59 +145,70 @@ death_messages_monster = [
      "**{killer}** had nothing to do with it."],
     [100, "**{name}** ({level}) + **{killer}** = dedd."],
     [100, "**{name}** ({level}) got killed by a **{killer}**. Another one bites the dust!"],
-    [100,
-     "**{name}** ({level}) just kicked the bucket. And by kicked the bucket I mean a **{killer}** beat "
+    [100, "**{name}** ({level}) just kicked the bucket. And by kicked the bucket I mean a **{killer}** beat "
      "the crap out of {him_her}."],
-    [100,
-     "Alas, poor **{name}** ({level}), I knew {him_her} Horatio; a fellow of infinite jest, of most "
+    [100, "Alas, poor **{name}** ({level}), I knew {him_her} Horatio; a fellow of infinite jest, of most "
      "excellent fancy; {he_she} hath borne me on {his_her} back a thousand times; and now, {he_she} got rekt "
      "by {killer_article}**{killer}**."],
     [70, "To be or not to be 💀, that is the-- Well I guess **{name}** ({level}) made his choice, "
          "or ^that ^**{killer}** chose for him..."],
-    [500,
-     "**{name}** ({level}) just died to {killer_article}**{killer}**, why did nobody sio {him_her}!?",
-     ["Knight", "Elite Knight"]],
-    [500,
-     "Poor **{name}** ({level}) has died. Killed by {killer_article}**{killer}**. I bet it was your "
+    [500, "**{name}** ({level}) just died to {killer_article}**{killer}**, why did nobody sio {him_her}!?",
+     lambda ctx, level, voc, killer, levels_lost: "Knight" in voc],
+    [500, "Poor **{name}** ({level}) has died. Killed by {killer_article}**{killer}**. I bet it was your "
      "blocker's fault though, eh **{name}**?",
-     ["Druid", "Elder Druid", "Sorcerer", "Master Sorcerer"]],
-    [500,
-     "**{name}** ({level}) tried running away from {killer_article}**{killer}**. /{he_she}/ "
+     lambda ctx, level, voc, killer, levels_lost: "Druid" in voc or "Sorcerer" in voc],
+    [500, "**{name}** ({level}) tried running away from {killer_article}**{killer}**. /{he_she}/ "
      "didn't run fast enough...",
-     ["Paladin", "Royal Paladin"]],
-    [500,
-     "What happened to **{name}** ({level})!? Talk about sudden death! I guess ^that ^**{killer}** was "
+     lambda ctx, level, voc, killer, levels_lost: "Paladin" in voc],
+    [500, "What happened to **{name}** ({level})!? Talk about sudden death! I guess ^that ^**{killer}** was "
      "too much for {him_her}...",
-     ["Sorcerer", "Master Sorcerer"]],
-    [500,
-     "**{name}** ({level}) was killed by {killer_article}**{killer}**. I guess {he_she} couldn't "
+     lambda ctx, level, voc, killer, levels_lost: "Sorcerer" in voc],
+    [500, "**{name}** ({level}) was killed by {killer_article}**{killer}**. I guess {he_she} couldn't "
      "sio {him_her}self.",
-     ["Druid", "Elder Druid"]],
+     lambda ctx, level, voc, killer, levels_lost: "Druid" in voc],
     [600, "**{name}** ({level}) died to {killer_article}**{killer}**. \"Don't worry\" they said, \"They are weaker\" "
-     "they said.", False, False, ["weakened frazzlemaw", "enfeebled silencer"]],
-    [20000, "Another paladin bites the dust! **{killer}** strikes again! Rest in peace **{name}** ({level}).",
-     ["Paladin", "Royal Paladin"], False, ["Lady Tenebris"]],
-    [20000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! 👻",
-     False, False, ["something evil"]],
-    [20000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.", False, False, ["death"]],
-    [20000, "They did warn you **{name}** ({level}), you *did* burn 🔥🐲.", False, False, ["dragon", "dragon lord"]],
-    [20000, "**{name}** ({level}) died from {killer_article}**{killer}**. Someone forgot the safeword.😏",
-     False, False, ["choking fear"]],
-    [20000, "That **{killer}** got really up close and personal with **{name}** ({level}). "
-            "Maybe he thought you were his princess Lumelia?😏", False, False, ["hero"]],
-    [20000,
-     "Asian chicks are no joke **{name}** ({level}) 🔪💔.",
-     False, False, ["midnight asura", "dawnfire asura"]],
-    [20000, "**{name}** ({level}) got destroyed by {killer_article}**{killer}**. I bet {he_she} regrets going down"
-            "that hole 🕳️", False, range(1, 120), ["breach brood", "dread intruder", "reality reaver",
-                                                   "spark of destruction", "sparkion"]],
-    [20000,
+     "they said.", 
+     lambda ctx, level, voc, killer, levels_lost: killer in ["weakened frazzlemaw", "enfeebled silencer"]],
+    [2000, "Another paladin bites the dust! **{killer}** strikes again! Rest in peace **{name}** ({level}).",
+     lambda ctx, level, voc, killer, levels_lost: "Paladin" in voc and killer == "Lady Tenebris"],
+    [2000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! 👻",
+     lambda ctx, level, voc, killer, levels_lost: killer == "something evil"],
+    [2000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.", 
+     lambda ctx, level, voc, killer, levels_lost: killer == "death"],
+    [2000, "They did warn you **{name}** ({level}), you *did* burn 🔥🐲.", 
+     lambda ctx, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord"]],
+    [2000, "**{name}** ({level}) died from {killer_article}**{killer}**. Someone forgot the safeword.😏",
+     lambda ctx, level, voc, killer, levels_lost: killer == "choking fear"],
+    [2000, "That **{killer}** got really up close and personal with **{name}** ({level}). "
+            "Maybe he thought you were his princess Lumelia?😏", 
+     lambda ctx, level, voc, killer, levels_lost: killer == "hero"],
+    [2000, "Looks like that **{killer}** made **{name}** ({level}) his bride 😉.",
+     lambda ctx, level, voc, killer, levels_lost: "vampire" in killer],
+    [2000, "Yeah, those are a little stronger than regular orcs, **{name}** ({level}).",
+     lambda ctx, level, voc, killer, levels_lost: "orc cult" in killer],
+    [1000, "Damn! The koolaid they drink in that cult must have steroids on it, **{name}** ({level}).",
+     lambda ctx, level, voc, killer, levels_lost: "cult" in killer],
+    [2500, "**{name}** ({level}) met {his_her} demise at the hands of a **{killer}**. That's hot.",
+     lambda ctx, level, voc, killer, levels_lost: killer in ["true dawnfire asura", "dawnfire asura", "fury"]],
+    [2500, "Poor **{name}** ({level}) just wanted some love! That cold hearted... Witch.",
+     lambda ctx, level, voc, killer, levels_lost: killer in ["true frost flower asura", "frost flower asura", "frost giantess", "ice witch"]],
+    [2000, "Asian chicks are no joke **{name}** ({level}) 🔪💔.",
+     lambda ctx, level, voc, killer, levels_lost: "asura" in killer],
+    [2500, "Asian chicks sure age well, don't you think so, **{name}** ({level})? 😍👵.",
+     lambda ctx, level, voc, killer, levels_lost: "true" in killer and "asura" in killer],
+    [2000, "**{name}** ({level}) got destroyed by {killer_article}**{killer}**. I bet {he_she} regrets going down"
+            "that hole 🕳️", 
+     lambda ctx, level, voc, killer, levels_lost: level < 120 and killer in ["breach brood", "dread intruder", "reality reaver",
+     "spark of destruction", "sparkion"]],
+    [2000,
      "Watch out for that **{killer}**'s wav... Oh😐... Rest in peace **{name}** ({level}).",
-     False, False, ["hellhound", "hellfire fighter", "dragon lord", "undead dragon", "dragon", "draken spellweaver"]],
-    [20000, "**{name}** ({level}) died to {killer_article}**{killer}**! Don't worry, {he_she} didn't have a soul anyway",
-     False, False, ["souleater"]],
+     lambda ctx, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord", "undead dragon", "draken spellweaver", 
+     "hellhound", "hellfire fighter"]],
+    [2000, "**{name}** ({level}) died to {killer_article}**{killer}**! Don't worry, {he_she} didn't have a soul anyway",
+     lambda ctx, level, voc, killer, levels_lost: killer == "souleater"],
     [150, "Oh look at that, rest in peace **{name}** ({level}),  ^that ^**{killer}** really got you. "
-          "Hope you get your level back.", False, False, False, range(1, 10)]
+          "Hope you get your level back.", 
+     lambda ctx, level, voc, killer, levels_lost: levels_lost > 0]
 ]
 
 # Deaths by players
@@ -229,7 +250,7 @@ def format_message(message) -> str:
     return message
 
 
-def weighed_choice(choices, level: int, vocation: str = None, killer: str = None, levels_lost: int = 0) -> str:
+def weighed_choice(ctx, choices, level: int, vocation: str = None, killer: str = None, levels_lost: int = 0) -> str:
     """Makes weighed choices from message lists where [0] is a value representing the relative odds
     of picking a message and [1] is the message string"""
 
@@ -238,21 +259,10 @@ def weighed_choice(choices, level: int, vocation: str = None, killer: str = None
     weight_range = 0
     _messages = []
     for message in choices:
-        match = True
-        try:
-            if message[2] and vocation not in message[2]:
-                match = False
-            if message[3] and level not in message[3]:
-                match = False
-            if message[4] and killer not in message[4]:
-                match = False
-            if message[5] and levels_lost not in message[5]:
-                match = False
-        except IndexError:
-            pass
-        if match:
-            weight_range = weight_range + (message[0] if not message[1] in last_messages else message[0] / 10)
-            _messages.append(message)
+        if len(message) == 3 and not message[2](ctx, level, vocation, killer, levels_lost):
+            continue
+        weight_range = weight_range + (message[0] if not message[1] in last_messages else message[0] / 10)
+        _messages.append(message)
     # Choose a random number
     range_choice = random.randint(0, weight_range)
     # Iterate until we find the matching message
