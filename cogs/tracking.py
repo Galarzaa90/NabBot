@@ -413,27 +413,6 @@ class Tracking:
             else:
                 killer_article = ""
 
-        # Select a message
-        if death.by_player:
-            message = weighed_choice(self.ctx, death_messages_player, vocation=char.vocation, level=death.level,
-                                     levels_lost=levels_lost)
-        elif death.killer in ["death", "energy", "earth", "fire", "Pit Battler", "Pit Berserker", "Pit Blackling",
-                              "Pit Brawler", "Pit Condemned", "Pit Demon", "Pit Destroyer", "Pit Fiend",
-                              "Pit Groveller", "Pit Grunt", "Pit Lord", "Pit Maimer", "Pit Overlord", "Pit Reaver",
-                              "Pit Scourge"] and levels_lost == 0:
-            # Skip element damage deaths unless player lost a level to avoid spam from arena deaths
-            # This will cause a small amount of deaths to not be announced but it's probably worth the tradeoff (ty selken)
-            return
-        else:
-            message = weighed_choice(self.ctx, death_messages_monster, vocation=char.vocation, level=death.level,
-                                     levels_lost=levels_lost, killer=death.killer)
-        # Format message with death information
-        death_info = {'name': char.name, 'level': death.level, 'killer': death.killer, 'killer_article': killer_article,
-                      'he_she': char.he_she.lower(), 'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
-        message = message.format(**death_info)
-        # Format extra stylization
-        message = f"{config.pvpdeath_emoji if death.by_player else config.death_emoji} {format_message(message)}"
-
         for guild_id, tracked_world in self.bot.tracked_worlds.items():
             guild = self.bot.get_guild(guild_id)
             if guild is None:
@@ -441,15 +420,39 @@ class Tracking:
             min_level = get_server_property(guild_id, "announce_level", is_int=True, default=config.announce_threshold)
             if death.level < min_level:
                 continue
-            if char.world == tracked_world and guild.get_member(char.owner) is not None:
-                try:
-                    channel = self.bot.get_channel_or_top(guild,
-                                                          get_server_property(guild.id, "levels_channel", is_int=True))
-                    await channel.send(message[:1].upper() + message[1:])
-                except discord.Forbidden:
-                    log.warning("announce_death: Missing permissions.")
-                except discord.HTTPException:
-                    log.warning("announce_death: Malformed message.")
+            if char.world != tracked_world or guild.get_member(char.owner) is None:
+                continue
+            # Select a message
+            if death.by_player:
+                message = weighed_choice(death_messages_player, vocation=char.vocation, level=death.level,
+                                         levels_lost=levels_lost, min_level=min_level)
+            elif death.killer in ["death", "energy", "earth", "fire", "Pit Battler", "Pit Berserker",
+                                  "Pit Blackling",
+                                  "Pit Brawler", "Pit Condemned", "Pit Demon", "Pit Destroyer", "Pit Fiend",
+                                  "Pit Groveller", "Pit Grunt", "Pit Lord", "Pit Maimer", "Pit Overlord",
+                                  "Pit Reaver",
+                                  "Pit Scourge"] and levels_lost == 0:
+                # Skip element damage deaths unless player lost a level to avoid spam from arena deaths
+                # This will cause a small amount of deaths to not be announced but it's probably worth the tradeoff
+                return
+            else:
+                message = weighed_choice(death_messages_monster, vocation=char.vocation, level=death.level,
+                                         levels_lost=levels_lost, killer=death.killer, min_level=min_level)
+            # Format message with death information
+            death_info = {'name': char.name, 'level': death.level, 'killer': death.killer,
+                          'killer_article': killer_article, 'he_she': char.he_she.lower(),
+                          'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
+            message = message.format(**death_info)
+            # Format extra stylization
+            message = f"{config.pvpdeath_emoji if death.by_player else config.death_emoji} {format_message(message)}"
+            try:
+                channel = self.bot.get_channel_or_top(guild,
+                                                      get_server_property(guild.id, "levels_channel", is_int=True))
+                await channel.send(message[:1].upper() + message[1:])
+            except discord.Forbidden:
+                log.warning("announce_death: Missing permissions.")
+            except discord.HTTPException:
+                log.warning("announce_death: Malformed message.")
 
     async def announce_level(self, level, char_name: str = None, char: Character = None):
         """Announces a level up on corresponding servers
@@ -481,23 +484,24 @@ class Tracking:
             min_level = get_server_property(server_id, "announce_level", is_int=True, default=config.announce_threshold)
             if char.level < min_level:
                 continue
-            if char.world == tracked_world and server.get_member(char.owner) is not None:
-                try:
-                    channel = self.bot.get_channel_or_top(server,
-                                                          get_server_property(server.id, "levels_channel", is_int=True))
-                    # Select a message
-                    message = weighed_choice(server, level_messages, vocation=char.vocation, level=level)
-                    level_info = {'name': char.name, 'level': level, 'he_she': char.he_she.lower(), 'his_her': char.his_her.lower(),
-                                  'him_her': char.him_her.lower()}
-                    # Format message with level information
-                    message = message.format(**level_info)
-                    # Format extra stylization
-                    message = f"{config.levelup_emoji} {format_message(message)}"
-                    await channel.send(message)
-                except discord.Forbidden:
-                    log.warning("announce_level: Missing permissions.")
-                except discord.HTTPException:
-                    log.warning("announce_level: Malformed message.")
+            if char.world != tracked_world or server.get_member(char.owner) is None:
+                continue
+            try:
+                channel = self.bot.get_channel_or_top(server,
+                                                      get_server_property(server.id, "levels_channel", is_int=True))
+                # Select a message
+                message = weighed_choice(level_messages, vocation=char.vocation, level=level, min_level=min_level)
+                level_info = {'name': char.name, 'level': level, 'he_she': char.he_she.lower(),
+                              'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
+                # Format message with level information
+                message = message.format(**level_info)
+                # Format extra stylization
+                message = f"{config.levelup_emoji} {format_message(message)}"
+                await channel.send(message)
+            except discord.Forbidden:
+                log.warning("announce_level: Missing permissions.")
+            except discord.HTTPException:
+                log.warning("announce_level: Malformed message.")
 
     # Commands
     @commands.command()

@@ -3,10 +3,6 @@ import re
 
 import discord
 
-from utils.config import config
-from utils.database import get_server_property
-
-announce_threshold = config.announce_threshold
 
 # We save the last messages so they are not repeated so often
 last_messages = [""]*10
@@ -14,7 +10,7 @@ last_messages = [""]*10
 # Message list for announce_level
 # Parameters: {name}, {level} , {he_she}, {his_her}, {him_her}
 # Values in each list element are:
-# Relative chance, message, lambda function as filter (takes (discord)server, level, voc, killer, levels_lost)
+# Relative chance, message, lambda function as filter (takes min_level, level, voc)
 # Only relative chance and message are mandatory.
 level_messages = [
     [100, "Congratulations to **{name}** on reaching level {level}!"],
@@ -38,76 +34,76 @@ level_messages = [
     [70, "**{name}** is level {level} now! And we all thought {he_she}'d never achieve anything in life."],
     # EK Only
     [50, "**{name}** has reached level {level}. That's 9 more mana potions you can carry now!",
-     lambda server, level, voc, killer, levels_lost: level >= 100 and "Knight" in voc],
+     lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
     [200, "**{name}** is level {level}. Stick them with the pointy end! 🗡️",
-     lambda server, level, voc, killer, levels_lost: level >= 100 and "Knight" in voc],
+     lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
     [200, "**{name}** is a fat level {level} meatwall now. BLOCK FOR ME SENPAI.", 
-     lambda server, level, voc, killer, levels_lost: level >= 100 and "Knight" in voc],
+     lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
     # RP Only
     [50, "**{name}** has reached level {level}. But {he_she} still misses arrows...",
-     lambda server, level, voc, killer, levels_lost: level >= 100 and "Paladin" in voc],
+     lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
     [150, "Congrats on level {level}, **{name}**. You can stop running around now.",
-     lambda server, level, voc, killer, levels_lost: level >= 100 and "Paladin" in voc],
+     lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
     [150, "**{name}** is level {level}. Bullseye!🎯", 
-     lambda server, level, voc, killer, levels_lost: level >= 100 and "Paladin" in voc],
+     lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
     # MS Only
     [50, "Level {level}, **{name}**? Nice. Don't you wish you were a druid though?",
-     lambda server, level, voc, killer, levels_lost: level >= 100 and "Sorcerer" in voc],
+     lambda min_level, level, voc, *_: level >= 100 and "Sorcerer" in voc],
     [150, "**{name}** is level {level}. Watch out for {his_her} SDs!", 
-     lambda server, level, voc, killer, levels_lost: level >= 45 and "Sorcerer" in voc],
+     lambda min_level, level, voc, *_: level >= 45 and "Sorcerer" in voc],
     [150, "**{name}** got level {level}. If {he_she} only stopped missing beams.", 
-     lambda server, level, voc, killer, levels_lost: level >= 23 and "Sorcerer" in voc],
+     lambda min_level, level, voc, *_: level >= 23 and "Sorcerer" in voc],
     [150,
      "**{name}** is level {level}. 🔥🔥BURN THEM ALL🔥🔥", 
-     lambda server, level, voc, killer, levels_lost: level >= 100 and "Sorcerer" in voc],
+     lambda min_level, level, voc, *_: level >= 100 and "Sorcerer" in voc],
     # ED Only
     [50, "**{name}** has reached level {level}. Flower power!🌼", 
-     lambda server, level, voc, killer, levels_lost: level >= 100 and "Druid" in voc],
+     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
     [150, "Congrats on level {level}, **{name}**. Sio plz.", 
-     lambda server, level, voc, killer, levels_lost: level >= 100 and "Druid" in voc],
+     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
     [150, "**{name}** is level {level}. 🔥🔥BURN THEM ALL... Or... Give them frostbite...?❄❄", 
-     lambda server, level, voc, killer, levels_lost: level >= 100 and "Druid" in voc],
+     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
     # Level specific
     [20000, "**{name}** is level {level}! UMPs so good 🍷",
-     lambda server, level, voc, killer, levels_lost: level == 130 and ("Druid" in voc or "Sorcerer" in voc)],
+     lambda min_level, level, voc, *_: level == 130 and ("Druid" in voc or "Sorcerer" in voc)],
     [20000, "**{name}** is level {level} now! Eternal Winter is coming!❄",
-     lambda server, level, voc, killer, levels_lost: level == 60 and "Druid" in voc],
+     lambda min_level, level, voc, *_: level == 60 and "Druid" in voc],
     [20000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature🍃🍃... just look at that wrath.",
-     lambda server, level, voc, killer, levels_lost: level == 55 and "Druid" in voc],
+     lambda min_level, level, voc, *_: level == 55 and "Druid" in voc],
     [20000, "**{name}** is now level {level}. Don't forget to buy a Gearwheel Chain!📿",
-     lambda server, level, voc, killer, levels_lost: level == 75],
+     lambda min_level, level, voc, *_: level == 75],
     [30000, "**{name}** is level {level}! You can become a ninja now!👤",
-     lambda server, level, voc, killer, levels_lost: level == 80 and "Paladin" in voc],
+     lambda min_level, level, voc, *_: level == 80 and "Paladin" in voc],
     [30000, "**{name}** is level {level}! Time to get some crystalline arrows!🏹", 
-     lambda server, level, voc, killer, levels_lost: level == 90 and "Paladin" in voc],
+     lambda min_level, level, voc, *_: level == 90 and "Paladin" in voc],
     [20000, "Level {level}, **{name}**? You're finally important enough for me to notice!", 
-     lambda server, level, voc, killer, levels_lost: level == get_server_property(server.id, "announce_level", is_int=True, default=announce_threshold)],
+     lambda min_level, level, voc, *_: level == min_level],
     [20000, "Congratulations on level {level} **{name}**! Now you're relevant to me. As relevant a human can be anyway", 
-     lambda server, level, voc, killer, levels_lost: level == get_server_property(server.id, "announce_level", is_int=True, default=announce_threshold)],
+     lambda min_level, level, voc, *_: level == min_level],
     [20000, "**{name}** is now level {level}! Time to go berserk! 💢",
-     lambda server, level, voc, killer, levels_lost: level == 35 and "Knight" in voc],
+     lambda min_level, level, voc, *_: level == 35 and "Knight" in voc],
     [20000, "Congratulations on level {level} **{name}**! Now you can become an umbral master, but is your"
      " bank account ready?💸",  
-     lambda server, level, voc, killer, levels_lost: level == 250],
+     lambda min_level, level, voc, *_: level == 250],
     [30000, "**{name}** is level {level}!!!!\r\n" +
      "Sweet, sweet triple digits!", 
-     lambda server, level, voc, killer, levels_lost: level == 100],
+     lambda min_level, level, voc, *_: level == 100],
     [20000, "**{name}** is level {level}!!!!\r\n" +
      "WOOO", 
-     lambda server, level, voc, killer, levels_lost: level in (100, 200, 300, 400)],
+     lambda min_level, level, voc, *_: level % 100 == 0],
     [20000, "**{name}** is level {level}!!!!\r\n" +
      "yaaaay milestone!", 
-     lambda server, level, voc, killer, levels_lost: level in (100, 200, 300, 400)],
+     lambda min_level, level, voc, *_: level % 100 == 0],
     [20000, "**{name}** is level {level}!!!!\r\n" +
      "holy crap!", 
-     lambda server, level, voc, killer, levels_lost: level in (200, 300, 400)]]
+     lambda min_level, level, voc, *_: level % 100 == 0]]
 
 # Message list for announce death.
 # Parameters: ({name},{level},{killer},{killer_article},{he_she}, {his_her},{him_her}
 # Additionally, words surrounded by \WORD/ are upper cased, /word\ are lower cased, /Word/ are title cased
 # words surrounded by ^WORD^ are ignored if the next letter found is uppercase (useful for dealing with proper nouns)
 # Values in each list element are:
-# Relative chance, message, lambda function as filter (takes (discord)server, level, voc, killer, levels_lost)
+# Relative chance, message, lambda function as filter (takes min_level, level, voc, killer, levels_lost)
 # Only relative chance and message are mandatory.
 death_messages_monster = [
     [100, "RIP **{name}** ({level}), you died the way you lived- inside {killer_article}**{killer}**."],
@@ -153,62 +149,65 @@ death_messages_monster = [
     [70, "To be or not to be 💀, that is the-- Well I guess **{name}** ({level}) made his choice, "
          "or ^that ^**{killer}** chose for him..."],
     [500, "**{name}** ({level}) just died to {killer_article}**{killer}**, why did nobody sio {him_her}!?",
-     lambda server, level, voc, killer, levels_lost: "Knight" in voc],
+     lambda min_level, level, voc, killer, levels_lost: "Knight" in voc],
     [500, "Poor **{name}** ({level}) has died. Killed by {killer_article}**{killer}**. I bet it was your "
      "blocker's fault though, eh **{name}**?",
-     lambda server, level, voc, killer, levels_lost: "Druid" in voc or "Sorcerer" in voc],
+     lambda min_level, level, voc, killer, levels_lost: "Druid" in voc or "Sorcerer" in voc],
     [500, "**{name}** ({level}) tried running away from {killer_article}**{killer}**. /{he_she}/ "
      "didn't run fast enough...",
-     lambda server, level, voc, killer, levels_lost: "Paladin" in voc],
+     lambda min_level, level, voc, killer, levels_lost: "Paladin" in voc],
     [500, "What happened to **{name}** ({level})!? Talk about sudden death! I guess ^that ^**{killer}** was "
      "too much for {him_her}...",
-     lambda server, level, voc, killer, levels_lost: "Sorcerer" in voc],
+     lambda min_level, level, voc, killer, levels_lost: "Sorcerer" in voc],
     [500, "**{name}** ({level}) was killed by {killer_article}**{killer}**. I guess {he_she} couldn't "
      "sio {him_her}self.",
-     lambda server, level, voc, killer, levels_lost: "Druid" in voc],
+     lambda min_level, level, voc, killer, levels_lost: "Druid" in voc],
     [600, "**{name}** ({level}) died to {killer_article}**{killer}**. \"Don't worry\" they said, \"They are weaker\" "
      "they said.", 
-     lambda server, level, voc, killer, levels_lost: killer in ["weakened frazzlemaw", "enfeebled silencer"]],
+     lambda min_level, level, voc, killer, levels_lost: killer in ["weakened frazzlemaw", "enfeebled silencer"]],
     [2000, "Another paladin bites the dust! **{killer}** strikes again! Rest in peace **{name}** ({level}).",
-     lambda server, level, voc, killer, levels_lost: "Paladin" in voc and killer == "Lady Tenebris"],
+     lambda min_level, level, voc, killer, levels_lost: "Paladin" in voc and killer == "Lady Tenebris"],
     [2000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! 👻",
-     lambda server, level, voc, killer, levels_lost: killer == "something evil"],
+     lambda min_level, level, voc, killer, levels_lost: killer == "something evil"],
     [2000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.", 
-     lambda server, level, voc, killer, levels_lost: killer == "death"],
+     lambda min_level, level, voc, killer, levels_lost: killer == "death"],
     [2000, "They did warn you **{name}** ({level}), you *did* burn 🔥🐲.", 
-     lambda server, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord"]],
+     lambda min_level, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord"]],
     [2000, "**{name}** ({level}) died from {killer_article}**{killer}**. Someone forgot the safeword.😏",
-     lambda server, level, voc, killer, levels_lost: killer == "choking fear"],
+     lambda min_level, level, voc, killer, levels_lost: killer == "choking fear"],
     [2000, "That **{killer}** got really up close and personal with **{name}** ({level}). "
-            "Maybe he thought you were his princess Lumelia?😏", 
-     lambda server, level, voc, killer, levels_lost: killer == "hero"],
+           "Maybe he thought you were his princess Lumelia?😏",
+     lambda min_level, level, voc, killer, levels_lost: killer == "hero"],
     [2000, "Looks like that **{killer}** made **{name}** ({level}) his bride 😉.",
-     lambda server, level, voc, killer, levels_lost: "vampire" in killer],
+     lambda min_level, level, voc, killer, levels_lost: "vampire" in killer],
     [2000, "Yeah, those are a little stronger than regular orcs, **{name}** ({level}).",
-     lambda server, level, voc, killer, levels_lost: "orc cult" in killer],
+     lambda min_level, level, voc, killer, levels_lost: "orc cult" in killer],
     [1000, "Damn! The koolaid they drink in that cult must have steroids on it, **{name}** ({level}).",
-     lambda server, level, voc, killer, levels_lost: "cult" in killer],
+     lambda min_level, level, voc, killer, levels_lost: "cult" in killer],
     [2500, "**{name}** ({level}) met {his_her} demise at the hands of a **{killer}**. That's hot.",
-     lambda server, level, voc, killer, levels_lost: killer in ["true dawnfire asura", "dawnfire asura", "fury"]],
+     lambda min_level, level, voc, killer, levels_lost: killer in ["true dawnfire asura", "dawnfire asura", "fury"]],
     [2500, "Poor **{name}** ({level}) just wanted some love! That cold hearted... Witch.",
-     lambda server, level, voc, killer, levels_lost: killer in ["true frost flower asura", "frost flower asura", "frost giantess", "ice witch"]],
+     lambda min_level, level, voc, killer, levels_lost: killer in ["true frost flower asura", "frost flower asura",
+                                                                   "frost giantess", "ice witch"]],
     [2000, "Asian chicks are no joke **{name}** ({level}) 🔪💔.",
-     lambda server, level, voc, killer, levels_lost: "asura" in killer],
+     lambda min_level, level, voc, killer, levels_lost: "asura" in killer],
     [2500, "Asian chicks sure age well, don't you think so, **{name}** ({level})? 😍👵.",
-     lambda server, level, voc, killer, levels_lost: "true" in killer and "asura" in killer],
+     lambda min_level, level, voc, killer, levels_lost: "true" in killer and "asura" in killer],
     [2000, "**{name}** ({level}) got destroyed by {killer_article}**{killer}**. I bet {he_she} regrets going down"
-            "that hole 🕳️", 
-     lambda server, level, voc, killer, levels_lost: level < 120 and killer in ["breach brood", "dread intruder", "reality reaver",
-     "spark of destruction", "sparkion"]],
+           "that hole 🕳️",
+     lambda min_level, level, voc, killer, levels_lost: level < 120 and killer in ["breach brood", "dread intruder",
+                                                                                   "reality reaver",
+                                                                                   "spark of destruction", "sparkion"]],
     [2000,
      "Watch out for that **{killer}**'s wav... Oh😐... Rest in peace **{name}** ({level}).",
-     lambda server, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord", "undead dragon", "draken spellweaver", 
-     "hellhound", "hellfire fighter"]],
+     lambda min_level, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord", "undead dragon",
+                                                                   "draken spellweaver", "hellhound",
+                                                                   "hellfire fighter"]],
     [2000, "**{name}** ({level}) died to {killer_article}**{killer}**! Don't worry, {he_she} didn't have a soul anyway",
-     lambda server, level, voc, killer, levels_lost: killer == "souleater"],
+     lambda min_level, level, voc, killer, levels_lost: killer == "souleater"],
     [150, "Oh look at that, rest in peace **{name}** ({level}),  ^that ^**{killer}** really got you. "
           "Hope you get your level back.", 
-     lambda server, level, voc, killer, levels_lost: levels_lost > 0]
+     lambda min_level, level, voc, killer, levels_lost: levels_lost > 0]
 ]
 
 # Deaths by players
@@ -250,16 +249,17 @@ def format_message(message) -> str:
     return message
 
 
-def weighed_choice(server, choices, level: int, vocation: str = None, killer: str = None, levels_lost: int = 0) -> str:
+def weighed_choice(choices, level: int, vocation: str = None, min_level=0, killer: str = None,
+                   levels_lost: int = 0) -> str:
     """Makes weighed choices from message lists where [0] is a value representing the relative odds
     of picking a message and [1] is the message string"""
 
     # Find the max range by adding up the weigh of every message in the list
-    # and purge out messages that dont fulfil the conditions
+    # and purge out messages that don't fulfil the conditions
     weight_range = 0
     _messages = []
     for message in choices:
-        if len(message) == 3 and not message[2](server, level, vocation, killer, levels_lost):
+        if len(message) == 3 and not message[2](min_level, level, vocation, killer, levels_lost):
             continue
         weight_range = weight_range + (message[0] if not message[1] in last_messages else message[0] / 10)
         _messages.append(message)
