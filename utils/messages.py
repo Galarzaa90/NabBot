@@ -176,7 +176,7 @@ death_messages_monster = [
     [2000, "**{name}** ({level}) died from {killer_article}**{killer}**. Someone forgot the safeword.😏",
      lambda min_level, level, voc, killer, levels_lost: killer == "choking fear"],
     [2000, "That **{killer}** got really up close and personal with **{name}** ({level}). "
-           "Maybe he thought you were his princess Lumelia?😏",
+           "Maybe he thought you were his Princess Lumelia?😏",
      lambda min_level, level, voc, killer, levels_lost: killer == "hero"],
     [2000, "Looks like that **{killer}** made **{name}** ({level}) his bride 😉.",
      lambda min_level, level, voc, killer, levels_lost: "vampire" in killer],
