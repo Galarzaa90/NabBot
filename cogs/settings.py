@@ -35,7 +35,7 @@ class PrefixConverter(commands.Converter):
 class Settings:
     """Commands related to server customization.
 
-    Settings can only be modified by Server Moderators (users with Manage Server permission)."""
+    Settings can only be modified by Server Moderators (users with `Manage Server` permission)."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 

@@ -1,5 +1,5 @@
 # Changelog
-## Version 1.4.1 (Unreleased)
+## Version 1.5.0 (2018-07-31)
 - Small changes to `/userinfo`
 - Fixed bug in `/monster` with creatures without a bestiary class defined.
 - Added loading message to `/im`.

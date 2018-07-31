@@ -1,6 +1,8 @@
 # Settings command
 Commands related to server customization.
 
+Settings can only be modified by Server Moderators (users with `Manage Server` permission).
+
 !!! info
     Parameters are enclosed with `< >`.   
     Optional parameters are enclosed in brackets `[]`.

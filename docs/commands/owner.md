@@ -145,6 +145,16 @@ Shutdowns the bot.
 ## servers
 Shows a list of servers the bot is in.
 
+Further information can be obtained using `serverinfo [id]`.
+
+Values can be sorted by using one of the following values for sort:
+
+- name
+- members
+- world
+- created
+- joined
+
 ??? Summary "Example"
     **/servers**  
     ![image](../assets/images/commands/servers.png)
