@@ -338,7 +338,13 @@ def single_line(string: str) -> str:
     :return: The converted string.
     """
     return string.replace("\r\n", " ").replace("\n", " ")
+
+
 class BadTime(commands.BadArgument):
+    pass
+
+
+class CannotEmbed(commands.CheckFailure):
     pass
 
 

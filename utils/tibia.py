@@ -17,6 +17,7 @@ from discord.ext import commands
 
 from utils.config import config
 from utils.database import userDatabase, tibiaDatabase
+from utils.general import global_online_list
 from .general import log
 
 # Constants
@@ -418,6 +419,13 @@ async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Ch
             result = c.fetchone()
             if result:
                 character.house["houseid"] = result["id"]
+
+    # If the character exists in the online list use data from there where possible
+    for c in global_online_list:
+        if c == character:
+            character.level = c.level
+            character.vocation = c.vocation
+            break
 
     # Database operations
     c = userDatabase.cursor()

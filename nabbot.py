@@ -10,13 +10,13 @@ from discord.ext import commands
 from utils import context
 from utils.config import config
 from utils.database import init_database, userDatabase, get_server_property
-from utils.general import join_list, get_token, get_user_avatar, get_region_string
+from utils.general import join_list, get_token, get_user_avatar, get_region_string, CannotEmbed
 from utils.general import log
 from utils.help_format import NabHelpFormat
 from utils.tibia import populate_worlds, tibia_worlds, get_voc_abb_and_emoji
 
 initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot",
-                "cogs.tibiawiki", "cogs.roles", "cogs.settings"}
+                "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info"}
 
 
 def _prefix_callable(bot, msg):
@@ -43,7 +43,7 @@ class NabBot(commands.Bot):
         # A list version is created from the dictionary
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
-        self.__version__ = "1.4.0"
+        self.__version__ = "1.5.0"
         self.__min_discord__ = 1480
 
     async def on_ready(self):
@@ -85,6 +85,18 @@ class NabBot(commands.Bot):
         # This is a PM, no further info needed
         if message.guild is None:
             return
+        if message.content.strip() == f"<@{self.user.id}>":
+            prefixes = list(config.command_prefix)
+            if ctx.guild:
+                prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
+            if prefixes:
+                prefixes_str = ", ".join(f"`{p}`" for p in prefixes)
+                return await ctx.send(f"My command prefixes are: {prefixes_str}, and mentions. "
+                                      f"To see my commands, try: `{prefixes[0]}help.`", delete_after=10)
+            else:
+                return await ctx.send(f"My command prefix is mentions. "
+                                      f"To see my commands, try: `@{self.user.name} help.`", delete_after=10)
+
         server_delete = get_server_property(message.guild.id, "commandsonly", is_int=True)
         global_delete = config.ask_channel_delete
         if (server_delete is None and global_delete) or server_delete:
@@ -101,6 +113,8 @@ class NabBot(commands.Bot):
             return
         elif isinstance(error, commands.NoPrivateMessage):
             await ctx.send(error)
+        elif isinstance(error, CannotEmbed):
+            await ctx.send(f"{ctx.tick(False)} Sorry, `Embed Links` permission is required for this command.")
         elif isinstance(error, commands.CommandInvokeError):
             log.error(f"Exception in command: {ctx.message.clean_content}", exc_info=error.original)
             if isinstance(error.original, discord.HTTPException):
@@ -122,27 +136,30 @@ class NabBot(commands.Bot):
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
         log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(guild))
-        message = "Hello! I'm now in **{0.name}**. To see my available commands, type `{3}help`\n" \
-                  "I will reply to commands from any channel I can see, but if you create a channel called *{1}*, " \
-                  "I will give longer replies and more information there.\n" \
-                  "If you want a server log channel, create a channel called *{2}*, I will post logs in there." \
-                  "You might want to make it private though.\n" \
-                  "To tweak NabBot settings, use `{3}settings` in your server."
-        formatted_message = message.format(guild, config.ask_channel_name, config.log_channel_name, 
-                                           config.command_prefix[0])
+        message = f"**I've been added to this server.**\n" \
+                  f"Some things you should know:\n" \
+                  f"‣ My command prefix is: `{config.command_prefix[0]}` (it is customizable)\n" \
+                  f"‣ You can see all my commands with: `{config.command_prefix[0]}help` or " \
+                  f"`{config.command_prefix[0]}commands`\n" \
+                  f"‣ You can configure me using: `{config.command_prefix[0]}settings`\n" \
+                  f"‣ You can set a world for me to track by using `{config.command_prefix[0]}settings world`\n" \
+                  f"‣ If you want a logging channel, create a channel named `{config.log_channel_name}`\n" \
+                  f"‣ If you need help, join my support server: **<https://discord.me/NabBot>**\n" \
+                  f"‣ For more information and links in: `{config.command_prefix[0]}about`"
         for member in guild.members:
             if member.id in self.members:
                 self.members[member.id].append(guild.id)
             else:
                 self.members[member.id] = [guild.id]
         try:
-            await guild.owner.send(formatted_message)
-        except discord.Forbidden:
-            # Owner doesn't allow PMs
-            top_channel = self.get_top_channel(guild, True)
-            if top_channel is not None:
-                formatted_message += "\n*I meant to send this privately, but you do not allow private messages.*"
-                await top_channel.send(formatted_message)
+            channel = self.get_top_channel(guild)
+            if channel is None:
+                log.warning(f"Could not send join message on server: {guild.name}. No allowed channel found.")
+                return
+            await channel.send(message)
+        except discord.HTTPException as e:
+            log.error(f"Could not send join message on server: {guild.name}.", exc_info=e)
+
 
     async def on_guild_remove(self, guild: discord.Guild):
         """Called when the bot leaves a guild (server)."""
@@ -401,7 +418,7 @@ class NabBot(commands.Bot):
         if changes:
             if bot_member.guild_permissions.view_audit_log:
                 async for entry in guild.audit_logs(limit=1, reverse=False, action=discord.AuditLogAction.guild_update,
-                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry:
+                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
                     icon_url = get_user_avatar(entry.user)
                     embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
                     break
@@ -420,7 +437,8 @@ class NabBot(commands.Bot):
         :return: The member found or None.
         """
         id_regex = re.compile(r'([0-9]{15,21})$')
-        match = id_regex.match(str(argument))
+        mention_regex = re.compile(r'<@!?([0-9]+)>$')
+        match = id_regex.match(str(argument)) or mention_regex.match(str(argument))
         if match is None:
             return self.get_member_named(argument, guild)
         else:
@@ -459,7 +477,10 @@ class NabBot(commands.Bot):
 
     def get_user_guilds(self, user_id: int) -> List[discord.Guild]:
         """Returns a list of the user's shared guilds with the bot"""
-        return [self.get_guild(gid) for gid in self.members[user_id]]
+        try:
+            return [self.get_guild(gid) for gid in self.members[user_id]]
+        except KeyError:
+            return []
 
     def get_user_worlds(self, user_id: int, guild_list=None) -> List[str]:
         """Returns a list of all the tibia worlds the user is tracked in.
@@ -475,13 +496,13 @@ class NabBot(commands.Bot):
 
         It also checks if the bot has permissions on that channel, if not, it will return the top channel too."""
         if channel_id is None:
-            return self.get_top_channel(guild, True)
+            return self.get_top_channel(guild)
         channel = guild.get_channel(int(channel_id))
         if channel is None:
-            return self.get_top_channel(guild, True)
+            return self.get_top_channel(guild)
         permissions = channel.permissions_for(guild.me)
         if not permissions.read_messages or not permissions.send_messages:
-            return self.get_top_channel(guild, True)
+            return self.get_top_channel(guild)
         return channel
 
     async def send_log_message(self, guild: discord.Guild, content=None, *, embed: discord.Embed = None):
@@ -525,7 +546,7 @@ class NabBot(commands.Bot):
         await ctx.invoke(cmd, command=command)
 
     @staticmethod
-    def get_top_channel(guild: discord.Guild, writeable_only: bool=False) -> Optional[discord.TextChannel]:
+    def get_top_channel(guild: discord.Guild) -> Optional[discord.TextChannel]:
         """Returns the highest text channel on the list.
 
         If writeable_only is set, the first channel where the bot can write is returned
@@ -533,8 +554,6 @@ class NabBot(commands.Bot):
         if guild is None:
             return None
         for channel in guild.text_channels:
-            if not writeable_only:
-                return channel
             if channel.permissions_for(guild.me).send_messages:
                 return channel
         return None
@@ -587,6 +606,8 @@ if __name__ == "__main__":
         try:
             nabbot.load_extension(cog)
             print(f"Cog {cog} loaded successfully.")
+        except ModuleNotFoundError:
+            print(f"Could not find cog: {cog}")
         except Exception as e:
             print(f'Cog {cog} failed to load:')
             traceback.print_exc(limit=-1)
@@ -595,6 +616,8 @@ if __name__ == "__main__":
         try:
             nabbot.load_extension(extra)
             print(f"Extra cog {extra} loaded successfully.")
+        except ModuleNotFoundError:
+            print(f"Could not find extra cog: {extra}")
         except Exception as e:
             print(f'Extra og {extra} failed to load:')
             traceback.print_exc(limit=-1)

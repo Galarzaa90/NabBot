@@ -31,6 +31,7 @@ KEYS = [
     "online_emoji",
     "true_emoji",
     "false_emoji",
+    "warn_emoji",
     "online_emoji",
     "true_emoji",
     "false_emoji",
@@ -94,6 +95,7 @@ class Config:
         self.online_emoji = "🔹"
         self.true_emoji = "✅"
         self.false_emoji = "❌"
+        self.warn_emoji = "⚠"
         self.levelup_emoji = "🌟"
         self.death_emoji = "☠"
         self.pvpdeath_emoji = "💀"
@@ -127,7 +129,6 @@ class Config:
         return f"Config({', '.join(attributes)})"
 
     def parse(self):
-
         if not os.path.isfile(CONFIG_PATH):
             print("\tconfig.yml not found, copying from template...")
             shutil.copyfile(TEMPLATE_PATH, CONFIG_PATH)

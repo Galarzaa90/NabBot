@@ -16,6 +16,7 @@ from utils.database import get_server_property
 from utils.context import NabCtx
 from utils.general import *
 from utils.messages import *
+from utils.pages import Pages, CannotPaginate
 from utils.tibia import *
 from utils.tibiawiki import *
 
@@ -367,6 +368,16 @@ class Owner:
         else:
             await ctx.send(f"{ctx.tick()} Cog reloaded successfully.")
 
+    @checks.is_owner()
+    @commands.command(name="reloadconfig")
+    async def reload_config(self, ctx):
+        """Reloads the configuration file."""
+        try:
+            config.parse()
+            await ctx.send(f"{ctx.tick()} Config file reloaded.")
+        except Exception:
+            await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+
     @commands.command(hidden=True)
     @checks.is_owner()
     async def repl(self, ctx: NabCtx):
@@ -498,16 +509,43 @@ class Owner:
         else:
             await ctx.send(fmt)
 
-
-    @commands.command()
     @checks.is_owner()
-    async def servers(self, ctx: NabCtx):
-        """Shows a list of servers the bot is in."""
-        reply = "I'm in the following servers:"
-        for guild in self.bot.guilds:
-            reply += "\n\t**{0.name}** - (Owner: {0.owner.name}#{0.owner.discriminator}) - {1} - {2} members"\
-                .format(guild, self.bot.tracked_worlds.get(guild.id, "No world tracked"), len(guild.members))
-        await ctx.send(reply)
+    @checks.can_embed()
+    @commands.command()
+    async def servers(self, ctx: NabCtx, sort=None):
+        """Shows a list of servers the bot is in.
+
+        Further information can be obtained using `serverinfo [id]`.
+
+        Values can be sorted by using one of the following values for sort:
+        - name
+        - members
+        - world
+        - created
+        - joined"""
+        entries = []
+
+        sorters = {
+            "name": (lambda g: g.name, False, lambda g: self.bot.tracked_worlds.get(g.id, 'None')),
+            "members": (lambda g: len(g.members), True, lambda g: f"{len(g.members):,} users"),
+            "world": (lambda g: self.bot.tracked_worlds.get(g.id, "|"), False,
+                      lambda g: self.bot.tracked_worlds.get(g.id, 'None')),
+            "created": (lambda g: g.created_at, False, lambda g: f"Created: {g.created_at.date()}"),
+            "joined": (lambda g: g.me.joined_at, False, lambda g: f"Joined: {g.me.joined_at.date()}")
+        }
+        if sort is None:
+            sort = "name"
+        if sort not in sorters:
+            return await ctx.send(f"{ctx.tick(False)} Invalid sort value. Valid values are: `{', '.join(sorters)}`")
+        guilds = sorted(self.bot.guilds, key=sorters[sort][0], reverse=sorters[sort][1])
+        for guild in guilds:
+            entries.append(f"**{guild.name}** (ID: **{guild.id}**) - {sorters[sort][2](guild)}")
+        pages = Pages(ctx, entries=entries, per_page=10)
+        pages.embed.title = f"Servers with {ctx.me.name}"
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
 
     @commands.command(name="unload")
     @checks.is_owner()
@@ -571,7 +609,7 @@ class Owner:
             if not comp(package[1], StrictVersion(version), StrictVersion(package[2])):
                 value = f"{ctx.tick(False)}v{version}\n`At least v{package[2]} expected`"
             elif not comp(package[3], StrictVersion(version), StrictVersion(package[4])):
-                value = f"⚠v{version}\n`Only below v{package[4]} tested`"
+                value = f"{config.warn_emoji}v{version}\n`Only below v{package[4]} tested`"
             else:
                 value = f"{ctx.tick(True)}v{version}"
             embed.add_field(name=package[0], value=value)

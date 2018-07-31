@@ -1,4 +1,17 @@
 # Changelog
+## Version 1.5.0 (2018-07-31)
+- Small changes to `/userinfo`
+- Fixed bug in `/monster` with creatures without a bestiary class defined.
+- Added loading message to `/im`.
+- Bot owner can now use `/serverinfo` to see other server's info.
+- `/servers` now has pagination and sorting.
+- NabBot now responds to a mention with its command prefixes.
+- New `/emojiinfo` command
+- Created new cog `Info`, moved information commands from `General`
+- Level up and death messages now use lambdas for filtering.
+- Server settings can now be changed with `Manage Server` permissions instead of `Administrator` permission.
+- NabBot's initial message is now sent on a server channel instead of PMing the owner.  
+
 ## Version 1.4.0 (2018-07-24)
 - `/loot` has been rewritten:
     - Loot database remade from scratch with images extracted directly from the client, all images should now be pixel perfect matches to those taken from in-game screenshots

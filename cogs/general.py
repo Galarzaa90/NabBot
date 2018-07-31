@@ -1,24 +1,20 @@
 import asyncio
 import datetime as dt
-import platform
 import random
-import re
 import time
-from collections import Counter
 from contextlib import closing
 from typing import Union, Dict, Optional, List
 
 import discord
-import psutil
 from discord.ext import commands
 
 from nabbot import NabBot
+from utils import checks
 from utils.config import config
 from utils.context import NabCtx
 from utils.database import userDatabase, get_server_property
-from utils.general import parse_uptime, TimeString, single_line, log, BadTime, get_user_avatar, get_region_string, \
-    clean_string, is_numeric
-from utils.pages import CannotPaginate, VocationPages, HelpPaginator
+from utils.general import TimeString, single_line, log, BadTime, get_user_avatar, clean_string, is_numeric
+from utils.pages import CannotPaginate, VocationPages
 from utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50
@@ -36,7 +32,9 @@ class General:
         if isinstance(error, BadTime):
             await ctx.send(error)
             return
-        if isinstance(error, commands.UserInputError):
+        if isinstance(error, commands.BadArgument):
+            return await ctx.send(error)
+        elif isinstance(error, commands.UserInputError):
             await ctx.send(f"{ctx.tick(False)} The correct syntax is: "
                            f"`{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
                            f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
@@ -127,94 +125,6 @@ class General:
             await asyncio.sleep(20)
 
     # Commands
-    @commands.command()
-    async def about(self, ctx: NabCtx):
-        """Shows basic information about the bot."""
-        if not ctx.bot_permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permissions for this command.")
-            return
-        embed = discord.Embed(description=ctx.bot.description, colour=discord.Colour.blurple())
-        embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
-                         icon_url="https://github.com/fluidicon.png")
-        prefixes = list(config.command_prefix)
-        if ctx.guild:
-            prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
-        prefixes_str = "\n".join(f"- `{p}`" for p in prefixes)
-        embed.add_field(name="Prefixes", value=prefixes_str, inline=False)
-        embed.add_field(name="Authors", value="\u2023 [Galarzaa90](https://github.com/Galarzaa90)\n"
-                                              "\u2023 [Nezune](https://github.com/Nezune)")
-        embed.add_field(name="Created", value="March 30th 2016")
-        embed.add_field(name="Version", value=f"v{self.bot.__version__}")
-        embed.add_field(name="Platform", value="Python")
-        embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
-        embed.add_field(name="Users", value=f"{len(self.bot.users):,}")
-        embed.add_field(name="Website", value="[nabbot.ddns.net](https://galarzaa90.github.io/NabBot/)")
-        embed.add_field(name="Discord", value="[discord.me/NabBot](https://discord.me/nabbot)")
-        embed.add_field(name="Donate", value="[PayPal](https://www.paypal.com/cgi-bin/webscr?"
-                                             "cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)")
-        embed.set_footer(text=f"Uptime | {parse_uptime(self.bot.start_time, True)}")
-        await ctx.send(embed=embed)
-
-    @commands.command(name="botinfo")
-    async def bot_info(self, ctx: NabCtx):
-        """Shows advanced information about the bot."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-        char_count = 0
-        deaths_count = 0
-        levels_count = 0
-        with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT COUNT(*) as count FROM chars")
-            result = c.fetchone()
-            if result is not None:
-                char_count = result["count"]
-            c.execute("SELECT COUNT(*) as count FROM char_deaths")
-            result = c.fetchone()
-            if result is not None:
-                deaths_count = result["count"]
-            c.execute("SELECT COUNT(*) as count FROM char_levelups")
-            result = c.fetchone()
-            if result is not None:
-                levels_count = result["count"]
-
-        used_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
-        total_ram = psutil.virtual_memory().total / 1024 ** 2
-        percentage_ram = psutil.Process().memory_percent()
-
-        def ram(value):
-            if value >= 1024:
-                return f"{value/1024:.2f}GB"
-            else:
-                return f"{value:.2f}MB"
-        
-        # Calculate ping
-        t1 = time.perf_counter()
-        await ctx.trigger_typing()
-        t2 = time.perf_counter()
-        ping = round((t2 - t1) * 1000)
-
-        embed = discord.Embed()
-        embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
-                         icon_url="https://github.com/fluidicon.png")
-        embed.description = f"🔰 Version: **{self.bot.__version__}**\n" \
-                            f"⏱ ️Uptime **{parse_uptime(self.bot.start_time)}**\n" \
-                            f"🖥️ OS: **{platform.system()} {platform.release()}**\n" \
-                            f"📉 RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n"
-        try:
-            embed.description += f"⚙️ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n"
-        except AttributeError:
-            pass
-        embed.description += f"🏓 Ping: **{ping} ms**\n" \
-                             f"👾 Servers: **{len(self.bot.guilds):,}**\n" \
-                             f"💬 Channels: **{len(list(self.bot.get_all_channels())):,}**\n"\
-                             f"👨 Users: **{len(self.bot.users):,}** \n" \
-                             f"👤 Characters: **{char_count:,}**\n" \
-                             f"{config.levelup_emoji} Level ups: **{levels_count:,}**\n" \
-                             f"{config.death_emoji} Deaths: **{deaths_count:,}**"
-        await ctx.send(embed=embed)
-
     @commands.command(usage="<choices...>")
     async def choose(self, ctx, *choices: str):
         """Chooses between multiple choices.
@@ -228,114 +138,14 @@ class General:
         user = ctx.author
         await ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
-    @commands.command(name='help', aliases=["commands"])
-    async def _help(self, ctx, *, command: str = None):
-        """Shows help about a command or the bot.
-
-        - If no command is specified, it will list all available commands
-        - If a command is specified, it will show further info, and its subcommands if applicable.
-        - If a category is specified, it will show only commands in that category.
-
-        Various symbols are used to represent a command's signature and/or show further info.
-        **<argument>**
-        This means the argument is __**required**__.
-
-        **[argument]**
-        This means the argument is __**optional**__.
-
-        **[A|B]**
-        This means the it can be __**either A or B**__.
-
-        **[argument...]**
-        This means you can have __**multiple arguments**__.
-
-        🔸
-        This means the command has subcommands.
-        Check the command's help to see them."""
-
-        try:
-            if command is None:
-                p = await HelpPaginator.from_bot(ctx)
-            else:
-                entity = self.bot.get_cog(command) or self.bot.get_command(command)
-
-                if entity is None:
-                    clean = command.replace('@', '@\u200b')
-                    return await ctx.send(f'Command or category "{clean}" not found.')
-                elif isinstance(entity, commands.Command):
-                    p = await HelpPaginator.from_command(ctx, entity)
-                else:
-                    p = await HelpPaginator.from_cog(ctx, entity)
-
-            await p.paginate()
-        except Exception as e:
-            await ctx.send(e)
-
-    @commands.command(name="oldhelp", hidden=True)
-    async def oldhelp(self, ctx, *commands: str):
-        """Shows this message."""
-        _mentions_transforms = {
-            '@everyone': '@\u200beveryone',
-            '@here': '@\u200bhere'
-        }
-        _mention_pattern = re.compile('|'.join(_mentions_transforms.keys()))
-
-        bot = ctx.bot
-        destination = ctx.channel if ctx.long else ctx.author
-
-        def repl(obj):
-            return _mentions_transforms.get(obj.group(0), '')
-
-        # help by itself just lists our own commands.
-        if len(commands) == 0:
-            pages = await bot.formatter.format_help_for(ctx, bot)
-        elif len(commands) == 1:
-            # try to see if it is a cog name
-            name = _mention_pattern.sub(repl, commands[0])
-            command = None
-            if name in bot.cogs:
-                command = bot.cogs[name]
-            else:
-                command = bot.all_commands.get(name)
-                destination = ctx.channel
-                if command is None:
-                    await destination.send(bot.command_not_found.format(name))
-                    return
-
-            pages = await bot.formatter.format_help_for(ctx, command)
-        else:
-            name = _mention_pattern.sub(repl, commands[0])
-            command = bot.all_commands.get(name)
-            destination = ctx.channel
-            if command is None:
-                await destination.send(bot.command_not_found.format(name))
-                return
-
-            for key in commands[1:]:
-                try:
-                    key = _mention_pattern.sub(repl, key)
-                    command = command.all_commands.get(key)
-                    if command is None:
-                        await destination.send(bot.command_not_found.format(key))
-                        return
-                except AttributeError:
-                    await destination.send(bot.command_has_no_subcommands.format(command, key))
-                    return
-
-            pages = await bot.formatter.format_help_for(ctx, command)
-
-        for page in pages:
-            await destination.send(page)
 
     @commands.guild_only()
+    @checks.can_embed()
     @commands.group(aliases=["event"], invoke_without_command=True, case_insensitive=True, usage="[event id]")
     async def events(self, ctx: NabCtx, event_id: int=None):
         """Shows a list of upcoming and recent events.
 
         If a number is specified, it will show details for that event. Same as using `events info`"""
-        if not ctx.bot_permissions.embed_links and ctx.is_private:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
         if event_id is not None:
             await ctx.invoke(self.bot.all_commands.get('events').get_command("info"), event_id)
             return
@@ -390,6 +200,7 @@ class General:
         await ctx.send(embed=embed)
 
     @commands.guild_only()
+    @checks.can_embed()
     @events.command(name="add", usage="<starts in> <name>[,description]")
     async def event_add(self, ctx, starts_in: TimeString, *, params):
         """Creates a new event.
@@ -514,6 +325,7 @@ class General:
         await ctx.send(content)
 
     @commands.guild_only()
+    @checks.can_embed()
     @event_edit.command(name="description", aliases=["desc", "details"], usage="<id> [new description]")
     async def event_edit_description(self, ctx: NabCtx, event_id: int, *, new_description=None):
         """Edits an event's description.
@@ -723,6 +535,7 @@ class General:
                                    f"{ctx.author.mention}")
 
     @commands.guild_only()
+    @checks.can_embed()
     @event_edit.command(name="time", aliases=["start"], usage="<id> [new start time]")
     async def event_edit_time(self, ctx: NabCtx, event_id: int, starts_in: TimeString=None):
         """Edit's an event's start time.
@@ -782,6 +595,7 @@ class General:
                                       skip_creator=True)
 
     @commands.guild_only()
+    @checks.can_embed()
     @events.command(name="info", aliases=["show"])
     async def event_info(self, ctx: NabCtx, event_id: int):
         """Displays an event's info.
@@ -899,6 +713,7 @@ class General:
             return
 
     @commands.guild_only()
+    @checks.can_embed()
     @events.command(name="make", aliases=["creator", "maker"])
     async def event_make(self, ctx: NabCtx):
         """Creates an event guiding you step by step
@@ -1030,6 +845,7 @@ class General:
                        f"*To edit this event use ID {event_id}*")
 
     @commands.guild_only()
+    @checks.can_embed()
     @events.command(name="participants")
     async def event_participants(self, ctx, event_id: int):
         """Shows the list of characters participating in this event."""
@@ -1145,6 +961,7 @@ class General:
             return
 
     @commands.guild_only()
+    @checks.can_embed()
     @events.command(name="subscribe", aliases=["sub"])
     async def event_subscribe(self, ctx, event_id: int):
         """Subscribe to receive a PM when an event is happening."""
@@ -1208,6 +1025,7 @@ class General:
 
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
+    @checks.can_embed()
     @commands.command(nam="permissions", aliases=["perms"])
     async def permissions(self, ctx: NabCtx, member: discord.Member=None, channel: discord.TextChannel=None):
         """Shows a member's permissions in the current channel.
@@ -1234,6 +1052,7 @@ class General:
         await ctx.send(embed=embed)
 
     @commands.guild_only()
+    @checks.can_embed()
     @commands.command()
     async def quote(self, ctx: NabCtx, message_id: int):
         """Shows a messages by its ID.
@@ -1321,87 +1140,6 @@ class General:
         if sides == 1:
             result += "\nWho would have thought? 🙄"
         await ctx.send(result)
-
-    @commands.guild_only()
-    @commands.command()
-    async def serverinfo(self, ctx: NabCtx):
-        """Shows the server's information."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-        guild = ctx.guild
-        embed = discord.Embed(title=guild.name, timestamp=guild.created_at, description=f"**ID** {guild.id}",
-                              color=discord.Color.blurple())
-        embed.set_footer(text="Created on")
-        embed.set_thumbnail(url=guild.icon_url)
-        embed.add_field(name="Owner", value=guild.owner.mention)
-        embed.add_field(name="Voice Region", value=get_region_string(guild.region))
-        embed.add_field(name="Channels",
-                        value=f"Text: {len(guild.channels):,}\n"
-                              f"Voice: {len(guild.voice_channels):,}\n"
-                              f"Categories: {len(guild.categories):,}")
-        status_count = Counter(str(m.status) for m in guild.members)
-        if config.use_status_emojis:
-            embed.add_field(name="Members",
-                            value=f"Total: {len(guild.members):,}\n"
-                                  f"{status_count['online']:,}{config.status_emojis['online']}  "
-                                  f"{status_count['idle']:,}{config.status_emojis['idle']} "
-                                  f"{status_count['dnd']:,}{config.status_emojis['dnd']} "
-                                  f"{status_count['offline']:,}{config.status_emojis['offline']}")
-        else:
-            embed.add_field(name="Members",
-                            value=f"Total: {len(guild.members):,}\n"
-                                  f"Online: {status_count['online']:,}\n"
-                                  f"Idle: {status_count['idle']:,}\n"
-                                  f"Busy: {status_count['dnd']:,}\n"
-                                  f"Offline: {status_count['offline']:,}")
-        embed.add_field(name="Roles", value=len(guild.roles))
-        embed.add_field(name="Emojis", value=len(guild.emojis))
-        await ctx.send(embed=embed)
-
-    @commands.command()
-    async def uptime(self, ctx):
-        """Shows how long the bot has been running."""
-        await ctx.send("I have been running for {0}.".format(parse_uptime(self.bot.start_time, True)))
-
-    @commands.guild_only()
-    @commands.command(aliases=["memberinfo"])
-    async def userinfo(self, ctx, *, user: str=None):
-        """Shows a user's information."""
-        if user is None:
-            user = ctx.author
-        else:
-            _user = self.bot.get_member(user, ctx.guild)
-            if _user is None:
-                await ctx.send(f"Could not find user `{user}`")
-                return
-            user = _user
-        embed = discord.Embed(title=f"{user.name}#{user.discriminator}",
-                              timestamp=user.joined_at, colour=user.colour)
-        embed.set_thumbnail(url=get_user_avatar(user))
-        embed.set_footer(text="Member since")
-        embed.add_field(name="ID", value=user.id)
-        embed.add_field(name="Created", value=user.created_at)
-        status = []
-        if ctx.guild.owner == user:
-            status.append("Server Owner")
-        if user.guild_permissions.administrator:
-            status.append("Server Admin")
-        if user.guild_permissions.manage_guild:
-            status.append("Server Moderator")
-        if any(c.permissions_for(user).manage_channels for c in ctx.guild.text_channels):
-            status.append("Channel Moderator")
-        if user.bot:
-            status.append("Bot")
-        if not status:
-            status.append("Regular User")
-        embed.add_field(name="User Status", value=", ".join(status), inline=False)
-
-        embed.add_field(name="Servers", value=f"{len(self.bot.get_user_guilds(user.id))} shared")
-        embed.add_field(name="Roles", value=f"{len(user.roles):,}")
-
-        await ctx.send(embed=embed)
 
     async def notify_subscribers(self, event_id: int, content, *, embed: discord.Embed=None, skip_creator=False):
         """Sends a message to all users subscribed to an event"""
