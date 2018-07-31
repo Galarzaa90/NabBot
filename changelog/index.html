@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.2">
+      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.4">
     
     
       
@@ -44,9 +44,9 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/application.ba0fd1a6.css">
+      <link rel="stylesheet" href="../assets/stylesheets/application.451f80e5.css">
       
-        <link rel="stylesheet" href="../assets/stylesheets/application-palette.6079476c.css">
+        <link rel="stylesheet" href="../assets/stylesheets/application-palette.22915126.css">
       
       
         
@@ -276,11 +276,11 @@
                   <div class="md-sidebar__inner">
                     <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <span class="md-nav__button md-logo">
+    <a href=".." title="NabBot" class="md-nav__button md-logo">
       
         <img src="../assets/images/icon.png" width="48" height="48">
       
-    </span>
+    </a>
     NabBot
   </label>
   
@@ -351,6 +351,13 @@
   
     <label class="md-nav__title" for="__toc">Table of contents</label>
     <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#version-150-2018-07-31" title="Version 1.5.0 (2018-07-31)" class="md-nav__link">
+    Version 1.5.0 (2018-07-31)
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#version-140-2018-07-24" title="Version 1.4.0 (2018-07-24)" class="md-nav__link">
@@ -632,6 +639,18 @@
 
 
   <li class="md-nav__item">
+    <a href="../commands/info/" title="Info commands" class="md-nav__link">
+      Info commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
     <a href="../commands/loot/" title="Loot commands" class="md-nav__link">
       Loot commands
     </a>
@@ -808,6 +827,13 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#version-150-2018-07-31" title="Version 1.5.0 (2018-07-31)" class="md-nav__link">
+    Version 1.5.0 (2018-07-31)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#version-140-2018-07-24" title="Version 1.4.0 (2018-07-24)" class="md-nav__link">
     Version 1.4.0 (2018-07-24)
   </a>
@@ -937,6 +963,20 @@
                 
                 
                 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<h2 id="version-150-2018-07-31">Version 1.5.0 (2018-07-31)<a class="headerlink" href="#version-150-2018-07-31" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Small changes to <code class="codehilite">/userinfo</code></li>
+<li>Fixed bug in <code class="codehilite">/monster</code> with creatures without a bestiary class defined.</li>
+<li>Added loading message to <code class="codehilite">/im</code>.</li>
+<li>Bot owner can now use <code class="codehilite">/serverinfo</code> to see other server's info.</li>
+<li><code class="codehilite">/servers</code> now has pagination and sorting.</li>
+<li>NabBot now responds to a mention with its command prefixes.</li>
+<li>New <code class="codehilite">/emojiinfo</code> command</li>
+<li>Created new cog <code class="codehilite">Info</code>, moved information commands from <code class="codehilite">General</code></li>
+<li>Level up and death messages now use lambdas for filtering.</li>
+<li>Server settings can now be changed with <code class="codehilite">Manage Server</code> permissions instead of <code class="codehilite">Administrator</code> permission.</li>
+<li>NabBot's initial message is now sent on a server channel instead of PMing the owner.  </li>
+</ul>
 <h2 id="version-140-2018-07-24">Version 1.4.0 (2018-07-24)<a class="headerlink" href="#version-140-2018-07-24" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code class="codehilite">/loot</code> has been rewritten:<ul>
@@ -1260,7 +1300,7 @@
       
     </div>
     
-      <script src="../assets/javascripts/application.a59e2a89.js"></script>
+      <script src="../assets/javascripts/application.30f6b8b1.js"></script>
       
       <script>app.initialize({version:"0.17.5",url:{base:".."}})</script>
       

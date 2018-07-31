@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.2">
+      <meta name="generator" content="mkdocs-0.17.5, mkdocs-material-2.9.4">
     
     
       
@@ -44,9 +44,9 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/application.ba0fd1a6.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/application.451f80e5.css">
       
-        <link rel="stylesheet" href="../../assets/stylesheets/application-palette.6079476c.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/application-palette.22915126.css">
       
       
         
@@ -278,11 +278,11 @@
                   <div class="md-sidebar__inner">
                     <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <span class="md-nav__button md-logo">
+    <a href="../.." title="NabBot" class="md-nav__button md-logo">
       
         <img src="../../assets/images/icon.png" width="48" height="48">
       
-    </span>
+    </a>
     NabBot
   </label>
   
@@ -508,29 +508,8 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#about" title="about" class="md-nav__link">
-    about
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#botinfo" title="botinfo" class="md-nav__link">
-    botinfo
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#choose" title="choose" class="md-nav__link">
     choose
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#help" title="help" class="md-nav__link">
-    help
   </a>
   
 </li>
@@ -694,20 +673,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#serverinfo" title="serverinfo" class="md-nav__link">
-    serverinfo
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#uptime" title="uptime" class="md-nav__link">
-    uptime
-  </a>
-  
-</li>
-      
       
       
       
@@ -716,6 +681,18 @@
   
 </nav>
     
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../info/" title="Info commands" class="md-nav__link">
+      Info commands
+    </a>
   </li>
 
         
@@ -901,29 +878,8 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#about" title="about" class="md-nav__link">
-    about
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#botinfo" title="botinfo" class="md-nav__link">
-    botinfo
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#choose" title="choose" class="md-nav__link">
     choose
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#help" title="help" class="md-nav__link">
-    help
   </a>
   
 </li>
@@ -1087,20 +1043,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#serverinfo" title="serverinfo" class="md-nav__link">
-    serverinfo
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#uptime" title="uptime" class="md-nav__link">
-    uptime
-  </a>
-  
-</li>
-      
       
       
       
@@ -1124,14 +1066,6 @@
 <p>Parameters are enclosed with <code class="codehilite">&lt; &gt;</code>. <br />
 Optional parameters are enclosed in brackets <code class="codehilite">[]</code>.</p>
 </div>
-<h2 id="about">about<a class="headerlink" href="#about" title="Permanent link">&para;</a></h2>
-<p>Shows basic information about the bot.</p>
-<details class="summary"><summary>Examples</summary><p><strong>/about</strong><br />
-<img alt="image" src="../../assets/images/commands/about.png" /></p></details><hr />
-<h2 id="botinfo">botinfo<a class="headerlink" href="#botinfo" title="Permanent link">&para;</a></h2>
-<p>Shows advanced information about the bot.</p>
-<details class="summary"><summary>Examples</summary><p><strong>/botinfo</strong><br />
-<img alt="image" src="../../assets/images/commands/botinfo.png" /></p></details><hr />
 <h2 id="choose">choose<a class="headerlink" href="#choose" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">choose &lt;choices..&gt;</code></p>
 <p>Chooses between multiple choices.</p>
@@ -1139,33 +1073,6 @@ Optional parameters are enclosed in brackets <code class="codehilite">[]</code>.
 e.g. "Choice A" ChoiceB "Choice C"</p>
 <details class="summary"><summary>Examples</summary><p><strong>/choose "Option A" optionb "Option C"</strong><br />
 <img alt="image" src="../../assets/images/commands/choose.png" /></p></details><hr />
-<h2 id="help">help<a class="headerlink" href="#help" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> <code class="codehilite">help [command]</code><br />
-<strong>Other aliases:</strong> <code class="codehilite">commands</code></p>
-<p>Shows help about a command or the bot.</p>
-<ul>
-<li>If no command is specified, it will list all available commands</li>
-<li>If a command is specified, it will show further info, and its subcommands if applicable.</li>
-<li>If a category is specified, it will show only commands in that <em>categor</em>.</li>
-</ul>
-<p>Various symbols are used to represent a command's signature and/or show further info.<br />
-<strong>&lt;argument&gt;</strong><br />
-This means the argument is <strong><em><em>required</em></em></strong>.</p>
-<p><strong>[argument]</strong><br />
-This means the argument is <strong><em><em>optional</em></em></strong>.</p>
-<p><strong>[A|B]</strong><br />
-This means the it can be <strong><em><em>either A or B</em></em></strong>.</p>
-<p><strong>[argument...]</strong><br />
-This means you can have <strong><em><em>multiple arguments</em></em></strong>.</p>
-<p>🔸<br />
-This means the command has subcommands.
-Check the command's help to see them. </p>
-<details class="summary"><summary>Examples</summary><p><strong>/help</strong><br />
-<img alt="image" src="../../assets/images/commands/help_1.png" /><br />
-<strong>/help guild</strong><br />
-<img alt="image" src="../../assets/images/commands/help_2.png" /><br />
-<strong>/help guild info</strong><br />
-<img alt="image" src="../../assets/images/commands/help_3.png" /></p></details><hr />
 <h2 id="events">events<a class="headerlink" href="#events" title="Permanent link">&para;</a></h2>
 <p><strong>Other aliases:</strong> <code class="codehilite">event</code> </p>
 <p>Shows a list of upcoming and recent events.</p>
@@ -1308,14 +1215,6 @@ You can specify how many times you want the die to be rolled.</p>
 <img alt="image" src="../../assets/images/commands/roll_1.png" /><br />
 <strong>/roll 7d20</strong><br />
 <img alt="image" src="../../assets/images/commands/roll_1.png" />    </p></details><hr />
-<h2 id="serverinfo">serverinfo<a class="headerlink" href="#serverinfo" title="Permanent link">&para;</a></h2>
-<p>Shows the server's information.</p>
-<details class="summary"><summary>Examples</summary><p><strong>/serverinfo</strong><br />
-<img alt="image" src="../../assets/images/commands/serverinfo.png" /></p></details><hr />
-<h2 id="uptime">uptime<a class="headerlink" href="#uptime" title="Permanent link">&para;</a></h2>
-<p>Shows how long the bot has been running.</p>
-<details class="summary"><summary>Examples</summary><p><strong>/uptime</strong><br />
-<img alt="image" src="../../assets/images/commands/uptime.png" /></p></details>
                 
                   
                 
@@ -1351,13 +1250,13 @@ You can specify how many times you want the die to be rolled.</p>
           </a>
         
         
-          <a href="../loot/" title="Loot commands" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+          <a href="../info/" title="Info commands" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
             <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
               <span class="md-flex__ellipsis">
                 <span class="md-footer-nav__direction">
                   Next
                 </span>
-                Loot commands
+                Info commands
               </span>
             </div>
             <div class="md-flex__cell md-flex__cell--shrink">
@@ -1398,7 +1297,7 @@ You can specify how many times you want the die to be rolled.</p>
       
     </div>
     
-      <script src="../../assets/javascripts/application.a59e2a89.js"></script>
+      <script src="../../assets/javascripts/application.30f6b8b1.js"></script>
       
       <script>app.initialize({version:"0.17.5",url:{base:"../.."}})</script>
       
