@@ -2,7 +2,7 @@ image: python:3.6
 
 pages:
   before_script:
-    - python -m pip -r requirements-docs.txt
+    - python -m pip install -U -r requirements-docs.txt
   script:
     - cp CHANGELOG.md docs/changelog.md
     - python -m mkdocs build -d public
