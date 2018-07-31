@@ -490,7 +490,7 @@ class Settings:
             await ctx.send(str(error))
 
     def get_current_channel(self, ctx: NabCtx, current_channel_id, pm_fallback=False):
-        top_channel = self.bot.get_top_channel(ctx.guild, True)
+        top_channel = self.bot.get_top_channel(ctx.guild)
         current_channel = ctx.guild.get_channel(current_channel_id)
         if current_channel:
             perms = current_channel.permissions_for(ctx.me)
