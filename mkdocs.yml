@@ -58,6 +58,7 @@ pages:
       - Overview: commands/index.md
       - Admin commands: commands/admin.md
       - General commands: commands/general.md
+      - Info commands: commands/info.md
       - Loot commands: commands/loot.md
       - Mod commands: commands/mod.md
       - Owner commands: commands/owner.md

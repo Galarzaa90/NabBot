@@ -2,7 +2,7 @@ image: python:3.6
 
 pages:
   before_script:
-    - python -m pip install mkdocs mkdocs-material pymdown-extensions git+https://github.com/jdittrich/figureAltCaption.git
+    - python -m pip r requirements-docs.txt
   script:
     - cp CHANGELOG.md docs/changelog.md
     - python -m mkdocs build -d public

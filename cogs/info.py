@@ -114,7 +114,12 @@ class Info:
     @checks.can_embed()
     @commands.command(name="commands", aliases=["commandlist"])
     async def _commands(self, ctx: NabCtx):
-        """Shows a simple list of all commands."""
+        """Shows a simple list of all commands.
+
+        This displays all the commands you can use, with no description or subcommand information.
+        Note that different commands might show up in server channels and in private messages.
+
+        For more details, use `help`."""
         embed = discord.Embed(title=f"{ctx.me.display_name} commands")
         embed.set_footer(text=f"For a more detailed list, try '{ctx.clean_prefix}help' or "
                               f"'{ctx.clean_prefix}help [command_name]'")
@@ -127,6 +132,53 @@ class Info:
 
         for k in sorted(categories):
             embed.add_field(name=k, value=", ".join(f"`{c}`" for c in sorted(categories[k])), inline=False)
+        await ctx.send(embed=embed)
+
+    @commands.guild_only()
+    @commands.command(name="emojiinfo")
+    async def emoji_info(self, ctx: NabCtx, *, emoji: discord.Emoji=None):
+        """Shows information about an emoji, or shows all emojis.
+
+        If the command is used with no arguments, all the server emojis are shown.
+
+        If a emoji, its id or name is provided, it will show more information about it.
+
+        Only emojis in the current servers can be checked."""
+        if emoji is not None:
+            embed = discord.Embed(title=emoji.name, timestamp=emoji.created_at, color=discord.Color.blurple())
+            embed.set_thumbnail(url=emoji.url)
+            embed.set_footer(text="Created at")
+            embed.add_field(name="ID", value=emoji.id)
+            embed.add_field(name="Usage", value=f"`{emoji}`")
+            embed.add_field(name="Attributes", inline=False,
+                            value=f"{ctx.tick(emoji.managed)} Twitch managed\n"
+                                  f"{ctx.tick(emoji.require_colons)} Requires colons\n"
+                                  f"{ctx.tick(len(emoji.roles) > 0)} Role limited")
+        else:
+            emojis: List[discord.Emoji] = ctx.guild.emojis
+            if not emojis:
+                return await ctx.send("This server has no custom emojis.")
+            normal = [str(e) for e in emojis if not e.animated]
+            animated = [str(e) for e in emojis if e.animated]
+            embed = discord.Embed(title="Custom Emojis", color=discord.Color.blurple())
+            if normal:
+                emojis_str = "\n".join(normal)
+                fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
+                for i, value in enumerate(fields):
+                    if i == 0:
+                        name = f"Regular ({len(normal)})"
+                    else:
+                        name = "\u200F"
+                    embed.add_field(name=name, value=value.replace("\n", ""))
+            if animated:
+                emojis_str = "\n".join(animated)
+                fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
+                for i, value in enumerate(fields):
+                    if i == 0:
+                        name = f"Animated (Nitro required) ({len(animated)})"
+                    else:
+                        name = "\u200F"
+                    embed.add_field(name=name, value=value.replace("\n", ""))
         await ctx.send(embed=embed)
 
     @checks.can_embed()
@@ -227,54 +279,6 @@ class Info:
         for page in pages:
             await destination.send(page)
 
-
-    @commands.guild_only()
-    @commands.command(name="emojiinfo")
-    async def emoji_info(self, ctx: NabCtx, *, emoji: discord.Emoji=None):
-        """Shows information about an emoji, or shows all emojis.
-
-        If the command is used with no arguments, all the server emojis are shown.
-
-        If a emoji, it's id or name is provided, it will show more information about it.
-
-        Only emojis in the current servers can be checked."""
-        if emoji is not None:
-            embed = discord.Embed(title=emoji.name, timestamp=emoji.created_at, color=discord.Color.blurple())
-            embed.set_thumbnail(url=emoji.url)
-            embed.set_footer(text="Created at")
-            embed.add_field(name="ID", value=emoji.id)
-            embed.add_field(name="Usage", value=f"`{emoji}`")
-            embed.add_field(name="Attributes", inline=False,
-                            value=f"{ctx.tick(emoji.managed)} Twitch managed\n"
-                                  f"{ctx.tick(emoji.require_colons)} Requires colons\n"
-                                  f"{ctx.tick(len(emoji.roles) > 0)} Role limited")
-        else:
-            emojis: List[discord.Emoji] = ctx.guild.emojis
-            if not emojis:
-                return await ctx.send("This server has no custom emojis.")
-            normal = [str(e) for e in emojis if not e.animated]
-            animated = [str(e) for e in emojis if e.animated]
-            embed = discord.Embed(title="Custom Emojis", color=discord.Color.blurple())
-            if normal:
-                emojis_str = "\n".join(normal)
-                fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
-                for i, value in enumerate(fields):
-                    if i == 0:
-                        name = f"Regular ({len(normal)})"
-                    else:
-                        name = "\u200F"
-                    embed.add_field(name=name, value=value.replace("\n", ""))
-            if animated:
-                emojis_str = "\n".join(animated)
-                fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
-                for i, value in enumerate(fields):
-                    if i == 0:
-                        name = f"Animated (Nitro required) ({len(animated)})"
-                    else:
-                        name = "\u200F"
-                    embed.add_field(name=name, value=value.replace("\n", ""))
-        await ctx.send(embed=embed)
-
     @commands.guild_only()
     @commands.command()
     @checks.can_embed()
@@ -345,9 +349,12 @@ class Info:
     async def userinfo(self, ctx, *, user: str = None):
         """Shows a user's information.
 
-        About user statutes:
+        If no user is provided, it shows your own information.
+
+        About user statuses:
+
         - Server Owner: Owner of the server
-        - Server Admin: User with Administrator permission
+        - Server Admin: User with `Administrator` permission
         - Server Moderator: User with `Manage Server` permissions.
         - Channel Moderator: User with `Manage Channels` permissions in at least one channel."""
         if user is None:
