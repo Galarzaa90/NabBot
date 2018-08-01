@@ -15,7 +15,7 @@ class InsensitiveRole(IDConverter):
     3. By name (case insensitive)."""
 
     async def convert(self, ctx, argument) -> discord.Role:
-
+        argument = argument.replace("\"", "")
         guild = ctx.guild
         if not guild:
             raise NoPrivateMessage()
