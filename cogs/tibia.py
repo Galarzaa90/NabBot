@@ -692,7 +692,7 @@ class Tibia:
             world = ctx.world
         name = name.strip()
         if world:
-            world = world.strip()
+            world = world.title().strip()
         house = await get_house(name, world)
         if house is None:
             await ctx.send(f"{ctx.tick(False)} I couldn't find a house named `{name}`.")
