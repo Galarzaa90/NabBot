@@ -2,12 +2,14 @@ import asyncio
 import datetime as dt
 import io
 import json
+import logging
 import re
 import time
 import urllib.parse
 from calendar import timegm
 from contextlib import closing
 from html.parser import HTMLParser
+from logging.handlers import TimedRotatingFileHandler
 from typing import List, Union, Dict, Optional
 
 import aiohttp
@@ -59,6 +61,17 @@ tibia_worlds: List[str] = []
 
 HIGHSCORE_CATEGORIES = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
                         "magic_ek", "magic_rp", "loyalty", "achievements"]
+
+
+# Request log
+req_log = logging.getLogger(__name__)
+req_log.setLevel(logging.DEBUG)
+# Save log to file (info level)
+fileHandler = TimedRotatingFileHandler('logs/requests', when='midnight')
+fileHandler.suffix = "%Y_%m_%d.log"
+fileHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
+fileHandler.setLevel(logging.INFO)
+req_log.addHandler(fileHandler)
 
 
 class NetworkError(Exception):
@@ -400,6 +413,7 @@ async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Ch
     except UnicodeEncodeError:
         return None
     # Fetch website
+    req_log.info(f"get_character({name})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -502,6 +516,7 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
         return ERROR_NETWORK
 
     # Fetch website
+    req_log.info(f"get_highscores({world}, {category}, {pagenum}, {profession})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -543,7 +558,7 @@ async def get_highscores_tibiadata(world, category=None, vocation=None, tries=5)
     if category is None:
         category = "experience"
     url = f"https://api.tibiadata.com/v2/highscores/{world}/{category}/{vocation}.json"
-
+    req_log.info(f"get_highscores_tibiadata({world}, {category}, {vocation})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -571,7 +586,7 @@ async def get_world(name, tries=5) -> Optional[World]:
         log.error("get_world: Couldn't fetch {0}, network error.".format(name))
         raise NetworkError()
         # Fetch website
-
+    req_log.info(f"get_world({name})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -640,6 +655,7 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
     tibiadata_url = f"https://api.tibiadata.com/v2/guild/{urllib.parse.quote(name)}.json"
 
     # Fetch website
+    req_log.info(f"get_guild({name})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(tibiadata_url) as resp:
@@ -673,6 +689,7 @@ async def get_recent_news(tries = 5):
     except UnicodeEncodeError:
         return None
     # Fetch website
+    req_log.info(f"get_recent_news()")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -703,6 +720,7 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
     except UnicodeEncodeError:
         return None
     # Fetch website
+    req_log.info(f"get_news_article({article_id})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -899,6 +917,7 @@ async def get_house(name, world=None):
         tries = 5
         while True:
             try:
+                req_log.info(f"get_house({name})")
                 async with aiohttp.ClientSession() as session:
                     async with session.get(house["url"]) as resp:
                         content = await resp.text(encoding='ISO-8859-1')
