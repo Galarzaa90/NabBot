@@ -77,6 +77,9 @@ req_log.addHandler(fileHandler)
 CACHE_CHARACTERS = cachetools.TTLCache(1000, 30)
 CACHE_GUILDS = cachetools.TTLCache(1000, 120)
 CACHE_WORLDS = cachetools.TTLCache(100, 60)
+CACHE_NEWS = cachetools.TTLCache(100, 1800)
+CACHE_WORLD_LIST = cachetools.TTLCache(10, 120)
+
 
 class NetworkError(Exception):
     pass
@@ -419,9 +422,7 @@ async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Ch
     # Fetch website
     try:
         character = CACHE_CHARACTERS[name.lower()]
-        log.debug(f"Character '{name.lower()}' loaded from cache'")
     except KeyError:
-        log.debug(f"Character '{name.lower()}' loaded from network")
         req_log.info(f"get_character({name})")
         try:
             async with aiohttp.ClientSession() as session:
@@ -598,10 +599,9 @@ async def get_world(name, tries=5) -> Optional[World]:
         # Fetch website
     try:
         world = CACHE_WORLDS[name]
-        log.debug(f"World '{name}' loaded from cache'")
         return world
     except KeyError:
-        log.debug(f"World '{name}' loaded from network")
+        pass
     req_log.info(f"get_world({name})")
     try:
         async with aiohttp.ClientSession() as session:
@@ -633,10 +633,9 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
     # Sorry guildstats.eu :D
     try:
         guild = CACHE_GUILDS[name.lower()]
-        log.debug(f"Guild '{name.lower()}' loaded from cache")
         return guild
     except KeyError:
-        log.debug(f"Guild '{name.lower()}' loaded from network")
+        pass
 
     if not title_case:
         try:
@@ -704,7 +703,7 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
     return guild
 
 
-async def get_recent_news(tries = 5):
+async def get_recent_news(tries=5):
     if tries == 0:
         log.error("get_recent_news: network error.")
         raise NetworkError()
@@ -713,6 +712,11 @@ async def get_recent_news(tries = 5):
     except UnicodeEncodeError:
         return None
     # Fetch website
+    try:
+        news = CACHE_NEWS["recent"]
+        return news
+    except KeyError:
+        pass
     req_log.info(f"get_recent_news()")
     try:
         async with aiohttp.ClientSession() as session:
@@ -729,6 +733,7 @@ async def get_recent_news(tries = 5):
         return None
     for article in newslist["data"]:
         article["date"] = parse_tibiadata_time(article["date"]).date()
+    CACHE_NEWS["recent"] = newslist["data"]
     return newslist["data"]
 
 
@@ -743,6 +748,12 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
         url = f"https://api.tibiadata.com/v2/news/{article_id}.json"
     except UnicodeEncodeError:
         return None
+
+    try:
+        article = CACHE_NEWS[article_id]
+        return article
+    except KeyError:
+        pass
     # Fetch website
     req_log.info(f"get_news_article({article_id})")
     try:
@@ -762,6 +773,7 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
         return None
     article["id"] = article_id
     article["date"] = parse_tibiadata_time(article["date"]).date()
+    CACHE_NEWS[article_id] = article
     return article
 
 
@@ -1118,6 +1130,11 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
 
     # Fetch website
     try:
+        worlds = CACHE_WORLD_LIST[0]
+        return worlds
+    except KeyError:
+        pass
+    try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
@@ -1141,6 +1158,7 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
                                 pvp_type=world["worldtype"], online_count=world["online"]))
     except KeyError:
         return
+    CACHE_WORLD_LIST[0] = worlds
     return worlds
 
 
