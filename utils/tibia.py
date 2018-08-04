@@ -76,7 +76,7 @@ req_log.addHandler(fileHandler)
 
 CACHE_CHARACTERS = cachetools.TTLCache(1000, 30)
 CACHE_GUILDS = cachetools.TTLCache(1000, 120)
-CACHE_WORLDS = cachetools.TTLCache(100, 60)
+CACHE_WORLDS = cachetools.TTLCache(100, 50)
 CACHE_NEWS = cachetools.TTLCache(100, 1800)
 CACHE_WORLD_LIST = cachetools.TTLCache(10, 120)
 
