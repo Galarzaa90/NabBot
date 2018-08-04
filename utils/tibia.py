@@ -13,6 +13,7 @@ from logging.handlers import TimedRotatingFileHandler
 from typing import List, Union, Dict, Optional
 
 import aiohttp
+import cachetools
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
 from discord.ext import commands
@@ -73,6 +74,9 @@ fileHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message
 fileHandler.setLevel(logging.INFO)
 req_log.addHandler(fileHandler)
 
+CACHE_CHARACTERS = cachetools.TTLCache(1000, 30)
+CACHE_GUILDS = cachetools.TTLCache(1000, 120)
+CACHE_WORLDS = cachetools.TTLCache(100, 60)
 
 class NetworkError(Exception):
     pass
@@ -413,17 +417,23 @@ async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Ch
     except UnicodeEncodeError:
         return None
     # Fetch website
-    req_log.info(f"get_character({name})")
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
-        await asyncio.sleep(config.network_retry_delay)
-        return await get_character(name, tries - 1)
+        character = CACHE_CHARACTERS[name.lower()]
+        log.debug(f"Character '{name.lower()}' loaded from cache'")
+    except KeyError:
+        log.debug(f"Character '{name.lower()}' loaded from network")
+        req_log.info(f"get_character({name})")
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    content = await resp.text(encoding='ISO-8859-1')
+        except Exception:
+            await asyncio.sleep(config.network_retry_delay)
+            return await get_character(name, tries - 1)
 
-    content_json = json.loads(content)
-    character = Character.parse_from_tibiadata(content_json)
+        content_json = json.loads(content)
+        character = Character.parse_from_tibiadata(content_json)
+        CACHE_CHARACTERS[name.lower()] = character
     if character is None:
         return None
 
@@ -581,11 +591,17 @@ async def get_highscores_tibiadata(world, category=None, vocation=None, tries=5)
 
 async def get_world(name, tries=5) -> Optional[World]:
     url = f"https://api.tibiadata.com/v2/world/{name}.json"
-    name = name.strip()
+    name = name.strip().title()
     if tries == 0:
         log.error("get_world: Couldn't fetch {0}, network error.".format(name))
         raise NetworkError()
         # Fetch website
+    try:
+        world = CACHE_WORLDS[name]
+        log.debug(f"World '{name}' loaded from cache'")
+        return world
+    except KeyError:
+        log.debug(f"World '{name}' loaded from network")
     req_log.info(f"get_world({name})")
     try:
         async with aiohttp.ClientSession() as session:
@@ -615,6 +631,13 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
 
     # Fix casing using guildstats.eu if needed
     # Sorry guildstats.eu :D
+    try:
+        guild = CACHE_GUILDS[name.lower()]
+        log.debug(f"Guild '{name.lower()}' loaded from cache")
+        return guild
+    except KeyError:
+        log.debug(f"Guild '{name.lower()}' loaded from network")
+
     if not title_case:
         try:
             async with aiohttp.ClientSession() as session:
@@ -677,6 +700,7 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
             result = c.fetchone()
             if result:
                 guild.guildhall["id"] = result["id"]
+    CACHE_GUILDS[name.lower()] = guild
     return guild
 
 
