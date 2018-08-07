@@ -1,118 +1,118 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-     <loc>/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/changelog/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/install/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/permissions/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/faq/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/features/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/features/autoroles/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/features/groups/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/admin/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/general/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/info/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/loot/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/mod/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/owner/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/roles/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/settings/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/tibia/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/tibiawiki/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/commands/tracking/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/hosting/config/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/hosting/messages/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
     <url>
-     <loc>/hosting/cogs/</loc>
-     <lastmod>2018-07-31</lastmod>
+     <loc>None</loc>
+     <lastmod>2018-08-07</lastmod>
      <changefreq>daily</changefreq>
     </url>
 </urlset>
