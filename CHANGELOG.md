@@ -1,4 +1,12 @@
 # Changelog
+## Version 1.5.1 (2018-08-07)
+- Various `/event` subcommands were showing the member's nicknames from other servers
+- Cleaner bad argument errors for commands in the General cog.
+- Fixed bug with highscores not getting saved
+- Fixed issue with `/house` being case sensitive with world names.
+- Added caching for external requests, to reduce load on external services.
+- Updated TibiaWiki database to the state of August 7th 2018.
+
 ## Version 1.5.0 (2018-07-31)
 - Small changes to `/userinfo`
 - Fixed bug in `/monster` with creatures without a bestiary class defined.

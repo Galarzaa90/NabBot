@@ -43,7 +43,7 @@ class NabBot(commands.Bot):
         # A list version is created from the dictionary
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
-        self.__version__ = "1.5.0"
+        self.__version__ = "1.5.1"
         self.__min_discord__ = 1480
 
     async def on_ready(self):

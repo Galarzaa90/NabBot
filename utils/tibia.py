@@ -2,15 +2,18 @@ import asyncio
 import datetime as dt
 import io
 import json
+import logging
 import re
 import time
 import urllib.parse
 from calendar import timegm
 from contextlib import closing
 from html.parser import HTMLParser
+from logging.handlers import TimedRotatingFileHandler
 from typing import List, Union, Dict, Optional
 
 import aiohttp
+import cachetools
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
 from discord.ext import commands
@@ -59,6 +62,23 @@ tibia_worlds: List[str] = []
 
 HIGHSCORE_CATEGORIES = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
                         "magic_ek", "magic_rp", "loyalty", "achievements"]
+
+
+# Request log
+req_log = logging.getLogger(__name__)
+req_log.setLevel(logging.DEBUG)
+# Save log to file (info level)
+fileHandler = TimedRotatingFileHandler('logs/requests', when='midnight')
+fileHandler.suffix = "%Y_%m_%d.log"
+fileHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
+fileHandler.setLevel(logging.INFO)
+req_log.addHandler(fileHandler)
+
+CACHE_CHARACTERS = cachetools.TTLCache(1000, 30)
+CACHE_GUILDS = cachetools.TTLCache(1000, 120)
+CACHE_WORLDS = cachetools.TTLCache(100, 50)
+CACHE_NEWS = cachetools.TTLCache(100, 1800)
+CACHE_WORLD_LIST = cachetools.TTLCache(10, 120)
 
 
 class NetworkError(Exception):
@@ -401,15 +421,20 @@ async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Ch
         return None
     # Fetch website
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
-        await asyncio.sleep(config.network_retry_delay)
-        return await get_character(name, tries - 1)
+        character = CACHE_CHARACTERS[name.lower()]
+    except KeyError:
+        req_log.info(f"get_character({name})")
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    content = await resp.text(encoding='ISO-8859-1')
+        except Exception:
+            await asyncio.sleep(config.network_retry_delay)
+            return await get_character(name, tries - 1)
 
-    content_json = json.loads(content)
-    character = Character.parse_from_tibiadata(content_json)
+        content_json = json.loads(content)
+        character = Character.parse_from_tibiadata(content_json)
+        CACHE_CHARACTERS[name.lower()] = character
     if character is None:
         return None
 
@@ -502,6 +527,7 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
         return ERROR_NETWORK
 
     # Fetch website
+    req_log.info(f"get_highscores({world}, {category}, {pagenum}, {profession})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -520,14 +546,14 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
         return await get_highscores(world, category, pagenum, profession, tries - 1)
 
     if category == "loyalty":
-        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
+        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://www.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
         pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
         matches = re.findall(pattern, content)
         score_list = []
         for m in matches:
             score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': m[3].replace(',', '')})
     else:
-        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://secure.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
+        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://www.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
         pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
         matches = re.findall(pattern, content)
         score_list = []
@@ -543,7 +569,7 @@ async def get_highscores_tibiadata(world, category=None, vocation=None, tries=5)
     if category is None:
         category = "experience"
     url = f"https://api.tibiadata.com/v2/highscores/{world}/{category}/{vocation}.json"
-
+    req_log.info(f"get_highscores_tibiadata({world}, {category}, {vocation})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -566,12 +592,17 @@ async def get_highscores_tibiadata(world, category=None, vocation=None, tries=5)
 
 async def get_world(name, tries=5) -> Optional[World]:
     url = f"https://api.tibiadata.com/v2/world/{name}.json"
-    name = name.strip()
+    name = name.strip().title()
     if tries == 0:
         log.error("get_world: Couldn't fetch {0}, network error.".format(name))
         raise NetworkError()
         # Fetch website
-
+    try:
+        world = CACHE_WORLDS[name]
+        return world
+    except KeyError:
+        pass
+    req_log.info(f"get_world({name})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -600,6 +631,12 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
 
     # Fix casing using guildstats.eu if needed
     # Sorry guildstats.eu :D
+    try:
+        guild = CACHE_GUILDS[name.lower()]
+        return guild
+    except KeyError:
+        pass
+
     if not title_case:
         try:
             async with aiohttp.ClientSession() as session:
@@ -640,6 +677,7 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
     tibiadata_url = f"https://api.tibiadata.com/v2/guild/{urllib.parse.quote(name)}.json"
 
     # Fetch website
+    req_log.info(f"get_guild({name})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(tibiadata_url) as resp:
@@ -661,10 +699,11 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
             result = c.fetchone()
             if result:
                 guild.guildhall["id"] = result["id"]
+    CACHE_GUILDS[name.lower()] = guild
     return guild
 
 
-async def get_recent_news(tries = 5):
+async def get_recent_news(tries=5):
     if tries == 0:
         log.error("get_recent_news: network error.")
         raise NetworkError()
@@ -673,6 +712,12 @@ async def get_recent_news(tries = 5):
     except UnicodeEncodeError:
         return None
     # Fetch website
+    try:
+        news = CACHE_NEWS["recent"]
+        return news
+    except KeyError:
+        pass
+    req_log.info(f"get_recent_news()")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -688,6 +733,7 @@ async def get_recent_news(tries = 5):
         return None
     for article in newslist["data"]:
         article["date"] = parse_tibiadata_time(article["date"]).date()
+    CACHE_NEWS["recent"] = newslist["data"]
     return newslist["data"]
 
 
@@ -702,7 +748,14 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
         url = f"https://api.tibiadata.com/v2/news/{article_id}.json"
     except UnicodeEncodeError:
         return None
+
+    try:
+        article = CACHE_NEWS[article_id]
+        return article
+    except KeyError:
+        pass
     # Fetch website
+    req_log.info(f"get_news_article({article_id})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -720,6 +773,7 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
         return None
     article["id"] = article_id
     article["date"] = parse_tibiadata_time(article["date"]).date()
+    CACHE_NEWS[article_id] = article
     return article
 
 
@@ -899,6 +953,7 @@ async def get_house(name, world=None):
         tries = 5
         while True:
             try:
+                req_log.info(f"get_house({name})")
                 async with aiohttp.ClientSession() as session:
                     async with session.get(house["url"]) as resp:
                         content = await resp.text(encoding='ISO-8859-1')
@@ -1075,6 +1130,11 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
 
     # Fetch website
     try:
+        worlds = CACHE_WORLD_LIST[0]
+        return worlds
+    except KeyError:
+        pass
+    try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
@@ -1098,6 +1158,7 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
                                 pvp_type=world["worldtype"], online_count=world["online"]))
     except KeyError:
         return
+    CACHE_WORLD_LIST[0] = worlds
     return worlds
 
 

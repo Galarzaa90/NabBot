@@ -3,7 +3,7 @@ import datetime as dt
 import random
 import time
 from contextlib import closing
-from typing import Union, Dict, Optional, List
+from typing import Union, Dict, Optional, List, Any
 
 import discord
 from discord.ext import commands
@@ -32,9 +32,7 @@ class General:
         if isinstance(error, BadTime):
             await ctx.send(error)
             return
-        if isinstance(error, commands.BadArgument):
-            return await ctx.send(error)
-        elif isinstance(error, commands.UserInputError):
+        if isinstance(error, commands.UserInputError):
             await ctx.send(f"{ctx.tick(False)} The correct syntax is: "
                            f"`{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
                            f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
@@ -260,7 +258,7 @@ class General:
 
     @commands.guild_only()
     @events.command(name="addplayer", aliases=["addchar"])
-    async def event_addplayer(self, ctx, event_id: int, *, character):
+    async def event_addplayer(self, ctx: NabCtx, event_id: int, *, character):
         """Adds a character to an event.
 
         Only the creator can add characters to an event.
@@ -283,7 +281,7 @@ class General:
         if char is None:
             await ctx.send(f"{ctx.tick(False)} That character is not registered.")
             return
-        owner = self.bot.get_member(char["user_id"], ctx.guild)
+        owner = ctx.guild.get_member(char["user_id"])
         if owner is None:
             await ctx.send(f"{ctx.tick(False)} That character is not registered.")
             return
@@ -601,11 +599,6 @@ class General:
         """Displays an event's info.
 
         The start time shown in the footer is always displayed in your device's timezone."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
         event = self.get_event(ctx, event_id)
         if not event:
             await ctx.send(f"{ctx.tick(False)} There's no event with that id.")
@@ -847,7 +840,7 @@ class General:
     @commands.guild_only()
     @checks.can_embed()
     @events.command(name="participants")
-    async def event_participants(self, ctx, event_id: int):
+    async def event_participants(self, ctx: NabCtx, event_id: int):
         """Shows the list of characters participating in this event."""
         event = self.get_event(ctx, event_id)
         if event is None:
@@ -861,23 +854,19 @@ class General:
             return
         entries = []
         vocations = []
-        event_server: discord.Guild = self.bot.get_guild(event["server"])
-        for char in event["participants"]:
+        for char in event["participants"]:  # type: Dict[str, Any]
             char["level"] = abs(char["level"])
             char["emoji"] = get_voc_emoji(char["vocation"])
             vocations.append(char["vocation"])
             char["vocation"] = get_voc_abb(char["vocation"])
-            owner = self.bot.get_member(char["user_id"], self.bot.get_guild(event_server))
+            owner = ctx.guild.get_member(int(char["user_id"]))
             char["owner"] = "unknown" if owner is None else owner.display_name
             entries.append("**{name}** - {level} {vocation}{emoji} - **@{owner}**".format(**char))
-        author = self.bot.get_member(event["creator"], event_server)
+        author = ctx.guild.get_member(int(event["creator"]))
         author_name = None
         author_icon = None
         if author is not None:
-            if event_server is None:
-                author_name = author.name
-            else:
-                author_name = author.display_name
+            author_name = author.display_name
             author_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
         pages = VocationPages(ctx, entries=entries, per_page=15, vocations=vocations)
         pages.embed.title = event["name"]
@@ -889,7 +878,7 @@ class General:
 
     @commands.guild_only()
     @events.command(name="remove", aliases=["delete", "cancel"])
-    async def event_remove(self, ctx, event_id: int):
+    async def event_remove(self, ctx: NabCtx, event_id: int):
         """Deletes or cancels an event."""
         c = userDatabase.cursor()
         event = self.get_event(ctx, event_id)
@@ -915,7 +904,7 @@ class General:
             await ctx.send(f"{ctx.tick()} Your event was deleted successfully.")
         else:
             await ctx.send(f"{ctx.tick()} Event deleted successfully.")
-            creator = self.bot.get_member(event["creator"])
+            creator = ctx.guild.get_member(event["creator"])
             if creator is not None:
                 await creator.send(f"Your event **{event['name']}** was deleted by {ctx.author.mention}.")
         await self.notify_subscribers(event_id, f"The event **{event['name']}** was deleted by {ctx.author.mention}.",
@@ -923,7 +912,7 @@ class General:
 
     @commands.guild_only()
     @events.command(name="removeplayer", aliases=["removechar"])
-    async def event_removeplayer(self, ctx, event_id: int, *, character):
+    async def event_removeplayer(self, ctx: NabCtx, event_id: int, *, character):
         """Removes a player from an event.
 
         Players can remove themselves using `event leave`"""
@@ -942,8 +931,7 @@ class General:
         if joined_char is None:
             await ctx.send(f"{ctx.tick(False)} This character is not in this event.")
             return
-        event_server = self.bot.get_guild(event["server"])
-        owner = self.bot.get_member(char["user_id"], self.bot.get_guild(event_server))
+        owner = ctx.guild.get_member(char["user_id"])
         owner_name = "unknown" if owner is None else owner.display_name
         message = await ctx.send(f"Do you want to remove **{char['name']}** (@**{owner_name}**) "
                                  f"from **{event['name']}**?")
@@ -1153,7 +1141,7 @@ class General:
         for subscriber in subscribers:
             if subscriber == creator and skip_creator:
                 continue
-            member = self.bot.get_member(subscriber["user_id"])
+            member = self.bot.get_user(subscriber["user_id"])
             if member is None:
                 continue
             await member.send(content, embed=embed)

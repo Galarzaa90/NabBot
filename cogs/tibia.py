@@ -692,7 +692,7 @@ class Tibia:
             world = ctx.world
         name = name.strip()
         if world:
-            world = world.strip()
+            world = world.title().strip()
         house = await get_house(name, world)
         if house is None:
             await ctx.send(f"{ctx.tick(False)} I couldn't find a house named `{name}`.")
@@ -1917,13 +1917,17 @@ class Tibia:
                 if recent_news is None:
                     await asyncio.sleep(30)
                     continue
-                last_article = recent_news[0]["id"]
                 try:
+                    last_article = recent_news[0]["id"]
                     with open("data/last_article.txt", 'r') as f:
                         last_id = int(f.read())
                 except (ValueError, FileNotFoundError):
                     log.info("scan_news: No last article id saved")
                     last_id = 0
+                except (IndexError, KeyError):
+                    log.warning("scan_news: Error getting recent news")
+                    await asyncio.sleep(60*30)
+                    continue
                 if last_id == 0:
                     with open("data/last_article.txt", 'w+') as f:
                         f.write(str(last_article))

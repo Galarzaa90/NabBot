@@ -117,7 +117,7 @@ class Roles:
         Role names, role mentions or role ids are allowed. Role names with multiple words must be quoted.
         Note that current members will be updated until their characters or guilds change."""
         role: discord.Role = role
-        name = guild
+        name = guild.replace("\"", "")
         if guild != "*":
             try:
                 guild = await get_guild(name)
@@ -217,7 +217,6 @@ class Roles:
             await ctx.send(f"{ctx.tick()} Refresh done, roles will be updated shortly.")
             pass
 
-
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
     @autorole.command(name="remove", aliases=["delete"])
@@ -228,6 +227,7 @@ class Roles:
 
         Note that members that currently have the role won't be affected."""
         group: discord.Role = role
+        guild = guild.replace("\"", "")
         result = userDatabase.execute("SELECT * FROM auto_roles WHERE role_id = ? and guild LIKE ?", (group.id, guild))
         exists = list(result)
         if not exists:
@@ -247,7 +247,7 @@ class Roles:
     @commands.guild_only()
     @commands.group(invoke_without_command=True, case_insensitive=True)
     @commands.cooldown(1, 5, commands.BucketType.user)
-    async def group(self, ctx: NabCtx, group: InsensitiveRole):
+    async def group(self, ctx: NabCtx, *, group: InsensitiveRole):
         """Joins or leaves a group (role).
 
         If you're not in the group, you will be added.
@@ -290,6 +290,7 @@ class Roles:
         If the name matches an existent role, that role will become joinable.
 
         You need `Manage Roles` permissions to use this command."""
+        name = name.replace("\"", "")
         forbidden = ["add", "remove", "delete", "list"]
         converter = InsensitiveRole()
         try:
