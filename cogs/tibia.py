@@ -1501,9 +1501,11 @@ class Tibia:
 
     @checks.is_mod()
     @commands.guild_only()
-    @time.command(name="add", usage="[timezone]")
+    @time.command(name="add", usage="<timezone>")
     async def time_add(self, ctx: NabCtx, *, _timezone):
-        """Adds a new timezone to display in time.
+        """Adds a new timezone to display.
+
+        You can look by city, country or region
 
         Only Server Moderators can use this command."""
         _timezone = _timezone.lower().replace(" ", "_")
@@ -1520,12 +1522,15 @@ class Tibia:
         msg = await ctx.send(f"The time in `{_timezone}` is **{timezone_time.strftime('%H:%M')}**.\n"
                              f"What display name do you want to assign? You can `cancel` if you changed your mind.")
         display_name = await ctx.input(timeout=60, clean=True, delete_response=True)
-        if display_name is None or display_name == "cancel":
+        if display_name is None or display_name.lower() == "cancel":
             await ctx.send("I guess you changed your mind.")
         try:
             await msg.delete()
         except discord.DiscordException:
             pass
+
+        if len(display_name) > 40:
+            return await ctx.send(f"{ctx.tick(False)} The display name can't be longer than 40 characters.")
 
         saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
         if any(e["name"].lower() == display_name.lower() for e in saved_times):
@@ -1556,7 +1561,7 @@ class Tibia:
 
     @checks.is_mod()
     @commands.guild_only()
-    @time.command(name="remove", aliases=["delete"])
+    @time.command(name="remove", aliases=["delete"], usage="<timezone>")
     async def time_remove(self, ctx: NabCtx, *, _timezone):
         """Removes a timezone from the list.
 
