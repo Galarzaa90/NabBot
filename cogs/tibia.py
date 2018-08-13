@@ -1514,7 +1514,7 @@ class Tibia:
         if _timezone is None:
             return
         timezone_time = dt.datetime.now().astimezone(pytz.timezone(_timezone))
-        await ctx.send(f"The time in that timezone is **{timezone_time.strftime('%H:%M')}**.\n"
+        await ctx.send(f"The time in `{_timezone}` is **{timezone_time.strftime('%H:%M')}**.\n"
                        f"What display name do you want to assign? You can `cancel` if you changed your mind.")
         display_name = await ctx.input(timeout=60, clean=True)
         if display_name is None or display_name == "cancel":
