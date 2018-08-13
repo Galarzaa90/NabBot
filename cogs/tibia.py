@@ -1465,7 +1465,10 @@ class Tibia:
 
         Server moderators can manage displayed timezones using the subcommands."""
         now = dt.datetime.now()
-        offset = get_tibia_time_zone() - get_local_timezone()
+        tibia_timezone = get_tibia_time_zone()
+        timezone_name = "CET" if tibia_timezone == 1 else "CEST"
+
+        offset = tibia_timezone - get_local_timezone()
         tibia_time = now+dt.timedelta(hours=offset)
         server_save = tibia_time
         if tibia_time.hour >= 10:
@@ -1477,7 +1480,7 @@ class Tibia:
 
         server_save_str = '{h} hours and {m} minutes'.format(h=hours, m=minutes)
 
-        reply = f"It's currently **{tibia_time.strftime('%H:%M')}** in Tibia's servers.\n" \
+        reply = f"It's currently **{tibia_time.strftime('%H:%M')}** in Tibia's website ({timezone_name}).\n" \
                 f"Server save is in {server_save_str}.\n" \
                 f"Rashid is in **{get_rashid_info()['city']}** today."
         if ctx.is_private:
@@ -1514,20 +1517,24 @@ class Tibia:
         if _timezone is None:
             return
         timezone_time = dt.datetime.now().astimezone(pytz.timezone(_timezone))
-        await ctx.send(f"The time in `{_timezone}` is **{timezone_time.strftime('%H:%M')}**.\n"
-                       f"What display name do you want to assign? You can `cancel` if you changed your mind.")
-        display_name = await ctx.input(timeout=60, clean=True)
+        msg = await ctx.send(f"The time in `{_timezone}` is **{timezone_time.strftime('%H:%M')}**.\n"
+                             f"What display name do you want to assign? You can `cancel` if you changed your mind.")
+        display_name = await ctx.input(timeout=60, clean=True, delete_response=True)
         if display_name is None or display_name == "cancel":
             await ctx.send("I guess you changed your mind.")
+        try:
+            await msg.delete()
+        except discord.DiscordException:
+            pass
 
         saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
         if any(e["name"].lower() == display_name.lower() for e in saved_times):
             return await ctx.send(f"{ctx.tick(False)} There's already a saved timezone with that display name,"
                                   f"please use the command again.")
 
-        saved_times.append({"name": display_name, "timezone": _timezone})
+        saved_times.append({"name": display_name.strip(), "timezone": _timezone})
         set_server_property(ctx.guild.id, "times", saved_times, serialize=True)
-        await ctx.send(f"{ctx.tick()} Timezone saved successfully.")
+        await ctx.send(f"{ctx.tick()} Timezone `{_timezone}` saved successfully as `{display_name.strip()}`.")
 
     @checks.is_mod()
     @commands.guild_only()
@@ -1554,6 +1561,7 @@ class Tibia:
         """Removes a timezone from the list.
 
         Only Server Moderators can use this command."""
+        _timezone = _timezone.strip()
         saved_times: list = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
         if not saved_times:
             return await ctx.send(f"{ctx.tick(False)} There are no saved times for this server.")
