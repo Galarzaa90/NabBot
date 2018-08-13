@@ -1,4 +1,9 @@
 # Changelog
+## Version 1.6.0 (Unreleased)
+- `/time` no longer displays Mexico and Brazil's timezones.
+- Custom timezones can be added on a per-server basis using `/time add`. See `/time` subcommands for more info.
+- Now requires module `pytz`.
+
 ## Version 1.5.1 (2018-08-07)
 - Various `/event` subcommands were showing the member's nicknames from other servers
 - Cleaner bad argument errors for commands in the General cog.

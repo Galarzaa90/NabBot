@@ -9,21 +9,22 @@ from operator import attrgetter
 from typing import Optional
 
 import discord
+import pytz
 from discord.ext import commands
 
 from nabbot import NabBot
 from utils import checks
 from utils.config import config
 from utils.context import NabCtx
-from utils.database import get_server_property, userDatabase
-from utils.general import get_time_diff, join_list, get_brasilia_time_zone, global_online_list, get_local_timezone, log, \
+from utils.database import get_server_property, userDatabase, set_server_property
+from utils.general import get_time_diff, join_list, global_online_list, get_local_timezone, log, \
     is_numeric, get_user_avatar
 from utils.messages import html_to_markdown, get_first_image, split_message
 from utils.pages import Pages, CannotPaginate, VocationPages
 from utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
     url_house, get_stats, get_map_area, get_tibia_time_zone, get_world, tibia_worlds, get_world_bosses, get_recent_news, \
     get_news_article, Character, url_guild, highscore_format, get_character_url, url_character, get_house, \
-    get_voc_abb_and_emoji, get_world_list, get_highscores, get_highscores_tibiadata
+    get_voc_abb_and_emoji, get_world_list, get_highscores_tibiadata
 from utils.tibiawiki import get_rashid_info
 
 
@@ -1458,11 +1459,14 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.command(aliases=['serversave'])
+    @commands.group(aliases=['serversave'], invoke_without_command=True)
     async def time(self, ctx: NabCtx):
-        """Displays Tibia server's time and time until server save."""
+        """Displays Tibia server's time and time until server save.
+
+        Server moderators can manage displayed timezones using the subcommands."""
+        now = dt.datetime.now()
         offset = get_tibia_time_zone() - get_local_timezone()
-        tibia_time = dt.datetime.now()+dt.timedelta(hours=offset)
+        tibia_time = now+dt.timedelta(hours=offset)
         server_save = tibia_time
         if tibia_time.hour >= 10:
             server_save += dt.timedelta(days=1)
@@ -1471,23 +1475,95 @@ class Tibia:
         hours, remainder = divmod(int(time_until_ss.total_seconds()), 3600)
         minutes, seconds = divmod(remainder, 60)
 
-        timestrtibia = tibia_time.strftime("%H:%M")
         server_save_str = '{h} hours and {m} minutes'.format(h=hours, m=minutes)
 
-        reply = "It's currently **{0}** in Tibia's servers.".format(timestrtibia)
-        if config.display_brasilia_time:
-            offsetbrasilia = get_brasilia_time_zone() - get_local_timezone()
-            brasilia_time = dt.datetime.now()+dt.timedelta(hours=offsetbrasilia)
-            timestrbrasilia = brasilia_time.strftime("%H:%M")
-            reply += "\n**{0}** in Brazil (Brasilia).".format(timestrbrasilia)
-        if config.display_sonora_time:
-            offsetsonora = -7 - get_local_timezone()
-            sonora_time = dt.datetime.now()+dt.timedelta(hours=offsetsonora)
-            timestrsonora = sonora_time.strftime("%H:%M")
-            reply += "\n**{0}** in Mexico (Sonora).".format(timestrsonora)
-        reply += "\nServer save is in {0}.\nRashid is in **{1}** today."\
-            .format(server_save_str, get_rashid_info()["city"])
+        reply = f"It's currently **{tibia_time.strftime('%H:%M')}** in Tibia's servers.\n" \
+                f"Server save is in {server_save_str}.\n" \
+                f"Rashid is in **{get_rashid_info()['city']}** today."
+        if ctx.is_private:
+            return await ctx.send(reply)
+
+        saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        if not saved_times:
+            return await ctx.send(reply)
+        print(saved_times)
+        time_entries = sorted(saved_times, key=lambda k: now.astimezone(pytz.timezone(k["timezone"])).utcoffset())
+        print(time_entries)
+        reply += "\n\n"
+        for entry in time_entries:
+            timezone_time = now.astimezone(pytz.timezone(entry["timezone"]))
+            print(now.astimezone(pytz.timezone(entry["timezone"])).utcoffset())
+            reply += f"**{timezone_time.strftime('%H:%M')}** in {entry['name']}\n"
         await ctx.send(reply)
+
+    @checks.is_mod()
+    @commands.guild_only()
+    @time.command(name="add", usage="[timezone]")
+    async def time_add(self, ctx: NabCtx, *, _timezone):
+        """Adds a new timezone to display in time.
+
+        Only Server Moderators can use this command."""
+        _timezone = _timezone.lower().replace(" ", "_")
+        matches = []
+        for tz in pytz.all_timezones:
+            if _timezone in tz.lower():
+                matches.append(tz)
+        if not matches:
+            return await ctx.send(f"{ctx.tick(False)} No timezones found matching that name.")
+        _timezone = await ctx.choose(matches)
+        if _timezone is None:
+            return
+        timezone_time = dt.datetime.now().astimezone(pytz.timezone(_timezone))
+        await ctx.send(f"The time in that timezone is **{timezone_time.strftime('%H:%M')}**.\n"
+                       f"What display name do you want to assign? You can `cancel` if you changed your mind.")
+        display_name = await ctx.input(timeout=60, clean=True)
+        if display_name is None or display_name == "cancel":
+            await ctx.send("I guess you changed your mind.")
+
+        saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        if any(e["name"].lower() == display_name.lower() for e in saved_times):
+            return await ctx.send(f"{ctx.tick(False)} There's already a saved timezone with that display name,"
+                                  f"please use the command again.")
+
+        saved_times.append({"name": display_name, "timezone": _timezone})
+        set_server_property(ctx.guild.id, "times", saved_times, serialize=True)
+        await ctx.send(f"{ctx.tick()} Timezone saved successfully.")
+
+    @checks.is_mod()
+    @commands.guild_only()
+    @time.command(name="list")
+    async def time_list(self, ctx: NabCtx):
+        """Shows a list of all the currently added timezones.
+
+        Only Server Moderators can use this command."""
+        saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        if not saved_times:
+            return await ctx.send(f"{ctx.tick(False)} There are no saved times for this server.")
+
+        pages = Pages(ctx, entries=[f"**{e['name']}** — *{e['timezone']}*" for e in saved_times], per_page=10)
+        pages.embed.title = "Saved times"
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+    @checks.is_mod()
+    @commands.guild_only()
+    @time.command(name="remove", aliases=["delete"])
+    async def time_remove(self, ctx: NabCtx, *, _timezone):
+        """Removes a timezone from the list.
+
+        Only Server Moderators can use this command."""
+        saved_times: list = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        if not saved_times:
+            return await ctx.send(f"{ctx.tick(False)} There are no saved times for this server.")
+
+        for entry in saved_times:
+            if entry["name"].lower() == _timezone.lower():
+                saved_times.remove(entry)
+                set_server_property(ctx.guild.id, "times", saved_times, serialize=True)
+                return await ctx.send(f"{ctx.tick()} Timezone `{entry['name']}` removed succesfully.")
+        await ctx.send(f"{ctx.tick(False)} There's no timezone named `{_timezone}`.")
 
     @commands.command(aliases=['check', 'char', 'character'])
     async def whois(self, ctx: NabCtx, *, name):

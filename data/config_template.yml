@@ -35,10 +35,6 @@ owner_ids:
   - 162060569803751424
   - 162070610556616705
 
-# Enable of disable specific timezones for /time
-display_brasilia_time: true
-display_sonora_time: true
-
 # Cached online list expiration
 online_list_expiration: 300
 

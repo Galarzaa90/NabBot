@@ -111,23 +111,6 @@ def get_region_string(region: discord.VoiceRegion) -> str:
     return regions.get(str(region), str(region))
 
 
-def get_brasilia_time_zone() -> int:
-    """Returns Brasilia's timezone, considering their daylight saving time dates
-
-    :return: The UTC offset of Brasilia's timezone.
-    """
-    # Find date in Brasilia
-    bt = dt.datetime.utcnow() - dt.timedelta(hours=3)
-    brasilia_date = dt.date(bt.year, bt.month, bt.day)
-    # DST starts on the third sunday of october and ends on the third sunday of february
-    # It may be off by a couple hours
-    dst_start = get_n_weekday(bt.year, 10, 7, 3)
-    dst_end = get_n_weekday(bt.year, 2, 7, 3)
-    if brasilia_date > dst_start or brasilia_date < dst_end:
-        return -2
-    return -3
-
-
 def get_local_timezone() -> int:
     """Returns the server's local time zone
 

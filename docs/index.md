@@ -36,7 +36,7 @@ Curious about its permissions? Check the [permission explanation](permissions.md
 You can also host your own instance of NabBot.
 
 ### Requirements
-- Python 3.6
+- Python 3.6 and up.
 - Python modules:
     - [discord.py (rewrite branch)](https://github.com/Rapptz/discord.py/tree/rewrite)
     - psutil
