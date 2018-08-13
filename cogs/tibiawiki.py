@@ -8,6 +8,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
+from utils import checks
 from utils.config import config
 from utils.context import NabCtx
 from utils.database import tibiaDatabase
@@ -34,16 +35,12 @@ class TibiaWiki:
             await ctx.invoke(cmd, command=command)
 
     # Commands
+    @checks.can_embed()
     @commands.command(aliases=["achiev"])
     async def achievement(self, ctx: NabCtx, *, name: str):
         """Displays an achievement's information.
 
         Shows the achievement's grade, points, description, and instructions on how to unlock."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
         achievement = get_achievement(name)
 
         if achievement is None:
@@ -67,6 +64,7 @@ class TibiaWiki:
 
         await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.command(usage="[class]")
     async def bestiary(self, ctx: NabCtx, *, _class: str=None):
         """Displays a category's creatures or all the categories.
@@ -94,6 +92,7 @@ class TibiaWiki:
         except CannotPaginate as e:
             await ctx.send(e)
 
+    @checks.can_embed()
     @commands.command(usage="<name>[,price1[,price2[,price3]]][,tokenprice]")
     async def imbuement(self, ctx: NabCtx, *, params: str):
         """Displays information about an imbuement.
@@ -104,10 +103,6 @@ class TibiaWiki:
         The total cost will be calculated, as well as the hourly cost.
         If applicable, it will show the cheapest way to get it using gold tokens.
         """
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
         params = params.split(",")
         if len(params) > 5:
             await ctx.send(f"{ctx.tick(False)} Invalid syntax. The correct syntax is: `{ctx.usage}`.")
@@ -145,6 +140,7 @@ class TibiaWiki:
         else:
             await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.command(aliases=["itemprice"])
     async def item(self, ctx: NabCtx, *, name: str):
         """Displays information about an item.
@@ -155,11 +151,6 @@ class TibiaWiki:
         Yellow for Rashid, Blue and Green for Djinns and Purple for gems.
 
         More information is shown if used in private messages or in the command channel."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
         item = get_item(name)
         if item is None:
             await ctx.send("I couldn't find an item with that name.")
@@ -182,16 +173,12 @@ class TibiaWiki:
         else:
             await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.group(invoke_without_command=True, case_insensitive=True)
     async def key(self, ctx: NabCtx, number: str):
         """Displays information about a key.
 
         Shows the key's known names, how to obtain it and its uses."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
         if number is None:
             await ctx.send("Tell me the number of the key you want to check.")
             return
@@ -211,13 +198,14 @@ class TibiaWiki:
         embed = self.get_key_embed(key)
 
         # Attach key's image only if the bot has permissions
-        if permissions.attach_files and key["image"] is not None:
+        if ctx.bot_permissions.attach_files and key["image"] is not None:
             filename = f"Key.gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
             await ctx.send(file=discord.File(key["image"], f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @key.command(name="search")
     async def key_search(self, ctx: NabCtx, *, term: str):
         """Searches for a key by keywords.
@@ -226,11 +214,6 @@ class TibiaWiki:
 
         if there are multiple matches, a list is shown.
         If only one matches, the key's information is shwon directly."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
         keys = search_key(term)
 
         if keys is None:
@@ -249,13 +232,14 @@ class TibiaWiki:
         embed = self.get_key_embed(keys)
 
         # Attach key's image only if the bot has permissions
-        if permissions.attach_files and keys["image"] is not None:
+        if ctx.bot_permissions.attach_files and keys["image"] is not None:
             filename = f"Key.gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
             await ctx.send(file=discord.File(keys["image"], f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.command(aliases=['mob', 'creature'])
     async def monster(self, ctx: NabCtx, *, name: str):
         """Displays information about a monster.
@@ -263,11 +247,6 @@ class TibiaWiki:
         Shows the monster's attributes, resistances, loot and more.
 
         More information is displayed if used on a private message or in the command channel."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
         if name is None:
             await ctx.send("Tell me the name of the monster you want to search.")
             return
@@ -300,7 +279,7 @@ class TibiaWiki:
         embed = self.get_monster_embed(ctx, monster, ctx.long)
 
         # Attach monster's image only if the bot has permissions
-        if permissions.attach_files and monster["image"] is not None:
+        if ctx.bot_permissions.attach_files and monster["image"] is not None:
             filename = re.sub(r"[^A-Za-z0-9]", "", monster["name"]) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
             main_color = await ctx.execute_async(average_color, monster["image"])
@@ -309,6 +288,7 @@ class TibiaWiki:
         else:
             await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.command()
     async def npc(self, ctx: NabCtx, *, name: str):
         """Displays information about a NPC.
@@ -316,11 +296,6 @@ class TibiaWiki:
         Shows the NPC's item offers, their location and their travel destinations.
 
         More information is displayed if used on private messages or the command channel."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
         npc = get_npc(name)
 
         if npc is None:
@@ -335,7 +310,7 @@ class TibiaWiki:
 
         embed = self.get_npc_embed(ctx, npc, ctx.long)
         # Attach spell's image only if the bot has permissions
-        if permissions.attach_files:
+        if ctx.bot_permissions.attach_files:
             files = []
             if npc["image"] is not None:
                 filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + ".gif"
@@ -352,6 +327,37 @@ class TibiaWiki:
         else:
             await ctx.send(embed=embed)
 
+    @checks.can_embed()
+    @commands.command()
+    async def rashid(self, ctx: NabCtx):
+        """Shows where Rashid is today.
+
+        For more information, use `npc Rashid`."""
+        rashid = get_rashid_info()
+        npc = get_npc("Rashid")
+        embed = discord.Embed(title="Rashid", url=get_article_url("Rashid"), color=discord.Colour.greyple())
+        embed.set_author(name="TibiaWiki",
+                         icon_url=WIKI_ICON,
+                         url=get_article_url("Rashid"))
+        embed.description = f"Rashid is in **{rashid['city']}** today."
+        if ctx.bot_permissions.attach_files:
+            files = []
+            if npc["image"] is not None:
+                filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + ".gif"
+                embed.set_thumbnail(url=f"attachment://{filename}")
+                files.append(discord.File(npc["image"], filename))
+            if None not in [rashid["x"], rashid["y"], rashid["z"]]:
+                map_filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + "-map.png"
+                map_image = get_map_area(rashid["x"], rashid["y"], rashid["z"])
+                embed.set_image(url=f"attachment://{map_filename}")
+                embed.add_field(name="Location", value=f"[Mapper link]"
+                                                       f"({get_mapper_link(rashid['x'],rashid['y'],rashid['z'])})",
+                                inline=False)
+                files.append(discord.File(map_image, map_filename))
+            return await ctx.send(files=files, embed=embed)
+        await ctx.send(embed=embed)
+
+    @checks.can_embed()
     @commands.command(usage="<name/words>")
     async def spell(self, ctx: NabCtx, *, name_or_words: str):
         """Displays information about a spell.
@@ -359,10 +365,7 @@ class TibiaWiki:
         Shows the spell's attributes, NPCs that teach it and more.
 
         More information is displayed if used on private messages or the command channel."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
+
 
         spell = get_spell(name_or_words)
 
@@ -380,13 +383,14 @@ class TibiaWiki:
         embed = self.get_spell_embed(ctx, spell, ctx.long)
 
         # Attach spell's image only if the bot has permissions
-        if permissions.attach_files and spell["image"] is not None:
+        if ctx.bot_permissions.attach_files and spell["image"] is not None:
             filename = re.sub(r"[^A-Za-z0-9]", "", spell["name"]) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
             await ctx.send(file=discord.File(spell["image"], f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.command(aliases=["wikiinfo"])
     async def wikistats(self, ctx: NabCtx):
         """Shows information about the TibiaWiki database."""
