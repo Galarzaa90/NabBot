@@ -1,6 +1,9 @@
 site_name: NabBot
 site_description: A Discord bot for the MMO Tibia
 site_author: Allan Galarza
+copyright: >
+  © Allan Galarza. All rights reserved.<br>
+  <a href="https://www.tibia.com">Tibia</a> is made by <a href="https://www.cipsoft.com/">CipSoft</a>, all Tibia content is copyrighted by <a href="https://www.cipsoft.com/">CipSoft GmbH</a>.
 
 
 theme:
@@ -44,7 +47,7 @@ extra:
 
 repo_url: https://github.com/Galarzaa90/NabBot
 edit_uri: ""
-pages:
+nav:
     - Home: index.md
     - Changelog: changelog.md
     - Install Guide: install.md
