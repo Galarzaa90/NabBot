@@ -1149,6 +1149,8 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
 
     worlds = []
     try:
+        if not isinstance(json_content["worlds"], list):
+            return
         for world in json_content["worlds"]["allworlds"]:
             try:
                 world["online"] = int(world["online"])
