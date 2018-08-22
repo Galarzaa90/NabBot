@@ -1578,6 +1578,7 @@ class Tibia:
                 return await ctx.send(f"{ctx.tick()} Timezone `{entry['name']}` removed succesfully.")
         await ctx.send(f"{ctx.tick(False)} There's no timezone named `{_timezone}`.")
 
+    @checks.can_embed()
     @commands.command(aliases=['check', 'char', 'character'])
     async def whois(self, ctx: NabCtx, *, name):
         """Shows a character's or a discord user's information.
@@ -1591,10 +1592,6 @@ class Tibia:
 
         Additionally, if the character is in the highscores, their ranking will be shown.
         """
-        if not ctx.bot_permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
         if ctx.is_lite:
             try:
                 char = await get_character(name)
@@ -1619,8 +1616,14 @@ class Tibia:
             await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
             return
         char_string = self.get_char_string(char)
-        user = self.bot.get_member(name, ctx.guild)
+        # If the command is used on a DM, only search users in the servers the author is in
+        # Otherwise, just search on the current server
+        if ctx.is_private:
+            guild_filter = self.bot.get_user_guilds(ctx.author.id)
+        else:
+            guild_filter = ctx.guild
         # If the user is a bot, then don't, just don't
+        user = self.bot.get_member(name, guild_filter)
         if user is not None and user.bot:
             user = None
         embed = self.get_user_embed(ctx, user)
@@ -1688,7 +1691,7 @@ class Tibia:
         else:
             embed = discord.Embed(description="")
             if char is not None:
-                owner = None if char.owner == 0 else self.bot.get_member(char.owner, ctx.guild)
+                owner = None if char.owner == 0 else self.bot.get_member(char.owner, guild_filter)
                 if owner is not None:
                     # Char is owned by a discord user
                     embed = self.get_user_embed(ctx, owner)
