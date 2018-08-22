@@ -45,11 +45,10 @@ class Info:
         embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
         embed.add_field(name="Users", value=f"{len(self.bot.users):,}")
         embed.add_field(name="Links", inline=False,
-                        value=f"[Add to your server](https://discordbots.org/bot/178966653982212096)  |  "
-                              f"[Support Server](https://discord.me/nabbot)  |  "
-                              f"[Docs](https://galarzaa90.github.io/NabBot)  |  "
-                              f"[Donate](https://www.paypal.com/cgi-bin/webscr?"
-                              f"cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)")
+                        value=f"[Add to your server](https://dbl.nabbot.xyz/)  |  "
+                              f"[Support Server](https://support.nabbot.xyz/)  |  "
+                              f"[Docs](https://nabbot.xyz/)  |  "
+                              f"[Donate](https://donate.nabbot.xyz/)")
         embed.set_footer(text=f"Uptime | {parse_uptime(self.bot.start_time, True)}")
         await ctx.send(embed=embed)
 
