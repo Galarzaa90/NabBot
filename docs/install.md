@@ -9,7 +9,6 @@ Once installed, you need to find what's the python's executable name, depending 
 Once the correct command has been found, open a terminal window on NabBot's root directory and run the following:
 
 ```shell
-python -m pip install -U git+https://github.com/Rapptz/discord.py@rewrite
 python -m pip install -U -r requirements.txt
 ```
 
