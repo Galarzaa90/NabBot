@@ -595,7 +595,7 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @commands.command(usage="[world,category[,vocation]]]")
+    @commands.command(usage="[world,category[,vocation]]")
     async def highscores(self, ctx: NabCtx, *, params=None):
         """Shows the entries in the highscores.
 
@@ -662,9 +662,6 @@ class Tibia:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
-
-
-
 
     @commands.command(aliases=["guildhall"], usage="<name>[,world]")
     async def house(self, ctx: NabCtx, *, name: str):
@@ -1505,7 +1502,8 @@ class Tibia:
     async def time_add(self, ctx: NabCtx, *, _timezone):
         """Adds a new timezone to display.
 
-        You can look by city, country or region
+        You can look by city, country or region.
+        Once the timezone is found, you can set the name you want to show on the `time` command.
 
         Only Server Moderators can use this command."""
         _timezone = _timezone.lower().replace(" ", "_")
@@ -1523,7 +1521,7 @@ class Tibia:
                              f"What display name do you want to assign? You can `cancel` if you changed your mind.")
         display_name = await ctx.input(timeout=60, clean=True, delete_response=True)
         if display_name is None or display_name.lower() == "cancel":
-            await ctx.send("I guess you changed your mind.")
+            return await ctx.send("I guess you changed your mind.")
         try:
             await msg.delete()
         except discord.DiscordException:
@@ -1542,6 +1540,7 @@ class Tibia:
         await ctx.send(f"{ctx.tick()} Timezone `{_timezone}` saved successfully as `{display_name.strip()}`.")
 
     @checks.is_mod()
+    @checks.can_embed()
     @commands.guild_only()
     @time.command(name="list")
     async def time_list(self, ctx: NabCtx):

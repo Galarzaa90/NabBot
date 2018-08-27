@@ -119,6 +119,24 @@ Online members have an icon next to their name.
 
 ----
 
+## highscores
+**Syntax**: `highscores [world,category[,vocation]]`
+
+Shows the entries in the highscores.
+If the server is already tracking a world, there's no need to specify a world.
+Available categories are: experience, magic, shielding, distance, sword, club, axe, fist and fishing.
+Available vocations are: all, paladin, druid, sorcerer, knight.
+
+??? summary "Examples"
+    **/highscores**  
+    ![image](../assets/images/commands/highscores1.png)  
+    **/highscores shielding**  
+    ![image](../assets/images/commands/highscores2.png)  
+    **/highscores antica,magic,paladin**  
+    ![image](../assets/images/commands/highscores3.png)
+
+----
+
 ## house
 **Syntax:** `house <name>[,world]`  
 **Other aliases:** `guildhall`
@@ -312,9 +330,48 @@ Shows a users's recent level ups and deaths on their characters.
 
 Displays Tibia server's time and time until server save.
 
+Server moderators can manage displayed timezones using the subcommands.
+
 ??? Summary "Examples" 
     **/time**  
     ![image](../assets/images/commands/time.png)
+
+----
+
+### time add
+**Syntax:** `time add <timezone>`
+
+Adds a new timezone to display.
+
+You can look by city, country or region.  
+Once the timezone is found, you can set the name you want to show on the `time` command.
+
+Only Server Moderators can use this command.
+
+??? Summary "Examples" 
+    **/time add berlin**  
+    ![image](../assets/images/commands/time_add.png)
+
+----
+
+### time list
+Shows a list of all the currently added timezones.
+
+Only Server Moderators can use this command.
+
+??? Summary "Examples" 
+    **/time list**  
+    ![image](../assets/images/commands/time_list.png)
+
+----
+
+### time remove
+**Syntax:** `time remove <timezone>`  
+**Other aliases:** `time delete`
+
+Removes a timezone from the list.
+
+Only Server Moderators can use this command.
 
 ----
 
