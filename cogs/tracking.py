@@ -236,14 +236,17 @@ class Tracking:
                             global_online_list.insert(0, server_char)
                             await self.check_death(server_char.name)
                         # Else we check for levelup
-                        elif server_char.level > result["level"] > 0:
-                            # Saving level up date in database
-                            c.execute(
-                                "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                (result["id"], server_char.level, time.time(),)
-                            )
-                            # Announce the level up
-                            await self.announce_level(server_char.level, char_name=server_char.name)
+                        else:
+                            # Update character info in global_online_list
+                            global_online_list[global_online_list.index(server_char)] = server_char
+                            if server_char.level > result["level"] > 0:
+                                # Saving level up date in database
+                                c.execute(
+                                    "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
+                                    (result["id"], server_char.level, time.time(),)
+                                )
+                                # Announce the level up
+                                await self.announce_level(server_char.level, char_name=server_char.name)
             except asyncio.CancelledError:
                 # Task was cancelled, so this is fine
                 break
