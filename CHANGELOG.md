@@ -4,6 +4,7 @@
 - `/time` no longer displays Mexico and Brazil's timezones.
 - Custom timezones can be added on a per-server basis using `/time add`. See `/time` subcommands for more info.
 - Now requires module `pytz`.
+- `/watched` can now be used by Server Moderators instead of Administrators only.
 - Fixed a bug with the global online list not having its levels updated.
 - Fixed a bug with invalid characters when using `/whois`.
 - Fixed a bug with `/whois` visibility.
