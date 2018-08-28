@@ -1,8 +1,14 @@
 # Changelog
-## Version 1.6.0 (Unreleased)
+## Version 1.6.0 (2018-08-27)
+- New command: `/rashid`.
 - `/time` no longer displays Mexico and Brazil's timezones.
 - Custom timezones can be added on a per-server basis using `/time add`. See `/time` subcommands for more info.
 - Now requires module `pytz`.
+- Fixed a bug with the global online list not having its levels updated.
+- Fixed a bug with invalid characters when using `/whois`.
+- Fixed a bug with `/whois` visibility.
+    - You're no longer able to see the characters of people you can't see in discord when using on PM.
+    - When using on server channels, you can only see characters of people in that server. 
 
 ## Version 1.5.1 (2018-08-07)
 - Various `/event` subcommands were showing the member's nicknames from other servers
