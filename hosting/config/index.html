@@ -673,22 +673,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#welcome-pm" title="Welcome PM" class="md-nav__link">
-    Welcome PM
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#owner-ids" title="Owner IDs" class="md-nav__link">
     Owner IDs
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#timezones" title="Timezones" class="md-nav__link">
-    Timezones
   </a>
   
 </li>
@@ -809,22 +795,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#welcome-pm" title="Welcome PM" class="md-nav__link">
-    Welcome PM
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#owner-ids" title="Owner IDs" class="md-nav__link">
     Owner IDs
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#timezones" title="Timezones" class="md-nav__link">
-    Timezones
   </a>
   
 </li>
@@ -931,30 +903,6 @@ Note that the bot will always answering by being mentioned, e.g. <code class="co
 <span class="l l-Scalar l-Scalar-Plain">extra_cogs</span><span class="p p-Indicator">:</span> <span class="p p-Indicator">[]</span>
 </pre></div>
 
-<h2 id="welcome-pm">Welcome PM<a class="headerlink" href="#welcome-pm" title="Permanent link">&para;</a></h2>
-<p>When a member joins a server, he is greeted via private message with a message. This can be customized:
-<div class="codehilite"><pre><span></span><span class="c1"># The welcome message that is sent to members when they join a discord server with NabBot in it</span>
-<span class="c1"># The following keyboards can be used:</span>
-<span class="c1"># {user.name} - The joining user&#39;s name</span>
-<span class="c1"># {user.mention} - The joining user&#39;s mention</span>
-<span class="c1"># {server.name} - The name of the server the member joined.</span>
-<span class="c1"># {owner.name} - The name of the owner of the server.</span>
-<span class="c1"># {owner.mention} - A mention to the owner of the server.</span>
-<span class="c1"># {bot.name} - The name of the bot</span>
-<span class="c1"># {bot.mention} - The name of the bot</span>
-<span class="l l-Scalar l-Scalar-Plain">welcome_pm</span><span class="p p-Indicator">:</span> <span class="p p-Indicator">|</span>
-  <span class="no">Welcome to **{server.name}**! I&#39;m **{bot.name}**, to learn more about my commands type `/help`</span>
-
-  <span class="no">Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking</span>
-  <span class="no">your level ups and deaths!</span>
-</pre></div></p>
-<p>The string can have special formatting that is replaced at runtime, for example, <code class="codehilite">{server.name}</code> would be replaced by <code class="codehilite">NabBot Support</code> if the member joined that server.</p>
-<p>The <code class="codehilite">|</code> character in the first line lets the string be multiline. If two line jumps are added together, it will turn into a single line jump.</p>
-<p>A custom message can be appended to this for a specific server by using <a href="../commands/admin/#setwelcome">/setwelcome</a>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>This is not reliable anymore since Discord introduced privacy features that allow users to disable private messages from members of servers they join.</p>
-</div>
 <h2 id="owner-ids">Owner IDs<a class="headerlink" href="#owner-ids" title="Permanent link">&para;</a></h2>
 <div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">owner_ids</span><span class="p p-Indicator">:</span>
   <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">162060569803751424</span>
@@ -964,12 +912,6 @@ Note that the bot will always answering by being mentioned, e.g. <code class="co
 <p>This gives the users with those user ids permission to use any commands and by pass most regulations.
 The owner of the bot's application is always considered even if their id is not here.</p>
 <p>This allows them to use sensitive commands like <code class="codehilite">/shutdown</code> and <code class="codehilite">/restart</code> or execute Python code directly.</p>
-<h2 id="timezones">Timezones<a class="headerlink" href="#timezones" title="Permanent link">&para;</a></h2>
-<div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">display_brasilia_time</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="l l-Scalar l-Scalar-Plain">display_sonora_time</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
-</pre></div>
-
-<p>Specifies how many concurrent loot scanning jobs can be active.</p>
 <h2 id="announce-threshold">Announce Threshold<a class="headerlink" href="#announce-threshold" title="Permanent link">&para;</a></h2>
 <div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">announce_threshold</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">30</span>
 </pre></div>
@@ -1128,6 +1070,11 @@ The unicode emojis used by default are only placeholders, and it is advised to u
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
       <div class="md-footer-copyright">
+        
+          <div class="md-footer-copyright__highlight">
+            © Allan Galarza. All rights reserved.<br> <a href="https://www.tibia.com">Tibia</a> is made by <a href="https://www.cipsoft.com/">CipSoft</a>, all Tibia content is copyrighted by <a href="https://www.cipsoft.com/">CipSoft GmbH</a>.
+
+          </div>
         
         powered by
         <a href="https://www.mkdocs.org">MkDocs</a>

@@ -660,6 +660,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#highscores" title="highscores" class="md-nav__link">
+    highscores
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#house" title="house" class="md-nav__link">
     house
   </a>
@@ -745,6 +752,33 @@
   <a href="#time" title="time" class="md-nav__link">
     time
   </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#time-add" title="time add" class="md-nav__link">
+    time add
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-list" title="time list" class="md-nav__link">
+    time list
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-remove" title="time remove" class="md-nav__link">
+    time remove
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -958,6 +992,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#highscores" title="highscores" class="md-nav__link">
+    highscores
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#house" title="house" class="md-nav__link">
     house
   </a>
@@ -1043,6 +1084,33 @@
   <a href="#time" title="time" class="md-nav__link">
     time
   </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#time-add" title="time add" class="md-nav__link">
+    time add
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-list" title="time list" class="md-nav__link">
+    time list
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-remove" title="time remove" class="md-nav__link">
+    time remove
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1149,6 +1217,18 @@ It also shows whether the guild has a guildhall or not, and their funding date.<
 <p>Online members have an icon next to their name.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/guild members Redd Alliance</strong><br />
 <img alt="image" src="../../assets/images/commands/guildmembers.png" /></p></details><hr />
+<h2 id="highscores">highscores<a class="headerlink" href="#highscores" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax</strong>: <code class="codehilite">highscores [world,category[,vocation]]</code></p>
+<p>Shows the entries in the highscores.
+If the server is already tracking a world, there's no need to specify a world.
+Available categories are: experience, magic, shielding, distance, sword, club, axe, fist and fishing.
+Available vocations are: all, paladin, druid, sorcerer, knight.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/highscores</strong><br />
+<img alt="image" src="../../assets/images/commands/highscores1.png" /><br />
+<strong>/highscores shielding</strong><br />
+<img alt="image" src="../../assets/images/commands/highscores2.png" /><br />
+<strong>/highscores antica,magic,paladin</strong><br />
+<img alt="image" src="../../assets/images/commands/highscores3.png" /></p></details><hr />
 <h2 id="house">house<a class="headerlink" href="#house" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">house &lt;name&gt;[,world]</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">guildhall</code></p>
@@ -1269,8 +1349,28 @@ The bot will show the time needed to reach full stamina if you were to start sle
 <h2 id="time">time<a class="headerlink" href="#time" title="Permanent link">&para;</a></h2>
 <p><strong>Other aliases:</strong> <code class="codehilite">serversave</code></p>
 <p>Displays Tibia server's time and time until server save.</p>
+<p>Server moderators can manage displayed timezones using the subcommands.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/time</strong><br />
 <img alt="image" src="../../assets/images/commands/time.png" /></p></details><hr />
+<h3 id="time-add">time add<a class="headerlink" href="#time-add" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">time add &lt;timezone&gt;</code></p>
+<p>Adds a new timezone to display.</p>
+<p>You can look by city, country or region.<br />
+Once the timezone is found, you can set the name you want to show on the <code class="codehilite">time</code> command.</p>
+<p>Only Server Moderators can use this command.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/time add berlin</strong><br />
+<img alt="image" src="../../assets/images/commands/time_add.png" /></p></details><hr />
+<h3 id="time-list">time list<a class="headerlink" href="#time-list" title="Permanent link">&para;</a></h3>
+<p>Shows a list of all the currently added timezones.</p>
+<p>Only Server Moderators can use this command.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/time list</strong><br />
+<img alt="image" src="../../assets/images/commands/time_list.png" /></p></details><hr />
+<h3 id="time-remove">time remove<a class="headerlink" href="#time-remove" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">time remove &lt;timezone&gt;</code><br />
+<strong>Other aliases:</strong> <code class="codehilite">time delete</code></p>
+<p>Removes a timezone from the list.</p>
+<p>Only Server Moderators can use this command.</p>
+<hr />
 <h2 id="whois">whois<a class="headerlink" href="#whois" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">whois &lt;character/user&gt;</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">check</code>, <code class="codehilite">char</code>, <code class="codehilite">character</code></p>
@@ -1372,6 +1472,11 @@ In this case, a user id was provided, and it searched for the user with that id.
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
       <div class="md-footer-copyright">
+        
+          <div class="md-footer-copyright__highlight">
+            © Allan Galarza. All rights reserved.<br> <a href="https://www.tibia.com">Tibia</a> is made by <a href="https://www.cipsoft.com/">CipSoft</a>, all Tibia content is copyrighted by <a href="https://www.cipsoft.com/">CipSoft GmbH</a>.
+
+          </div>
         
         powered by
         <a href="https://www.mkdocs.org">MkDocs</a>
