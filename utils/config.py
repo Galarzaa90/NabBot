@@ -17,8 +17,6 @@ KEYS = [
     "log_channel_name",
     "lite_servers",
     "owner_ids",
-    "display_brasilia_time",
-    "display_sonora_time",
     "online_list_expiration",
     "announce_threshold",
     "online_scan_interval",
@@ -83,8 +81,6 @@ class Config:
         self.lite_servers = []
         self.owner_ids = []
         self.extra_cogs = []
-        self.display_brasilia_time = True
-        self.display_sonora_time = True
         self.online_list_expiration = 300
         self.announce_threshold = 30
         self.online_scan_interval = 90

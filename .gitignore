@@ -22,3 +22,7 @@ extra/*.py
 
 # Mkdocs built site
 site/
+
+
+# Virtual Environments
+venv/

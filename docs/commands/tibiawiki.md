@@ -147,6 +147,17 @@ More information is displayed if used on private messages or the command channel
 
 ----
 
+## rashid
+Shows where Rashid is today.
+
+For more information, use `npc Rashid`.
+
+??? summary "Examples"
+    **/rashid**  
+    ![image](../assets/images/commands/rashid.png)
+
+----
+
 ## spell
 **Syntax:** `spell <name/words>`
 

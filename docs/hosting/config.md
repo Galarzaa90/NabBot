@@ -67,35 +67,6 @@ For more information, see [Cogs](cogs.md)
 extra_cogs: []
 ```
 
-## Welcome PM
-When a member joins a server, he is greeted via private message with a message. This can be customized:
-```yaml
-# The welcome message that is sent to members when they join a discord server with NabBot in it
-# The following keyboards can be used:
-# {user.name} - The joining user's name
-# {user.mention} - The joining user's mention
-# {server.name} - The name of the server the member joined.
-# {owner.name} - The name of the owner of the server.
-# {owner.mention} - A mention to the owner of the server.
-# {bot.name} - The name of the bot
-# {bot.mention} - The name of the bot
-welcome_pm: |
-  Welcome to **{server.name}**! I'm **{bot.name}**, to learn more about my commands type `/help`
-
-  Start by telling me who is your Tibia character, say **/im *character_name*** so I can begin tracking
-  your level ups and deaths!
-```
-
-The string can have special formatting that is replaced at runtime, for example, `{server.name}` would be replaced by `NabBot Support` if the member joined that server.
-
-The `|` character in the first line lets the string be multiline. If two line jumps are added together, it will turn into a single line jump.
-
-A custom message can be appended to this for a specific server by using [/setwelcome](../commands/admin/#setwelcome).
-
-
-!!! note
-    This is not reliable anymore since Discord introduced privacy features that allow users to disable private messages from members of servers they join.
-    
 ## Owner IDs
 ```yaml
 owner_ids:
@@ -107,14 +78,6 @@ This gives the users with those user ids permission to use any commands and by p
 The owner of the bot's application is always considered even if their id is not here.
 
 This allows them to use sensitive commands like `/shutdown` and `/restart` or execute Python code directly.
-
-## Timezones
-```yaml
-display_brasilia_time: true
-display_sonora_time: true
-```
-
-Specifies how many concurrent loot scanning jobs can be active.
 
 ## Announce Threshold
 ```yaml

@@ -15,7 +15,7 @@ and click the **Invite** button. Also remember to **Vote**.
 ## Hosting NabBot
 You can also host your own instance of NabBot.
 ### Requirements
-- Python 3.6
+- Python 3.6 and up
 - Python modules:
     - [discord.py (rewrite branch)](https://github.com/Rapptz/discord.py/tree/rewrite)
     - psutil

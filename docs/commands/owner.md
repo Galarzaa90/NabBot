@@ -126,6 +126,24 @@ Show's the bot's response times.
 
 ----
 
+## reload
+Reloads a cog (module)
+
+??? Summary "Example"
+    **/reload cogs.tibia**  
+    ![image](../assets/images/commands/reload.png)
+
+----
+
+## reloadconfig
+Reloads the configuration file.
+
+??? Summary "Example"
+    **/reloadconfig**  
+    ![image](../assets/images/commands/reloadconfig.png)
+
+----
+
 ## repl
 Starts a REPL session in the current channel.
 
@@ -134,11 +152,6 @@ To exit, type ``exit()``.
 
 !!! Warning
     This command is meant for advanced users and debugging code.
-
-----
-
-## shutdown
-Shutdowns the bot.
 
 ----
 
@@ -158,6 +171,11 @@ Values can be sorted by using one of the following values for sort:
 ??? Summary "Example"
     **/servers**  
     ![image](../assets/images/commands/servers.png)
+
+----
+
+## shutdown
+Shutdowns the bot.
 
 ----
 

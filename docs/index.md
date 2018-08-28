@@ -36,7 +36,7 @@ Curious about its permissions? Check the [permission explanation](permissions.md
 You can also host your own instance of NabBot.
 
 ### Requirements
-- Python 3.6
+- Python 3.6 and up.
 - Python modules:
     - [discord.py (rewrite branch)](https://github.com/Rapptz/discord.py/tree/rewrite)
     - psutil
@@ -72,6 +72,3 @@ If you like NabBot, you can donate to this project. NabBot and the developers wi
 
 
 [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)
-
-
-*[Tibia](http://tibia.com) is made by [CipSoft](https://www.cipsoft.com/), all game related images are copyrighted by [CipSoft GmbH](https://www.cipsoft.com/).*

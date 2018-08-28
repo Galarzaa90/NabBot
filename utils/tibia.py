@@ -185,13 +185,16 @@ class Character:
         char = content_json["characters"]
         if "error" in char:
             return None
-        data = char["data"]
-        character = Character(data["name"], data["world"])
-        character.level = data["level"]
-        character.achievement_points = data["achievement_points"]
-        character.sex = cls.SEX_MALE if data["sex"] == "male" else cls.SEX_FEMALE
-        character.vocation = data["vocation"]
-        character.residence = data["residence"]
+        try:
+            data = char["data"]
+            character = Character(data["name"], data["world"])
+            character.level = data["level"]
+            character.achievement_points = data["achievement_points"]
+            character.sex = cls.SEX_MALE if data["sex"] == "male" else cls.SEX_FEMALE
+            character.vocation = data["vocation"]
+            character.residence = data["residence"]
+        except KeyError:
+            return None
         if "former_names" in data:
             character.former_names = data["former_names"]
         if "deleted" in data:
@@ -1149,6 +1152,8 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
 
     worlds = []
     try:
+        if not isinstance(json_content["worlds"], list):
+            return
         for world in json_content["worlds"]["allworlds"]:
             try:
                 world["online"] = int(world["online"])

@@ -236,14 +236,17 @@ class Tracking:
                             global_online_list.insert(0, server_char)
                             await self.check_death(server_char.name)
                         # Else we check for levelup
-                        elif server_char.level > result["level"] > 0:
-                            # Saving level up date in database
-                            c.execute(
-                                "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                (result["id"], server_char.level, time.time(),)
-                            )
-                            # Announce the level up
-                            await self.announce_level(server_char.level, char_name=server_char.name)
+                        else:
+                            # Update character info in global_online_list
+                            global_online_list[global_online_list.index(server_char)] = server_char
+                            if server_char.level > result["level"] > 0:
+                                # Saving level up date in database
+                                c.execute(
+                                    "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
+                                    (result["id"], server_char.level, time.time(),)
+                                )
+                                # Announce the level up
+                                await self.announce_level(server_char.level, char_name=server_char.name)
             except asyncio.CancelledError:
                 # Task was cancelled, so this is fine
                 break
@@ -1061,7 +1064,7 @@ class Tracking:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @checks.is_admin()
+    @checks.is_mod()
     @checks.is_tracking_world()
     @commands.group(invoke_without_command=True, aliases=["watchlist", "huntedlist"], case_insensitive=True)
     async def watched(self, ctx: NabCtx, *, name="watched-list"):
@@ -1073,9 +1076,6 @@ class Tracking:
 
         If no name is specified, the default name "watched-list" is used.
 
-        When the channel is created, only the bot and people with `Administrator` role can read it.
-        The permissions can be adjusted afterwards.
-
         The channel can be renamed at anytime without problems.
         """
 
@@ -1083,34 +1083,33 @@ class Tracking:
         watched_channel = self.bot.get_channel(watched_channel_id)
 
         if "·" in name:
-            await ctx.send("Channel name cannot contain the special character **·**")
+            await ctx.send(f"{ctx.tick(False)} Channel name cannot contain the special character **·**")
             return
 
         world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
+            await ctx.send(f"{ctx.tick(False)}This server is not tracking any tibia worlds.")
             return
 
         if watched_channel is not None:
-            await ctx.send(f"This server already has a watched list channel: {watched_channel.mention}")
+            await ctx.send(f"{ctx.tick(False)} This server already has a watched list: {watched_channel.mention}")
             return
         permissions = ctx.bot_permissions
         if not permissions.manage_channels:
-            await ctx.send("I need to have `Manage Channels` permissions to use this command.")
+            await ctx.send(f"{ctx.tick(False)} I need to have `Manage Channels` permissions to use this command.")
         try:
             overwrites = {
-                ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-                ctx.guild.me: discord.PermissionOverwrite(read_messages=True)
+                ctx.guild.default_role: discord.PermissionOverwrite(send_messages=False, read_messages=True),
+                ctx.guild.me: discord.PermissionOverwrite(send_messages=True, read_messages=True)
             }
             channel = await ctx.guild.create_text_channel(name, overwrites=overwrites)
         except discord.Forbidden:
-            await ctx.send("Sorry, I don't have permissions to create channels.")
+            await ctx.send(f"{ctx.tick(False)} Sorry, I don't have permissions to create channels.")
         except discord.HTTPException:
-            await ctx.send("Something went wrong, the channel name you chose is probably invalid.")
+            await ctx.send(f"{ctx.tick(False)}Something went wrong, the channel name you chose is probably invalid.")
         else:
-            await ctx.send(f"Channel created successfully: {channel.mention}\n")
-            await channel.send("This is where I will post a list of online watched characters."
-                               "Right now only **admins** are able to read this.\n"
+            await ctx.send(f"{ctx.tick(True)} Channel created successfully: {channel.mention}\n")
+            await channel.send("This is where I will post a list of online watched characters.\n"
                                "Edit this channel's permissions to allow the roles you want.\n"
                                "This channel can be renamed freely.\n"
                                "**It is important to not allow anyone to write in here**\n"
@@ -1188,8 +1187,8 @@ class Tracking:
 
         Guilds are displayed in the watched list as a group."""
         if params is None:
-            ctx.send("You need to tell me the name of the guild you want to add.\n"
-                     "You can optionally provide a reason, e.g. `/watched addguild guild,reason`")
+            await ctx.send("You need to tell me the name of the guild you want to add.\n"
+                           "You can optionally provide a reason, e.g. `/watched addguild guild,reason`")
             return
 
         params = params.split(",", 1)
@@ -1362,7 +1361,7 @@ class Tracking:
     async def watched_remove(self, ctx: NabCtx, *, name=None):
         """Removes a character from the watched list."""
         if name is None:
-            ctx.send("You need to tell me the name of the person you want to remove from the list.")
+            await ctx.send("You need to tell me the name of the person you want to remove from the list.")
 
         world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
@@ -1400,7 +1399,7 @@ class Tracking:
     async def watched_removeguild(self, ctx: NabCtx, *, name=None):
         """Removes a guild from the watched list."""
         if name is None:
-            ctx.send("You need to tell me the name of the guild you want to remove from the list.")
+            await ctx.send("You need to tell me the name of the guild you want to remove from the list.")
 
         world = self.bot.tracked_worlds.get(ctx.guild.id, None)
         if world is None:
