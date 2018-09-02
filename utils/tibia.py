@@ -1152,7 +1152,7 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
 
     worlds = []
     try:
-        if not isinstance(json_content["worlds"], list):
+        if not isinstance(json_content["worlds"], dict):
             return
         for world in json_content["worlds"]["allworlds"]:
             try:
@@ -1161,7 +1161,8 @@ async def get_world_list(tries=3) -> Optional[List[World]]:
                 world["online"] = 0
             worlds.append(World(name=world["name"], online=world["online"], location=world["location"],
                                 pvp_type=world["worldtype"], online_count=world["online"]))
-    except KeyError:
+    except KeyError as e:
+        print(e)
         return
     CACHE_WORLD_LIST[0] = worlds
     return worlds

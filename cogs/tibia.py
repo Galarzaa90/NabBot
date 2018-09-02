@@ -1789,9 +1789,9 @@ class Tibia:
         try:
             worlds = await get_world_list()
             if worlds is None:
-                return await ctx.send(f"{ctx.tick(False)} Something went wrong...'")
+                return await ctx.send(f"{ctx.tick(False)} Something went wrong...")
         except NetworkError:
-            return await ctx.send(f"{ctx.tick(False)} I'm having network errors, please try again later.'")
+            return await ctx.send(f"{ctx.tick(False)} I'm having network errors, please try again later.")
         if query is None:
             params = []
         else:
