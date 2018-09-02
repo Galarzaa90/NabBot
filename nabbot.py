@@ -115,6 +115,10 @@ class NabBot(commands.Bot):
             await ctx.send(error)
         elif isinstance(error, CannotEmbed):
             await ctx.send(f"{ctx.tick(False)} Sorry, `Embed Links` permission is required for this command.")
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send(f"{ctx.tick(False)} The correct syntax is: "
+                           f"`{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
+                           f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
         elif isinstance(error, commands.CommandInvokeError):
             log.error(f"Exception in command: {ctx.message.clean_content}", exc_info=error.original)
             if isinstance(error.original, discord.HTTPException):

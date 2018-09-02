@@ -40,10 +40,6 @@ class Tibia:
         self.bot = bot
         self.news_announcements_task = self.bot.loop.create_task(self.scan_news())
 
-    async def __error(self, ctx: NabCtx, error):
-        if isinstance(error, commands.UserInputError):
-            await self.bot.show_help(ctx)
-
     # Commands
     @commands.command(aliases=['bless'])
     async def blessings(self, ctx: NabCtx, level: int):

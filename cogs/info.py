@@ -279,12 +279,10 @@ class Info:
             await destination.send(page)
 
     @commands.guild_only()
-    @commands.command()
     @checks.can_embed()
+    @commands.command(usage=" ")
     async def serverinfo(self, ctx: NabCtx, server=None):
         """Shows the server's information.
-
-        The bot owner can additionally check the information of a specific server where the bot is.
         """
         if await checks.is_owner_check(ctx) and server is not None:
             try:

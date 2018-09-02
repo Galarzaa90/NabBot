@@ -28,12 +28,6 @@ class TibiaWiki:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    async def __error(self, ctx, error):
-        if isinstance(error, commands.UserInputError):
-            cmd = ctx.bot.get_command('help')
-            command = ctx.command.qualified_name
-            await ctx.invoke(cmd, command=command)
-
     # Commands
     @checks.can_embed()
     @commands.command(aliases=["achiev"])
