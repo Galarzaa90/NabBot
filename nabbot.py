@@ -119,6 +119,9 @@ class NabBot(commands.Bot):
             await ctx.send(f"{ctx.tick(False)} The correct syntax is: "
                            f"`{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
                            f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
+        elif isinstance(error, commands.BadArgument):
+            await ctx.send(f"{ctx.tick(False)} {error}\n"
+                           f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
         elif isinstance(error, commands.CommandInvokeError):
             log.error(f"Exception in command: {ctx.message.clean_content}", exc_info=error.original)
             if isinstance(error.original, discord.HTTPException):
@@ -163,7 +166,6 @@ class NabBot(commands.Bot):
             await channel.send(message)
         except discord.HTTPException as e:
             log.error(f"Could not send join message on server: {guild.name}.", exc_info=e)
-
 
     async def on_guild_remove(self, guild: discord.Guild):
         """Called when the bot leaves a guild (server)."""

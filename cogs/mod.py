@@ -95,7 +95,7 @@ class Mod:
             await ctx.send(e)
 
     @commands.command()
-    @checks.is_mod_somewhere()
+    @checks.is_channel_mod_somewhere()
     async def makesay(self, ctx: NabCtx, *, message: str):
         """Makes the bot say a message.
 
@@ -104,6 +104,7 @@ class Mod:
 
         If it's used on a private message, the bot will ask on which channel he should say the message.
         Each channel in the list is numerated, by choosing a number, the message will be sent in the chosen channel.
+        You can only send messages on channels where you have `Manage Channel` permissions.
         """
         if ctx.is_private:
             description_list = []
@@ -121,7 +122,8 @@ class Mod:
                     author_permissions = author.permissions_in(channel)
                     bot_permissions = bot_member.permissions_in(channel)
                     # Check if both the author and the bot have permissions to send messages and add channel to list
-                    if author_permissions.send_messages and bot_permissions.send_messages:
+                    if author_permissions.send_messages and bot_permissions.send_messages \
+                            and author_permissions.manage_channels:
                         separator = ""
                         if prev_server is not server:
                             separator = "---------------\n\t"
@@ -131,7 +133,7 @@ class Mod:
                         prev_server = server
                         num += 1
             if len(description_list) < 1:
-                await ctx.send("We don't have any channels where we both can send messages.")
+                await ctx.send("We don't have any channels where we both can send messages and that you manage.")
                 return
             await ctx.send("Choose a channel for me to send your message (number only): \n\t0: *Cancel*\n\t" +
                            "\n\t".join(["{0}".format(i) for i in description_list]))
@@ -154,6 +156,10 @@ class Mod:
             except asyncio.TimeoutError:
                 await ctx.send("... are you there? Fine, nevermind!")
         else:
+            if not ctx.bot_permissions.manage_messages:
+                return await ctx.send(f"{ctx.tick(False)} I need `Manage Messages` permission to use this command.")
+            if not ctx.author_permissions.manage_channels:
+                return await ctx.send(f"{ctx.tick(False)} You need `Manage Channel` permission to use this command.")
             await ctx.message.delete()
             await ctx.channel.send(message)
 
@@ -214,12 +220,6 @@ class Mod:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
-
-    @ignore.error
-    @unignore.error
-    async def ignore_error(self, ctx, error):
-        if isinstance(error, commands.errors.BadArgument):
-            await ctx.send(error)
 
     def reload_ignored(self):
         """Refresh the world list from the database
