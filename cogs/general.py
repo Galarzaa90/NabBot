@@ -32,10 +32,6 @@ class General:
         if isinstance(error, BadTime):
             await ctx.send(error)
             return
-        if isinstance(error, commands.UserInputError):
-            await ctx.send(f"{ctx.tick(False)} The correct syntax is: "
-                           f"`{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
-                           f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
 
     async def game_update(self):
         """Updates the bot's status.

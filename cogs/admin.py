@@ -19,14 +19,6 @@ class Admin:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    async def __error(self, ctx: NabCtx, error):
-        if isinstance(error, commands.BadArgument):
-            if not error.args:
-                await ctx.send(f"{ctx.tick(False)} The correct syntax is: "
-                               f"`{ctx.clean_prefix}{ctx.invoked_with} {ctx.usage}`")
-            else:
-                await ctx.send(error)
-
     @checks.is_owner()
     @checks.is_tracking_world()
     @commands.command(name="addaccount", aliases=["addacc"], usage="<user>,<character>")

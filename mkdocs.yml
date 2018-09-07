@@ -39,13 +39,13 @@ google_analytics:
 extra:
   social:
     - type: 'github'
-      link: 'https://github.com/galarzaa90'
+      link: 'https://github.com/NabDev'
     - type: 'gitlab'
-      link: 'https://gitlab.com/Galarzaa90'
+      link: 'https://gitlab.com/NabBot'
     - type: 'discord'
       link: 'https://discord.me/NabBot'
 
-repo_url: https://github.com/Galarzaa90/NabBot
+repo_url: https://github.com/NabDev/NabBot
 edit_uri: ""
 nav:
     - Home: index.md

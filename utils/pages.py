@@ -353,7 +353,7 @@ class HelpPaginator(Pages):
         def key(c):
             return c.cog_name or '\u200bMisc'
 
-        entries = sorted(ctx.bot.commands, key=key)
+        entries = sorted(sorted(ctx.bot.commands, key=lambda c: c.name), key=key)
         nested_pages = []
         per_page = 10
 

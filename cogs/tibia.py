@@ -40,10 +40,6 @@ class Tibia:
         self.bot = bot
         self.news_announcements_task = self.bot.loop.create_task(self.scan_news())
 
-    async def __error(self, ctx: NabCtx, error):
-        if isinstance(error, commands.UserInputError):
-            await self.bot.show_help(ctx)
-
     # Commands
     @commands.command(aliases=['bless'])
     async def blessings(self, ctx: NabCtx, level: int):
@@ -1789,9 +1785,9 @@ class Tibia:
         try:
             worlds = await get_world_list()
             if worlds is None:
-                return await ctx.send(f"{ctx.tick(False)} Something went wrong...'")
+                return await ctx.send(f"{ctx.tick(False)} Something went wrong...")
         except NetworkError:
-            return await ctx.send(f"{ctx.tick(False)} I'm having network errors, please try again later.'")
+            return await ctx.send(f"{ctx.tick(False)} I'm having network errors, please try again later.")
         if query is None:
             params = []
         else:
