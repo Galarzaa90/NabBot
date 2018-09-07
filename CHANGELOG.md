@@ -1,4 +1,9 @@
 # Changelog
+## Version 1.6.1 (2018-09-06)
+- Fixed bug with /worlds
+- Unified missing argument error messages
+- Commands in `/help` are now sorted alphabetically
+
 ## Version 1.6.0 (2018-08-27)
 - New command: `/rashid`.
 - `/time` no longer displays Mexico and Brazil's timezones.
