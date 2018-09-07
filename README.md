@@ -25,11 +25,11 @@ You can also host your own instance of NabBot.
 - git
 
 ### Installing and running
-Follow the [install guide](https://galarzaa90.github.io/NabBot/install/) on the official documentation site.
+Follow the [install guide](https://nabdev.github.io/NabBot/install/) on the official documentation site.
 
 
 ## Documentation
-See https://galarzaa90.github.io/NabBot/
+See https://nabdev.github.io/NabBot/
 
 ## Support
 Visit our support server

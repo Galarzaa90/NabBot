@@ -210,7 +210,7 @@
 - Migrated many services from Tibia.com to TibiaData.com for better reliability.
 - TibiaWiki database is now more recent and is now a [separate project](https://github.com/Galarzaa90/tibiawiki-sql)
 - Added tons of new commands and rewrote many of them.
-- Added [documentation site](https://galarzaa90.github.io/NabBot/)
+- Added [documentation site](https://nabdev.github.io/NabBot/)
 - And too many changes too list them here.
 
 ## Version 0.1.3 (2018-03-08)
