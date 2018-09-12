@@ -17,7 +17,7 @@ from utils import checks
 from utils.config import config
 from utils.context import NabCtx
 from utils.database import get_server_property, userDatabase, set_server_property
-from utils.general import get_time_diff, join_list, global_online_list, get_local_timezone, log, \
+from utils.general import get_time_diff, join_list, online_characters, get_local_timezone, log, \
     is_numeric, get_user_avatar
 from utils.messages import html_to_markdown, get_first_image, split_message
 from utils.pages import Pages, CannotPaginate, VocationPages
@@ -1939,7 +1939,7 @@ class Tibia:
             if not characters:
                 embed.description = f"I don't know who **{display_name}** is..."
                 return embed
-            online_list = [x.name for x in global_online_list]
+            online_list = [x.name for x in online_characters]
             char_list = []
             for char in characters:
                 char["online"] = config.online_emoji if char["name"] in online_list else ""
