@@ -63,7 +63,7 @@ class Tracking:
                     # Check for new death
                     await self.check_death(current_char.name)
                 else:
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(0.5)
             except asyncio.CancelledError:
                 # Task was cancelled, so this is fine
                 break
