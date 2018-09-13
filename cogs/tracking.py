@@ -4,7 +4,6 @@ import pickle
 import re
 import time
 import urllib.parse
-from asyncio import Task
 from contextlib import closing
 from typing import List
 
@@ -52,13 +51,19 @@ class Tracking:
                 if len(online_characters[world]) == 0:
                     await asyncio.sleep(0.5)
                     continue
+                skip = False
                 # Pop last char in queue, reinsert it at the beginning
-                print("Scan deaths", world)
                 current_char = online_characters[world].pop()
+                if hasattr(current_char, "last_check"):
+                    if time.time() - current_char.last_check < 45:
+                        skip = True
+                current_char.last_check = time.time()
                 online_characters[world].insert(0, current_char)
-
-                # Check for new death
-                await self.check_death(current_char.name)
+                if not skip:
+                    # Check for new death
+                    await self.check_death(current_char.name)
+                else:
+                    await asyncio.sleep(60)
             except asyncio.CancelledError:
                 # Task was cancelled, so this is fine
                 break
@@ -272,9 +277,7 @@ class Tracking:
         # Watched List checking
         # Iterate through servers with tracked world to find one that matches the current world
         # Schedule Scan Deaths task for this world
-        print("on_world_scanned", scanned_world.name)
         if scanned_world.name not in self.world_tasks:
-            print("task created", scanned_world.name)
             self.world_tasks[scanned_world.name] = self.bot.loop.create_task(self.scan_deaths(scanned_world.name))
 
         for server, world in self.bot.tracked_worlds.items():
@@ -913,7 +916,7 @@ class Tracking:
         entries = []
         vocations = []
         try:
-            for char in online_characters:
+            for char in online_characters.get(world, []):
                 char_world = char.world
                 name = char.name
                 c.execute("SELECT name, user_id, vocation, ABS(level) as level FROM chars WHERE name LIKE ?", (name,))
@@ -1042,7 +1045,8 @@ class Tracking:
                       "WHERE level >= ? AND level <= ? AND world = ?"
                       "ORDER by level DESC", (low, high, tracked_world,))
             count = 0
-            online_list = [x.name for x in online_characters]
+
+            online_list = [x.name for v in online_characters.values() for x in v]
             while True:
                 player = c.fetchone()
                 if player is None:

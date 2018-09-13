@@ -1939,7 +1939,7 @@ class Tibia:
             if not characters:
                 embed.description = f"I don't know who **{display_name}** is..."
                 return embed
-            online_list = [x.name for x in online_characters]
+            online_list = [x.name for v in online_characters.values() for x in v]
             char_list = []
             for char in characters:
                 char["online"] = config.online_emoji if char["name"] in online_list else ""

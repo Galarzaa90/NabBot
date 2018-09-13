@@ -449,11 +449,14 @@ async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Ch
                 character.house["houseid"] = result["id"]
 
     # If the character exists in the online list use data from there where possible
-    for c in online_characters:
-        if c == character:
-            character.level = c.level
-            character.vocation = c.vocation
-            break
+    try:
+        for c in online_characters[character.world]:
+            if c == character:
+                character.level = c.level
+                character.vocation = c.vocation
+                break
+    except KeyError:
+        pass
 
     # Database operations
     c = userDatabase.cursor()
