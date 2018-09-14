@@ -229,7 +229,7 @@ def get_npc(name):
         result = c.fetchall()
         if len(result) == 0:
             return None
-        elif result[0]["title"].lower() == name.lower or len(result) == 1:
+        elif result[0]["title"].lower() == name.lower() or len(result) == 1:
             npc = result[0]
         else:
             return [x["title"] for x in result]
