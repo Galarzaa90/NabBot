@@ -9,13 +9,12 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.context import NabCtx
-from utils.database import userDatabase, get_server_property
-from utils.general import TimeString, single_line, log, BadTime, get_user_avatar, clean_string, is_numeric
-from utils.pages import CannotPaginate, VocationPages
-from utils.tibia import get_voc_abb, get_voc_emoji
+from .utils import TimeString, single_line, log, BadTime, get_user_avatar, clean_string, is_numeric, config
+from .utils import checks
+from .utils.context import NabCtx
+from .utils.database import userDatabase, get_server_property
+from .utils.pages import CannotPaginate, VocationPages
+from .utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50
 EVENT_DESCRIPTION_LIMIT = 400

@@ -1,13 +1,12 @@
 from discord.ext import commands
 from discord.ext.commands import MissingPermissions
 
-from utils.config import config
-from utils.context import NabCtx
+from . import config
+from .context import NabCtx
 
 
-# Checks
-from utils.general import CannotEmbed
-
+class CannotEmbed(commands.CheckFailure):
+    pass
 
 def is_owner():
     """Check if the author is the bot's owner"""

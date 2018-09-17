@@ -11,16 +11,15 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.context import NabCtx
-from utils.database import userDatabase, get_server_property, set_server_property
-from utils.general import online_characters, log, join_list, is_numeric, FIELD_VALUE_LIMIT, EMBED_LIMIT, \
-    get_user_avatar
-from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, \
+from .utils import checks
+from .utils.context import NabCtx
+from .utils.database import userDatabase, get_server_property, set_server_property
+from .utils import online_characters, log, join_list, is_numeric, FIELD_VALUE_LIMIT, EMBED_LIMIT, \
+    get_user_avatar, config
+from .utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, \
     level_messages, split_message
-from utils.pages import Pages, CannotPaginate, VocationPages
-from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
+from .utils.pages import Pages, CannotPaginate, VocationPages
+from .utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
     get_voc_abb, get_character_url, url_guild, \
     get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_voc_abb_and_emoji, get_share_range, \
     World

@@ -2,9 +2,9 @@ import datetime as dt
 import urllib.parse
 from typing import Dict, Union
 
-from utils.database import tibiaDatabase
-from utils.general import get_local_timezone
-from utils.tibia import get_tibia_time_zone
+from cogs.utils import get_local_timezone
+from .database import tibiaDatabase
+from .tibia import get_tibia_time_zone
 
 WIKI_ICON = "https://vignette.wikia.nocookie.net/tibia/images/b/bc/Wiki.png/revision/latest?path-prefix=en"
 

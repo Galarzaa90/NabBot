@@ -7,9 +7,9 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils.config import config
-from utils.context import NabCtx
-from utils.tibia import DRUID, SORCERER, PALADIN, KNIGHT
+from . import config
+from .context import NabCtx
+from .tibia import KNIGHT, DRUID, PALADIN, SORCERER
 
 
 class CannotPaginate(Exception):

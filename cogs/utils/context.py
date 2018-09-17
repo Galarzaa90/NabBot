@@ -1,13 +1,13 @@
 import asyncio
 import functools
 import re
-from typing import Union, Optional, Callable, TypeVar, List, Any, Sequence
+from typing import Union, Optional, Callable, TypeVar, Any, Sequence
 
 import discord
 from discord.ext import commands
 
-from utils.config import config
-from utils.database import get_server_property
+from . import config
+from .database import get_server_property
 
 _mention = re.compile(r'<@!?([0-9]{1,19})>')
 

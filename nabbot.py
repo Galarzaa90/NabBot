@@ -7,13 +7,12 @@ from typing import Union, List, Optional, Dict
 import discord
 from discord.ext import commands
 
-from utils import context
-from utils.config import config
-from utils.database import init_database, userDatabase, get_server_property
-from utils.general import join_list, get_token, get_user_avatar, get_region_string, CannotEmbed
-from utils.general import log
-from utils.help_format import NabHelpFormat
-from utils.tibia import populate_worlds, tibia_worlds, get_voc_abb_and_emoji
+from cogs.utils import context
+from cogs.utils.checks import CannotEmbed
+from cogs.utils.database import init_database, userDatabase, get_server_property
+from cogs.utils import config, log, join_list, get_token, get_user_avatar, get_region_string
+from cogs.utils.help_format import NabHelpFormat
+from cogs.utils.tibia import populate_worlds, tibia_worlds, get_voc_abb_and_emoji
 
 initial_cogs = {"cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general", "cogs.loot",
                 "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info"}

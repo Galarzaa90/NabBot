@@ -1,7 +1,7 @@
 import platform
 import re
 import time
-from collections import Counter, OrderedDict
+from collections import Counter
 from contextlib import closing
 from typing import List
 
@@ -10,14 +10,13 @@ import psutil
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.context import NabCtx
-from utils.database import get_server_property, userDatabase
-from utils.general import parse_uptime, FIELD_VALUE_LIMIT, get_region_string, get_user_avatar
-from utils.messages import split_message
-from utils.pages import HelpPaginator, _can_run
-from utils.tibia import tibia_worlds
+from .utils import checks
+from .utils.context import NabCtx
+from .utils.database import get_server_property, userDatabase
+from .utils import parse_uptime, FIELD_VALUE_LIMIT, get_region_string, get_user_avatar, config
+from .utils.messages import split_message
+from .utils.pages import HelpPaginator, _can_run
+from .utils.tibia import tibia_worlds
 
 
 class Info:

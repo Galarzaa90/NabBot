@@ -1,15 +1,15 @@
+from contextlib import closing
 from typing import List
 
 import discord
 from discord.ext import commands
 
+from cogs.utils.database import userDatabase
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.context import NabCtx
-from utils.database import *
-from utils.general import join_list, log, get_user_avatar
-from utils.tibia import get_character, NetworkError, Character, get_voc_abb_and_emoji
+from .utils import checks, join_list, log, get_user_avatar
+from .utils.config import config
+from .utils.context import NabCtx
+from .utils.tibia import get_character, NetworkError, Character, get_voc_abb_and_emoji
 
 
 class Admin:

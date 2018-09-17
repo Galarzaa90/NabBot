@@ -12,13 +12,12 @@ from PIL import Image
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.context import NabCtx
-from utils.database import tibiaDatabase, dict_factory
-from utils.general import log, FIELD_VALUE_LIMIT
-from utils.messages import split_message
-from utils.tibiawiki import get_item
+from .utils import checks, log, FIELD_VALUE_LIMIT
+from .utils.config import config
+from .utils.context import NabCtx
+from .utils.database import tibiaDatabase, dict_factory
+from .utils.messages import split_message
+from .utils.tibiawiki import get_item
 
 LOOTDB = "data/loot.db"
 DEBUG_FOLDER = "debug/loot"

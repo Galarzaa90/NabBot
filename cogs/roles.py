@@ -6,13 +6,13 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
-from utils.context import NabCtx
-from utils.converter import InsensitiveRole
-from utils.database import userDatabase
-from utils.general import log, get_user_avatar
-from utils.pages import CannotPaginate, Pages
-from utils.tibia import get_guild, NetworkError
+from .utils import checks
+from .utils.context import NabCtx
+from .utils.converter import InsensitiveRole
+from .utils.database import userDatabase
+from .utils import log, get_user_avatar
+from .utils.pages import CannotPaginate, Pages
+from .utils.tibia import get_guild, NetworkError
 
 
 class Roles:

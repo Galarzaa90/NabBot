@@ -13,19 +13,18 @@ import pytz
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.context import NabCtx
-from utils.database import get_server_property, userDatabase, set_server_property
-from utils.general import get_time_diff, join_list, online_characters, get_local_timezone, log, \
-    is_numeric, get_user_avatar
-from utils.messages import html_to_markdown, get_first_image, split_message
-from utils.pages import Pages, CannotPaginate, VocationPages
-from utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
+from .utils import checks
+from .utils.context import NabCtx
+from .utils.database import get_server_property, userDatabase, set_server_property
+from .utils import get_time_diff, join_list, online_characters, get_local_timezone, log, \
+    is_numeric, get_user_avatar, config
+from .utils.messages import html_to_markdown, get_first_image, split_message
+from .utils.pages import Pages, CannotPaginate, VocationPages
+from .utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
     url_house, get_stats, get_map_area, get_tibia_time_zone, get_world, tibia_worlds, get_world_bosses, get_recent_news, \
     get_news_article, Character, url_guild, highscore_format, get_character_url, url_character, get_house, \
     get_voc_abb_and_emoji, get_world_list, get_highscores_tibiadata
-from utils.tibiawiki import get_rashid_info
+from .utils.tibiawiki import get_rashid_info
 
 
 FLAGS = {"North America": "🇺🇸", "South America": "🇧🇷", "Europe": "🇬🇧"}

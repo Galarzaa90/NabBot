@@ -12,6 +12,8 @@ import discord
 from PIL import Image
 from discord.ext import commands
 
+from .config import config
+
 # This is the global online list
 # don't look at it too closely or you'll go blind!
 # characters are added as servername_charactername
@@ -324,10 +326,6 @@ def single_line(string: str) -> str:
 
 
 class BadTime(commands.BadArgument):
-    pass
-
-
-class CannotEmbed(commands.CheckFailure):
     pass
 
 

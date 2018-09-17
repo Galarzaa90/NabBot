@@ -8,15 +8,14 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.context import NabCtx
-from utils.database import tibiaDatabase
-from utils.general import join_list, FIELD_VALUE_LIMIT, average_color
-from utils.messages import split_message
-from utils.pages import Pages, CannotPaginate
-from utils.tibia import get_map_area
-from utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
+from .utils import checks
+from .utils import join_list, FIELD_VALUE_LIMIT, average_color, config
+from .utils.context import NabCtx
+from .utils.database import tibiaDatabase
+from .utils.messages import split_message
+from .utils.pages import Pages, CannotPaginate
+from .utils.tibia import get_map_area
+from .utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
     get_key, search_key, get_rashid_info, get_mapper_link, get_bestiary_classes, get_bestiary_creatures, get_imbuement
 
 
