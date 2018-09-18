@@ -30,7 +30,6 @@ class Tracking:
 
     def __init__(self, bot: NabBot):
         self.bot = bot
-        # self.scan_deaths_task = self.bot.loop.create_task(self.scan_deaths())
         self.scan_online_chars_task = bot.loop.create_task(self.scan_online_chars())
         self.scan_highscores_task = bot.loop.create_task(self.scan_highscores())
 

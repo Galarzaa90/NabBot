@@ -1481,13 +1481,10 @@ class Tibia:
         saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
         if not saved_times:
             return await ctx.send(reply)
-        print(saved_times)
         time_entries = sorted(saved_times, key=lambda k: now.astimezone(pytz.timezone(k["timezone"])).utcoffset())
-        print(time_entries)
         reply += "\n\n"
         for entry in time_entries:
             timezone_time = now.astimezone(pytz.timezone(entry["timezone"]))
-            print(now.astimezone(pytz.timezone(entry["timezone"])).utcoffset())
             reply += f"**{timezone_time.strftime('%H:%M')}** in {entry['name']}\n"
         await ctx.send(reply)
 
