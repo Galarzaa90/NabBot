@@ -2,8 +2,8 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils.context import NabCtx
-from utils.tibia import get_guild, NetworkError, get_character_url
+from cogs.utils.context import NabCtx
+from cogs.utils.tibia import get_guild, NetworkError, get_character_url
 
 
 # This cog has a specific use, and probably has no use for anyone else but me

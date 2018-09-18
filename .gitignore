@@ -16,7 +16,8 @@ token.txt
 /config.yml
 
 # Any extra cogs added, except for our example cog
-extra/*.py
+extra/*
+!/extra/README.md
 !/extra/example.py
 !/extra/tibiammo.py
 
