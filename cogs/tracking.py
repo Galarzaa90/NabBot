@@ -1452,7 +1452,6 @@ class Tracking:
 
     def __unload(self):
         print("cogs.tracking: Cancelling pending tasks...")
-        self.scan_deaths_task.cancel()
         self.scan_highscores_task.cancel()
         self.scan_online_chars_task.cancel()
 
