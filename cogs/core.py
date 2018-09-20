@@ -96,7 +96,7 @@ class Core:
 
         embed = discord.Embed(description="{0.mention} joined.".format(member), color=discord.Color.green())
         embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member),
-                         icon_url=self.bot.get_user_avatar(member))
+                         icon_url=get_user_avatar(member))
 
         previously_registered = ""
         # If server is not tracking worlds, we don't check the database
