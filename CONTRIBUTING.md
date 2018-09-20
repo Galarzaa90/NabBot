@@ -4,7 +4,7 @@ Thanks for your interesting in contributing to NaBot and taking your time to rea
 This document will guide you in how to contribute to the project properly.
 
 ## Bug reports
-There's multiple way to report bugs, the preferred way is creating an [issue](https://github.com/NabDev/NabBot/issues).
+There's multiple ways to report bugs, the preferred way is creating an [issue](https://github.com/NabDev/NabBot/issues).
 
 You can also report bugs by joining our Discord Server: https://discord.gg/NmDvhpY
 
@@ -32,4 +32,4 @@ NabBot uses the following branching model:
 - `dev` - This branch is where new changes are made. Pull requests should point to this branch.
   This branch may contain bugs and incomplete features.
 - `staging` - This branch is only used to prepare for releases. Final tests, documentation and version updates are done here before merging into `master`.
-- `feat-*` - Used to implement featuers that require extended development, to isolate the environment and be able to keep updating the other branches.
+- `feat-*` - Used to implement features that require extended development, to isolate the environment and be able to keep updating the other branches.
