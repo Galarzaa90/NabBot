@@ -128,7 +128,7 @@ class Core:
         welcome_channel_id = get_server_property(member.guild.id, "welcome_channel", is_int=True)
         if welcome_message is None:
             return
-        message = welcome_message.format(user=member, server=member.guild, bot=self, owner=member.guild.owner)
+        message = welcome_message.format(user=member, server=member.guild, bot=self.bot, owner=member.guild.owner)
         message += previously_registered
         channel = member.guild.get_channel(welcome_channel_id)
         # If channel is not found, send via pm as fallback

@@ -180,6 +180,8 @@ class Admin:
         user = self.bot.get_member(params[0], ctx.guild)
         if user is None:
             return await ctx.send(f"{ctx.tick(False)} I don't see any user named **{params[0]}** in this server.")
+        if user.bot:
+            return await ctx.send(f"{ctx.tick(False)} You can't register characters to discord bots!")
         user_servers = self.bot.get_user_guilds(user.id)
 
         with ctx.typing():
