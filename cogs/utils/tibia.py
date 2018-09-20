@@ -61,16 +61,15 @@ tibia_worlds: List[str] = []
 HIGHSCORE_CATEGORIES = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
                         "magic_ek", "magic_rp", "loyalty", "achievements"]
 
-
 # Request log
-req_log = logging.getLogger(__name__)
+req_log = logging.getLogger()
 req_log.setLevel(logging.DEBUG)
 # Save log to file (info level)
-fileHandler = TimedRotatingFileHandler('logs/requests', when='midnight')
-fileHandler.suffix = "%Y_%m_%d.log"
-fileHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
-fileHandler.setLevel(logging.INFO)
-req_log.addHandler(fileHandler)
+log_handler = TimedRotatingFileHandler('logs/requests', when='midnight')
+log_handler.suffix = "%Y_%m_%d.log"
+log_handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
+log_handler.setLevel(logging.INFO)
+req_log.addHandler(log_handler)
 
 CACHE_CHARACTERS = cachetools.TTLCache(1000, 30)
 CACHE_GUILDS = cachetools.TTLCache(1000, 120)
