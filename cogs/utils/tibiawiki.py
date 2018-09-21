@@ -31,7 +31,7 @@ def get_monster(name):
     else:
         return [x['title'] for x in result]
     try:
-        if monster['hitpoints'] is None or monster['hitpoints'] < 1:
+        if monster['hitpoints'] is not None and monster['hitpoints'] < 1:
             monster['hitpoints'] = None
         c.execute("SELECT items.title as item, chance, min, max "
                   "FROM creatures_drops, items "
