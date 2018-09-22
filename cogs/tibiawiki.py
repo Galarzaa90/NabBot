@@ -443,14 +443,25 @@ class TibiaWiki:
         TibiaWiki._set_embed_author(embed, monster)
         TibiaWiki._set_monster_embed_description(embed, monster)
         TibiaWiki._set_monster_embed_attributes(ctx, embed, monster)
-        TibiaWiki._set_monster_embed_elem_modifiers(embed, monster)
+        TibiaWiki._set_monster_embed_elem_modifiers(embed, monster, TibiaWiki._get_monster_elemental_modifiers())
         TibiaWiki._set_monster_embed_bestiary(embed, monster)
         TibiaWiki._set_monster_embed_damage(embed, long, monster)
-        TibiaWiki._set_monster_embed_walks(embed, monster)
+        TibiaWiki._set_monster_embed_walks(embed, monster, "Walks Through", "walksthrough")
+        TibiaWiki._set_monster_embed_walks(embed, monster, "Walks Around", "walksaround")
         TibiaWiki._set_monster_embed_abilities(embed, monster)
-        TibiaWiki._set_monster_embed_loot(ctx, embed, long, monster)
+        TibiaWiki._set_monster_embed_loot(embed, long, monster)
         TibiaWiki._set_monster_embed_more_info(ctx, embed, long, monster)
         return embed
+
+    @staticmethod
+    def _get_monster_elemental_modifiers():
+        return ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
+
+    @staticmethod
+    def _get_elements_monster_walks():
+        elements = TibiaWiki._get_monster_elemental_modifiers()
+        elements.append("poison")
+        return elements
 
     @staticmethod
     def _set_monster_embed_more_info(ctx, embed, long, monster):
@@ -463,9 +474,21 @@ class TibiaWiki:
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
 
     @staticmethod
-    def _set_monster_embed_walks(embed, monster):
-        embed.add_field(name="Walks Through", value=monster["walksthrough"], inline=True)
-        embed.add_field(name="Walks Around", value=monster["walksaround"], inline=True)
+    def _set_monster_embed_walks(embed, monster, embed_field_name, attribute_name):
+        attribute_value = str(monster[attribute_name])
+        if attribute_value is not None and not attribute_value.lower().__contains__("none"):
+            content = ""
+            if config.use_elemental_emojis:
+                walks_elements = []
+                for element in TibiaWiki._get_elements_monster_walks():
+                    if not attribute_value.lower().__contains__(element):
+                        continue
+                    walks_elements.append(element)
+                for element in walks_elements:
+                    content += f"{config.elemental_emojis[element]}"
+            else:
+                content += attribute_value
+            embed.add_field(name=embed_field_name, value=content, inline=True)
 
     @staticmethod
     def _set_monster_embed_abilities(embed, monster):
@@ -478,7 +501,7 @@ class TibiaWiki:
                             value="{max_damage:,}".format(**monster) if monster["max_damage"] is not None else "???")
 
     @staticmethod
-    def _set_monster_embed_loot(ctx, embed, long, monster):
+    def _set_monster_embed_loot(embed, long, monster):
         if monster["loot"] and long:
             split_loot = TibiaWiki._get_monster_split_loot(monster)
             for loot in split_loot:
@@ -552,8 +575,7 @@ class TibiaWiki:
             embed.add_field(name="Bestiary Class", value=bestiary_info)
 
     @staticmethod
-    def _set_monster_embed_elem_modifiers(embed, monster):
-        elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
+    def _set_monster_embed_elem_modifiers(embed, monster, elements):
         # Iterate through elemental types
         elemental_modifiers = {}
         for element in elements:
