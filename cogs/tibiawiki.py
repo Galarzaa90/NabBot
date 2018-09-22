@@ -628,10 +628,10 @@ class TibiaWiki:
         return "?" if monster["hitpoints"] is None else "{0:,}".format(monster["hitpoints"])
 
     @staticmethod
-    def _set_embed_author(embed, monster):
+    def _set_embed_author(embed, article):
         embed.set_author(name="TibiaWiki",
                          icon_url=WIKI_ICON,
-                         url=get_article_url(monster["title"]))
+                         url=get_article_url(article["title"]))
 
     @staticmethod
     def get_key_embed(key):
