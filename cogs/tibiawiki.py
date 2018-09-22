@@ -455,10 +455,12 @@ class TibiaWiki:
 
     @staticmethod
     def _get_monster_elemental_modifiers():
+        """Returns the elemental modifiers available for monsters."""
         return ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
 
     @staticmethod
     def _get_elements_monster_walks():
+        """Returns the elements which monsters walk around/through."""
         elements = TibiaWiki._get_monster_elemental_modifiers()
         elements.append("poison")
         return elements
@@ -475,6 +477,7 @@ class TibiaWiki:
 
     @staticmethod
     def _set_monster_embed_walks(embed, monster, embed_field_name, attribute_name):
+        """Adds the embed field describing which elemnts the monster walks around or through."""
         attribute_value = str(monster[attribute_name])
         if attribute_value is not None and not attribute_value.lower().__contains__("none"):
             content = ""
