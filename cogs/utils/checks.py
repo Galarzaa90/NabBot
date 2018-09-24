@@ -8,6 +8,7 @@ from .context import NabCtx
 class CannotEmbed(commands.CheckFailure):
     pass
 
+
 def is_owner():
     """Check if the author is the bot's owner"""
     async def predicate(ctx):

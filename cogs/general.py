@@ -131,7 +131,6 @@ class General:
         user = ctx.author
         await ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
 
-
     @commands.guild_only()
     @checks.can_embed()
     @commands.group(aliases=["event"], invoke_without_command=True, case_insensitive=True, usage="[event id]")
@@ -226,7 +225,7 @@ class General:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
             result = c.fetchall()
 
-        if len(result) >= MAX_EVENTS and creator not in config.owner_ids:
+        if len(result) >= MAX_EVENTS and not await checks.check_guild_permissions(ctx, {'manage_guild': True}):
             await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
                            f"Delete or edit an active event.")
             return
@@ -712,7 +711,7 @@ class General:
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (ctx.author.id, now))
             event = c.fetchall()
-        if len(event) >= MAX_EVENTS and ctx.author.id not in config.owner_ids:
+        if len(event) >= MAX_EVENTS and not await checks.check_guild_permissions(ctx, {'manage_guild': True}):
             await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
                            f"Delete or edit an active event.")
             return
@@ -875,7 +874,6 @@ class General:
     @events.command(name="remove", aliases=["delete", "cancel"])
     async def event_remove(self, ctx: NabCtx, event_id: int):
         """Deletes or cancels an event."""
-        c = userDatabase.cursor()
         event = self.get_event(ctx, event_id)
         if event is None:
             await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
