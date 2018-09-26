@@ -440,55 +440,112 @@ class TibiaWiki:
         """Gets the monster embeds to show in /mob command
         The message is split in two embeds, the second contains loot only and is only shown if long is True"""
         embed = discord.Embed(title=monster["title"], url=get_article_url(monster["title"]))
-        embed.set_author(name="TibiaWiki",
-                         icon_url=WIKI_ICON,
-                         url=get_article_url(monster["title"]))
-        hp = "?" if monster["hitpoints"] is None else "{0:,}".format(monster["hitpoints"])
-        experience = "?" if monster["experience"] is None else "{0:,}".format(monster["experience"])
-        speed = "?" if monster["speed"] is None else "{0:,}".format(monster["speed"])
-        embed.description = f"**HP** {hp} | **Exp** {experience} | **Speed** {speed}"
+        TibiaWiki._set_embed_author(embed, monster)
+        TibiaWiki._set_monster_embed_description(embed, monster)
+        TibiaWiki._set_monster_embed_attributes(ctx, embed, monster)
+        TibiaWiki._set_monster_embed_elem_modifiers(embed, monster, TibiaWiki._get_monster_elemental_modifiers())
+        TibiaWiki._set_monster_embed_bestiary(embed, monster)
+        TibiaWiki._set_monster_embed_damage(embed, long, monster)
+        TibiaWiki._set_monster_embed_walks(embed, monster, "Walks Through", "walksthrough")
+        TibiaWiki._set_monster_embed_walks(embed, monster, "Walks Around", "walksaround")
+        TibiaWiki._set_monster_embed_abilities(embed, monster)
+        TibiaWiki._set_monster_embed_loot(embed, long, monster)
+        TibiaWiki._set_monster_embed_more_info(ctx, embed, long, monster)
+        return embed
 
-        attributes = {"summon": "Summonable",
-                      "convince": "Convinceable",
-                      "illusionable": "Illusionable",
-                      "pushable": "Pushable",
-                      "paralysable": "Paralysable",
-                      "see_invisible": "Sees Invisible"
-                      }
+    @staticmethod
+    def _get_monster_elemental_modifiers():
+        """Returns the elemental modifiers available for monsters."""
+        return ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
 
-        attributes = "\n".join([f"{ctx.tick(monster[x])} {repl}" for x, repl in attributes.items()
-                                if monster[x] is not None])
-        embed.add_field(name="Attributes", value="Unknown" if not attributes else attributes)
-        elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
-        # Iterate through elemental types
-        elemental_modifiers = {}
-        for element in elements:
-            if monster[element] is None or monster[element] == 100:
-                continue
-            elemental_modifiers[element] = monster[element] - 100
-        elemental_modifiers = dict(sorted(elemental_modifiers.items(), key=lambda x: x[1]))
-        if elemental_modifiers:
+    @staticmethod
+    def _get_elements_monster_walks():
+        """Returns the elements which monsters walk around/through."""
+        elements = TibiaWiki._get_monster_elemental_modifiers()
+        elements.append("poison")
+        return elements
+
+    @staticmethod
+    def _set_monster_embed_more_info(ctx, embed, long, monster):
+        if monster["loot"] and not long:
+            ask_channel = ctx.ask_channel_name
+            if ask_channel:
+                askchannel_string = " or use #" + ask_channel
+            else:
+                askchannel_string = ""
+            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
+
+    @staticmethod
+    def _set_monster_embed_walks(embed, monster, embed_field_name, attribute_name):
+        """Adds the embed field describing which elemnts the monster walks around or through."""
+        attribute_value = str(monster[attribute_name])
+        if attribute_value is not None and not attribute_value.lower().__contains__("none"):
             content = ""
-            for element, value in elemental_modifiers.items():
-                if config.use_elemental_emojis:
-                    content += f"\n{config.elemental_emojis[element]} {value:+}%"
-                else:
-                    content += f"\n{value:+}% {element.title()}"
-            embed.add_field(name="Elemental modifiers", value=content)
+            if config.use_elemental_emojis:
+                walks_elements = []
+                for element in TibiaWiki._get_elements_monster_walks():
+                    if not attribute_value.lower().__contains__(element):
+                        continue
+                    walks_elements.append(element)
+                for element in walks_elements:
+                    content += f"{config.elemental_emojis[element]}"
+            else:
+                content += attribute_value
+            embed.add_field(name=embed_field_name, value=content, inline=True)
 
+    @staticmethod
+    def _set_monster_embed_abilities(embed, monster):
+        embed.add_field(name="Abilities", value=monster["abilities"], inline=False)
+
+    @staticmethod
+    def _set_monster_embed_damage(embed, long, monster):
+        if long or not monster["loot"]:
+            embed.add_field(name="Max damage",
+                            value="{max_damage:,}".format(**monster) if monster["max_damage"] is not None else "???")
+
+    @staticmethod
+    def _set_monster_embed_loot(embed, long, monster):
+        if monster["loot"] and long:
+            split_loot = TibiaWiki._get_monster_split_loot(monster)
+            for loot in split_loot:
+                if loot == split_loot[0]:
+                    name = "Loot"
+                else:
+                    name = "\u200F"
+                embed.add_field(name=name, value="`" + loot + "`")
+
+    @staticmethod
+    def _get_monster_split_loot(monster):
+        loot_string = ""
+        for item in monster["loot"]:
+            if item["chance"] is None:
+                item["chance"] = "??.??%"
+            elif item["chance"] >= 100:
+                item["chance"] = "Always"
+            else:
+                item["chance"] = "{0:05.2f}%".format(item['chance'])
+            if item["max"] > 1:
+                item["count"] = "({min}-{max})".format(**item)
+            else:
+                item["count"] = ""
+            loot_string += "{chance} {item} {count}\n".format(**item)
+        return split_message(loot_string, FIELD_VALUE_LIMIT - 20)
+
+    @staticmethod
+    def _set_monster_embed_bestiary(embed, monster):
         if monster["bestiary_class"] is not None:
             difficulties = {
-                "Harmless": config.difficulty_off_emoji*4,
-                "Trivial": config.difficulty_on_emoji+config.difficulty_off_emoji*3,
-                "Easy": config.difficulty_on_emoji*2+config.difficulty_off_emoji*2,
-                "Medium": config.difficulty_on_emoji*3+config.difficulty_off_emoji,
-                "Hard": config.difficulty_on_emoji*4
+                "Harmless": config.difficulty_off_emoji * 4,
+                "Trivial": config.difficulty_on_emoji + config.difficulty_off_emoji * 3,
+                "Easy": config.difficulty_on_emoji * 2 + config.difficulty_off_emoji * 2,
+                "Medium": config.difficulty_on_emoji * 3 + config.difficulty_off_emoji,
+                "Hard": config.difficulty_on_emoji * 4
             }
             occurrences = {
-                "Common": config.occurrence_on_emoji*1+config.occurrence_off_emoji*3,
-                "Uncommon": config.occurrence_on_emoji*2+config.occurrence_off_emoji*2,
-                "Rare": config.occurrence_on_emoji*3+config.occurrence_off_emoji*1,
-                "Very Rare": config.occurrence_on_emoji*4,
+                "Common": config.occurrence_on_emoji * 1 + config.occurrence_off_emoji * 3,
+                "Uncommon": config.occurrence_on_emoji * 2 + config.occurrence_off_emoji * 2,
+                "Rare": config.occurrence_on_emoji * 3 + config.occurrence_off_emoji * 1,
+                "Very Rare": config.occurrence_on_emoji * 4,
             }
             kills = {
                 "Harmless": 25,
@@ -514,48 +571,67 @@ class TibiaWiki:
                 occurrence = occurrences.get(monster["occurrence"], f"")
                 if monster['occurrence'] == 'Very Rare':
                     required_kills = 5
-                    given_points = max(points[monster['bestiary_level']]*2, 5)
+                    given_points = max(points[monster['bestiary_level']] * 2, 5)
                 bestiary_info += f"\n{occurrence}"
             if monster["bestiary_level"] is not None:
-
                 bestiary_info += f"\n{required_kills:,} kills | {given_points}{config.charms_emoji}️"
             embed.add_field(name="Bestiary Class", value=bestiary_info)
 
-        # If monster drops no loot, we might as well show everything
-        if long or not monster["loot"]:
-            embed.add_field(name="Max damage",
-                            value="{max_damage:,}".format(**monster) if monster["max_damage"] is not None else "???")
-            embed.add_field(name="Abilities", value=monster["abilities"], inline=False)
-        if monster["loot"] and long:
-            loot_string = ""
+    @staticmethod
+    def _set_monster_embed_elem_modifiers(embed, monster, elements):
+        # Iterate through elemental types
+        elemental_modifiers = {}
+        for element in elements:
+            if monster[element] is None or monster[element] == 100:
+                continue
+            elemental_modifiers[element] = monster[element] - 100
+        elemental_modifiers = dict(sorted(elemental_modifiers.items(), key=lambda x: x[1]))
+        if elemental_modifiers:
+            content = ""
+            for element, value in elemental_modifiers.items():
+                if config.use_elemental_emojis:
+                    content += f"\n{config.elemental_emojis[element]} {value:+}%"
+                else:
+                    content += f"\n{value:+}% {element.title()}"
+            embed.add_field(name="Elemental modifiers", value=content)
 
-            for item in monster["loot"]:
-                if item["chance"] is None:
-                    item["chance"] = "??.??%"
-                elif item["chance"] >= 100:
-                    item["chance"] = "Always"
-                else:
-                    item["chance"] = "{0:05.2f}%".format(item['chance'])
-                if item["max"] > 1:
-                    item["count"] = "({min}-{max})".format(**item)
-                else:
-                    item["count"] = ""
-                loot_string += "{chance} {item} {count}\n".format(**item)
-            split_loot = split_message(loot_string, FIELD_VALUE_LIMIT-20)
-            for loot in split_loot:
-                if loot == split_loot[0]:
-                    name = "Loot"
-                else:
-                    name = "\u200F"
-                embed.add_field(name=name, value="`" + loot + "`")
-        if monster["loot"] and not long:
-            ask_channel = ctx.ask_channel_name
-            if ask_channel:
-                askchannel_string = " or use #" + ask_channel
-            else:
-                askchannel_string = ""
-            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
-        return embed
+    @staticmethod
+    def _set_monster_embed_attributes(ctx, embed, monster):
+        attributes = {"summon": "Summonable",
+                      "convince": "Convinceable",
+                      "illusionable": "Illusionable",
+                      "pushable": "Pushable",
+                      "paralysable": "Paralysable",
+                      "see_invisible": "Sees Invisible"
+                      }
+        attributes = "\n".join([f"{ctx.tick(monster[x])} {repl}" for x, repl in attributes.items()
+                                if monster[x] is not None])
+        embed.add_field(name="Attributes", value="Unknown" if not attributes else attributes)
+
+    @staticmethod
+    def _set_monster_embed_description(embed, monster):
+        hp = TibiaWiki._get_monster_hp(monster)
+        speed = TibiaWiki._get_monster_speed(monster)
+        experience = TibiaWiki._get_monster_exp(monster)
+        embed.description = f"**HP:** {hp} | **Exp:** {experience} | **Speed:** {speed}"
+
+    @staticmethod
+    def _get_monster_speed(monster):
+        return "?" if monster["speed"] is None else "{0:,}".format(monster["speed"])
+
+    @staticmethod
+    def _get_monster_exp(monster):
+        return "?" if monster["experience"] is None else "{0:,}".format(monster["experience"])
+
+    @staticmethod
+    def _get_monster_hp(monster):
+        return "?" if monster["hitpoints"] is None else "{0:,}".format(monster["hitpoints"])
+
+    @staticmethod
+    def _set_embed_author(embed, article):
+        embed.set_author(name="TibiaWiki",
+                         icon_url=WIKI_ICON,
+                         url=get_article_url(article["title"]))
 
     @staticmethod
     def get_key_embed(key):
@@ -676,9 +752,7 @@ class TibiaWiki:
 
         embed = discord.Embed(title=item["title"], description=item["flavor_text"],
                               url=get_article_url(item["title"]))
-        embed.set_author(name="TibiaWiki",
-                         icon_url=WIKI_ICON,
-                         url=get_article_url(item["title"]))
+        TibiaWiki._set_embed_author(embed, item)
         properties = f"Weight: {item['weight']} oz"
         for attribute, value in item["attributes"].items():
             if attribute in ["imbuements"]:
@@ -873,9 +947,7 @@ class TibiaWiki:
             return
 
         embed = discord.Embed(title=npc["name"], url=get_article_url(npc["title"]))
-        embed.set_author(name="TibiaWiki",
-                         icon_url=WIKI_ICON,
-                         url=get_article_url(npc["title"]))
+        TibiaWiki._set_embed_author(embed, npc)
         embed.add_field(name="Job", value=npc["job"])
         if npc["name"] == "Rashid":
             rashid = get_rashid_info()
