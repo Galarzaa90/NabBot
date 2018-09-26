@@ -1,4 +1,10 @@
 # Changelog
+## Version 1.7.0 (Unreleased)
+- Improved death scanning times
+- Server admins can bypass event limit on their servers
+- `/monster` now shows fields monsters walk around or through
+. Added `imbue` alias to `/imbuement` command.
+
 ## Version 1.6.1 (2018-09-06)
 - Fixed bug with /worlds
 - Unified missing argument error messages
