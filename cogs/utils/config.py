@@ -133,26 +133,38 @@ class Config:
             _config = yaml.load(f)
             if _config is None:
                 _config = {}
-        missing = False
-        for key in KEYS:
-            if key not in _config:
-                print(f"\33[33m\tMissing '{key}', using default: {repr(getattr(self, key))}\033[0m")
-                missing = True
-            else:
-                # command prefix must always be a tuple
-                if key == "command_prefix":
-                    if isinstance(_config[key], str):
-                        print("is str")
-                        _config[key] = (_config[key],)
-                    else:
-                        _config[key] = tuple(_config[key])
-                setattr(self, key, _config[key])
+        self._assign_keys(_config)
+        missing_keys = [k for k in KEYS if k not in _config.keys()]
+        for key in missing_keys:
+            print(f"\33[33m\tMissing '{key}', using default: {repr(getattr(self, key))}\033[0m")
         for key in _config:
             if key not in KEYS:
-                print(f"\33[34m\tExtra entry found: '{key}', ignoring\033[0m")
-        if missing:
+                print(f"\33[34m\tExtra entry found: '{key}'\033[0m")
+        if missing_keys:
             print("\33[35mCheck data/config_template.yml for reference\033[0m")
         print("\tDone")
+
+    def _assign_keys(self, _config):
+        """Assings found keys"""
+        for key in _config:
+            if key == "command_prefix":
+                if isinstance(_config[key], str):
+                    _config[key] = (_config[key],)
+                else:
+                    _config[key] = tuple(_config[key])
+            if key == "elemental_emojis":
+                self._fill_missing_elements(key, _config[key], _DEFAULT_ELEMENTAL_EMOJIS)
+            if key == "status_emojis":
+                self._fill_missing_elements(key, _config[key], _DEFAULT_STATUS_EMOJIS)
+            setattr(self, key, _config[key])
+
+    @staticmethod
+    def _fill_missing_elements(name, subdict, defaults):
+        """Checks if the dictionary is missing keys compared against a default dictionary model."""
+        missing = [k for k in defaults if k not in subdict]
+        for k in missing:
+            subdict[k] = defaults[k]
+            print(f"\33[33m\tMissing '{k}' in '{name}', using default: {repr(defaults[k])}\033[0m")
 
 
 config = Config()
