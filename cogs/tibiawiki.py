@@ -86,7 +86,7 @@ class TibiaWiki:
             await ctx.send(e)
 
     @checks.can_embed()
-    @commands.command(usage="<name>[,price1[,price2[,price3]]][,tokenprice]")
+    @commands.command(aliases=["imbue"], usage="<name>[,price1[,price2[,price3]]][,tokenprice]")
     async def imbuement(self, ctx: NabCtx, *, params: str):
         """Displays information about an imbuement.
 
