@@ -2,11 +2,10 @@
 .vscode
 __pycache__
 
-*.db-journal
-
 logs/
 loot/
 token.txt
+postgresql.txt
 
 /data/*
 !/data/loot.db
@@ -27,3 +26,4 @@ site/
 
 # Virtual Environments
 venv/
+

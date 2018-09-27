@@ -260,6 +260,55 @@ class NabBot(commands.Bot):
         finally:
             c.close()
 
+    def run(self):
+        init_database()
+
+        print("Loading config...")
+        config.parse()
+
+        nabbot = NabBot()
+
+        # List of tracked worlds for NabBot
+        nabbot.reload_worlds()
+        # List of all Tibia worlds
+        nabbot.loop.run_until_complete(populate_worlds())
+
+        if len(tibia_worlds) == 0:
+            print("Critical information was not available: NabBot can not start without the World List.")
+            quit()
+        token = get_token()
+
+        print("Loading cogs...")
+        for cog in initial_cogs:
+            try:
+                nabbot.load_extension(cog)
+                print(f"Cog {cog} loaded successfully.")
+            except ModuleNotFoundError:
+                print(f"Could not find cog: {cog}")
+            except Exception as e:
+                print(f'Cog {cog} failed to load:')
+                traceback.print_exc(limit=-1)
+
+        for extra in config.extra_cogs:
+            try:
+                nabbot.load_extension(extra)
+                print(f"Extra cog {extra} loaded successfully.")
+            except ModuleNotFoundError:
+                print(f"Could not find extra cog: {extra}")
+            except Exception as e:
+                print(f'Extra og {extra} failed to load:')
+                traceback.print_exc(limit=-1)
+
+        try:
+            print("Attempting login...")
+            super().run(token)
+        except discord.errors.LoginFailure:
+            print("Invalid token. Edit token.txt to fix it.")
+            input("\nPress any key to continue...")
+            quit()
+
+        log.error("NabBot crashed")
+
 
 def get_token():
     """When the bot is run without a login.py file, it prompts the user for login info"""
@@ -272,9 +321,8 @@ def get_token():
         if len(token) < 50:
             input("What you entered isn't a token. Restart NabBot to retry.")
             quit()
-        f = open("token.txt", "w+")
-        f.write(token)
-        f.close()
+        with open("token.txt", "w+") as f:
+            f.write(token)
         print("Token has been saved to token.txt, you can edit this file later to change it.")
         input("Press any key to start NabBot now...")
         return token
@@ -284,50 +332,4 @@ def get_token():
 
 
 if __name__ == "__main__":
-    init_database()
-
-    print("Loading config...")
-    config.parse()
-
-    nabbot = NabBot()
-
-    # List of tracked worlds for NabBot
-    nabbot.reload_worlds()
-    # List of all Tibia worlds
-    nabbot.loop.run_until_complete(populate_worlds())
-
-    if len(tibia_worlds) == 0:
-        print("Critical information was not available: NabBot can not start without the World List.")
-        quit()
-    token = get_token()
-
-    print("Loading cogs...")
-    for cog in initial_cogs:
-        try:
-            nabbot.load_extension(cog)
-            print(f"Cog {cog} loaded successfully.")
-        except ModuleNotFoundError:
-            print(f"Could not find cog: {cog}")
-        except Exception as e:
-            print(f'Cog {cog} failed to load:')
-            traceback.print_exc(limit=-1)
-
-    for extra in config.extra_cogs:
-        try:
-            nabbot.load_extension(extra)
-            print(f"Extra cog {extra} loaded successfully.")
-        except ModuleNotFoundError:
-            print(f"Could not find extra cog: {extra}")
-        except Exception as e:
-            print(f'Extra og {extra} failed to load:')
-            traceback.print_exc(limit=-1)
-
-    try:
-        print("Attempting login...")
-        nabbot.run(token)
-    except discord.errors.LoginFailure:
-        print("Invalid token. Edit token.txt to fix it.")
-        input("\nPress any key to continue...")
-        quit()
-
-    log.error("NabBot crashed")
+    print("NabBot can't be started from this file anymore. Use launcher.py.")
