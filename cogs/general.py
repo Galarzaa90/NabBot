@@ -54,9 +54,9 @@ class General:
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
             """Announces when an event is close to starting."""
-            first_announce = 60 * 30
-            second_announce = 60 * 15
-            third_announce = 60 * 5
+            first_announce = 60 * 60
+            second_announce = 60 * 30
+            third_announce = 60 * 10
             c = userDatabase.cursor()
             try:
                 # Current time

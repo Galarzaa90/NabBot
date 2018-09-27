@@ -31,5 +31,7 @@ NabBot uses the following branching model:
 - `master` - This branch contains the latest release, meaning that this version is always stable.
 - `dev` - This branch is where new changes are made. Pull requests should point to this branch.
   This branch may contain bugs and incomplete features.
-- `staging` - This branch is only used to prepare for releases. Final tests, documentation and version updates are done here before merging into `master`.
 - `feat-*` - Used to implement features that require extended development, to isolate the environment and be able to keep updating the other branches.
+- `release-*` - This branch is only used to prepare for releases. Final tests, documentation and version updates are done here before merging into `master`.
+
+

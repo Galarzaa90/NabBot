@@ -1,9 +1,10 @@
 # Changelog
-## Version 1.7.0 (Unreleased)
+## Version 1.7.0 (2018-09-26)
 - Improved death scanning times
 - Server admins can bypass event limit on their servers
 - `/monster` now shows fields monsters walk around or through
-. Added `imbue` alias to `/imbuement` command.
+- Added `imbue` alias to `/imbuement` command.
+- Event announcements are now made at: 1h, 30min, 10 minutes and 0 minutes before event.
 
 ## Version 1.6.1 (2018-09-06)
 - Fixed bug with /worlds
