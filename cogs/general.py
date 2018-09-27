@@ -9,13 +9,12 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.context import NabCtx
-from utils.database import userDatabase, get_server_property
-from utils.general import TimeString, single_line, log, BadTime, get_user_avatar, clean_string, is_numeric
-from utils.pages import CannotPaginate, VocationPages
-from utils.tibia import get_voc_abb, get_voc_emoji
+from .utils import TimeString, single_line, log, BadTime, get_user_avatar, clean_string, is_numeric, config
+from .utils import checks
+from .utils.context import NabCtx
+from .utils.database import userDatabase, get_server_property
+from .utils.pages import CannotPaginate, VocationPages
+from .utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50
 EVENT_DESCRIPTION_LIMIT = 400
@@ -55,9 +54,9 @@ class General:
         await self.bot.wait_until_ready()
         while not self.bot.is_closed():
             """Announces when an event is close to starting."""
-            first_announce = 60 * 30
-            second_announce = 60 * 15
-            third_announce = 60 * 5
+            first_announce = 60 * 60
+            second_announce = 60 * 30
+            third_announce = 60 * 10
             c = userDatabase.cursor()
             try:
                 # Current time
@@ -131,7 +130,6 @@ class General:
             return
         user = ctx.author
         await ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
-
 
     @commands.guild_only()
     @checks.can_embed()
@@ -227,7 +225,7 @@ class General:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
             result = c.fetchall()
 
-        if len(result) >= MAX_EVENTS and creator not in config.owner_ids:
+        if len(result) >= MAX_EVENTS and not await checks.check_guild_permissions(ctx, {'manage_guild': True}):
             await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
                            f"Delete or edit an active event.")
             return
@@ -713,7 +711,7 @@ class General:
         with closing(userDatabase.cursor()) as c:
             c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (ctx.author.id, now))
             event = c.fetchall()
-        if len(event) >= MAX_EVENTS and ctx.author.id not in config.owner_ids:
+        if len(event) >= MAX_EVENTS and not await checks.check_guild_permissions(ctx, {'manage_guild': True}):
             await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
                            f"Delete or edit an active event.")
             return
@@ -876,7 +874,6 @@ class General:
     @events.command(name="remove", aliases=["delete", "cancel"])
     async def event_remove(self, ctx: NabCtx, event_id: int):
         """Deletes or cancels an event."""
-        c = userDatabase.cursor()
         event = self.get_event(ctx, event_id)
         if event is None:
             await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")

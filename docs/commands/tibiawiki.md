@@ -23,7 +23,8 @@ Shows the achievement's grade, points, description, and instructions on how to u
 ----
 
 ## imbuement
-**Syntax:** `imbuement <name>[,price1[,price2[,price3]]][,tokenprice]`
+**Syntax:** `imbuement <name>[,price1[,price2[,price3]]][,tokenprice]`  
+**Other aliases:** `imbue`
 
 Displays information about an imbuement.
 

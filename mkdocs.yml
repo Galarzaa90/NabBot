@@ -29,7 +29,7 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.tilde
   - meta
-  - figureAltCaption
+#  - figureAltCaption
 
 
 google_analytics:

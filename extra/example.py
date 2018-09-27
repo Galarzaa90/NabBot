@@ -1,9 +1,9 @@
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.tibia import get_character_url
+from cogs.utils import checks
+from cogs.utils.config import config
+from cogs.utils.tibia import get_character_url
 
 
 class Example:

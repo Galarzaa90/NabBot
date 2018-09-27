@@ -11,14 +11,14 @@ from discord.ext import commands
 
 # Exposing for /debug command
 from nabbot import NabBot
-from utils import checks
-from utils.database import get_server_property
-from utils.context import NabCtx
-from utils.general import *
-from utils.messages import *
-from utils.pages import Pages, CannotPaginate
-from utils.tibia import *
-from utils.tibiawiki import *
+from .utils import checks
+from .utils.database import get_server_property
+from .utils.context import NabCtx
+from .utils import *
+from .utils.messages import *
+from .utils.pages import Pages, CannotPaginate
+from .utils.tibia import *
+from .utils.tibiawiki import *
 
 req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")

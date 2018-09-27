@@ -6,11 +6,10 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.context import NabCtx
-from utils.database import userDatabase, get_server_property
-from utils.pages import Pages, CannotPaginate
+from .utils import checks, config
+from .utils.context import NabCtx
+from .utils.database import userDatabase, get_server_property
+from .utils.pages import Pages, CannotPaginate
 
 
 class Mod:

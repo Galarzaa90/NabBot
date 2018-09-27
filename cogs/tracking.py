@@ -11,16 +11,15 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.context import NabCtx
-from utils.database import userDatabase, get_server_property, set_server_property
-from utils.general import global_online_list, log, join_list, is_numeric, FIELD_VALUE_LIMIT, EMBED_LIMIT, \
-    get_user_avatar
-from utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, \
+from .utils import checks
+from .utils.context import NabCtx
+from .utils.database import userDatabase, get_server_property, set_server_property
+from .utils import online_characters, log, join_list, is_numeric, FIELD_VALUE_LIMIT, EMBED_LIMIT, \
+    get_user_avatar, config
+from .utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, \
     level_messages, split_message
-from utils.pages import Pages, CannotPaginate, VocationPages
-from utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
+from .utils.pages import Pages, CannotPaginate, VocationPages
+from .utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
     get_voc_abb, get_character_url, url_guild, \
     get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_voc_abb_and_emoji, get_share_range, \
     World
@@ -31,12 +30,14 @@ class Tracking:
 
     def __init__(self, bot: NabBot):
         self.bot = bot
-        self.scan_deaths_task = self.bot.loop.create_task(self.scan_deaths())
         self.scan_online_chars_task = bot.loop.create_task(self.scan_online_chars())
         self.scan_highscores_task = bot.loop.create_task(self.scan_highscores())
+
+        self.world_tasks = {}
+
         self.world_times = {}
 
-    async def scan_deaths(self):
+    async def scan_deaths(self, world):
         #################################################
         #             Nezune's cave                     #
         # Do not touch anything, enter at your own risk #
@@ -45,18 +46,27 @@ class Tracking:
         while not self.bot.is_closed():
             try:
                 await asyncio.sleep(config.death_scan_interval)
-                if len(global_online_list) == 0:
+                if len(online_characters[world]) == 0:
                     await asyncio.sleep(0.5)
                     continue
+                skip = False
                 # Pop last char in queue, reinsert it at the beginning
-                current_char = global_online_list.pop()
-                global_online_list.insert(0, current_char)
-
-                # Check for new death
-                await self.check_death(current_char.name)
+                current_char = online_characters[world].pop()
+                if hasattr(current_char, "last_check"):
+                    if time.time() - current_char.last_check < 45:
+                        skip = True
+                current_char.last_check = time.time()
+                online_characters[world].insert(0, current_char)
+                if not skip:
+                    # Check for new death
+                    await self.check_death(current_char.name)
+                else:
+                    await asyncio.sleep(0.5)
             except asyncio.CancelledError:
                 # Task was cancelled, so this is fine
                 break
+            except KeyError:
+                continue
             except Exception:
                 log.exception("Task: scan_deaths")
                 continue
@@ -136,8 +146,8 @@ class Tracking:
             with open("data/online_list.dat", "rb") as f:
                 saved_list, timestamp = pickle.load(f)
                 if (time.time() - timestamp) < config.online_list_expiration:
-                    global_online_list.clear()
-                    global_online_list.extend(saved_list)
+                    online_characters.clear()
+                    online_characters.update(saved_list)
                     log.info("Loaded cached online list")
                 else:
                     log.info("Cached online list is too old, discarding")
@@ -179,10 +189,14 @@ class Tracking:
                 self.bot.dispatch("world_scanned", world)
                 # Save the online list in file
                 with open("data/online_list.dat", "wb") as f:
-                    pickle.dump((global_online_list, time.time()), f, protocol=pickle.HIGHEST_PROTOCOL)
+                    pickle.dump((online_characters, time.time()), f, protocol=pickle.HIGHEST_PROTOCOL)
                 # Remove chars that are no longer online from the global_online_list
                 offline_list = []
-                for char in global_online_list:
+
+                if current_world not in online_characters:
+                    online_characters[current_world] = []
+
+                for char in online_characters[current_world]:
                     if char.world not in tibia_worlds:
                         # Remove chars from worlds that no longer exist
                         offline_list.append(char)
@@ -195,7 +209,7 @@ class Tracking:
                         if offline:
                             offline_list.append(char)
                 for offline_char in offline_list:
-                    global_online_list.remove(offline_char)
+                    online_characters[current_world].remove(offline_char)
                     # Check for deaths and level ups when removing from online list
                     try:
                         name = offline_char.name
@@ -230,15 +244,15 @@ class Tracking:
                             "UPDATE chars SET level = ? WHERE name LIKE ?",
                             (server_char.level, server_char.name)
                         )
-                        if server_char not in global_online_list:
+                        if server_char not in online_characters[current_world]:
                             # If the character wasn't in the globalOnlineList we add them
                             # (We insert them at the beginning of the list to avoid messing with the death checks order)
-                            global_online_list.insert(0, server_char)
+                            online_characters[current_world].insert(0, server_char)
                             await self.check_death(server_char.name)
                         # Else we check for levelup
                         else:
                             # Update character info in global_online_list
-                            global_online_list[global_online_list.index(server_char)] = server_char
+                            online_characters[current_world][online_characters[current_world].index(server_char)] = server_char
                             if server_char.level > result["level"] > 0:
                                 # Saving level up date in database
                                 c.execute(
@@ -260,6 +274,10 @@ class Tracking:
     async def on_world_scanned(self, scanned_world: World):
         # Watched List checking
         # Iterate through servers with tracked world to find one that matches the current world
+        # Schedule Scan Deaths task for this world
+        if scanned_world.name not in self.world_tasks:
+            self.world_tasks[scanned_world.name] = self.bot.loop.create_task(self.scan_deaths(scanned_world.name))
+
         for server, world in self.bot.tracked_worlds.items():
             if world != scanned_world.name:
                 await asyncio.sleep(0.01)
@@ -896,7 +914,7 @@ class Tracking:
         entries = []
         vocations = []
         try:
-            for char in global_online_list:
+            for char in online_characters.get(world, []):
                 char_world = char.world
                 name = char.name
                 c.execute("SELECT name, user_id, vocation, ABS(level) as level FROM chars WHERE name LIKE ?", (name,))
@@ -1025,7 +1043,8 @@ class Tracking:
                       "WHERE level >= ? AND level <= ? AND world = ?"
                       "ORDER by level DESC", (low, high, tracked_world,))
             count = 0
-            online_list = [x.name for x in global_online_list]
+
+            online_list = [x.name for v in online_characters.values() for x in v]
             while True:
                 player = c.fetchone()
                 if player is None:
@@ -1433,7 +1452,6 @@ class Tracking:
 
     def __unload(self):
         print("cogs.tracking: Cancelling pending tasks...")
-        self.scan_deaths_task.cancel()
         self.scan_highscores_task.cancel()
         self.scan_online_chars_task.cancel()
 

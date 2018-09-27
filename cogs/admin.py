@@ -1,15 +1,15 @@
+from contextlib import closing
 from typing import List
 
 import discord
 from discord.ext import commands
 
+from cogs.utils.database import userDatabase
 from nabbot import NabBot
-from utils import checks
-from utils.config import config
-from utils.context import NabCtx
-from utils.database import *
-from utils.general import join_list, log, get_user_avatar
-from utils.tibia import get_character, NetworkError, Character, get_voc_abb_and_emoji
+from .utils import checks, join_list, log, get_user_avatar
+from .utils.config import config
+from .utils.context import NabCtx
+from .utils.tibia import get_character, NetworkError, Character, get_voc_abb_and_emoji
 
 
 class Admin:
@@ -180,6 +180,8 @@ class Admin:
         user = self.bot.get_member(params[0], ctx.guild)
         if user is None:
             return await ctx.send(f"{ctx.tick(False)} I don't see any user named **{params[0]}** in this server.")
+        if user.bot:
+            return await ctx.send(f"{ctx.tick(False)} You can't register characters to discord bots!")
         user_servers = self.bot.get_user_guilds(user.id)
 
         with ctx.typing():
