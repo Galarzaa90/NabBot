@@ -215,7 +215,6 @@ class Roles:
             await msg.edit(content=f"{ctx.tick()} Refresh done, roles will be updated shortly.")
         except discord.HTTPException:
             await ctx.send(f"{ctx.tick()} Refresh done, roles will be updated shortly.")
-            pass
 
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
@@ -334,7 +333,7 @@ class Roles:
         flat_groups = [g['role_id'] for g in groups]
 
         entries = []
-        roles = ctx.guild.role_hierarchy
+        roles = reversed(ctx.guild.roles)
         for role in roles:
             if role.id in flat_groups:
                 entries.append(f"{role.mention} (`{len(role.members)} members`)")

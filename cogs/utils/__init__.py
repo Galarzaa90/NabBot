@@ -233,28 +233,6 @@ def get_time_diff(time_diff: dt.timedelta) -> Optional[str]:
         return "moments"
 
 
-def get_token():
-    """When the bot is run without a login.py file, it prompts the user for login info"""
-    if not os.path.isfile("token.txt"):
-        print("This seems to be the first time NabBot is ran (or token.txt is missing)")
-        print("To run your own instance of NabBot you need to create a new bot account to get a bot token")
-        print("https://discordapp.com/developers/applications/me")
-        print("Enter the token:")
-        token = input(">>")
-        if len(token) < 50:
-            input("What you entered isn't a token. Restart NabBot to retry.")
-            quit()
-        f = open("token.txt", "w+")
-        f.write(token)
-        f.close()
-        print("Token has been saved to token.txt, you can edit this file later to change it.")
-        input("Press any key to start NabBot now...")
-        return token
-    else:
-        with open("token.txt") as f:
-            return f.read()
-
-
 def get_user_avatar(user: Union[discord.User, discord.Member]) -> str:
     """Gets the user's avatar url
 

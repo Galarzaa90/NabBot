@@ -1,4 +1,5 @@
 import datetime as dt
+import os
 import re
 import sys
 import traceback
@@ -9,7 +10,7 @@ from discord.ext import commands
 
 from cogs.utils import context
 from cogs.utils.database import init_database, userDatabase, get_server_property
-from cogs.utils import config, log, get_token
+from cogs.utils import config, log
 from cogs.utils.help_format import NabHelpFormat
 from cogs.utils.tibia import populate_worlds, tibia_worlds
 
@@ -42,7 +43,7 @@ class NabBot(commands.Bot):
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
         self.__version__ = "1.6.1"
-        self.__min_discord__ = 1480
+        self.__min_discord__ = 1580
 
     async def on_ready(self):
         """Called when the bot is ready."""
@@ -78,8 +79,7 @@ class NabBot(commands.Bot):
 
         ctx = await self.get_context(message, cls=context.NabCtx)
         if ctx.command is not None:
-            await self.invoke(ctx)
-            return
+            return await self.invoke(ctx)
         # This is a PM, no further info needed
         if message.guild is None:
             return
@@ -97,13 +97,12 @@ class NabBot(commands.Bot):
 
         server_delete = get_server_property(message.guild.id, "commandsonly", is_int=True)
         global_delete = config.ask_channel_delete
-        if (server_delete is None and global_delete) or server_delete:
-            if ctx.is_askchannel:
-                try:
-                    await message.delete()
-                except discord.Forbidden:
-                    # Bot doesn't have permission to delete message
-                    pass
+        if (server_delete is None and global_delete or server_delete) and ctx.is_askchannel:
+            try:
+                await message.delete()
+            except discord.Forbidden:
+                # Bot doesn't have permission to delete message
+                pass
 
     # ------------ Utility methods ------------
 
@@ -262,7 +261,27 @@ class NabBot(commands.Bot):
             c.close()
 
 
-nabbot = None
+def get_token():
+    """When the bot is run without a login.py file, it prompts the user for login info"""
+    if not os.path.isfile("token.txt"):
+        print("This seems to be the first time NabBot is ran (or token.txt is missing)")
+        print("To run your own instance of NabBot you need to create a new bot account to get a bot token")
+        print("https://discordapp.com/developers/applications/me")
+        print("Enter the token:")
+        token = input(">>")
+        if len(token) < 50:
+            input("What you entered isn't a token. Restart NabBot to retry.")
+            quit()
+        f = open("token.txt", "w+")
+        f.write(token)
+        f.close()
+        print("Token has been saved to token.txt, you can edit this file later to change it.")
+        input("Press any key to start NabBot now...")
+        return token
+    else:
+        with open("token.txt") as f:
+            return f.read()
+
 
 if __name__ == "__main__":
     init_database()
