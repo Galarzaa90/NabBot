@@ -446,12 +446,18 @@ class TibiaWiki:
         TibiaWiki._set_monster_embed_elem_modifiers(embed, monster, TibiaWiki._get_monster_elemental_modifiers())
         TibiaWiki._set_monster_embed_bestiary(embed, monster)
         TibiaWiki._set_monster_embed_damage(embed, long, monster)
-        TibiaWiki._set_monster_embed_walks(embed, monster, "Walks Through", "walksthrough")
-        TibiaWiki._set_monster_embed_walks(embed, monster, "Walks Around", "walksaround")
+        TibiaWiki._set_monster_embed_walks(embed, monster)
         TibiaWiki._set_monster_embed_abilities(embed, monster)
         TibiaWiki._set_monster_embed_loot(embed, long, monster)
         TibiaWiki._set_monster_embed_more_info(ctx, embed, long, monster)
         return embed
+
+    @staticmethod
+    def _set_monster_embed_walks(embed, monster):
+        content = TibiaWiki._get_content_monster_walks(monster, "Through: ", "walksthrough")
+        content = TibiaWiki._get_content_monster_walks(monster, "Around: ", "walksaround", content)
+        if content:
+            embed.add_field(name="Field Walking", value=content, inline=True)
 
     @staticmethod
     def _get_monster_elemental_modifiers():
@@ -476,11 +482,14 @@ class TibiaWiki:
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
 
     @staticmethod
-    def _set_monster_embed_walks(embed, monster, embed_field_name, attribute_name):
+    def _get_content_monster_walks(monster, walk_field_name, attribute_name, content=""):
         """Adds the embed field describing which elemnts the monster walks around or through."""
         attribute_value = str(monster[attribute_name])
         if attribute_value is not None and not attribute_value.lower().__contains__("none"):
-            content = ""
+            if content:
+                content += "\n"
+            content += walk_field_name
+
             if config.use_elemental_emojis:
                 walks_elements = []
                 for element in TibiaWiki._get_elements_monster_walks():
@@ -491,7 +500,7 @@ class TibiaWiki:
                     content += f"{config.elemental_emojis[element]}"
             else:
                 content += attribute_value
-            embed.add_field(name=embed_field_name, value=content, inline=True)
+        return content
 
     @staticmethod
     def _set_monster_embed_abilities(embed, monster):
