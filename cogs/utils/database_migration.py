@@ -1,32 +1,43 @@
-import asyncpg
+import sqlite3
 
+import asyncpg
 
 LATEST_VERSION = 1
 
 
 async def check_database(pool: asyncpg.pool.Pool):
     async with pool.acquire() as con:
-        await create_database(con)
+        version = await get_version(con)
+        if version <= 0:
+            await create_database(con)
+            await set_version(con, 1)
 
 
-async def create_database(conn: asyncpg.Connection):
+async def create_database(con: asyncpg.connection.Connection):
     for create_query in tables:
-        await conn.execute(create_query)
+        await con.execute(create_query)
     for f in functions:
-        await conn.execute(f)
+        await con.execute(f)
     for trigger in triggers:
-        await conn.execute(trigger)
-    await set_version(conn, LATEST_VERSION)
+        await con.execute(trigger)
+    await set_version(con, LATEST_VERSION)
 
 
-async def set_version(conn, version):
-    await conn.execute("""
+async def set_version(con: asyncpg.connection.Connection, version):
+    await con.execute("""
         INSERT INTO global_property (key, value) VALUES ('db_version',$1) 
         ON CONFLICT (key) 
         DO
          UPDATE
            SET value = EXCLUDED.value;
     """, version)
+
+
+async def get_version(con: asyncpg.connection.Connection):
+    try:
+        return await con.fetchval("SELECT value FROM global_property WHERE key = 'db_version'")
+    except asyncpg.UndefinedTableError:
+        return 0
 
 
 tables = [
@@ -183,3 +194,35 @@ triggers = [
     FOR EACH ROW EXECUTE PROCEDURE update_modified_column();
     """
 ]
+
+
+# Legacy SQlite migration
+# This may be removed in later versions or kept separate
+
+async def import_legacy_db(pool : asyncpg.pool.Pool, path):
+    legacy_conn = sqlite3.connect(path)
+    c = legacy_conn.cursor()
+    conn = await pool.acquire()
+    try:
+        rows = c.execute("SELECT id, user_id, name, level, vocation, world, guild FROM chars ORDER By id ASC").fetchall()
+        for row in rows:
+            old_id, *char = row
+            char_id = await conn.fetchval("""
+                INSERT INTO "character" (user_id, name, level, vocation, world, guild)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING id""", *char)
+            c.execute("SELECT ?, level, date FROM char_levelups WHERE char_id = ?", (char_id, old_id, ))
+            levelups = c.fetchall()
+            await conn.executemany("""
+                INSERT INTO character_levelup(character_id, level, date) 
+                VALUES ($1, $2, to_timestamp($3))""", levelups)
+
+            c.execute("SELECT ?, level, killer, date, byplayer FROM char_deaths WHERE char_id = ?", (char_id, old_id, ))
+            deaths = c.fetchall()
+            await conn.executemany("""
+                INSERT INTO character_death(character_id, level, killer, date, player) 
+                VALUES ($1, $2, $3, to_timestamp($4), ($5 = 1))""", deaths)
+
+    finally:
+        await pool.release(conn)
+

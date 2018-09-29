@@ -5,7 +5,7 @@ import os
 import asyncpg
 import click
 
-from cogs.utils.database_migration import check_database
+from cogs.utils.database_migration import check_database, import_legacy_db
 from nabbot import NabBot
 
 
@@ -66,13 +66,24 @@ def run_bot():
     bot.pool = pool
     bot.run()
 
-
 @click.group(invoke_without_command=True, options_metavar='[options]')
 @click.pass_context
 def main(ctx):
     """Launches the bot."""
     if ctx.invoked_subcommand is None:
         run_bot()
+
+@main.command()
+@click.option('-path', '--path', help="Name for the database file.", default="data/users.db")
+def migrate(path):
+    loop = asyncio.get_event_loop()
+    try:
+        pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))  # type: asyncpg.pool.Pool
+    except Exception:
+        print('Could not set up PostgreSQL. Exiting.')
+        return
+
+    loop.run_until_complete(import_legacy_db(pool, path))
 
 
 if __name__ == "__main__":
