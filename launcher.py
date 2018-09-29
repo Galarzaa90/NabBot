@@ -5,6 +5,7 @@ import os
 import asyncpg
 import click
 
+from cogs.utils.database_migration import check_database
 from nabbot import NabBot
 
 
@@ -35,7 +36,7 @@ def get_uri():
         exit()
 
 
-async def create_pool(uri, **kwargs):
+async def create_pool(uri, **kwargs) -> asyncpg.pool.Pool:
     def _encode_jsonb(value):
         return json.dumps(value)
 
@@ -54,10 +55,12 @@ def run_bot():
     loop = asyncio.get_event_loop()
 
     try:
-        pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
+        pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))  # type: asyncpg.pool.Pool
     except Exception:
         print('Could not set up PostgreSQL. Exiting.')
         return
+
+    loop.run_until_complete(check_database(pool))
 
     bot = NabBot()
     bot.pool = pool
