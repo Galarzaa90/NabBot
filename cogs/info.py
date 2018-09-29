@@ -28,7 +28,7 @@ class Info:
     async def about(self, ctx: NabCtx):
         """Shows basic information about the bot."""
         embed = discord.Embed(description=ctx.bot.description, colour=discord.Colour.blurple())
-        embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
+        embed.set_author(name="NabBot", url="https://github.com/NabDev/NabBot",
                          icon_url="https://github.com/fluidicon.png")
         prefixes = list(config.command_prefix)
         if ctx.guild:
@@ -46,7 +46,7 @@ class Info:
         embed.add_field(name="Links", inline=False,
                         value=f"[Add to your server](https://dbl.nabbot.xyz/)  |  "
                               f"[Support Server](https://support.nabbot.xyz/)  |  "
-                              f"[Docs](https://nabbot.xyz/)  |  "
+                              f"[Docs](https://docs.nabbot.xyz/)  |  "
                               f"[Donate](https://donate.nabbot.xyz/)")
         embed.set_footer(text=f"Uptime | {parse_uptime(self.bot.start_time, True)}")
         await ctx.send(embed=embed)
