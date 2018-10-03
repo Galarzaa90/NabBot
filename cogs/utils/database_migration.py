@@ -1,3 +1,5 @@
+import datetime
+import json
 import sqlite3
 from operator import itemgetter
 
@@ -5,6 +7,10 @@ import asyncpg
 import click
 
 LATEST_VERSION = 1
+
+
+def _progressbar(*args, **kwargs):
+    return click.progressbar(*args, **kwargs, fill_char="█", empty_char=" ")
 
 
 async def check_database(pool: asyncpg.pool.Pool):
@@ -71,7 +77,7 @@ tables = [
     """
     CREATE TABLE character_death_killer (
         death_id integer NOT NULL,
-        position smallint NOT NULL,
+        position smallint NOT NULL DEFAULT 0,
         name text NOT NULL,
         player boolean,
         FOREIGN KEY (death_id) REFERENCES character_death (id)
@@ -218,45 +224,84 @@ triggers = [
 
 # Legacy SQlite migration
 # This may be removed in later versions or kept separate
-
 async def import_legacy_db(pool: asyncpg.pool.Pool, path):
     legacy_conn = sqlite3.connect(path)
     c = legacy_conn.cursor()
     conn = await pool.acquire()
     try:
-        rows = c.execute("SELECT id, user_id, name, level, vocation, world, guild FROM chars ORDER By id ASC").fetchall()
+        c.execute("""SELECT id, user_id, name, level, vocation, world, guild FROM chars ORDER By id ASC""")
+        rows = c.fetchall()
         levelups = []
         deaths = []
-        with click.progressbar(rows, label="Migrating characters", show_pos=True) as bar:
+        with _progressbar(rows, label="Migrating characters", show_pos=True) as bar:
             for row in bar:
                 old_id, *char = row
-                # Try to insert character, if it exist return existing chracter's ID
+                # Try to insert character, if it exist return existing character's ID
                 char_id = await conn.fetchval("""
                     INSERT INTO "character" (user_id, name, level, vocation, world, guild)
                     VALUES ($1, $2, $3, $4, $5, $6)
                     ON CONFLICT(name) DO UPDATE SET name=EXCLUDED.name RETURNING id""", *char)
-                c.execute("SELECT ?, level, date FROM char_levelups WHERE char_id = ? ORDER BY date ASC", (char_id, old_id, ))
+                c.execute("SELECT ?, level, date FROM char_levelups WHERE char_id = ? ORDER BY date ASC",
+                          (char_id, old_id))
                 results = c.fetchall()
                 levelups.extend(results)
-                c.execute("SELECT ?, level, date, killer, byplayer FROM char_deaths WHERE char_id = ?", (char_id, old_id))
+                c.execute("SELECT ?, level, date, killer, byplayer FROM char_deaths WHERE char_id = ?",
+                          (char_id, old_id))
                 results = c.fetchall()
                 deaths.extend(results)
         deaths = sorted(deaths, key=itemgetter(2))
-        with click.progressbar(deaths, label="Migrating deaths", show_pos=True) as bar:
+        skipped_deaths = 0
+        with _progressbar(deaths, label="Migrating deaths", show_pos=True) as bar:
             for death in bar:
                 char_id, level, date, killer, byplayer = death
                 byplayer = byplayer == 1
+                # If there's another death at the exact same timestamp by the same character, we ignore it
+                exists = await conn.fetchrow("""SELECT id FROM character_death
+                                                WHERE date = to_timestamp($1) AND character_id = $2""", date, char_id)
+                if exists:
+                    skipped_deaths += 1
+                    continue
                 death_id = await conn.fetchval("""INSERT INTO character_death(character_id, level, date)
                                                   VALUES ($1, $2, to_timestamp($3))
                                                   RETURNING id""", char_id, level, date)
-                await conn.execute("""INSERT INTO character_death_killer(death_id, position, name, player)
-                                      VALUES ($1, 1, $2, $3)""", death_id, killer, byplayer)
-
+                await conn.execute("""INSERT INTO character_death_killer(death_id, name, player)
+                                      VALUES ($1, $2, $3)""", death_id, killer, byplayer)
+        if skipped_deaths:
+            print(f"Skipped {skipped_deaths:,} duplicate deaths.")
         levelups = sorted(levelups, key=itemgetter(2))
-        with click.progressbar(levelups, label="Migrating level ups", show_pos=True) as bar:
+        skipped_levelups = 0
+        with _progressbar(levelups, label="Migrating level ups", show_pos=True) as bar:
             for levelup in bar:
-                await conn.execute("""INSERT INTO character_levelup(character_id, position, level, date)
+                char_id, level, date = levelup
+                date = datetime.datetime.fromtimestamp(date)
+                # If there's another levelup within a 15 seconds margin, we ignore it
+                exists = await conn.fetchrow("""SELECT id FROM character_levelup
+                                                WHERE character_id = $1 AND
+                                                GREATEST($2-date,date-$2) <= interval '15' second""", char_id, date)
+                if exists:
+                    skipped_levelups += 1
+                    continue
+                await conn.execute("""INSERT INTO character_levelup(character_id, level, date)
                                       VALUES ($1, $2, to_timestamp($3))""", *levelup)
+        if skipped_levelups:
+            print(f"Skipped {skipped_levelups:,} duplicate level ups.")
+
+        rows = c.execute("SELECT server_id, name, value FROM server_properties")
+        with _progressbar(rows, label="Migrating server properties", show_pos=True) as bar:
+            for row in bar:
+                server, key, value = row
+                server = int(server)
+                if key in ["prefixes", "times"]:
+                    value = json.dumps(json.loads(value))
+                elif key == "commandsonly":
+                    value = json.dumps(bool(value))
+                else:
+                    value = json.dumps(value)
+                await conn.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
+                                      ON CONFLICT DO NOTHING""",
+                                   server, key, value)
+
+
 
     finally:
         await pool.release(conn)
