@@ -1,6 +1,8 @@
 import sqlite3
+from operator import itemgetter
 
 import asyncpg
+import click
 
 LATEST_VERSION = 1
 
@@ -52,7 +54,8 @@ tables = [
         guild text,
         modified timestamp without time zone DEFAULT now(),
         created timestamp without time zone DEFAULT now(),
-        PRIMARY KEY (id)
+        PRIMARY KEY (id),
+        UNIQUE(name)
     );
     """,
     """
@@ -60,11 +63,18 @@ tables = [
         id serial NOT NULL,
         character_id integer NOT NULL,
         level smallint,
-        killer text,
-        player bool,
         date timestamp without time zone,
         PRIMARY KEY (id),
         FOREIGN KEY (character_id) REFERENCES "character" (id)
+    );
+    """,
+    """
+    CREATE TABLE character_death_killer (
+        death_id integer NOT NULL,
+        position smallint NOT NULL,
+        name text NOT NULL,
+        player boolean,
+        FOREIGN KEY (death_id) REFERENCES character_death (id)
     );
     """,
     """
@@ -162,11 +172,21 @@ tables = [
         name text NOT NULL,
         server_id bigint NOT NULL,
         is_guild bool DEFAULT FALSE,
-        reason TEXT,
+        reason text,
         user_id bigint,
         created timestamp without time zone  DEFAULT now(),
         PRIMARY KEY(id),
         UNIQUE(name, server_id, is_guild)
+    )
+    """,
+    """
+    CREATE TABLE command (
+        server_id bigint,
+        channel_id bigint NOT NULL,
+        user_id bigint NOT NULL,
+        date timestamp without time zone NOT NULL DEFAULT now(),
+        prefix text NOT NULL,
+        command text NOT NULL
     )
     """
 ]
@@ -199,29 +219,44 @@ triggers = [
 # Legacy SQlite migration
 # This may be removed in later versions or kept separate
 
-async def import_legacy_db(pool : asyncpg.pool.Pool, path):
+async def import_legacy_db(pool: asyncpg.pool.Pool, path):
     legacy_conn = sqlite3.connect(path)
     c = legacy_conn.cursor()
     conn = await pool.acquire()
     try:
         rows = c.execute("SELECT id, user_id, name, level, vocation, world, guild FROM chars ORDER By id ASC").fetchall()
-        for row in rows:
-            old_id, *char = row
-            char_id = await conn.fetchval("""
-                INSERT INTO "character" (user_id, name, level, vocation, world, guild)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING id""", *char)
-            c.execute("SELECT ?, level, date FROM char_levelups WHERE char_id = ?", (char_id, old_id, ))
-            levelups = c.fetchall()
-            await conn.executemany("""
-                INSERT INTO character_levelup(character_id, level, date) 
-                VALUES ($1, $2, to_timestamp($3))""", levelups)
+        levelups = []
+        deaths = []
+        with click.progressbar(rows, label="Migrating characters", show_pos=True) as bar:
+            for row in bar:
+                old_id, *char = row
+                # Try to insert character, if it exist return existing chracter's ID
+                char_id = await conn.fetchval("""
+                    INSERT INTO "character" (user_id, name, level, vocation, world, guild)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    ON CONFLICT(name) DO UPDATE SET name=EXCLUDED.name RETURNING id""", *char)
+                c.execute("SELECT ?, level, date FROM char_levelups WHERE char_id = ? ORDER BY date ASC", (char_id, old_id, ))
+                results = c.fetchall()
+                levelups.extend(results)
+                c.execute("SELECT ?, level, date, killer, byplayer FROM char_deaths WHERE char_id = ?", (char_id, old_id))
+                results = c.fetchall()
+                deaths.extend(results)
+        deaths = sorted(deaths, key=itemgetter(2))
+        with click.progressbar(deaths, label="Migrating deaths", show_pos=True) as bar:
+            for death in bar:
+                char_id, level, date, killer, byplayer = death
+                byplayer = byplayer == 1
+                death_id = await conn.fetchval("""INSERT INTO character_death(character_id, level, date)
+                                                  VALUES ($1, $2, to_timestamp($3))
+                                                  RETURNING id""", char_id, level, date)
+                await conn.execute("""INSERT INTO character_death_killer(death_id, position, name, player)
+                                      VALUES ($1, 1, $2, $3)""", death_id, killer, byplayer)
 
-            c.execute("SELECT ?, level, killer, date, byplayer FROM char_deaths WHERE char_id = ?", (char_id, old_id, ))
-            deaths = c.fetchall()
-            await conn.executemany("""
-                INSERT INTO character_death(character_id, level, killer, date, player) 
-                VALUES ($1, $2, $3, to_timestamp($4), ($5 = 1))""", deaths)
+        levelups = sorted(levelups, key=itemgetter(2))
+        with click.progressbar(levelups, label="Migrating level ups", show_pos=True) as bar:
+            for levelup in bar:
+                await conn.execute("""INSERT INTO character_levelup(character_id, position, level, date)
+                                      VALUES ($1, $2, to_timestamp($3))""", *levelup)
 
     finally:
         await pool.release(conn)

@@ -266,12 +266,10 @@ class NabBot(commands.Bot):
         print("Loading config...")
         config.parse()
 
-        nabbot = NabBot()
-
         # List of tracked worlds for NabBot
-        nabbot.reload_worlds()
+        self.reload_worlds()
         # List of all Tibia worlds
-        nabbot.loop.run_until_complete(populate_worlds())
+        self.loop.run_until_complete(populate_worlds())
 
         if len(tibia_worlds) == 0:
             print("Critical information was not available: NabBot can not start without the World List.")
@@ -281,7 +279,7 @@ class NabBot(commands.Bot):
         print("Loading cogs...")
         for cog in initial_cogs:
             try:
-                nabbot.load_extension(cog)
+                self.load_extension(cog)
                 print(f"Cog {cog} loaded successfully.")
             except ModuleNotFoundError:
                 print(f"Could not find cog: {cog}")
@@ -291,7 +289,7 @@ class NabBot(commands.Bot):
 
         for extra in config.extra_cogs:
             try:
-                nabbot.load_extension(extra)
+                self.load_extension(extra)
                 print(f"Extra cog {extra} loaded successfully.")
             except ModuleNotFoundError:
                 print(f"Could not find extra cog: {extra}")
