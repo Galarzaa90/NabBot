@@ -5,6 +5,7 @@ import sys
 import traceback
 from typing import Union, List, Optional, Dict
 
+import aiohttp
 import discord
 from discord.ext import commands
 
@@ -37,6 +38,7 @@ class NabBot(commands.Bot):
         self.remove_command("help")
         self.members = {}
         self.start_time = dt.datetime.utcnow()
+        self.session = aiohttp.ClientSession(loop=self.loop)
         # Dictionary of worlds tracked by nabbot, key:value = server_id:world
         # Dictionary is populated from database
         # A list version is created from the dictionary

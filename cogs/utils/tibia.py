@@ -16,10 +16,10 @@ import aiohttp
 import cachetools
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
-from discord.ext import commands
 
+from cogs.utils.context import NabCtx
 from . import config, log, online_characters
-from .database import userDatabase, tibiaDatabase
+from .database import tibiaDatabase
 
 # Constants
 ERROR_NETWORK = 0
@@ -404,7 +404,8 @@ class Guild:
         return tibia_guild
 
 
-async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Character]:
+# TODO: This function's signature changed, so it must be updated everywhere
+async def get_character(ctx: NabCtx, name, tries=5) -> Optional[Character]:
     """Fetches a character from TibiaData, parses and returns a Character object
 
     The character object contains all the information available on Tibia.com
@@ -425,12 +426,11 @@ async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Ch
     except KeyError:
         req_log.info(f"get_character({name})")
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
-                    content = await resp.text(encoding='ISO-8859-1')
-        except Exception:
+            async with ctx.session.get(url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
+        except aiohttp.ClientError:
             await asyncio.sleep(config.network_retry_delay)
-            return await get_character(name, tries - 1)
+            return await get_character(ctx, name, tries - 1)
 
         content_json = json.loads(content)
         character = Character.parse_from_tibiadata(content_json)
@@ -455,68 +455,56 @@ async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Ch
     except KeyError:
         pass
 
-    # Database operations
-    c = userDatabase.cursor()
-    # Skills from highscores
-    c.execute("SELECT category, rank, value FROM highscores WHERE name LIKE ?", (character.name,))
-    results = c.fetchall()
-    if len(results) > 0:
-        character.highscores = results
-
-    # Check if this user was recently renamed, and update old reference to this
-    for old_name in character.former_names:
-        c.execute("SELECT id FROM chars WHERE name LIKE ? LIMIT 1", (old_name, ))
-        result = c.fetchone()
-        if result:
-            with userDatabase as conn:
-                conn.execute("UPDATE chars SET name = ? WHERE id = ?", (character.name, result["id"]))
-                log.info("{0} was renamed to {1} during get_character()".format(old_name, character.name))
-
-    # Discord owner
-    c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ? OR name LIKE ?",
-              (name, character.name))
-    result = c.fetchone()
-    if result is None:
-        # Untracked character
-        return character
-
-    character.owner = result["user_id"]
-    if result["vocation"] != character.vocation:
-        with userDatabase as conn:
-            conn.execute("UPDATE chars SET vocation = ? WHERE id = ?", (character.vocation, result["id"],))
-            log.info("{0}'s vocation was set to {1} from {2} during get_character()".format(character.name,
-                                                                                                    character.vocation,
-                                                                                                    result["vocation"]))
-    # This condition PROBABLY can't be met again
-    if result["name"] != character.name:
-        with userDatabase as conn:
-            conn.execute("UPDATE chars SET name = ? WHERE id = ?", (character.name, result["id"],))
-            log.info("{0} was renamed to {1} during get_character()".format(result["name"], character.name))
-
-    if result["world"] != character.world:
-        with userDatabase as conn:
-            conn.execute("UPDATE chars SET world = ? WHERE id = ?", (character.world, result["id"],))
-            log.info("{0}'s world was set to {1} from {2} during get_character()".format(character.name,
-                                                                                                 character.world,
-                                                                                                 result["world"]))
-    if character.guild is not None and result["guild"] != character.guild["name"]:
-        with userDatabase as conn:
-            conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (character.guild["name"], result["id"],))
-            log.info("{0}'s guild was set to {1} from {2} during get_character()".format(character.name,
-                                                                                                 character.guild["name"],
-                                                                                                 result["guild"]))
-            if bot is not None:
-                bot.dispatch("character_change", character.owner)
-    if character.guild is None and result["guild"] is not None:
-        with userDatabase as conn:
-            conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (None, result["id"],))
-            log.info("{0}'s guild was set to {1} from {2} during get_character()".format(character.name,
-                                                                                                 None,
-                                                                                                 result["guild"]))
-            if bot is not None:
-                bot.dispatch("character_change", character.owner)
-        
+    await bind_database_character(ctx, character)
     return character
+
+
+async def bind_database_character(ctx: NabCtx, character: Character):
+    """Binds a Tibia.com character with a saved database character
+
+    Compliments information found on the database and performs updating."""
+    async with ctx.acquire():
+        # Skills from highscores
+        # Todo: Reintegrate highscores from postgresql
+        # results = await ctx.db.fetch("SELECT category, rank, value FROM highscores WHERE name LIKE $1", character.name)
+        # if len(results) > 0:
+        #     character.highscores = results
+
+        # Check if this user was recently renamed, and update old reference to this
+        for old_name in character.former_names:
+            char_id = await ctx.db.fetchval('SELECT id FROM "character" WHERE name LIKE $1', old_name)
+            if char_id:
+                # TODO: Conflict handling is necessary now that name is a unique column
+                await ctx.db.execute('UPDATE character SET name = $1 WHERE id = $1', character.name, char_id)
+                log.info(f"get_character(): {old_name} renamed to {character.name}")
+
+        # Discord owner
+        db_char = await ctx.db.fetchrow("""SELECT id, user_id, name, user_id, vocation, world, guild
+                                        FROM "character"
+                                        WHERE name LIKE $1""", character.name)
+        if db_char is None:
+            # Untracked character
+            return
+
+        character.owner = db_char["user_id"]
+        if db_char["vocation"] != character.vocation:
+            await ctx.db.execute('UPDATE "character" SET vocation = $1 WHERE id = $2', character.vocation,
+                                 db_char["id"])
+            log.info(f"get_character(): {character.name}'s vocation: {character.vocation} -> {db_char['vocation']}")
+        # This condition PROBABLY can't be met again
+        if db_char["name"] != character.name:
+            await ctx.db.execute('UPDATE "character" SET name = $1 WHERE id = $2', character.name, db_char["id"])
+            log.info(f"get_character: {db_char['name']} renamed to {character.name}")
+
+        if db_char["world"] != character.world:
+            await ctx.db.execute('UPDATE "character" SET world = $1 WHERE id = $2', character.world, db_char["id"])
+            log.info(f"get_character: {character.name}'s world updated {character.world} -> {db_char['world']}")
+
+        if db_char["guild"] != character.guild_name:
+            await ctx.db.execute('UPDATE "character" SET guild = $1 WHERE id = %2', character.guild_name, db_char["id"])
+            log.info(f"get_character: {character.name}'s guild updated {character.guild_name} -> {db_char['guild']}")
+            if ctx.bot is not None:
+                ctx.bot.dispatch("character_change", character.owner)
 
 
 async def get_highscores(world, category, pagenum, profession=0, tries=5):
