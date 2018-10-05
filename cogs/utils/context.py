@@ -1,4 +1,5 @@
 import asyncio
+import asyncpg
 import functools
 import re
 from typing import Union, Optional, Callable, TypeVar, Any, Sequence
@@ -14,6 +15,24 @@ _mention = re.compile(r'<@!?([0-9]{1,19})>')
 T = TypeVar('T')
 
 
+class _ContextDBAcquire:
+    __slots__ = ('ctx', 'timeout')
+
+    def __init__(self, ctx, timeout):
+        self.ctx = ctx
+        self.timeout = timeout
+
+    def __await__(self):
+        return self.ctx._acquire(self.timeout).__await__()
+
+    async def __aenter__(self):
+        await self.ctx._acquire(self.timeout)
+        return self.ctx.db
+
+    async def __aexit__(self, *args):
+        await self.ctx.release()
+
+
 class NabCtx(commands.Context):
     """An override of :class:`commands.Context` that provides properties and methods for NabBot."""
     guild: discord.Guild
@@ -25,10 +44,12 @@ class NabCtx(commands.Context):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.pool = self.bot.pool  # type: asyncpg.pool.Pool
+        self.db = None  # type: asyncpg.Connection
         self.yes_no_reactions = ("🇾", "🇳")
         self.check_reactions = (config.true_emoji, config.false_emoji)
 
-    # Properties
+    # region Properties
     @property
     def author_permissions(self) -> discord.Permissions:
         """Shortcut to check the command author's permission to the current channel.
@@ -114,26 +135,26 @@ class NabCtx(commands.Context):
         """Shows the parameters signature of the invoked command"""
         if self.command.usage:
             return self.command.usage
-        else:
-            params = self.command.clean_params
-            if not params:
-                return ''
-            result = []
-            for name, param in params.items():
-                if param.default is not param.empty:
-                    # We don't want None or '' to trigger the [name=value] case and instead it should
-                    # do [name] since [name=None] or [name=] are not exactly useful for the user.
-                    should_print = param.default if isinstance(param.default, str) else param.default is not None
-                    if should_print:
-                        result.append(f'[{name}={param.default!r}]')
-                    else:
-                        result.append(f'[{name}]')
-                elif param.kind == param.VAR_POSITIONAL:
-                    result.append(f'[{name}...]')
-                else:
-                    result.append(f'<{name}>')
 
-            return ' '.join(result)
+        params = self.command.clean_params
+        if not params:
+            return ''
+        result = []
+        for name, param in params.items():
+            if param.default is not param.empty:
+                # We don't want None or '' to trigger the [name=value] case and instead it should
+                # do [name] since [name=None] or [name=] are not exactly useful for the user.
+                should_print = param.default if isinstance(param.default, str) else param.default is not None
+                if should_print:
+                    result.append(f'[{name}={param.default!r}]')
+                else:
+                    result.append(f'[{name}]')
+            elif param.kind == param.VAR_POSITIONAL:
+                result.append(f'[{name}...]')
+            else:
+                result.append(f'<{name}>')
+
+        return ' '.join(result)
 
     @property
     def world(self) -> Optional[str]:
@@ -146,6 +167,17 @@ class NabCtx(commands.Context):
             return None
         else:
             return self.bot.tracked_worlds.get(self.guild.id, None)
+    # endregion
+
+    # region Methods
+    async def _acquire(self, timeout):
+        if self.db is None:
+            self.db = await self.pool.acquire(timeout=timeout)
+        return self.db
+
+    def acquire(self, *, timeout=None):
+        """Acquires a database connection from the pool."""
+        return _ContextDBAcquire(self, timeout)
 
     async def choose(self, matches: Sequence[Any], title="Suggestions"):
         if len(matches) == 0:
@@ -267,6 +299,12 @@ class NabCtx(commands.Context):
                     pass
         return True
 
+    async def release(self):
+        """Releases the database connection from the pool."""
+        if self.db is not None:
+            await self.bot.pool.release(self.db)
+            self.db = None
+
     def tick(self, value: bool = True, label: str = None) -> str:
         """Displays a checkmark or a cross depending on the value.
 
@@ -278,3 +316,5 @@ class NabCtx(commands.Context):
         if label:
             return emoji + label
         return emoji
+
+    # endregion

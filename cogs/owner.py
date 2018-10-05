@@ -1,6 +1,6 @@
+import asyncpg
 import inspect
 import platform
-import sqlite3
 import textwrap
 import traceback
 from contextlib import redirect_stdout
@@ -75,7 +75,6 @@ class Owner:
         guild_admins = list(set([g.owner for g in self.bot.guilds]))
         for admin in guild_admins:
             await admin.send("{0}\n\t-{1.mention}".format(content, ctx.author))
-            pass
         await ctx.send("Message sent to "+join_list(["@"+a.name for a in guild_admins], ", ", " and "))
 
     # noinspection PyBroadException
@@ -485,13 +484,13 @@ class Owner:
 
         If the results are too long to display, a text file is generated and uploaded."""
         query = self.cleanup_code(query)
-
-        try:
-            start = time.perf_counter()
-            results = userDatabase.execute(query).fetchall()
-            dt = (time.perf_counter() - start) * 1000.0
-        except sqlite3.Error:
-            return await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+        async with ctx.acquire():
+            try:
+                start = time.perf_counter()
+                results = await ctx.db.fetch(query)
+                dt = (time.perf_counter() - start) * 1000.0
+            except asyncpg.PostgresError as e:
+                return await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')
         rows = len(results)
         if rows == 0:
             return await ctx.send(f'`{dt:.2f}ms: {results}`')
@@ -569,17 +568,18 @@ class Owner:
         def comp(operator, object1, object2):
             if operator == ">=":
                 return object1 >= object2
-            if operator == ">":
+            elif operator == ">":
                 return object1 > object2
-            if operator == "==":
+            elif operator == "==":
                 return object1 == object2
-            if operator == "<":
+            elif operator == "<":
                 return object1 < object2
-            if operator == "<=":
+            elif operator == "<=":
                 return object1 <= object2
 
         discordpy_version = pkg_resources.get_distribution("discord.py").version
         m = dpy_commit.search(discordpy_version)
+        dpy = f"v{discordpy_version}"
         if m:
             revision, commit = m.groups()
             is_valid = int(revision) >= self.bot.__min_discord__
@@ -587,8 +587,6 @@ class Owner:
             dpy = f"{ctx.tick(is_valid)}[v{discordpy_version}]({discordpy_url})"
             if not is_valid:
                 dpy += f"\n`{self.bot.__min_discord__ - int(revision)} commits behind`"
-        else:
-            dpy = f"v{discordpy_version}"
 
         embed = discord.Embed(title="NabBot", description="v"+self.bot.__version__)
         embed.add_field(name="discord.py", value=dpy)
