@@ -166,6 +166,13 @@ tables = [
     );
     """,
     """
+    CREATE TABLE server_prefixes(
+        server_id bigint NOT NULL,
+        prefixes text[] NOT NULL,
+        PRIMARY KEY (server_id)
+    );
+    """,
+    """
     CREATE TABLE global_property (
         key text NOT NULL,
         value jsonb,
@@ -297,9 +304,12 @@ async def import_legacy_db(pool: asyncpg.pool.Pool, path):
                     value = json.dumps(bool(value))
                 else:
                     value = json.dumps(value)
-                await conn.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
-                                      ON CONFLICT DO NOTHING""",
-                                   server, key, value)
+                if key == "prefixes":
+                    await conn.execute("""INSERT INTO server_prefixes(server_id, prefixes) VALUES($1, $2)
+                                          ON CONFLICT DO NOTHING""", server, value)
+                else:
+                    await conn.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
+                                          ON CONFLICT DO NOTHING""", server, key, value)
 
 
 
