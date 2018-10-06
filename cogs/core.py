@@ -6,7 +6,7 @@ from discord.ext import commands
 
 from .utils.checks import CannotEmbed
 from .utils import context
-from .utils.database import userDatabase, get_server_property
+from .utils.database import userDatabase, _get_server_property
 from .utils.tibia import get_voc_abb_and_emoji
 from .utils import log, join_list, get_user_avatar, get_region_string
 from .utils import config
@@ -124,8 +124,8 @@ class Core:
             self.bot.dispatch("character_change", member.id)
             await self.bot.send_log_message(member.guild, embed=embed)
 
-        welcome_message = get_server_property(member.guild.id, "welcome")
-        welcome_channel_id = get_server_property(member.guild.id, "welcome_channel", is_int=True)
+        welcome_message = _get_server_property(member.guild.id, "welcome")
+        welcome_channel_id = _get_server_property(member.guild.id, "welcome_channel", is_int=True)
         if welcome_message is None:
             return
         message = welcome_message.format(user=member, server=member.guild, bot=self.bot, owner=member.guild.owner)

@@ -12,7 +12,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import get_server_property, userDatabase
+from .utils.database import _get_server_property, userDatabase
 from .utils import parse_uptime, FIELD_VALUE_LIMIT, get_region_string, get_user_avatar, config
 from .utils.messages import split_message
 from .utils.pages import HelpPaginator, _can_run
@@ -32,7 +32,7 @@ class Info:
                          icon_url="https://github.com/fluidicon.png")
         prefixes = list(config.command_prefix)
         if ctx.guild:
-            prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
+            prefixes = _get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
         prefixes_str = "\n".join(f"- `{p}`" for p in prefixes)
         embed.add_field(name="Prefixes", value=prefixes_str, inline=False)
         embed.add_field(name="Authors", value="\u2023 [Galarzaa90](https://github.com/Galarzaa90)\n"

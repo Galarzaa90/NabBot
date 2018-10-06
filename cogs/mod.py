@@ -8,7 +8,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks, config
 from .utils.context import NabCtx
-from .utils.database import userDatabase, get_server_property
+from .utils.database import userDatabase, _get_server_property
 from .utils.pages import Pages, CannotPaginate
 
 
@@ -32,7 +32,7 @@ class Mod:
 
         If the bot has `Manage Messages` permission, it will also delete command invocation messages."""
         count = 0
-        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=config.command_prefix)
+        prefixes = _get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=config.command_prefix)
         # Also skip death and levelup messages from cleanup
         announce_prefix = (config.levelup_emoji, config.death_emoji, config.pvpdeath_emoji)
         if ctx.bot_permissions.manage_messages:

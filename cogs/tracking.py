@@ -13,7 +13,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import userDatabase, get_server_property, set_server_property
+from .utils.database import userDatabase, _get_server_property, _set_server_property
 from .utils import online_characters, log, join_list, is_numeric, FIELD_VALUE_LIMIT, EMBED_LIMIT, \
     get_user_avatar, config
 from .utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, \
@@ -156,7 +156,6 @@ class Tracking:
             pass
         except (ValueError, pickle.PickleError):
             log.info("Couldn't read cached online list.")
-            pass
         while not self.bot.is_closed():
             # Open connection to users.db
             c = userDatabase.cursor()
@@ -286,7 +285,7 @@ class Tracking:
             if self.bot.get_guild(server) is None:
                 await asyncio.sleep(0.01)
                 continue
-            watched_channel_id = get_server_property(server, "watched_channel", is_int=True)
+            watched_channel_id = _get_server_property(server, "watched_channel", is_int=True)
             if watched_channel_id is None:
                 # This server doesn't have watch list enabled
                 await asyncio.sleep(0.1)
@@ -324,7 +323,7 @@ class Tracking:
                     if online_char.name == watched["name"]:
                         # Add to online list
                         currently_online.append(online_char)
-            watched_message_id = get_server_property(server, "watched_message", is_int=True)
+            watched_message_id = _get_server_property(server, "watched_message", is_int=True)
             # We try to get the watched message, if the bot can't find it, we just create a new one
             # This may be because the old message was deleted or this is the first time the list is checked
             try:
@@ -363,7 +362,7 @@ class Tracking:
             try:
                 if watched_message is None:
                     new_watched_message = await watched_channel.send(embed=embed)
-                    set_server_property(server, "watched_message", new_watched_message.id)
+                    _set_server_property(server, "watched_message", new_watched_message.id)
                 else:
                     await watched_message.edit(embed=embed)
                 await watched_channel.edit(name=f"{watched_channel.name.split('·', 1)[0]}·{online_count}")
@@ -439,7 +438,7 @@ class Tracking:
             guild = self.bot.get_guild(guild_id)
             if guild is None:
                 continue
-            min_level = get_server_property(guild_id, "announce_level", is_int=True, default=config.announce_threshold)
+            min_level = _get_server_property(guild_id, "announce_level", is_int=True, default=config.announce_threshold)
             if death.level < min_level:
                 continue
             if char.world != tracked_world or guild.get_member(char.owner) is None:
@@ -469,7 +468,7 @@ class Tracking:
             message = f"{config.pvpdeath_emoji if death.by_player else config.death_emoji} {format_message(message)}"
             try:
                 channel = self.bot.get_channel_or_top(guild,
-                                                      get_server_property(guild.id, "levels_channel", is_int=True))
+                                                      _get_server_property(guild.id, "levels_channel", is_int=True))
                 await channel.send(message[:1].upper() + message[1:])
             except discord.Forbidden:
                 log.warning("announce_death: Missing permissions.")
@@ -503,14 +502,14 @@ class Tracking:
             server = self.bot.get_guild(server_id)
             if server is None:
                 continue
-            min_level = get_server_property(server_id, "announce_level", is_int=True, default=config.announce_threshold)
+            min_level = _get_server_property(server_id, "announce_level", is_int=True, default=config.announce_threshold)
             if char.level < min_level:
                 continue
             if char.world != tracked_world or server.get_member(char.owner) is None:
                 continue
             try:
                 channel = self.bot.get_channel_or_top(server,
-                                                      get_server_property(server.id, "levels_channel", is_int=True))
+                                                      _get_server_property(server.id, "levels_channel", is_int=True))
                 # Select a message
                 message = weighed_choice(level_messages, vocation=char.vocation, level=level, min_level=min_level)
                 level_info = {'name': char.name, 'level': level, 'he_she': char.he_she.lower(),
@@ -1099,7 +1098,7 @@ class Tracking:
         The channel can be renamed at anytime without problems.
         """
 
-        watched_channel_id = get_server_property(ctx.guild.id, "watched_channel", is_int=True)
+        watched_channel_id = _get_server_property(ctx.guild.id, "watched_channel", is_int=True)
         watched_channel = self.bot.get_channel(watched_channel_id)
 
         if "·" in name:
@@ -1134,7 +1133,7 @@ class Tracking:
                                "This channel can be renamed freely.\n"
                                "**It is important to not allow anyone to write in here**\n"
                                "*This message can be deleted now.*")
-            set_server_property(ctx.guild.id, "watched_channel", channel.id)
+            _set_server_property(ctx.guild.id, "watched_channel", channel.id)
 
     @checks.is_mod()
     @checks.is_tracking_world()

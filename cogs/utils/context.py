@@ -8,7 +8,7 @@ import discord
 from discord.ext import commands
 
 from . import config
-from .database import get_server_property
+from .database import _get_server_property
 
 _mention = re.compile(r'<@!?([0-9]{1,19})>')
 
@@ -67,7 +67,7 @@ class NabCtx(commands.Context):
         :rtype: str or None"""
         if self.guild is None:
             return None
-        ask_channel_id = get_server_property(self.guild.id, "ask_channel", is_int=True)
+        ask_channel_id = _get_server_property(self.guild.id, "ask_channel", is_int=True)
         ask_channel = self.guild.get_channel(ask_channel_id)
         if ask_channel is None:
             return config.ask_channel_name
@@ -95,7 +95,7 @@ class NabCtx(commands.Context):
     @property
     def is_askchannel(self):
         """Checks if the current channel is the command channel"""
-        ask_channel_id = get_server_property(self.guild.id, "ask_channel", is_int=True)
+        ask_channel_id = _get_server_property(self.guild.id, "ask_channel", is_int=True)
         ask_channel = self.guild.get_channel(ask_channel_id)
         if ask_channel is None:
             return self.channel.name == config.ask_channel_name

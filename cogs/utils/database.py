@@ -1,7 +1,8 @@
+import asyncpg
 import json
 import sqlite3
 from contextlib import closing
-from typing import Dict
+from typing import Dict, Any
 
 # Databases filenames
 USERDB = "data/users.db"
@@ -271,7 +272,22 @@ def dict_factory(cursor, row):
 userDatabase.row_factory = dict_factory
 tibiaDatabase.row_factory = dict_factory
 
-def get_server_property(guild_id: int, key: str, *, default=None, is_int=None, deserialize=False):
+
+async def get_server_property(pool: asyncpg.pool.Pool, guild_id: int, key: str, default=None) -> Any:
+    value = await pool.fetchval("SELECT value FROM server_property WHERE server_id = $1 AND key = $2", guild_id, key)
+    try:
+        return json.loads(value) if value is not None else default
+    except json.JSONDecodeError:
+        return default
+
+
+async def set_server_property(pool: asyncpg.pool.Pool, guild_id: int, key: str, value: Any):
+    await pool.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
+                          ON CONFLICT(server_id, key) DO UPDATE SET value = EXCLUDED.value""",
+                       guild_id, key, json.dumps(value))
+
+
+def _get_server_property(guild_id: int, key: str, *, default=None, is_int=None, deserialize=False):
     """Returns a guild's property
 
     :param key: The key of the property to search for
@@ -293,7 +309,7 @@ def get_server_property(guild_id: int, key: str, *, default=None, is_int=None, d
         return result["value"] if not deserialize else json.loads(result["value"])
 
 
-def set_server_property(guild_id: int, key: str, value, *, serialize=False) -> None:
+def _set_server_property(guild_id: int, key: str, value, *, serialize=False) -> None:
     """Edits a server property
 
     :param key: The name of the property to change

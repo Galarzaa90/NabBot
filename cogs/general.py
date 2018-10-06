@@ -12,7 +12,7 @@ from nabbot import NabBot
 from .utils import TimeString, single_line, log, BadTime, get_user_avatar, clean_string, is_numeric, config
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import userDatabase, get_server_property
+from .utils.database import userDatabase, _get_server_property
 from .utils.pages import CannotPaginate, VocationPages
 from .utils.tibia import get_voc_abb, get_voc_emoji
 
@@ -100,7 +100,7 @@ class General:
                         event["start"] = 'now'
                     message = "**{name}** (by **@{author}**,*ID:{id}*) - Is starting {start}!".format(**event)
                     c.execute("UPDATE events SET status = ? WHERE id = ?", (new_status, event["id"],))
-                    announce_channel_id = get_server_property(guild.id, "events_channel", is_int=True, default=0)
+                    announce_channel_id = _get_server_property(guild.id, "events_channel", is_int=True, default=0)
                     if announce_channel_id == 0:
                         continue
                     announce_channel = self.bot.get_channel_or_top(guild, announce_channel_id)

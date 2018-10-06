@@ -15,7 +15,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import get_server_property, userDatabase, set_server_property
+from .utils.database import _get_server_property, userDatabase, _set_server_property
 from .utils import get_time_diff, join_list, online_characters, get_local_timezone, log, \
     is_numeric, get_user_avatar, config
 from .utils.messages import html_to_markdown, get_first_image, split_message
@@ -1478,7 +1478,7 @@ class Tibia:
         if ctx.is_private:
             return await ctx.send(reply)
 
-        saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        saved_times = _get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
         if not saved_times:
             return await ctx.send(reply)
         time_entries = sorted(saved_times, key=lambda k: now.astimezone(pytz.timezone(k["timezone"])).utcoffset())
@@ -1522,13 +1522,13 @@ class Tibia:
         if len(display_name) > 40:
             return await ctx.send(f"{ctx.tick(False)} The display name can't be longer than 40 characters.")
 
-        saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        saved_times = _get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
         if any(e["name"].lower() == display_name.lower() for e in saved_times):
             return await ctx.send(f"{ctx.tick(False)} There's already a saved timezone with that display name,"
                                   f"please use the command again.")
 
         saved_times.append({"name": display_name.strip(), "timezone": _timezone})
-        set_server_property(ctx.guild.id, "times", saved_times, serialize=True)
+        _set_server_property(ctx.guild.id, "times", saved_times, serialize=True)
         await ctx.send(f"{ctx.tick()} Timezone `{_timezone}` saved successfully as `{display_name.strip()}`.")
 
     @checks.is_mod()
@@ -1539,7 +1539,7 @@ class Tibia:
         """Shows a list of all the currently added timezones.
 
         Only Server Moderators can use this command."""
-        saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        saved_times = _get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
         if not saved_times:
             return await ctx.send(f"{ctx.tick(False)} There are no saved times for this server.")
 
@@ -1558,14 +1558,14 @@ class Tibia:
 
         Only Server Moderators can use this command."""
         _timezone = _timezone.strip()
-        saved_times: list = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        saved_times: list = _get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
         if not saved_times:
             return await ctx.send(f"{ctx.tick(False)} There are no saved times for this server.")
 
         for entry in saved_times:
             if entry["name"].lower() == _timezone.lower():
                 saved_times.remove(entry)
-                set_server_property(ctx.guild.id, "times", saved_times, serialize=True)
+                _set_server_property(ctx.guild.id, "times", saved_times, serialize=True)
                 return await ctx.send(f"{ctx.tick()} Timezone `{entry['name']}` removed succesfully.")
         await ctx.send(f"{ctx.tick(False)} There's no timezone named `{_timezone}`.")
 
@@ -2034,7 +2034,7 @@ class Tibia:
                 for article in new_articles:
                     log.info("Announcing new article: {id} - {title}".format(**article))
                     for guild in self.bot.guilds:
-                        news_channel_id = get_server_property(guild.id, "news_channel", is_int=True, default=0)
+                        news_channel_id = _get_server_property(guild.id, "news_channel", is_int=True, default=0)
                         if news_channel_id == 0:
                             continue
                         channel = self.bot.get_channel_or_top(guild, news_channel_id)

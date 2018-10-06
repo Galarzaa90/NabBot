@@ -10,7 +10,7 @@ import discord
 from discord.ext import commands
 
 from cogs.utils import context
-from cogs.utils.database import init_database, userDatabase, get_server_property
+from cogs.utils.database import init_database, userDatabase, _get_server_property
 from cogs.utils import config, log
 from cogs.utils.help_format import NabHelpFormat
 from cogs.utils.tibia import populate_worlds, tibia_worlds
@@ -25,7 +25,7 @@ def _prefix_callable(bot, msg):
     if msg.guild is None:
         base.extend(config.command_prefix)
     else:
-        base.extend(get_server_property(msg.guild.id, "prefixes", deserialize=True, default=config.command_prefix))
+        base.extend(_get_server_property(msg.guild.id, "prefixes", deserialize=True, default=config.command_prefix))
     base = sorted(base, reverse=True)
     return base
 
@@ -88,7 +88,7 @@ class NabBot(commands.Bot):
         if message.content.strip() == f"<@{self.user.id}>":
             prefixes = list(config.command_prefix)
             if ctx.guild:
-                prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
+                prefixes = _get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
             if prefixes:
                 prefixes_str = ", ".join(f"`{p}`" for p in prefixes)
                 return await ctx.send(f"My command prefixes are: {prefixes_str}, and mentions. "
@@ -97,7 +97,7 @@ class NabBot(commands.Bot):
                 return await ctx.send(f"My command prefix is mentions. "
                                       f"To see my commands, try: `@{self.user.name} help.`", delete_after=10)
 
-        server_delete = get_server_property(message.guild.id, "commandsonly", is_int=True)
+        server_delete = _get_server_property(message.guild.id, "commandsonly", is_int=True)
         global_delete = config.ask_channel_delete
         if (server_delete is None and global_delete or server_delete) and ctx.is_askchannel:
             try:
