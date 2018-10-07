@@ -1,3 +1,4 @@
+import asyncpg
 import datetime as dt
 import os
 import re
@@ -37,6 +38,7 @@ class NabBot(commands.Bot):
                          formatter=NabHelpFormat(), pm_help=True)
         self.remove_command("help")
         self.members = {}
+        self.pool = None  # type: asyncpg.pool.Pool
         self.start_time = dt.datetime.utcnow()
         self.session = aiohttp.ClientSession(loop=self.loop)
         # Dictionary of worlds tracked by nabbot, key:value = server_id:world

@@ -88,7 +88,7 @@ tables = [
         id serial NOT NULL,
         character_id integer NOT NULL,
         level smallint,
-        date timestamp without time zone,
+        date timestamp without time zone DEFAULT now(),
         PRIMARY KEY (id),
         FOREIGN KEY (character_id) REFERENCES "character" (id)
     );

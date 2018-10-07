@@ -33,7 +33,6 @@ class Tracking:
         # TODO: Tasks are disabled until database changes are completed
         self.scan_online_chars_task = None  # bot.loop.create_task(self.scan_online_chars())
         self.scan_highscores_task = None  # bot.loop.create_task(self.scan_highscores())
-
         self.world_tasks = {}
 
         self.world_times = {}
@@ -210,28 +209,7 @@ class Tracking:
                             offline_list.append(char)
                 for offline_char in offline_list:
                     online_characters[current_world].remove(offline_char)
-                    # Check for deaths and level ups when removing from online list
-                    try:
-                        name = offline_char.name
-                        offline_char = await get_character(name, bot=self.bot)
-                    except NetworkError:
-                        log.error(f"scan_online_chars: Could not fetch {name}, NetWorkError")
-                        continue
-                    if offline_char is not None:
-                        c.execute("SELECT name, level, id FROM chars WHERE name LIKE ?", (offline_char.name,))
-                        result = c.fetchone()
-                        if result:
-                            c.execute("UPDATE chars SET level = ? WHERE name LIKE ?",
-                                      (offline_char.level, offline_char.name))
-                            if offline_char.level > result["level"] > 0:
-                                # Saving level up date in database
-                                c.execute(
-                                    "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                    (result["id"], offline_char.level, time.time(),)
-                                )
-                                # Announce the level up
-                                await self.announce_level(offline_char.level, char=offline_char)
-                        await self.check_death(offline_char.name)
+                    await self.check_offline_char(offline_char)
                 # Add new online chars and announce level differences
                 for server_char in current_world_online:
                     c.execute("SELECT name, level, id, user_id FROM chars WHERE name LIKE ?",
@@ -368,6 +346,28 @@ class Tracking:
                 await watched_channel.edit(name=f"{watched_channel.name.split('·', 1)[0]}·{online_count}")
             except discord.HTTPException:
                 pass
+
+    async def check_offline_char(self, offline_char: Character):
+        # Check for deaths and level ups when removing from online list
+        try:
+            name = offline_char.name
+            offline_char = await get_character(self.bot, name)
+        except NetworkError:
+            log.error(f"check_offline_char: Could not fetch {name}, NetWorkError")
+            return
+        if offline_char is None:
+            return
+        async with self.bot.pool.acquire() as conn:
+            row = await conn.fetchrow('SELECT id, name, level FROM "character" WHERE name = $1', name)
+            if row:
+                await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', row["level"], row["id"])
+                if offline_char.level > row["level"] > 0:
+                    # Saving level up date in database
+                    await conn.execute("INSERT INTO character_levelup(character_id, level) VALUES($1, $2)",
+                                       row["id"], offline_char.level)
+                    # Announce the level up
+                    await self.announce_level(offline_char.level, char=offline_char)
+                await self.check_death(offline_char.name)
 
     async def check_death(self, character):
         """Checks if the player has new deaths"""
