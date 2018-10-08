@@ -132,6 +132,7 @@ class Tibia:
         now = time.time()
         show_links = not ctx.long
         per_page = 20 if ctx.long else 5
+        users = dict()
         try:
             if name is None:
                 title = "Latest deaths"
@@ -143,9 +144,19 @@ class Tibia:
                     row = c.fetchone()
                     if row is None:
                         break
-                    user = self.bot.get_member(row["user_id"], user_guilds)
-                    if user is None:
+
+                    user = users.get(row["user_id"])
+                    if user is False:
                         continue
+                    if user is None:
+                        user = self.bot.get_member(row["user_id"], user_guilds)
+
+                    if user is None:
+                        users[row["user_id"]] = False
+                        continue
+                    else:
+                        users[row["user_id"]] = user
+
                     if row["world"] not in user_worlds:
                         continue
                     count += 1
