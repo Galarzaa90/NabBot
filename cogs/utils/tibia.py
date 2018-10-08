@@ -428,7 +428,7 @@ async def get_character(bot, name, tries=5) -> Optional[Character]:
         try:
             async with bot.session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
-        except aiohttp.ClientError:
+        except (aiohttp.ClientError, asyncio.TimeoutError):
             await asyncio.sleep(config.network_retry_delay)
             return await get_character(bot, name, tries - 1)
 

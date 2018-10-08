@@ -44,9 +44,9 @@ class NabCtx(commands.Context):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.pool = self.bot.pool  # type: asyncpg.pool.Pool
+        self.pool: asyncpg.pool.Pool = self.bot.pool
         self.session = self.bot.session
-        self.db = None  # type: asyncpg.Connection
+        self.db: asyncpg.Connection = None
         self.yes_no_reactions = ("🇾", "🇳")
         self.check_reactions = (config.true_emoji, config.false_emoji)
 

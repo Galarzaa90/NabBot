@@ -124,7 +124,6 @@ class Tibia:
                 await ctx.send("This server is not tracking any tibia worlds.")
                 return
 
-        c = userDatabase.cursor()
         entries = []
         author = None
         author_icon = discord.Embed.Empty
@@ -132,90 +131,89 @@ class Tibia:
         now = time.time()
         show_links = not ctx.long
         per_page = 20 if ctx.long else 5
-        try:
-            if name is None:
-                title = "Latest deaths"
-                c.execute("SELECT char_deaths.level, date, name, user_id, byplayer, killer, world, vocation "
-                          "FROM char_deaths, chars "
-                          "WHERE char_id = id AND char_deaths.level > ? "
-                          "ORDER BY date DESC", (config.announce_threshold,))
-                while True:
-                    row = c.fetchone()
-                    if row is None:
-                        break
-                    user = self.bot.get_member(row["user_id"], user_guilds)
-                    if user is None:
-                        continue
-                    if row["world"] not in user_worlds:
-                        continue
-                    count += 1
-                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                    row["user"] = user.display_name
-                    row["emoji"] = get_voc_emoji(row["vocation"])
-                    entries.append("{emoji} {name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*"
-                                   .format(**row))
-                    if count >= 100:
-                        break
-            else:
-                try:
-                    char = await get_character(name)
-                    if char is None:
-                        await ctx.send("That character doesn't exist.")
-                        return
-                except NetworkError:
-                    await ctx.send("Sorry, I had trouble checking that character, try it again.")
-                    return
-                deaths = char.deaths
-                last_time = now
-                name = char.name
-                voc_emoji = get_voc_emoji(char.vocation)
-                title = "{1} {0} latest deaths:".format(name, voc_emoji)
-                if ctx.guild is not None and char.owner:
-                    owner: discord.Member = ctx.guild.get_member(char.owner)
-                    if owner is not None:
-                        author = owner.display_name
-                        author_icon = owner.avatar_url
-                for death in deaths:
-                    last_time = death.time.timestamp()
-                    death_time = get_time_diff(dt.datetime.now(tz=dt.timezone.utc) - death.time)
-                    if death.by_player and show_links:
-                        killer = f"[{death.killer}]({Character.get_url(death.killer)})"
-                    elif death.by_player:
-                        killer = f"**{death.killer}**"
-                    else:
-                        killer = f"{death.killer}"
-                    entries.append("At level **{0.level}** by {name} - *{time} ago*".format(death, time=death_time,
-                                                                                            name=killer))
-                    count += 1
+        if name is None:
+            title = "Latest deaths"
+            async with ctx.pool.acquire() as conn:
+                async with conn.transaction():
+                    async for row in conn.cursor("""SELECT c.name, user_id, world, vocation, d.level, date,
+                                                    k.name as killer, player
+                                                    FROM character_death d
+                                                    LEFT JOIN "character" c on c.id = character_id
+                                                    LEFT JOIN character_death_killer k on death_id = d.id
+                                                    WHERE d.level > $1 AND position = 0 AND world = any($2)
+                                                    ORDER by date DESC""", config.announce_threshold, user_worlds):
 
-                c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
-                result = c.fetchone()
-                if result is not None and not ctx.is_lite:
-                    id = result["id"]
-                    c.execute("SELECT char_deaths.level, date, byplayer, killer "
-                              "FROM char_deaths "
-                              "WHERE char_id = ? AND date < ? "
-                              "ORDER BY date DESC",
-                              (id, last_time))
-                    while True:
-                        row = c.fetchone()
                         if row is None:
                             break
+                        user = self.bot.get_member(row["user_id"], user_guilds)
+                        if user is None:
+                            continue
+                        if row["world"] not in user_worlds:
+                            continue
                         count += 1
-                        row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                        entries.append("At level **{level}** by {killer} - *{time} ago*".format(**row))
+                        time_diff = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
+                        user_name = user.display_name
+                        emoji = get_voc_emoji(row["vocation"])
+                        entries.append("{emoji} {name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*"
+                                       .format(**row, time=time_diff, emoji=emoji, user=user_name))
                         if count >= 100:
                             break
+        else:
+            try:
+                char = await get_character(self.bot, name)
+                if char is None:
+                    await ctx.send("That character doesn't exist.")
+                    return
+            except NetworkError:
+                await ctx.send("Sorry, I had trouble checking that character, try it again.")
+                return
+            deaths = char.deaths
+            last_time = dt.datetime.now()
+            name = char.name
+            voc_emoji = get_voc_emoji(char.vocation)
+            title = "{1} {0} latest deaths:".format(name, voc_emoji)
+            if ctx.guild is not None and char.owner:
+                owner: discord.Member = ctx.guild.get_member(char.owner)
+                if owner is not None:
+                    author = owner.display_name
+                    author_icon = owner.avatar_url
+            for death in deaths:
+                last_time = death.time
+                death_time = get_time_diff(dt.datetime.now(tz=dt.timezone.utc) - death.time)
+                if death.by_player and show_links:
+                    killer = f"[{death.killer}]({Character.get_url(death.killer)})"
+                elif death.by_player:
+                    killer = f"**{death.killer}**"
+                else:
+                    killer = f"{death.killer}"
+                entries.append("At level **{0.level}** by {name} - *{time} ago*".format(death, time=death_time,
+                                                                                        name=killer))
+                count += 1
 
+            char_id = await ctx.pool.fetchval('SELECT id FROM "character" WHERE name = $1', name)
+            if char_id is not None and not ctx.is_lite:
+                async with ctx.pool.acquire() as conn:
+                    async with conn.transaction():
+                        async for row in conn.cursor("""SELECT level, date, player, name as killer
+                                                        FROM character_death d
+                                                        LEFT JOIN character_death_killer k ON k.death_id = d.id
+                                                        WHERE position = 0 AND character_id = $1 and date < $2
+                                                        ORDER BY date DESC""",
+                                                     char_id, last_time):
+                            count += 1
+                            death_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
+                            entries.append("At level **{level}** by {killer} - *{time} ago*".format(**row,
+                                                                                                    time=death_time))
+                            if count >= 100:
+                                break
             if count == 0:
                 await ctx.send("There are no registered deaths.")
                 return
-        finally:
-            c.close()
 
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
-        pages.embed.set_author(name=author, icon_url=author_icon)
+        if author is not None:
+            pages.embed.set_author(name=author, icon_url=author_icon)
         try:
             await pages.paginate()
         except CannotPaginate as e:
