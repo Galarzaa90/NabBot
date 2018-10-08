@@ -192,16 +192,11 @@ class Tracking:
                 # Save the online list in file
                 with open("data/online_list.dat", "wb") as f:
                     pickle.dump((online_characters, time.time()), f, protocol=pickle.HIGHEST_PROTOCOL)
-                # Remove chars that are no longer online from the global_online_list
-                offline_list = []
                 if current_world not in online_characters:
                     online_characters[current_world] = []
 
-                for char in online_characters[current_world]:
-                    for server_char in current_world_online:
-                        if server_char.name == char.name:
-                            offline_list.append(char)
-                            break
+                # List of characters that are now offline
+                offline_list = [c for c in online_characters[current_world] if c not in current_world_online]
                 for offline_char in offline_list:
                     # Check if characters got level ups when they went offline
                     online_characters[current_world].remove(offline_char)
@@ -218,17 +213,19 @@ class Tracking:
                                                   server_char.name)
                     if row:
                         if server_char not in online_characters[current_world]:
-                            # If the character wasn't in the globalOnlineList we add them
+                            # If the character wasn't in the online list we add them
                             # (We insert them at the beginning of the list to avoid messing with the death checks order)
+                            server_char.last_check = time.time()
                             online_characters[current_world].insert(0, server_char)
+                            _char = await get_character(self.bot, server_char.name)
+                            await self.compare_deaths(_char)
                         else:
+                            # Do not check levels for characters that were just added.
                             await self.compare_levels(server_char)
                         try:
                             # Update character in the list
                             _char_index = online_characters[current_world].index(server_char)
                             online_characters[current_world][_char_index].level = server_char.level
-                            _char = await get_character(self.bot, server_char.name)
-                            await self.compare_deaths(_char)
                         except NetworkError:
                             continue
                         except (ValueError, IndexError):

@@ -4,7 +4,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks, config
 from .utils.context import NabCtx
-from .utils.database import get_server_property, set_server_property
+from .utils.database import get_server_property, set_server_property, get_prefixes, set_prefixes
 from .utils.tibia import tibia_worlds
 
 SETTINGS = {
@@ -321,7 +321,9 @@ class Settings:
         Multiple words also require using quotes.
 
         Mentioning the bot is always a valid command and can't be changed."""
-        prefixes = await get_server_property(ctx.pool, ctx.guild.id, "prefixes", default=list(config.command_prefix))
+        prefixes = await get_prefixes(ctx.pool, ctx.guild.id)
+        if prefixes is None:
+            prefixes = list(config.command_prefix)
         if prefix is None:
             current_value = ", ".join(f"`{p}`" for p in prefixes) if len(prefixes) > 0 else "Mentions only"
             await self.show_info_embed(ctx, current_value, "Any text", "prefix")
@@ -346,7 +348,7 @@ class Settings:
         else:
             prefixes.append(prefix)
             await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
-        await set_server_property(ctx.pool, ctx.guild.id, "prefixes", sorted(prefixes, reverse=True))
+        await set_prefixes(ctx.pool, ctx.guild.id, sorted(prefixes, reverse=True))
 
     @checks.is_mod()
     @settings.command(name="welcome")

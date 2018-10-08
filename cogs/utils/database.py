@@ -2,7 +2,7 @@ import asyncpg
 import json
 import sqlite3
 from contextlib import closing
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 # Databases filenames
 USERDB = "data/users.db"
@@ -271,6 +271,15 @@ def dict_factory(cursor, row):
 
 userDatabase.row_factory = dict_factory
 tibiaDatabase.row_factory = dict_factory
+
+
+async def get_prefixes(pool: asyncpg.pool.Pool, guild_id: int):
+    return await pool.fetchval("SELECT prefixes FROM server_prefixes WHERE server_id = $1", guild_id)
+
+
+async def set_prefixes(pool: asyncpg.pool.Pool, guild_id: int, prefixes: List[str]):
+    await pool.execute("""INSERT INTO server_prefixes(server_id, prefixes) VALUES($1, $2)
+                          ON CONFLICT(server_id) DO UPDATE SET prefixes = EXCLUDED.prefixes""", guild_id, prefixes)
 
 
 async def get_server_property(pool: asyncpg.pool.Pool, guild_id: int, key: str, default=None) -> Any:

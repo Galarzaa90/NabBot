@@ -11,7 +11,7 @@ import discord
 from discord.ext import commands
 
 from cogs.utils import context
-from cogs.utils.database import init_database, userDatabase, _get_server_property
+from cogs.utils.database import init_database, userDatabase, _get_server_property, get_prefixes
 from cogs.utils import config, log
 from cogs.utils.help_format import NabHelpFormat
 from cogs.utils.tibia import populate_worlds, tibia_worlds
@@ -20,13 +20,14 @@ initial_cogs = {"cogs.core", "cogs.tracking", "cogs.owner", "cogs.mod", "cogs.ad
                 "cogs.loot", "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info"}
 
 
-def _prefix_callable(bot, msg):
+async def _prefix_callable(bot, msg):
     user_id = bot.user.id
     base = [f'<@!{user_id}> ', f'<@{user_id}> ']
     if msg.guild is None:
-        base.extend(config.command_prefix)
+        base.extend(bot.config.command_prefix)
     else:
-        base.extend(_get_server_property(msg.guild.id, "prefixes", deserialize=True, default=config.command_prefix))
+        prefixes = await get_prefixes(bot.pool, msg.guild.id)
+        base.extend(prefixes if prefixes is not None else [bot.config.command_prefix])
     base = sorted(base, reverse=True)
     return base
 
@@ -38,6 +39,7 @@ class NabBot(commands.Bot):
                          formatter=NabHelpFormat(), pm_help=True)
         self.remove_command("help")
         self.members = {}
+        self.config = None  # type: config.Config
         self.pool = None  # type: asyncpg.pool.Pool
         self.start_time = dt.datetime.utcnow()
         self.session = aiohttp.ClientSession(loop=self.loop)
@@ -88,7 +90,7 @@ class NabBot(commands.Bot):
         if message.guild is None:
             return
         if message.content.strip() == f"<@{self.user.id}>":
-            prefixes = list(config.command_prefix)
+            prefixes = list(self.config.command_prefix)
             if ctx.guild:
                 prefixes = _get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
             if prefixes:
@@ -100,7 +102,7 @@ class NabBot(commands.Bot):
                                       f"To see my commands, try: `@{self.user.name} help.`", delete_after=10)
 
         server_delete = _get_server_property(message.guild.id, "commandsonly", is_int=True)
-        global_delete = config.ask_channel_delete
+        global_delete = self.config.ask_channel_delete
         if (server_delete is None and global_delete or server_delete) and ctx.is_askchannel:
             try:
                 await message.delete()
@@ -194,7 +196,7 @@ class NabBot(commands.Bot):
 
         If the channel doesn't exist, it doesn't send anything or give of any warnings as it meant to be an optional
         feature"""
-        channel = self.get_channel_by_name(config.log_channel_name, guild)
+        channel = self.get_channel_by_name(self.config.log_channel_name, guild)
         if channel is None:
             return
         try:
@@ -269,6 +271,7 @@ class NabBot(commands.Bot):
 
         print("Loading config...")
         config.parse()
+        self.config = config
 
         # List of tracked worlds for NabBot
         self.reload_worlds()

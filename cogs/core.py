@@ -51,6 +51,15 @@ class Core:
                     await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
                                    f'{error.original}```')
 
+    async def on_command(self, ctx):
+        command = ctx.command.qualified_name
+        guild_id = ctx.guild.id if ctx.guild is not None else None
+        query = """INSERT INTO command(server_id, channel_id, user_id, date, prefix, command)
+                   VALUES ($1, $2, $3, $4, $5, $6)
+                """
+        await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id, ctx.message.created_at, ctx.prefix,
+                                    command)
+
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
         log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(guild))
