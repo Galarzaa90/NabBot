@@ -58,8 +58,8 @@ tables = [
         world text,
         vocation text,
         guild text,
-        modified timestamp without time zone DEFAULT now(),
-        created timestamp without time zone DEFAULT now(),
+        modified timestamp with time zone DEFAULT now(),
+        created timestamp with time zone DEFAULT now(),
         PRIMARY KEY (id),
         UNIQUE(name)
     );
@@ -69,7 +69,7 @@ tables = [
         id serial NOT NULL,
         character_id integer NOT NULL,
         level smallint,
-        date timestamp without time zone,
+        date timestamp with time zone,
         PRIMARY KEY (id),
         FOREIGN KEY (character_id) REFERENCES "character" (id),
         UNIQUE(character_id, date)
@@ -89,7 +89,7 @@ tables = [
         id serial NOT NULL,
         character_id integer NOT NULL,
         level smallint,
-        date timestamp without time zone DEFAULT now(),
+        date timestamp with time zone DEFAULT now(),
         PRIMARY KEY (id),
         FOREIGN KEY (character_id) REFERENCES "character" (id)
     );
@@ -101,7 +101,7 @@ tables = [
         server_id integer NOT NULL,
         name text NOT NULL,
         description text,
-        start timestamp without time zone,
+        start timestamp with time zone,
         active boolean,
         status smallint,
         joinable boolean,
@@ -188,7 +188,7 @@ tables = [
         is_guild bool DEFAULT FALSE,
         reason text,
         user_id bigint,
-        created timestamp without time zone  DEFAULT now(),
+        created timestamp with time zone  DEFAULT now(),
         PRIMARY KEY(id),
         UNIQUE(name, server_id, is_guild)
     )
@@ -198,7 +198,7 @@ tables = [
         server_id bigint,
         channel_id bigint NOT NULL,
         user_id bigint NOT NULL,
-        date timestamp without time zone NOT NULL DEFAULT now(),
+        date timestamp with time zone NOT NULL DEFAULT now(),
         prefix text NOT NULL,
         command text NOT NULL
     )

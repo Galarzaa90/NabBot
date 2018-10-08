@@ -31,8 +31,8 @@ class Tracking:
     def __init__(self, bot: NabBot):
         self.bot = bot
         # TODO: Tasks are disabled until database changes are completed
-        self.scan_online_chars_task = None  # bot.loop.create_task(self.scan_online_chars())
-        self.scan_highscores_task = None  # bot.loop.create_task(self.scan_highscores())
+        self.scan_online_chars_task = bot.loop.create_task(self.scan_online_chars())
+        self.scan_highscores_task = bot.loop.create_task(self.scan_highscores())
         self.world_tasks = {}
 
         self.world_times = {}
@@ -221,12 +221,13 @@ class Tracking:
                             # If the character wasn't in the globalOnlineList we add them
                             # (We insert them at the beginning of the list to avoid messing with the death checks order)
                             online_characters[current_world].insert(0, server_char)
+                        else:
+                            await self.compare_levels(server_char)
                         try:
                             # Update character in the list
                             _char_index = online_characters[current_world].index(server_char)
-                            online_characters[current_world][_char_index].level = server_char
+                            online_characters[current_world][_char_index].level = server_char.level
                             _char = await get_character(self.bot, server_char.name)
-                            await self.compare_levels(_char)
                             await self.compare_deaths(_char)
                         except NetworkError:
                             continue
@@ -341,6 +342,9 @@ class Tracking:
                 pass
 
     async def compare_levels(self, char: Character):
+        """Compares the character's level with the stored level in database.
+
+        This should only be used on online characters or characters that just became offline."""
         # Check for deaths and level ups when removing from online list
         if char is None:
             return
@@ -348,7 +352,7 @@ class Tracking:
             row = await conn.fetchrow('SELECT id, name, level FROM "character" WHERE name = $1', char.name)
             if not row:
                 return
-            await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', row["level"], row["id"])
+            await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', char.level, row["id"])
             if char.level > row["level"] > 0:
                 # Saving level up date in database
                 await conn.execute("INSERT INTO character_levelup(character_id, level) VALUES($1, $2)",
@@ -357,7 +361,7 @@ class Tracking:
                 await self.announce_level(char, char.level)
 
     async def compare_deaths(self, char: Character):
-        """Checks if the player has new deaths"""
+        """Checks if the player has new deaths."""
         if char is None:
             return
         async with self.bot.pool.acquire() as conn:
@@ -366,22 +370,21 @@ class Tracking:
                 return
             pending_deaths = []
             for death in char.deaths:
-                death_time = death.time.timestamp()
                 # Check if we have a death that matches the time
                 _id = await conn.fetchval("""SELECT id FROM character_death d
                                              INNER JOIN character_death_killer dk ON dk.death_id = d.id
-                                             WHERE character_id = $1 AND date = $2 AND name = $3" AND level = $4
+                                             WHERE character_id = $1 AND date = $2 AND name = $3 AND level = $4
                                              AND position = 0""",
-                                          char_id, death_time, death.killer, death.level)
+                                          char_id, death.time, death.killer, death.level)
                 if _id is not None:
                     # We already have this death, we're assuming we already have older deaths
                     break
                 pending_deaths.append(death)
             # Announce and save deaths from older to new
             for death in reversed(pending_deaths):
-                death_id = await conn.execute("""INSERT INTO character_death(char_id, level, date) VALUES($1, $2, $3)
-                                                 ON CONFLICT DO NOTHING RETURNING id""", char_id, death.level,
-                                              death.time.timestamp())
+                death_id = await conn.fetchval("""INSERT INTO character_death(character_id, level, date)
+                                                  VALUES($1, $2, $3) ON CONFLICT DO NOTHING RETURNING id""",
+                                               char_id, death.level, death.time)
                 if death_id is None:
                     continue
                 await conn.execute("INSERT INTO character_death_killer(death_id, name, player) VALUES($1, $2, $3)",

@@ -501,7 +501,7 @@ async def bind_database_character(bot, character: Character):
             log.info(f"get_character: {character.name}'s world updated {character.world} -> {db_char['world']}")
 
         if db_char["guild"] != character.guild_name:
-            await conn.execute('UPDATE "character" SET guild = $1 WHERE id = %2', character.guild_name, db_char["id"])
+            await conn.execute('UPDATE "character" SET guild = $1 WHERE id = $2', character.guild_name, db_char["id"])
             log.info(f"get_character: {character.name}'s guild updated {character.guild_name} -> {db_char['guild']}")
             if bot is not None:
                 bot.dispatch("character_change", character.owner)
