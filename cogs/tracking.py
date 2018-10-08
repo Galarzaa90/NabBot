@@ -13,7 +13,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import userDatabase, _get_server_property, _set_server_property
+from .utils.database import userDatabase, _get_server_property, _set_server_property, get_server_property
 from .utils import online_characters, log, join_list, is_numeric, FIELD_VALUE_LIMIT, EMBED_LIMIT, \
     get_user_avatar, config
 from .utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, \
@@ -52,16 +52,19 @@ class Tracking:
                 skip = False
                 # Pop last char in queue, reinsert it at the beginning
                 current_char = online_characters[world].pop()
-                if hasattr(current_char, "last_check"):
-                    if time.time() - current_char.last_check < 45:
-                        skip = True
+                if hasattr(current_char, "last_check") and time.time() - current_char.last_check < 45:
+                    skip = True
                 current_char.last_check = time.time()
                 online_characters[world].insert(0, current_char)
                 if not skip:
                     # Check for new death
-                    await self.check_death(current_char.name)
+                    _char = await get_character(self.bot, current_char.name)
+                    await self.compare_deaths(_char)
                 else:
                     await asyncio.sleep(0.5)
+            except NetworkError:
+                await asyncio.sleep(0.3)
+                continue
             except asyncio.CancelledError:
                 # Task was cancelled, so this is fine
                 break
@@ -191,54 +194,44 @@ class Tracking:
                     pickle.dump((online_characters, time.time()), f, protocol=pickle.HIGHEST_PROTOCOL)
                 # Remove chars that are no longer online from the global_online_list
                 offline_list = []
-
                 if current_world not in online_characters:
                     online_characters[current_world] = []
 
                 for char in online_characters[current_world]:
-                    if char.world not in tibia_worlds:
-                        # Remove chars from worlds that no longer exist
-                        offline_list.append(char)
-                    elif char.world == current_world:
-                        offline = True
-                        for server_char in current_world_online:
-                            if server_char.name == char.name:
-                                offline = False
-                                break
-                        if offline:
+                    for server_char in current_world_online:
+                        if server_char.name == char.name:
                             offline_list.append(char)
+                            break
                 for offline_char in offline_list:
+                    # Check if characters got level ups when they went offline
                     online_characters[current_world].remove(offline_char)
-                    await self.check_offline_char(offline_char)
+                    try:
+                        _char = await get_character(self.bot, offline_char.name)
+                        await self.compare_levels(_char)
+                        await self.compare_deaths(_char)
+                    except NetworkError:
+                        continue
                 # Add new online chars and announce level differences
                 for server_char in current_world_online:
-                    c.execute("SELECT name, level, id, user_id FROM chars WHERE name LIKE ?",
-                              (server_char.name,))
-                    result = c.fetchone()
-                    # If its a stalked character
-                    if result:
-                        # We update their last level in the db
-                        c.execute(
-                            "UPDATE chars SET level = ? WHERE name LIKE ?",
-                            (server_char.level, server_char.name)
-                        )
+                    async with self.bot.pool.acquire() as conn:
+                        row = await conn.fetchrow('SELECT id, name, level FROM "character" WHERE name = $1',
+                                                  server_char.name)
+                    if row:
                         if server_char not in online_characters[current_world]:
                             # If the character wasn't in the globalOnlineList we add them
                             # (We insert them at the beginning of the list to avoid messing with the death checks order)
                             online_characters[current_world].insert(0, server_char)
-                            await self.check_death(server_char.name)
-                        # Else we check for levelup
-                        else:
-                            # Update character info in global_online_list
-                            online_characters[current_world][online_characters[current_world].index(server_char)] = server_char
-                            if server_char.level > result["level"] > 0:
-                                # Saving level up date in database
-                                c.execute(
-                                    "INSERT INTO char_levelups (char_id,level,date) VALUES(?,?,?)",
-                                    (result["id"], server_char.level, time.time(),)
-                                )
-                                # Announce the level up
-                                await self.announce_level(server_char.level, char_name=server_char.name)
+                        try:
+                            # Update character in the list
+                            _char_index = online_characters[current_world].index(server_char)
+                            online_characters[current_world][_char_index].level = server_char
+                            _char = await get_character(self.bot, server_char.name)
+                            await self.compare_levels(_char)
+                            await self.compare_deaths(_char)
+                        except NetworkError:
+                            continue
+                        except (ValueError, IndexError):
+                            continue
             except asyncio.CancelledError:
                 # Task was cancelled, so this is fine
                 break
@@ -347,81 +340,62 @@ class Tracking:
             except discord.HTTPException:
                 pass
 
-    async def check_offline_char(self, offline_char: Character):
+    async def compare_levels(self, char: Character):
         # Check for deaths and level ups when removing from online list
-        try:
-            name = offline_char.name
-            offline_char = await get_character(self.bot, name)
-        except NetworkError:
-            log.error(f"check_offline_char: Could not fetch {name}, NetWorkError")
-            return
-        if offline_char is None:
+        if char is None:
             return
         async with self.bot.pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT id, name, level FROM "character" WHERE name = $1', name)
-            if row:
-                await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', row["level"], row["id"])
-                if offline_char.level > row["level"] > 0:
-                    # Saving level up date in database
-                    await conn.execute("INSERT INTO character_levelup(character_id, level) VALUES($1, $2)",
-                                       row["id"], offline_char.level)
-                    # Announce the level up
-                    await self.announce_level(offline_char.level, char=offline_char)
-                await self.check_death(offline_char.name)
-
-    async def check_death(self, character):
-        """Checks if the player has new deaths"""
-        try:
-            char = await get_character(character, bot=self.bot)
-            if char is None:
-                # During server save, characters can't be read sometimes
+            row = await conn.fetchrow('SELECT id, name, level FROM "character" WHERE name = $1', char.name)
+            if not row:
                 return
-        except NetworkError:
-            log.warning("check_death: couldn't fetch {0}".format(character))
-            return
-        c = userDatabase.cursor()
-        c.execute("SELECT name, id FROM chars WHERE name LIKE ?", (character,))
-        result = c.fetchone()
-        if result is None:
-            return
-        char_id = result["id"]
-        pending_deaths = []
-        for death in char.deaths:
-            death_time = death.time.timestamp()
-            # Check if we have a death that matches the time
-            c.execute("SELECT * FROM char_deaths "
-                      "WHERE char_id = ? AND date >= ? AND date <= ? AND level = ? AND killer LIKE ?",
-                      (char_id, death_time - 20, death_time + 20, death.level, death.killer))
-            result = c.fetchone()
-            if result is not None:
-                # We already have this death, we're assuming we already have older deaths
-                break
-            pending_deaths.append(death)
-        c.close()
+            await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', row["level"], row["id"])
+            if char.level > row["level"] > 0:
+                # Saving level up date in database
+                await conn.execute("INSERT INTO character_levelup(character_id, level) VALUES($1, $2)",
+                                   row["id"], char.level)
+                # Announce the level up
+                await self.announce_level(char, char.level)
 
-        # Announce and save deaths from older to new
-        for death in reversed(pending_deaths):
-            with userDatabase as con:
-                con.execute("INSERT INTO char_deaths(char_id, level, killer, byplayer, date) VALUES(?,?,?,?,?)",
-                            (char_id, death.level, death.killer, death.by_player, death.time.timestamp()))
-            if time.time() - death.time.timestamp() >= (30 * 60):
-                log.info("Death detected, too old to announce: {0}({1.level}) | {1.killer}".format(character, death))
-            else:
-                await self.announce_death(death, max(death.level - char.level, 0), char)
+    async def compare_deaths(self, char: Character):
+        """Checks if the player has new deaths"""
+        if char is None:
+            return
+        async with self.bot.pool.acquire() as conn:
+            char_id = await conn.fetchval('SELECT id FROM "character" WHERE name = $1', char.name)
+            if char_id is None:
+                return
+            pending_deaths = []
+            for death in char.deaths:
+                death_time = death.time.timestamp()
+                # Check if we have a death that matches the time
+                _id = await conn.fetchval("""SELECT id FROM character_death d
+                                             INNER JOIN character_death_killer dk ON dk.death_id = d.id
+                                             WHERE character_id = $1 AND date = $2 AND name = $3" AND level = $4
+                                             AND position = 0""",
+                                          char_id, death_time, death.killer, death.level)
+                if _id is not None:
+                    # We already have this death, we're assuming we already have older deaths
+                    break
+                pending_deaths.append(death)
+            # Announce and save deaths from older to new
+            for death in reversed(pending_deaths):
+                death_id = await conn.execute("""INSERT INTO character_death(char_id, level, date) VALUES($1, $2, $3)
+                                                 ON CONFLICT DO NOTHING RETURNING id""", char_id, death.level,
+                                              death.time.timestamp())
+                if death_id is None:
+                    continue
+                await conn.execute("INSERT INTO character_death_killer(death_id, name, player) VALUES($1, $2, $3)",
+                                   death_id, death.killer, death.by_player)
+                if time.time() - death.time.timestamp() >= (30 * 60):
+                    log.info("Death detected, too old to announce: {0.name}({1.level}) | {1.killer}".format(char, death))
+                else:
+                    await self.announce_death(char, death, max(death.level - char.level, 0))
 
-    async def announce_death(self, death: Death, levels_lost=0, char: Character = None, char_name: str = None):
+    async def announce_death(self, char: Character, death: Death, levels_lost=0):
         """Announces a level up on the corresponding servers"""
         # Don't announce for low level players
         if char is None:
-            if char_name is None:
-                log.error("announce_death: no character or character name passed.")
-                return
-            try:
-                char = await get_character(char_name, bot=self.bot)
-            except NetworkError:
-                log.warning("announce_death: couldn't fetch character (" + char_name + ")")
-                return
-
+            return
         log.info("Announcing death: {0.name}({1.level}) | {1.killer}".format(char, death))
 
         # Find killer article (a/an)
@@ -433,6 +407,14 @@ class Tracking:
                 killer_article = killer_article[0] + " "
             else:
                 killer_article = ""
+
+        if death.killer in ["death", "energy", "earth", "fire", "Pit Battler", "Pit Berserker", "Pit Blackling",
+                            "Pit Brawler", "Pit Condemned", "Pit Demon", "Pit Destroyer", "Pit Fiend",
+                            "Pit Groveller", "Pit Grunt", "Pit Lord", "Pit Maimer", "Pit Overlord", "Pit Reaver",
+                            "Pit Scourge"] and levels_lost == 0:
+            # Skip element damage deaths unless player lost a level to avoid spam from arena deaths
+            # This will cause a small amount of deaths to not be announced but it's probably worth the tradeoff
+            return
 
         for guild_id, tracked_world in self.bot.tracked_worlds.items():
             guild = self.bot.get_guild(guild_id)
@@ -447,15 +429,6 @@ class Tracking:
             if death.by_player:
                 message = weighed_choice(death_messages_player, vocation=char.vocation, level=death.level,
                                          levels_lost=levels_lost, min_level=min_level)
-            elif death.killer in ["death", "energy", "earth", "fire", "Pit Battler", "Pit Berserker",
-                                  "Pit Blackling",
-                                  "Pit Brawler", "Pit Condemned", "Pit Demon", "Pit Destroyer", "Pit Fiend",
-                                  "Pit Groveller", "Pit Grunt", "Pit Lord", "Pit Maimer", "Pit Overlord",
-                                  "Pit Reaver",
-                                  "Pit Scourge"] and levels_lost == 0:
-                # Skip element damage deaths unless player lost a level to avoid spam from arena deaths
-                # This will cause a small amount of deaths to not be announced but it's probably worth the tradeoff
-                return
             else:
                 message = weighed_choice(death_messages_monster, vocation=char.vocation, level=death.level,
                                          levels_lost=levels_lost, killer=death.killer, min_level=min_level)
@@ -467,34 +440,18 @@ class Tracking:
             # Format extra stylization
             message = f"{config.pvpdeath_emoji if death.by_player else config.death_emoji} {format_message(message)}"
             try:
-                channel = self.bot.get_channel_or_top(guild,
-                                                      _get_server_property(guild.id, "levels_channel", is_int=True))
+                channel_id = await get_server_property(self.bot.pool, guild.id, "levels_channel")
+                channel = self.bot.get_channel_or_top(guild, channel_id)
                 await channel.send(message[:1].upper() + message[1:])
             except discord.Forbidden:
                 log.warning("announce_death: Missing permissions.")
             except discord.HTTPException:
                 log.warning("announce_death: Malformed message.")
 
-    async def announce_level(self, level, char_name: str = None, char: Character = None):
-        """Announces a level up on corresponding servers
-
-        One of these must be passed:
-        char is a character dictionary
-        char_name is a character's name
-
-        If char_name is passed, the character is fetched here."""
+    async def announce_level(self, char: Character, level: int):
+        """Announces a level up on corresponding servers."""
         if char is None:
-            if char_name is None:
-                log.error("announce_level: no character or character name passed.")
-                return
-            try:
-                char = await get_character(char_name, bot=self.bot)
-                if char is None:
-                    log.warning("announce_level: couldn't fetch character (" + char_name + ")")
-                    return
-            except NetworkError:
-                log.warning("announce_level: couldn't fetch character (" + char_name + ")")
-                return
+            return
 
         log.info("Announcing level up: {0} ({1})".format(char.name, level))
 
@@ -508,8 +465,8 @@ class Tracking:
             if char.world != tracked_world or server.get_member(char.owner) is None:
                 continue
             try:
-                channel = self.bot.get_channel_or_top(server,
-                                                      _get_server_property(server.id, "levels_channel", is_int=True))
+                channel_id = await get_server_property(self.bot.pool, server.id, "levels_channel")
+                channel = self.bot.get_channel_or_top(server, channel_id)
                 # Select a message
                 message = weighed_choice(level_messages, vocation=char.vocation, level=level, min_level=min_level)
                 level_info = {'name': char.name, 'level': level, 'he_she': char.he_she.lower(),

@@ -71,7 +71,8 @@ tables = [
         level smallint,
         date timestamp without time zone,
         PRIMARY KEY (id),
-        FOREIGN KEY (character_id) REFERENCES "character" (id)
+        FOREIGN KEY (character_id) REFERENCES "character" (id),
+        UNIQUE(character_id, date)
     );
     """,
     """
@@ -234,8 +235,7 @@ triggers = [
 async def import_legacy_db(pool: asyncpg.pool.Pool, path):
     legacy_conn = sqlite3.connect(path)
     c = legacy_conn.cursor()
-    conn = await pool.acquire()
-    try:
+    async with pool.acquire() as conn:
         c.execute("""SELECT id, user_id, name, level, vocation, world, guild FROM chars ORDER By id ASC""")
         rows = c.fetchall()
         levelups = []
@@ -298,21 +298,17 @@ async def import_legacy_db(pool: asyncpg.pool.Pool, path):
             for row in bar:
                 server, key, value = row
                 server = int(server)
-                if key in ["prefixes", "times"]:
+                if key == "prefixes":
+                    await conn.execute("""INSERT INTO server_prefixes(server_id, prefixes) VALUES($1, $2)
+                                          ON CONFLICT DO NOTHING""", server, json.loads(value))
+                    continue
+
+                if key in ["times"]:
                     value = json.dumps(json.loads(value))
                 elif key == "commandsonly":
                     value = json.dumps(bool(value))
                 else:
                     value = json.dumps(value)
-                if key == "prefixes":
-                    await conn.execute("""INSERT INTO server_prefixes(server_id, prefixes) VALUES($1, $2)
-                                          ON CONFLICT DO NOTHING""", server, value)
-                else:
-                    await conn.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
-                                          ON CONFLICT DO NOTHING""", server, key, value)
-
-
-
-    finally:
-        await pool.release(conn)
+                await conn.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
+                                      ON CONFLICT DO NOTHING""", server, key, value)
 
