@@ -665,7 +665,8 @@ class Tibia:
             await ctx.send(embed=self.get_house_embed(ctx, house))
 
     @commands.group(aliases=['levelups'], invoke_without_command=True, case_insensitive=True)
-    @checks.is_in_tracking_world()
+    @checks.is_tracking_world()
+    @checks.can_embed()
     async def levels(self, ctx: NabCtx, *, name: str=None):
         """Shows a character's or everyone's recent level ups.
 
@@ -674,90 +675,66 @@ class Tibia:
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if ctx.is_private:
-            user_guilds = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_guilds = [ctx.guild]
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-
-        c = userDatabase.cursor()
         entries = []
         author = None
         author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
         per_page = 20 if ctx.long else 5
-        await ctx.channel.trigger_typing()
-        try:
-            if name is None:
-                title = "Latest level ups"
-                c.execute("SELECT char_levelups.level, date, name, user_id, world, vocation "
-                          "FROM char_levelups, chars "
-                          "WHERE char_id = id AND char_levelups.level >= ? "
-                          "ORDER BY date DESC", (config.announce_threshold, ))
-                while True:
-                    row = c.fetchone()
-                    if row is None:
-                        break
-                    user = self.bot.get_member(row["user_id"], user_guilds)
-                    if user is None:
-                        continue
-                    if row["world"] not in user_worlds:
-                        continue
-                    count += 1
-                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                    row["user"] = user.display_name
-                    row["emoji"] = get_voc_emoji(row["vocation"])
-                    entries.append("{emoji} {name} - Level **{level}** - (**@{user}**) - *{time} ago*".format(**row))
-                    if count >= 100:
-                        break
-            else:
-                c.execute("SELECT id, name, user_id, vocation FROM chars WHERE name LIKE ?", (name,))
-                result = c.fetchone()
-                if result is None:
-                    await ctx.send("I don't have a character with that name registered.")
-                    return
-                # If user doesn't share a server with the owner, don't display it
-                owner = self.bot.get_member(result["user_id"], user_guilds)
+        if name is None:
+            title = "Latest level ups"
+            async with ctx.pool.acquire() as conn:
+                async with conn.transaction():
+                    async for row in conn.cursor("""SELECT name, user_id, world, vocation, l.level, date
+                                                    FROM character_levelup l
+                                                    LEFT JOIN "character" c ON c.id = l.character_id
+                                                    WHERE l.level >= $1 AND world = $2
+                                                    ORDER BY date DESC""", config.announce_threshold, ctx.world):
+                        user = self.bot.get_member(row["user_id"], ctx.guild)
+                        if user is None:
+                            continue
+                        count += 1
+                        level_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
+                        user_name = user.display_name
+                        emoji = get_voc_emoji(row["vocation"])
+                        entries.append("{emoji} {name} - Level **{level}** - (**@{user}**) - *{time} ago*"
+                                       .format(**row, time=level_time, user=user_name, emoji=emoji))
+                        if count >= 100:
+                            break
+        else:
+            async with ctx.pool.acquire() as conn:
+                char = await conn.fetchrow('SELECT id, user_id, name, vocation FROM "character" WHERE lower(name) = $1',
+                                           name.lower())
+                if char is None:
+                    return await ctx.send("I don't have a character with that name registered.")
+                owner = self.bot.get_member(char["user_id"], ctx.guild)
                 if owner is None:
-                    await ctx.send("I don't have a character with that name registered.")
-                    return
+                    return await ctx.send("I don't have a character with that name registered.")
                 author = owner.display_name
                 author_icon = owner.avatar_url
-                name = result["name"]
-                emoji = get_voc_emoji(result["vocation"])
+                name = char["name"]
+                emoji = get_voc_emoji(char["vocation"])
                 title = f"{emoji} {name} latest level ups"
-                c.execute("SELECT char_levelups.level, date FROM char_levelups, chars "
-                          "WHERE id = char_id AND name LIKE ? "
-                          "ORDER BY date DESC", (name,))
-                while True:
-                    row = c.fetchone()
-                    if row is None:
-                        break
-                    count += 1
-                    row["time"] = get_time_diff(dt.timedelta(seconds=now-row["date"]))
-                    entries.append("Level **{level}** - *{time} ago*".format(**row))
-                    if count >= 100:
-                        break
-        finally:
-            c.close()
-
-        if count == 0:
-            await ctx.send("There are no registered levels.")
-            return
+                async with conn.transaction():
+                    async for row in conn.cursor("""SELECT l.level, date
+                                                    FROM character_levelup l
+                                                    LEFT JOIN "character" c ON c.id = l.character_id
+                                                    WHERE character_id = $1
+                                                    ORDER BY date DESC""", char["id"]):
+                        count += 1
+                        level_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
+                        entries.append("Level **{level}** - *{time} ago*".format(**row, time=level_time))
+                        if count >= 100:
+                            break
+            if count == 0:
+                await ctx.send("There are no registered levels.")
+                return
 
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
-        pages.embed.set_author(name=author, icon_url=author_icon)
+        if author is not None:
+            pages.embed.set_author(name=author, icon_url=author_icon)
+
         try:
             await pages.paginate()
         except CannotPaginate as e:
