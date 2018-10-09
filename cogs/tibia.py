@@ -115,10 +115,10 @@ class Tibia:
             return
 
         if ctx.is_private:
-            user_guilds = self.bot.get_user_guilds(ctx.author.id)
+            user_servers = self.bot.get_user_guilds(ctx.author.id)
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
-            user_guilds = [ctx.guild]
+            user_servers = [ctx.guild]
             user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None and name is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
@@ -148,7 +148,7 @@ class Tibia:
                     if row["world"] not in user_worlds:
                         continue
 
-                    user = self._get_cached_user_(self, row["user_id"], user_unknown, users_cache, user_guilds)
+                    user = self._get_cached_user_(self, row["user_id"], user_unknown, users_cache, user_servers)
                     if user == user_unknown:
                         continue
 
@@ -226,10 +226,10 @@ class Tibia:
             await ctx.send(e)
 
     @staticmethod
-    def _get_cached_user_(self, user_id, user_unknown, users_cache, user_guilds):
+    def _get_cached_user_(self, user_id, user_unknown, users_cache, user_servers):
         cached_user = users_cache.get(user_id)
         if cached_user is None:
-            member_user = self.bot.get_member(user_id, user_guilds)
+            member_user = self.bot.get_member(user_id, user_servers)
             cached_user = user_unknown if member_user is None else member_user
             users_cache[user_id] = cached_user
         return cached_user
@@ -737,10 +737,10 @@ class Tibia:
             return
 
         if ctx.is_private:
-            user_guilds = self.bot.get_user_guilds(ctx.author.id)
+            user_servers = self.bot.get_user_guilds(ctx.author.id)
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
-            user_guilds = [ctx.guild]
+            user_servers = [ctx.guild]
             user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
@@ -754,6 +754,8 @@ class Tibia:
         now = time.time()
         per_page = 20 if ctx.long else 5
         await ctx.channel.trigger_typing()
+        user_cache = dict()
+        user_unknown = "unknown"
         try:
             if name is None:
                 title = "Latest level ups"
@@ -765,11 +767,13 @@ class Tibia:
                     row = c.fetchone()
                     if row is None:
                         break
-                    user = self.bot.get_member(row["user_id"], user_guilds)
-                    if user is None:
-                        continue
                     if row["world"] not in user_worlds:
                         continue
+                        
+                    user = self._get_cached_user_(self, row["user_id"], user_unknown, user_cache, user_servers)
+                    if user == user_unknown:
+                        continue
+
                     count += 1
                     row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                     row["user"] = user.display_name
@@ -784,7 +788,7 @@ class Tibia:
                     await ctx.send("I don't have a character with that name registered.")
                     return
                 # If user doesn't share a server with the owner, don't display it
-                owner = self.bot.get_member(result["user_id"], user_guilds)
+                owner = self.bot.get_member(result["user_id"], user_servers)
                 if owner is None:
                     await ctx.send("I don't have a character with that name registered.")
                     return
@@ -1301,6 +1305,8 @@ class Tibia:
         now = time.time()
         per_page = 20 if ctx.long else 5
         await ctx.channel.trigger_typing()
+        user_cache = dict()
+        user_unknown = "unknown"
         try:
             if name is None:
                 title = "Timeline"
@@ -1316,11 +1322,13 @@ class Tibia:
                     row = c.fetchone()
                     if row is None:
                         break
-                    user = self.bot.get_member(row["user_id"], user_servers)
-                    if user is None:
-                        continue
                     if row["world"] not in user_worlds:
                         continue
+
+                    user = self._get_cached_user_(self, row["user_id"], user_unknown, user_cache, user_servers)
+                    if user == user_unknown:
+                        continue
+
                     count += 1
                     row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                     row["user"] = user.display_name
