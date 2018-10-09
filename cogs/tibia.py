@@ -15,7 +15,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import _get_server_property, userDatabase, _set_server_property
+from .utils.database import get_server_property, set_server_property
 from .utils import get_time_diff, join_list, online_characters, get_local_timezone, log, \
     is_numeric, get_user_avatar, config
 from .utils.messages import html_to_markdown, get_first_image, split_message
@@ -232,7 +232,7 @@ class Tibia:
             name_with_article = "a " + name
         async with ctx.pool.acquire() as conn:
             async with conn.transaction():
-                async for row in conn.cursor("""SELECT c.name, user_id, vocation, world, d.level, date, 
+                async for row in conn.cursor("""SELECT c.name, user_id, vocation, world, d.level, date,
                                                 k.name as killer, player
                                                 FROM character_death_killer k
                                                 LEFT JOIN character_death d ON d.id = k.death_id
@@ -357,7 +357,7 @@ class Tibia:
                 async for row in conn.cursor("""SELECT COUNT(*), user_id
                                                 FROM character_death d
                                                 LEFT JOIN "character" c on c.id = d.character_id
-                                                WHERE CURRENT_TIMESTAMP-date < $1 AND world = $2 
+                                                WHERE CURRENT_TIMESTAMP-date < $1 AND world = $2
                                                 AND user_id != 0
                                                 GROUP by user_id
                                                 ORDER BY count DESC""", period, ctx.world):
@@ -690,7 +690,7 @@ class Tibia:
                                                     LEFT JOIN "character" c ON c.id = l.character_id
                                                     WHERE l.level >= $1 AND world = $2
                                                     ORDER BY date DESC""", config.announce_threshold, ctx.world):
-                        user = self.bot.get_member(row["user_id"], ctx.guild)
+                        user = ctx.guild.get_member(row["user_id"])
                         if user is None:
                             continue
                         count += 1
@@ -707,7 +707,7 @@ class Tibia:
                                            name.lower())
                 if char is None:
                     return await ctx.send("I don't have a character with that name registered.")
-                owner = self.bot.get_member(char["user_id"], ctx.guild)
+                owner = ctx.guild.get_member(char["user_id"])
                 if owner is None:
                     return await ctx.send("I don't have a character with that name registered.")
                 author = owner.display_name
@@ -741,57 +741,36 @@ class Tibia:
             await ctx.send(e)
 
     @levels.command(name="user")
-    @checks.is_in_tracking_world()
+    @checks.is_tracking_world()
+    @checks.can_embed()
     async def levels_user(self, ctx: NabCtx, *, name: str):
         """Shows a user's recent level ups on their registered characters."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if ctx.is_private:
-            user_servers = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_servers = [ctx.guild]
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-
-        user = self.bot.get_member(name, user_servers)
+        user = self.bot.get_member(name, ctx.guild)
         if user is None:
             await ctx.send("I don't see any users with that name.")
             return
 
-        c = userDatabase.cursor()
         count = 0
         entries = []
         now = time.time()
         per_page = 20 if ctx.long else 5
-
-        try:
-            c.execute("SELECT name, world, char_levelups.level, date, vocation "
-                      "FROM chars, char_levelups "
-                      "WHERE char_id = id AND user_id = ? "
-                      "ORDER BY date DESC", (user.id,))
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                if row["world"] not in user_worlds:
-                    continue
-                count += 1
-                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                row["emoji"] = get_voc_emoji(row["vocation"])
-                entries.append("{emoji} {name} - Level **{level}** - *{time} ago*".format(**row))
-                if count >= 100:
-                    break
-            if count == 0:
-                await ctx.send("There are not registered level ups by this user.")
-                return
-        finally:
-            c.close()
+        async with ctx.pool.acquire() as conn:
+            async with conn.transaction():
+                async for row in conn.cursor("""SELECT name, l.level, date, world, vocation
+                                                FROM character_levelup l
+                                                LEFT JOIN "character" c on c.id = l.character_id
+                                                WHERE user_id = $1 AND world = $2
+                                                ORDER BY date DESC""", user.id, ctx.world):
+                    count += 1
+                    level_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
+                    emoji = get_voc_emoji(row["vocation"])
+                    entries.append("{emoji} {name} - Level **{level}** - *{time} ago*".format(**row, time=level_time,
+                                                                                              emoji=emoji))
+                    if count >= 100:
+                        break
+        if count == 0:
+            await ctx.send("There are not registered level ups by this user.")
+            return
 
         title = f"{user.display_name} latest level ups"
         pages = Pages(ctx, entries=entries, per_page=per_page)
@@ -1187,7 +1166,8 @@ class Tibia:
                                    stats["exp"], stats["exp_tnl"]))
 
     @commands.group(aliases=["story"], invoke_without_command=True, case_insensitive=True)
-    @checks.is_in_tracking_world()
+    @checks.is_tracking_world()
+    @checks.can_embed()
     async def timeline(self, ctx: NabCtx, *, name: str = None):
         """Shows a character's recent level ups and deaths.
 
@@ -1198,22 +1178,6 @@ class Tibia:
         - 🌟 Indicates level ups
         - 💀 Indicates deaths
         """
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if ctx.is_private:
-            user_servers = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_servers = [ctx.guild]
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-
-        c = userDatabase.cursor()
         entries = []
         author = None
         author_icon = discord.Embed.Empty
@@ -1221,88 +1185,87 @@ class Tibia:
         now = time.time()
         per_page = 20 if ctx.long else 5
         await ctx.channel.trigger_typing()
-        try:
-            if name is None:
-                title = "Timeline"
-                c.execute("SELECT name, user_id, world, char_deaths.level as level, killer, 'death' AS `type`, date, "
-                          "vocation "
-                          "FROM char_deaths, chars WHERE char_id = id AND char_deaths.level >= ? "
-                          "UNION "
-                          "SELECT name, user_id, world, char_levelups.level as level, null, 'levelup' AS `type`, date, "
-                          "vocation "
-                          "FROM char_levelups, chars WHERE char_id = id AND char_levelups.level >= ? "
-                          "ORDER BY date DESC", (config.announce_threshold, config.announce_threshold))
-                while True:
-                    row = c.fetchone()
-                    if row is None:
-                        break
-                    user = self.bot.get_member(row["user_id"], user_servers)
-                    if user is None:
-                        continue
-                    if row["world"] not in user_worlds:
-                        continue
-                    count += 1
-                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                    row["user"] = user.display_name
-                    row["voc_emoji"] = get_voc_emoji(row["vocation"])
-                    if row["type"] == "death":
-                        row["emoji"] = config.death_emoji
-                        entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - At level **{level}** by {killer} - "
-                                       "*{time} ago*".format(**row))
-                    else:
-                        row["emoji"] = config.levelup_emoji
-                        entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - Level **{level}** - *{time} ago*"
-                                       .format(**row))
-                    if count >= 200:
-                        break
-            else:
-                c.execute("SELECT id, name, user_id, vocation FROM chars WHERE name LIKE ?", (name,))
-                result = c.fetchone()
-                if result is None:
-                    await ctx.send("I don't have a character with that name registered.")
-                    return
-                # If user doesn't share a server with the owner, don't display it
-                owner = self.bot.get_member(result["user_id"], user_servers)
+        if name is None:
+            title = "Timeline"
+            async with ctx.pool.acquire() as conn:
+                async with conn.transaction():
+                    async for row in conn.cursor("""(SELECT c.user_id, c.name, c.vocation, d.level, k.name as killer,
+                                                    'death' AS type, d.date
+                                                    FROM character_death d
+                                                    LEFT JOIN character_death_killer k ON k.death_id = d.id
+                                                    LEFT JOIN "character" c ON c.id = d.character_id
+                                                    WHERE world = $1 AND d.level >= $2)
+                                                    UNION
+                                                    (SELECT c.user_id, c.name, c.vocation, l.level, NULL,
+                                                    'level' AS type, l.date
+                                                    FROM character_levelup l
+                                                    LEFT JOIN "character" c ON c.id = l.character_id
+                                                    WHERE world = $1 AND l.level >= $2)
+                                                    ORDER by DATE DESC""", ctx.world, config.announce_threshold):
+                        user = ctx.guild.get_member(row["user_id"])
+                        if user is None:
+                            continue
+                        count += 1
+                        entry_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
+                        user_name = user.display_name
+                        voc_emoji = get_voc_emoji(row["vocation"])
+                        if row["type"] == "death":
+                            emoji = config.death_emoji
+                            entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - At level **{level}** by {killer} "
+                                           "- *{time} ago*".format(**row, voc_emoji=voc_emoji, user=user_name,
+                                                                   time=entry_time, emoji=emoji))
+                        else:
+                            emoji = config.levelup_emoji
+                            entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - Level **{level}** - *{time} ago*"
+                                           .format(**row, voc_emoji=voc_emoji, user=user_name, time=entry_time,
+                                                   emoji=emoji))
+                        if count >= 200:
+                            break
+        else:
+            async with ctx.pool.acquire() as conn:
+                char = await conn.fetchrow("""SELECT id, name, vocation, user_id FROM "character"
+                                              WHERE lower(name) = $1 AND world = $2""", name.lower(), ctx.world)
+                if char is None:
+                    return await ctx.send("I don't have a character with that name registered.")
+                owner = ctx.guild.get_member(char["user_id"])
                 if owner is None:
-                    await ctx.send("I don't have a character with that name registered.")
-                    return
+                    return await ctx.send("I don't have a character with that name registered.")
                 author = owner.display_name
                 author_icon = owner.avatar_url
-                name = result["name"]
-                emoji = get_voc_emoji(result["vocation"])
+                name = char["name"]
+                emoji = get_voc_emoji(char["vocation"])
                 title = f"{emoji} {name} timeline"
-                c.execute("SELECT level, killer, 'death' AS `type`, date "
-                          "FROM char_deaths WHERE char_id = ? AND level >= ? "
-                          "UNION "
-                          "SELECT level, null, 'levelup' AS `type`, date "
-                          "FROM char_levelups WHERE char_id = ? AND level >= ? "
-                          "ORDER BY date DESC", (result["id"], config.announce_threshold, result["id"], config.announce_threshold))
-                while True:
-                    row = c.fetchone()
-                    if row is None:
-                        break
-                    count += 1
-                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                    if row["type"] == "death":
-                        row["emoji"] = config.death_emoji
-                        entries.append("{emoji} At level **{level}** by {killer} - *{time} ago*"
-                                       .format(**row)
-                                       )
-                    else:
-                        row["emoji"] = config.levelup_emoji
-                        entries.append("{emoji} Level **{level}** - *{time} ago*".format(**row))
-                    if count >= 200:
-                        break
-        finally:
-            c.close()
-
+                async with conn.transaction():
+                    async for row in conn.cursor("""(SELECT d.level, k.name as killer, 'death' AS type, d.date
+                                                    FROM character_death d
+                                                    LEFT JOIN character_death_killer k ON k.death_id = d.id
+                                                    WHERE character_id = $1)
+                                                    UNION
+                                                    (SELECT l.level, NULL, 'level' AS type, l.date
+                                                    FROM character_levelup l
+                                                    WHERE character_id = $1)
+                                                    ORDER by DATE DESC""", char["id"]):
+                        count += 1
+                        entry_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
+                        if row["type"] == "death":
+                            emoji = config.death_emoji
+                            entries.append("{emoji} At level **{level}** by {killer} - *{time} ago*"
+                                           .format(**row, time=entry_time, emoji=emoji)
+                                           )
+                        else:
+                            emoji = config.levelup_emoji
+                            entries.append("{emoji} Level **{level}** - *{time} ago*".format(**row, time=entry_time,
+                                                                                             emoji=emoji))
+                        if count >= 200:
+                            break
         if count == 0:
             await ctx.send("There are no registered events.")
             return
 
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
-        pages.embed.set_author(name=author, icon_url=author_icon)
+        if author is not None:
+            pages.embed.set_author(name=author, icon_url=author_icon)
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -1312,66 +1275,46 @@ class Tibia:
     @checks.is_in_tracking_world()
     async def timeline_user(self, ctx: NabCtx, *, name: str):
         """Shows a users's recent level ups and deaths on their characters."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if name is None:
-            await ctx.send("You must tell me a user's name to look for his/her story.")
-            return
-
-        if ctx.is_private:
-            user_servers = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_servers = [ctx.guild]
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-
-        user = self.bot.get_member(name, user_servers)
+        user = self.bot.get_member(name, ctx.guild)
         if user is None:
             await ctx.send("I don't see any users with that name.")
             return
 
-        c = userDatabase.cursor()
         entries = []
         count = 0
         now = time.time()
         per_page = 20 if ctx.long else 5
 
-        await ctx.channel.trigger_typing()
-        try:
+        async with ctx.pool.acquire() as conn:
             title = f"{user.display_name} timeline"
-            c.execute("SELECT name, user_id, world, char_deaths.level AS level, killer, 'death' AS `type`, date, vocation "
-                      "FROM char_deaths, chars WHERE char_id = id AND char_deaths.level >= ? AND user_id = ? "
-                      "UNION "
-                      "SELECT name, user_id, world, char_levelups.level as level, null, 'levelup' AS `type`, date, vocation "
-                      "FROM char_levelups, chars WHERE char_id = id AND char_levelups.level >= ? AND user_id = ? "
-                      "ORDER BY date DESC", (config.announce_threshold, user.id, config.announce_threshold, user.id))
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                if row["world"] not in user_worlds:
-                    continue
-                count += 1
-                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                row["voc_emoji"] = get_voc_emoji(row["vocation"])
-                if row["type"] == "death":
-                    row["emoji"] = config.death_emoji
-                    entries.append("{emoji}{voc_emoji} {name} - At level **{level}** by {killer} - *{time} ago*"
-                                   .format(**row)
-                                   )
-                else:
-                    row["emoji"] = config.levelup_emoji
-                    entries.append("{emoji}{voc_emoji} {name} - Level **{level}** - *{time} ago*".format(**row))
-                if count >= 200:
-                    break
-        finally:
-            c.close()
+            async with conn.transaction():
+                async for row in conn.cursor("""(SELECT c.name, c.vocation, d.level, k.name as killer,
+                                                'death' AS type, d.date
+                                                FROM character_death d
+                                                LEFT JOIN character_death_killer k ON k.death_id = d.id
+                                                LEFT JOIN "character" c ON c.id = d.character_id
+                                                WHERE world = $1 AND user_id = $2)
+                                                UNION
+                                                (SELECT c.name, c.vocation, l.level, NULL,
+                                                'level' AS type, l.date
+                                                FROM character_levelup l
+                                                LEFT JOIN "character" c ON c.id = l.character_id
+                                                WHERE world = $1 AND user_id = $2)
+                                                ORDER by DATE DESC""", ctx.world, user.id):
+                    count += 1
+                    entry_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
+                    voc_emoji = get_voc_emoji(row["vocation"])
+                    if row["type"] == "death":
+                        emoji = config.death_emoji
+                        entries.append("{emoji}{voc_emoji} {name} - At level **{level}** by {killer} - *{time} ago*"
+                                       .format(**row, time=entry_time, voc_emoji=voc_emoji, emoji=emoji)
+                                       )
+                    else:
+                        emoji = config.levelup_emoji
+                        entries.append("{emoji}{voc_emoji} {name} - Level **{level}** - *{time} ago*"
+                                       .format(**row, time=entry_time, voc_emoji=voc_emoji, emoji=emoji))
+                    if count >= 200:
+                        break
 
         if count == 0:
             await ctx.send("There are no registered events.")
@@ -1411,7 +1354,7 @@ class Tibia:
         if ctx.is_private:
             return await ctx.send(reply)
 
-        saved_times = _get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        saved_times = await get_server_property(ctx.pool, ctx.guild.id, "times", default=[])
         if not saved_times:
             return await ctx.send(reply)
         time_entries = sorted(saved_times, key=lambda k: now.astimezone(pytz.timezone(k["timezone"])).utcoffset())
@@ -1455,13 +1398,13 @@ class Tibia:
         if len(display_name) > 40:
             return await ctx.send(f"{ctx.tick(False)} The display name can't be longer than 40 characters.")
 
-        saved_times = _get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        saved_times = await get_server_property(ctx.pool, ctx.guild.id, "times", default=[])
         if any(e["name"].lower() == display_name.lower() for e in saved_times):
             return await ctx.send(f"{ctx.tick(False)} There's already a saved timezone with that display name,"
                                   f"please use the command again.")
 
         saved_times.append({"name": display_name.strip(), "timezone": _timezone})
-        _set_server_property(ctx.guild.id, "times", saved_times, serialize=True)
+        await set_server_property(ctx.pool, ctx.guild.id, "times", saved_times)
         await ctx.send(f"{ctx.tick()} Timezone `{_timezone}` saved successfully as `{display_name.strip()}`.")
 
     @checks.is_mod()
@@ -1472,7 +1415,7 @@ class Tibia:
         """Shows a list of all the currently added timezones.
 
         Only Server Moderators can use this command."""
-        saved_times = _get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        saved_times = await get_server_property(ctx.pool, ctx.guild.id, "times", default=[])
         if not saved_times:
             return await ctx.send(f"{ctx.tick(False)} There are no saved times for this server.")
 
@@ -1491,14 +1434,14 @@ class Tibia:
 
         Only Server Moderators can use this command."""
         _timezone = _timezone.strip()
-        saved_times: list = _get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        saved_times: list = await get_server_property(ctx.pool, ctx.guild.id, "times", default=[])
         if not saved_times:
             return await ctx.send(f"{ctx.tick(False)} There are no saved times for this server.")
 
         for entry in saved_times:
             if entry["name"].lower() == _timezone.lower():
                 saved_times.remove(entry)
-                _set_server_property(ctx.guild.id, "times", saved_times, serialize=True)
+                await set_server_property(ctx.pool, ctx.guild.id, "times", saved_times)
                 return await ctx.send(f"{ctx.tick()} Timezone `{entry['name']}` removed succesfully.")
         await ctx.send(f"{ctx.tick(False)} There's no timezone named `{_timezone}`.")
 
@@ -1518,7 +1461,7 @@ class Tibia:
         """
         if ctx.is_lite:
             try:
-                char = await get_character(name)
+                char = await get_character(ctx.bot, name)
                 if char is None:
                     await ctx.send("I couldn't find a character with that name")
                     return
@@ -1535,7 +1478,7 @@ class Tibia:
             return
 
         try:
-            char = await get_character(name, bot=self.bot)
+            char = await get_character(ctx.bot, name)
         except NetworkError:
             await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
             return
@@ -1550,7 +1493,7 @@ class Tibia:
         user = self.bot.get_member(name, guild_filter)
         if user is not None and user.bot:
             user = None
-        embed = self.get_user_embed(ctx, user)
+        embed = await self.get_user_embed(ctx, user)
 
         # No user or char with that name
         if char is None and user is None:
@@ -1591,18 +1534,11 @@ class Tibia:
                     else:
                         user_tibia_worlds = [self.bot.tracked_worlds[ctx.guild.id]]
                 if len(user_tibia_worlds) != 0:
-                    placeholders = ", ".join("?" for w in user_tibia_worlds)
-                    c = userDatabase.cursor()
-                    try:
-                        c.execute("SELECT name, ABS(level) as level "
-                                  "FROM chars "
-                                  "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
-                                  tuple(user_tibia_worlds))
-                        character = c.fetchone()
-                    finally:
-                        c.close()
+                    character = await ctx.pool.fetchrow("""SELECT name, abs(level) as level FROM "character"
+                                                           WHERE user_id = $1 and world = any($2)
+                                                           ORDER by level DESC""", user.id, user_tibia_worlds)
                     if character:
-                        char = await get_character(character["name"])
+                        char = await get_character(ctx.bot, character["name"])
                         char_string = self.get_char_string(char)
                         if char is not None:
                             char_embed = discord.Embed(description=char_string)
@@ -1618,7 +1554,7 @@ class Tibia:
                 owner = None if char.owner == 0 else self.bot.get_member(char.owner, guild_filter)
                 if owner is not None:
                     # Char is owned by a discord user
-                    embed = self.get_user_embed(ctx, owner)
+                    embed = await self.get_user_embed(ctx, owner)
                     if embed is None:
                         embed = discord.Embed(description="")
                     embed.add_field(name="Character", value=char_string, inline=False)
@@ -1837,7 +1773,7 @@ class Tibia:
 
         return reply
 
-    def get_user_embed(self, ctx: NabCtx, user: discord.Member) -> Optional[discord.Embed]:
+    async def get_user_embed(self, ctx: NabCtx, user: discord.Member) -> Optional[discord.Embed]:
         if user is None:
             return None
         embed = discord.Embed()
@@ -1856,33 +1792,27 @@ class Tibia:
         if len(user_tibia_worlds) == 0:
             return None
         embed.set_thumbnail(url=user.avatar_url)
-
-        placeholders = ", ".join("?" for w in user_tibia_worlds)
-        c = userDatabase.cursor()
-        try:
-            c.execute("SELECT name, ABS(level) as level, vocation "
-                      "FROM chars "
-                      "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
-                      tuple(user_tibia_worlds))
-            characters = c.fetchall()
-            if not characters:
-                embed.description = f"I don't know who **{display_name}** is..."
-                return embed
-            online_list = [x.name for v in online_characters.values() for x in v]
-            char_list = []
-            for char in characters:
-                char["online"] = config.online_emoji if char["name"] in online_list else ""
-                char["vocation"] = get_voc_abb(char["vocation"])
-                char["url"] = url_character + urllib.parse.quote(char["name"].encode('iso-8859-1'))
-                if len(characters) <= 10:
-                    char_list.append("[{name}]({url}){online} (Lvl {level} {vocation})".format(**char))
-                else:
-                    char_list.append("**{name}**{online} (Lvl {level} {vocation})".format(**char))
-                char_string = "@**{0.display_name}**'s character{1}: {2}"
-                plural = "s are" if len(char_list) > 1 else " is"
-                embed.description = char_string.format(user, plural, join_list(char_list, ", ", " and "))
-        finally:
-            c.close()
+        characters = await ctx.pool.fetch("""SELECT name, abs(level) AS level, vocation
+                                             FROM "character"
+                                             WHERE user_id = $1 AND world = any($2)
+                                             ORDER BY level DESC""", user.id, user_tibia_worlds)
+        if not characters:
+            embed.description = f"I don't know who **{display_name}** is..."
+            return embed
+        online_list = [x.name for v in online_characters.values() for x in v]
+        char_list = []
+        for char in characters:
+            online = config.online_emoji if char["name"] in online_list else ""
+            voc_abb = get_voc_abb(char["vocation"])
+            char_url = url_character + urllib.parse.quote(char["name"].encode('iso-8859-1'))
+            if len(characters) <= 10:
+                char_list.append("[{name}]({url}){online} (Lvl {level} {voc})".format(**char, url=char_url, voc=voc_abb,
+                                                                                      online=online))
+            else:
+                char_list.append("**{name}**{online} (Lvl {level} {voc})".format(**char, voc=voc_abb, online=online))
+            char_string = "@**{0.display_name}**'s character{1}: {2}"
+            plural = "s are" if len(char_list) > 1 else " is"
+            embed.description = char_string.format(user, plural, join_list(char_list, ", ", " and "))
         return embed
 
     @staticmethod
@@ -1967,7 +1897,7 @@ class Tibia:
                 for article in new_articles:
                     log.info("Announcing new article: {id} - {title}".format(**article))
                     for guild in self.bot.guilds:
-                        news_channel_id = _get_server_property(guild.id, "news_channel", is_int=True, default=0)
+                        news_channel_id = await get_server_property(self.bot.pool, guild.id, "news_channel", default=0)
                         if news_channel_id == 0:
                             continue
                         channel = self.bot.get_channel_or_top(guild, news_channel_id)

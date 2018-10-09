@@ -66,6 +66,7 @@ def run_bot():
     bot.pool = pool
     bot.run()
 
+
 @click.group(invoke_without_command=True, options_metavar='[options]')
 @click.pass_context
 def main(ctx):

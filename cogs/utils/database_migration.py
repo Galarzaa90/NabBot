@@ -33,8 +33,8 @@ async def create_database(con: asyncpg.connection.Connection):
 
 async def set_version(con: asyncpg.connection.Connection, version):
     await con.execute("""
-        INSERT INTO global_property (key, value) VALUES ('db_version',$1) 
-        ON CONFLICT (key) 
+        INSERT INTO global_property (key, value) VALUES ('db_version',$1)
+        ON CONFLICT (key)
         DO
          UPDATE
            SET value = EXCLUDED.value;
@@ -148,7 +148,7 @@ tables = [
         server_id bigint NOT NULL,
         role_id bigint NOT NULL,
         rule text NOT NULL,
-        PRIMARY KEY (server_id, role_id)
+        PRIMARY KEY (server_id, role_id, rule)
     );
     """,
     """
@@ -211,7 +211,7 @@ functions = [
         AS $$
     BEGIN
         NEW.modified = now();
-        RETURN NEW;   
+        RETURN NEW;
     END;
     $$;
     """
@@ -293,7 +293,8 @@ async def import_legacy_db(pool: asyncpg.pool.Pool, path):
         if skipped_levelups:
             print(f"Skipped {skipped_levelups:,} duplicate level ups.")
 
-        rows = c.execute("SELECT server_id, name, value FROM server_properties")
+        c.execute("SELECT server_id, name, value FROM server_properties")
+        rows = c.fetchall()
         with _progressbar(rows, label="Migrating server properties", show_pos=True) as bar:
             for row in bar:
                 server, key, value = row
@@ -310,5 +311,18 @@ async def import_legacy_db(pool: asyncpg.pool.Pool, path):
                 else:
                     value = json.dumps(value)
                 await conn.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
-                                      ON CONFLICT DO NOTHING""", server, key, value)
+                                      ON CONFLICT(server_id, key) DO NOTHING""", server, key, value)
+        c.execute("SELECT server_id, role_id, guild FROM auto_roles")
+        rows = c.fetchall()
+        with _progressbar(rows, label="Migrating auto roles", show_pos=True) as bar:
+            for row in bar:
+                await conn.execute("""INSERT INTO role_auto(server_id, role_id, rule) VALUES($1, $2, $3)
+                                      ON CONFLICT(server_id, role_id, rule) DO NOTHING""", *row)
+
+        c.execute("SELECT server_id, role_id FROM joinable_roles")
+        rows = c.fetchall()
+        with _progressbar(rows, label="Migrating joinable roles", show_pos=True) as bar:
+            for row in bar:
+                await conn.execute("""INSERT INTO role_joinable(server_id, role_id) VALUES($1, $2)
+                                      ON CONFLICT(server_id, role_id) DO NOTHING""", *row)
 

@@ -27,7 +27,7 @@ async def _prefix_callable(bot, msg):
         base.extend(bot.config.command_prefix)
     else:
         prefixes = await get_prefixes(bot.pool, msg.guild.id)
-        base.extend(prefixes if prefixes is not None else [bot.config.command_prefix])
+        base.extend(prefixes if prefixes is not None else bot.config.command_prefix)
     base = sorted(base, reverse=True)
     return base
 
