@@ -101,6 +101,7 @@ class Tibia:
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.group(aliases=['deathlist'], invoke_without_command=True, case_insensitive=True)
     async def deaths(self, ctx: NabCtx, *, name: str = None):
         """Shows a character's recent deaths.
@@ -108,10 +109,6 @@ class Tibia:
         If this discord server is tracking a tibia world, it will show deaths registered to the character.
         Additionally, if no name is provided, all recent deaths will be shown."""
         if name is None and ctx.is_lite:
-            return
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
             return
 
         if ctx.is_private:
@@ -219,16 +216,11 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
+    @checks.is_tracking_world()
+    @checks.can_embed()
     @deaths.command(name="monster", aliases=["mob", "killer"])
-    @checks.is_in_tracking_world()
     async def deaths_monsters(self, ctx: NabCtx, *, name: str):
         """Shows the latest deaths caused by a specific monster."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        c = userDatabase.cursor()
         count = 0
         entries = []
         now = time.time()
@@ -238,30 +230,31 @@ class Tibia:
             name_with_article = "an " + name
         else:
             name_with_article = "a " + name
-        try:
-            c.execute("SELECT char_deaths.level, date, name, user_id, byplayer, killer, vocation "
-                      "FROM char_deaths, chars "
-                      "WHERE char_id = id AND (killer LIKE ? OR killer LIKE ?) "
-                      "ORDER BY date DESC", (name, name_with_article))
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                user = self.bot.get_member(row["user_id"], ctx.guild)
-                if user is None:
-                    continue
-                count += 1
-                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                row["user"] = user.display_name
-                row["emoji"] = get_voc_emoji(row["vocation"])
-                entries.append("{emoji} {name} (**@{user}**) - At level **{level}** - *{time} ago*".format(**row))
-                if count >= 100:
-                    break
-            if count == 0:
-                await ctx.send("There are no registered deaths by that killer.")
-                return
-        finally:
-            c.close()
+        async with ctx.pool.acquire() as conn:
+            async with conn.transaction():
+                async for row in conn.cursor("""SELECT c.name, user_id, vocation, world, d.level, date, 
+                                                k.name as killer, player
+                                                FROM character_death_killer k
+                                                LEFT JOIN character_death d ON d.id = k.death_id
+                                                LEFT JOIN "character" c on c.id = d.character_id
+                                                WHERE lower(k.name) = $1 OR lower(k.name) = $2 AND world = $3
+                                                ORDER BY date DESC""",
+                                             name.lower(), name_with_article.lower(), ctx.world):
+                    user = self.bot.get_member(row["user_id"], ctx.guild)
+                    if user is None:
+                        continue
+                    count += 1
+                    death_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
+                    user_name = user.display_name
+                    emoji = get_voc_emoji(row["vocation"])
+                    entries.append("{emoji} {name} (**@{user}**) - At level **{level}** - *{time} ago*"
+                                   .format(**row, time=death_time, user=user_name, emoji=emoji))
+                    if count >= 100:
+                        break
+
+        if count == 0:
+            await ctx.send("There are no registered deaths by that killer.")
+            return
 
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = f"{name.title()} latest kills"
@@ -272,60 +265,40 @@ class Tibia:
             await ctx.send(e)
 
     @deaths.command(name="user")
-    @checks.is_in_tracking_world()
+    @checks.can_embed()
+    @checks.is_tracking_world()
     async def deaths_user(self, ctx: NabCtx, *, name: str):
         """Shows a user's recent deaths on his/her registered characters."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if ctx.is_private:
-            user_servers = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_servers = [ctx.guild]
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-
-        user = self.bot.get_member(name, user_servers)
+        user = self.bot.get_member(name, ctx.guild)
         if user is None:
             await ctx.send("I don't see any users with that name.")
             return
 
-        c = userDatabase.cursor()
         count = 0
         entries = []
         now = time.time()
         per_page = 20 if ctx.long else 5
+        async with ctx.pool.acquire() as conn:
+            async with conn.transaction():
+                async for row in conn.cursor("""SELECT d.level, date, player, k.name as killer, user_id, c.name, world,
+                                                vocation
+                                                FROM character_death d
+                                                LEFT JOIN character_death_killer k ON k.death_id = d.id
+                                                LEFT JOIN "character" c on c.id = d.character_id
+                                                WHERE position = 0 AND user_id = $1 AND world = $2
+                                                ORDER BY date DESC """, user.id, ctx.world):
+                    count += 1
+                    death_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
+                    emoji = get_voc_emoji(row["vocation"])
+                    entries.append("{emoji} {name} - At level **{level}** by {killer} - *{time} ago*"
+                                   .format(**row, time=death_time, emoji=emoji))
+                    if count >= 100:
+                        break
+        if count == 0:
+            await ctx.send("There are not registered deaths by this user.")
+            return
 
-        try:
-            c.execute("SELECT name, world, char_deaths.level, killer, byplayer, date, vocation "
-                      "FROM chars, char_deaths "
-                      "WHERE char_id = id AND user_id = ? "
-                      "ORDER BY date DESC", (user.id,))
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                if row["world"] not in user_worlds:
-                    continue
-                count += 1
-                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                row["emoji"] = get_voc_emoji(row["vocation"])
-                entries.append("{emoji} {name} - At level **{level}** by {killer} - *{time} ago*".format(**row))
-
-                if count >= 100:
-                    break
-            if count == 0:
-                await ctx.send("There are not registered deaths by this user.")
-                return
-        finally:
-            c.close()
-
-        title = "{0} latest kills".format(user.display_name)
+        title = "{0} latest deaths".format(user.display_name)
         icon_url = user.avatar_url
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.set_author(name=title, icon_url=icon_url)
@@ -335,7 +308,8 @@ class Tibia:
             await ctx.send(e)
 
     @deaths.command(name="stats", usage="[week/month]")
-    @checks.is_in_tracking_world()
+    @checks.is_tracking_world()
+    @checks.can_embed()
     async def deaths_stats(self, ctx: NabCtx, *, period: str = None):
         """Shows death statistics
 
@@ -343,87 +317,71 @@ class Tibia:
 
         To see a shorter period, use `week` or `month` as a parameter.
         """
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if ctx.is_private:
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-        placeholders = ", ".join("?" for w in user_worlds)
-        c = userDatabase.cursor()
-        now = time.time()
         embed = discord.Embed(title="Death statistics")
         if period in ["week", "weekly"]:
-            start_date = now - (1 * 60 * 60 * 24 * 7)
+            period = dt.timedelta(weeks=1)
             description_suffix = " in the last 7 days"
         elif period in ["month", "monthly"]:
-            start_date = now - (1 * 60 * 60 * 24 * 30)
+            period = dt.timedelta(days=30)
             description_suffix = " in the last 30 days"
         else:
-            start_date = 0
+            period = dt.timedelta(weeks=300)
             description_suffix = ""
             embed.set_footer(text=f"For a shorter period, try {ctx.clean_prefix}{ctx.command.qualified_name} week or "
                                   f"{ctx.clean_prefix}{ctx.command.qualified_name} month")
-        try:
-            c.execute("SELECT COUNT() AS total FROM char_deaths WHERE date >= ?", (start_date,))
-            total = c.fetchone()["total"]
+        async with ctx.pool.acquire() as conn:
+            total = await conn.fetchval("""SELECT count(*) FROM character_death
+                                           WHERE CURRENT_TIMESTAMP-date < $1""", period)
             embed.description = f"There are {total:,} deaths registered{description_suffix}."
-            c.execute("SELECT COUNT() as count, chars.name, chars.user_id FROM char_deaths, chars "
-                      f"WHERE id = char_id AND world IN ({placeholders}) AND date >= {start_date} "
-                      "GROUP BY char_id ORDER BY count DESC LIMIT 3", tuple(user_worlds))
-            content = ""
-            count = 0
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                user = self.bot.get_member(row["user_id"], ctx.guild)
-                if user is None:
-                    continue
-                count += 1
-                content += f"**{row['name']}** \U00002014 {row['count']}\n"
-                if count >= 3:
-                    break
+            async with conn.transaction():
+                count = 0
+                content = ""
+                async for row in conn.cursor("""SELECT COUNT(*), name, user_id
+                                                FROM character_death d
+                                                LEFT JOIN "character" c on c.id = d.character_id
+                                                WHERE CURRENT_TIMESTAMP-date < $1 AND world = $2
+                                                GROUP by name, user_id
+                                                ORDER BY count DESC""", period, ctx.world):
+                    user = self.bot.get_member(row["user_id"], ctx.guild)
+                    if user is None:
+                        continue
+                    count += 1
+                    content += f"**{row['name']}** \U00002014 {row['count']}\n"
+                    if count >= 3:
+                        break
             if count > 0:
                 embed.add_field(name="Most deaths per character", value=content, inline=False)
-
-            c.execute("SELECT COUNT() as count, chars.user_id FROM char_deaths, chars "
-                      f"WHERE id = char_id AND world IN ({placeholders}) AND date >= {start_date} "
-                      "GROUP BY user_id ORDER BY count DESC", tuple(user_worlds))
-            content = ""
-            count = 0
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                user = self.bot.get_member(row["user_id"], ctx.guild)
-                if user is None:
-                    continue
-                count += 1
-                content += f"@**{user.display_name}** \U00002014 {row['count']}\n"
-                if count >= 3:
-                    break
+            async with conn.transaction():
+                count = 0
+                content = ""
+                async for row in conn.cursor("""SELECT COUNT(*), user_id
+                                                FROM character_death d
+                                                LEFT JOIN "character" c on c.id = d.character_id
+                                                WHERE CURRENT_TIMESTAMP-date < $1 AND world = $2 
+                                                AND user_id != 0
+                                                GROUP by user_id
+                                                ORDER BY count DESC""", period, ctx.world):
+                    user = self.bot.get_member(row["user_id"], ctx.guild)
+                    if user is None:
+                        continue
+                    count += 1
+                    content += f"@**{user.display_name}** \U00002014 {row['count']}\n"
+                    if count >= 3:
+                        break
             if count > 0:
                 embed.add_field(name="Most deaths per user", value=content, inline=False)
-
-            c.execute("SELECT COUNT() as count, killer FROM char_deaths, chars "
-                      f"WHERE id = char_id and world IN ({placeholders}) AND date >= {start_date} "
-                      "GROUP BY killer ORDER BY count DESC LIMIT 3", tuple(user_worlds))
-            total_per_killer = c.fetchall()
+            rows = await conn.fetch("""SELECT COUNT(*), k.name
+                                       FROM character_death d
+                                       LEFT JOIN character_death_killer k on k.death_id = d.id
+                                       LEFT JOIN "character" c on c.id = d.character_id
+                                       WHERE CURRENT_TIMESTAMP-date < $1 AND world = $2
+                                       GROUP by k.name ORDER BY count DESC LIMIT 3""", period, ctx.world)
             content = ""
-            for row in total_per_killer:
-                killer = re.sub(r"(a|an)(\s+)", " ", row["killer"]).title().strip()
+            for row in rows:
+                killer = re.sub(r"(a|an)(\s+)", " ", row["name"]).title().strip()
                 content += f"**{killer}** \U00002014 {row['count']}\n"
             embed.add_field(name="Most deaths per killer", value=content, inline=False)
-            await ctx.send(embed=embed)
-        finally:
-            c.close()
+        await ctx.send(embed=embed)
 
     @commands.group(aliases=['checkguild'], invoke_without_command=True, case_insensitive=True)
     async def guild(self, ctx: NabCtx, *, name):

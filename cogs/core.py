@@ -57,8 +57,8 @@ class Core:
         query = """INSERT INTO command(server_id, channel_id, user_id, date, prefix, command)
                    VALUES ($1, $2, $3, $4, $5, $6)
                 """
-        await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id, ctx.message.created_at, ctx.prefix,
-                                    command)
+        await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
+                                    ctx.message.created_at.replace(tzinfo=dt.timezone.utc), ctx.prefix, command)
 
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
