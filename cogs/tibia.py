@@ -132,7 +132,8 @@ class Tibia:
         now = time.time()
         show_links = not ctx.long
         per_page = 20 if ctx.long else 5
-        users = dict()
+        users_cache = dict()
+        user_unknown = "unknown"
         try:
             if name is None:
                 title = "Latest deaths"
@@ -144,21 +145,13 @@ class Tibia:
                     row = c.fetchone()
                     if row is None:
                         break
-
-                    user = users.get(row["user_id"])
-                    if user is False:
-                        continue
-                    if user is None:
-                        user = self.bot.get_member(row["user_id"], user_guilds)
-
-                    if user is None:
-                        users[row["user_id"]] = False
-                        continue
-                    else:
-                        users[row["user_id"]] = user
-
                     if row["world"] not in user_worlds:
                         continue
+
+                    user = self._get_cached_user_(self, row["user_id"], user_unknown, users_cache, user_guilds)
+                    if user == user_unknown:
+                        continue
+
                     count += 1
                     row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
                     row["user"] = user.display_name
@@ -231,6 +224,15 @@ class Tibia:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
+
+    @staticmethod
+    def _get_cached_user_(self, user_id, user_unknown, users_cache, user_guilds):
+        cached_user = users_cache.get(user_id)
+        if cached_user is None:
+            member_user = self.bot.get_member(user_id, user_guilds)
+            cached_user = user_unknown if member_user is None else member_user
+            users_cache[user_id] = cached_user
+        return cached_user
 
     @deaths.command(name="monster", aliases=["mob", "killer"])
     @checks.is_in_tracking_world()
