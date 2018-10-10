@@ -133,7 +133,6 @@ class Tibia:
         show_links = not ctx.long
         per_page = 20 if ctx.long else 5
         users_cache = dict()
-        user_unknown = "unknown"
         try:
             if name is None:
                 title = "Latest deaths"
@@ -148,8 +147,8 @@ class Tibia:
                     if row["world"] not in user_worlds:
                         continue
 
-                    user = self._get_cached_user_(self, row["user_id"], user_unknown, users_cache, user_servers)
-                    if user == user_unknown:
+                    user = self._get_cached_user_(self, row["user_id"], users_cache, user_servers)
+                    if user is None:
                         continue
 
                     count += 1
@@ -224,15 +223,6 @@ class Tibia:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
-
-    @staticmethod
-    def _get_cached_user_(self, user_id, user_unknown, users_cache, user_servers):
-        cached_user = users_cache.get(user_id)
-        if cached_user is None:
-            member_user = self.bot.get_member(user_id, user_servers)
-            cached_user = user_unknown if member_user is None else member_user
-            users_cache[user_id] = cached_user
-        return cached_user
 
     @deaths.command(name="monster", aliases=["mob", "killer"])
     @checks.is_in_tracking_world()
@@ -755,7 +745,6 @@ class Tibia:
         per_page = 20 if ctx.long else 5
         await ctx.channel.trigger_typing()
         user_cache = dict()
-        user_unknown = "unknown"
         try:
             if name is None:
                 title = "Latest level ups"
@@ -770,8 +759,8 @@ class Tibia:
                     if row["world"] not in user_worlds:
                         continue
                         
-                    user = self._get_cached_user_(self, row["user_id"], user_unknown, user_cache, user_servers)
-                    if user == user_unknown:
+                    user = self._get_cached_user_(self, row["user_id"], user_cache, user_servers)
+                    if user is None:
                         continue
 
                     count += 1
@@ -1306,7 +1295,6 @@ class Tibia:
         per_page = 20 if ctx.long else 5
         await ctx.channel.trigger_typing()
         user_cache = dict()
-        user_unknown = "unknown"
         try:
             if name is None:
                 title = "Timeline"
@@ -1325,8 +1313,8 @@ class Tibia:
                     if row["world"] not in user_worlds:
                         continue
 
-                    user = self._get_cached_user_(self, row["user_id"], user_unknown, user_cache, user_servers)
-                    if user == user_unknown:
+                    user = self._get_cached_user_(self, row["user_id"], user_cache, user_servers)
+                    if user is None:
                         continue
 
                     count += 1
@@ -2075,6 +2063,15 @@ class Tibia:
                 break
             except Exception:
                 log.exception("Task: scan_news")
+
+    @staticmethod
+    def _get_cached_user_(self, user_id, users_cache, user_servers):
+        if user_id in users_cache:
+            return users_cache.get(user_id)
+        else:
+            member_user = self.bot.get_member(user_id, user_servers)
+            users_cache[user_id] = member_user
+            return member_user
 
     def __unload(self):
         print("cogs.tibia: Cancelling pending tasks...")
