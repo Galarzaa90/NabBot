@@ -84,6 +84,7 @@ def migrate(path):
         print('Could not set up PostgreSQL. Exiting.')
         return
 
+    loop.run_until_complete(check_database(pool))
     loop.run_until_complete(import_legacy_db(pool, path))
 
 

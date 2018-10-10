@@ -10,7 +10,7 @@ LATEST_VERSION = 1
 
 
 def _progressbar(*args, **kwargs):
-    return click.progressbar(*args, **kwargs, fill_char="█", empty_char=" ")
+    return click.progressbar(*args, **kwargs, fill_char="█", empty_char=" ", show_pos=True)
 
 
 async def check_database(pool: asyncpg.pool.Pool):
@@ -97,8 +97,8 @@ tables = [
     """
     CREATE TABLE event (
         id serial NOT NULL,
-        user_id integer NOT NULL,
-        server_id integer NOT NULL,
+        user_id bigint NOT NULL,
+        server_id bigint NOT NULL,
         name text NOT NULL,
         description text,
         start timestamp with time zone,
@@ -106,8 +106,8 @@ tables = [
         status smallint,
         joinable boolean,
         slots smallint,
-        modified timestamp without time zone DEFAULT now(),
-        created timestamp without time zone DEFAULT now(),
+        modified timestamp with time zone DEFAULT now(),
+        created timestamp with time zone DEFAULT now(),
         PRIMARY KEY (id)
     );
     """,
@@ -123,7 +123,7 @@ tables = [
     """
     CREATE TABLE event_subscriber (
         event_id integer NOT NULL,
-        user_id integer NOT NULL,
+        user_id bigint NOT NULL,
         FOREIGN KEY (event_id) REFERENCES event (id),
         UNIQUE(event_id, user_id)
     );""",
@@ -131,7 +131,7 @@ tables = [
     CREATE TABLE highscores (
         world text NOT NULL,
         category text NOT NULL,
-        last_scan timestamp without time zone DEFAULT now(),
+        last_scan timestamp with time zone DEFAULT now(),
         PRIMARY KEY (world, category)
     );""",
     """
@@ -236,93 +236,135 @@ async def import_legacy_db(pool: asyncpg.pool.Pool, path):
     legacy_conn = sqlite3.connect(path)
     c = legacy_conn.cursor()
     async with pool.acquire() as conn:
-        c.execute("""SELECT id, user_id, name, level, vocation, world, guild FROM chars ORDER By id ASC""")
-        rows = c.fetchall()
-        levelups = []
-        deaths = []
-        with _progressbar(rows, label="Migrating characters", show_pos=True) as bar:
-            for row in bar:
-                old_id, *char = row
-                # Try to insert character, if it exist return existing character's ID
-                char_id = await conn.fetchval("""
+        await import_characters(conn, c)
+        await import_server_properties(conn, c)
+        await import_roles(conn, c)
+        await import_events(conn, c)
+
+
+async def import_characters(conn: asyncpg.Connection, c: sqlite3.Cursor):
+    c.execute("""SELECT id, user_id, name, level, vocation, world, guild FROM chars ORDER By id ASC""")
+    rows = c.fetchall()
+    levelups = []
+    deaths = []
+    with _progressbar(rows, label="Migrating characters") as bar:
+        for row in bar:
+            old_id, *char = row
+            # Try to insert character, if it exist return existing character's ID
+            char_id = await conn.fetchval("""
                     INSERT INTO "character" (user_id, name, level, vocation, world, guild)
                     VALUES ($1, $2, $3, $4, $5, $6)
                     ON CONFLICT(name) DO UPDATE SET name=EXCLUDED.name RETURNING id""", *char)
-                c.execute("SELECT ?, level, date FROM char_levelups WHERE char_id = ? ORDER BY date ASC",
-                          (char_id, old_id))
-                results = c.fetchall()
-                levelups.extend(results)
-                c.execute("SELECT ?, level, date, killer, byplayer FROM char_deaths WHERE char_id = ?",
-                          (char_id, old_id))
-                results = c.fetchall()
-                deaths.extend(results)
-        deaths = sorted(deaths, key=itemgetter(2))
-        skipped_deaths = 0
-        with _progressbar(deaths, label="Migrating deaths", show_pos=True) as bar:
-            for death in bar:
-                char_id, level, date, killer, byplayer = death
-                byplayer = byplayer == 1
-                # If there's another death at the exact same timestamp by the same character, we ignore it
-                exists = await conn.fetchrow("""SELECT id FROM character_death
-                                                WHERE date = to_timestamp($1) AND character_id = $2""", date, char_id)
-                if exists:
-                    skipped_deaths += 1
-                    continue
-                death_id = await conn.fetchval("""INSERT INTO character_death(character_id, level, date)
-                                                  VALUES ($1, $2, to_timestamp($3))
-                                                  RETURNING id""", char_id, level, date)
-                await conn.execute("""INSERT INTO character_death_killer(death_id, name, player)
-                                      VALUES ($1, $2, $3)""", death_id, killer, byplayer)
-        if skipped_deaths:
-            print(f"Skipped {skipped_deaths:,} duplicate deaths.")
-        levelups = sorted(levelups, key=itemgetter(2))
-        skipped_levelups = 0
-        with _progressbar(levelups, label="Migrating level ups", show_pos=True) as bar:
-            for levelup in bar:
-                char_id, level, date = levelup
-                date = datetime.datetime.fromtimestamp(date)
-                # If there's another levelup within a 15 seconds margin, we ignore it
-                exists = await conn.fetchrow("""SELECT id FROM character_levelup
+            c.execute("SELECT ?, level, date FROM char_levelups WHERE char_id = ? ORDER BY date ASC",
+                      (char_id, old_id))
+            levelups.extend(c.fetchall())
+            c.execute("SELECT ?, level, date, killer, byplayer FROM char_deaths WHERE char_id = ?",
+                      (char_id, old_id))
+            deaths.extend(c.fetchall())
+    deaths = sorted(deaths, key=itemgetter(2))
+    skipped_deaths = 0
+    with _progressbar(deaths, label="Migrating deaths") as bar:
+        for death in bar:
+            char_id, level, date, killer, byplayer = death
+            byplayer = byplayer == 1
+            date = datetime.datetime.utcfromtimestamp(date)
+            # If there's another death at the exact same timestamp by the same character, we ignore it
+            exists = await conn.fetchrow("""SELECT id FROM character_death
+                                                WHERE date = $1 AND character_id = $2""", date, char_id)
+            if exists:
+                skipped_deaths += 1
+                continue
+            death_id = await conn.fetchval("""INSERT INTO character_death(character_id, level, date)
+                                              VALUES ($1, $2, $3) RETURNING id""", char_id, level, date)
+            await conn.execute("""INSERT INTO character_death_killer(death_id, name, player)
+                                  VALUES ($1, $2, $3)""", death_id, killer, byplayer)
+    if skipped_deaths:
+        print(f"Skipped {skipped_deaths:,} duplicate deaths.")
+    levelups = sorted(levelups, key=itemgetter(2))
+    skipped_levelups = 0
+    with _progressbar(levelups, label="Migrating level ups") as bar:
+        for levelup in bar:
+            char_id, level, date = levelup
+            date = datetime.datetime.utcfromtimestamp(date)
+            # If there's another levelup within a 15 seconds margin, we ignore it
+            exists = await conn.fetchrow("""SELECT id FROM character_levelup
                                                 WHERE character_id = $1 AND
                                                 GREATEST($2-date,date-$2) <= interval '15' second""", char_id, date)
-                if exists:
-                    skipped_levelups += 1
-                    continue
-                await conn.execute("""INSERT INTO character_levelup(character_id, level, date)
-                                      VALUES ($1, $2, to_timestamp($3))""", *levelup)
-        if skipped_levelups:
-            print(f"Skipped {skipped_levelups:,} duplicate level ups.")
+            if exists:
+                skipped_levelups += 1
+                continue
+            await conn.execute("""INSERT INTO character_levelup(character_id, level, date)
+                                      VALUES ($1, $2, $3)""", char_id, level, date)
+    if skipped_levelups:
+        print(f"Skipped {skipped_levelups:,} duplicate level ups.")
 
-        c.execute("SELECT server_id, name, value FROM server_properties")
-        rows = c.fetchall()
-        with _progressbar(rows, label="Migrating server properties", show_pos=True) as bar:
-            for row in bar:
-                server, key, value = row
-                server = int(server)
-                if key == "prefixes":
-                    await conn.execute("""INSERT INTO server_prefixes(server_id, prefixes) VALUES($1, $2)
+
+async def import_server_properties(conn: asyncpg.Connection, c: sqlite3.Cursor):
+    c.execute("SELECT server_id, name, value FROM server_properties")
+    rows = c.fetchall()
+    with _progressbar(rows, label="Migrating server properties") as bar:
+        for row in bar:
+            server, key, value = row
+            server = int(server)
+            if key == "prefixes":
+                await conn.execute("""INSERT INTO server_prefixes(server_id, prefixes) VALUES($1, $2)
                                           ON CONFLICT DO NOTHING""", server, json.loads(value))
-                    continue
+                continue
 
-                if key in ["times"]:
-                    value = json.dumps(json.loads(value))
-                elif key == "commandsonly":
-                    value = json.dumps(bool(value))
-                else:
-                    value = json.dumps(value)
-                await conn.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
+            if key in ["times"]:
+                value = json.dumps(json.loads(value))
+            elif key == "commandsonly":
+                value = json.dumps(bool(value))
+            else:
+                value = json.dumps(value)
+            await conn.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
                                       ON CONFLICT(server_id, key) DO NOTHING""", server, key, value)
-        c.execute("SELECT server_id, role_id, guild FROM auto_roles")
-        rows = c.fetchall()
-        with _progressbar(rows, label="Migrating auto roles", show_pos=True) as bar:
-            for row in bar:
-                await conn.execute("""INSERT INTO role_auto(server_id, role_id, rule) VALUES($1, $2, $3)
+
+
+async def import_events(conn: asyncpg.Connection, c: sqlite3.Cursor):
+    c.execute("SELECT id, creator, name, start, active, status, description, server, joinable, slots FROM events")
+    rows = c.fetchall()
+    event_subscribers = []
+    event_participants = []
+    with _progressbar(rows, label="Migrating events") as bar:
+        for row in bar:
+            old_id, creator, name, start, active, status, description, server, joinable, slots = row
+            start = datetime.datetime.utcfromtimestamp(start)
+            active = bool(active)
+            joinable = bool(joinable)
+            event_id = await conn.fetchval("""INSERT INTO event(user_id, name, start, active, description, server_id,
+                                              joinable, slots)
+                                              VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id""",
+                                           creator, name, start, active, description, server, joinable, slots)
+            c.execute("SELECT ?, user_id FROM event_subscribers WHERE event_id = ?", (event_id, old_id))
+            event_subscribers.extend(c.fetchall())
+            c.execute("SELECT ?, name FROM event_participants LEFT JOIN chars ON id = char_id WHERE event_id = ?",
+                      (event_id, old_id))
+            event_participants.extend(c.fetchall())
+    with _progressbar(event_subscribers, label="Migrating event subscribers") as bar:
+        for row in bar:
+            await conn.execute("""INSERT INTO event_subscriber(event_id, user_id) VALUES($1, $2)
+                                  ON CONFLICT(event_id, user_id) DO NOTHING""", *row)
+    with _progressbar(event_participants, label="Migrating event participants") as bar:
+        for row in bar:
+            event_id, name = row
+            char_id = await conn.fetchval('SELECT id FROM "character" WHERE name = $1', name)
+            if char_id is None:
+                continue
+            await conn.execute("""INSERT INTO event_participant(event_id, character_id) VALUES($1, $2)
+                                  ON CONFLICT(event_id, character_id) DO NOTHING""", event_id, char_id)
+
+
+async def import_roles(conn: asyncpg.Connection, c: sqlite3.Cursor):
+    c.execute("SELECT server_id, role_id, guild FROM auto_roles")
+    rows = c.fetchall()
+    with _progressbar(rows, label="Migrating auto roles") as bar:
+        for row in bar:
+            await conn.execute("""INSERT INTO role_auto(server_id, role_id, rule) VALUES($1, $2, $3)
                                       ON CONFLICT(server_id, role_id, rule) DO NOTHING""", *row)
-
-        c.execute("SELECT server_id, role_id FROM joinable_roles")
-        rows = c.fetchall()
-        with _progressbar(rows, label="Migrating joinable roles", show_pos=True) as bar:
-            for row in bar:
-                await conn.execute("""INSERT INTO role_joinable(server_id, role_id) VALUES($1, $2)
+    c.execute("SELECT server_id, role_id FROM joinable_roles")
+    rows = c.fetchall()
+    with _progressbar(rows, label="Migrating joinable roles") as bar:
+        for row in bar:
+            await conn.execute("""INSERT INTO role_joinable(server_id, role_id) VALUES($1, $2)
                                       ON CONFLICT(server_id, role_id) DO NOTHING""", *row)
-
