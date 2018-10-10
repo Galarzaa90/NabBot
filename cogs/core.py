@@ -4,9 +4,10 @@ from typing import List
 import discord
 from discord.ext import commands
 
+from nabbot import NabBot
 from .utils.checks import CannotEmbed
 from .utils import context
-from .utils.database import userDatabase, _get_server_property
+from .utils.database import get_server_property
 from .utils.tibia import get_voc_abb_and_emoji
 from .utils import log, join_list, get_user_avatar, get_region_string
 from .utils import config
@@ -15,7 +16,7 @@ from .utils import config
 class Core:
     """Cog with NabBot's main functions."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: NabBot):
         self.bot = bot
 
     async def on_command_error(self, ctx: context.NabCtx, error):
@@ -117,24 +118,20 @@ class Core:
             world = self.bot.tracked_worlds.get(member.guild.id)
             previously_registered = ""
             if world is not None:
-                c = userDatabase.cursor()
-                try:
-                    c.execute("SELECT name, vocation, ABS(level) as level, guild "
-                              "FROM chars WHERE user_id = ? and world = ?", (member.id, world,))
-                    results = c.fetchall()
-                    if len(results) > 0:
-                        previously_registered = "\n\nYou already have these characters in {0} registered to you: *{1}*"\
-                            .format(world, join_list([r["name"] for r in results], ", ", " and "))
-                        characters = ["\u2023 {name} - Level {level} {voc} - **{guild}**"
-                                      .format(**c, voc=get_voc_abb_and_emoji(c["vocation"])) for c in results]
-                        embed.add_field(name="Registered characters", value="\n".join(characters))
-                finally:
-                    c.close()
+                results = await self.bot.pool.fetch("""SELECT name, vocation, abs(level) as level, guild
+                                                       FROM "character" WHERE user_id = $1 AND world = $2""",
+                                                    member.id, world)
+                if len(results) > 0:
+                    previously_registered = "\n\nYou already have these characters in {0} registered to you: *{1}*"\
+                        .format(world, join_list([r["name"] for r in results], ", ", " and "))
+                    characters = ["\u2023 {name} - Level {level} {voc} - **{guild}**"
+                                  .format(**c, voc=get_voc_abb_and_emoji(c["vocation"])) for c in results]
+                    embed.add_field(name="Registered characters", value="\n".join(characters))
             self.bot.dispatch("character_change", member.id)
             await self.bot.send_log_message(member.guild, embed=embed)
 
-        welcome_message = _get_server_property(member.guild.id, "welcome")
-        welcome_channel_id = _get_server_property(member.guild.id, "welcome_channel", is_int=True)
+        welcome_message = await get_server_property(self.bot.pool, member.guild.id, "welcome")
+        welcome_channel_id = await get_server_property(self.bot.pool, member.guild.id, "welcome_channel")
         if welcome_message is None:
             return
         message = welcome_message.format(user=member, server=member.guild, bot=self.bot, owner=member.guild.owner)

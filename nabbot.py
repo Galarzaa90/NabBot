@@ -4,14 +4,14 @@ import os
 import re
 import sys
 import traceback
-from typing import Union, List, Optional, Dict
+from typing import Union, List, Optional
 
 import aiohttp
 import discord
 from discord.ext import commands
 
 from cogs.utils import context
-from cogs.utils.database import init_database, userDatabase, _get_server_property, get_prefixes
+from cogs.utils.database import init_database, get_prefixes, get_server_property
 from cogs.utils import config, log
 from cogs.utils.help_format import NabHelpFormat
 from cogs.utils.tibia import populate_worlds, tibia_worlds
@@ -92,7 +92,7 @@ class NabBot(commands.Bot):
         if message.content.strip() == f"<@{self.user.id}>":
             prefixes = list(self.config.command_prefix)
             if ctx.guild:
-                prefixes = _get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
+                prefixes = await get_server_property(ctx.pool, ctx.guild.id, "prefixes", prefixes)
             if prefixes:
                 prefixes_str = ", ".join(f"`{p}`" for p in prefixes)
                 return await ctx.send(f"My command prefixes are: {prefixes_str}, and mentions. "
@@ -101,7 +101,7 @@ class NabBot(commands.Bot):
                 return await ctx.send(f"My command prefix is mentions. "
                                       f"To see my commands, try: `@{self.user.name} help.`", delete_after=10)
 
-        server_delete = _get_server_property(message.guild.id, "commandsonly", is_int=True)
+        server_delete = await get_server_property(ctx.pool, message.guild.id, "commandsonly")
         global_delete = self.config.ask_channel_delete
         if (server_delete is None and global_delete or server_delete) and ctx.is_askchannel:
             try:
@@ -244,27 +244,23 @@ class NabBot(commands.Bot):
                 return channel
         return None
 
-    def reload_worlds(self):
+    async def reload_worlds(self):
         """Refresh the world list from the database
 
         This is used to avoid reading the database every time the world list is needed.
         A global variable holding the world list is loaded on startup and refreshed only when worlds are modified"""
-        c = userDatabase.cursor()
         tibia_servers_dict_temp = {}
-        try:
-            c.execute("SELECT server_id, value FROM server_properties WHERE name = 'world' ORDER BY value ASC")
-            result: Dict = c.fetchall()
-            del self.tracked_worlds_list[:]
-            if len(result) > 0:
-                for row in result:
-                    if row["value"] not in self.tracked_worlds_list:
-                        self.tracked_worlds_list.append(row["value"])
-                    tibia_servers_dict_temp[int(row["server_id"])] = row["value"]
+        rows = await self.pool.fetch("SELECT server_id, value FROM server_property WHERE key = $1 ORDER BY value ASC",
+                                     "world")
+        del self.tracked_worlds_list[:]
+        if len(rows) > 0:
+            for row in rows:
+                if row["value"] not in self.tracked_worlds_list:
+                    self.tracked_worlds_list.append(row["value"])
+                tibia_servers_dict_temp[int(row["server_id"])] = row["value"]
 
-            self.tracked_worlds.clear()
-            self.tracked_worlds.update(tibia_servers_dict_temp)
-        finally:
-            c.close()
+        self.tracked_worlds.clear()
+        self.tracked_worlds.update(tibia_servers_dict_temp)
 
     def run(self):
         init_database()
@@ -274,7 +270,7 @@ class NabBot(commands.Bot):
         self.config = config
 
         # List of tracked worlds for NabBot
-        self.reload_worlds()
+        self.loop.run_until_complete(self.reload_worlds())
         # List of all Tibia worlds
         self.loop.run_until_complete(populate_worlds())
 

@@ -12,7 +12,7 @@ from discord.ext import commands
 # Exposing for /debug command
 from nabbot import NabBot
 from .utils import checks
-from .utils.database import _get_server_property
+from .utils.database import userDatabase
 from .utils.context import NabCtx
 from .utils import *
 from .utils.messages import *
@@ -236,7 +236,7 @@ class Owner:
             await ctx.send(f"Moved **{affected_chars:,}** characters to {new_world}. "
                            f"**{affected_guilds}** discord servers were affected.\n\n"
                            f"Enjoy **{new_world}**! 🔥♋")
-            self.bot.reload_worlds()
+            await self.bot.reload_worlds()
         finally:
             c.close()
             userDatabase.commit()
@@ -484,10 +484,10 @@ class Owner:
 
         If the results are too long to display, a text file is generated and uploaded."""
         query = self.cleanup_code(query)
-        async with ctx.acquire():
+        async with ctx.pool.acquire() as conn:
             try:
                 start = time.perf_counter()
-                results = await ctx.db.fetch(query)
+                results = await conn.fetch(query)
                 dt = (time.perf_counter() - start) * 1000.0
             except asyncpg.PostgresError as e:
                 return await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')

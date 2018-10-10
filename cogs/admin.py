@@ -1,10 +1,8 @@
-from contextlib import closing
 from typing import List
 
 import discord
 from discord.ext import commands
 
-from cogs.utils.database import userDatabase
 from nabbot import NabBot
 from .utils import checks, join_list, log, get_user_avatar
 from .utils.config import config
@@ -47,7 +45,7 @@ class Admin:
 
         msg = await ctx.send(f"{config.loading_emoji} Fetching characters...")
         try:
-            char = await get_character(char_name)
+            char = await get_character(ctx.bot, char_name)
             if char is None:
                 return await msg.edit(content="That character doesn't exist.")
         except NetworkError:
@@ -66,20 +64,16 @@ class Admin:
             if char.world != world:
                 skipped.append(char)
                 continue
-            with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT name, guild, user_id as owner, abs(level) as level "
-                          "FROM chars "
-                          "WHERE name LIKE ?",
-                          (char.name,))
-                db_char = c.fetchone()
+            db_char = await ctx.pool.fetchrow("""SELECT id, name, guild, user_id as owner, abs(level) as level, vocation
+                                                 FROM "character"
+                                                 WHERE name = $1""", char.name)
             if db_char is not None:
                 owner = self.bot.get_member(db_char["owner"])
                 # Previous owner doesn't exist anymore
                 if owner is None:
                     updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
                                     'vocation': db_char["vocation"], 'level': db_char['level'],
-                                    'guild': db_char['guild']
-                                    })
+                                    'guild': db_char['guild'], 'id': db_char['id']})
                     continue
                 # Char already registered to this user
                 elif owner.id == target.id:
@@ -94,7 +88,7 @@ class Admin:
             if len(chars) > 1:
                 try:
                     await ctx.channel.trigger_typing()
-                    char = await get_character(char.name)
+                    char = await get_character(ctx.bot, char.name)
                 except NetworkError:
                     await ctx.send("I'm having network troubles, please try again.")
                     return
@@ -140,19 +134,13 @@ class Admin:
                     log_reply[guild.id] += "\n\u2023 {name} - Level {level} {voc} - **{guild}** (Reassigned)". \
                         format(**char)
 
-        for char in updated:
-            with userDatabase as conn:
-                conn.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (target.id, char['name']))
-        for char in added:
-            with userDatabase as conn:
-                conn.execute("INSERT INTO chars (name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
-                             (char.name, char.level * -1, char.vocation, target.id, char.world,
-                              char.guild_name)
-                             )
-
-        with userDatabase as conn:
-            conn.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (target.id, target.display_name,))
-            conn.execute("UPDATE users SET name = ? WHERE id = ?", (target.display_name, target.id,))
+        async with ctx.pool.acquire() as conn:
+            for char in updated:
+                await conn.execute('UPDATE "character" SET user_id = $1 WHERE id = $2', target.id, char["id"])
+            for char in added:
+                await conn.execute("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
+                                      VALUES($1, $2, $3, $4, $5, $6) ON CONFLICT(name) DO NOTHING""",
+                                   char.name, -char.level, char.vocation, target.id, char.world, char.guild_name)
 
         await ctx.send(reply)
         for server_id, message in log_reply.items():
@@ -186,7 +174,7 @@ class Admin:
 
         with ctx.typing():
             try:
-                char = await get_character(params[1])
+                char = await get_character(ctx.bot, params[1])
                 if char is None:
                     await ctx.send("That character doesn't exist")
                     return
@@ -204,10 +192,8 @@ class Admin:
             embed.colour = discord.Colour.dark_teal()
             icon_url = get_user_avatar(ctx.author)
             embed.set_footer(text="{0.name}#{0.discriminator}".format(ctx.author), icon_url=icon_url)
-
-            with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (char.name,))
-                result = c.fetchone()
+            async with ctx.pool.acquire() as conn:
+                result = await conn.fetchrow('SELECT id, name, user_id FROM "character" WHERE name = $1', char.name)
                 if result is not None:
                     # Registered to a different user
                     if result["user_id"] != user.id:
@@ -218,9 +204,8 @@ class Admin:
                                            .format(current_user))
                             return
                         # User no longer in any servers
-                        c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
+                        await conn.execute('UPDATE "character" SET user_id = $1 WHERE id = $2', user.id, result["id"])
                         await ctx.send("This character was reassigned to this user successfully.")
-                        userDatabase.commit()
                         for server in user_servers:
                             world = self.bot.tracked_worlds.get(server.id, None)
                             if world == char.world:
@@ -231,13 +216,9 @@ class Admin:
                     else:
                         await ctx.send("This character is already registered to this user.")
                     return
-                c.execute("INSERT INTO chars (name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
-                          (char.name, char.level * -1, char.vocation, user.id, char.world, char.guild_name))
-                # Check if user is already registered
-                c.execute("SELECT id from users WHERE id = ?", (user.id,))
-                result = c.fetchone()
-                if result is None:
-                    c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
+                await conn.execute("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
+                                      VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT(name) DO NOTHING""",
+                                   char.name, -char.level, char.vocation, user.id, char.world, char.guild_name)
                 await ctx.send("**{0}** was registered successfully to this user.".format(char.name))
                 # Log on relevant servers
                 for server in user_servers:
@@ -247,7 +228,6 @@ class Admin:
                         embed.description = "{0.mention} registered:\n\u2023 {1}  - Level {2} {3} - **{4}**"\
                             .format(user, char.name, char.level, get_voc_abb_and_emoji(char.vocation), guild)
                         await self.bot.send_log_message(server, embed=embed)
-                userDatabase.commit()
 
     @checks.is_admin()
     @commands.guild_only()
@@ -300,53 +280,47 @@ class Admin:
         You can't remove any characters that would alter other servers NabBot is in."""
         # This could be used to remove deleted chars so we don't need to check anything
         # Except if the char exists in the database...
-        c = userDatabase.cursor()
-        try:
-            c.execute("SELECT name, user_id, world, guild, abs(level) as level, vocation "
-                      "FROM chars WHERE name LIKE ?", (name,))
-            result = c.fetchone()
-            if result is None or result["user_id"] == 0:
-                return await ctx.send("There's no character with that name registered.")
-            if result["world"] != ctx.world:
-                return await ctx.send(f"{ctx.tick(False)} The character **{result['name']}** is in a different world.")
+        result = await ctx.pool.fetchrow("""SELECT name, user_id, world, guild, abs(level) as level, vocation
+                                            FROM "character" WHERE lower(name) = $1""", name.lower())
+        if result is None or result["user_id"] == 0:
+            return await ctx.send("There's no character with that name registered.")
+        if result["world"] != ctx.world:
+            return await ctx.send(f"{ctx.tick(False)} The character **{result['name']}** is in a different world.")
 
-            user = self.bot.get_member(result["user_id"])
-            user_guilds: List[discord.Guild] = []
-            if user is not None:
-                user_guilds = self.bot.get_user_guilds(user.id)
-                for guild in user_guilds:
-                    if guild == ctx.guild:
-                        continue
-                    if self.bot.tracked_worlds.get(guild.id, None) != ctx.world:
-                        continue
-                    member: discord.Member = guild.get_member(ctx.author.id)
-                    if member is None or member.guild_permissions.administrator:
-                        await ctx.send(f"{ctx.tick(False)} The user of this server is also in another server tracking "
-                                       f"**{ctx.world}**, where you are not an admin. You can't alter other servers.")
-                        return
-            username = "unknown" if user is None else user.display_name
-            c.execute("UPDATE chars SET user_id = 0 WHERE name LIKE ?", (name,))
-            await ctx.send("**{0}** was removed successfully from **@{1}**.".format(result["name"], username))
-            for server in user_guilds:
-                world = self.bot.tracked_worlds.get(server.id, None)
-                if world != result["world"]:
+        user = self.bot.get_member(result["user_id"])
+        user_guilds: List[discord.Guild] = []
+        if user is not None:
+            user_guilds = self.bot.get_user_guilds(user.id)
+            for guild in user_guilds:
+                if guild == ctx.guild:
                     continue
-                if result["guild"] is None:
-                    result["guild"] = "No guild"
-                log_msg = "{0.mention} unregistered:\n\u2023 {1} - Level {2} {3} - **{4}**". \
-                    format(user, result["name"], result["level"], get_voc_abb_and_emoji(result["vocation"]),
-                           result["guild"])
+                if self.bot.tracked_worlds.get(guild.id, None) != ctx.world:
+                    continue
+                member: discord.Member = guild.get_member(ctx.author.id)
+                if member is None or member.guild_permissions.administrator:
+                    await ctx.send(f"{ctx.tick(False)} The user of this server is also in another server tracking "
+                                   f"**{ctx.world}**, where you are not an admin. You can't alter other servers.")
+                    return
+        username = "unknown" if user is None else user.display_name
+        await ctx.pool.execute('UPDATE "character" SET user_id = 0 WHERE name = $1', result["name"])
+        await ctx.send("**{0}** was removed successfully from **@{1}**.".format(result["name"], username))
+        for server in user_guilds:
+            world = self.bot.tracked_worlds.get(server.id, None)
+            if world != result["world"]:
+                continue
+            if result["guild"] is None:
+                result["guild"] = "No guild"
+            log_msg = "{0.mention} unregistered:\n\u2023 {1} - Level {2} {3} - **{4}**". \
+                format(user, result["name"], result["level"], get_voc_abb_and_emoji(result["vocation"]),
+                       result["guild"])
 
-                embed = discord.Embed(description=log_msg)
-                embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-                embed.set_footer(text="{0.name}#{0.discriminator}".format(ctx.author),
-                                 icon_url=get_user_avatar(ctx.author))
-                embed.colour = discord.Colour.dark_teal()
+            embed = discord.Embed(description=log_msg)
+            embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
+            embed.set_footer(text="{0.name}#{0.discriminator}".format(ctx.author),
+                             icon_url=get_user_avatar(ctx.author))
+            embed.colour = discord.Colour.dark_teal()
 
-                await self.bot.send_log_message(server, embed=embed)
-        finally:
-            c.close()
-            userDatabase.commit()
+            await self.bot.send_log_message(server, embed=embed)
 
 
 def setup(bot):

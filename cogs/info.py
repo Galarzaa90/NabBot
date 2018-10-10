@@ -12,7 +12,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import _get_server_property, userDatabase
+from .utils.database import get_server_property
 from .utils import parse_uptime, FIELD_VALUE_LIMIT, get_region_string, get_user_avatar, config
 from .utils.messages import split_message
 from .utils.pages import HelpPaginator, _can_run
@@ -32,7 +32,7 @@ class Info:
                          icon_url="https://github.com/fluidicon.png")
         prefixes = list(config.command_prefix)
         if ctx.guild:
-            prefixes = _get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
+            prefixes = await get_server_property(ctx.pool, ctx.guild.id, "prefixes", prefixes)
         prefixes_str = "\n".join(f"- `{p}`" for p in prefixes)
         embed.add_field(name="Prefixes", value=prefixes_str, inline=False)
         embed.add_field(name="Authors", value="\u2023 [Galarzaa90](https://github.com/Galarzaa90)\n"
@@ -55,22 +55,10 @@ class Info:
     @commands.command(name="botinfo")
     async def bot_info(self, ctx: NabCtx):
         """Shows advanced information about the bot."""
-        char_count = 0
-        deaths_count = 0
-        levels_count = 0
-        with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT COUNT(*) as count FROM chars")
-            result = c.fetchone()
-            if result is not None:
-                char_count = result["count"]
-            c.execute("SELECT COUNT(*) as count FROM char_deaths")
-            result = c.fetchone()
-            if result is not None:
-                deaths_count = result["count"]
-            c.execute("SELECT COUNT(*) as count FROM char_levelups")
-            result = c.fetchone()
-            if result is not None:
-                levels_count = result["count"]
+        async with ctx.pool.acquire() as conn:
+            char_count = await conn.fetchval('SELECT COUNT(*) as count FROM "character"')
+            deaths_count = await conn.fetchval('SELECT COUNT(*) as count FROM character_death')
+            levels_count = await conn.fetchval('SELECT COUNT(*) as count FROM character_levelup')
 
         used_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
         total_ram = psutil.virtual_memory().total / 1024 ** 2

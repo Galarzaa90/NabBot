@@ -477,7 +477,7 @@ class Settings:
             return
 
         await set_server_property(ctx.pool, ctx.guild.id, "world", world)
-        self.bot.reload_worlds()
+        await self.bot.reload_worlds()
         if world is None:
             await ctx.send(f"{ctx.tick(True)} This server is no longer tracking any world.")
         else:

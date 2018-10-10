@@ -1,4 +1,6 @@
 import asyncio
+
+import aiohttp
 import asyncpg
 import functools
 import re
@@ -15,24 +17,6 @@ _mention = re.compile(r'<@!?([0-9]{1,19})>')
 T = TypeVar('T')
 
 
-class _ContextDBAcquire:
-    __slots__ = ('ctx', 'timeout')
-
-    def __init__(self, ctx, timeout):
-        self.ctx = ctx
-        self.timeout = timeout
-
-    def __await__(self):
-        return self.ctx._acquire(self.timeout).__await__()
-
-    async def __aenter__(self):
-        await self.ctx._acquire(self.timeout)
-        return self.ctx.db
-
-    async def __aexit__(self, *args):
-        await self.ctx.release()
-
-
 class NabCtx(commands.Context):
     """An override of :class:`commands.Context` that provides properties and methods for NabBot."""
     guild: discord.Guild
@@ -45,8 +29,7 @@ class NabCtx(commands.Context):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.pool: asyncpg.pool.Pool = self.bot.pool
-        self.session = self.bot.session
-        self.db: asyncpg.Connection = None
+        self.session: aiohttp.ClientSession = self.bot.session
         self.yes_no_reactions = ("🇾", "🇳")
         self.check_reactions = (config.true_emoji, config.false_emoji)
 
@@ -171,15 +154,6 @@ class NabCtx(commands.Context):
     # endregion
 
     # region Methods
-    async def _acquire(self, timeout):
-        if self.db is None:
-            self.db = await self.pool.acquire(timeout=timeout)
-        return self.db
-
-    def acquire(self, *, timeout=None):
-        """Acquires a database connection from the pool."""
-        return _ContextDBAcquire(self, timeout)
-
     async def choose(self, matches: Sequence[Any], title="Suggestions"):
         if len(matches) == 0:
             raise ValueError('No results found.')
@@ -299,12 +273,6 @@ class NabCtx(commands.Context):
                 except discord.Forbidden:
                     pass
         return True
-
-    async def release(self):
-        """Releases the database connection from the pool."""
-        if self.db is not None:
-            await self.bot.pool.release(self.db)
-            self.db = None
 
     def tick(self, value: bool = True, label: str = None) -> str:
         """Displays a checkmark or a cross depending on the value.
