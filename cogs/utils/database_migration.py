@@ -101,13 +101,13 @@ tables = [
         server_id bigint NOT NULL,
         name text NOT NULL,
         description text,
-        start timestamp with time zone,
-        active boolean,
-        status smallint,
-        joinable boolean,
-        slots smallint,
-        modified timestamp with time zone DEFAULT now(),
-        created timestamp with time zone DEFAULT now(),
+        start timestamp with time zone NOT NULL,
+        active boolean NOT NULL DEFAULT true,
+        reminder smallint NOT NULL DEFAULT 0,
+        joinable boolean NOT NULL DEFAULT true,
+        slots smallint NOT NULL DEFAULT 0,
+        modified timestamp with time zone NOT NULL DEFAULT now(),
+        created timestamp with time zone NOT NULL DEFAULT now(),
         PRIMARY KEY (id)
     );
     """,
@@ -332,10 +332,11 @@ async def import_events(conn: asyncpg.Connection, c: sqlite3.Cursor):
             start = datetime.datetime.utcfromtimestamp(start)
             active = bool(active)
             joinable = bool(joinable)
+            status = 4 - status
             event_id = await conn.fetchval("""INSERT INTO event(user_id, name, start, active, description, server_id,
-                                              joinable, slots)
-                                              VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id""",
-                                           creator, name, start, active, description, server, joinable, slots)
+                                              joinable, slots, reminder)
+                                              VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id""",
+                                           creator, name, start, active, description, server, joinable, slots, status)
             c.execute("SELECT ?, user_id FROM event_subscribers WHERE event_id = ?", (event_id, old_id))
             event_subscribers.extend(c.fetchall())
             c.execute("SELECT ?, name FROM event_participants LEFT JOIN chars ON id = char_id WHERE event_id = ?",

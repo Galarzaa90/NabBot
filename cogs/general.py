@@ -1,4 +1,5 @@
 import asyncio
+import asyncpg
 import datetime as dt
 import random
 import time
@@ -19,6 +20,7 @@ from .utils.tibia import get_voc_abb, get_voc_emoji
 EVENT_NAME_LIMIT = 50
 EVENT_DESCRIPTION_LIMIT = 400
 MAX_EVENTS = 3
+RECENT_THRESHOLD = dt.timedelta(minutes=30)
 
 
 class General:
@@ -141,60 +143,57 @@ class General:
         if event_id is not None:
             await ctx.invoke(self.bot.all_commands.get('events').get_command("info"), event_id)
             return
-        # Time in seconds the bot will show past events
-        time_threshold = 60 * 30
-        now = time.time()
         embed = discord.Embed(description="For more info about an event, use `/event info (id)`"
                                           "\nTo receive notifications for an event, use `/event sub (id)`")
-        with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT creator, start, name, id, server FROM events "
-                      "WHERE start < ? AND start > ? AND active = 1 AND server == ? "
-                      "ORDER by start ASC", (now, now - time_threshold, ctx.guild.id))
-            recent_events = c.fetchall()
-            c.execute("SELECT creator, start, name, id, server FROM events "
-                      "WHERE start > ? AND active = 1 AND server == ?"
-                      "ORDER BY start ASC", (now, ctx.guild.id))
-            upcoming_events = c.fetchall()
+        async with ctx.pool.acquire() as conn:
+            recent_events = await conn.fetch("""SELECT user_id, start, name, id FROM event
+                                                WHERE active AND server_id = $1 AND start < now() AND
+                                                now()-start < $2
+                                                ORDER BY start ASC""", ctx.guild.id, RECENT_THRESHOLD)
+            upcoming_events = await conn.fetch("""SELECT user_id, start, name, id FROM event
+                                                  WHERE active AND server_id = $1 AND start > now()
+                                                  ORDER BY start ASC""", ctx.guild.id)
         if len(recent_events) + len(upcoming_events) == 0:
             await ctx.send("There are no upcoming events.")
             return
         # Recent events
         if recent_events:
-            name = "Recent events"
+            field_name = "Recent events"
             value = ""
             for event in recent_events:
-                author = ctx.guild.get_member(event["creator"])
-                event["author"] = "unknown" if author is None else author.display_name
-                time_diff = dt.timedelta(seconds=now - event["start"])
-                minutes = round((time_diff.seconds / 60) % 60)
-                event["start_str"] = "Started {0} minutes ago".format(minutes)
-                value += "\n**{name}** (*ID: {id}*) - by **@{author}** - {start_str}".format(**event)
-            embed.add_field(name=name, value=value, inline=False)
+                user_id, start, name, event_id = event
+                user = ctx.guild.get_member(user_id)
+                author = "unknown" if user is None else user.display_name
+                time_diff = dt.datetime.now(tz=dt.timezone.utc) - event["start"]
+                starts_in = f"Started {round((time_diff.seconds / 60) % 60)} minutes ago"
+                value += f"\n**{name}** (*ID: {event_id}*) - by **@{author}** - {starts_in}"
+            embed.add_field(name=field_name, value=value, inline=False)
         # Upcoming events
         if upcoming_events:
-            name = "Upcoming events"
+            field_name = "Upcoming events"
             value = ""
             for event in upcoming_events:
-                author = ctx.guild.get_member(event["creator"])
-                event["author"] = "unknown" if author is None else author.display_name
-                time_diff = dt.timedelta(seconds=event["start"] - now)
+                user_id, start, name, event_id = event
+                user = ctx.guild.get_member(user_id)
+                author = "unknown" if user is None else user.display_name
+                time_diff = event["start"] - dt.datetime.now(tz=dt.timezone.utc)
                 days, hours, minutes = time_diff.days, time_diff.seconds // 3600, (time_diff.seconds // 60) % 60
                 if days:
-                    event["start_str"] = 'In {0} days, {1} hours and {2} minutes'.format(days, hours, minutes)
+                    starts_in = f'In {days} days, {hours} hours and {minutes} minutes'
                 elif hours:
-                    event["start_str"] = 'In {0} hours and {1} minutes'.format(hours, minutes)
+                    starts_in = f'In {hours} hours and {minutes} minutes'
                 elif minutes > 0:
-                    event["start_str"] = 'In {0} minutes'.format(minutes)
+                    starts_in = f'In {minutes} minutes'
                 else:
-                    event["start_str"] = 'Starting now!'
-                value += "\n**{name}** (*ID:{id}*) -  by **@{author}** - {start_str}".format(**event)
-            embed.add_field(name=name, value=value, inline=False)
+                    starts_in = 'Starting now!'
+                value += f"\n**{name}** (*ID:{event_id}*) -  by **@{author}** - {starts_in}"
+            embed.add_field(name=field_name, value=value, inline=False)
         await ctx.send(embed=embed)
 
     @commands.guild_only()
     @checks.can_embed()
     @events.command(name="add", usage="<starts in> <name>[,description]")
-    async def event_add(self, ctx, starts_in: TimeString, *, params):
+    async def event_add(self, ctx: NabCtx, starts_in: TimeString, *, params):
         """Creates a new event.
 
         `starts in` is in how much time the event will start from the moment of creation.
@@ -208,9 +207,8 @@ class General:
 
         Once the event is created, the id of the event will be returned. This is used for further edits.
         """
-        now = time.time()
         creator = ctx.author.id
-        start = now + starts_in.seconds
+        start = dt.datetime.now(tz=dt.timezone.utc)+dt.timedelta(seconds=starts_in.seconds)
         params = params.split(",", 1)
         name = single_line(clean_string(ctx, params[0]))
         if len(name) > EVENT_NAME_LIMIT:
@@ -221,32 +219,25 @@ class General:
         if len(params) > 1:
             event_description = clean_string(ctx, params[1])
 
-        with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT creator FROM events WHERE creator = ? AND active = 1 AND start > ?", (creator, now,))
-            result = c.fetchall()
+        event_count = await ctx.pool.fetchval("""SELECT count(*) FROM event
+                                                 WHERE user_id = $1 AND start > now() AND active""", creator)
 
-        if len(result) >= MAX_EVENTS and not await checks.check_guild_permissions(ctx, {'manage_guild': True}):
-            await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
-                           f"Delete or edit an active event.")
-            return
+        if event_count >= MAX_EVENTS and not await checks.check_guild_permissions(ctx, {'manage_guild': True}):
+            return await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
+                                  f"Delete or edit an active event.")
 
-        embed = discord.Embed(title=name, description=event_description, timestamp=dt.datetime.utcfromtimestamp(start))
+        embed = discord.Embed(title=name, description=event_description, timestamp=start)
         embed.set_footer(text="Start time")
 
         message = await ctx.send("Is this correct?", embed=embed)
         confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
-            await ctx.send("You took too long!")
-            return
+            return await ctx.send("You took too long!")
         if not confirm:
-            await ctx.send("Alright, no event for you.")
-            return
-        with closing(userDatabase.cursor()) as c:
-            c.execute("INSERT INTO events (creator,server,start,name,description) VALUES(?,?,?,?,?)",
-                      (creator, ctx.guild.id, start, name, event_description))
-            event_id = c.lastrowid
-            userDatabase.commit()
-
+            return await ctx.send("Alright, no event for you.")
+        event_id = await ctx.pool.fetchval("""INSERT INTO event(user_id, server_id, start, name, description)
+                                              VALUES($1, $2, $3, $4, $5)""",
+                                           creator, ctx.guild.id, start, name, event_description)
         await ctx.send(f"{ctx.tick()} Event created successfully.\n\t**{name}** in *{starts_in.original}*.\n"
                        f"*To edit this event use ID {event_id}*")
 
@@ -257,16 +248,17 @@ class General:
 
         Only the creator can add characters to an event.
         If the event is joinable, anyone can join an event using `event join`"""
-        event = self.get_event(ctx, event_id)
+        event = await self.get_event(ctx, event_id)
         if event is None:
             await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
+        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send(f"{ctx.tick(False)} You can only add people to your own events.")
             return
-        with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT * FROM chars WHERE name LIKE ? AND user_id != 0", (character,))
-            char = c.fetchone()
+        char = await ctx.pool.fetchrow(
+            'SELECT id, user_id, name, world FROM "character" WHERE lower(name) = $1 AND user_id != 0',
+            character.lower())
+
         if event["slots"] != 0 and len(event["participants"]) >= event["slots"]:
             await ctx.send(f"{ctx.tick(False)} All the slots for this event has been filled. "
                            f"You can change them by using `/event edit slots {event_id} newSlots`.")
@@ -279,8 +271,7 @@ class General:
         if owner is None:
             await ctx.send(f"{ctx.tick(False)} That character is not registered.")
             return
-        world = self.bot.tracked_worlds.get(event["server"])
-        if world != char["world"]:
+        if ctx.world != char["world"]:
             await ctx.send(f"{ctx.tick(False)} You can't add a character from another world.")
             return
         if any(owner.id == participant["user_id"] for participant in event["participants"]):
@@ -297,8 +288,9 @@ class General:
             await ctx.send("Nevermind then.")
             return
 
-        with userDatabase as con:
-            con.execute("INSERT INTO event_participants(event_id, char_id) VALUES(?,?)", (event_id, char["id"]))
+        async with ctx.pool.acquire() as conn:
+            await conn.execute("INSERT INTO event_participant(event_id, character_id) VALUES($1,$2)",
+                               event_id, char["id"])
             await ctx.send(f"{ctx.tick()} You successfully added **{char['name']}** to this event.")
             return
 
@@ -324,11 +316,11 @@ class General:
 
         If no new description is provided initially, the bot will ask for one.
         To remove the description, say `blank`."""
-        event = self.get_event(ctx, event_id)
+        event = await self.get_event(ctx, event_id)
         if event is None:
             await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
+        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
@@ -348,8 +340,7 @@ class General:
             new_description = ""
         new_description = clean_string(ctx, new_description)
 
-        embed = discord.Embed(title=event["name"], description=new_description,
-                              timestamp=dt.datetime.utcfromtimestamp(event["start"]))
+        embed = discord.Embed(title=event["name"], description=new_description, timestamp=event["start"])
         embed.set_footer(text="Start time")
         embed.set_author(name=ctx.author.display_name, icon_url=get_user_avatar(ctx.author))
 
@@ -362,14 +353,13 @@ class General:
             await ctx.send("Alright, no changes will be done.")
             return
 
-        with userDatabase as conn:
-            conn.execute("UPDATE events SET description = ? WHERE id = ?", (new_description, event_id,))
+        await ctx.pool.execute("UPDATE event SET description = $1 WHERE id = $2", new_description, event_id)
 
-        if event["creator"] == ctx.author.id:
+        if event["user_id"] == ctx.author.id:
             await ctx.send(f"{ctx.tick()} Your event's description was changed successfully.")
         else:
             await ctx.send(f"{ctx.tick()} Event's description changed successfully.")
-            creator = self.bot.get_member(event["creator"])
+            creator = self.bot.get_member(event["user_id"])
             if creator is not None:
                 await creator.send(f"Your event **{event['name']}** had its description changed by {ctx.author.mention}",
                                    embed=embed)
@@ -384,11 +374,11 @@ class General:
         If an event is joinable, anyone can join using `event join id`  .
         Otherwise, the event creator has to add people with `event addplayer id`.
         """
-        event = self.get_event(ctx, event_id)
+        event = await self.get_event(ctx, event_id)
         if event is None:
             await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
+        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
@@ -407,14 +397,13 @@ class General:
             joinable = yes_no.lower() in ["yes", "yeah"]
         joinable_string = "joinable" if joinable else "not joinable"
 
-        with userDatabase as conn:
-            conn.execute("UPDATE events SET joinable = ? WHERE id = ?", (joinable, event_id))
+        await ctx.pool.execute("UPDATE event SET joinable = $1 WHERE id = $2", joinable, event_id)
 
-        if event["creator"] == ctx.author.id:
+        if event["user_id"] == ctx.author.id:
             await ctx.send(f"{ctx.tick()}Your event's was changed succesfully to **{joinable_string}**.")
         else:
             await ctx.send(f"{ctx.tick} Event is now **{joinable_string}**.")
-            creator = self.bot.get_member(event["creator"])
+            creator = self.bot.get_member(event["user_id"])
             if creator is not None:
                 await creator.send(f"Your event **{event['name']}** was changed to **{joinable_string}** "
                                    f"by {ctx.author.mention}.")
@@ -425,11 +414,11 @@ class General:
         """Edits an event's name.
 
         If no new name is provided initially, the bot will ask for one."""
-        event = self.get_event(ctx, event_id)
+        event = await self.get_event(ctx, event_id)
         if event is None:
             await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
+        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
@@ -458,10 +447,9 @@ class General:
             await ctx.send("Alright, name remains the same.")
             return
 
-        with userDatabase as conn:
-            conn.execute("UPDATE events SET name = ? WHERE id = ?", (new_name, event_id,))
+        await ctx.pool.execute("UPDATE event SET name = $1 WHERE id = $2", new_name, event_id)
 
-        if event["creator"] == ctx.author.id:
+        if event["user_id"] == ctx.author.id:
             await ctx.send(f"{ctx.tick()} Your event was renamed successfully to **{new_name}**.")
         else:
             await ctx.send(f"{ctx.tick()} Event renamed successfully to **{new_name}**.")
@@ -478,11 +466,11 @@ class General:
         """Edits an event's number of slots
 
         Slots is the number of characters an event can have. By default this is 0, which means no limit."""
-        event = self.get_event(ctx, event_id)
+        event = await self.get_event(ctx, event_id)
         if event is None:
             await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
+        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
@@ -514,10 +502,9 @@ class General:
             await ctx.send("Alright, slots remain unchanged.")
             return
 
-        with userDatabase as conn:
-            conn.execute("UPDATE events SET slots = ? WHERE id = ?", (slots, event_id,))
+        await ctx.pool.execute("UPDATE event SET slots = $1 WHERE id = $2", slots, event_id)
 
-        if event["creator"] == ctx.author.id:
+        if event["user_id"] == ctx.author.id:
             await ctx.send(f"{ctx.tick()} Your event slots were changed to **{slots}**.")
         else:
             await ctx.send(f"{ctx.tick()} Event slots changed to **{slots}**.")
@@ -533,12 +520,12 @@ class General:
         """Edit's an event's start time.
 
         If no new time is provided initially, the bot will ask for one."""
-        now = time.time()
-        event = self.get_event(ctx, event_id)
+        now = dt.datetime.now(dt.timezone.utc)
+        event = await self.get_event(ctx, event_id)
         if event is None:
             await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
-        if event["creator"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
+        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
             await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
             return
 
@@ -560,7 +547,8 @@ class General:
             except commands.BadArgument as e:
                 await ctx.send(str(e))
                 return
-        embed = discord.Embed(title=event["name"], timestamp=dt.datetime.utcfromtimestamp(now+starts_in.seconds))
+        new_time = now+dt.timedelta(seconds=starts_in.seconds)
+        embed = discord.Embed(title=event["name"], timestamp=new_time)
         embed.set_footer(text="Start time")
         message = await ctx.send(f"This will be the new time of your event in your local time. Is this correct?",
                                  embed=embed)
@@ -572,14 +560,13 @@ class General:
             await ctx.send("Alright, event remains the same.")
             return
 
-        with userDatabase as conn:
-            conn.execute("UPDATE events SET start = ? WHERE id = ?", (now + starts_in.seconds, event_id,))
+        await ctx.pool.execute("UPDATE event SET start = $1 WHERE id = $2", new_time, event_id)
 
-        if event["creator"] == ctx.author.id:
+        if event["user_id"] == ctx.author.id:
             await ctx.send(f"{ctx.tick()}Your event's start time was changed successfully to **{starts_in.original}**.")
         else:
             await ctx.send(f"{ctx.tick()}Event's time changed successfully.")
-            creator = self.bot.get_member(event["creator"])
+            creator = self.bot.get_member(event["user_id"])
             if creator is not None:
                 await creator.send(f"The start time of your event **{event['name']}** was changed to "
                                    f"**{starts_in.original}** by {ctx.author.mention}.")
@@ -593,14 +580,13 @@ class General:
         """Displays an event's info.
 
         The start time shown in the footer is always displayed in your device's timezone."""
-        event = self.get_event(ctx, event_id)
+        event = await self.get_event(ctx, event_id)
         if not event:
             await ctx.send(f"{ctx.tick(False)} There's no event with that id.")
             return
-        guild = self.bot.get_guild(event["server"])
-        start = dt.datetime.utcfromtimestamp(event["start"])
-        author = self.bot.get_member(event["creator"], guild)
-        embed = discord.Embed(title=event["name"], description=event["description"], timestamp=start)
+        guild = self.bot.get_guild(event["server_id"])
+        author = self.bot.get_member(event["user_id"], guild)
+        embed = discord.Embed(title=event["name"], description=event["description"], timestamp=event["start"])
         if author is not None:
             if guild is None:
                 author_name = author.name
@@ -624,23 +610,18 @@ class General:
 
         You can only join an event with a character at a time.
         Some events may not be joinable and require the creator to add characters themselves."""
-        event = self.get_event(ctx, event_id)
+        event = await self.get_event(ctx, event_id)
         if event is None:
             await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
-        with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT * FROM chars WHERE name LIKE ?", (character,))
-            char = c.fetchone()
-            c.execute("SELECT char_id, user_id FROM event_participants, chars WHERE event_id = ? AND chars.id = char_id"
-                      , (event_id,))
-            participants = c.fetchall()
-            if participants is None:
-                participants = []
+        async with ctx.pool.acquire() as conn:
+            char = await conn.fetchrow('SELECT id, user_id, name, world FROM "character" WHERE lower(name) = $1',
+                                       character.lower())
         if event["joinable"] != 1:
             await ctx.send(f"{ctx.tick(False)} You can't join this event."
                            f"Maybe you meant to subscribe? Try `/event sub {event_id}`.")
             return
-        if event["slots"] != 0 and len(participants) >= event["slots"]:
+        if event["slots"] != 0 and len(event["participants"]) >= event["slots"]:
             await ctx.send(f"{ctx.tick(False)} All the slots for this event has been filled.")
             return
         if char is None:
@@ -653,11 +634,11 @@ class General:
         if world != char["world"]:
             await ctx.send(f"{ctx.tick(False)} You can't join with a character from another world.")
             return
-        if any(ctx.author.id == participant["user_id"] for participant in participants):
+        if any(ctx.author.id == participant["user_id"] for participant in event["participants"]):
             await ctx.send(f"{ctx.tick(False)} A character of yours is already in this event.")
             return
 
-        message = await ctx.send(f"Do you want to join the event \'**{event['name']}**\' as **{char['name']}**?")
+        message = await ctx.send(f"Do you want to join the event '**{event['name']}**' as **{char['name']}**?")
         confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -666,16 +647,15 @@ class General:
             await ctx.send("Nevermind then.")
             return
 
-        with userDatabase as con:
-            con.execute("INSERT INTO event_participants(event_id, char_id) VALUES(?,?)", (event_id, char["id"]))
-            await ctx.send(f"{ctx.tick()} You successfully joined this event.")
-            return
+        await ctx.pool.execute("""INSERT INTO event_participant(event_id, char_id) VALUES($1, $2)
+                                  ON CONFLICT(event_id, char_id) DO NOTHING""", event_id, char["id"])
+        await ctx.send(f"{ctx.tick()} You successfully joined this event.")
 
     @commands.guild_only()
     @events.command(name="leave")
     async def event_leave(self, ctx, event_id: int):
         """Leave an event you were participating in."""
-        event = self.get_event(ctx, event_id)
+        event = await self.get_event(ctx, event_id)
         if event is None:
             await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
@@ -694,10 +674,9 @@ class General:
             await ctx.send("Nevermind then.")
             return
 
-        with userDatabase as con:
-            con.execute("DELETE FROM event_participants WHERE event_id = ? AND char_id = ?", (event_id, joined_char))
-            await ctx.send(f"{ctx.tick()} You successfully left this event.")
-            return
+        await ctx.pool.execute("DELETE FROM event_participant WHERE event_id = $1 AND char_id = $2", event_id,
+                               joined_char)
+        await ctx.send(f"{ctx.tick()} You successfully left this event.")
 
     @commands.guild_only()
     @checks.can_embed()
@@ -1124,43 +1103,42 @@ class General:
 
     async def notify_subscribers(self, event_id: int, content, *, embed: discord.Embed=None, skip_creator=False):
         """Sends a message to all users subscribed to an event"""
-        with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT * FROM events WHERE id = ?", (event_id,))
-            creator = c.fetchone()["creator"]
-            c.execute("SELECT * FROM event_subscribers WHERE event_id = ?", (event_id,))
-            subscribers = c.fetchall()
+        async with self.bot.pool.acquire() as conn:
+            creator = await conn.fetchval("SELECT user_id FROM event WHERE id = $1", event_id)
+            if creator is None:
+                return
+            _subscribers = await conn.fetch("SELECT user_id FROM event_subscriber WHERE event_id = $1", event_id)
+            subscribers = [s[0] for s in _subscribers]
         if not subscribers:
             return
         for subscriber in subscribers:
             if subscriber == creator and skip_creator:
                 continue
-            member = self.bot.get_user(subscriber["user_id"])
+            member = self.bot.get_user(subscriber)
             if member is None:
                 continue
             await member.send(content, embed=embed)
 
-    def get_event(self, ctx: NabCtx, event_id: int) -> Optional[Dict[str, Union[int, str]]]:
+    async def get_event(self, ctx: NabCtx, event_id: int) -> Optional[Dict[str, Any]]:
         # If this is used on a PM, show events for all shared servers
         if ctx.is_private:
             guilds = self.bot.get_user_guilds(ctx.author.id)
         else:
             guilds = [ctx.guild]
         guild_ids = [s.id for s in guilds]
-        placeholders = ", ".join("?" for s in guilds)
-        c = userDatabase.cursor()
-        now = time.time()
-        c.execute("SELECT * FROM events "
-                  "WHERE id = {0} AND active = 1 AND start > {1} AND server IN ({2})".format(event_id, now,
-                                                                                             placeholders)
-                  , tuple(guild_ids))
-
-        event = c.fetchone()
-        if event is None:
-            return None
-        c.execute("SELECT user_id, id as char_id, name, ABS(level) as level, vocation, world  "
-                  "FROM chars WHERE id IN (SELECT char_id FROM event_participants WHERE event_id = ?)",
-                  (event_id,))
-        event["participants"] = c.fetchall()
+        async with ctx.pool.acquire() as conn:
+            event = await conn.fetchrow("""SELECT id, name, description, active, reminder, slots, user_id,
+                                           server_id, start
+                                           FROM event WHERE id = $1 AND start > now() AND server_id = any($2)""",
+                                        event_id, guild_ids)
+            if event is None:
+                return None
+            event = dict(event)
+            participants = await conn.fetch("""SELECT name, abs(level) as level, vocation, world, user_id
+                                               FROM event_participant ep
+                                               LEFT JOIN "character" c on c.id = ep.character_id
+                                               WHERE event_id = $1""", event_id)
+            event["participants"] = [dict(p) for p in participants]
         return event
 
     def __unload(self):

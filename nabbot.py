@@ -1,3 +1,5 @@
+import json
+
 import asyncpg
 import datetime as dt
 import os
@@ -255,9 +257,10 @@ class NabBot(commands.Bot):
         del self.tracked_worlds_list[:]
         if len(rows) > 0:
             for row in rows:
-                if row["value"] not in self.tracked_worlds_list:
-                    self.tracked_worlds_list.append(row["value"])
-                tibia_servers_dict_temp[int(row["server_id"])] = row["value"]
+                value = json.loads(row["value"])
+                if value not in self.tracked_worlds_list:
+                    self.tracked_worlds_list.append(value)
+                tibia_servers_dict_temp[int(row["server_id"])] = value
 
         self.tracked_worlds.clear()
         self.tracked_worlds.update(tibia_servers_dict_temp)
