@@ -1,5 +1,4 @@
 import asyncio
-from contextlib import closing
 from typing import List
 
 import discord
@@ -9,7 +8,6 @@ from nabbot import NabBot
 from .utils import checks
 from .utils.context import NabCtx
 from .utils.converter import InsensitiveRole
-from .utils.database import userDatabase
 from .utils import log, get_user_avatar
 from .utils.pages import CannotPaginate, Pages
 from .utils.tibia import get_guild, NetworkError
@@ -32,15 +30,16 @@ class Roles:
 
         Removes joinable groups from the database when the role is deleted.
         """
+        async with self.bot.pool.acquire() as conn:
+            await conn.execute("DELETE FROM role_joinable WHERE role_id = $1", role.id)
+            await conn.execute("DELETE FROM role_auto WHERE role_id = $1", role.id)
 
-        userDatabase.execute("DELETE FROM joinable_roles WHERE role_id = ?", (role.id,))
-        userDatabase.execute("DELETE FROM auto_roles WHERE role_id = ?", (role.id,))
-
+    # Todo: Requires optimization
     async def on_character_change(self, user_id: int):
         try:
-            with closing(userDatabase.cursor()) as c:
-                guilds_raw = c.execute("SELECT guild FROM chars WHERE user_id = ?", (user_id,)).fetchall()
-                rules_raw = c.execute("SELECT * FROM auto_roles ORDER BY server_id").fetchall()
+            async with self.bot.pool.acquire() as conn:
+                guilds_raw = await conn.fetch('SELECT guild FROM "character" WHERE user_id = $1', user_id)
+                rules_raw = await conn.fetch("SELECT server_id, role_id, rule FROM role_auto ORDER BY server_id")
             # Flatten list of guilds
             guilds = set(g['guild'] for g in guilds_raw)
 
@@ -50,7 +49,7 @@ class Roles:
                 server_id = rule["server_id"]
                 if server_id not in rules:
                     rules[rule["server_id"]] = []
-                rules[server_id].append((rule["role_id"], rule["guild"]))
+                rules[server_id].append((rule["role_id"], rule["rule"]))
             for server, rules in rules.items():
                 guild: discord.Guild = self.bot.get_guild(server)
                 if guild is None:
@@ -104,8 +103,8 @@ class Roles:
 
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
-    @autorole.command(name="add")
-    async def autorole_add(self, ctx: NabCtx, role: InsensitiveRole, *, guild: str):
+    @autorole.command(name="add", usage="<role> <guild>")
+    async def autorole_add(self, ctx: NabCtx, _role: InsensitiveRole, *, guild: str):
         """Creates a new autorole rule.
 
         Rules consist of a role and a guild name.  
@@ -116,7 +115,7 @@ class Roles:
 
         Role names, role mentions or role ids are allowed. Role names with multiple words must be quoted.
         Note that current members will be updated until their characters or guilds change."""
-        role: discord.Role = role
+        role: discord.Role = _role
         name = guild.replace("\"", "")
         if guild != "*":
             try:
@@ -128,10 +127,8 @@ class Roles:
             except NetworkError:
                 await ctx.send("I'm having network issues, try again later.")
                 return
-
-        result = userDatabase.execute("SELECT * FROM auto_roles WHERE role_id = ? and guild LIKE ?", (role.id, name))
-        exists = list(result)
-        if exists:
+        result = await ctx.pool.fetchrow("SELECT true FROM role_auto WHERE role_id = $1 and rule = $2", role.id, name)
+        if result:
             await ctx.send(f"{ctx.tick(False)} Autorole rule already exists.")
             return
 
@@ -152,8 +149,8 @@ class Roles:
         if not confirm:
             return
 
-        userDatabase.execute("INSERT INTO auto_roles(server_id, role_id, guild) VALUES(?,?, ?)", (ctx.guild.id, role.id,
-                                                                                                  name))
+        await ctx.pool.execute("INSERT INTO role_auto(server_id, role_id, rule) VALUES($1, $2, $3)",
+                               ctx.guild.id, role.id, name)
         await ctx.send(f"{ctx.tick()} Autorole rule created.")
 
     @checks.has_guild_permissions(manage_roles=True)
@@ -161,16 +158,13 @@ class Roles:
     @autorole.command(name="list", aliases=["rules"])
     async def autorole_list(self, ctx: NabCtx):
         """Shows a list of autorole rules."""
-        result = userDatabase.execute("SELECT role_id, guild FROM auto_roles WHERE server_id = ?", (ctx.guild.id, ))
-        rules = list(result)
+        rules = await ctx.pool.fetch("SELECT role_id, rule FROM role_auto WHERE server_id = $1", ctx.guild.id)
         if not rules:
             await ctx.send(f"{ctx.tick(False)} This server has no autorole rules.")
             return
 
-        flat_rules = [(r['role_id'], r['guild']) for r in rules]
-
         entries = []
-        for role_id, guild in flat_rules:
+        for role_id, guild in rules:
             role: discord.Role = discord.utils.get(ctx.guild.roles, id=role_id)
             if role is None:
                 continue
@@ -227,8 +221,8 @@ class Roles:
         Note that members that currently have the role won't be affected."""
         group: discord.Role = role
         guild = guild.replace("\"", "")
-        result = userDatabase.execute("SELECT * FROM auto_roles WHERE role_id = ? and guild LIKE ?", (group.id, guild))
-        exists = list(result)
+        exists = await ctx.pool.fetchval("SELECT true FROM role_auto WHERE role_id = $1 AND lower(rule) = $2",
+                                         group.id, guild.lower())
         if not exists:
             await ctx.send(f"{ctx.tick(False)} That rule doesn't exist.")
             return
@@ -241,21 +235,20 @@ class Roles:
 
         await ctx.send(f"{ctx.tick()} Auto role rule removed. "
                        f"Note that the role won't be removed from current members.")
-        userDatabase.execute("DELETE FROM auto_roles WHERE role_id = ? AND guild LIKE ?", (group.id, guild))
+        await ctx.pool.execute("DELETE FROM role_auto WHERE role_id = $1 AND lower(rule) = $2", group.id, guild.lower())
 
     @commands.guild_only()
     @commands.group(invoke_without_command=True, case_insensitive=True)
     @commands.cooldown(1, 5, commands.BucketType.user)
-    async def group(self, ctx: NabCtx, *, group: InsensitiveRole):
+    async def group(self, ctx: NabCtx, *, _group: InsensitiveRole):
         """Joins or leaves a group (role).
 
         If you're not in the group, you will be added.
         If you're already in the group, you will be removed.
 
         To see a list of joinable groups, use `group list`"""
-        group: discord.Role = group
-        result = userDatabase.execute("SELECT * FROM joinable_roles WHERE role_id = ?", (group.id,))
-        exists = list(result)
+        group: discord.Role = _group
+        exists = await ctx.pool.fetchval("SELECT true FROM role_joinable WHERE role_id = $1", group.id)
         if not exists:
             await ctx.send(f"{ctx.tick(False)} Group `{group.name}` doesn't exists.")
             return
@@ -305,9 +298,9 @@ class Roles:
             except discord.InvalidArgument:
                 await ctx.send(f"{ctx.tick(False)} Invalid group name.")
                 return
-        result = userDatabase.execute("SELECT * FROM joinable_roles WHERE role_id = ?", (role.id, ))
-        group = list(result)
-        if group:
+
+        exists = await ctx.pool.fetchval("SELECT true FROM role_joinable WHERE role_id = $1", role.id)
+        if exists:
             await ctx.send(f"{ctx.tick(False)} Group `{role.name}` already exists.")
             return
 
@@ -317,21 +310,19 @@ class Roles:
             await ctx.send(f"{ctx.tick(False)} You can't make a group with a role higher or equals than your highest.")
             return
 
-        userDatabase.execute("INSERT INTO joinable_roles(server_id, role_id) VALUES(?,?)", (ctx.guild.id, role.id))
+        await ctx.pool.execute("INSERT INTO role_joinable(server_id, role_id) VALUES($1, $2)", ctx.guild.id, role.id)
         await ctx.send(f"{ctx.tick()} Group `{role.name}` created successfully.")
 
     @commands.guild_only()
     @group.command(name="list")
     async def group_list(self, ctx: NabCtx):
         """Shows a list of available groups."""
-        result = userDatabase.execute("SELECT role_id FROM joinable_roles WHERE server_id = ?", (ctx.guild.id, ))
-        groups = list(result)
+        groups = await ctx.pool.fetch("SELECT role_id FROM role_joinable WHERE server_id = $1", ctx.guild.id)
         if not groups:
             await ctx.send(f"{ctx.tick(False)} This server has no joinable groups.")
             return
 
         flat_groups = [g['role_id'] for g in groups]
-
         entries = []
         roles = reversed(ctx.guild.roles)
         for role in roles:
@@ -350,14 +341,13 @@ class Roles:
     @commands.guild_only()
     @group.command(name="remove", aliases=["delete"])
     @commands.cooldown(1, 5, commands.BucketType.user)
-    async def group_remove(self, ctx: NabCtx, *, group: InsensitiveRole):
+    async def group_remove(self, ctx: NabCtx, *, _group: InsensitiveRole):
         """Removes a group.
 
         Removes a group, making members unable to join.
         When removing a group, you can optionally delete the role too."""
-        group: discord.Role = group
-        result = userDatabase.execute("SELECT * FROM joinable_roles WHERE role_id = ?", (group.id,))
-        exists = list(result)
+        group: discord.Role = _group
+        exists = await ctx.pool.fetchval("SELECT true FROM role_joinable WHERE role_id = $1", group.id)
         if not exists:
             await ctx.send(f"{ctx.tick(False)} `{group.name}` is not a group.")
             return
@@ -381,7 +371,7 @@ class Roles:
                                f"{ctx.tick()} Group `{group.name}` removed.")
         else:
             await ctx.send(f"{ctx.tick()} Group `{group.name}` was removed.")
-        userDatabase.execute("DELETE FROM joinable_roles WHERE role_id = ?", (group.id,))
+        await ctx.pool.execute("DELETE FROM role_joinable WHERE role_id = $1", group.id)
 
     @commands.guild_only()
     @commands.command(aliases=["norole"])

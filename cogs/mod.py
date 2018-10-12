@@ -1,5 +1,4 @@
 import asyncio
-from contextlib import closing
 from typing import List, Dict
 
 import discord
@@ -8,7 +7,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks, config
 from .utils.context import NabCtx
-from .utils.database import userDatabase, _get_server_property
+from .utils.database import get_server_property
 from .utils.pages import Pages, CannotPaginate
 
 
@@ -17,7 +16,7 @@ class Mod:
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.ignored = {}
-        self.reload_ignored()
+        self.bot.loop.run_until_complete(self.reload_ignored())
 
     def __global_check(self, ctx: NabCtx):
         return ctx.is_private or ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_owner_check(ctx) \
@@ -32,7 +31,7 @@ class Mod:
 
         If the bot has `Manage Messages` permission, it will also delete command invocation messages."""
         count = 0
-        prefixes = _get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=config.command_prefix)
+        prefixes = await get_server_property(ctx.pool, ctx.guild.id, "prefixes", default=config.command_prefix)
         # Also skip death and levelup messages from cleanup
         announce_prefix = (config.levelup_emoji, config.death_emoji, config.pvpdeath_emoji)
         if ctx.bot_permissions.manage_messages:
@@ -71,11 +70,10 @@ class Mod:
             await ctx.send(f"{channel.mention} is already ignored.")
             return
 
-        with userDatabase:
-            userDatabase.execute("INSERT INTO ignored_channels(server_id, channel_id) VALUES(?, ?)",
-                                 (ctx.guild.id, channel.id))
-            await ctx.send(f"{channel.mention} is now ignored.")
-            self.reload_ignored()
+        await ctx.pool.execute("INSERT INTO channel_ignored(server_id, channel_id) VALUES($1, $2)",
+                               ctx.guild.id, channel.id)
+        await ctx.send(f"{channel.mention} is now ignored.")
+        await self.reload_ignored()
 
     @commands.guild_only()
     @checks.is_channel_mod()
@@ -180,13 +178,11 @@ class Mod:
             await ctx.send(f"{channel.mention} is not ignored.")
             return
 
-        with userDatabase:
-            userDatabase.execute("DELETE FROM ignored_channels WHERE channel_id = ?", (channel.id,))
-            await ctx.send(f"{channel.mention} is not ignored anymore.")
-            self.reload_ignored()
+        await ctx.pool.execute("DELETE FROM channel_ignored WHERE channel_id = $1", channel.id)
+        await ctx.send(f"{channel.mention} is not ignored anymore.")
+        await self.reload_ignored()
 
     @checks.is_channel_mod()
-    @commands.guild_only()
     @checks.is_tracking_world()
     @commands.command()
     async def unregistered(self, ctx: NabCtx):
@@ -196,13 +192,11 @@ class Mod:
             await ctx.send("This server is not tracking any worlds.")
             return
 
-        with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT user_id FROM chars WHERE world LIKE ? GROUP BY user_id", (ctx.world,))
-            result = c.fetchall()
-            if len(result) <= 0:
-                await ctx.send("There are no unregistered users.")
-                return
-            users = [i["user_id"] for i in result]
+        results = await ctx.pool.fetch('SELECT user_id FROM "character" WHERE world = $1 GROUP BY user_id', ctx.world)
+        if len(results) <= 0:
+            await ctx.send("There are no unregistered users.")
+            return
+        users = [i["user_id"] for i in results]
         for member in ctx.guild.members:  # type: discord.Member
             # Skip bots
             if member.bot:
@@ -220,27 +214,21 @@ class Mod:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    def reload_ignored(self):
+    async def reload_ignored(self):
         """Refresh the world list from the database
 
         This is used to avoid reading the database every time the world list is needed.
         A global variable holding the world list is loaded on startup and refreshed only when worlds are modified"""
-        c = userDatabase.cursor()
         ignored_dict_temp: Dict[int, List[int]] = {}
-        try:
-            c.execute("SELECT server_id, channel_id FROM ignored_channels")
-            result: Dict = c.fetchall()
-            if len(result) > 0:
-                for row in result:
-                    if not ignored_dict_temp.get(row["server_id"]):
-                        ignored_dict_temp[row["server_id"]] = []
+        result = await self.bot.pool.fetch("SELECT server_id, channel_id FROM channel_ignored")
+        if len(result) > 0:
+            for row in result:
+                if not ignored_dict_temp.get(row["server_id"]):
+                    ignored_dict_temp[row["server_id"]] = []
+                ignored_dict_temp[row["server_id"]].append(row["channel_id"])
 
-                    ignored_dict_temp[row["server_id"]].append(row["channel_id"])
-
-            self.ignored.clear()
-            self.ignored.update(ignored_dict_temp)
-        finally:
-            c.close()
+        self.ignored.clear()
+        self.ignored.update(ignored_dict_temp)
 
 
 def setup(bot):

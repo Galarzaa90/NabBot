@@ -202,6 +202,13 @@ tables = [
         prefix text NOT NULL,
         command text NOT NULL
     )
+    """,
+    """
+    CREATE TABLE channel_ignored (
+        server_id bigint NOT NULL,
+        channel_id bigint NOT NULL,
+        PRIMARY KEY(server_id, channel_id)
+    )
     """
 ]
 functions = [
@@ -240,6 +247,7 @@ async def import_legacy_db(pool: asyncpg.pool.Pool, path):
         await import_server_properties(conn, c)
         await import_roles(conn, c)
         await import_events(conn, c)
+        await import_ignored_channels(conn, c)
 
 
 async def import_characters(conn: asyncpg.Connection, c: sqlite3.Cursor):
@@ -362,10 +370,19 @@ async def import_roles(conn: asyncpg.Connection, c: sqlite3.Cursor):
     with _progressbar(rows, label="Migrating auto roles") as bar:
         for row in bar:
             await conn.execute("""INSERT INTO role_auto(server_id, role_id, rule) VALUES($1, $2, $3)
-                                      ON CONFLICT(server_id, role_id, rule) DO NOTHING""", *row)
+                                  ON CONFLICT(server_id, role_id, rule) DO NOTHING""", *row)
     c.execute("SELECT server_id, role_id FROM joinable_roles")
     rows = c.fetchall()
     with _progressbar(rows, label="Migrating joinable roles") as bar:
         for row in bar:
             await conn.execute("""INSERT INTO role_joinable(server_id, role_id) VALUES($1, $2)
-                                      ON CONFLICT(server_id, role_id) DO NOTHING""", *row)
+                                  ON CONFLICT(server_id, role_id) DO NOTHING""", *row)
+
+
+async def import_ignored_channels(conn: asyncpg.Connection, c: sqlite3.Cursor):
+    c.execute("SELECT server_id, channel_id FROM ignored_channels")
+    rows = c.fetchall()
+    with _progressbar(rows, label="Migrating ignored channels") as bar:
+        for row in bar:
+            await conn.execute("""INSERT INTO channel_ignored(server_id, channel_id) VALUES($1, $2)
+                                  ON CONFLICT(server_id, channel_id) DO NOTHING""", *row)
