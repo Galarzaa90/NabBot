@@ -266,8 +266,6 @@ class NabBot(commands.Bot):
         self.tracked_worlds.update(tibia_servers_dict_temp)
 
     def run(self):
-        init_database()
-
         print("Loading config...")
         config.parse()
         self.config = config

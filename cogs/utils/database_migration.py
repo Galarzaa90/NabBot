@@ -58,8 +58,8 @@ tables = [
         world text,
         vocation text,
         guild text,
-        modified timestamp with time zone DEFAULT now(),
-        created timestamp with time zone DEFAULT now(),
+        modified timestamptz DEFAULT now(),
+        created timestamptz DEFAULT now(),
         PRIMARY KEY (id),
         UNIQUE(name)
     );
@@ -69,7 +69,7 @@ tables = [
         id serial NOT NULL,
         character_id integer NOT NULL,
         level smallint,
-        date timestamp with time zone,
+        date timestamptz,
         PRIMARY KEY (id),
         FOREIGN KEY (character_id) REFERENCES "character" (id),
         UNIQUE(character_id, date)
@@ -89,7 +89,7 @@ tables = [
         id serial NOT NULL,
         character_id integer NOT NULL,
         level smallint,
-        date timestamp with time zone DEFAULT now(),
+        date timestamptz DEFAULT now(),
         PRIMARY KEY (id),
         FOREIGN KEY (character_id) REFERENCES "character" (id)
     );
@@ -101,13 +101,13 @@ tables = [
         server_id bigint NOT NULL,
         name text NOT NULL,
         description text,
-        start timestamp with time zone NOT NULL,
+        start timestamptz NOT NULL,
         active boolean NOT NULL DEFAULT true,
         reminder smallint NOT NULL DEFAULT 0,
         joinable boolean NOT NULL DEFAULT true,
         slots smallint NOT NULL DEFAULT 0,
-        modified timestamp with time zone NOT NULL DEFAULT now(),
-        created timestamp with time zone NOT NULL DEFAULT now(),
+        modified timestamptz NOT NULL DEFAULT now(),
+        created timestamptz NOT NULL DEFAULT now(),
         PRIMARY KEY (id)
     );
     """,
@@ -131,7 +131,7 @@ tables = [
     CREATE TABLE highscores (
         world text NOT NULL,
         category text NOT NULL,
-        last_scan timestamp with time zone DEFAULT now(),
+        last_scan timestamptz DEFAULT now(),
         PRIMARY KEY (world, category)
     );""",
     """
@@ -141,7 +141,8 @@ tables = [
         world text,
         name text,
         vocation text,
-        value bigint
+        value bigint,
+        PRIMARY KEY(rank,category, world)
     );""",
     """
     CREATE TABLE role_auto (
@@ -188,7 +189,7 @@ tables = [
         is_guild bool DEFAULT FALSE,
         reason text,
         user_id bigint,
-        created timestamp with time zone  DEFAULT now(),
+        created timestamptz DEFAULT now(),
         PRIMARY KEY(id),
         UNIQUE(name, server_id, is_guild)
     )
@@ -198,7 +199,7 @@ tables = [
         server_id bigint,
         channel_id bigint NOT NULL,
         user_id bigint NOT NULL,
-        date timestamp with time zone NOT NULL DEFAULT now(),
+        date timestamptz NOT NULL DEFAULT now(),
         prefix text NOT NULL,
         command text NOT NULL
     )

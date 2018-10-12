@@ -465,10 +465,10 @@ async def bind_database_character(bot, character: Character):
     Compliments information found on the database and performs updating."""
     async with bot.pool.acquire() as conn:
         # Skills from highscores
-        # Todo: Reintegrate highscores from postgresql
-        # results = await ctx.db.fetch("SELECT category, rank, value FROM highscores WHERE name LIKE $1", character.name)
-        # if len(results) > 0:
-        #     character.highscores = results
+        results = await conn.fetch("SELECT category, rank, value FROM highscores_entry WHERE name = $1",
+                                   character.name)
+        if len(results) > 0:
+            character.highscores = results
 
         # Check if this user was recently renamed, and update old reference to this
         for old_name in character.former_names:
@@ -542,14 +542,14 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
         matches = re.findall(pattern, content)
         score_list = []
         for m in matches:
-            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': m[3].replace(',', '')})
+            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': int(m[3].replace(',', ''))})
     else:
         regex_deaths = r'<td>([^<]+)</TD><td><a href="https://www.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
         pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
         matches = re.findall(pattern, content)
         score_list = []
         for m in matches:
-            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': m[3].replace(',', '')})
+            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': int(m[3].replace(',', ''))})
     return score_list
 
 

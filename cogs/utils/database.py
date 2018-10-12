@@ -269,7 +269,6 @@ def dict_factory(cursor, row):
     return d
 
 
-userDatabase.row_factory = dict_factory
 tibiaDatabase.row_factory = dict_factory
 
 
