@@ -112,10 +112,10 @@ class Tibia:
             return
 
         if ctx.is_private:
-            user_guilds = self.bot.get_user_guilds(ctx.author.id)
+            user_servers = self.bot.get_user_guilds(ctx.author.id)
             user_worlds = self.bot.get_user_worlds(ctx.author.id)
         else:
-            user_guilds = [ctx.guild]
+            user_servers = [ctx.guild]
             user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None and name is None:
                 await ctx.send("This server is not tracking any tibia worlds.")
@@ -128,6 +128,7 @@ class Tibia:
         now = time.time()
         show_links = not ctx.long
         per_page = 20 if ctx.long else 5
+        users_cache = dict()
         if name is None:
             title = "Latest deaths"
             async with ctx.pool.acquire() as conn:
@@ -140,9 +141,7 @@ class Tibia:
                                                     WHERE d.level > $1 AND position = 0 AND world = any($2)
                                                     ORDER by date DESC""", config.announce_threshold, user_worlds):
 
-                        if row is None:
-                            break
-                        user = self.bot.get_member(row["user_id"], user_guilds)
+                        user = self._get_cached_user_(self, row["user_id"], users_cache, user_servers)
                         if user is None:
                             continue
                         if row["world"] not in user_worlds:
@@ -192,10 +191,10 @@ class Tibia:
                 async with ctx.pool.acquire() as conn:
                     async with conn.transaction():
                         async for row in conn.cursor("""SELECT level, date, player, name as killer
-                                                        FROM character_death d
-                                                        LEFT JOIN character_death_killer k ON k.death_id = d.id
-                                                        WHERE position = 0 AND character_id = $1 and date < $2
-                                                        ORDER BY date DESC""",
+                                                                    FROM character_death d
+                                                                    LEFT JOIN character_death_killer k ON k.death_id = d.id
+                                                                    WHERE position = 0 AND character_id = $1 and date < $2
+                                                                    ORDER BY date DESC""",
                                                      char_id, last_time):
                             count += 1
                             death_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
@@ -681,6 +680,7 @@ class Tibia:
         count = 0
         now = time.time()
         per_page = 20 if ctx.long else 5
+        user_cache = dict()
         if name is None:
             title = "Latest level ups"
             async with ctx.pool.acquire() as conn:
@@ -690,7 +690,7 @@ class Tibia:
                                                     LEFT JOIN "character" c ON c.id = l.character_id
                                                     WHERE l.level >= $1 AND world = $2
                                                     ORDER BY date DESC""", config.announce_threshold, ctx.world):
-                        user = ctx.guild.get_member(row["user_id"])
+                        user = self._get_cached_user_(self, row["user_id"], user_cache, ctx.guild)
                         if user is None:
                             continue
                         count += 1
@@ -1185,6 +1185,7 @@ class Tibia:
         now = time.time()
         per_page = 20 if ctx.long else 5
         await ctx.channel.trigger_typing()
+        user_cache = dict()
         if name is None:
             title = "Timeline"
             async with ctx.pool.acquire() as conn:
@@ -1202,7 +1203,7 @@ class Tibia:
                                                     LEFT JOIN "character" c ON c.id = l.character_id
                                                     WHERE world = $1 AND l.level >= $2)
                                                     ORDER by DATE DESC""", ctx.world, config.announce_threshold):
-                        user = ctx.guild.get_member(row["user_id"])
+                        user = self._get_cached_user_(self, row["user_id"], user_cache, ctx.guild)
                         if user is None:
                             continue
                         count += 1
@@ -1917,6 +1918,15 @@ class Tibia:
                 break
             except Exception:
                 log.exception("Task: scan_news")
+
+    @staticmethod
+    def _get_cached_user_(self, user_id, users_cache, user_servers):
+        if user_id in users_cache:
+            return users_cache.get(user_id)
+        else:
+            member_user = self.bot.get_member(user_id, user_servers)
+            users_cache[user_id] = member_user
+            return member_user
 
     def __unload(self):
         print("cogs.tibia: Cancelling pending tasks...")

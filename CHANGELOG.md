@@ -1,4 +1,9 @@
 # Changelog
+## Version 1.7.1 (2018-10-12)
+- Fixed links in `/about` command.
+- Combine walks through fields and walks around fields into a single embed field.
+- Added user caching to `/deaths`, `/levels` and `/timeline` because it was causing connection timeouts.
+
 ## Version 1.7.0 (2018-09-26)
 - Improved death scanning times
 - Server admins can bypass event limit on their servers
