@@ -10,7 +10,7 @@ import discord
 from discord.ext import commands
 
 from . import config
-from .database import _get_server_property
+from .database import get_server_property
 
 _mention = re.compile(r'<@!?([0-9]{1,19})>')
 
@@ -43,20 +43,6 @@ class NabCtx(commands.Context):
         return self.channel.permissions_for(self.author)
 
     @property
-    def ask_channel_name(self) -> Optional[str]:
-        """Gets the name of the ask channel for the current server.
-
-        :return: The name of the ask channel if applicable
-        :rtype: str or None"""
-        if self.guild is None:
-            return None
-        ask_channel_id = _get_server_property(self.guild.id, "ask_channel", is_int=True)
-        ask_channel = self.guild.get_channel(ask_channel_id)
-        if ask_channel is None:
-            return config.ask_channel_name
-        return ask_channel.name
-
-    @property
     def bot_permissions(self) -> discord.Permissions:
         """Shortcut to check the bot's permission to the current channel.
 
@@ -74,15 +60,6 @@ class NabCtx(commands.Context):
             if user:
                 return f'@{user.name} '
         return self.prefix
-
-    @property
-    def is_askchannel(self):
-        """Checks if the current channel is the command channel"""
-        ask_channel_id = _get_server_property(self.guild.id, "ask_channel", is_int=True)
-        ask_channel = self.guild.get_channel(ask_channel_id)
-        if ask_channel is None:
-            return self.channel.name == config.ask_channel_name
-        return ask_channel == self.channel
 
     @property
     def is_lite(self) -> bool:
@@ -103,16 +80,6 @@ class NabCtx(commands.Context):
     def is_private(self) -> bool:
         """Whether the current context is a private channel or not."""
         return self.guild is None
-
-    @property
-    def long(self) -> bool:
-        """Whether the current context allows long replies or not
-
-        Private messages and command channels allow long replies.
-        """
-        if self.guild is None:
-            return True
-        return self.is_askchannel
 
     @property
     def usage(self) -> str:
@@ -151,9 +118,21 @@ class NabCtx(commands.Context):
             return None
         else:
             return self.bot.tracked_worlds.get(self.guild.id, None)
-    # endregion
 
-    # region Methods
+    async def ask_channel_name(self) -> Optional[str]:
+        """Gets the name of the ask channel for the current server.
+
+        :return: The name of the ask channel if applicable
+        :rtype: str or None"""
+        if self.guild is None:
+            return None
+        ask_channel_id = await get_server_property(self.pool, self.guild.id, "ask_channel")
+        ask_channel = self.guild.get_channel(ask_channel_id)
+        if ask_channel is None:
+            return config.ask_channel_name
+        return ask_channel.name
+
+    # endregion
     async def choose(self, matches: Sequence[Any], title="Suggestions"):
         if len(matches) == 0:
             raise ValueError('No results found.')
@@ -190,6 +169,7 @@ class NabCtx(commands.Context):
             except (discord.Forbidden, discord.NotFound):
                 pass
 
+    # region Methods
     async def execute_async(self, func: Callable[..., T], *args, **kwargs) -> T:
         """Executes a synchronous function inside an executor.
 
@@ -227,6 +207,23 @@ class NabCtx(commands.Context):
             return ret
         except asyncio.TimeoutError:
             return None
+
+    async def is_askchannel(self):
+        """Checks if the current channel is the command channel"""
+        ask_channel_id = await get_server_property(self.pool, self.guild.id, "ask_channel")
+        ask_channel = self.guild.get_channel(ask_channel_id)
+        if ask_channel is None:
+            return self.channel.name == config.ask_channel_name
+        return ask_channel == self.channel
+
+    async def is_long(self) -> bool:
+        """Whether the current context allows long replies or not
+
+        Private messages and command channels allow long replies.
+        """
+        if self.guild is None:
+            return True
+        return await self.is_askchannel()
 
     async def react_confirm(self, message: discord.Message, *, timeout=60.0, delete_after=False,
                             use_checkmark=False) -> Optional[bool]:

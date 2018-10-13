@@ -832,7 +832,7 @@ class Tracking:
         This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated."""
         world = self.bot.tracked_worlds.get(ctx.guild.id)
 
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         now = dt.datetime.utcnow()
         uptime = (now - self.bot.start_time).total_seconds()
         count = 0
@@ -903,7 +903,7 @@ class Tracking:
         online_entries = []
         online_vocations = []
 
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
 
         char = None
         params = params.split(",")

@@ -87,13 +87,13 @@ class Tibia:
             embed.add_field(name="High Chance - Last seen", value=fields["High Chance"])
         if fields["Low Chance"]:
             embed.add_field(name="Low Chance - Last seen", value=fields["Low Chance"])
-        if ctx.long:
+        if await ctx.is_long():
             if fields["No Chance"]:
                 embed.add_field(name="No Chance - Expect in", value=fields["No Chance"])
             if fields["Unpredicted"]:
                 embed.add_field(name="Unpredicted - Last seen", value=fields["Unpredicted"])
         else:
-            ask_channel = ctx.ask_channel_name
+            ask_channel = await ctx.ask_channel_name()
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel
             else:
@@ -126,8 +126,8 @@ class Tibia:
         author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        show_links = not ctx.long
-        per_page = 20 if ctx.long else 5
+        show_links = not await ctx.is_long()
+        per_page = 20 if await ctx.is_long() else 5
         users_cache = dict()
         if name is None:
             title = "Latest deaths"
@@ -223,7 +223,7 @@ class Tibia:
         count = 0
         entries = []
         now = time.time()
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
 
         if name[:1] in ["a", "e", "i", "o", "u"]:
             name_with_article = "an " + name
@@ -276,7 +276,7 @@ class Tibia:
         count = 0
         entries = []
         now = time.time()
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         async with ctx.pool.acquire() as conn:
             async with conn.transaction():
                 async for row in conn.cursor("""SELECT d.level, date, player, k.name as killer, user_id, c.name, world,
@@ -537,7 +537,7 @@ class Tibia:
             member["vocation"] = get_voc_abb(member["vocation"])
             member["online"] = config.online_emoji if member["status"] == "online" else ""
             entries.append("{rank}\u2014 {online}**{name}** {nick} (Lvl {level} {vocation}{emoji})".format(**member))
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         pages = VocationPages(ctx, entries=entries, per_page=per_page, vocations=vocations)
         pages.embed.set_author(name=title, icon_url=guild.logo, url=guild.url)
         try:
@@ -604,7 +604,7 @@ class Tibia:
                 entries.append("**{name}**{voc} - Level {level} ({points:,} exp)".format(**entry))
             else:
                 entries.append("**{name}**{voc} - Level {level}".format(**entry))
-        pages = Pages(ctx, entries=entries, per_page=20 if ctx.long else 10)
+        pages = Pages(ctx, entries=entries, per_page=20 if await ctx.is_long() else 10)
         pages.embed.title = f"🏆 {category.title()} highscores for {world}"
         if vocation != "all":
             pages.embed.title += f" ({vocation}s)"
@@ -679,7 +679,7 @@ class Tibia:
         author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         user_cache = dict()
         if name is None:
             title = "Latest level ups"
@@ -753,7 +753,7 @@ class Tibia:
         count = 0
         entries = []
         now = time.time()
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         async with ctx.pool.acquire() as conn:
             async with conn.transaction():
                 async for row in conn.cursor("""SELECT name, l.level, date, world, vocation
@@ -802,7 +802,7 @@ class Tibia:
             }
             for news in recent_news:
                 news["emoji"] = type_emojis.get(news["type"], "")
-            limit = 20 if ctx.long else 10
+            limit = 20 if await ctx.is_long() else 10
             embed.description = "\n".join([news_format.format(**n) for n in recent_news[:limit]])
             await ctx.send(embed=embed)
         else:
@@ -814,7 +814,7 @@ class Tibia:
             except NetworkError:
                 await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
                 return
-            limit = 1900 if ctx.long else 600
+            limit = 1900 if await ctx.is_long() else 600
             embed = self.get_article_embed(article, limit)
             await ctx.send(embed=embed)
 
@@ -882,7 +882,7 @@ class Tibia:
         entries = []
         vocations = []
         filter_name = ""
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
 
         content = ""
         # params[0] could be a character's name, a character's level or one of the level ranges
@@ -1183,7 +1183,7 @@ class Tibia:
         author_icon = discord.Embed.Empty
         count = 0
         now = time.time()
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         await ctx.channel.trigger_typing()
         user_cache = dict()
         if name is None:
@@ -1284,7 +1284,7 @@ class Tibia:
         entries = []
         count = 0
         now = time.time()
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
 
         async with ctx.pool.acquire() as conn:
             title = f"{user.display_name} timeline"
@@ -1703,7 +1703,7 @@ class Tibia:
             return await ctx.send("There's no worlds matching the query.")
 
         entries = [f"{w.name} {FLAGS[w.location]}{PVP[w.pvp_type]} - `{w.online_count:,} online`" for w in worlds]
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
         pages.embed.colour = discord.Colour.blurple()

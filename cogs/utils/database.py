@@ -1,8 +1,7 @@
 import asyncpg
 import json
 import sqlite3
-from contextlib import closing
-from typing import Dict, Any, List
+from typing import Any, List
 
 # Databases filenames
 USERDB = "data/users.db"
@@ -293,41 +292,3 @@ async def set_server_property(pool: asyncpg.pool.Pool, guild_id: int, key: str, 
     await pool.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
                           ON CONFLICT(server_id, key) DO UPDATE SET value = EXCLUDED.value""",
                        guild_id, key, json.dumps(value))
-
-
-def _get_server_property(guild_id: int, key: str, *, default=None, is_int=None, deserialize=False):
-    """Returns a guild's property
-
-    :param key: The key of the property to search for
-    :param guild_id: The discord server's id
-    :param default: A default value to return in case the key is not found
-    :param is_int: If true, the return value will be casted to int
-    :return: the property's value or the default value passed
-    """
-    with closing(userDatabase.cursor()) as c:
-        c.execute("SELECT value FROM server_properties WHERE name = ? and server_id = ?", (key, guild_id))
-        result: Dict[str] = c.fetchone()
-        if is_int:
-            try:
-                return int(result["value"]) if result is not None else default
-            except ValueError:
-                return default
-        if result is None:
-            return default
-        return result["value"] if not deserialize else json.loads(result["value"])
-
-
-def _set_server_property(guild_id: int, key: str, value, *, serialize=False) -> None:
-    """Edits a server property
-
-    :param key: The name of the property to change
-    :param guild_id: The discord server's id
-    :param value: The new value for the property, if None, it will be deleted
-    """
-    with userDatabase as con:
-        con.execute("DELETE FROM server_properties WHERE server_id = ? AND name = ?", (guild_id, key))
-        if value is None:
-            return
-        if serialize:
-            value = json.dumps(value)
-        con.execute("INSERT INTO server_properties(name, server_id, value) VALUES(?,?,?)", (key, guild_id, value))

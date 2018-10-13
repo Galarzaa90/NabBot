@@ -219,7 +219,7 @@ class Info:
         _mention_pattern = re.compile('|'.join(_mentions_transforms.keys()))
 
         bot = ctx.bot
-        destination = ctx.channel if ctx.long else ctx.author
+        destination = ctx.channel if await ctx.is_long() else ctx.author
 
         def repl(obj):
             return _mentions_transforms.get(obj.group(0), '')

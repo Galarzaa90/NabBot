@@ -242,11 +242,11 @@ async def import_legacy_db(pool: asyncpg.pool.Pool, path):
     legacy_conn = sqlite3.connect(path)
     c = legacy_conn.cursor()
     async with pool.acquire() as conn:
-        # await import_characters(conn, c)
-        # await import_server_properties(conn, c)
-        # await import_roles(conn, c)
-        # await import_events(conn, c)
-        # await import_ignored_channels(conn, c)
+        await import_characters(conn, c)
+        await import_server_properties(conn, c)
+        await import_roles(conn, c)
+        await import_events(conn, c)
+        await import_ignored_channels(conn, c)
         await import_watch_list(conn, c)
 
 

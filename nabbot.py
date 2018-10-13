@@ -105,7 +105,7 @@ class NabBot(commands.Bot):
 
         server_delete = await get_server_property(ctx.pool, message.guild.id, "commandsonly")
         global_delete = self.config.ask_channel_delete
-        if (server_delete is None and global_delete or server_delete) and ctx.is_askchannel:
+        if (server_delete is None and global_delete or server_delete) and await ctx.is_askchannel():
             try:
                 await message.delete()
             except discord.Forbidden:

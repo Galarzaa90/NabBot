@@ -97,7 +97,7 @@ class Roles:
     @commands.group(case_insensitive=True)
     async def autorole(self, ctx):
         """Autorole commands.
-        
+
         All the subcommands require having `Manage Roles` permission."""
         pass
 
@@ -107,8 +107,8 @@ class Roles:
     async def autorole_add(self, ctx: NabCtx, _role: InsensitiveRole, *, guild: str):
         """Creates a new autorole rule.
 
-        Rules consist of a role and a guild name.  
-        When a user has a registered character in said guild, they receive the role.  
+        Rules consist of a role and a guild name.
+        When a user has a registered character in said guild, they receive the role.
         If they stop having a character in the guild, the role is removed.
 
         If `*` is used as a guild. It means that the role will be given for having any assigned character.
@@ -174,7 +174,7 @@ class Roles:
             await ctx.send(f"{ctx.tick(False)} This server has no autorole rules.")
             return
 
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = "Autorole rules"
         try:
@@ -278,7 +278,7 @@ class Roles:
     async def group_add(self, ctx: NabCtx, *, name: str):
         """Creates a new group for members to join.
 
-        The group can be a new role that will be created with this command.  
+        The group can be a new role that will be created with this command.
         If the name matches an existent role, that role will become joinable.
 
         You need `Manage Roles` permissions to use this command."""
@@ -329,7 +329,7 @@ class Roles:
             if role.id in flat_groups:
                 entries.append(f"{role.mention} (`{len(role.members)} members`)")
 
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = "Joinable groups"
         try:
@@ -388,7 +388,7 @@ class Roles:
             await ctx.send("There are no members without roles.")
             return
 
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = "Members with no roles"
         try:
@@ -427,7 +427,7 @@ class Roles:
             return
 
         title = "Members with the role '{0.name}'".format(role)
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         pages = Pages(ctx, entries=role_members, per_page=per_page)
         pages.embed.title = title
         pages.embed.colour = role.colour
@@ -465,7 +465,7 @@ class Roles:
         roles = sorted(roles, key=lambda r: r.position, reverse=True)
         entries = [f"{r.mention} ({len(r.members):,} member{'s' if len(r.members) > 1 else ''})" for r in roles]
 
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
         try:
