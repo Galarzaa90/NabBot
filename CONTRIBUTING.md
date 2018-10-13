@@ -34,4 +34,4 @@ NabBot uses the following branching model:
 - `feat-*` - Used to implement features that require extended development, to isolate the environment and be able to keep updating the other branches.
 - `release-*` - This branch is only used to prepare for releases. Final tests, documentation and version updates are done here before merging into `master`.
 
-
+![Example Brancing Model](https://nvie.com/img/git-model@2x.png)
