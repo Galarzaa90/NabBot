@@ -402,7 +402,7 @@ async def loot_scan(ctx: NabCtx, image: bytes, status_msg: discord.Message):
                       'sizeY': unknown_image_crop.size[1],
                       'size': unknown_image_size}
             found_item_number = 1
-        if type(result) == dict:
+        if isinstance(result, dict):
             if result['name'] in loot_list:
                 loot_list[result['name']]['count'] += found_item_number
             else:

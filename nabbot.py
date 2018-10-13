@@ -13,7 +13,7 @@ import discord
 from discord.ext import commands
 
 from cogs.utils import context
-from cogs.utils.database import init_database, get_prefixes, get_server_property
+from cogs.utils.database import get_prefixes, get_server_property
 from cogs.utils import config, log
 from cogs.utils.help_format import NabHelpFormat
 from cogs.utils.tibia import populate_worlds, tibia_worlds

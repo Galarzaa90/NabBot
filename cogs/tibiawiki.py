@@ -269,7 +269,7 @@ class TibiaWiki:
                 return
             monster = get_monster(name)
 
-        embed = self.get_monster_embed(ctx, monster, await ctx.is_long())
+        embed = await self.get_monster_embed(ctx, monster, await ctx.is_long())
 
         # Attach monster's image only if the bot has permissions
         if ctx.bot_permissions.attach_files and monster["image"] is not None:
@@ -436,7 +436,7 @@ class TibiaWiki:
 
     # Helper methods
     @staticmethod
-    def get_monster_embed(ctx: NabCtx, monster, long):
+    async def get_monster_embed(ctx: NabCtx, monster, long):
         """Gets the monster embeds to show in /mob command
         The message is split in two embeds, the second contains loot only and is only shown if long is True"""
         embed = discord.Embed(title=monster["title"], url=get_article_url(monster["title"]))
@@ -449,7 +449,7 @@ class TibiaWiki:
         TibiaWiki._set_monster_embed_walks(embed, monster)
         TibiaWiki._set_monster_embed_abilities(embed, monster)
         TibiaWiki._set_monster_embed_loot(embed, long, monster)
-        TibiaWiki._set_monster_embed_more_info(ctx, embed, long, monster)
+        await TibiaWiki._set_monster_embed_more_info(ctx, embed, long, monster)
         return embed
 
     @staticmethod
@@ -472,7 +472,7 @@ class TibiaWiki:
         return elements
 
     @staticmethod
-    def _set_monster_embed_more_info(ctx, embed, long, monster):
+    async def _set_monster_embed_more_info(ctx, embed, long, monster):
         if monster["loot"] and not long:
             ask_channel = await ctx.ask_channel_name()
             if ask_channel:

@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 import sqlite3
 from operator import itemgetter
 
@@ -7,6 +8,7 @@ import asyncpg
 import click
 
 LATEST_VERSION = 1
+SQL_DB_LASTVERSION = 22
 
 
 def _progressbar(*args, **kwargs):
@@ -14,20 +16,28 @@ def _progressbar(*args, **kwargs):
 
 
 async def check_database(pool: asyncpg.pool.Pool):
+    print("Checking database version...")
     async with pool.acquire() as con:
         version = await get_version(con)
         if version <= 0:
+            print("Schema is empty, creating tables.")
             await create_database(con)
             await set_version(con, 1)
+        else:
+            print("\tVersion 1 found.")
 
 
 async def create_database(con: asyncpg.connection.Connection):
+    print("Creating tables...")
     for create_query in tables:
         await con.execute(create_query)
+    print("Creating functions...")
     for f in functions:
         await con.execute(f)
+    print("Creating triggers...")
     for trigger in triggers:
         await con.execute(trigger)
+    print("Setting version to 1...")
     await set_version(con, LATEST_VERSION)
 
 
@@ -239,7 +249,13 @@ triggers = [
 # Legacy SQlite migration
 # This may be removed in later versions or kept separate
 async def import_legacy_db(pool: asyncpg.pool.Pool, path):
+    if not os.path.isfile(path):
+        print("Database file doesn't exist or path is invalid.")
+        return
     legacy_conn = sqlite3.connect(path)
+    print("Checking old database...")
+    check_sql_database(legacy_conn)
+
     c = legacy_conn.cursor()
     async with pool.acquire() as conn:
         await import_characters(conn, c)
@@ -404,3 +420,248 @@ async def import_watch_list(conn: asyncpg.Connection, c: sqlite3.Cursor):
                                   VALUES($1, $2, $3, $4, $5, $6)
                                   ON CONFLICT(name, server_id, is_guild) DO NOTHING""",
                                name, is_guild, server_id, reason, author, added)
+
+
+def check_sql_database(conn: sqlite3.Connection):
+    """Initializes and/or updates the database to the current version"""
+    # Database file is automatically created with connect, now we have to check if it has tables
+    print("Checking database version...")
+    c = conn.cursor()
+    try:
+        c.execute("SELECT COUNT(*) as count FROM sqlite_master WHERE type = 'table'")
+        result = c.fetchone()
+        # Database is empty
+        if result is None or result["count"] == 0:
+            c.execute("""CREATE TABLE discord_users (
+                      id INTEGER NOT NULL,
+                      weight INTEGER DEFAULT 5,
+                      PRIMARY KEY(id)
+                      )""")
+            c.execute("""CREATE TABLE chars (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      user_id INTEGER,
+                      name TEXT,
+                      last_level INTEGER DEFAULT -1,
+                      last_death_time TEXT
+                      )""")
+            c.execute("""CREATE TABLE char_levelups (
+                      char_id INTEGER,
+                      level INTEGER,
+                      date INTEGER
+                      )""")
+        c.execute("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND name LIKE 'db_info'")
+        result = c.fetchone()
+        # If there's no version value, version 1 is assumed
+        if result is None:
+            c.execute("""CREATE TABLE db_info (
+                      key TEXT,
+                      value TEXT
+                      )""")
+            c.execute("INSERT INTO db_info(key,value) VALUES('version','1')")
+            db_version = 1
+            print("No version found, version 1 assumed")
+        else:
+            c.execute("SELECT value FROM db_info WHERE key LIKE 'version'")
+            db_version = int(c.fetchone()["value"])
+            print("Version {0}".format(db_version))
+        if db_version == SQL_DB_LASTVERSION:
+            print("Database is up to date.")
+            return
+        # Code to patch database changes
+        if db_version == 1:
+            # Added 'vocation' column to chars table, to display vocations when /check'ing users among other things.
+            # Changed how the last_level flagging system works a little, a character of unknown level is now flagged as
+            # level 0 instead of -1, negative levels are now used to flag of characters never seen online before.
+            c.execute("ALTER TABLE chars ADD vocation TEXT")
+            c.execute("UPDATE chars SET last_level = 0 WHERE last_level = -1")
+            db_version += 1
+        if db_version == 2:
+            # Added 'events' table
+            c.execute("""CREATE TABLE events (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      creator INTEGER,
+                      name TEXT,
+                      start INTEGER,
+                      duration INTEGER,
+                      active INTEGER DEFAULT 1
+                      )""")
+            db_version += 1
+        if db_version == 3:
+            # Added 'char_deaths' table
+            # Added 'status column' to events (for event announces)
+            c.execute("""CREATE TABLE char_deaths (
+                      char_id INTEGER,
+                      level INTEGER,
+                      killer TEXT,
+                      date INTEGER,
+                      byplayer BOOLEAN
+                      )""")
+            c.execute("ALTER TABLE events ADD COLUMN status INTEGER DEFAULT 4")
+            db_version += 1
+        if db_version == 4:
+            # Added 'name' column to 'discord_users' table to save their names for external use
+            c.execute("ALTER TABLE discord_users ADD name TEXT")
+            db_version += 1
+        if db_version == 5:
+            # Added 'world' column to 'chars', renamed 'discord_users' to 'users', created table 'user_servers'
+            c.execute("ALTER TABLE chars ADD world TEXT")
+            c.execute("ALTER TABLE discord_users RENAME TO users")
+            c.execute("""CREATE TABLE user_servers (
+                      id INTEGER,
+                      server INTEGER,
+                      PRIMARY KEY(id)
+                      );""")
+            db_version += 1
+        if db_version == 6:
+            # Added 'description', 'server' column to 'events', created table 'events_subscribers'
+            c.execute("ALTER TABLE events ADD description TEXT")
+            c.execute("ALTER TABLE events ADD server INTEGER")
+            c.execute("""CREATE TABLE event_subscribers (
+                      event_id INTEGER,
+                      user_id INTEGER
+                      );""")
+            db_version += 1
+        if db_version == 7:
+            # Created 'server_properties' table
+            c.execute("""CREATE TABLE server_properties (
+                      server_id INTEGER,
+                      name TEXT,
+                      value TEXT
+                      );""")
+            db_version += 1
+        if db_version == 8:
+            # Added 'achievements', 'axe', 'club', 'distance', 'fishing', 'fist', 'loyalty', 'magic', 'shielding',
+            # 'sword', 'achievements_rank', 'axe_rank', 'club_rank', 'distance_rank', 'fishing_rank', 'fist_rank',
+            # 'loyalty_rank', 'magic_rank', 'shielding_rank', 'sword_rank',  columns to 'chars'
+            c.execute("ALTER TABLE chars ADD achievements INTEGER")
+            c.execute("ALTER TABLE chars ADD axe INTEGER")
+            c.execute("ALTER TABLE chars ADD club INTEGER")
+            c.execute("ALTER TABLE chars ADD distance INTEGER")
+            c.execute("ALTER TABLE chars ADD fishing INTEGER")
+            c.execute("ALTER TABLE chars ADD fist INTEGER")
+            c.execute("ALTER TABLE chars ADD loyalty INTEGER")
+            c.execute("ALTER TABLE chars ADD magic INTEGER")
+            c.execute("ALTER TABLE chars ADD shielding INTEGER")
+            c.execute("ALTER TABLE chars ADD sword INTEGER")
+            c.execute("ALTER TABLE chars ADD achievements_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD axe_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD club_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD distance_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD fishing_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD fist_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD loyalty_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD magic_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD shielding_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD sword_rank INTEGER")
+            db_version += 1
+        if db_version == 9:
+            # Added 'magic_ek', 'magic_rp', 'magic_ek_rank', 'magic_rp_rank' columns to 'chars'
+            c.execute("ALTER TABLE chars ADD magic_ek INTEGER")
+            c.execute("ALTER TABLE chars ADD magic_rp INTEGER")
+            c.execute("ALTER TABLE chars ADD magic_ek_rank INTEGER")
+            c.execute("ALTER TABLE chars ADD magic_rp_rank INTEGER")
+            db_version += 1
+        if db_version == 10:
+            # Added 'guild' column to 'chars'
+            c.execute("ALTER TABLE chars ADD guild TEXT")
+            db_version += 1
+        if db_version == 11:
+            # Added 'deleted' column to 'chars'
+            c.execute("ALTER TABLE chars ADD deleted INTEGER DEFAULT 0")
+            db_version += 1
+        if db_version == 12:
+            # Added 'hunted' table
+            c.execute("""CREATE TABLE hunted_list (
+                name TEXT,
+                is_guild BOOLEAN DEFAULT 0,
+                server_id INTEGER
+            );""")
+            db_version += 1
+        if db_version == 13:
+            # Renamed table hunted_list to watched_list and related server properties
+            c.execute("ALTER TABLE hunted_list RENAME TO watched_list")
+            c.execute("UPDATE server_properties SET name = 'watched_channel' WHERE name LIKE 'hunted_channel'")
+            c.execute("UPDATE server_properties SET name = 'watched_message' WHERE name LIKE 'hunted_message'")
+            db_version += 1
+        if db_version == 14:
+            c.execute("""CREATE TABLE ignored_channels (
+                server_id INTEGER,
+                channel_id INTEGER
+            );""")
+            db_version += 1
+        if db_version == 15:
+            c.execute("""CREATE TABLE highscores (
+                rank INTEGER,
+                category TEXT,
+                world TEXT,
+                name TEXT,
+                vocation TEXT,
+                value INTEGER
+            );""")
+            c.execute("""CREATE TABLE highscores_times (
+                world TEXT,
+                last_scan INTEGER
+            );""")
+            db_version += 1
+        if db_version == 16:
+            c.execute("ALTER table highscores_times ADD category TEXT")
+            db_version += 1
+        if db_version == 17:
+            # Cleaning up unused columns and renaming columns
+            c.execute("""CREATE TABLE chars_temp(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                name TEXT,
+                level INTEGER DEFAULT -1,
+                vocation TEXT,
+                world TEXT,
+                guild TEXT
+            );""")
+            c.execute("INSERT INTO chars_temp SELECT id, user_id, name, last_level, vocation, world, guild FROM chars")
+            c.execute("DROP TABLE chars")
+            c.execute("ALTER table chars_temp RENAME TO chars")
+            c.execute("DROP TABLE IF EXISTS user_servers")
+            c.execute("""CREATE TABLE users_temp(
+                id INTEGER NOT NULL,
+                name TEXT,
+                PRIMARY KEY(id)
+            );""")
+            c.execute("INSERT INTO users_temp SELECT id, name FROM users")
+            c.execute("DROP TABLE users")
+            c.execute("ALTER table users_temp RENAME TO users")
+            db_version += 1
+        if db_version == 18:
+            # Adding event participants
+            c.execute("ALTER TABLE events ADD joinable INTEGER DEFAULT 1")
+            c.execute("ALTER TABLE events ADD slots INTEGER DEFAULT 0")
+            c.execute("""CREATE TABLE event_participants(
+                event_id INTEGER NOT NULL,
+                char_id INTEGER NOT NULL
+            );""")
+            db_version += 1
+        if db_version == 19:
+            # Adding reason and author to watched-list
+            c.execute("ALTER TABLE watched_list ADD reason TEXT")
+            c.execute("ALTER TABLE watched_list ADD author INTEGER")
+            c.execute("ALTER TABLE watched_list ADD added INTEGER")
+            db_version += 1
+        if db_version == 20:
+            # Joinable ranks
+            c.execute("""CREATE TABLE joinable_roles(
+                server_id INTEGER NOT NULL,
+                role_id INTEGER NOT NULL
+            );""")
+            db_version += 1
+        if db_version == 21:
+            # Autoroles
+            c.execute("""CREATE TABLE auto_roles(
+                server_id INTEGER NOT NULL,
+                role_id INTEGER NOT NULL,
+                guild TEXT NOT NULL
+            );""")
+            db_version += 1
+        print("Updated database to version {0}".format(db_version))
+        c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
+    finally:
+        c.close()
+        conn.commit()
