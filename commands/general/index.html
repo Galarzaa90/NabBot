@@ -1072,12 +1072,16 @@ Optional parameters are enclosed in brackets <code class="codehilite">[]</code>.
 <p>Each choice is separated by spaces. For choices that contain spaces surround it with quotes.
 e.g. "Choice A" ChoiceB "Choice C"</p>
 <details class="summary"><summary>Examples</summary><p><strong>/choose "Option A" optionb "Option C"</strong><br />
-<img alt="image" src="../../assets/images/commands/choose.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/choose.png" /></p>
+</details>
+<hr />
 <h2 id="events">events<a class="headerlink" href="#events" title="Permanent link">&para;</a></h2>
 <p><strong>Other aliases:</strong> <code class="codehilite">event</code> </p>
 <p>Shows a list of upcoming and recent events.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/event</strong><br />
-<img alt="image" src="../../assets/images/commands/event.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/event.png" /></p>
+</details>
+<hr />
 <h3 id="events-add">events add<a class="headerlink" href="#events-add" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">events add &lt;starts in&gt; &lt;name&gt;[,description]</code></p>
 <p>Creates a new event.</p>
@@ -1090,7 +1094,9 @@ Examples: 1d20h5m, 1d30m, 1h40m, 40m</p>
 <p>Once the event is created, the id of the event will be returned. This is used for further edits.</p>
 <details class="summary"><summary>Example</summary><p><strong>/event add 5h Inquisition Quest,Remember to bring holy water!</strong><br />
 <strong><code class="codehilite"><span class="p">[</span><span class="n">TibiaWiki</span> <span class="n">link</span><span class="p">](</span><span class="nl">http</span><span class="p">:</span><span class="c1">//tibia.wikia.com/wiki/Inquisition_quest)</span></code></strong><br />
-<img alt="image" src="../../assets/images/commands/event_add.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/event_add.png" /></p>
+</details>
+<hr />
 <h3 id="event-addplayer">event addplayer<a class="headerlink" href="#event-addplayer" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">event addplayer &lt;id&gt; &lt;character&gt;</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">event addchar</code></p>
@@ -1098,7 +1104,9 @@ Examples: 1d20h5m, 1d30m, 1h40m, 40m</p>
 <p>Only the creator can add characters to an event.
 If the event is joinable, anyone can join an event using <code class="codehilite">event join</code></p>
 <details class="summary"><summary>Examples</summary><p><strong>/event addplayer 136 Nezune</strong><br />
-<img alt="image" src="../../assets/images/commands/event_addchar.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/event_addchar.png" /></p>
+</details>
+<hr />
 <h3 id="event-edit">event edit<a class="headerlink" href="#event-edit" title="Permanent link">&para;</a></h3>
 <p>Use the subcommands to edit the event's properties.
 Only the creator of the event and mods can edit an event.
@@ -1140,19 +1148,25 @@ Otherwise, the event creator has to add people with <code class="codehilite">eve
 <p>Displays an event's info.</p>
 <p>The start time shown in the footer is always displayed in your device's timezone.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/event info 136</strong><br />
-<img alt="image" src="../../assets/images/commands/event_info.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/event_info.png" /></p>
+</details>
+<hr />
 <h3 id="event-join">event join<a class="headerlink" href="#event-join" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">event join &lt;id&gt; &lt;char&gt;</code></p>
 <p>Join an event with a specific character</p>
 <p>You can only join an event with a character at a time.<br />
 Some events may not be joinable and require the creator to add characters themselves.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/event join 136 Galarzaa Fidera</strong><br />
-<img alt="image" src="../../assets/images/commands/event_join.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/event_join.png" /></p>
+</details>
+<hr />
 <h3 id="event-leave">event leave<a class="headerlink" href="#event-leave" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">event leave &lt;id&gt;</code></p>
 <p>Leave an event you were participating in.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/event leave 136</strong><br />
-<img alt="image" src="../../assets/images/commands/event_leave.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/event_leave.png" /></p>
+</details>
+<hr />
 <h3 id="event-make">event make<a class="headerlink" href="#event-make" title="Permanent link">&para;</a></h3>
 <p>Creates an event guiding you step by step</p>
 <p>Instead of using confusing parameters, commas and spaces, this commands has the bot ask you step by step.</p>
@@ -1161,39 +1175,51 @@ Some events may not be joinable and require the creator to add characters themse
 <p><strong>Syntax:</strong> <code class="codehilite">event participants &lt;id&gt;</code></p>
 <p>Shows the list of characters participating in this event.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/event participants 190</strong><br />
-<img alt="image" src="../../assets/images/commands/event_participants.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/event_participants.png" /></p>
+</details>
+<hr />
 <h3 id="event-remove">event remove<a class="headerlink" href="#event-remove" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">event &lt;id&gt;</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">event delete</code>, <code class="codehilite">event cancel</code></p>
 <p>Deletes or cancels an event.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/event delete 136</strong><br />
-<img alt="image" src="../../assets/images/commands/event_remove.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/event_remove.png" /></p>
+</details>
+<hr />
 <h3 id="event-removeplayer">event removeplayer<a class="headerlink" href="#event-removeplayer" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">event removeplayer &lt;id&gt; &lt;character&gt;</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">event removechar</code></p>
 <p>Removes a player from an event.</p>
 <p>Players can remove themselves using <code class="codehilite">event leave</code></p>
 <details class="summary"><summary>Examples</summary><p><strong>/event addplayer 136 Nezune</strong><br />
-<img alt="image" src="../../assets/images/commands/event_removechar.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/event_removechar.png" /></p>
+</details>
+<hr />
 <h3 id="event-subscribe">event subscribe<a class="headerlink" href="#event-subscribe" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">event subscribe &lt;id&gt;</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">event sub</code></p>
 <p>Subscribe to receive a PM when an event is happening.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/event sub 136</strong><br />
-<img alt="image" src="../../assets/images/commands/event_sub.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/event_sub.png" /></p>
+</details>
+<hr />
 <h3 id="event-unsubscribe">event unsubscribe<a class="headerlink" href="#event-unsubscribe" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">event unsubscribe id</code><br />
 <strong>Other aliases:</strong> <code class="codehilite">event unsub</code></p>
 <p>Unsubscribes you from an event.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/event unsub 136</strong><br />
-<img alt="image" src="../../assets/images/commands/event_unsub.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/event_unsub.png" /></p>
+</details>
+<hr />
 <h2 id="permissions">permissions<a class="headerlink" href="#permissions" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">permissions [member] [channel]</code></p>
 <p>Shows a member's permissions in the current channel.</p>
 <p>If no member is provided, it will show your permissions.<br />
 Optionally, a channel can be provided as the second parameter, to check permissions in said channel.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/permissions Nezune</strong><br />
-<img alt="image" src="../../assets/images/commands/permissions.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/permissions.png" /></p>
+</details>
+<hr />
 <h2 id="quote">quote<a class="headerlink" href="#quote" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">quote &lt;message id&gt;</code></p>
 <p>Shows a messages by its ID.</p>
@@ -1202,7 +1228,9 @@ Developer mode is found in <code class="codehilite">User Settings &gt; Appearanc
 Once enabled, you can right click a message and select <strong>Copy ID</strong>.</p>
 <p>Note that the bot won't attempt to search in channels you can't read.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/quote 343259808889044992</strong><br />
-<img alt="image" src="../../assets/images/commands/quote.png" /></p></details><hr />
+<img alt="image" src="../../assets/images/commands/quote.png" /></p>
+</details>
+<hr />
 <h2 id="roll">roll<a class="headerlink" href="#roll" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">roll [times][d[sides]]</code></p>
 <p>Rolls a die.</p>
@@ -1214,7 +1242,9 @@ You can specify how many times you want the die to be rolled.</p>
 <strong>/roll 10</strong><br />
 <img alt="image" src="../../assets/images/commands/roll_1.png" /><br />
 <strong>/roll 7d20</strong><br />
-<img alt="image" src="../../assets/images/commands/roll_1.png" />    </p></details><hr />
+<img alt="image" src="../../assets/images/commands/roll_1.png" />    </p>
+</details>
+<hr />
                 
                   
                 

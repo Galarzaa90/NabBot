@@ -791,9 +791,18 @@ The rest of the elements are conditions that are explained on the following sect
 <li>Vocations that can get this message. This is a list of vocations. Optional parameter, can be set to <code class="codehilite"><span class="bp">False</span></code> to ignore.</li>
 <li>Level range that can get this message. This is a list of levels. <code class="codehilite"><span class="nb">range</span><span class="p">(</span><span class="nb">min</span><span class="p">,</span><span class="nb">max</span><span class="p">)</span></code> can be used too. Optional parameter.</li>
 </ul>
-<details class="summary"><summary>Examples</summary><ul><li><p><code class="codehilite"><span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="s2">&quot;Level {level}, **{name}**? Nice. Don&#39;t you wish you were a druid though?&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Sorcerer&quot;</span><span class="p">,</span> <span class="s2">&quot;Master Sorcerer&quot;</span><span class="p">],</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">999</span><span class="p">)],</span></code><br />
-This message is only for sorcerers between level 100 and 999.</p></li><li><p><code class="codehilite"><span class="p">[</span><span class="mi">20000</span><span class="p">,</span> <span class="s2">&quot;**{name}** is level {level}!!!!</span><span class="se">\n</span><span class="s2">yaaaay milestone!&quot;</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">400</span><span class="p">]]</span></code><br />
-This message is only for levels 100, 200, 300 and 400.</p></li></ul></details><h2 id="death-messages">Death messages<a class="headerlink" href="#death-messages" title="Permanent link">&para;</a></h2>
+<details class="summary"><summary>Examples</summary><ul>
+<li>
+<p><code class="codehilite"><span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="s2">&quot;Level {level}, **{name}**? Nice. Don&#39;t you wish you were a druid though?&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Sorcerer&quot;</span><span class="p">,</span> <span class="s2">&quot;Master Sorcerer&quot;</span><span class="p">],</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">999</span><span class="p">)],</span></code><br />
+This message is only for sorcerers between level 100 and 999.</p>
+</li>
+<li>
+<p><code class="codehilite"><span class="p">[</span><span class="mi">20000</span><span class="p">,</span> <span class="s2">&quot;**{name}** is level {level}!!!!</span><span class="se">\n</span><span class="s2">yaaaay milestone!&quot;</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">400</span><span class="p">]]</span></code><br />
+This message is only for levels 100, 200, 300 and 400.</p>
+</li>
+</ul>
+</details>
+<h2 id="death-messages">Death messages<a class="headerlink" href="#death-messages" title="Permanent link">&para;</a></h2>
 <p>Death messages have the following parameters that are dynamically replaced, these are enclosed in <code class="codehilite">{}</code>:</p>
 <ul>
 <li>name - The name of the character that died</li>
@@ -818,8 +827,11 @@ This message is only for levels 100, 200, 300 and 400.</p></li></ul></details><h
 <li>Killer that can get this message. This is a list of monsters. Optional parameter, can be set to <code class="codehilite"><span class="bp">False</span></code> to ignore.</li>
 </ul>
 <details class="summary"><summary>Examples</summary><p><code class="codehilite"><span class="p">[</span><span class="mi">500</span><span class="p">,</span><span class="s2">&quot;**{name}** ({level}) just died to {killer_article}**{killer}**, why did nobody sio {him_her}!?&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;Knight&quot;</span><span class="p">,</span> <span class="s2">&quot;Elite Knight&quot;</span><span class="p">]]</span></code><br />
-This message is only for Knights.</p><p><code class="codehilite"><span class="p">[</span><span class="mi">20000</span><span class="p">,</span> <span class="s2">&quot;**{name}** ({level}) died to {killer_article}**{killer}**! Don&#39;t worry, {he_she} didn&#39;t have a soul anyway&quot;</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;souleater&quot;</span><span class="p">]]</span></code><br />
-This message is for deaths caused by souleaters.</p></details><h2 id="pvp-death-messages">Pvp death messages<a class="headerlink" href="#pvp-death-messages" title="Permanent link">&para;</a></h2>
+This message is only for Knights.</p>
+<p><code class="codehilite"><span class="p">[</span><span class="mi">20000</span><span class="p">,</span> <span class="s2">&quot;**{name}** ({level}) died to {killer_article}**{killer}**! Don&#39;t worry, {he_she} didn&#39;t have a soul anyway&quot;</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="bp">False</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;souleater&quot;</span><span class="p">]]</span></code><br />
+This message is for deaths caused by souleaters.</p>
+</details>
+<h2 id="pvp-death-messages">Pvp death messages<a class="headerlink" href="#pvp-death-messages" title="Permanent link">&para;</a></h2>
 <p>Death messages have the following parameters that are dynamically replaced, these are enclosed in <code class="codehilite">{}</code>:</p>
 <ul>
 <li>name - The name of the character that died</li>
@@ -833,7 +845,8 @@ This message is for deaths caused by souleaters.</p></details><h2 id="pvp-death-
 <li>The message itself, parameters are enclosed in <code class="codehilite">{}</code>.</li>
 </ul>
 <details class="summary"><summary>Examples</summary><p><code class="codehilite"><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="s2">&quot;**{killer}** has killed **{name}** ({level}). What? He had it coming!&quot;</span><span class="p">]</span></code><br />
-<code class="codehilite"><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="s2">&quot;Blood! Blood! Let the blood drip! **{name}** ({level}) was murdered by **{killer}**.&quot;</span><span class="p">]</span></code>  </p></details>
+<code class="codehilite"><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="s2">&quot;Blood! Blood! Let the blood drip! **{name}** ({level}) was murdered by **{killer}**.&quot;</span><span class="p">]</span></code>  </p>
+</details>
                 
                   
                 
