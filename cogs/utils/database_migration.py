@@ -183,15 +183,13 @@ tables = [
     """,
     """
     CREATE TABLE watchlist_entry (
-        id serial NOT NULL,
         name text NOT NULL,
         server_id bigint NOT NULL,
         is_guild bool DEFAULT FALSE,
         reason text,
         user_id bigint,
         created timestamptz DEFAULT now(),
-        PRIMARY KEY(id),
-        UNIQUE(name, server_id, is_guild)
+        PRIMARY KEY(name, server_id, is_guild)
     )
     """,
     """
@@ -244,11 +242,12 @@ async def import_legacy_db(pool: asyncpg.pool.Pool, path):
     legacy_conn = sqlite3.connect(path)
     c = legacy_conn.cursor()
     async with pool.acquire() as conn:
-        await import_characters(conn, c)
-        await import_server_properties(conn, c)
-        await import_roles(conn, c)
-        await import_events(conn, c)
-        await import_ignored_channels(conn, c)
+        # await import_characters(conn, c)
+        # await import_server_properties(conn, c)
+        # await import_roles(conn, c)
+        # await import_events(conn, c)
+        # await import_ignored_channels(conn, c)
+        await import_watch_list(conn, c)
 
 
 async def import_characters(conn: asyncpg.Connection, c: sqlite3.Cursor):
@@ -322,6 +321,9 @@ async def import_server_properties(conn: asyncpg.Connection, c: sqlite3.Cursor):
 
             if key in ["times"]:
                 value = json.dumps(json.loads(value))
+            elif key in ["events_channel", "levels_channel", "watched_channel", "news_channel", "welcome_channel",
+                         "ask_channel", "watched_message"]:
+                value = json.dumps(int(value))
             elif key == "commandsonly":
                 value = json.dumps(bool(value))
             else:
@@ -387,3 +389,18 @@ async def import_ignored_channels(conn: asyncpg.Connection, c: sqlite3.Cursor):
         for row in bar:
             await conn.execute("""INSERT INTO channel_ignored(server_id, channel_id) VALUES($1, $2)
                                   ON CONFLICT(server_id, channel_id) DO NOTHING""", *row)
+
+
+async def import_watch_list(conn: asyncpg.Connection, c: sqlite3.Cursor):
+    c.execute("SELECT name, is_guild, server_id, reason, author, added FROM watched_list")
+    rows = c.fetchall()
+    with _progressbar(rows, label="Migrating watchlist entries") as bar:
+        for row in bar:
+            name, is_guild, server_id, reason, author, added = row
+            if added is not None:
+                added = datetime.datetime.now(datetime.timezone.utc)
+            is_guild = bool(is_guild)
+            await conn.execute("""INSERT INTO watchlist_entry(name, is_guild, server_id, reason, user_id, created)
+                                  VALUES($1, $2, $3, $4, $5, $6)
+                                  ON CONFLICT(name, server_id, is_guild) DO NOTHING""",
+                               name, is_guild, server_id, reason, author, added)
