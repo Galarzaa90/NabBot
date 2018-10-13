@@ -1,15 +1,19 @@
+import json
+
+import asyncpg
 import datetime as dt
 import os
 import re
 import sys
 import traceback
-from typing import Union, List, Optional, Dict
+from typing import Union, List, Optional
 
+import aiohttp
 import discord
 from discord.ext import commands
 
 from cogs.utils import context
-from cogs.utils.database import init_database, userDatabase, get_server_property
+from cogs.utils.database import get_prefixes, get_server_property
 from cogs.utils import config, log
 from cogs.utils.help_format import NabHelpFormat
 from cogs.utils.tibia import populate_worlds, tibia_worlds
@@ -18,13 +22,14 @@ initial_cogs = {"cogs.core", "cogs.tracking", "cogs.owner", "cogs.mod", "cogs.ad
                 "cogs.loot", "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info"}
 
 
-def _prefix_callable(bot, msg):
+async def _prefix_callable(bot, msg):
     user_id = bot.user.id
     base = [f'<@!{user_id}> ', f'<@{user_id}> ']
     if msg.guild is None:
-        base.extend(config.command_prefix)
+        base.extend(bot.config.command_prefix)
     else:
-        base.extend(get_server_property(msg.guild.id, "prefixes", deserialize=True, default=config.command_prefix))
+        prefixes = await get_prefixes(bot.pool, msg.guild.id)
+        base.extend(prefixes if prefixes is not None else bot.config.command_prefix)
     base = sorted(base, reverse=True)
     return base
 
@@ -36,7 +41,10 @@ class NabBot(commands.Bot):
                          formatter=NabHelpFormat(), pm_help=True)
         self.remove_command("help")
         self.members = {}
+        self.config = None  # type: config.Config
+        self.pool = None  # type: asyncpg.pool.Pool
         self.start_time = dt.datetime.utcnow()
+        self.session = aiohttp.ClientSession(loop=self.loop)
         # Dictionary of worlds tracked by nabbot, key:value = server_id:world
         # Dictionary is populated from database
         # A list version is created from the dictionary
@@ -84,9 +92,9 @@ class NabBot(commands.Bot):
         if message.guild is None:
             return
         if message.content.strip() == f"<@{self.user.id}>":
-            prefixes = list(config.command_prefix)
+            prefixes = list(self.config.command_prefix)
             if ctx.guild:
-                prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
+                prefixes = await get_server_property(ctx.pool, ctx.guild.id, "prefixes", prefixes)
             if prefixes:
                 prefixes_str = ", ".join(f"`{p}`" for p in prefixes)
                 return await ctx.send(f"My command prefixes are: {prefixes_str}, and mentions. "
@@ -95,9 +103,9 @@ class NabBot(commands.Bot):
                 return await ctx.send(f"My command prefix is mentions. "
                                       f"To see my commands, try: `@{self.user.name} help.`", delete_after=10)
 
-        server_delete = get_server_property(message.guild.id, "commandsonly", is_int=True)
-        global_delete = config.ask_channel_delete
-        if (server_delete is None and global_delete or server_delete) and ctx.is_askchannel:
+        server_delete = await get_server_property(ctx.pool, message.guild.id, "commandsonly")
+        global_delete = self.config.ask_channel_delete
+        if (server_delete is None and global_delete or server_delete) and await ctx.is_askchannel():
             try:
                 await message.delete()
             except discord.Forbidden:
@@ -190,7 +198,7 @@ class NabBot(commands.Bot):
 
         If the channel doesn't exist, it doesn't send anything or give of any warnings as it meant to be an optional
         feature"""
-        channel = self.get_channel_by_name(config.log_channel_name, guild)
+        channel = self.get_channel_by_name(self.config.log_channel_name, guild)
         if channel is None:
             return
         try:
@@ -238,27 +246,70 @@ class NabBot(commands.Bot):
                 return channel
         return None
 
-    def reload_worlds(self):
+    async def reload_worlds(self):
         """Refresh the world list from the database
 
         This is used to avoid reading the database every time the world list is needed.
         A global variable holding the world list is loaded on startup and refreshed only when worlds are modified"""
-        c = userDatabase.cursor()
         tibia_servers_dict_temp = {}
-        try:
-            c.execute("SELECT server_id, value FROM server_properties WHERE name = 'world' ORDER BY value ASC")
-            result: Dict = c.fetchall()
-            del self.tracked_worlds_list[:]
-            if len(result) > 0:
-                for row in result:
-                    if row["value"] not in self.tracked_worlds_list:
-                        self.tracked_worlds_list.append(row["value"])
-                    tibia_servers_dict_temp[int(row["server_id"])] = row["value"]
+        rows = await self.pool.fetch("SELECT server_id, value FROM server_property WHERE key = $1 ORDER BY value ASC",
+                                     "world")
+        del self.tracked_worlds_list[:]
+        if len(rows) > 0:
+            for row in rows:
+                value = json.loads(row["value"])
+                if value not in self.tracked_worlds_list:
+                    self.tracked_worlds_list.append(value)
+                tibia_servers_dict_temp[int(row["server_id"])] = value
 
-            self.tracked_worlds.clear()
-            self.tracked_worlds.update(tibia_servers_dict_temp)
-        finally:
-            c.close()
+        self.tracked_worlds.clear()
+        self.tracked_worlds.update(tibia_servers_dict_temp)
+
+    def run(self):
+        print("Loading config...")
+        config.parse()
+        self.config = config
+
+        # List of tracked worlds for NabBot
+        self.loop.run_until_complete(self.reload_worlds())
+        # List of all Tibia worlds
+        self.loop.run_until_complete(populate_worlds())
+
+        if len(tibia_worlds) == 0:
+            print("Critical information was not available: NabBot can not start without the World List.")
+            quit()
+        token = get_token()
+
+        print("Loading cogs...")
+        for cog in initial_cogs:
+            try:
+                self.load_extension(cog)
+                print(f"Cog {cog} loaded successfully.")
+            except ModuleNotFoundError:
+                print(f"Could not find cog: {cog}")
+            except Exception as e:
+                print(f'Cog {cog} failed to load:')
+                traceback.print_exc(limit=-1)
+
+        for extra in config.extra_cogs:
+            try:
+                self.load_extension(extra)
+                print(f"Extra cog {extra} loaded successfully.")
+            except ModuleNotFoundError:
+                print(f"Could not find extra cog: {extra}")
+            except Exception as e:
+                print(f'Extra og {extra} failed to load:')
+                traceback.print_exc(limit=-1)
+
+        try:
+            print("Attempting login...")
+            super().run(token)
+        except discord.errors.LoginFailure:
+            print("Invalid token. Edit token.txt to fix it.")
+            input("\nPress any key to continue...")
+            quit()
+
+        log.error("NabBot crashed")
 
 
 def get_token():
@@ -272,9 +323,8 @@ def get_token():
         if len(token) < 50:
             input("What you entered isn't a token. Restart NabBot to retry.")
             quit()
-        f = open("token.txt", "w+")
-        f.write(token)
-        f.close()
+        with open("token.txt", "w+") as f:
+            f.write(token)
         print("Token has been saved to token.txt, you can edit this file later to change it.")
         input("Press any key to start NabBot now...")
         return token
@@ -284,50 +334,4 @@ def get_token():
 
 
 if __name__ == "__main__":
-    init_database()
-
-    print("Loading config...")
-    config.parse()
-
-    nabbot = NabBot()
-
-    # List of tracked worlds for NabBot
-    nabbot.reload_worlds()
-    # List of all Tibia worlds
-    nabbot.loop.run_until_complete(populate_worlds())
-
-    if len(tibia_worlds) == 0:
-        print("Critical information was not available: NabBot can not start without the World List.")
-        quit()
-    token = get_token()
-
-    print("Loading cogs...")
-    for cog in initial_cogs:
-        try:
-            nabbot.load_extension(cog)
-            print(f"Cog {cog} loaded successfully.")
-        except ModuleNotFoundError:
-            print(f"Could not find cog: {cog}")
-        except Exception as e:
-            print(f'Cog {cog} failed to load:')
-            traceback.print_exc(limit=-1)
-
-    for extra in config.extra_cogs:
-        try:
-            nabbot.load_extension(extra)
-            print(f"Extra cog {extra} loaded successfully.")
-        except ModuleNotFoundError:
-            print(f"Could not find extra cog: {extra}")
-        except Exception as e:
-            print(f'Extra og {extra} failed to load:')
-            traceback.print_exc(limit=-1)
-
-    try:
-        print("Attempting login...")
-        nabbot.run(token)
-    except discord.errors.LoginFailure:
-        print("Invalid token. Edit token.txt to fix it.")
-        input("\nPress any key to continue...")
-        quit()
-
-    log.error("NabBot crashed")
+    print("NabBot can't be started from this file anymore. Use launcher.py.")

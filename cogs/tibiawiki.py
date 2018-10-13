@@ -78,7 +78,7 @@ class TibiaWiki:
             description = f"Use `{ctx.clean_prefix} monster <name>` to see more info"
             title = f"Creatures in the {_class.title()} class"
 
-        pages = Pages(ctx, entries=entries, per_page=20 if ctx.long else 10, header=description)
+        pages = Pages(ctx, entries=entries, per_page=20 if await ctx.is_long() else 10, header=description)
         pages.embed.title = title
         try:
             await pages.paginate()
@@ -120,7 +120,7 @@ class TibiaWiki:
                 return
             imbuement = get_imbuement(name)
 
-        embed = self.get_imbuement_embed(ctx, imbuement, ctx.long, prices)
+        embed = self.get_imbuement_embed(ctx, imbuement, await ctx.is_long(), prices)
 
         # Attach imbuement's image only if the bot has permissions
         permissions = ctx.bot_permissions
@@ -155,7 +155,7 @@ class TibiaWiki:
                 return
             item = get_item(name)
 
-        embed = self.get_item_embed(ctx, item, ctx.long)
+        embed = await self.get_item_embed(ctx, item, await ctx.is_long())
 
         # Attach item's image only if the bot has permissions
         permissions = ctx.bot_permissions
@@ -269,7 +269,7 @@ class TibiaWiki:
                 return
             monster = get_monster(name)
 
-        embed = self.get_monster_embed(ctx, monster, ctx.long)
+        embed = await self.get_monster_embed(ctx, monster, await ctx.is_long())
 
         # Attach monster's image only if the bot has permissions
         if ctx.bot_permissions.attach_files and monster["image"] is not None:
@@ -301,7 +301,7 @@ class TibiaWiki:
                 return
             npc = get_npc(name)
 
-        embed = self.get_npc_embed(ctx, npc, ctx.long)
+        embed = await self.get_npc_embed(ctx, npc, await ctx.is_long())
         # Attach spell's image only if the bot has permissions
         if ctx.bot_permissions.attach_files:
             files = []
@@ -373,7 +373,7 @@ class TibiaWiki:
             name = name.split("(")[0].strip()
             spell = get_spell(name)
 
-        embed = self.get_spell_embed(ctx, spell, ctx.long)
+        embed = await self.get_spell_embed(ctx, spell, await ctx.is_long())
 
         # Attach spell's image only if the bot has permissions
         if ctx.bot_permissions.attach_files and spell["image"] is not None:
@@ -436,7 +436,7 @@ class TibiaWiki:
 
     # Helper methods
     @staticmethod
-    def get_monster_embed(ctx: NabCtx, monster, long):
+    async def get_monster_embed(ctx: NabCtx, monster, long):
         """Gets the monster embeds to show in /mob command
         The message is split in two embeds, the second contains loot only and is only shown if long is True"""
         embed = discord.Embed(title=monster["title"], url=get_article_url(monster["title"]))
@@ -449,7 +449,7 @@ class TibiaWiki:
         TibiaWiki._set_monster_embed_walks(embed, monster)
         TibiaWiki._set_monster_embed_abilities(embed, monster)
         TibiaWiki._set_monster_embed_loot(embed, long, monster)
-        TibiaWiki._set_monster_embed_more_info(ctx, embed, long, monster)
+        await TibiaWiki._set_monster_embed_more_info(ctx, embed, long, monster)
         return embed
 
     @staticmethod
@@ -472,9 +472,9 @@ class TibiaWiki:
         return elements
 
     @staticmethod
-    def _set_monster_embed_more_info(ctx, embed, long, monster):
+    async def _set_monster_embed_more_info(ctx, embed, long, monster):
         if monster["loot"] and not long:
-            ask_channel = ctx.ask_channel_name
+            ask_channel = await ctx.ask_channel_name()
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel
             else:
@@ -739,7 +739,7 @@ class TibiaWiki:
         return embed
 
     @staticmethod
-    def get_item_embed(ctx: NabCtx, item, long):
+    async def get_item_embed(ctx: NabCtx, item, long):
         """Gets the item embed to show in /item command"""
         short_limit = 5
         long_limit = 40
@@ -858,7 +858,7 @@ class TibiaWiki:
             embed.add_field(name=name, value=value, inline=not long)
 
         if npcs_too_long or drops_too_long or quests_too_long:
-            ask_channel = ctx.ask_channel_name
+            ask_channel = await ctx.ask_channel_name()
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel
             else:
@@ -868,7 +868,7 @@ class TibiaWiki:
         return embed
 
     @staticmethod
-    def get_spell_embed(ctx: NabCtx, spell, long):
+    async def get_spell_embed(ctx: NabCtx, spell, long):
         """Gets the embed to show in /spell command"""
         short_limit = 5
         too_long = False
@@ -936,7 +936,7 @@ class TibiaWiki:
         embed.description = description
 
         if too_long:
-            ask_channel = ctx.ask_channel_name
+            ask_channel = await ctx.ask_channel_name()
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel
             else:
@@ -946,7 +946,7 @@ class TibiaWiki:
         return embed
 
     @staticmethod
-    def get_npc_embed(ctx: NabCtx, npc, long):
+    async def get_npc_embed(ctx: NabCtx, npc, long):
         """Gets the embed to show in /npc command"""
         short_limit = 5
         long_limit = 50
@@ -1042,7 +1042,7 @@ class TibiaWiki:
                     name = f"Teaches ({voc.title()}s)" if i == 0 else "\u200F"
                     embed.add_field(name=name, value=split_field, inline=not len(fields) > 1)
         if too_long:
-            ask_channel = ctx.ask_channel_name
+            ask_channel = await ctx.ask_channel_name()
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel
             else:

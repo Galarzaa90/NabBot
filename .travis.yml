@@ -18,7 +18,6 @@ script:
 - python -m compileall ./nabbot.py
 - python -m compileall ./restart.py
 - python -m compileall ./cogs
-- python -m compileall ./utils
 - cp CHANGELOG.md docs/changelog.md
 - python -m mkdocs build
 - echo 'docs.nabbot.xyz' > ./site/CNAME

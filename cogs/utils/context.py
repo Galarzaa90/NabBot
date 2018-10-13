@@ -1,4 +1,7 @@
 import asyncio
+
+import aiohttp
+import asyncpg
 import functools
 import re
 from typing import Union, Optional, Callable, TypeVar, Any, Sequence
@@ -25,10 +28,12 @@ class NabCtx(commands.Context):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.pool: asyncpg.pool.Pool = self.bot.pool
+        self.session: aiohttp.ClientSession = self.bot.session
         self.yes_no_reactions = ("🇾", "🇳")
         self.check_reactions = (config.true_emoji, config.false_emoji)
 
-    # Properties
+    # region Properties
     @property
     def author_permissions(self) -> discord.Permissions:
         """Shortcut to check the command author's permission to the current channel.
@@ -36,20 +41,6 @@ class NabCtx(commands.Context):
         :return: The permissions for the author in the current channel.
         """
         return self.channel.permissions_for(self.author)
-
-    @property
-    def ask_channel_name(self) -> Optional[str]:
-        """Gets the name of the ask channel for the current server.
-
-        :return: The name of the ask channel if applicable
-        :rtype: str or None"""
-        if self.guild is None:
-            return None
-        ask_channel_id = get_server_property(self.guild.id, "ask_channel", is_int=True)
-        ask_channel = self.guild.get_channel(ask_channel_id)
-        if ask_channel is None:
-            return config.ask_channel_name
-        return ask_channel.name
 
     @property
     def bot_permissions(self) -> discord.Permissions:
@@ -69,15 +60,6 @@ class NabCtx(commands.Context):
             if user:
                 return f'@{user.name} '
         return self.prefix
-
-    @property
-    def is_askchannel(self):
-        """Checks if the current channel is the command channel"""
-        ask_channel_id = get_server_property(self.guild.id, "ask_channel", is_int=True)
-        ask_channel = self.guild.get_channel(ask_channel_id)
-        if ask_channel is None:
-            return self.channel.name == config.ask_channel_name
-        return ask_channel == self.channel
 
     @property
     def is_lite(self) -> bool:
@@ -100,40 +82,30 @@ class NabCtx(commands.Context):
         return self.guild is None
 
     @property
-    def long(self) -> bool:
-        """Whether the current context allows long replies or not
-
-        Private messages and command channels allow long replies.
-        """
-        if self.guild is None:
-            return True
-        return self.is_askchannel
-
-    @property
     def usage(self) -> str:
         """Shows the parameters signature of the invoked command"""
         if self.command.usage:
             return self.command.usage
-        else:
-            params = self.command.clean_params
-            if not params:
-                return ''
-            result = []
-            for name, param in params.items():
-                if param.default is not param.empty:
-                    # We don't want None or '' to trigger the [name=value] case and instead it should
-                    # do [name] since [name=None] or [name=] are not exactly useful for the user.
-                    should_print = param.default if isinstance(param.default, str) else param.default is not None
-                    if should_print:
-                        result.append(f'[{name}={param.default!r}]')
-                    else:
-                        result.append(f'[{name}]')
-                elif param.kind == param.VAR_POSITIONAL:
-                    result.append(f'[{name}...]')
-                else:
-                    result.append(f'<{name}>')
 
-            return ' '.join(result)
+        params = self.command.clean_params
+        if not params:
+            return ''
+        result = []
+        for name, param in params.items():
+            if param.default is not param.empty:
+                # We don't want None or '' to trigger the [name=value] case and instead it should
+                # do [name] since [name=None] or [name=] are not exactly useful for the user.
+                should_print = param.default if isinstance(param.default, str) else param.default is not None
+                if should_print:
+                    result.append(f'[{name}={param.default!r}]')
+                else:
+                    result.append(f'[{name}]')
+            elif param.kind == param.VAR_POSITIONAL:
+                result.append(f'[{name}...]')
+            else:
+                result.append(f'<{name}>')
+
+        return ' '.join(result)
 
     @property
     def world(self) -> Optional[str]:
@@ -147,6 +119,20 @@ class NabCtx(commands.Context):
         else:
             return self.bot.tracked_worlds.get(self.guild.id, None)
 
+    async def ask_channel_name(self) -> Optional[str]:
+        """Gets the name of the ask channel for the current server.
+
+        :return: The name of the ask channel if applicable
+        :rtype: str or None"""
+        if self.guild is None:
+            return None
+        ask_channel_id = await get_server_property(self.pool, self.guild.id, "ask_channel")
+        ask_channel = self.guild.get_channel(ask_channel_id)
+        if ask_channel is None:
+            return config.ask_channel_name
+        return ask_channel.name
+
+    # endregion
     async def choose(self, matches: Sequence[Any], title="Suggestions"):
         if len(matches) == 0:
             raise ValueError('No results found.')
@@ -183,6 +169,7 @@ class NabCtx(commands.Context):
             except (discord.Forbidden, discord.NotFound):
                 pass
 
+    # region Methods
     async def execute_async(self, func: Callable[..., T], *args, **kwargs) -> T:
         """Executes a synchronous function inside an executor.
 
@@ -220,6 +207,23 @@ class NabCtx(commands.Context):
             return ret
         except asyncio.TimeoutError:
             return None
+
+    async def is_askchannel(self):
+        """Checks if the current channel is the command channel"""
+        ask_channel_id = await get_server_property(self.pool, self.guild.id, "ask_channel")
+        ask_channel = self.guild.get_channel(ask_channel_id)
+        if ask_channel is None:
+            return self.channel.name == config.ask_channel_name
+        return ask_channel == self.channel
+
+    async def is_long(self) -> bool:
+        """Whether the current context allows long replies or not
+
+        Private messages and command channels allow long replies.
+        """
+        if self.guild is None:
+            return True
+        return await self.is_askchannel()
 
     async def react_confirm(self, message: discord.Message, *, timeout=60.0, delete_after=False,
                             use_checkmark=False) -> Optional[bool]:
@@ -278,3 +282,5 @@ class NabCtx(commands.Context):
         if label:
             return emoji + label
         return emoji
+
+    # endregion
