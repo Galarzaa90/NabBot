@@ -254,7 +254,9 @@ async def import_legacy_db(pool: asyncpg.pool.Pool, path):
         return
     legacy_conn = sqlite3.connect(path)
     print("Checking old database...")
-    check_sql_database(legacy_conn)
+    if not check_sql_database(legacy_conn):
+        print("Can't import sqlite database.")
+        return
 
     c = legacy_conn.cursor()
     async with pool.acquire() as conn:
@@ -425,30 +427,15 @@ async def import_watch_list(conn: asyncpg.Connection, c: sqlite3.Cursor):
 def check_sql_database(conn: sqlite3.Connection):
     """Initializes and/or updates the database to the current version"""
     # Database file is automatically created with connect, now we have to check if it has tables
-    print("Checking database version...")
+    print("Checking sqlite database version...")
     c = conn.cursor()
     try:
         c.execute("SELECT COUNT(*) as count FROM sqlite_master WHERE type = 'table'")
         result = c.fetchone()
         # Database is empty
-        if result is None or result["count"] == 0:
-            c.execute("""CREATE TABLE discord_users (
-                      id INTEGER NOT NULL,
-                      weight INTEGER DEFAULT 5,
-                      PRIMARY KEY(id)
-                      )""")
-            c.execute("""CREATE TABLE chars (
-                      id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      user_id INTEGER,
-                      name TEXT,
-                      last_level INTEGER DEFAULT -1,
-                      last_death_time TEXT
-                      )""")
-            c.execute("""CREATE TABLE char_levelups (
-                      char_id INTEGER,
-                      level INTEGER,
-                      date INTEGER
-                      )""")
+        if result is None or result[0] == 0:
+            print("\tDatabase is empty.")
+            return False
         c.execute("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND name LIKE 'db_info'")
         result = c.fetchone()
         # If there's no version value, version 1 is assumed
@@ -459,14 +446,14 @@ def check_sql_database(conn: sqlite3.Connection):
                       )""")
             c.execute("INSERT INTO db_info(key,value) VALUES('version','1')")
             db_version = 1
-            print("No version found, version 1 assumed")
+            print("\tNo version found, version 1 assumed")
         else:
             c.execute("SELECT value FROM db_info WHERE key LIKE 'version'")
-            db_version = int(c.fetchone()["value"])
-            print("Version {0}".format(db_version))
+            db_version = int(c.fetchone()[0])
+            print("\tVersion {0}".format(db_version))
         if db_version == SQL_DB_LASTVERSION:
-            print("Database is up to date.")
-            return
+            print("\tDatabase is up to date.")
+            return True
         # Code to patch database changes
         if db_version == 1:
             # Added 'vocation' column to chars table, to display vocations when /check'ing users among other things.
@@ -660,8 +647,12 @@ def check_sql_database(conn: sqlite3.Connection):
                 guild TEXT NOT NULL
             );""")
             db_version += 1
-        print("Updated database to version {0}".format(db_version))
+        print("\tUpdated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
+        return True
+    except Exception as e:
+        print(f"\tError reading sqlite database: {e}")
+        return False
     finally:
         c.close()
         conn.commit()
