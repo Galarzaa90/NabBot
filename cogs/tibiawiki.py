@@ -86,6 +86,47 @@ class TibiaWiki:
             await ctx.send(e)
 
     @checks.can_embed()
+    @commands.command()
+    async def charms(self, ctx: NabCtx):
+        """Displays a list of all charms for the user to choose.
+
+        After a charm is specified, uses the database information to display details about the chosen charm."""
+        charms = self._get_all_charms()
+        chosen_name = await ctx.choose(list(charms.keys()), "", False)
+        if chosen_name:
+            charm = charms[chosen_name]
+            embed = await self._get_charms_embed(charm)
+            if ctx.bot_permissions.attach_files and charm["image"] is not None:
+                await self._send_embed_charms_with_image(charm, ctx, embed)
+            else:
+                await ctx.send(embed=embed)
+
+    @staticmethod
+    async def _send_embed_charms_with_image(charm, ctx, embed):
+        filename = re.sub(r"[^A-Za-z0-9]", "", charm["name"]) + ".png"
+        embed.set_thumbnail(url=f"attachment://{filename}")
+        main_color = await ctx.execute_async(average_color, charm["image"])
+        embed.color = discord.Color.from_rgb(*main_color)
+        await ctx.send(file=discord.File(charm["image"], f"{filename}"), embed=embed)
+
+    async def _get_charms_embed(self, charm):
+        article_title = "Cyclopedia#List_of_Charms"
+        embed = discord.Embed(title=charm["name"], url=get_article_url(article_title))
+        embed.description = "**Type**: %s | **Cost**: %s points" % (charm["type"], charm["points"])
+        embed.add_field(name="Description", value=charm["description"])
+        self._set_embed_author(embed, {"title": article_title})
+        return embed
+
+    @staticmethod
+    def _get_all_charms():
+        charms = dict()
+        with closing(tibiaDatabase.cursor()) as c:
+            c.execute("SELECT name, description, type, points, image FROM charm")
+            for charm in c.fetchall():
+                charms[charm["name"]] = charm
+        return charms
+
+    @checks.can_embed()
     @commands.command(aliases=["imbue"], usage="<name>[,price1[,price2[,price3]]][,tokenprice]")
     async def imbuement(self, ctx: NabCtx, *, params: str):
         """Displays information about an imbuement.
