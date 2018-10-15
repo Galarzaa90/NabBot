@@ -42,3 +42,16 @@ async def set_server_property(pool: asyncpg.pool.Pool, guild_id: int, key: str, 
     await pool.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
                           ON CONFLICT(server_id, key) DO UPDATE SET value = EXCLUDED.value""",
                        guild_id, key, json.dumps(value))
+
+
+async def get_global_property(pool: asyncpg.pool.Pool, key: str, default=None) -> Any:
+    value = await pool.fetchval("SELECT value FROM global_property WHERE key = $1", key)
+    try:
+        return json.loads(value) if value is not None else default
+    except json.JSONDecodeError:
+        return default
+
+
+async def set_global_property(pool: asyncpg.pool.Pool, key: str, value: Any):
+    await pool.execute("""INSERT INTO global_property(key, value) VALUES($1, $2)
+                          ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value""", key, json.dumps(value))

@@ -36,6 +36,9 @@ class Roles:
 
     # Todo: Requires optimization
     async def on_character_change(self, user_id: int):
+        """Event occurs everytime a character changes guild or owner.
+
+        Updates automatic roles accordingly."""
         try:
             async with self.bot.pool.acquire() as conn:
                 guilds_raw = await conn.fetch('SELECT guild FROM "character" WHERE user_id = $1', user_id)

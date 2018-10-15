@@ -15,7 +15,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import get_server_property, set_server_property
+from .utils.database import get_server_property, set_server_property, get_global_property, set_global_property
 from .utils import get_time_diff, join_list, online_characters, get_local_timezone, log, \
     is_numeric, get_user_avatar, config
 from .utils.messages import html_to_markdown, get_first_image, split_message
@@ -1864,37 +1864,17 @@ class Tibia:
                 if recent_news is None:
                     await asyncio.sleep(30)
                     continue
-                try:
-                    last_article = recent_news[0]["id"]
-                    with open("data/last_article.txt", 'r') as f:
-                        last_id = int(f.read())
-                except (ValueError, FileNotFoundError):
-                    log.info("scan_news: No last article id saved")
-                    last_id = 0
-                except (IndexError, KeyError):
-                    log.warning("scan_news: Error getting recent news")
-                    await asyncio.sleep(60*30)
-                    continue
-                if last_id == 0:
-                    with open("data/last_article.txt", 'w+') as f:
-                        f.write(str(last_article))
-                    await asyncio.sleep(60 * 60 * 2)
-                    continue
+                last_article = recent_news[0]["id"]
+                last_id = await get_global_property(self.bot.pool, "last_article", default=0)
+                await set_global_property(self.bot.pool, "last_article", last_article)
                 new_articles = []
                 for article in recent_news:
-                    if int(article["id"]) == last_id:
-                        break
                     # Do not post articles older than a week (in case bot was offline)
-                    if (dt.date.today() - article["date"]).days > 7:
+                    if int(article["id"]) == last_id or (dt.date.today() - article["date"]).days > 7:
                         break
                     fetched_article = await get_news_article(int(article["id"]))
                     if fetched_article is not None:
                         new_articles.insert(0, fetched_article)
-                with open("data/last_article.txt", 'w+') as f:
-                    f.write(str(last_article))
-                if len(new_articles) == 0:
-                    await asyncio.sleep(60 * 60 * 2)
-                    continue
                 for article in new_articles:
                     log.info("Announcing new article: {id} - {title}".format(**article))
                     for guild in self.bot.guilds:
@@ -1910,6 +1890,10 @@ class Tibia:
                         except discord.HTTPException:
                             log.warning("scan_news: Malformed message.")
                 await asyncio.sleep(60 * 60 * 2)
+            except (IndexError, KeyError):
+                log.warning("scan_news: Error getting recent news")
+                await asyncio.sleep(60*30)
+                continue
             except NetworkError:
                 await asyncio.sleep(30)
                 continue

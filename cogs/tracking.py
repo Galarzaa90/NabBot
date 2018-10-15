@@ -29,7 +29,6 @@ class Tracking:
 
     def __init__(self, bot: NabBot):
         self.bot = bot
-        # TODO: Tasks are disabled until database changes are completed
         self.scan_online_chars_task = bot.loop.create_task(self.scan_online_chars())
         self.scan_highscores_task = bot.loop.create_task(self.scan_highscores())
         self.world_tasks = {}
