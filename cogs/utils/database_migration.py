@@ -17,14 +17,19 @@ def _progressbar(*args, **kwargs):
 
 async def check_database(pool: asyncpg.pool.Pool):
     print("Checking database version...")
-    async with pool.acquire() as con:
-        version = await get_version(con)
-        if version <= 0:
-            print("Schema is empty, creating tables.")
-            await create_database(con)
-            await set_version(con, 1)
-        else:
-            print("\tVersion 1 found.")
+    try:
+        async with pool.acquire() as con:
+            version = await get_version(con)
+            if version <= 0:
+                print("Schema is empty, creating tables.")
+                await create_database(con)
+                await set_version(con, 1)
+            else:
+                print("\tVersion 1 found.")
+    except asyncpg.InsufficientPrivilegeError as e:
+        print(f"PostgreSQL error: {e}")
+        return False
+    return True
 
 
 async def create_database(con: asyncpg.connection.Connection):
@@ -433,7 +438,7 @@ def check_sql_database(conn: sqlite3.Connection):
         c.execute("SELECT COUNT(*) as count FROM sqlite_master WHERE type = 'table'")
         result = c.fetchone()
         # Database is empty
-        if result is None or result[0] == 0:
+        if result[0] == 0:
             print("\tDatabase is empty.")
             return False
         c.execute("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND name LIKE 'db_info'")

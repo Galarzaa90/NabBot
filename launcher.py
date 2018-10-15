@@ -46,21 +46,33 @@ async def create_pool(uri, **kwargs) -> asyncpg.pool.Pool:
     async def init(con):
         await con.set_type_codec('jsonb', schema='pg_catalog', encoder=_encode_jsonb, decoder=_decode_jsonb,
                                  format='text')
-
-    pool = await asyncpg.create_pool(uri, init=init, **kwargs)
-    return pool
+    try:
+        pool = await asyncpg.create_pool(uri, init=init, **kwargs)
+    except ValueError:
+        print("PostgreSQL error: Invalid URI, check postgresql.txt. "
+              "Format must be 'postresql://user:password@host/database'")
+    except asyncpg.PostgresError as e:
+        print(f"PostgreSQL error: {e}")
+    except TimeoutError:
+        print("PostgreSQL error: Connection timed out.")
+    except Exception as e:
+        print(f"Unexpected error: {e.__class__.__name__}: {e}")
+    else:
+        return pool
 
 
 def run_bot():
     loop = asyncio.get_event_loop()
 
-    try:
-        pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))  # type: asyncpg.pool.Pool
-    except Exception:
+    pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
+    if pool is None:
         print('Could not set up PostgreSQL. Exiting.')
         return
 
-    loop.run_until_complete(check_database(pool))
+    result = loop.run_until_complete(check_database(pool))
+    if not result:
+        print('Failed to check database')
+        return
 
     bot = NabBot()
     bot.pool = pool
@@ -74,17 +86,21 @@ def main(ctx):
     if ctx.invoked_subcommand is None:
         run_bot()
 
+
 @main.command()
 @click.option('-path', '--path', help="Name for the database file.", default="data/users.db")
 def migrate(path):
     loop = asyncio.get_event_loop()
-    try:
-        pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))  # type: asyncpg.pool.Pool
-    except Exception:
+    pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
+    if pool is None:
         print('Could not set up PostgreSQL. Exiting.')
         return
 
-    loop.run_until_complete(check_database(pool))
+    result = loop.run_until_complete(check_database(pool))
+    if not result:
+        print('Failed to check database')
+        return
+
     loop.run_until_complete(import_legacy_db(pool, path))
 
 
