@@ -12,14 +12,14 @@ import aiohttp
 import discord
 from discord.ext import commands
 
-from cogs.utils import context
+from cogs.utils import context, safe_delete_message
 from cogs.utils.database import get_prefixes, get_server_property
 from cogs.utils import config, log
 from cogs.utils.help_format import NabHelpFormat
 from cogs.utils.tibia import populate_worlds, tibia_worlds
 
-initial_cogs = {"cogs.core", "cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general",
-                "cogs.loot", "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info"}
+initial_cogs = {"cogs.core", "cogs.serverlog", "cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia",
+                "cogs.general",  "cogs.loot", "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info"}
 
 
 async def _prefix_callable(bot, msg):
@@ -106,11 +106,7 @@ class NabBot(commands.Bot):
         server_delete = await get_server_property(ctx.pool, message.guild.id, "commandsonly")
         global_delete = self.config.ask_channel_delete
         if (server_delete is None and global_delete or server_delete) and await ctx.is_askchannel():
-            try:
-                await message.delete()
-            except discord.Forbidden:
-                # Bot doesn't have permission to delete message
-                pass
+            await safe_delete_message(message)
 
     # ------------ Utility methods ------------
 
