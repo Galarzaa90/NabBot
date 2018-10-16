@@ -291,6 +291,23 @@ def parse_uptime(start_time, long=False) -> str:
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
 
+async def safe_delete_message(message: discord.Message) -> bool:
+    """Attempts to delete a message, failing silently if the bot couldn't delete it.
+
+    This is used as a shortcut to attempt to delete a message when failure is not critical.
+    The bot may fail to delete a message by another user if the bot lacks `Manage Messages` permission.
+    It might also fail if the message no longer exist.
+
+    Note that an exception will still be raised if something other than a message is passed.
+
+    :return: If the message was deleted or not."""
+    try:
+        await message.delete()
+        return True
+    except (discord.Forbidden, discord.NotFound):
+        return False
+
+
 def single_line(string: str) -> str:
     """Turns a multi-line string into a single.
 

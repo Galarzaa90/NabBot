@@ -41,10 +41,11 @@ class Roles:
         Updates automatic roles accordingly."""
         try:
             async with self.bot.pool.acquire() as conn:
-                guilds_raw = await conn.fetch('SELECT guild FROM "character" WHERE user_id = $1', user_id)
+                guilds_raw = await conn.fetch('SELECT guild, world FROM "character" WHERE user_id = $1', user_id)
                 rules_raw = await conn.fetch("SELECT server_id, role_id, rule FROM role_auto ORDER BY server_id")
             # Flatten list of guilds
             guilds = set(g['guild'] for g in guilds_raw)
+            worlds = set(g['world'] for g in guilds_raw)
 
             # Flatten rules
             rules = {}
@@ -53,22 +54,23 @@ class Roles:
                 if server_id not in rules:
                     rules[rule["server_id"]] = []
                 rules[server_id].append((rule["role_id"], rule["rule"]))
-            for server, rules in rules.items():
-                guild: discord.Guild = self.bot.get_guild(server)
-                if guild is None:
+
+            for server_id, rules in rules.items():
+                server: discord.Guild = self.bot.get_guild(server_id)
+                if server is None:
                     continue
-                member: discord.Member = guild.get_member(user_id)
+                member: discord.Member = server.get_member(user_id)
                 if member is None:
                     continue
 
                 all_roles = set()
                 to_add = set()
-                for role_id, tibia_guild in rules:
-                    role: discord.Role = discord.utils.get(guild.roles, id=role_id)
+                for role_id, char_guild in rules:
+                    role: discord.Role = server.get_role(role_id)
                     if role is None:
                         continue
                     all_roles.add(role)
-                    if (tibia_guild == "*" and guilds) or tibia_guild in guilds:
+                    if (char_guild == "*" and self.bot.tracked_worlds.get(server_id) in worlds) or char_guild in guilds:
                         to_add.add(role)
                 to_remove = all_roles-to_add
                 try:
@@ -89,7 +91,7 @@ class Roles:
                             embed.add_field(name="Added roles", value=", ".join(r.mention for r in new_roles))
                         if removed_roles:
                             embed.add_field(name="Removed roles", value=", ".join(r.mention for r in removed_roles))
-                        await self.bot.send_log_message(guild, embed=embed)
+                        await self.bot.send_log_message(server, embed=embed)
                 except discord.HTTPException:
                     pass
         except Exception:
@@ -403,8 +405,8 @@ class Roles:
     @commands.command(name="roleinfo")
     async def role_info(self, ctx: NabCtx, *, role: InsensitiveRole):
         """Shows details about a role."""
-        role: discord.Role = role
-        embed = discord.Embed(title=role.name, colour=role.colour, timestamp=role.created_at,
+        _role: discord.Role = role
+        embed = discord.Embed(title=_role.name, colour=_role.colour, timestamp=_role.created_at,
                               description=f"**ID** {role.id}")
         embed.add_field(name="Members", value=f"{len(role.members):,}")
         embed.add_field(name="Mentionable", value=f"{role.mentionable}")
@@ -419,21 +421,21 @@ class Roles:
     @commands.command(name="rolemembers")
     async def role_members(self, ctx: NabCtx, *, role: InsensitiveRole):
         """Shows a list of members with that role."""
-        role: discord.Role = role
-        if role is None:
+        _role: discord.Role = role
+        if _role is None:
             await ctx.send("There's no role with that name in here.")
             return
 
-        role_members = [m.mention for m in role.members]
+        role_members = [m.mention for m in _role.members]
         if not role_members:
             await ctx.send("Seems like there are no members with that role.")
             return
 
-        title = "Members with the role '{0.name}'".format(role)
+        title = "Members with the role '{0.name}'".format(_role)
         per_page = 20 if await ctx.is_long() else 5
         pages = Pages(ctx, entries=role_members, per_page=per_page)
         pages.embed.title = title
-        pages.embed.colour = role.colour
+        pages.embed.colour = _role.colour
         try:
             await pages.paginate()
         except CannotPaginate as e:
