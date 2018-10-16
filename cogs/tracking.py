@@ -622,7 +622,7 @@ class Tracking:
                             format(**char)
         async with ctx.pool.acquire() as conn:
             for char in updated:
-                await conn.execute('UPDATE "character" SET user_id = $1 WHERE name LIKE $2', user.id, char['name'])
+                await conn.execute('UPDATE "character" SET user_id = $1 WHERE name = $2', user.id, char['name'])
             for char in added:
                 await conn.execute("""INSERT INTO "character"(name,level,vocation,user_id, world, guild)
                                       VALUES ($1, $2, $3, $4, $5, $6)""",
@@ -765,7 +765,7 @@ class Tracking:
                             format(**char)
         async with ctx.pool.acquire() as conn:
             for char in updated:
-                await conn.execute('UPDATE "character" SET user_id = $1 WHERE lower(name) = $2', user.id, char['name'])
+                await conn.execute('UPDATE "character" SET user_id = $1 WHERE name = $2', user.id, char['name'])
             for char in added:
                 await conn.execute("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
                                       VALUES ($1, $2, $3, $4, $5, $6)""",

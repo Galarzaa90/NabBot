@@ -18,8 +18,8 @@ from cogs.utils import config, log
 from cogs.utils.help_format import NabHelpFormat
 from cogs.utils.tibia import populate_worlds, tibia_worlds
 
-initial_cogs = {"cogs.core", "cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia", "cogs.general",
-                "cogs.loot", "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info"}
+initial_cogs = {"cogs.core", "cogs.serverlog", "cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia",
+                "cogs.general",  "cogs.loot", "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info"}
 
 
 async def _prefix_callable(bot, msg):

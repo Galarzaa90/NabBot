@@ -475,8 +475,10 @@ async def bind_database_character(bot, character: Character):
             char_id = await conn.fetchval('SELECT id FROM "character" WHERE name LIKE $1', old_name)
             if char_id:
                 # TODO: Conflict handling is necessary now that name is a unique column
-                await conn.execute('UPDATE character SET name = $1 WHERE id = $1', character.name, char_id)
+                owner = await conn.fetchval('UPDATE "character" SET name = $1 WHERE id = $2 RETURNING user_id',
+                                            character.name, char_id)
                 log.info(f"get_character(): {old_name} renamed to {character.name}")
+                bot.dispatch("character_rename", old_name, character.name, owner)
 
         # Discord owner
         db_char = await conn.fetchrow("""SELECT id, user_id, name, user_id, vocation, world, guild
@@ -491,10 +493,11 @@ async def bind_database_character(bot, character: Character):
             await conn.execute('UPDATE "character" SET vocation = $1 WHERE id = $2', character.vocation,
                                  db_char["id"])
             log.info(f"get_character(): {character.name}'s vocation: {db_char['vocation']} -> {character.vocation}")
-        # This condition PROBABLY can't be met again
+
         if db_char["name"] != character.name:
             await conn.execute('UPDATE "character" SET name = $1 WHERE id = $2', character.name, db_char["id"])
             log.info(f"get_character: {db_char['name']} renamed to {character.name}")
+            bot.dispatch("character_rename", db_char['name'], character.name, character.owner)
 
         if db_char["world"] != character.world:
             await conn.execute('UPDATE "character" SET world = $1 WHERE id = $2', character.world, db_char["id"])
@@ -503,8 +506,7 @@ async def bind_database_character(bot, character: Character):
         if db_char["guild"] != character.guild_name:
             await conn.execute('UPDATE "character" SET guild = $1 WHERE id = $2', character.guild_name, db_char["id"])
             log.info(f"get_character: {character.name}'s guild updated {character.guild_name} -> {db_char['guild']}")
-            if bot is not None:
-                bot.dispatch("character_change", character.owner)
+            bot.dispatch("character_change", character.owner)
 
 
 async def get_highscores(world, category, pagenum, profession=0, tries=5):
