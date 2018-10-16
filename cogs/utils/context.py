@@ -133,7 +133,7 @@ class NabCtx(commands.Context):
         return ask_channel.name
 
     # endregion
-    async def choose(self, matches: Sequence[Any], title="Suggestions"):
+    async def choose(self, matches: Sequence[Any], title="Suggestions", not_found=True):
         if len(matches) == 0:
             raise ValueError('No results found.')
 
@@ -143,8 +143,11 @@ class NabCtx(commands.Context):
         embed = discord.Embed(colour=discord.Colour.blurple(), title=title,
                               description='\n'.join(f'{index}: {item}' for index, item in enumerate(matches, 1)))
 
-        msg = await self.send("I couldn't find what you were looking for, maybe you mean one of these?\n"
-                              "**Only say the number** (*0 to cancel*)", embed=embed)
+        suggestion_text = "Please choose one of the options.\n"
+        not_found_text = "I couldn't find what you were looking for, maybe you mean one of these?\n"
+        cancel_text = "**Only say the number** (*0 to cancel*)"
+        text = not_found_text + cancel_text if not_found else suggestion_text + cancel_text
+        msg = await self.send(text, embed=embed)
 
         def check(m: discord.Message):
             return m.content.isdigit() and m.author.id == self.author.id and m.channel.id == self.channel.id
