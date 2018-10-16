@@ -117,6 +117,7 @@ class Character:
         # NabBot specific attributes:
         self.highscores = []
         self.owner = 0
+        self.id = 0
 
     def __repr__(self) -> str:
         kwargs = vars(self)
@@ -475,10 +476,12 @@ async def bind_database_character(bot, character: Character):
             char_id = await conn.fetchval('SELECT id FROM "character" WHERE name LIKE $1', old_name)
             if char_id:
                 # TODO: Conflict handling is necessary now that name is a unique column
-                owner = await conn.fetchval('UPDATE "character" SET name = $1 WHERE id = $2 RETURNING user_id',
-                                            character.name, char_id)
+                row = await conn.fetchrow('UPDATE "character" SET name = $1 WHERE id = $2 RETURNING id, user_id',
+                                           character.name, char_id)
+                character.owner = row["user_id"]
+                character.id = row["id"]
                 log.info(f"get_character(): {old_name} renamed to {character.name}")
-                bot.dispatch("character_rename", old_name, character.name, owner)
+                bot.dispatch("character_rename", old_name, character)
 
         # Discord owner
         db_char = await conn.fetchrow("""SELECT id, user_id, name, user_id, vocation, world, guild
@@ -489,6 +492,7 @@ async def bind_database_character(bot, character: Character):
             return
 
         character.owner = db_char["user_id"]
+        character.id = db_char["id"]
         if db_char["vocation"] != character.vocation:
             await conn.execute('UPDATE "character" SET vocation = $1 WHERE id = $2', character.vocation,
                                  db_char["id"])
@@ -497,7 +501,7 @@ async def bind_database_character(bot, character: Character):
         if db_char["name"] != character.name:
             await conn.execute('UPDATE "character" SET name = $1 WHERE id = $2', character.name, db_char["id"])
             log.info(f"get_character: {db_char['name']} renamed to {character.name}")
-            bot.dispatch("character_rename", db_char['name'], character.name, character.owner)
+            bot.dispatch("character_rename", db_char['name'], character)
 
         if db_char["world"] != character.world:
             await conn.execute('UPDATE "character" SET world = $1 WHERE id = $2', character.world, db_char["id"])
