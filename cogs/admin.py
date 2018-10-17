@@ -7,7 +7,7 @@ from nabbot import NabBot
 from .utils import checks, join_list, log, get_user_avatar
 from .utils.config import config
 from .utils.context import NabCtx
-from .utils.tibia import get_character, NetworkError, Character, get_voc_abb_and_emoji
+from .utils.tibia import get_character, NetworkError, Character
 
 
 class Admin:
@@ -102,7 +102,6 @@ class Admin:
             return
 
         reply = ""
-        log_reply = dict().fromkeys([server.id for server in target_guilds], "")
         if len(existent) > 0:
             reply += "\nThe following characters were already registered to @{1}: {0}" \
                 .format(join_list(existent, ", ", " and "), target.display_name)
@@ -113,12 +112,6 @@ class Admin:
             for char in added:
                 log.info("{2.display_name} registered character {0} was assigned to {1.display_name} (ID: {1.id})"
                          .format(char.name, target, user))
-                # Announce on server log of each server
-                for guild in target_guilds:
-                    _guild = "No guild" if char.guild is None else char.guild_name
-                    voc = get_voc_abb_and_emoji(char.vocation)
-                    log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**" \
-                        .format(_guild, char, voc)
 
         if len(updated) > 0:
             reply += "\nThe following characters were reassigned to @{1.display_name}: {0}" \
@@ -126,13 +119,6 @@ class Admin:
             for char in updated:
                 log.info("{2.display_name} reassigned character {0} to {1.display_name} (ID: {1.id})"
                          .format(char['name'], target, user))
-                # Announce on server log of each server
-                for guild in target_guilds:
-                    char["voc"] = get_voc_abb_and_emoji(char["vocation"])
-                    if char["guild"] is None:
-                        char["guild"] = "No guild"
-                    log_reply[guild.id] += "\n\u2023 {name} - Level {level} {voc} - **{guild}** (Reassigned)". \
-                        format(**char)
 
         async with ctx.pool.acquire() as conn:
             for char in updated:
@@ -143,15 +129,7 @@ class Admin:
                                    char.name, -char.level, char.vocation, target.id, char.world, char.guild_name)
 
         await ctx.send(reply)
-        for server_id, message in log_reply.items():
-            if message:
-                message = f"{target.mention} registered:" + message
-                embed = discord.Embed(description=message)
-                embed.set_author(name=f"{target.name}#{target.discriminator}", icon_url=get_user_avatar(target))
-                embed.colour = discord.Colour.dark_teal()
-                icon_url = get_user_avatar(user)
-                embed.set_footer(text="{0.name}#{0.discriminator}".format(user), icon_url=icon_url)
-                await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
+        self.bot.dispatch("characters_registered", target, added, updated, ctx.author)
 
     @checks.is_admin()
     @checks.is_tracking_world()
@@ -170,8 +148,6 @@ class Admin:
             return await ctx.send(f"{ctx.tick(False)} I don't see any user named **{params[0]}** in this server.")
         if user.bot:
             return await ctx.send(f"{ctx.tick(False)} You can't register characters to discord bots!")
-        user_servers = self.bot.get_user_guilds(user.id)
-
         with ctx.typing():
             try:
                 char = await get_character(ctx.bot, params[1])
@@ -206,13 +182,9 @@ class Admin:
                         # User no longer in any servers
                         await conn.execute('UPDATE "character" SET user_id = $1 WHERE id = $2', user.id, result["id"])
                         await ctx.send("This character was reassigned to this user successfully.")
-                        for server in user_servers:
-                            world = self.bot.tracked_worlds.get(server.id, None)
-                            if world == char.world:
-                                guild = "No guild" if char.guild is None else char.guild_name
-                                embed.description = "{0.mention} registered:\n\u2023 {1} - Level {2} {3} - **{4}**"\
-                                    .format(user, char.name, char.level, get_voc_abb_and_emoji(char.vocation), guild)
-                                await self.bot.send_log_message(server, embed=embed)
+                        char_dict = {"name": char.name, "level": char.level, "vocation": char.vocation,
+                                     "guild": char.guild_name, "world": char.world}
+                        self.bot.dispatch("characters_registered", user, [], [char_dict], ctx.author)
                     else:
                         await ctx.send("This character is already registered to this user.")
                     return
@@ -220,14 +192,9 @@ class Admin:
                                       VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT(name) DO NOTHING""",
                                    char.name, -char.level, char.vocation, user.id, char.world, char.guild_name)
                 await ctx.send("**{0}** was registered successfully to this user.".format(char.name))
-                # Log on relevant servers
-                for server in user_servers:
-                    world = self.bot.tracked_worlds.get(server.id, None)
-                    if world == char.world:
-                        guild = "No guild" if char.guild is None else char.guild_name
-                        embed.description = "{0.mention} registered:\n\u2023 {1}  - Level {2} {3} - **{4}**"\
-                            .format(user, char.name, char.level, get_voc_abb_and_emoji(char.vocation), guild)
-                        await self.bot.send_log_message(server, embed=embed)
+                char_dict = {"name": char.name, "level": char.level, "vocation": char.vocation,
+                             "guild": char.guild_name, "world": char.world}
+                self.bot.dispatch("characters_registered", user, [char_dict], [], ctx.author)
 
     @checks.is_admin()
     @commands.guild_only()
@@ -287,8 +254,7 @@ class Admin:
         if result["world"] != ctx.world:
             return await ctx.send(f"{ctx.tick(False)} The character **{result['name']}** is in a different world.")
 
-        user = self.bot.get_member(result["user_id"])
-        user_guilds: List[discord.Guild] = []
+        user = self.bot.get_user(result["user_id"])
         if user is not None:
             user_guilds = self.bot.get_user_guilds(user.id)
             for guild in user_guilds:
@@ -296,31 +262,15 @@ class Admin:
                     continue
                 if self.bot.tracked_worlds.get(guild.id, None) != ctx.world:
                     continue
-                member: discord.Member = guild.get_member(ctx.author.id)
-                if member is None or member.guild_permissions.administrator:
+                author: discord.Member = guild.get_member(ctx.author.id)
+                if author is None or not author.guild_permissions.manage_guild:
                     await ctx.send(f"{ctx.tick(False)} The user of this server is also in another server tracking "
                                    f"**{ctx.world}**, where you are not an admin. You can't alter other servers.")
                     return
         username = "unknown" if user is None else user.display_name
         await ctx.pool.execute('UPDATE "character" SET user_id = 0 WHERE name = $1', result["name"])
         await ctx.send("**{0}** was removed successfully from **@{1}**.".format(result["name"], username))
-        for server in user_guilds:
-            world = self.bot.tracked_worlds.get(server.id, None)
-            if world != result["world"]:
-                continue
-            if result["guild"] is None:
-                result["guild"] = "No guild"
-            log_msg = "{0.mention} unregistered:\n\u2023 {1} - Level {2} {3} - **{4}**". \
-                format(user, result["name"], result["level"], get_voc_abb_and_emoji(result["vocation"]),
-                       result["guild"])
-
-            embed = discord.Embed(description=log_msg)
-            embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-            embed.set_footer(text="{0.name}#{0.discriminator}".format(ctx.author),
-                             icon_url=get_user_avatar(ctx.author))
-            embed.colour = discord.Colour.dark_teal()
-
-            await self.bot.send_log_message(server, embed=embed)
+        self.bot.dispatch("character_unregistered", user, result, ctx.author)
 
 
 def setup(bot):

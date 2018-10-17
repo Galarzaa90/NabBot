@@ -20,8 +20,7 @@ from .utils.messages import weighed_choice, death_messages_player, death_message
 from .utils.pages import Pages, CannotPaginate, VocationPages
 from .utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
     get_voc_abb, get_character_url, url_guild, \
-    get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_voc_abb_and_emoji, get_share_range, \
-    World
+    get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_share_range, World
 
 
 class Tracking:
@@ -587,7 +586,6 @@ class Tracking:
             return
 
         reply = ""
-        log_reply = dict().fromkeys([server.id for server in user_guilds], "")
         if len(existent) > 0:
             reply += "\nThe following characters were already registered to you: {0}" \
                 .format(join_list(existent, ", ", " and "))
@@ -597,29 +595,13 @@ class Tracking:
                 .format(join_list(["{0.name} ({0.world})".format(c) for c in added], ", ", " and "))
             for char in added:
                 log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char.name, user))
-                # Announce on server log of each server
-                for guild in user_guilds:
-                    # Only announce on worlds where the character's world is tracked
-                    if self.bot.tracked_worlds.get(guild.id, None) == char.world:
-                        _guild = "No guild" if char.guild is None else char.guild_name
-                        voc = get_voc_abb_and_emoji(char.vocation)
-                        log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**" \
-                            .format(_guild, char, voc)
 
         if len(updated) > 0:
             reply += "\nThe following characters were reassigned to you: {0}" \
                 .format(join_list(["{name} ({world})".format(**c) for c in updated], ", ", " and "))
             for char in updated:
                 log.info("Character {0} was reassigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
-                # Announce on server log of each server
-                for guild in user_guilds:
-                    # Only announce on worlds where the character's world is tracked
-                    if self.bot.tracked_worlds.get(guild.id, None) == char["world"]:
-                        char["voc"] = get_voc_abb_and_emoji(char["vocation"])
-                        if char["guild"] is None:
-                            char["guild"] = "No guild"
-                        log_reply[guild.id] += "\n\u2023 {name} - Level {level} {voc} - **{guild}** (Reassigned)". \
-                            format(**char)
+
         async with ctx.pool.acquire() as conn:
             for char in updated:
                 await conn.execute('UPDATE "character" SET user_id = $1 WHERE name = $2', user.id, char['name'])
@@ -628,13 +610,8 @@ class Tracking:
                                       VALUES ($1, $2, $3, $4, $5, $6)""",
                                    char.name, char.level * -1, char.vocation, user.id, char.world, char.guild_name)
         await ctx.send(reply)
-        for server_id, message in log_reply.items():
-            if message:
-                message = user.mention + " registered the following characters: " + message
-                embed = discord.Embed(description=message)
-                embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-                embed.colour = discord.Colour.dark_teal()
-                await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
+        self.bot.dispatch("characters_registered", ctx.author, added, updated)
+        self.bot.dispatch("character_change", ctx.author.id)
 
     @checks.is_in_tracking_world()
     @commands.command(aliases=["i'm", "iam"])
@@ -730,7 +707,6 @@ class Tracking:
             return await msg.edit(content=reply.format(join_list(user_tibia_worlds, ", ", " and ")))
 
         reply = ""
-        log_reply = dict().fromkeys([server.id for server in user_guilds], "")
         if len(existent) > 0:
             reply += "\nThe following characters were already registered to you: {0}" \
                 .format(join_list(existent, ", ", " and "))
@@ -740,29 +716,12 @@ class Tracking:
                 .format(join_list(["{0.name} ({0.world})".format(c) for c in added], ", ", " and "))
             for char in added:
                 log.info("Character {0} was assigned to {1.display_name} (ID: {1.id})".format(char.name, user))
-                # Announce on server log of each server
-                for guild in user_guilds:
-                    # Only announce on worlds where the character's world is tracked
-                    if self.bot.tracked_worlds.get(guild.id, None) == char.world:
-                        _guild = "No guild" if char.guild is None else char.guild_name
-                        voc = get_voc_abb_and_emoji(char.vocation)
-                        log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**" \
-                            .format(_guild, char, voc)
 
         if len(updated) > 0:
             reply += "\nThe following characters were reassigned to you: {0}" \
                 .format(join_list(["{name} ({world})".format(**c) for c in updated], ", ", " and "))
             for char in updated:
                 log.info("Character {0} was reassigned to {1.display_name} (ID: {1.id})".format(char['name'], user))
-                # Announce on server log of each server
-                for guild in user_guilds:
-                    # Only announce on worlds where the character's world is tracked
-                    if self.bot.tracked_worlds.get(guild.id, None) == char["world"]:
-                        char["voc"] = get_voc_abb_and_emoji(char["vocation"])
-                        if char["guild"] is None:
-                            char["guild"] = "No guild"
-                        log_reply[guild.id] += "\n\u2023 {name} - Level {level} {voc} - **{guild}** (Reassigned)". \
-                            format(**char)
         async with ctx.pool.acquire() as conn:
             for char in updated:
                 await conn.execute('UPDATE "character" SET user_id = $1 WHERE name = $2', user.id, char['name'])
@@ -771,14 +730,7 @@ class Tracking:
                                       VALUES ($1, $2, $3, $4, $5, $6)""",
                                    char.name, char.level * -1, char.vocation, user.id, char.world, char.guild_name)
         await msg.edit(content=reply)
-        for server_id, message in log_reply.items():
-            if message:
-                guild = self.bot.get_guild(server_id)
-                message = user.mention + " registered the following characters: " + message
-                embed = discord.Embed(description=message)
-                embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-                embed.colour = discord.Colour.dark_teal()
-                await self.bot.send_log_message(guild, embed=embed)
+        self.bot.dispatch("characters_registered", ctx.author, added, updated)
         self.bot.dispatch("character_change", ctx.author.id)
 
     @checks.is_in_tracking_world()
@@ -809,19 +761,8 @@ class Tracking:
         await ctx.pool.execute('UPDATE "character" SET user_id = 0 WHERE id = $1', char["id"])
         await ctx.send("**{0}** is no longer registered to you.".format(char["name"]))
 
-        user_servers = [s.id for s in self.bot.get_user_guilds(user.id)]
-        for server_id, world in self.bot.tracked_worlds.items():
-            if char["world"] == world and server_id in user_servers:
-                if char["guild"] is None:
-                    char["guild"] = "No guild"
-                message = "{0} unregistered:\n\u2023 **{1}** - Level {2} {3} - {4}". \
-                    format(user.mention, char["name"], char["level"], get_voc_abb_and_emoji(char["vocation"]),
-                           char["guild"])
-                embed = discord.Embed(description=message)
-                embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-                embed.colour = discord.Colour.dark_teal()
-                await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
         self.bot.dispatch("character_change", ctx.author.id)
+        self.bot.dispatch("character_unregistered", ctx.author, char)
 
     @commands.command()
     @checks.is_tracking_world()

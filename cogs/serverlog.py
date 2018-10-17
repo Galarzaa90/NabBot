@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Any, Dict
 
 import discord
 import datetime as dt
@@ -12,6 +12,49 @@ from nabbot import NabBot
 class ServerLog:
     def __init__(self, bot: NabBot):
         self.bot = bot
+
+    async def on_characters_registered(self, user: discord.User, added: List[Character], updated: List[Dict[str, Any]],
+                                       author: discord.User=None):
+        user_guilds = self.bot.get_user_guilds(user.id)
+        embed = discord.Embed()
+        embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
+        embed.colour = discord.Colour.dark_teal()
+        if author is not None:
+            embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))
+        for guild in user_guilds:
+            world = self.bot.tracked_worlds.get(guild.id)
+            _added = [c for c in added if c.world == world]
+            _updated = [c for c in updated if c["world"] == world]
+            if not _added and not _updated:
+                continue
+            description = f"{user.mention} registered the following characters:"
+            for char in _added:
+                tibia_guild = char.guild if char.guild else "No guild"
+                voc = get_voc_abb_and_emoji(char.vocation)
+                description += f"\n‣ {char.name} - Level {char.level} {voc} - **{tibia_guild}**"
+            for char in _updated:
+                voc = get_voc_abb_and_emoji(char["vocation"])
+                tibia_guild = char["guild"] if char["guild"] else "No guild"
+                description += f"\n‣ {char['name']} - Level {char['level']} {voc} - **{tibia_guild}** (Reassigned)"
+            embed.description = description
+            await self.bot.send_log_message(guild, embed=embed)
+
+    async def on_character_unregistered(self, user: discord.user, char: Dict[str, Any], author: discord.User=None):
+        user_guilds = self.bot.get_user_guilds(user.id)
+        embed = discord.Embed()
+        embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
+        embed.colour = discord.Colour.dark_teal()
+        if author is not None:
+            embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))
+        for guild in user_guilds:
+            world = self.bot.tracked_worlds.get(guild.id)
+            if char["world"] != world:
+                continue
+            voc = get_voc_abb_and_emoji(char["vocation"])
+            tibia_guild = char["guild"] if char["guild"] else "No guild"
+            embed.description = f"{user.mention} unregistered:" \
+                                f"\n‣ {char['name']} - Level {char['level']} {voc} - **{tibia_guild}**"
+            await self.bot.send_log_message(guild, embed=embed)
 
     async def on_character_rename(self, old_name, char: Character):
         """Called when a character is renamed."""
