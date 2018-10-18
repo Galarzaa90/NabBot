@@ -15,7 +15,6 @@ from discord.ext import commands
 from cogs.utils import context, safe_delete_message
 from cogs.utils.database import get_prefixes, get_server_property
 from cogs.utils import config, log
-from cogs.utils.help_format import NabHelpFormat
 from cogs.utils.tibia import populate_worlds, tibia_worlds
 
 initial_cogs = {"cogs.core", "cogs.serverlog", "cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia",
@@ -37,8 +36,7 @@ async def _prefix_callable(bot, msg):
 class NabBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix=_prefix_callable, case_insensitive=True,
-                         description="Discord bot with functions for the MMORPG Tibia.",
-                         formatter=NabHelpFormat(), pm_help=True)
+                         description="Discord bot with functions for the MMORPG Tibia.")
         self.remove_command("help")
         self.members = {}
         self.config = None  # type: config.Config

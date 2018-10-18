@@ -56,9 +56,9 @@ class Info:
     async def bot_info(self, ctx: NabCtx):
         """Shows advanced information about the bot."""
         async with ctx.pool.acquire() as conn:
-            char_count = await conn.fetchval('SELECT COUNT(*) as count FROM "character"')
-            deaths_count = await conn.fetchval('SELECT COUNT(*) as count FROM character_death')
-            levels_count = await conn.fetchval('SELECT COUNT(*) as count FROM character_levelup')
+            char_count = await conn.fetchval('SELECT COUNT(*) FROM "character" WHERE user_id != 0')
+            deaths_count = await conn.fetchval('SELECT COUNT(*) FROM character_death')
+            levels_count = await conn.fetchval('SELECT COUNT(*) FROM character_levelup')
 
         used_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
         total_ram = psutil.virtual_memory().total / 1024 ** 2
@@ -80,11 +80,11 @@ class Info:
         embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
                          icon_url="https://github.com/fluidicon.png")
         embed.description = f"🔰 Version: **{self.bot.__version__}**\n" \
-                            f"⏱ ️Uptime **{parse_uptime(self.bot.start_time)}**\n" \
+                            f"⏱ Uptime **{parse_uptime(self.bot.start_time)}**\n" \
                             f"🖥️ OS: **{platform.system()} {platform.release()}**\n" \
                             f"📉 RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n"
         try:
-            embed.description += f"⚙️ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n"
+            embed.description += f"⚙ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n"
         except AttributeError:
             pass
         embed.description += f"🏓 Ping: **{ping} ms**\n" \
@@ -118,6 +118,85 @@ class Info:
 
         for k in sorted(categories):
             embed.add_field(name=k, value=", ".join(f"`{c}`" for c in sorted(categories[k])), inline=False)
+        await ctx.send(embed=embed)
+
+    @checks.can_embed()
+    @commands.guild_only()
+    @commands.group(case_insensitive=True)
+    async def commandstats(self, ctx: NabCtx):
+        """Shows command statistics."""
+        async with ctx.pool.acquire() as conn:
+            stats = await conn.fetchrow("""SELECT COUNT(*) as count, MIN(date) as start
+                                           FROM command WHERE server_id = $1""", ctx.guild.id)
+
+            _commands = await conn.fetch("""SELECT COUNT(*) as count, command 
+                                            FROM command WHERE server_id = $1
+                                            GROUP BY command ORDER BY count DESC LIMIT 5""", ctx.guild.id)
+
+            users = await conn.fetch("""SELECT COUNT(*) as count, user_id 
+                                        FROM command WHERE server_id = $1
+                                        GROUP BY user_id ORDER BY count DESC LIMIT 5""", ctx.guild.id)
+
+        embed = discord.Embed(colour=discord.Colour.blurple(), title="Command Stats",
+                              description=f"{stats['count']:,} command uses")
+        embed.set_footer(text="Tracking usage since")
+
+        entries = []
+        for i, row in enumerate(_commands, 1):
+            entries.append(f"{i}. {row['command']} - {row['count']:,} uses")
+        embed.add_field(name="Top commands", value="\n".join(entries), inline=False)
+
+        entries = []
+        for i, row in enumerate(users, 1):
+            user = ctx.guild.get_member(row["user_id"])
+            user_str = user.mention if user else f"<User {row['user_id']}>"
+            entries.append(f"{i}. {user_str} - {row['count']:,} uses")
+        embed.add_field(name="Top users", value="\n".join(entries), inline=False)
+
+        embed.timestamp = stats['start']
+        await ctx.send(embed=embed)
+
+    @checks.can_embed()
+    @commandstats.group(name="global", case_insensitive=True)
+    async def commandstats_global(self, ctx: NabCtx):
+        """Shows command statistics of all servers."""
+        async with ctx.pool.acquire() as conn:
+            stats = await conn.fetchrow("SELECT COUNT(*) as count, MIN(date) as start FROM command")
+
+            _commands = await conn.fetch("""SELECT COUNT(*) as count, command FROM command
+                                            GROUP BY command ORDER BY count DESC LIMIT 5""")
+
+            users = await conn.fetch("""SELECT COUNT(*) as count, user_id FROM command
+                                        GROUP BY user_id ORDER BY count DESC LIMIT 5""")
+
+            guilds = await conn.fetch("""SELECT COUNT(*) as count, server_id FROM command
+                                        GROUP BY server_id ORDER BY count DESC LIMIT 5""")
+
+        embed = discord.Embed(colour=discord.Colour.blurple(), title="Global Command Stats",
+                              description=f"{stats['count']:,} command uses")
+        embed.set_footer(text="Tracking usage since")
+
+        entries = []
+        for i, row in enumerate(_commands, 1):
+            entries.append(f"{i}. {row['command']} - {row['count']:,} uses")
+        embed.add_field(name="Top commands", value="\n".join(entries), inline=False)
+
+        entries = []
+        for i, row in enumerate(guilds, 1):
+            if row["server_id"] is None:
+                guild = "Private Message"
+            else:
+                guild = self.bot.get_guild(row["server_id"]) or f"<Guild {row['guild']}>"
+            entries.append(f"{i}. {guild} - {row['count']:,} uses")
+        embed.add_field(name="Top servers", value="\n".join(entries), inline=False)
+
+        entries = []
+        for i, row in enumerate(users, 1):
+            user = self.bot.get_user(row['user_id']) or f"<User {row['user_id']}>"
+            entries.append(f"{i}. {user} - {row['count']:,} uses")
+        embed.add_field(name="Top users", value="\n".join(entries), inline=False)
+
+        embed.timestamp = stats['start']
         await ctx.send(embed=embed)
 
     @commands.guild_only()
@@ -208,62 +287,6 @@ class Info:
             await p.paginate()
         except Exception as e:
             await ctx.send(e)
-
-    @commands.command(name="oldhelp", hidden=True)
-    async def oldhelp(self, ctx, *commands: str):
-        """Shows this message."""
-        _mentions_transforms = {
-            '@everyone': '@\u200beveryone',
-            '@here': '@\u200bhere'
-        }
-        _mention_pattern = re.compile('|'.join(_mentions_transforms.keys()))
-
-        bot = ctx.bot
-        destination = ctx.channel if await ctx.is_long() else ctx.author
-
-        def repl(obj):
-            return _mentions_transforms.get(obj.group(0), '')
-
-        # help by itself just lists our own commands.
-        if len(commands) == 0:
-            pages = await bot.formatter.format_help_for(ctx, bot)
-        elif len(commands) == 1:
-            # try to see if it is a cog name
-            name = _mention_pattern.sub(repl, commands[0])
-            command = None
-            if name in bot.cogs:
-                command = bot.cogs[name]
-            else:
-                command = bot.all_commands.get(name)
-                destination = ctx.channel
-                if command is None:
-                    await destination.send(bot.command_not_found.format(name))
-                    return
-
-            pages = await bot.formatter.format_help_for(ctx, command)
-        else:
-            name = _mention_pattern.sub(repl, commands[0])
-            command = bot.all_commands.get(name)
-            destination = ctx.channel
-            if command is None:
-                await destination.send(bot.command_not_found.format(name))
-                return
-
-            for key in commands[1:]:
-                try:
-                    key = _mention_pattern.sub(repl, key)
-                    command = command.all_commands.get(key)
-                    if command is None:
-                        await destination.send(bot.command_not_found.format(key))
-                        return
-                except AttributeError:
-                    await destination.send(bot.command_has_no_subcommands.format(command, key))
-                    return
-
-            pages = await bot.formatter.format_help_for(ctx, command)
-
-        for page in pages:
-            await destination.send(page)
 
     @commands.guild_only()
     @checks.can_embed()

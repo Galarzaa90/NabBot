@@ -193,20 +193,14 @@ class Character:
             character.residence = data["residence"]
         except KeyError:
             return None
-        if "former_names" in data:
-            character.former_names = data["former_names"]
+        character.former_names = data.get("former_names", [])
         if "deleted" in data:
-            character.deleted = parse_tibiadata_time(data["deleted"])
-        if "married_to" in data:
-            character.married_to = data["married_to"]
-        if "former_world" in data:
-            character.former_world = data["former_world"]
-        if "guild" in data:
-            character.guild = data["guild"]
-        if "house" in data:
-            character.house = data["house"]
-        if "comment" in data:
-            character.comment = data["comment"]
+            character.deleted = parse_tibiadata_time(data.get("deleted"))
+        character.married_to = data.get("married_to")
+        character.former_world = data.get("former_world")
+        character.guild = data.get("guild")
+        character.house = data.get("house")
+        character.comment = data.get("comment")
         character.account_status = cls.PREMIUM_ACCOUNT if data["account_status"] == "Premium Account" else cls.FREE_ACCOUNT
         if len(data["last_login"]) > 0:
             character.last_login = parse_tibiadata_time(data["last_login"][0])
@@ -1024,7 +1018,6 @@ async def get_house(name, world=None):
                     house["top_bid"] = int(m.group(2))
                     house["top_bidder"] = urllib.parse.unquote_plus(m.group(3))
                     break
-                pass
             break
         return house
     finally:
