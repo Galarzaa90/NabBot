@@ -1,12 +1,25 @@
+import datetime as dt
 from typing import List, Any, Dict
 
 import discord
-import datetime as dt
 
-from cogs.utils import get_user_avatar, join_list, log, get_region_string
-from cogs.utils.database import get_server_property
-from cogs.utils.tibia import get_voc_abb_and_emoji, Character
+from .utils import get_user_avatar, join_list, log, get_region_string
+from .utils.database import get_server_property
+from .utils.tibia import get_voc_abb_and_emoji, Character
 from nabbot import NabBot
+
+COLOUR_CHAR_REGISTERED = discord.Colour.dark_teal()
+COLOUR_CHAR_UNREGISTERED = discord.Colour.dark_teal()
+COLOUR_CHAR_RENAME = discord.Colour.blurple()
+COLOUR_CHAR_TRANSFERRED = discord.Colour.greyple()
+COLOUR_MEMBER_JOINED = discord.Colour.green()
+COLOUR_MEMBER_UPDATE = discord.Colour.blue()
+COLOUR_MEMBER_KICK = discord.Colour.red()
+COLOUR_MEMBER_REMOVE = discord.Colour(0xffff00)  ## yellow
+COLOUR_MEMBER_BAN = discord.Colour.dark_red()
+COLOUR_MEMBER_UNBAN = discord.Colour.orange()
+COLOUR_EMOJI_UPDATE = discord.Colour.dark_orange()
+COLOUR_GUILD_UPDATE = discord.Colour.purple()
 
 
 class ServerLog:
@@ -16,9 +29,8 @@ class ServerLog:
     async def on_characters_registered(self, user: discord.User, added: List[Character], updated: List[Dict[str, Any]],
                                        author: discord.User=None):
         user_guilds = self.bot.get_user_guilds(user.id)
-        embed = discord.Embed()
+        embed = discord.Embed(colour=COLOUR_CHAR_REGISTERED)
         embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-        embed.colour = discord.Colour.dark_teal()
         if author is not None:
             embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))
         for guild in user_guilds:
@@ -41,111 +53,61 @@ class ServerLog:
 
     async def on_character_unregistered(self, user: discord.user, char: Dict[str, Any], author: discord.User=None):
         user_guilds = self.bot.get_user_guilds(user.id)
-        embed = discord.Embed()
+        embed = discord.Embed(colour=COLOUR_CHAR_UNREGISTERED)
         embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-        embed.colour = discord.Colour.dark_teal()
+        voc = get_voc_abb_and_emoji(char["vocation"])
+        tibia_guild = char["guild"] if char["guild"] else "No guild"
         if author is not None:
             embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))
         for guild in user_guilds:
             world = self.bot.tracked_worlds.get(guild.id)
             if char["world"] != world:
                 continue
-            voc = get_voc_abb_and_emoji(char["vocation"])
-            tibia_guild = char["guild"] if char["guild"] else "No guild"
             embed.description = f"{user.mention} unregistered:" \
                                 f"\n‣ {char['name']} - Level {char['level']} {voc} - **{tibia_guild}**"
             await self.bot.send_log_message(guild, embed=embed)
 
-    async def on_character_rename(self, old_name, char: Character):
+    async def on_character_rename(self, char: Character, old_name: str):
         """Called when a character is renamed."""
         user_id = char.owner
         new_name = char.name
         user_guilds = self.bot.get_user_guilds(user_id)
-
         for guild in user_guilds:
+            if self.bot.tracked_worlds.get(guild.id) != char.world:
+                continue
             member = guild.get_member(user_id)
             if member is None:
                 continue
-            if self.bot.tracked_worlds.get(guild.id) != char.world:
-                continue
-            embed = discord.Embed(color=discord.Color.blurple(),
+
+            embed = discord.Embed(colour=COLOUR_CHAR_RENAME,
                                   description=f"A character of {member.mention} changed name.\n"
                                               f"‣ **{old_name}** -> **{new_name}**")
             embed.set_author(name=f"{member.name}#{member.discriminator}", icon_url=get_user_avatar(member))
             await self.bot.send_log_message(guild, embed=embed)
 
-    async def on_member_remove(self, member: discord.Member):
-        """Called when a member leaves or is kicked from a guild."""
-        self.bot.members[member.id].remove(member.guild.id)
-        now = dt.datetime.utcnow()
-        bot_member: discord.Member = member.guild.me
-        embed = discord.Embed(description="Left the server or was kicked", colour=discord.Colour(0xffff00))
-        embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member), icon_url=get_user_avatar(member))
-
-        # If bot can see audit log, he can see if it was a kick or member left on it's own
-        if bot_member.guild_permissions.view_audit_log:
-            async for entry in member.guild.audit_logs(limit=20, reverse=False, action=discord.AuditLogAction.kick,
-                                                       after=now-dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                if abs((entry.created_at-now).total_seconds()) >= 5:
-                    # After is broken in the API, so we must check if entry is too old.
-                    break
-                if entry.target.id == member.id:
-                    embed.description = "Kicked"
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
-                                     icon_url=get_user_avatar(entry.user))
-                    embed.colour = discord.Colour(0xff0000)
-                    if entry.reason:
-                        embed.description += f"\n**Reason:** {entry.reason}"
-                    await self.bot.send_log_message(member.guild, embed=embed)
-                    return
-            embed.description = "Left the server"
-            await self.bot.send_log_message(member.guild, embed=embed)
-            return
-        # Otherwise, we are not certain
-        await self.bot.send_log_message(member.guild, embed=embed)
-
-    async def on_member_update(self, before: discord.Member, after: discord.Member):
-        """Called every time a member is updated"""
-        now = dt.datetime.utcnow()
-        guild = after.guild
-        bot_member = guild.me
-
-        embed = discord.Embed(description=f"{after.mention}: ", color=discord.Colour.blue())
-        embed.set_author(name=f"{after.name}#{after.discriminator} (ID: {after.id})", icon_url=get_user_avatar(after))
-        changes = True
-        if f"{before.name}#{before.discriminator}" != f"{after.name}#{after.discriminator}":
-            embed.description += "Name changed from **{0.name}#{0.discriminator}** to **{1.name}#{1.discriminator}**." \
-                .format(before, after)
-        elif before.nick != after.nick:
-            if before.nick is None:
-                embed.description += f"Nickname set to **{after.nick}**"
-            elif after.nick is None:
-                embed.description += f"Nickname **{before.nick}** deleted"
-            else:
-                embed.description += f"Nickname changed from **{before.nick}** to **{after.nick}**"
-            if bot_member.guild_permissions.view_audit_log:
-                async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.member_update,
-                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                    if abs((entry.created_at - now).total_seconds()) >= 5:
-                        # After is broken in the API, so we must check if entry is too old.
-                        break
-                    if entry.target.id == after.id:
-                        # If the user changed their own nickname, no need to specify
-                        if entry.user.id == after.id:
-                            break
-                        icon_url = get_user_avatar(entry.user)
-                        embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
-                        break
-        else:
-            changes = False
-        if changes:
-            await self.bot.send_log_message(after.guild, embed=embed)
+    async def on_character_transferred(self, char: Character, old_world: str):
+        user_id = char.owner
+        user_guilds = self.bot.get_user_guilds(user_id)
+        voc = get_voc_abb_and_emoji(char.vocation)
+        for guild in user_guilds:
+            tracked_world = self.bot.tracked_worlds.get(guild.id)
+            if not(char.world == tracked_world or old_world == tracked_world):
+                continue
+            member = guild.get_member(user_id)
+            if member is None:
+                continue
+            embed = discord.Embed(colour=COLOUR_CHAR_TRANSFERRED,
+                                  description=f"A character of {member.mention} transferred:\n"
+                                              f"‣ **{char.name}**  - Level {char.level} {voc} - "
+                                              f"{old_world} -> {char.world}")
+            embed.set_author(name=f"{member.name}#{member.discriminator}", icon_url=get_user_avatar(member))
+            await self.bot.send_log_message(guild, embed=embed)
 
     async def on_guild_emojis_update(self, guild: discord.Guild, before: List[discord.Emoji],
                                      after: List[discord.Emoji]):
         """Called every time an emoji is created, deleted or updated."""
         now = dt.datetime.utcnow()
-        embed = discord.Embed(color=discord.Color.dark_orange())
+        embed = discord.Embed(colour=COLOUR_EMOJI_UPDATE)
         emoji: discord.Emoji = None
         # Emoji deleted
         if len(before) > len(after):
@@ -189,7 +151,7 @@ class ServerLog:
                     break
                 if entry.target.id == emoji.id:
                     icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
                     break
         if emoji:
             await self.bot.send_log_message(guild, embed=embed)
@@ -200,12 +162,12 @@ class ServerLog:
         guild = after
         bot_member = guild.me
 
-        embed = discord.Embed(color=discord.Colour(value=0x9b3ee8))
+        embed = discord.Embed(colour=COLOUR_GUILD_UPDATE)
         embed.set_author(name=after.name, icon_url=after.icon_url)
 
         changes = True
         if before.name != after.name:
-            embed.description = "Name changed from **{0.name}** to **{1.name}**".format(before, after)
+            embed.description = f"Name changed from **{before.name}** to **{after.name}**"
         elif before.region != after.region:
             embed.description = "Region changed from **{0}** to **{1}**".format(get_region_string(before.region),
                                                                                 get_region_string(after.region))
@@ -221,16 +183,39 @@ class ServerLog:
                 async for entry in guild.audit_logs(limit=1, reverse=False, action=discord.AuditLogAction.guild_update,
                                                     after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
                     icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
+                    embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
                     break
             await self.bot.send_log_message(after, embed=embed)
 
+    async def on_member_ban(self, guild: discord.Guild, user: discord.User):
+        """Called when a member is banned from a guild."""
+        now = dt.datetime.utcnow()
+        bot_member: discord.Member = guild.me
+
+        embed = discord.Embed(description="Banned", colour=COLOUR_MEMBER_BAN)
+        embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=get_user_avatar(user))
+
+        # If bot can see audit log, we can get more details of the ban
+        if bot_member.guild_permissions.view_audit_log:
+            async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.ban,
+                                                after=now-dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
+                if abs((entry.created_at-now).total_seconds()) >= 5:
+                    # After is broken in the API, so we must check if entry is too old.
+                    break
+                if entry.target.id == user.id:
+                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
+                                     icon_url=get_user_avatar(entry.user))
+                    if entry.reason:
+                        embed.description += f"\n**Reason:** {entry.reason}"
+                    break
+        await self.bot.send_log_message(guild, embed=embed)
+
     async def on_member_join(self, member: discord.Member):
         """ Called when a member joins a guild (server) the bot is in."""
-        log.info("{0.display_name} (ID: {0.id}) joined {0.guild.name}".format(member))
+        log.info(f"{member.display_name} (ID: {member.id}) joined {member.guild.name}")
 
-        embed = discord.Embed(description="{0.mention} joined.".format(member), color=discord.Color.green())
-        embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member),
+        embed = discord.Embed(description=f"{member.mention} joined.", colour=COLOUR_MEMBER_JOINED)
+        embed.set_author(name=f"{member.name}#{member.discriminator} (ID: {member.id})",
                          icon_url=get_user_avatar(member))
 
         previously_registered = ""
@@ -277,35 +262,89 @@ class ServerLog:
             except discord.Forbidden:
                 pass
 
-    async def on_member_ban(self, guild: discord.Guild, user: discord.User):
-        """Called when a member is banned from a guild."""
+    async def on_member_remove(self, member: discord.Member):
+        """Called when a member leaves or is kicked from a guild."""
         now = dt.datetime.utcnow()
-        bot_member: discord.Member = guild.me
+        bot_member: discord.Member = member.guild.me
+        embed = discord.Embed(description="Left the server or was kicked", colour=COLOUR_MEMBER_REMOVE)
+        embed.set_author(name=f"{member.name}#{member.discriminator} (ID: {member.id})",
+                         icon_url=get_user_avatar(member))
 
-        embed = discord.Embed(description="Banned", color=discord.Color(0x7a0d0d))
-        embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=get_user_avatar(user))
+        tracked_world = self.bot.tracked_worlds.get(member.guild.id)
+        rows = await self.bot.pool.fetch("""SELECT name, vocation, abs(level) as level, guild FROM "character"
+                                            WHERE user_id = $1 AND world = $2""", member.id, tracked_world)
+        registered_chars = "\nRegistered characters:" if rows else ""
+        for char in rows:
+            voc = get_voc_abb_and_emoji(char["vocation"])
+            tibia_guild = dict(char).get("guild", "No guild")
+            registered_chars += f"\n‣ {char['name']} - Level {char['level']} {voc} - **{tibia_guild}** (Reassigned)"
 
-        # If bot can see audit log, we can get more details of the ban
+        # If bot can see audit log, he can see if it was a kick or member left on it's own
         if bot_member.guild_permissions.view_audit_log:
-            async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.ban,
-                                                after=now-dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
+            async for entry in member.guild.audit_logs(limit=20, reverse=False, action=discord.AuditLogAction.kick,
+                                                       after=now-dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
                 if abs((entry.created_at-now).total_seconds()) >= 5:
                     # After is broken in the API, so we must check if entry is too old.
                     break
-                if entry.target.id == user.id:
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
+                if entry.target.id == member.id:
+                    embed.description = "Kicked"
+                    embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}",
                                      icon_url=get_user_avatar(entry.user))
+                    embed.colour = COLOUR_MEMBER_KICK
                     if entry.reason:
                         embed.description += f"\n**Reason:** {entry.reason}"
-                    break
-        await self.bot.send_log_message(guild, embed=embed)
+                    embed.description += registered_chars
+                    await self.bot.send_log_message(member.guild, embed=embed)
+                    return
+            embed.description = "Left the server"
+            await self.bot.send_log_message(member.guild, embed=embed)
+            return
+        # Otherwise, we are not certain
+        await self.bot.send_log_message(member.guild, embed=embed)
+
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        """Called every time a member is updated"""
+        now = dt.datetime.utcnow()
+        guild = after.guild
+        bot_member = guild.me
+
+        embed = discord.Embed(description=f"{after.mention}: ", colour=COLOUR_MEMBER_UPDATE)
+        embed.set_author(name=f"{after.name}#{after.discriminator} (ID: {after.id})", icon_url=get_user_avatar(after))
+        changes = True
+        if f"{before.name}#{before.discriminator}" != f"{after.name}#{after.discriminator}":
+            embed.description += "Name changed from **{0.name}#{0.discriminator}** to **{1.name}#{1.discriminator}**." \
+                .format(before, after)
+        elif before.nick != after.nick:
+            if before.nick is None:
+                embed.description += f"Nickname set to **{after.nick}**"
+            elif after.nick is None:
+                embed.description += f"Nickname **{before.nick}** deleted"
+            else:
+                embed.description += f"Nickname changed from **{before.nick}** to **{after.nick}**"
+            if bot_member.guild_permissions.view_audit_log:
+                async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.member_update,
+                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
+                    if abs((entry.created_at - now).total_seconds()) >= 5:
+                        # After is broken in the API, so we must check if entry is too old.
+                        break
+                    if entry.target.id == after.id:
+                        # If the user changed their own nickname, no need to specify
+                        if entry.user.id == after.id:
+                            break
+                        icon_url = get_user_avatar(entry.user)
+                        embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
+                        break
+        else:
+            changes = False
+        if changes:
+            await self.bot.send_log_message(after.guild, embed=embed)
 
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
         now = dt.datetime.utcnow()
         bot_member: discord.Member = guild.me
 
-        embed = discord.Embed(description="Unbanned", color=discord.Color(0xff9000))
+        embed = discord.Embed(description="Unbanned", colour=COLOUR_MEMBER_UNBAN)
         embed.set_author(name="{0.name}#{0.discriminator} (ID {0.id})".format(user), icon_url=get_user_avatar(user))
 
         if bot_member.guild_permissions.view_audit_log:

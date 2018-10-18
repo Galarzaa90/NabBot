@@ -481,7 +481,7 @@ async def bind_database_character(bot, character: Character):
                 character.owner = row["user_id"]
                 character.id = row["id"]
                 log.info(f"get_character(): {old_name} renamed to {character.name}")
-                bot.dispatch("character_rename", old_name, character)
+                bot.dispatch("character_rename", character, old_name)
 
         # Discord owner
         db_char = await conn.fetchrow("""SELECT id, user_id, name, user_id, vocation, world, guild
@@ -494,18 +494,18 @@ async def bind_database_character(bot, character: Character):
         character.owner = db_char["user_id"]
         character.id = db_char["id"]
         if db_char["vocation"] != character.vocation:
-            await conn.execute('UPDATE "character" SET vocation = $1 WHERE id = $2', character.vocation,
-                                 db_char["id"])
+            await conn.execute('UPDATE "character" SET vocation = $1 WHERE id = $2', character.vocation, db_char["id"])
             log.info(f"get_character(): {character.name}'s vocation: {db_char['vocation']} -> {character.vocation}")
 
         if db_char["name"] != character.name:
             await conn.execute('UPDATE "character" SET name = $1 WHERE id = $2', character.name, db_char["id"])
             log.info(f"get_character: {db_char['name']} renamed to {character.name}")
-            bot.dispatch("character_rename", db_char['name'], character)
+            bot.dispatch("character_rename", character, db_char['name'])
 
         if db_char["world"] != character.world:
             await conn.execute('UPDATE "character" SET world = $1 WHERE id = $2', character.world, db_char["id"])
             log.info(f"get_character: {character.name}'s world updated {character.world} -> {db_char['world']}")
+            bot.dispatch("character_transferred", character, db_char['world'])
 
         if db_char["guild"] != character.guild_name:
             await conn.execute('UPDATE "character" SET guild = $1 WHERE id = $2', character.guild_name, db_char["id"])
