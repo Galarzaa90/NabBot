@@ -5,9 +5,10 @@ import random
 import discord
 from discord.ext import commands
 
+from cogs.utils.database import get_server_property
 from nabbot import NabBot
 from .utils.checks import CannotEmbed
-from .utils import context
+from .utils import context, join_list
 from .utils import log
 from .utils import config
 
@@ -145,6 +146,40 @@ class Core:
             self.bot.members[member.id].append(member.guild.id)
         else:
             self.bot.members[member.id] = [member.guild.id]
+
+        if member.bot:
+            return
+        world = self.bot.tracked_worlds.get(member.guild.id)
+        previously_registered = ""
+        # If server is not tracking worlds, we don't check the database
+        if member.guild.id not in self.bot.config.lite_servers and world is not None:
+            rows = await self.bot.pool.fetch("""SELECT name, vocation, abs(level) as level, guild
+                                                FROM "character" WHERE user_id = $1 AND world = $2""", member.id, world)
+            if rows:
+                characters = join_list([r['name'] for r in rows], ', ', ' and ')
+                previously_registered = f"\n\nYou already have these characters in {world} registered: *{characters}*"
+
+        welcome_message = await get_server_property(self.bot.pool, member.guild.id, "welcome")
+        welcome_channel_id = await get_server_property(self.bot.pool, member.guild.id, "welcome_channel")
+        if welcome_message is None:
+            return
+        message = welcome_message.format(user=member, server=member.guild, bot=self.bot, owner=member.guild.owner)
+        message += previously_registered
+        channel = member.guild.get_channel(welcome_channel_id)
+        # If channel is not found, send via pm as fallback
+        if channel is None:
+            channel = member
+        try:
+            await channel.send(message)
+        except discord.Forbidden:
+            try:
+                # If bot has no permissions to send the message on that channel, send on private message
+                # If the channel was already a private message, don't try it again
+                if welcome_channel_id is None:
+                    return
+                await member.send(message)
+            except discord.Forbidden:
+                pass
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""

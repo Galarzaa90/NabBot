@@ -3,8 +3,7 @@ from typing import List, Any, Dict, Optional
 
 import discord
 
-from .utils import get_user_avatar, join_list, log, get_region_string
-from .utils.database import get_server_property
+from .utils import get_user_avatar, log, get_region_string
 from .utils.tibia import get_voc_abb_and_emoji, Character
 from nabbot import NabBot
 
@@ -13,9 +12,10 @@ COLOUR_CHAR_UNREGISTERED = discord.Colour.dark_teal()
 COLOUR_CHAR_RENAME = discord.Colour.blurple()
 COLOUR_CHAR_TRANSFERRED = discord.Colour.greyple()
 COLOUR_MEMBER_JOINED = discord.Colour.green()
+COLOUR_MEMBER_JOINED_BOT = discord.Colour.dark_green()
 COLOUR_MEMBER_UPDATE = discord.Colour.blue()
 COLOUR_MEMBER_KICK = discord.Colour.red()
-COLOUR_MEMBER_REMOVE = discord.Colour(0xffff00)  ## yellow
+COLOUR_MEMBER_REMOVE = discord.Colour(0xffff00)  # yellow
 COLOUR_MEMBER_BAN = discord.Colour.dark_red()
 COLOUR_MEMBER_UNBAN = discord.Colour.orange()
 COLOUR_EMOJI_UPDATE = discord.Colour.dark_orange()
@@ -196,50 +196,29 @@ class ServerLog:
         embed = discord.Embed(description=f"{member.mention} joined.", colour=COLOUR_MEMBER_JOINED)
         embed.set_author(name=f"{member.name}#{member.discriminator} (ID: {member.id})",
                          icon_url=get_user_avatar(member))
+        if member.bot:
+            embed.colour = COLOUR_MEMBER_JOINED_BOT
+            embed.description = f"Bot {member.mention} added."
+            return await self.bot.send_log_message(member.guild, embed=embed)
 
-        previously_registered = ""
+        world = self.bot.tracked_worlds.get(member.guild.id)
         # If server is not tracking worlds, we don't check the database
-        if member.guild.id in self.bot.config.lite_servers or self.bot.tracked_worlds.get(member.guild.id) is None:
-            await self.bot.send_log_message(member.guild, embed=embed)
-        else:
-            # Check if user already has characters registered and announce them on log_channel
-            # This could be because he rejoined the server or is in another server tracking the same worlds
-            world = self.bot.tracked_worlds.get(member.guild.id)
-            previously_registered = ""
-            if world is not None:
-                results = await self.bot.pool.fetch("""SELECT name, vocation, abs(level) as level, guild
-                                                       FROM "character" WHERE user_id = $1 AND world = $2""",
-                                                    member.id, world)
-                if len(results) > 0:
-                    previously_registered = "\n\nYou already have these characters in {0} registered to you: *{1}*" \
-                        .format(world, join_list([r["name"] for r in results], ", ", " and "))
-                    characters = ["\u2023 {name} - Level {level} {voc} - **{guild}**"
-                                      .format(**c, voc=get_voc_abb_and_emoji(c["vocation"])) for c in results]
-                    embed.add_field(name="Registered characters", value="\n".join(characters))
-            self.bot.dispatch("character_change", member.id)
-            await self.bot.send_log_message(member.guild, embed=embed)
+        if world is None:
+            return await self.bot.send_log_message(member.guild, embed=embed)
 
-        welcome_message = await get_server_property(self.bot.pool, member.guild.id, "welcome")
-        welcome_channel_id = await get_server_property(self.bot.pool, member.guild.id, "welcome_channel")
-        if welcome_message is None:
-            return
-        message = welcome_message.format(user=member, server=member.guild, bot=self.bot, owner=member.guild.owner)
-        message += previously_registered
-        channel = member.guild.get_channel(welcome_channel_id)
-        # If channel is not found, send via pm as fallback
-        if channel is None:
-            channel = member
-        try:
-            await channel.send(message)
-        except discord.Forbidden:
-            try:
-                # If bot has no permissions to send the message on that channel, send on private message
-                # If the channel was already a private message, don't try it again
-                if welcome_channel_id is None:
-                    return
-                await member.send(message)
-            except discord.Forbidden:
-                pass
+        # Check if user already has characters registered and announce them on log_channel
+        # This could be because he rejoined the server or is in another server tracking the same worlds
+        rows = await self.bot.pool.fetch("""SELECT name, vocation, abs(level) as level, guild FROM "character" 
+                                            WHERE user_id = $1 AND world = $2 ORDER BY level DESC""", member.id, world)
+        if rows:
+            self.bot.dispatch("character_change", member.id)
+            characters = ""
+            for c in rows:
+                voc = get_voc_abb_and_emoji(c["vocation"])
+                guild = c["guild"] or "No guild"
+                characters += f"\n\u2023 {c['name']} - Level {c['level']} {voc} - **{guild}**"
+            embed.add_field(name="Registered characters", value=characters)
+        await self.bot.send_log_message(member.guild, embed=embed)
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
