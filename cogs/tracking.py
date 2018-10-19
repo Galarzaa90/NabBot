@@ -585,7 +585,7 @@ class Tracking:
                     skipped.append(char)
                     continue
                 db_char = await ctx.pool.fetchrow("""SELECT name, guild, user_id as owner, vocation, abs(level) as 
-                                                     level, guild FROM "character" WHERE lower(name) = $1""",
+                                                     level, guild FROM, id "character" WHERE lower(name) = $1""",
                                                   char.name.lower())
                 if db_char is not None:
                     owner = self.bot.get_member(db_char["owner"])
@@ -596,7 +596,7 @@ class Tracking:
                     else:
                         updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
                                         'vocation': db_char["vocation"], 'level': db_char['level'],
-                                        'guild': db_char['guild']
+                                        'guild': db_char['guild'], 'id': db_char['id']
                                         })
                 # If we only have one char, it already contains full data
                 if len(chars) > 1:
@@ -701,7 +701,7 @@ class Tracking:
                 skipped.append(char)
                 continue
             db_char = await ctx.pool.fetchrow("""SELECT name, guild, user_id as owner, vocation, ABS(level) as level, 
-                                                 guild  FROM "character"
+                                                 guild, id  FROM "character"
                                                  WHERE lower(name) = $1""", char.name.lower())
             if db_char is not None:
                 owner = self.bot.get_member(db_char["owner"])
@@ -709,7 +709,7 @@ class Tracking:
                 if owner is None:
                     updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
                                     'vocation': db_char["vocation"], 'level': db_char['level'],
-                                    'guild': db_char['guild']
+                                    'guild': db_char['guild'], 'id': db_char['id']
                                     })
                     continue
                 # Char already registered to this user

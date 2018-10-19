@@ -183,7 +183,7 @@ class Admin:
                         await conn.execute('UPDATE "character" SET user_id = $1 WHERE id = $2', user.id, result["id"])
                         await ctx.send("This character was reassigned to this user successfully.")
                         char_dict = {"name": char.name, "level": char.level, "vocation": char.vocation,
-                                     "guild": char.guild_name, "world": char.world}
+                                     "guild": char.guild_name, "world": char.world, "prevowner": result["user_id"]}
                         self.bot.dispatch("characters_registered", user, [], [char_dict], ctx.author)
                     else:
                         await ctx.send("This character is already registered to this user.")
@@ -192,9 +192,7 @@ class Admin:
                                       VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT(name) DO NOTHING""",
                                    char.name, -char.level, char.vocation, user.id, char.world, char.guild_name)
                 await ctx.send("**{0}** was registered successfully to this user.".format(char.name))
-                char_dict = {"name": char.name, "level": char.level, "vocation": char.vocation,
-                             "guild": char.guild_name, "world": char.world}
-                self.bot.dispatch("characters_registered", user, [char_dict], [], ctx.author)
+                self.bot.dispatch("characters_registered", user, [char], [], ctx.author)
 
     @checks.is_admin()
     @commands.guild_only()
@@ -247,7 +245,7 @@ class Admin:
         You can't remove any characters that would alter other servers NabBot is in."""
         # This could be used to remove deleted chars so we don't need to check anything
         # Except if the char exists in the database...
-        result = await ctx.pool.fetchrow("""SELECT name, user_id, world, guild, abs(level) as level, vocation
+        result = await ctx.pool.fetchrow("""SELECT name, user_id, world, guild, abs(level) as level, vocation, id
                                             FROM "character" WHERE lower(name) = $1""", name.lower())
         if result is None or result["user_id"] == 0:
             return await ctx.send("There's no character with that name registered.")

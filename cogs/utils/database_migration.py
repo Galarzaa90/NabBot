@@ -110,6 +110,16 @@ tables = [
     );
     """,
     """
+    CREATE TABLE character_history (
+        character_id integer,
+        change_type text NOT NULL,
+        before text,
+        after text,
+        date timestamptz NOT NULL DEFAULT now(),
+        FOREIGN KEY (character_id) REFERENCES "character" (id)
+    );
+    """,
+    """
     CREATE TABLE event (
         id serial NOT NULL,
         user_id bigint NOT NULL,
@@ -222,6 +232,13 @@ tables = [
         server_id bigint NOT NULL,
         channel_id bigint NOT NULL,
         PRIMARY KEY(server_id, channel_id)
+    )
+    """,
+    """
+    CREATE TABLE user_server (
+        user_id bigint NOT NULL,
+        server_id bigint NOT NULL,
+        PRIMARY KEY(user_id, server_id)
     )
     """
 ]

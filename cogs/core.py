@@ -118,11 +118,13 @@ class Core:
                   f"‣ If you want a logging channel, create a channel named `{config.log_channel_name}`\n" \
                   f"‣ If you need help, join my support server: **<https://discord.me/NabBot>**\n" \
                   f"‣ For more information and links in: `{config.command_prefix[0]}about`"
-        for member in guild.members:
-            if member.id in self.bot.members:
-                self.bot.members[member.id].append(guild.id)
-            else:
-                self.bot.members[member.id] = [guild.id]
+        async with self.bot.pool.acquire() as conn:
+            for member in guild.members:
+                if member.id in self.bot.members:
+                    self.bot.members[member.id].append(guild.id)
+                else:
+                    self.bot.members[member.id] = [guild.id]
+                await conn.execute("INSERT INTO user_server(user_id, server_id) VALUES($1, $2)", member.id, guild.id)
         try:
             channel = self.bot.get_top_channel(guild)
             if channel is None:
@@ -138,6 +140,7 @@ class Core:
         for member in guild.members:
             if member.id in self.bot.members:
                 self.bot.members[member.id].remove(guild.id)
+        await self.bot.pool.execute("DELETE FROM user_server WHERE server_id = $1 ", guild.id)
 
     async def on_member_join(self, member: discord.Member):
         """ Called when a member joins a guild (server) the bot is in."""
@@ -146,6 +149,8 @@ class Core:
             self.bot.members[member.id].append(member.guild.id)
         else:
             self.bot.members[member.id] = [member.guild.id]
+        await self.bot.pool.execute("INSERT INTO user_server(user_id, server_id) VALUES($1, $2)",
+                                    member.id, member.guild.id)
 
         if member.bot:
             return
@@ -184,6 +189,8 @@ class Core:
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
         self.bot.members[member.id].remove(member.guild.id)
+        await self.bot.pool.execute("DELETE FROM user_server WHERE user_id = $1 AND server_id = $2",
+                                    member.id, member.guild.id)
 
     def __unload(self):
         self.game_update_task.cancel()

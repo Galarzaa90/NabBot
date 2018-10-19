@@ -503,8 +503,9 @@ async def bind_database_character(bot, character: Character):
 
         if db_char["guild"] != character.guild_name:
             await conn.execute('UPDATE "character" SET guild = $1 WHERE id = $2', character.guild_name, db_char["id"])
-            log.info(f"get_character: {character.name}'s guild updated {character.guild_name} -> {db_char['guild']}")
+            log.info(f"get_character: {character.name}'s guild updated {db_char['guild']} -> {character.guild_name}")
             bot.dispatch("character_change", character.owner)
+            bot.dispatch("character_guild_change", character, db_char['guild'])
 
 
 async def get_highscores(world, category, pagenum, profession=0, tries=5):

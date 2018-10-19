@@ -68,12 +68,16 @@ class NabBot(commands.Bot):
 
         # Populating members's guild list
         self.members = {}
-        for guild in self.guilds:
-            for member in guild.members:
-                if member.id in self.members:
-                    self.members[member.id].append(guild.id)
-                else:
-                    self.members[member.id] = [guild.id]
+        async with self.pool.acquire() as conn:
+            await conn.execute("TRUNCATE user_server")
+            for guild in self.guilds:
+                for member in guild.members:
+                    if member.id in self.members:
+                        self.members[member.id].append(guild.id)
+                    else:
+                        self.members[member.id] = [guild.id]
+                    await conn.execute("INSERT INTO user_server(user_id, server_id) VALUES($1, $2)",
+                                       member.id, guild.id)
 
         log.info('Bot is online and ready')
 

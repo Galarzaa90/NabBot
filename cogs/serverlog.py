@@ -28,9 +28,18 @@ class ServerLog:
 
     async def on_characters_registered(self, user: discord.User, added: List[Character], updated: List[Dict[str, Any]],
                                        author: discord.User=None):
+        """Called when a user registers new characters
+
+        Announces the new characters on the server log."""
         user_guilds = self.bot.get_user_guilds(user.id)
         embed = discord.Embed(colour=COLOUR_CHAR_REGISTERED)
         embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
+
+        for char in added:
+            await self.add_character_history(char.id, "owner", "0", str(char.owner))
+        for char in updated:
+            await self.add_character_history(char["id"], "owner", str(char["prevowner"]), str(user.id))
+
         if author is not None:
             embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))
         for guild in user_guilds:
@@ -41,12 +50,12 @@ class ServerLog:
                 continue
             description = f"{user.mention} registered the following characters:"
             for char in _added:
-                tibia_guild = char.guild if char.guild else "No guild"
+                tibia_guild = char.guild or "No guild"
                 voc = get_voc_abb_and_emoji(char.vocation)
                 description += f"\n‣ {char.name} - Level {char.level} {voc} - **{tibia_guild}**"
             for char in _updated:
                 voc = get_voc_abb_and_emoji(char["vocation"])
-                tibia_guild = char["guild"] if char["guild"] else "No guild"
+                tibia_guild = char["guild"] or "No guild"
                 description += f"\n‣ {char['name']} - Level {char['level']} {voc} - **{tibia_guild}** (Reassigned)"
             embed.description = description
             await self.bot.send_log_message(guild, embed=embed)
@@ -57,6 +66,7 @@ class ServerLog:
         embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
         voc = get_voc_abb_and_emoji(char["vocation"])
         tibia_guild = char["guild"] if char["guild"] else "No guild"
+        await self.add_character_history(char["id"], "owner", str(user.id), None)
         if author is not None:
             embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))
         for guild in user_guilds:
@@ -72,6 +82,7 @@ class ServerLog:
         user_id = char.owner
         new_name = char.name
         user_guilds = self.bot.get_user_guilds(user_id)
+        await self.add_character_history(char.id, "name", old_name, char.name)
         for guild in user_guilds:
             if self.bot.tracked_worlds.get(guild.id) != char.world:
                 continue
@@ -89,6 +100,7 @@ class ServerLog:
         user_id = char.owner
         user_guilds = self.bot.get_user_guilds(user_id)
         voc = get_voc_abb_and_emoji(char.vocation)
+        await self.add_character_history(char.id, "name", old_world, char.world)
         for guild in user_guilds:
             tracked_world = self.bot.tracked_worlds.get(guild.id)
             if not(char.world == tracked_world or old_world == tracked_world):
@@ -102,6 +114,9 @@ class ServerLog:
                                               f"{old_world} -> {char.world}")
             embed.set_author(name=f"{member.name}#{member.discriminator}", icon_url=get_user_avatar(member))
             await self.bot.send_log_message(guild, embed=embed)
+
+    async def on_character_guild_change(self, char: Character, old_guild: str):
+        await self.add_character_history(char.id, "guild", old_guild, char.guild_name)
 
     async def on_guild_emojis_update(self, guild: discord.Guild, before: List[discord.Emoji],
                                      after: List[discord.Emoji]):
@@ -304,6 +319,10 @@ class ServerLog:
                 break
             if target is not None and entry.target.id == target.id:
                 return entry
+
+    async def add_character_history(self, char_id: int, change_type: str, before, after):
+        await self.bot.pool.execute("""INSERT INTO character_history(character_id, change_type, before, after)
+                                       values($1, $2, $3, $4)""", char_id, change_type, before, after)
 
 
 def setup(bot):

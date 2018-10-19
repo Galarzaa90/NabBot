@@ -122,7 +122,7 @@ class Info:
 
     @checks.can_embed()
     @commands.guild_only()
-    @commands.group(case_insensitive=True)
+    @commands.group(invoke_without_command=True, case_insensitive=True)
     async def commandstats(self, ctx: NabCtx):
         """Shows command statistics."""
         async with ctx.pool.acquire() as conn:
