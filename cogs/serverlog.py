@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 
 import discord
 
@@ -106,7 +106,6 @@ class ServerLog:
     async def on_guild_emojis_update(self, guild: discord.Guild, before: List[discord.Emoji],
                                      after: List[discord.Emoji]):
         """Called every time an emoji is created, deleted or updated."""
-        now = dt.datetime.utcnow()
         embed = discord.Embed(colour=COLOUR_EMOJI_UPDATE)
         emoji: discord.Emoji = None
         # Emoji deleted
@@ -143,25 +142,16 @@ class ServerLog:
             action = discord.AuditLogAction.emoji_update
 
         # Find author
-        if action is not None and guild.me.guild_permissions.view_audit_log:
-            async for entry in guild.audit_logs(limit=10, reverse=False, action=action,
-                                                after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                if abs((entry.created_at - now).total_seconds()) >= 5:
-                    # After is broken in the API, so we must check if entry is too old.
-                    break
-                if entry.target.id == emoji.id:
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
-                    break
+        if action is not None:
+            entry = await self.get_audit_entry(guild, action, emoji)
+            if entry:
+                embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
+                                 icon_url=get_user_avatar(entry.user))
         if emoji:
             await self.bot.send_log_message(guild, embed=embed)
 
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
         """Called every time a guild is updated"""
-        now = dt.datetime.utcnow()
-        guild = after
-        bot_member = guild.me
-
         embed = discord.Embed(colour=COLOUR_GUILD_UPDATE)
         embed.set_author(name=after.name, icon_url=after.icon_url)
 
@@ -179,35 +169,24 @@ class ServerLog:
         else:
             changes = False
         if changes:
-            if bot_member.guild_permissions.view_audit_log:
-                async for entry in guild.audit_logs(limit=1, reverse=False, action=discord.AuditLogAction.guild_update,
-                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
-                    break
+            entry = await self.get_audit_entry(after, discord.AuditLogAction.guild_update)
+            if entry:
+                icon_url = get_user_avatar(entry.user)
+                embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
             await self.bot.send_log_message(after, embed=embed)
 
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
-        now = dt.datetime.utcnow()
-        bot_member: discord.Member = guild.me
-
         embed = discord.Embed(description="Banned", colour=COLOUR_MEMBER_BAN)
         embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=get_user_avatar(user))
 
         # If bot can see audit log, we can get more details of the ban
-        if bot_member.guild_permissions.view_audit_log:
-            async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.ban,
-                                                after=now-dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                if abs((entry.created_at-now).total_seconds()) >= 5:
-                    # After is broken in the API, so we must check if entry is too old.
-                    break
-                if entry.target.id == user.id:
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
-                                     icon_url=get_user_avatar(entry.user))
-                    if entry.reason:
-                        embed.description += f"\n**Reason:** {entry.reason}"
-                    break
+        entry = await self.get_audit_entry(guild, discord.AuditLogAction.ban, user)
+        if entry:
+            embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
+                             icon_url=get_user_avatar(entry.user))
+            if entry.reason:
+                embed.description += f"\n**Reason:** {entry.reason}"
         await self.bot.send_log_message(guild, embed=embed)
 
     async def on_member_join(self, member: discord.Member):
@@ -264,7 +243,6 @@ class ServerLog:
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
-        now = dt.datetime.utcnow()
         bot_member: discord.Member = member.guild.me
         embed = discord.Embed(description="Left the server or was kicked", colour=COLOUR_MEMBER_REMOVE)
         embed.set_author(name=f"{member.name}#{member.discriminator} (ID: {member.id})",
@@ -281,21 +259,17 @@ class ServerLog:
 
         # If bot can see audit log, he can see if it was a kick or member left on it's own
         if bot_member.guild_permissions.view_audit_log:
-            async for entry in member.guild.audit_logs(limit=20, reverse=False, action=discord.AuditLogAction.kick,
-                                                       after=now-dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                if abs((entry.created_at-now).total_seconds()) >= 5:
-                    # After is broken in the API, so we must check if entry is too old.
-                    break
-                if entry.target.id == member.id:
-                    embed.description = "Kicked"
-                    embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}",
-                                     icon_url=get_user_avatar(entry.user))
-                    embed.colour = COLOUR_MEMBER_KICK
-                    if entry.reason:
-                        embed.description += f"\n**Reason:** {entry.reason}"
-                    embed.description += registered_chars
-                    await self.bot.send_log_message(member.guild, embed=embed)
-                    return
+            entry = await self.get_audit_entry(member.guild, discord.AuditLogAction.kick, member)
+            if entry:
+                embed.description = "Kicked"
+                embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}",
+                                 icon_url=get_user_avatar(entry.user))
+                embed.colour = COLOUR_MEMBER_KICK
+                if entry.reason:
+                    embed.description += f"\n**Reason:** {entry.reason}"
+                embed.description += registered_chars
+                await self.bot.send_log_message(member.guild, embed=embed)
+                return
             embed.description = "Left the server"
             await self.bot.send_log_message(member.guild, embed=embed)
             return
@@ -304,10 +278,6 @@ class ServerLog:
 
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         """Called every time a member is updated"""
-        now = dt.datetime.utcnow()
-        guild = after.guild
-        bot_member = guild.me
-
         embed = discord.Embed(description=f"{after.mention}: ", colour=COLOUR_MEMBER_UPDATE)
         embed.set_author(name=f"{after.name}#{after.discriminator} (ID: {after.id})", icon_url=get_user_avatar(after))
         changes = True
@@ -321,19 +291,11 @@ class ServerLog:
                 embed.description += f"Nickname **{before.nick}** deleted"
             else:
                 embed.description += f"Nickname changed from **{before.nick}** to **{after.nick}**"
-            if bot_member.guild_permissions.view_audit_log:
-                async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.member_update,
-                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                    if abs((entry.created_at - now).total_seconds()) >= 5:
-                        # After is broken in the API, so we must check if entry is too old.
-                        break
-                    if entry.target.id == after.id:
-                        # If the user changed their own nickname, no need to specify
-                        if entry.user.id == after.id:
-                            break
-                        icon_url = get_user_avatar(entry.user)
-                        embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
-                        break
+            entry = await self.get_audit_entry(after.guild, discord.AuditLogAction.member_update, after)
+            if entry:
+                if entry.user.id != after.id:
+                    icon_url = get_user_avatar(entry.user)
+                    embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
         else:
             changes = False
         if changes:
@@ -341,24 +303,28 @@ class ServerLog:
 
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
-        now = dt.datetime.utcnow()
-        bot_member: discord.Member = guild.me
-
         embed = discord.Embed(description="Unbanned", colour=COLOUR_MEMBER_UNBAN)
         embed.set_author(name="{0.name}#{0.discriminator} (ID {0.id})".format(user), icon_url=get_user_avatar(user))
 
-        if bot_member.guild_permissions.view_audit_log:
-            async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.unban,
-                                                after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                if abs((entry.created_at - now).total_seconds()) >= 5:
-                    # After is broken in the API, so we must check if entry is too old.
-                    break
-                if entry.target.id == user.id:
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
-                                     icon_url=get_user_avatar(entry.user))
-                    break
+        entry = await self.get_audit_entry(guild, discord.AuditLogAction.unban, user)
+        if entry:
+            embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
+                             icon_url=get_user_avatar(entry.user))
         await self.bot.send_log_message(guild, embed=embed)
 
+    @staticmethod
+    async def get_audit_entry(guild: discord.Guild, action: discord.AuditLogAction,
+                              target: Any=None) -> Optional[discord.AuditLogEntry]:
+        """Gets an audit log entry of the specified action type."""
+        if not guild.me.guild_permissions.view_audit_log:
+            return
+        now = dt.datetime.utcnow()
+        after = now - dt.timedelta(0, 5)
+        async for entry in guild.audit_logs(limit=10, reverse=False, action=action, after=after):
+            if abs((entry.created_at - now)) >= dt.timedelta(seconds=5):
+                break
+            if target is not None and entry.target.id == target.id:
+                return entry
 
 
 def setup(bot):
