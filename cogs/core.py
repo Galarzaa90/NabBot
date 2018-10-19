@@ -1,4 +1,6 @@
+import asyncio
 import datetime as dt
+import random
 
 import discord
 from discord.ext import commands
@@ -15,6 +17,50 @@ class Core:
 
     def __init__(self, bot: NabBot):
         self.bot = bot
+        self.game_update_task = self.bot.loop.create_task(self.game_update())
+
+    async def game_update(self):
+        """Updates the bot's status.
+
+        A random status is selected every 20 minutes.
+        """
+        # Entries are prefixes with "Playing "
+        # Entries starting with "w:" are prefixed with "Watching "
+        # Entries starting with "l:" are prefixed with "Listening to "
+        presence_list = [
+            # Playing _____
+            "Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2018", "Russian roulette",
+            "with my toy humans", "with fire🔥", "God", "innocent", "the part", "hard to get",
+            "with my human minions", "Singularity", "Portal 3", "Dank Souls", "you", "01101110", "dumb",
+            "with GLaDOS 💙", "with myself", "with your heart", "League of Dota", "my cards right",
+            "out your death in my head",
+            # Watching ____
+            "w:you", "w:the world", "w:my magic ball", "w:https://nabbot.xyz", "w:you from behind",
+            # Listening to ____
+            "l:the voices in my head", "l:your breath", "l:the screams", "complaints"
+        ]
+        await self.bot.wait_until_ready()
+        while not self.bot.is_closed():
+            try:
+                if random.randint(0, 9) >= 7:
+                    await self.bot.change_presence(activity=discord.Activity(name=f"{len(self.bot.guilds)} servers",
+                                                                             type=discord.ActivityType.watching))
+                else:
+                    choice = random.choice(presence_list)
+                    activity_type = discord.ActivityType.playing
+                    if choice.startswith("w:"):
+                        choice = choice[2:]
+                        activity_type = discord.ActivityType.watching
+                    elif choice.startswith("l:"):
+                        choice = choice[2:]
+                        activity_type = discord.ActivityType.listening
+                    await self.bot.change_presence(activity=discord.Activity(name=choice, type=activity_type))
+            except asyncio.CancelledError:
+                break
+            except discord.DiscordException:
+                log.exception("Task: game_update")
+                continue
+            await asyncio.sleep(60*20)  # Change game every 20 minutes
 
     async def on_command_error(self, ctx: context.NabCtx, error):
         """Handles command errors"""
@@ -103,6 +149,9 @@ class Core:
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
         self.bot.members[member.id].remove(member.guild.id)
+
+    def __unload(self):
+        self.game_update_task.cancel()
 
 
 def setup(bot):

@@ -46,8 +46,7 @@ class Tibia:
 
         For player over level 100, it will also display the cost of the Blessing of the Inquisition."""
         if level < 1:
-            await ctx.send("Very funny... Now tell me a valid level.")
-            return
+            return await ctx.send("Very funny... Now tell me a valid level.")
         bless_price = max(2000, 200 * (min(level, 120) - 20))
         mountain_bless_price = max(2000, 200 * (min(level, 150) - 20))
         inquisition = ""
@@ -58,6 +57,8 @@ class Tibia:
                        f"\nMountain blessings cost **{mountain_bless_price:,}** each, for a total of "
                        f"**{int(mountain_bless_price*2):,}**.")
 
+    # TODO: Needs a revision
+    @checks.can_embed()
     @commands.command()
     async def bosses(self, ctx: NabCtx, world=None):
         """Shows predictions for bosses."""

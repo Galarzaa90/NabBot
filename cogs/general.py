@@ -24,30 +24,11 @@ class General:
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.events_announce_task = self.bot.loop.create_task(self.events_announce())
-        self.game_update_task = self.bot.loop.create_task(self.game_update())
 
     async def __error(self, ctx: NabCtx, error):
         if isinstance(error, BadTime):
             await ctx.send(error)
             return
-
-    async def game_update(self):
-        """Updates the bot's status.
-
-        A random status is selected every 20 minutes.
-        """
-        game_list = ["Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2018", "Russian roulette",
-                     "with my toy humans", "with fire🔥", "God", "innocent", "the part", "hard to get",
-                     "with my human minions", "Singularity", "Portal 3", "Dank Souls", "you", "01101110", "dumb",
-                     "with GLaDOS 💙", "with myself", "with your heart", "Generic MOBA", "Generic Battle Royale",
-                     "League of Dota", "my cards right", "out your death in my head"]
-        await self.bot.wait_until_ready()
-        while not self.bot.is_closed():
-            if random.randint(0, 9) >= 7:
-                await self.bot.change_presence(activity=discord.Game(name=f"in {len(self.bot.guilds)} servers"))
-            else:
-                await self.bot.change_presence(activity=discord.Game(name=random.choice(game_list)))
-            await asyncio.sleep(60*20)  # Change game every 20 minutes
 
     async def events_announce(self):
         await self.bot.wait_until_ready()
@@ -1118,7 +1099,6 @@ class General:
 
     def __unload(self):
         self.events_announce_task.cancel()
-        self.game_update_task.cancel()
 
 
 def setup(bot):
