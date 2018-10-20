@@ -71,6 +71,7 @@ class Loot:
         self.bot = bot
         self.processing_users = []
 
+    @checks.can_embed()
     @commands.group(invoke_without_command=True, case_insensitive=True)
     async def loot(self, ctx: NabCtx):
         """Scans an image of a container looking for Tibia items and shows an approximate loot value.

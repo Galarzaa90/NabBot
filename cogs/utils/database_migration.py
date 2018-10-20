@@ -151,14 +151,16 @@ tables = [
         user_id bigint NOT NULL,
         FOREIGN KEY (event_id) REFERENCES event (id),
         UNIQUE(event_id, user_id)
-    );""",
+    );
+    """,
     """
     CREATE TABLE highscores (
         world text NOT NULL,
         category text NOT NULL,
         last_scan timestamptz DEFAULT now(),
         PRIMARY KEY (world, category)
-    );""",
+    );
+    """,
     """
     CREATE TABLE highscores_entry (
         rank text,
@@ -207,14 +209,26 @@ tables = [
     );
     """,
     """
-    CREATE TABLE watchlist_entry (
-        name text NOT NULL,
+    CREATE TABLE watchlist(
         server_id bigint NOT NULL,
+        channel_id bigint NOT NULL,
+        message_id bigint,
+        show_count boolean DEFAULT true,
+        user_id bigint NOT NULL,
+        created timestamptz DEFAULT now(),
+        PRIMARY KEY(channel_id)
+    );
+    """,
+    """
+    CREATE TABLE watchlist_entry (
+        channel_id bigint NOT NULL,
+        name text NOT NULL,
         is_guild bool DEFAULT FALSE,
         reason text,
-        user_id bigint,
+        user_id bigint NOT NULL,
         created timestamptz DEFAULT now(),
-        PRIMARY KEY(name, server_id, is_guild)
+        FOREIGN KEY (channel_id) REFERENCES watchlist(channel_id),
+        UNIQUE(channel_id, name, is_guild)
     )
     """,
     """
@@ -225,21 +239,21 @@ tables = [
         date timestamptz NOT NULL DEFAULT now(),
         prefix text NOT NULL,
         command text NOT NULL
-    )
+    );
     """,
     """
     CREATE TABLE channel_ignored (
         server_id bigint NOT NULL,
         channel_id bigint NOT NULL,
         PRIMARY KEY(server_id, channel_id)
-    )
+    );
     """,
     """
     CREATE TABLE user_server (
         user_id bigint NOT NULL,
         server_id bigint NOT NULL,
         PRIMARY KEY(user_id, server_id)
-    )
+    );
     """
 ]
 functions = [
@@ -287,7 +301,6 @@ async def import_legacy_db(pool: asyncpg.pool.Pool, path):
         await import_roles(conn, c)
         await import_events(conn, c)
         await import_ignored_channels(conn, c)
-        await import_watch_list(conn, c)
 
 
 async def import_characters(conn: asyncpg.Connection, c: sqlite3.Cursor):

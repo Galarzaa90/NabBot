@@ -251,39 +251,40 @@ class Tracking:
     async def on_world_scanned(self, scanned_world: World):
         """Event called each time a world is checked.
 
-        Updated watched lists.
+        Updates the watchlists
 
         :param scanned_world: The scanned world's information.
         """
+        cache_guild = dict()
+
+        async def _get_guild(guild_name):
+            """
+            Used to cache guild info, to avoid fetching the same guild multiple times if they are in multiple lists
+            """
+            if guild_name in cache_guild:
+                return cache_guild[guild_name]
+            _guild = await get_guild(guild_name)
+            cache_guild[guild_name] = _guild
+            return _guild
+
         # Schedule Scan Deaths task for this world
         if scanned_world.name not in self.world_tasks:
             self.world_tasks[scanned_world.name] = self.bot.loop.create_task(self.scan_deaths(scanned_world.name))
-        query = """SELECT t0.server_id, (t0.value->>0)::bigint as channel, (t1.value->>0)::bigint as message
-                    FROM server_property t0
-                    LEFT JOIN server_property t1 ON t0.server_id = t1.server_id AND t1.key = 'watched_message'
-                    WHERE t0.key = 'watched_channel' AND t0.server_id IN (
-                        SELECT server_id 
-                        FROM server_property t2 
-                        WHERE key = 'world' AND t0.server_id = t2.server_id AND (value->>0)::text = $1
-                    )"""
+        query = """SELECT t0.server_id, channel_id, message_id FROM watchlist t0
+                   LEFT JOIN server_property t1 ON t1.server_id = t0.server_id AND key = 'world'
+                   WHERE (value->>0)::text = $1"""
         rows = await self.bot.pool.fetch(query, json.dumps(scanned_world.name))
-        for guild_id, watched_channel_id, watched_message_id in rows:
+        for guild_id, watchlist_channel_id, watchlist_message_id in rows:
             guild: discord.Guild = self.bot.get_guild(guild_id)
             if guild is None:
                 await asyncio.sleep(0.01)
                 continue
-            if watched_channel_id is None:
-                # This server doesn't have watch list enabled
+            watchlist_channel: discord.TextChannel = guild.get_channel(watchlist_channel_id)
+            if watchlist_channel is None:
                 await asyncio.sleep(0.1)
                 continue
-            watched_channel: discord.TextChannel = guild.get_channel(watched_channel_id)
-            if watched_channel is None:
-                # This server's watched channel is not available to the bot anymore.
-                await asyncio.sleep(0.1)
-                continue
-            # Get watched list
-            entries = await self.bot.pool.fetch("""SELECT name, is_guild FROM watchlist_entry WHERE server_id = $1
-                                                   ORDER BY is_guild, name""", guild_id)
+            entries = await self.bot.pool.fetch("""SELECT name, is_guild FROM watchlist_entry WHERE channel_id = $1
+                                                   ORDER BY is_guild, name""", watchlist_channel_id)
             if not entries:
                 await asyncio.sleep(0.1)
                 continue
@@ -294,7 +295,7 @@ class Tracking:
             for watched in entries:
                 if watched["is_guild"]:
                     try:
-                        tibia_guild = await get_guild(watched["name"])
+                        tibia_guild = await _get_guild(watched["name"])
                     except NetworkError:
                         continue
                     # If the guild doesn't exist, add it as empty to show it was disbanded
@@ -312,9 +313,9 @@ class Tracking:
             # We try to get the watched message, if the bot can't find it, we just create a new one
             # This may be because the old message was deleted or this is the first time the list is checked
             try:
-                watched_message = await watched_channel.get_message(watched_message_id)
+                watchlist_message = await watchlist_channel.get_message(watchlist_message_id)
             except discord.HTTPException:
-                watched_message = None
+                watchlist_message = None
             items = [f"\t{x.name} - Level {x.level} {get_voc_emoji(x.vocation)}" for x in currently_online]
             online_count = len(items)
             if len(items) > 0 or len(guild_online.keys()) > 0:
@@ -345,12 +346,13 @@ class Tracking:
                     name = "Watched List" if s == 0 else "\u200F"
                     embed.add_field(name=name, value=split_field, inline=False)
             try:
-                if watched_message is None:
-                    new_watched_message = await watched_channel.send(embed=embed)
-                    await set_server_property(self.bot.pool, guild_id, "watched_message", new_watched_message.id)
+                if watchlist_message is None:
+                    new_message = await watchlist_channel.send(embed=embed)
+                    await self.bot.pool.execute("""UPDATE watchlist SET message_id = $1 WHERE channel_id = $2""",
+                                                new_message.id, watchlist_channel_id)
                 else:
-                    await watched_message.edit(embed=embed)
-                await watched_channel.edit(name=f"{watched_channel.name.split('·', 1)[0]}·{online_count}")
+                    await watchlist_message.edit(embed=embed)
+                await watchlist_channel.edit(name=f"{watchlist_channel.name.split('·', 1)[0]}·{online_count}")
             except discord.HTTPException:
                 pass
     # endregion
@@ -962,37 +964,35 @@ class Tracking:
 
     @checks.is_mod()
     @checks.is_tracking_world()
-    @commands.group(invoke_without_command=True, aliases=["watchlist", "huntedlist"], case_insensitive=True)
-    async def watched(self, ctx: NabCtx, *, name="watched-list"):
-        """Sets the watched list channel for this server
+    @commands.group(invoke_without_command=True, case_insensitive=True)
+    async def watchlist(self, ctx: NabCtx):
+        """Watchlist management commands."""
+        pass
 
-        Creates a new text channel for the watched list to be posted.
+    @checks.is_mod()
+    @checks.is_tracking_world()
+    @watchlist.command(name="create")
+    async def watchlist_create(self, ctx: NabCtx, *, name):
+        """Creates a watchlist channel.
+
+        Creates a new text channel for the watchlist to be posted.
 
         The watch list shows which characters from it are online. Entire guilds can be added too.
 
-        If no name is specified, the default name "watched-list" is used.
-
         The channel can be renamed at anytime without problems.
         """
-
-        watched_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "watched_channel")
-        watched_channel = self.bot.get_channel(watched_channel_id)
-
         if "·" in name:
             await ctx.send(f"{ctx.tick(False)} Channel name cannot contain the special character **·**")
             return
 
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
-        if world is None:
-            await ctx.send(f"{ctx.tick(False)}This server is not tracking any tibia worlds.")
+        if not ctx.bot_permissions.manage_channels:
+            return await ctx.send(f"{ctx.tick(False)} I need `Manage Channels` permission to use this command.")
+
+        message = await ctx.send(f"Do you want to create a new watchlist named `{name}`?")
+        confirm = await ctx.react_confirm(message, delete_after=True)
+        if not confirm:
             return
 
-        if watched_channel is not None:
-            await ctx.send(f"{ctx.tick(False)} This server already has a watched list: {watched_channel.mention}")
-            return
-        permissions = ctx.bot_permissions
-        if not permissions.manage_channels:
-            await ctx.send(f"{ctx.tick(False)} I need to have `Manage Channels` permissions to use this command.")
         try:
             overwrites = {
                 ctx.guild.default_role: discord.PermissionOverwrite(send_messages=False, read_messages=True),
@@ -1008,33 +1008,37 @@ class Tracking:
             await channel.send("This is where I will post a list of online watched characters.\n"
                                "Edit this channel's permissions to allow the roles you want.\n"
                                "This channel can be renamed freely.\n"
+                               "Anyone with `Manage Channel` permission here can add entries.\n"
+                               f"Example: {ctx.clean_prefix}{ctx.invoked_with} add {channel.mention} Galarzaa Fidera\n"
+                               "If this channel is deleted, all related entries will be lost.\n"
                                "**It is important to not allow anyone to write in here**\n"
                                "*This message can be deleted now.*")
-            await set_server_property(ctx.pool, ctx.guild.id, "watched_channel", channel.id)
+            await ctx.pool.execute("INSERT INTO watchlist(server_id, channel_id, user_id) VALUES($1, $2, $3)",
+                                   ctx.guild.id, channel.id, ctx.author.id)
 
-    @checks.is_mod()
     @checks.is_tracking_world()
-    @watched.command(name="add", aliases=["addplayer", "addchar"], usage="<name>[,reason]")
-    async def watched_add(self, ctx: NabCtx, *, params=None):
-        """Adds a character to the watched list.
+    @checks.is_channel_mod_somewhere()
+    @watchlist.command(name="add", aliases=["addplayer", "addchar"], usage="<channel> <name>[,reason]")
+    async def watchlist_add(self, ctx: NabCtx, channel: discord.TextChannel, *, params=None):
+        """Adds a character to a watchlist.
 
         A reason can be specified by adding it after the character's name, separated by a comma."""
-
         if params is None:
-            await ctx.send("You need to tell me the name of the person you want to add to the list.\n"
-                           "You can also specify a reason, e.g. `/watched add player,reason`")
-            return
+            return await ctx.send(f"{ctx.tick(False)} Missing required parameters. Syntax is: "
+                                  f"`{ctx.clean_prefix}watchlist {ctx.invoked_with} {ctx.usage}`")
+
+        if not await self.is_watchlist(ctx, channel):
+            return await ctx.send(f"{ctx.tick(False)} {channel.id} is not a watchlist channel.")
+
+        if not channel.permissions_for(ctx.author).manage_channels:
+            return await ctx.send(f"{ctx.tick(False)} You don't have permissions to edit this watchlist. "
+                                  f"`Manage Channel` permission required.")
 
         params = params.split(",", 1)
         name = params[0]
         reason = None
         if len(params) > 1:
             reason = params[1]
-
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
-        if world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
-            return
 
         try:
             char = await get_character(ctx.bot, name)
@@ -1045,19 +1049,20 @@ class Tracking:
             await ctx.send("I couldn't fetch that character right now, please try again.")
             return
 
+        world = ctx.world
         if char.world != world:
             await ctx.send(f"This character is not in **{world}**.")
             return
 
         exists = await ctx.pool.fetchval("""SELECT true FROM watchlist_entry
-                                            WHERE server_id = $1 AND name = $2 AND NOT is_guild""",
-                                         ctx.guild.id, char.name)
+                                            WHERE channel_id = $1 AND name = $2 AND NOT is_guild""",
+                                         channel.id, char.name)
         if exists:
-            await ctx.send("This character is already in the watched list.")
+            await ctx.send("This character is already in this watchlist.")
             return
 
-        message = await ctx.send("Do you want to add **{0.name}** (Level {0.level} {0.vocation}) to the "
-                                 "watched list? ".format(char))
+        message = await ctx.send(
+            f"Do you want to add **{char.name}** (Level {char.level} {char.vocation}) to this watchlist?")
         confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -1065,21 +1070,27 @@ class Tracking:
         if not confirm:
             await ctx.send("Ok then, guess you changed your mind.")
             return
-        await ctx.pool.execute("""INSERT INTO watchlist_entry(name, server_id, is_guild, reason, user_id)
-                                  VALUES($1, $2, false, $3, $4)""", char.name, ctx.guild.id, reason, ctx.author.id)
-        await ctx.send("Character added to the watched list.")
+        await ctx.pool.execute("""INSERT INTO watchlist_entry(name, channel_id, is_guild, reason, user_id)
+                                  VALUES($1, $2, false, $3, $4)""", char.name, channel.id, reason, ctx.author.id)
+        await ctx.send("Character added to the watchlist.")
 
-    @checks.is_mod()
     @checks.is_tracking_world()
-    @watched.command(name="addguild", usage="<name>[,reason]")
-    async def watched_addguild(self, ctx: NabCtx, *, params=None):
-        """Adds an entire guild to the watched list.
+    @checks.is_channel_mod_somewhere()
+    @watchlist.command(name="addguild", usage="<channel> <name>[,reason]")
+    async def watchlist_addguild(self, ctx: NabCtx, channel: discord.TextChannel, *, params=None):
+        """Adds an entire guild to a watchlist.
 
-        Guilds are displayed in the watched list as a group."""
+        Guilds are displayed in the watchlist as a group."""
         if params is None:
-            await ctx.send("You need to tell me the name of the guild you want to add.\n"
-                           "You can optionally provide a reason, e.g. `/watched addguild guild,reason`")
-            return
+            return await ctx.send(f"{ctx.tick(False)} Missing required parameters. Syntax is: "
+                                  f"`{ctx.clean_prefix}watchlist {ctx.invoked_with} {ctx.usage}`")
+
+        if not await self.is_watchlist(ctx, channel):
+            return await ctx.send(f"{ctx.tick(False)} {channel.id} is not a watchlist channel.'")
+
+        if not channel.permissions_for(ctx.author).manage_channels:
+            return await ctx.send(f"{ctx.tick(False)} You don't have permissions to edit this watchlist. "
+                                  f"`Manage Channel` permission required.")
 
         params = params.split(",", 1)
         name = params[0]
@@ -1087,11 +1098,7 @@ class Tracking:
         if len(params) > 1:
             reason = params[1]
 
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
-        if world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
-            return
-
+        world = ctx.world
         try:
             guild = await get_guild(name)
             if guild is None:
@@ -1106,13 +1113,13 @@ class Tracking:
             return
 
         exists = await ctx.pool.fetchval("""SELECT true FROM watchlist_entry
-                                            WHERE server_id = $1 AND name = $2 AND is_guild""",
-                                         ctx.guild.id, guild.name)
+                                            WHERE channel_id = $1 AND name = $2 AND is_guild""",
+                                         channel.id, guild.name)
         if exists:
-            await ctx.send("This guild is already in the watched list.")
+            await ctx.send("This guild is already in this watchlist.")
             return
 
-        message = await ctx.send(f"Do you want to add the guild **{guild.name}** to the watched list?")
+        message = await ctx.send(f"Do you want to add the guild **{guild.name}** to this watchlist?")
         confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -1121,23 +1128,23 @@ class Tracking:
             await ctx.send("Ok then, guess you changed your mind.")
             return
 
-        await ctx.pool.execute("""INSERT INTO watchlist_entry(name, server_id, is_guild, reason, user_id)
-                                  VALUES($1, $2, true, $3, $4)""", guild.name, ctx.guild.id, reason, ctx.author.id)
-        await ctx.send("Guild added to the watched list.")
+        await ctx.pool.execute("""INSERT INTO watchlist_entry(name, channel_id, is_guild, reason, user_id)
+                                  VALUES($1, $2, true, $3, $4)""", guild.name, channel.id, reason, ctx.author.id)
+        await ctx.send("Guild added to the watchlist.")
 
-
-    @checks.is_mod()
+    @checks.is_mod_somewhere()
     @checks.is_tracking_world()
-    @watched.command(name="info", aliases=["details", "reason"])
-    async def watched_info(self, ctx: NabCtx, *, name: str):
-        """Shows information about a watched list entry.
+    @watchlist.command(name="info", aliases=["details", "reason"])
+    async def watchlist_info(self, ctx: NabCtx, channel: discord.TextChannel, *, name: str):
+        """Shows information about a watchlist entry.
 
         This shows who added the player, when, and if there's a reason why they were added."""
         row = await ctx.pool.fetchrow("""SELECT name, reason, user_id, created 
-                                         WHERE server_id = $1 AND NOT is_guild AND lower(name) = $1""",
-                                      ctx.guild.id, name.lower())
+                                         WHERE channel_id = $1 AND NOT is_guild AND lower(name) = $1""",
+                                      channel.id, name.lower())
         if not row:
-            await ctx.send("There are no characters with that name.")
+            await ctx.send(f"{ctx.tick(False)} {channel.mention} is not a watchlist "
+                           f"or the character is not in that list.")
             return
 
         embed = discord.Embed(title=row["name"])
@@ -1151,18 +1158,21 @@ class Tracking:
             embed.timestamp = row["created"]
         await ctx.send(embed=embed)
 
-    @checks.is_mod()
+    @checks.is_mod_somewhere()
     @checks.is_tracking_world()
-    @watched.command(name="infoguild", aliases=["detailsguild", "reasonguild"])
-    async def watched_infoguild(self, ctx: NabCtx, *, name: str):
-        """"Shows details about a guild entry in the watched list.
+    @watchlist.command(name="infoguild", aliases=["detailsguild", "reasonguild"])
+    async def watched_infoguild(self, ctx: NabCtx, channel: discord.TextChannel, *, name: str):
+        """"Shows details about a guild entry in the watchlist.
 
         This shows who added the player, when, and if there's a reason why they were added."""
+        if not await self.is_watchlist(ctx, channel):
+            return await ctx.send(f"{ctx.tick(False)} {channel.id} is not a watchlist channel.'")
+
         row = await ctx.pool.fetchrow("""SELECT name, reason, user_id, created 
-                                         WHERE server_id = $1 AND is_guild AND lower(name) = $1""",
-                                      ctx.guild.id, name.lower())
+                                         WHERE channel_id = $1 AND is_guild AND lower(name) = $1""",
+                                      channel.id, name.lower())
         if not row:
-            await ctx.send("There are no guilds with that name.")
+            await ctx.send(f"{ctx.tick(False)} This guild is not in this watchlist.")
             return
 
         embed = discord.Embed(title=row["name"])
@@ -1176,22 +1186,20 @@ class Tracking:
             embed.timestamp = row["created"]
         await ctx.send(embed=embed)
 
-    @checks.is_mod()
+    @checks.is_mod_somewhere()
     @checks.is_tracking_world()
-    @watched.command(name="list")
-    async def watched_list(self, ctx: NabCtx):
-        """Shows a list of all watched characters
+    @watchlist.command(name="list")
+    async def watchlist_list(self, ctx: NabCtx, channel: discord.TextChannel):
+        """Shows characters belonging to that watchlist.
 
         Note that this lists all characters, not just online characters."""
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
-        if world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
-            return
+        if not await self.is_watchlist(ctx, channel):
+            return await ctx.send(f"{ctx.tick(False)} {channel.id} is not a watchlist channel.'")
+
         results = await ctx.pool.fetch("""SELECT name FROM watchlist_entry
-                                          WHERE server_id = $1 AND NOT is_guild ORDER BY name ASC""", ctx.guild.id)
+                                          WHERE channel_id = $1 AND NOT is_guild ORDER BY name ASC""", channel.id)
         if not results:
-            await ctx.send("There are no characters in the watched list.")
-            return
+            return await ctx.send(f"{ctx.tick(False)} This watchlist has no registered characters.")
         entries = [f"[{r['name']}]({get_character_url(r['name'])})" for r in results]
 
         pages = Pages(ctx, entries=entries)
@@ -1201,22 +1209,21 @@ class Tracking:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @checks.is_mod()
+    @checks.is_mod_somewhere()
     @checks.is_tracking_world()
-    @watched.command(name="listguilds", aliases=["guilds", "guildlist"])
-    async def watched_list_guild(self, ctx: NabCtx):
-        """Shows a list of all watched characters
+    @watchlist.command(name="listguilds", aliases=["guilds", "guildlist"])
+    async def watchlist_list_guild(self, ctx: NabCtx, channel: discord.TextChannel):
+        """Shows a list of guilds in the watchlist
 
         Note that this lists all characters, not just online characters."""
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
-        if world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
-            return
+        if not await self.is_watchlist(ctx, channel):
+            return await ctx.send(f"{ctx.tick(False)} {channel.id} is not a watchlist channel.'")
+
         results = await ctx.pool.fetch("""SELECT name FROM watchlist_entry
-                                          WHERE server_id = $1 AND is_guild ORDER BY name ASC""", ctx.guild.id)
+                                          WHERE channel_id = $1 AND is_guild ORDER BY name ASC""", channel.id)
         if not results:
-            await ctx.send("There are no guilds in the watched list.")
-            return
+            return await ctx.send(f"{ctx.tick(False)} This watchlist has no guilds registered.")
+
         entries = [f"[{r['name']}]({url_guild+urllib.parse.quote(r['name'])})" for r in results]
         pages = Pages(ctx, entries=entries)
         pages.embed.title = "Watched Guilds"
@@ -1225,27 +1232,22 @@ class Tracking:
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @checks.is_mod()
+    @checks.is_mod_somewhere()
     @checks.is_tracking_world()
-    @watched.command(name="remove", aliases=["removeplayer", "removechar"])
-    async def watched_remove(self, ctx: NabCtx, *, name=None):
-        """Removes a character from the watched list."""
-        if name is None:
-            await ctx.send("You need to tell me the name of the person you want to remove from the list.")
-
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
-        if world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
-            return
+    @watchlist.command(name="remove", aliases=["removeplayer", "removechar"])
+    async def watchlist_remove(self, ctx: NabCtx, channel: discord.TextChannel, *, name):
+        """Removes a character from a watchlist."""
+        if not await self.is_watchlist(ctx, channel):
+            return await ctx.send(f"{ctx.tick(False)} {channel.id} is not a watchlist channel.'")
 
         result = await ctx.pool.fetchrow("""SELECT true FROM watchlist_entry
-                                            WHERE server_id = $1 AND lower(name) = $2 AND NOT is_guild""",
-                                         ctx.guild.id, name.lower())
+                                            WHERE channel_id = $1 AND lower(name) = $2 AND NOT is_guild""",
+                                         channel.id, name.lower())
         if result is None:
-            await ctx.send("This character is not in the watched list.")
+            await ctx.send("This character is not in the watchlist.")
             return
 
-        message = await ctx.send(f"Do you want to remove **{name}** from the watched list?")
+        message = await ctx.send(f"Do you want to remove **{name}** from the watchlist?")
         confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -1253,31 +1255,26 @@ class Tracking:
         if not confirm:
             await ctx.send("Ok then, guess you changed your mind.")
             return
-        await ctx.pool.execute("DELETE FROM watchlist_entry WHERE server_id = $1 and lower(name) = $2 AND NOT is_guild",
-                               ctx.guild.id, name.lower())
-        await ctx.send("Character removed from the watched list.")
+        await ctx.pool.execute("DELETE FROM watchlist_entry WHERE channel_id = $1 and lower(name) = $2 AND NOT is_guild",
+                               channel.id, name.lower())
+        await ctx.send("Character removed from the watchlist.")
 
     @checks.is_mod()
     @checks.is_tracking_world()
-    @watched.command(name="removeguild")
-    async def watched_removeguild(self, ctx: NabCtx, *, name=None):
-        """Removes a guild from the watched list."""
-        if name is None:
-            await ctx.send("You need to tell me the name of the guild you want to remove from the list.")
-
-        world = self.bot.tracked_worlds.get(ctx.guild.id, None)
-        if world is None:
-            await ctx.send("This server is not tracking any tibia worlds.")
-            return
+    @watchlist.command(name="removeguild")
+    async def watchlist_removeguild(self, ctx: NabCtx, channel: discord.TextChannel, *, name):
+        """Removes a guild from the watchlist."""
+        if not await self.is_watchlist(ctx, channel):
+            return await ctx.send(f"{ctx.tick(False)} {channel.id} is not a watchlist channel.'")
 
         result = await ctx.pool.fetchrow("""SELECT true FROM watchlist_entry
-                                            WHERE server_id = $1 AND lower(name) = $2 AND is_guild""",
-                                         ctx.guild.id, name.lower())
+                                            WHERE channel_id = $1 AND lower(name) = $2 AND is_guild""",
+                                         channel.id, name.lower())
         if result is None:
-            await ctx.send("This guild is not in the watched list.")
+            await ctx.send("This guild is not in the watchlist.")
             return
 
-        message = await ctx.send(f"Do you want to remove **{name}** from the watched list?")
+        message = await ctx.send(f"Do you want to remove **{name}** from the watchlist?")
         confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -1286,10 +1283,17 @@ class Tracking:
             await ctx.send("Ok then, guess you changed your mind.")
             return
 
-        await ctx.pool.execute("DELETE FROM watchlist_entry WHERE server_id = $1 and lower(name) = $2 AND is_guild",
-                                ctx.guild.id, name.lower())
-        await ctx.send("Guild removed from the watched list.")
+        await ctx.pool.execute("DELETE FROM watchlist_entry WHERE channel_id = $1 and lower(name) = $2 AND is_guild",
+                               channel.id, name.lower())
+        await ctx.send("Guild removed from the watchlist.")
 
+    # endregion
+
+    # region Methods
+    @staticmethod
+    async def is_watchlist(ctx: NabCtx, channel: discord.TextChannel):
+        exists = await ctx.pool.fetchval("SELECT true FROM watchlist WHERE channel_id = $1", channel.id)
+        return bool(exists)
     # endregion
 
     def __unload(self):
