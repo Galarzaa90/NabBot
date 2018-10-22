@@ -10,6 +10,7 @@ import pkg_resources
 from discord.ext import commands
 
 # Exposing for /debug command
+from cogs.utils.database import get_affected_count
 from nabbot import NabBot
 from .utils import checks
 from .utils.context import NabCtx
@@ -21,8 +22,6 @@ from .utils.tibiawiki import *
 
 req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")
-result_patt = re.compile(r"\w+\s(\d+)")
-
 
 class Owner:
     """Commands exclusive to bot owners"""
@@ -227,10 +226,10 @@ class Owner:
             return
         async with ctx.pool.acquire() as conn:
             result = await conn.execute('UPDATE "character" SET world = $1 WHERE world = $2', new_world, old_world)
-            affected_chars = result_patt.search(result).group(1)
+            affected_chars = get_affected_count(result)
             result = await conn.execute("UPDATE server_property SET VALUE = $1 WHERE key = 'world' AND value = $2",
                                         new_world, old_world)
-            affected_guilds = result_patt.search(result).group(1)
+            affected_guilds = get_affected_count(result)
             await conn.execute("DELETE FROM highscores WHERE world = $1", old_world)
             await ctx.send(f"Moved **{affected_chars:,}** characters to {new_world}. "
                            f"**{affected_guilds}** discord servers were affected.\n\n"

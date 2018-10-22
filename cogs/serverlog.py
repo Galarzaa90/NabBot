@@ -20,6 +20,7 @@ COLOUR_MEMBER_BAN = discord.Colour.dark_red()
 COLOUR_MEMBER_UNBAN = discord.Colour.orange()
 COLOUR_EMOJI_UPDATE = discord.Colour.dark_orange()
 COLOUR_GUILD_UPDATE = discord.Colour.purple()
+COLOUR_WATCHLIST_DELETE = discord.Colour.dark_gold()
 
 
 class ServerLog:
@@ -117,6 +118,15 @@ class ServerLog:
 
     async def on_character_guild_change(self, char: Character, old_guild: str):
         await self.add_character_history(char.id, "guild", old_guild, char.guild_name)
+
+    async def on_watchlist_deleted(self, channel: discord.TextChannel, count: int):
+        embed = discord.Embed(title="Watchlist channel deleted", colour=COLOUR_WATCHLIST_DELETE,
+                              description=f"Channel `#{channel.name}` was deleted. **{count}** entries were deleted.")
+        entry = await self.get_audit_entry(channel.guild, discord.AuditLogAction.channel_delete, channel)
+        if entry:
+            embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}",
+                             icon_url=get_user_avatar(entry.user))
+        await self.bot.send_log_message(channel.guild, embed=embed)
 
     async def on_guild_emojis_update(self, guild: discord.Guild, before: List[discord.Emoji],
                                      after: List[discord.Emoji]):

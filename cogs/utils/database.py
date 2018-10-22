@@ -1,3 +1,5 @@
+import re
+
 import asyncpg
 import json
 import sqlite3
@@ -6,6 +8,9 @@ from typing import Any, List
 TIBIADB = "data/tibia_database.db"
 
 tibiaDatabase = sqlite3.connect(TIBIADB)
+
+# Pattern to match the number of affected rows
+result_patt = re.compile(r"\w+\s(\d+)")
 
 
 def dict_factory(cursor, row):
@@ -19,6 +24,14 @@ def dict_factory(cursor, row):
 
 
 tibiaDatabase.row_factory = dict_factory
+
+
+def get_affected_count(result: str) -> int:
+    """Gets the number of affected rows by a UPDATE or EXECUTE query."""
+    m = result_patt.search(result)
+    if not m:
+        return 0
+    return int(m.group(1))
 
 
 async def get_prefixes(pool: asyncpg.pool.Pool, guild_id: int):

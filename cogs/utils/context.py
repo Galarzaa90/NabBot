@@ -173,6 +173,11 @@ class NabCtx(commands.Context):
                 pass
 
     # region Methods
+    async def error(self, content, *, embed=None, file=None, files=None, delete_after=None):
+        """Sends a message prefixed by a cross."""
+        content = f"{self.tick(False)} {content}"
+        return await self.send(content, embed=embed, file=file, files=files, delete_after=delete_after)
+
     async def execute_async(self, func: Callable[..., T], *args, **kwargs) -> T:
         """Executes a synchronous function inside an executor.
 
@@ -273,6 +278,11 @@ class NabCtx(commands.Context):
                 except discord.Forbidden:
                     pass
         return True
+
+    async def success(self, content, *, embed=None, file=None, files=None, delete_after=None):
+        """Sends a message prefixed by a checkmark."""
+        content = f"{self.tick(True)} {content}"
+        return await self.send(content, embed=embed, file=file, files=files, delete_after=delete_after)
 
     def tick(self, value: bool = True, label: str = None) -> str:
         """Displays a checkmark or a cross depending on the value.

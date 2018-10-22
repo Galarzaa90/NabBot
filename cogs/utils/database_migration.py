@@ -227,7 +227,7 @@ tables = [
         reason text,
         user_id bigint NOT NULL,
         created timestamptz DEFAULT now(),
-        FOREIGN KEY (channel_id) REFERENCES watchlist(channel_id),
+        FOREIGN KEY (channel_id) REFERENCES watchlist(channel_id) ON DELETE CASCADE,
         UNIQUE(channel_id, name, is_guild)
     )
     """,
