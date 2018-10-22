@@ -115,6 +115,7 @@ tables = [
         change_type text NOT NULL,
         before text,
         after text,
+        user_id bigint,
         date timestamptz NOT NULL DEFAULT now(),
         FOREIGN KEY (character_id) REFERENCES "character" (id)
     );
@@ -254,7 +255,14 @@ tables = [
         server_id bigint NOT NULL,
         PRIMARY KEY(user_id, server_id)
     );
+    """,
     """
+    CREATE TABLE server_history (
+        server_id bigint NOT NULL,
+        event_type text NOT NULL,
+        server_count int NOT NULL,
+        date timestamptz default now()
+    );"""
 ]
 functions = [
     """

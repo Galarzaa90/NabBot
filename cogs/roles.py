@@ -4,6 +4,7 @@ from typing import List
 import discord
 from discord.ext import commands
 
+from cogs.utils.database import get_affected_count
 from nabbot import NabBot
 from .utils import checks
 from .utils.context import NabCtx
@@ -31,8 +32,14 @@ class Roles:
         Removes joinable groups from the database when the role is deleted.
         """
         async with self.bot.pool.acquire() as conn:
-            await conn.execute("DELETE FROM role_joinable WHERE role_id = $1", role.id)
-            await conn.execute("DELETE FROM role_auto WHERE role_id = $1", role.id)
+            joinable_result = await conn.execute("DELETE FROM role_joinable WHERE role_id = $1", role.id)
+            auto_result = await conn.execute("DELETE FROM role_auto WHERE role_id = $1", role.id)
+            deleted_joinable = get_affected_count(joinable_result)
+            deleted_auto = get_affected_count(auto_result)
+            if deleted_auto:
+                self.bot.dispatch("role_auto_deleted", role)
+            if deleted_joinable:
+                self.bot.dispatch("role_joinable_deleted", role)
 
     # Todo: Requires optimization
     async def on_character_change(self, user_id: int):

@@ -116,7 +116,7 @@ class Core:
                   f"‣ You can configure me using: `{config.command_prefix[0]}settings`\n" \
                   f"‣ You can set a world for me to track by using `{config.command_prefix[0]}settings world`\n" \
                   f"‣ If you want a logging channel, create a channel named `{config.log_channel_name}`\n" \
-                  f"‣ If you need help, join my support server: **<https://discord.me/NabBot>**\n" \
+                  f"‣ If you need help, join my support server: **<https://support.nabbot.xyz>**\n" \
                   f"‣ For more information and links in: `{config.command_prefix[0]}about`"
         async with self.bot.pool.acquire() as conn:
             for member in guild.members:
@@ -125,6 +125,8 @@ class Core:
                 else:
                     self.bot.members[member.id] = [guild.id]
                 await conn.execute("INSERT INTO user_server(user_id, server_id) VALUES($1, $2)", member.id, guild.id)
+            await conn.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1, $2, $3)",
+                               guild.id, len(self.bot.guilds), "add")
         try:
             channel = self.bot.get_top_channel(guild)
             if channel is None:
@@ -141,6 +143,8 @@ class Core:
             if member.id in self.bot.members:
                 self.bot.members[member.id].remove(guild.id)
         await self.bot.pool.execute("DELETE FROM user_server WHERE server_id = $1 ", guild.id)
+        await self.bot.pool.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1,$2,$3)",
+                                    guild.id, len(self.bot.guilds), "remove")
 
     async def on_member_join(self, member: discord.Member):
         """ Called when a member joins a guild (server) the bot is in."""

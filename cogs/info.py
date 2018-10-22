@@ -98,6 +98,27 @@ class Info:
         await ctx.send(embed=embed)
 
     @checks.can_embed()
+    @commands.guild_only()
+    @commands.command()
+    async def channelinfo(self, ctx: NabCtx, channel: discord.TextChannel=None):
+        """Shows information about a channel.
+
+        If no channel is specified, the information for the current channel is shown."""
+        if channel is None:
+            channel = ctx.channel
+        if not channel.permissions_for(ctx.author).read_messages:
+            return await ctx.error("You are not supposed to see that channel, so I can't show you anything.")
+        embed = discord.Embed(colour=discord.Colour.blurple(), title=f"#{channel}", description=f"**ID** {channel.id}",
+                              timestamp=channel.created_at)
+        if channel.topic:
+            embed.description += f"\n{channel.topic}"
+        embed.add_field(name="Visible by", value=f"{len(channel.members):,} members")
+        embed.add_field(name="Mention", value=f"`{channel.mention}`")
+        embed.add_field(name="NSFW", value=ctx.tick(channel.nsfw))
+        embed.set_footer(text="Created on")
+        await ctx.send(embed=embed)
+
+    @checks.can_embed()
     @commands.command(name="commands", aliases=["commandlist"])
     async def _commands(self, ctx: NabCtx):
         """Shows a simple list of all commands.

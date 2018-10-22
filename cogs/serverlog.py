@@ -1,4 +1,5 @@
 import datetime as dt
+from enum import Enum
 from typing import List, Any, Dict, Optional
 
 import discord
@@ -21,25 +22,35 @@ COLOUR_MEMBER_UNBAN = discord.Colour.orange()
 COLOUR_EMOJI_UPDATE = discord.Colour.dark_orange()
 COLOUR_GUILD_UPDATE = discord.Colour.purple()
 COLOUR_WATCHLIST_DELETE = discord.Colour.dark_gold()
+COLOUR_AUTOROLE_DELETE = discord.Colour.dark_gold()
+COLOUR_JOINABLEROLE_DELETE = discord.Colour.dark_gold()
+
+
+class ChangeType(Enum):
+    OWNER = "owner"
+    GUILD = "guild"
+    WORLD = "world"
+    NAME = "name"
 
 
 class ServerLog:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
+    # region Custom Events
     async def on_characters_registered(self, user: discord.User, added: List[Character], updated: List[Dict[str, Any]],
                                        author: discord.User=None):
         """Called when a user registers new characters
 
-        Announces the new characters on the server log."""
+        Announces the new characters in the server log of the relevant servers."""
         user_guilds = self.bot.get_user_guilds(user.id)
         embed = discord.Embed(colour=COLOUR_CHAR_REGISTERED)
         embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
 
         for char in added:
-            await self.add_character_history(char.id, "owner", "0", str(char.owner))
+            await self.add_character_history(char.id, ChangeType.OWNER, "0", str(char.owner))
         for char in updated:
-            await self.add_character_history(char["id"], "owner", str(char["prevowner"]), str(user.id))
+            await self.add_character_history(char["id"], ChangeType.OWNER, str(char["prevowner"]), str(user.id))
 
         if author is not None:
             embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))
@@ -62,12 +73,15 @@ class ServerLog:
             await self.bot.send_log_message(guild, embed=embed)
 
     async def on_character_unregistered(self, user: discord.user, char: Dict[str, Any], author: discord.User=None):
+        """Called when a user unregisters a character.
+
+        Announces the unregistered in the server log of the relevant servers."""
         user_guilds = self.bot.get_user_guilds(user.id)
         embed = discord.Embed(colour=COLOUR_CHAR_UNREGISTERED)
         embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
         voc = get_voc_abb_and_emoji(char["vocation"])
         tibia_guild = char["guild"] if char["guild"] else "No guild"
-        await self.add_character_history(char["id"], "owner", str(user.id), None)
+        await self.add_character_history(char["id"], ChangeType.OWNER, str(user.id), None)
         if author is not None:
             embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))
         for guild in user_guilds:
@@ -79,11 +93,13 @@ class ServerLog:
             await self.bot.send_log_message(guild, embed=embed)
 
     async def on_character_rename(self, char: Character, old_name: str):
-        """Called when a character is renamed."""
+        """Called when a character is renamed.
+
+        Announces it in the server log of the relevant servers."""
         user_id = char.owner
         new_name = char.name
         user_guilds = self.bot.get_user_guilds(user_id)
-        await self.add_character_history(char.id, "name", old_name, char.name)
+        await self.add_character_history(char.id, ChangeType.NAME, old_name, char.name)
         for guild in user_guilds:
             if self.bot.tracked_worlds.get(guild.id) != char.world:
                 continue
@@ -98,10 +114,13 @@ class ServerLog:
             await self.bot.send_log_message(guild, embed=embed)
 
     async def on_character_transferred(self, char: Character, old_world: str):
+        """Called when a character switches world.
+
+        Announces it in the server log of the relevant servers, i.e. servers tracking the former or new world."""
         user_id = char.owner
         user_guilds = self.bot.get_user_guilds(user_id)
         voc = get_voc_abb_and_emoji(char.vocation)
-        await self.add_character_history(char.id, "name", old_world, char.world)
+        await self.add_character_history(char.id, ChangeType.NAME, old_world, char.world)
         for guild in user_guilds:
             tracked_world = self.bot.tracked_worlds.get(guild.id)
             if not(char.world == tracked_world or old_world == tracked_world):
@@ -117,20 +136,47 @@ class ServerLog:
             await self.bot.send_log_message(guild, embed=embed)
 
     async def on_character_guild_change(self, char: Character, old_guild: str):
-        await self.add_character_history(char.id, "guild", old_guild, char.guild_name)
+        """Called when a character is renamed.
+
+        Adds an entry to the character's history."""
+        await self.add_character_history(char.id, ChangeType.GUILD, old_guild, char.guild_name)
+
+    async def on_role_auto_deleted(self, role: discord.Role):
+        embed = discord.Embed(title="Automatic role deleted", colour=COLOUR_AUTOROLE_DELETE,
+                              description=f"Automatic role **{role.name}** deleted.")
+        entry = await self.get_audit_entry(role.guild, discord.AuditLogAction.role_delete, role)
+        if entry:
+            embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=get_user_avatar(entry.user))
+        await self.bot.send_log_message(role.guild, embed=embed)
+
+    async def on_role_joinable_deleted(self, role: discord.Role):
+        embed = discord.Embed(title="Group deleted", colour=COLOUR_JOINABLEROLE_DELETE,
+                              description=f"Joinable role **{role.name}** deleted.")
+        entry = await self.get_audit_entry(role.guild, discord.AuditLogAction.role_delete, role)
+        if entry and entry.user.id != self.bot.user.id:
+            embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=get_user_avatar(entry.user))
+        await self.bot.send_log_message(role.guild, embed=embed)
 
     async def on_watchlist_deleted(self, channel: discord.TextChannel, count: int):
+        """Called when a watchlist channel is deleted.
+
+        Announces it in the server log.
+        If the bot has permission to see the audit log, it will also show the user that deleted it."""
         embed = discord.Embed(title="Watchlist channel deleted", colour=COLOUR_WATCHLIST_DELETE,
                               description=f"Channel `#{channel.name}` was deleted. **{count}** entries were deleted.")
         entry = await self.get_audit_entry(channel.guild, discord.AuditLogAction.channel_delete, channel)
         if entry:
-            embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}",
-                             icon_url=get_user_avatar(entry.user))
+            embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=get_user_avatar(entry.user))
         await self.bot.send_log_message(channel.guild, embed=embed)
+    # endregion
 
+    # region Discord Events
     async def on_guild_emojis_update(self, guild: discord.Guild, before: List[discord.Emoji],
                                      after: List[discord.Emoji]):
         """Called every time an emoji is created, deleted or updated."""
+        def emoji_repr(_emoji: discord.Emoji):
+            fix = ":" if _emoji.require_colons else ""
+            return f"{fix}{_emoji.name}{fix}"
         embed = discord.Embed(colour=COLOUR_EMOJI_UPDATE)
         emoji: discord.Emoji = None
         # Emoji deleted
@@ -138,8 +184,7 @@ class ServerLog:
             emoji = discord.utils.find(lambda e: e not in after, before)
             if emoji is None:
                 return
-            fix = ":" if emoji.require_colons else ""
-            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
+            embed.set_author(name=f"{emoji_repr(emoji)} (ID: {emoji.id})", icon_url=emoji.url)
             embed.description = f"Emoji deleted."
             action = discord.AuditLogAction.emoji_delete
         # Emoji added
@@ -147,8 +192,7 @@ class ServerLog:
             emoji = discord.utils.find(lambda e: e not in before, after)
             if emoji is None:
                 return
-            fix = ":" if emoji.require_colons else ""
-            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
+            embed.set_author(name=f"{emoji_repr(emoji)} (ID: {emoji.id})", icon_url=emoji.url)
             embed.description = f"Emoji added."
             action = discord.AuditLogAction.emoji_create
         else:
@@ -161,18 +205,14 @@ class ServerLog:
                         break
             if emoji is None:
                 return
-            fix = ":" if emoji.require_colons else ""
-            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
-            embed.description = f"Emoji renamed from `{fix}{old_name}{fix}` to `{fix}{emoji.name}{fix}`"
+            embed.set_author(name=f"{emoji_repr(emoji)} (ID: {emoji.id})", icon_url=emoji.url)
+            embed.description = f"Emoji renamed from `{old_name}` to `{emoji.name}`"
             action = discord.AuditLogAction.emoji_update
-
-        # Find author
-        if action is not None:
+        if emoji:
             entry = await self.get_audit_entry(guild, action, emoji)
             if entry:
                 embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
                                  icon_url=get_user_avatar(entry.user))
-        if emoji:
             await self.bot.send_log_message(guild, embed=embed)
 
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
@@ -296,10 +336,9 @@ class ServerLog:
             else:
                 embed.description += f"Nickname changed from **{before.nick}** to **{after.nick}**"
             entry = await self.get_audit_entry(after.guild, discord.AuditLogAction.member_update, after)
-            if entry:
-                if entry.user.id != after.id:
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
+            if entry and entry.user.id != after.id:
+                icon_url = get_user_avatar(entry.user)
+                embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
         else:
             changes = False
         if changes:
@@ -316,10 +355,20 @@ class ServerLog:
                              icon_url=get_user_avatar(entry.user))
         await self.bot.send_log_message(guild, embed=embed)
 
+    # endregion
+
     @staticmethod
     async def get_audit_entry(guild: discord.Guild, action: discord.AuditLogAction,
                               target: Any=None) -> Optional[discord.AuditLogEntry]:
-        """Gets an audit log entry of the specified action type."""
+        """Gets an audit log entry of the specified action type.
+
+        The type of the action depends on the action.
+
+        :param guild: The guild where the audit log will be checked.
+        :param action: The action to filter.
+        :param target: The target to filter.
+        :return: The first matching audit log entry if found.
+        """
         if not guild.me.guild_permissions.view_audit_log:
             return
         now = dt.datetime.utcnow()
@@ -330,9 +379,19 @@ class ServerLog:
             if target is not None and entry.target.id == target.id:
                 return entry
 
-    async def add_character_history(self, char_id: int, change_type: str, before, after):
-        await self.bot.pool.execute("""INSERT INTO character_history(character_id, change_type, before, after)
-                                       values($1, $2, $3, $4)""", char_id, change_type, before, after)
+    async def add_character_history(self, char_id: int, change_type: ChangeType, before, after, author=None):
+        """Adds a character history entry to the database.
+
+        :param char_id: The affected character's id.
+        :param change_type: The type of change.
+        :param before: The previous value.
+        :param after:  The new value.
+        :param author: The user that caused this change.
+        """
+        author_id = author.id if author else None
+        await self.bot.pool.execute("""INSERT INTO character_history(character_id, change_type, before, after, user_id)
+                                       values($1, $2, $3, $4, $5)""",
+                                    char_id, change_type.value, before, after, author_id)
 
 
 def setup(bot):
