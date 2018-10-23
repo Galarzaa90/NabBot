@@ -1,4 +1,7 @@
 # Changelog
+## Version 1.7.2 (2018-10-23)
+- Deaths caused by arena creatuers are no longer announced.
+
 ## Version 1.7.1 (2018-10-12)
 - Fixed links in `/about` command.
 - Combine walks through fields and walks around fields into a single embed field.
