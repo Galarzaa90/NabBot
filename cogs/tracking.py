@@ -1172,10 +1172,12 @@ class Tracking:
             else:
                 killer_article = ""
 
-        if death.killer in ["death", "energy", "earth", "fire", "Pit Battler", "Pit Berserker", "Pit Blackling",
-                            "Pit Brawler", "Pit Condemned", "Pit Demon", "Pit Destroyer", "Pit Fiend",
-                            "Pit Groveller", "Pit Grunt", "Pit Lord", "Pit Maimer", "Pit Overlord", "Pit Reaver",
-                            "Pit Scourge"] and levels_lost == 0:
+        if death.killer.lower() in ["death", "energy", "earth", "fire", "pit battler", "pit berserker",
+                                    "pit blackling",
+                                    "pit brawler", "pit condemned", "pit demon", "pit destroyer", "pit fiend",
+                                    "pit groveller", "pit grunt", "pit lord", "pit maimer", "pit overlord",
+                                    "pit reaver",
+                                    "pit scourge"] and levels_lost == 0:
             # Skip element damage deaths unless player lost a level to avoid spam from arena deaths
             # This will cause a small amount of deaths to not be announced but it's probably worth the tradeoff
             return
