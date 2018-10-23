@@ -62,8 +62,8 @@ class Tracking:
                 online_characters[world].insert(0, current_char)
                 if not skip:
                     # Check for new death
-                    _char = await get_character(self.bot, current_char.name)
-                    await self.compare_deaths(_char)
+                    char = await get_character(self.bot, current_char.name)
+                    await self.compare_deaths(char)
                 else:
                     await asyncio.sleep(0.5)
             except NetworkError:

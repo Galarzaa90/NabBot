@@ -11,6 +11,7 @@ SETTINGS = {
     "world": {"title": "🌐 World", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "newschannel": {"title": "📰 News channel"},
     "eventschannel": {"title": "📣 Events channel"},
+    "serverlog": {"title": "📒 Server Log channel"},
     "levelschannel": {"title": "🌟☠ Tracking channel", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "minlevel": {"title": "📏 Min Announce Level", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "prefix": {"title": "❗ Prefix"},
@@ -76,24 +77,8 @@ class Settings:
 
         In this channel, pagination commands show more entries at once and command replies in general are longer."""
         current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "ask_channel")
-        current_channel = ctx.guild.get_channel(current_channel_id)
         if channel is None:
-            perms = None
-            if current_channel:
-                perms = current_channel.permissions_for(ctx.me)
-            ok = False
-            if current_channel_id is None:
-                current_value = f"None."
-            elif current_channel is None:
-                current_value = "Previous channel was deleted."
-            elif not perms.read_messages or not perms.send_messages:
-                current_value = f"{current_channel.mention}, but I can't use the channel."
-            else:
-                current_value = current_channel.mention
-                ok = True
-
-            if not ok:
-                current_value += f" By default, I'll use any channel named {config.ask_channel_name}."
+            current_value = self.get_current_channel(ctx, current_channel_id, default_name=config.ask_channel_name)
             await self.show_info_embed(ctx, current_value, "A channel's name or id, or `none`.", "channel/none")
             return
 
@@ -351,6 +336,45 @@ class Settings:
         await set_prefixes(ctx.pool, ctx.guild.id, sorted(prefixes, reverse=True))
 
     @checks.is_mod()
+    @settings.command(name="serverlog")
+    async def settings_serverlog(self, ctx: NabCtx, channel: str=None):
+        """Changes the channel used as the server log."""
+        current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "serverlog")
+        if channel is None:
+            current_value = self.get_current_channel(ctx, current_channel_id, default_name=config.log_channel_name)
+            await self.show_info_embed(ctx, current_value, "A channel's name or id, or `none`.", "channel/none")
+            return
+        if channel.lower() == "none":
+            if current_channel_id is None:
+                await ctx.send("There's no command channel set.")
+                return
+            message = await ctx.send(f"Are you sure you want to delete the set serverlog channel?")
+            new_value = 0
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new commands channel?")
+            new_value = new_channel.id
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        await set_server_property(ctx.pool, ctx.guild.id, "serverlog", new_value)
+        if new_value is 0:
+            await ctx.send(f"{ctx.tick(True)} The server log channel was deleted."
+                           f"I will still use any channel named **{config.ask_channel_name}**.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used as the server log.")
+
+    @checks.is_mod()
     @settings.command(name="welcome")
     async def settings_welcome(self, ctx: NabCtx, *, message: str = None):
         """Changes the message new members receive when joining.
@@ -488,39 +512,45 @@ class Settings:
         if isinstance(error, commands.BadArgument):
             await ctx.send(str(error))
 
-    def get_current_channel(self, ctx: NabCtx, current_channel_id, pm_fallback=False):
-        top_channel = self.bot.get_top_channel(ctx.guild)
+    @staticmethod
+    def get_current_channel(ctx: NabCtx, current_channel_id, *, pm_fallback=False, default_name=None):
+        """Displays information about the current stored channel.
+
+        :param ctx: The command context where this is called from.
+        :param current_channel_id: The currently saved id.
+        :param pm_fallback: Whether this falls back to PMs if the channel is invalid.
+        :param default_name: Whether this falls back to a channel with a certain name.
+        :return: A string representing the current state.
+        """
+        top_channel = ctx.bot.get_top_channel(ctx.guild)
         current_channel = ctx.guild.get_channel(current_channel_id)
         if current_channel:
             perms = current_channel.permissions_for(ctx.me)
         else:
             perms = discord.Permissions()
-        ok = False
         if current_channel_id is None and pm_fallback:
-            current_value = "Private Messages"
-            ok = True
+            return "Private Messages"
         elif current_channel_id == 0:
-            current_value = "Disabled."
-            ok = True
+            return "Disabled."
         elif current_channel_id is None:
-            current_value = "None,"
+            current_value = "None."
         elif current_channel is None:
             current_value = "None, previous channel was deleted."
         elif not perms.read_messages or not perms.send_messages:
             current_value = f"{current_channel.mention}, but I can't use the channel."
         else:
-            current_value = f"{current_channel.mention}"
-            ok = True
+            return f"{current_channel.mention}"
 
-        if not ok:
-            if pm_fallback:
-                current_value += " I will send direct messages meanwhile."
-            # This condition should be impossible to meet, because if the bot can't send messages on any channel,
-            # it wouldn't be able to reply to this command in the first place ¯\_(ツ)_/¯
-            elif top_channel is None:
-                current_value += " I have no channel to use."
-            else:
-                current_value += f" I will use {top_channel.mention} meanwhile."
+        if pm_fallback:
+            current_value += " I will send direct messages meanwhile."
+        # This condition should be impossible to meet, because if the bot can't send messages on any channel,
+        # it wouldn't be able to reply to this command in the first place ¯\_(ツ)_/¯
+        elif top_channel is None:
+            current_value += " I have no channel to use."
+        elif default_name:
+            current_value += f" By default I will use any channel named {default_name}."
+        else:
+            current_value += f" I will use {top_channel.mention} meanwhile."
         return current_value
 
 
