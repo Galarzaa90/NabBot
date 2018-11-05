@@ -758,7 +758,7 @@ class Tibia:
                         break
                     if row["world"] not in user_worlds:
                         continue
-                        
+
                     user = self._get_cached_user_(self, row["user_id"], user_cache, user_servers)
                     if user is None:
                         continue
@@ -1726,7 +1726,7 @@ class Tibia:
             await ctx.send("I'm having connection issues right now.")
             return
 
-        url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
+        url = 'https://www.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
         embed = discord.Embed(url=url, title=name.capitalize())
         if world.online == 0:
             embed.description = "This world is offline."
@@ -1881,7 +1881,7 @@ class Tibia:
         reply += ". {0.he_she} has {0.achievement_points:,} achievement points.".format(char)
 
         if char.guild is not None:
-            guild_url = url_guild+urllib.parse.quote(char.guild_name)
+            guild_url = url_guild + urllib.parse.quote(char.guild_name)
             reply += "\n{0.he_she} is __{1}__ of the [{2}]({3}).".format(char,
                                                                          char.guild_rank,
                                                                          char.guild_name,
