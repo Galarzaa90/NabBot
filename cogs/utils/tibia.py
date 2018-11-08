@@ -27,13 +27,12 @@ ERROR_DOESNTEXIST = 1
 ERROR_NOTINDATABASE = 2
 
 # Tibia.com URLs:
-url_character = "https://secure.tibia.com/community/?subtopic=characters&name="
-url_guild = "https://secure.tibia.com/community/?subtopic=guilds&page=view&GuildName="
-url_guild_online = "https://secure.tibia.com/community/?subtopic=guilds&page=view&onlyshowonline=1&"
-url_house = "https://secure.tibia.com/community/?subtopic=houses&page=view&houseid={id}&world={world}"
-url_highscores = "https://secure.tibia.com/community/?subtopic=highscores&world={0}&list={1}&profession={2}&currentpage={3}"
+url_character = "https://www.tibia.com/community/?subtopic=characters&name="
+url_guild = "https://www.tibia.com/community/?subtopic=guilds&page=view&GuildName="
+url_house = "https://www.tibia.com/community/?subtopic=houses&page=view&houseid={id}&world={world}"
+url_highscores = "https://www.tibia.com/community/?subtopic=highscores&world={0}&list={1}&profession={2}&currentpage={3}"
 
-tibia_logo = "http://static.tibia.com/images/global/general/apple-touch-icon-72x72.png"
+tibia_logo = "https://ssl-static-tibia.akamaized.net/images/global/general/apple-touch-icon-72x72.png"
 
 KNIGHT = ["knight", "elite knight", "ek", "k", "kina", "eliteknight", "elite"]
 PALADIN = ["paladin", "royal paladin", "rp", "p", "pally", "royalpaladin", "royalpally"]
@@ -90,7 +89,6 @@ class Character:
     FREE_ACCOUNT = 0
     PREMIUM_ACCOUNT = 1
 
-    URL_CHAR = "https://secure.tibia.com/community/?subtopic=characters&name="
 
     def __init__(self, name: str, world: str, **kwargs):
         self.name = name
@@ -166,12 +164,12 @@ class Character:
 
     @classmethod
     def get_url(cls, name: str) -> str:
-        """Returns the url pointing to the character's tibia.com page
+        """Returns the URL pointing to the character's tibia.com page
 
         :param name: Name of the character
         :return: url of the character's information
         """
-        return cls.URL_CHAR + urllib.parse.quote(name.encode('iso-8859-1'))
+        return url_character + urllib.parse.quote(name.encode('iso-8859-1'))
 
     @classmethod
     def parse_from_tibiadata(cls, content_json: Dict):

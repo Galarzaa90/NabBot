@@ -1588,7 +1588,7 @@ class Tibia:
             await ctx.send("I'm having connection issues right now.")
             return
 
-        url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
+        url = 'https://www.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
         embed = discord.Embed(url=url, title=name.capitalize())
         if world.online == 0:
             embed.description = "This world is offline."
