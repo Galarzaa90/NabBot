@@ -612,7 +612,7 @@ class Tracking:
                 if db_char is not None:
                     owner = self.bot.get_member(db_char["owner"])
                     # Char already registered to this user
-                    if owner.id == user.id:
+                    if owner and owner.id == user.id:
                         existent.append("{0.name} ({0.world})".format(char))
                         continue
                     else:
