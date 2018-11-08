@@ -49,7 +49,7 @@ group_images: Dict[str, Image.Image] = {'Green Djinn': Image.open("./images/Gree
                                         'Unknown': Image.open("./images/Unknown.png")}
 
 scan_speed = [0.035]*10
-MIN_HEIGHT = 27  # Images with a width 
+MIN_HEIGHT = 27  # Images with a width
 MIN_WIDTH = 34   # or height smaller than this are not considered.
 
 Pixel = Tuple[int, ...]
@@ -61,14 +61,17 @@ else:
     log.error("Could not find loot.db")
     exit()
 
+
 class LootScanException(commands.CommandError):
     pass
+
 
 class Loot:
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.processing_users = []
 
+    @checks.can_embed()
     @commands.group(invoke_without_command=True, case_insensitive=True)
     async def loot(self, ctx: NabCtx):
         """Scans an image of a container looking for Tibia items and shows an approximate loot value.
@@ -200,11 +203,11 @@ class Loot:
         # Short message
         short_message = f"I've finished parsing your image {ctx.author.mention}." \
                         f"\nThe total value is {total_value:,} gold coins."
-        if not ctx.long:
+        if not await ctx.is_long():
             short_message += "\nI've also sent you a PM with detailed information."
 
         # Send on ask_channel or PM
-        if ctx.long:
+        if await ctx.is_long():
             await ctx.send(short_message, embed=embed, file=discord.File(loot_image_overlay, "results.png"))
         else:
             try:
@@ -400,7 +403,7 @@ async def loot_scan(ctx: NabCtx, image: bytes, status_msg: discord.Message):
                       'sizeY': unknown_image_crop.size[1],
                       'size': unknown_image_size}
             found_item_number = 1
-        if type(result) == dict:
+        if isinstance(result, dict):
             if result['name'] in loot_list:
                 loot_list[result['name']]['count'] += found_item_number
             else:

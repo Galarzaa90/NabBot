@@ -37,31 +37,31 @@ level_messages = [
      lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
     [200, "**{name}** is level {level}. Stick them with the pointy end! 🗡️",
      lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
-    [200, "**{name}** is a fat level {level} meatwall now. BLOCK FOR ME SENPAI.", 
+    [200, "**{name}** is a fat level {level} meatwall now. BLOCK FOR ME SENPAI.",
      lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
     # RP Only
     [50, "**{name}** has reached level {level}. But {he_she} still misses arrows...",
      lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
     [150, "Congrats on level {level}, **{name}**. You can stop running around now.",
      lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
-    [150, "**{name}** is level {level}. Bullseye!🎯", 
+    [150, "**{name}** is level {level}. Bullseye!🎯",
      lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
     # MS Only
     [50, "Level {level}, **{name}**? Nice. Don't you wish you were a druid though?",
      lambda min_level, level, voc, *_: level >= 100 and "Sorcerer" in voc],
-    [150, "**{name}** is level {level}. Watch out for {his_her} SDs!", 
+    [150, "**{name}** is level {level}. Watch out for {his_her} SDs!",
      lambda min_level, level, voc, *_: level >= 45 and "Sorcerer" in voc],
-    [150, "**{name}** got level {level}. If {he_she} only stopped missing beams.", 
+    [150, "**{name}** got level {level}. If {he_she} only stopped missing beams.",
      lambda min_level, level, voc, *_: level >= 23 and "Sorcerer" in voc],
     [150,
-     "**{name}** is level {level}. 🔥🔥BURN THEM ALL🔥🔥", 
+     "**{name}** is level {level}. 🔥🔥BURN THEM ALL🔥🔥",
      lambda min_level, level, voc, *_: level >= 100 and "Sorcerer" in voc],
     # ED Only
-    [50, "**{name}** has reached level {level}. Flower power!🌼", 
+    [50, "**{name}** has reached level {level}. Flower power!🌼",
      lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
-    [150, "Congrats on level {level}, **{name}**. Sio plz.", 
+    [150, "Congrats on level {level}, **{name}**. Sio plz.",
      lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
-    [150, "**{name}** is level {level}. 🔥🔥BURN THEM ALL... Or... Give them frostbite...?❄❄", 
+    [150, "**{name}** is level {level}. 🔥🔥BURN THEM ALL... Or... Give them frostbite...?❄❄",
      lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
     # Level specific
     [20000, "**{name}** is level {level}! UMPs so good 🍷",
@@ -74,28 +74,28 @@ level_messages = [
      lambda min_level, level, voc, *_: level == 75],
     [30000, "**{name}** is level {level}! You can become a ninja now!👤",
      lambda min_level, level, voc, *_: level == 80 and "Paladin" in voc],
-    [30000, "**{name}** is level {level}! Time to get some crystalline arrows!🏹", 
+    [30000, "**{name}** is level {level}! Time to get some crystalline arrows!🏹",
      lambda min_level, level, voc, *_: level == 90 and "Paladin" in voc],
-    [20000, "Level {level}, **{name}**? You're finally important enough for me to notice!", 
+    [20000, "Level {level}, **{name}**? You're finally important enough for me to notice!",
      lambda min_level, level, voc, *_: level == min_level],
-    [20000, "Congratulations on level {level} **{name}**! Now you're relevant to me. As relevant a human can be anyway", 
+    [20000, "Congratulations on level {level} **{name}**! Now you're relevant to me. As relevant a human can be anyway",
      lambda min_level, level, voc, *_: level == min_level],
     [20000, "**{name}** is now level {level}! Time to go berserk! 💢",
      lambda min_level, level, voc, *_: level == 35 and "Knight" in voc],
     [20000, "Congratulations on level {level} **{name}**! Now you can become an umbral master, but is your"
-     " bank account ready?💸",  
+     " bank account ready?💸",
      lambda min_level, level, voc, *_: level == 250],
     [30000, "**{name}** is level {level}!!!!\r\n" +
-     "Sweet, sweet triple digits!", 
+     "Sweet, sweet triple digits!",
      lambda min_level, level, voc, *_: level == 100],
     [20000, "**{name}** is level {level}!!!!\r\n" +
-     "WOOO", 
+     "WOOO",
      lambda min_level, level, voc, *_: level % 100 == 0],
     [20000, "**{name}** is level {level}!!!!\r\n" +
-     "yaaaay milestone!", 
+     "yaaaay milestone!",
      lambda min_level, level, voc, *_: level % 100 == 0],
     [20000, "**{name}** is level {level}!!!!\r\n" +
-     "holy crap!", 
+     "holy crap!",
      lambda min_level, level, voc, *_: level % 100 == 0]]
 
 # Message list for announce death.
@@ -163,15 +163,15 @@ death_messages_monster = [
      "sio {him_her}self.",
      lambda min_level, level, voc, killer, levels_lost: "Druid" in voc],
     [600, "**{name}** ({level}) died to {killer_article}**{killer}**. \"Don't worry\" they said, \"They are weaker\" "
-     "they said.", 
+     "they said.",
      lambda min_level, level, voc, killer, levels_lost: killer in ["weakened frazzlemaw", "enfeebled silencer"]],
     [2000, "Another paladin bites the dust! **{killer}** strikes again! Rest in peace **{name}** ({level}).",
      lambda min_level, level, voc, killer, levels_lost: "Paladin" in voc and killer == "Lady Tenebris"],
     [2000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! 👻",
      lambda min_level, level, voc, killer, levels_lost: killer == "something evil"],
-    [2000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.", 
+    [2000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.",
      lambda min_level, level, voc, killer, levels_lost: killer == "death"],
-    [2000, "They did warn you **{name}** ({level}), you *did* burn 🔥🐲.", 
+    [2000, "They did warn you **{name}** ({level}), you *did* burn 🔥🐲.",
      lambda min_level, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord"]],
     [2000, "**{name}** ({level}) died from {killer_article}**{killer}**. Someone forgot the safeword.😏",
      lambda min_level, level, voc, killer, levels_lost: killer == "choking fear"],
@@ -206,7 +206,7 @@ death_messages_monster = [
     [2000, "**{name}** ({level}) died to {killer_article}**{killer}**! Don't worry, {he_she} didn't have a soul anyway",
      lambda min_level, level, voc, killer, levels_lost: killer == "souleater"],
     [150, "Oh look at that, rest in peace **{name}** ({level}),  ^that ^**{killer}** really got you. "
-          "Hope you get your level back.", 
+          "Hope you get your level back.",
      lambda min_level, level, voc, killer, levels_lost: levels_lost > 0]
 ]
 
@@ -303,17 +303,6 @@ def split_message(message: str, limit: int=2000):
         if new_message:
             message_list.append(new_message)
         return message_list
-
-
-async def send_messageEx(bot, dest, message, embed=False):
-    message = split_message(message)
-    for msg in message:
-        if embed:
-            msg_embed = discord.Embed()
-            msg_embed.description = msg
-            await bot.send_message(dest, embed=msg_embed)
-        else:
-            await bot.send_message(dest, msg)
 
 
 def html_to_markdown(html_string):

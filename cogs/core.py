@@ -1,22 +1,67 @@
+import asyncio
 import datetime as dt
-from typing import List
+import random
 
 import discord
 from discord.ext import commands
 
+from cogs.utils.database import get_server_property
+from nabbot import NabBot
 from .utils.checks import CannotEmbed
-from .utils import context
-from .utils.database import userDatabase, get_server_property
-from .utils.tibia import get_voc_abb_and_emoji
-from .utils import log, join_list, get_user_avatar, get_region_string
+from .utils import context, join_list
+from .utils import log
 from .utils import config
 
 
 class Core:
     """Cog with NabBot's main functions."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: NabBot):
         self.bot = bot
+        self.game_update_task = self.bot.loop.create_task(self.game_update())
+
+    async def game_update(self):
+        """Updates the bot's status.
+
+        A random status is selected every 20 minutes.
+        """
+        # Entries are prefixes with "Playing "
+        # Entries starting with "w:" are prefixed with "Watching "
+        # Entries starting with "l:" are prefixed with "Listening to "
+        presence_list = [
+            # Playing _____
+            "Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2018", "Russian roulette",
+            "with my toy humans", "with fire🔥", "God", "innocent", "the part", "hard to get",
+            "with my human minions", "Singularity", "Portal 3", "Dank Souls", "you", "01101110", "dumb",
+            "with GLaDOS 💙", "with myself", "with your heart", "League of Dota", "my cards right",
+            "out your death in my head",
+            # Watching ____
+            "w:you", "w:the world", "w:my magic ball", "w:https://nabbot.xyz", "w:you from behind",
+            # Listening to ____
+            "l:the voices in my head", "l:your breath", "l:the screams", "complaints"
+        ]
+        await self.bot.wait_until_ready()
+        while not self.bot.is_closed():
+            try:
+                if random.randint(0, 9) >= 7:
+                    await self.bot.change_presence(activity=discord.Activity(name=f"{len(self.bot.guilds)} servers",
+                                                                             type=discord.ActivityType.watching))
+                else:
+                    choice = random.choice(presence_list)
+                    activity_type = discord.ActivityType.playing
+                    if choice.startswith("w:"):
+                        choice = choice[2:]
+                        activity_type = discord.ActivityType.watching
+                    elif choice.startswith("l:"):
+                        choice = choice[2:]
+                        activity_type = discord.ActivityType.listening
+                    await self.bot.change_presence(activity=discord.Activity(name=choice, type=activity_type))
+            except asyncio.CancelledError:
+                break
+            except discord.DiscordException:
+                log.exception("Task: game_update")
+                continue
+            await asyncio.sleep(60*20)  # Change game every 20 minutes
 
     async def on_command_error(self, ctx: context.NabCtx, error):
         """Handles command errors"""
@@ -51,6 +96,15 @@ class Core:
                     await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
                                    f'{error.original}```')
 
+    async def on_command(self, ctx):
+        command = ctx.command.qualified_name
+        guild_id = ctx.guild.id if ctx.guild is not None else None
+        query = """INSERT INTO command(server_id, channel_id, user_id, date, prefix, command)
+                   VALUES ($1, $2, $3, $4, $5, $6)
+                """
+        await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
+                                    ctx.message.created_at.replace(tzinfo=dt.timezone.utc), ctx.prefix, command)
+
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
         log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(guild))
@@ -62,13 +116,17 @@ class Core:
                   f"‣ You can configure me using: `{config.command_prefix[0]}settings`\n" \
                   f"‣ You can set a world for me to track by using `{config.command_prefix[0]}settings world`\n" \
                   f"‣ If you want a logging channel, create a channel named `{config.log_channel_name}`\n" \
-                  f"‣ If you need help, join my support server: **<https://discord.me/NabBot>**\n" \
+                  f"‣ If you need help, join my support server: **<https://support.nabbot.xyz>**\n" \
                   f"‣ For more information and links in: `{config.command_prefix[0]}about`"
-        for member in guild.members:
-            if member.id in self.bot.members:
-                self.bot.members[member.id].append(guild.id)
-            else:
-                self.bot.members[member.id] = [guild.id]
+        async with self.bot.pool.acquire() as conn:
+            for member in guild.members:
+                if member.id in self.bot.members:
+                    self.bot.members[member.id].append(guild.id)
+                else:
+                    self.bot.members[member.id] = [guild.id]
+                await conn.execute("INSERT INTO user_server(user_id, server_id) VALUES($1, $2)", member.id, guild.id)
+            await conn.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1, $2, $3)",
+                               guild.id, len(self.bot.guilds), "add")
         try:
             channel = self.bot.get_top_channel(guild)
             if channel is None:
@@ -84,48 +142,34 @@ class Core:
         for member in guild.members:
             if member.id in self.bot.members:
                 self.bot.members[member.id].remove(guild.id)
+        await self.bot.pool.execute("DELETE FROM user_server WHERE server_id = $1 ", guild.id)
+        await self.bot.pool.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1,$2,$3)",
+                                    guild.id, len(self.bot.guilds), "remove")
 
     async def on_member_join(self, member: discord.Member):
         """ Called when a member joins a guild (server) the bot is in."""
-        log.info("{0.display_name} (ID: {0.id}) joined {0.guild.name}".format(member))
         # Updating member list
         if member.id in self.bot.members:
             self.bot.members[member.id].append(member.guild.id)
         else:
             self.bot.members[member.id] = [member.guild.id]
+        await self.bot.pool.execute("INSERT INTO user_server(user_id, server_id) VALUES($1, $2)",
+                                    member.id, member.guild.id)
 
-        embed = discord.Embed(description="{0.mention} joined.".format(member), color=discord.Color.green())
-        embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member),
-                         icon_url=get_user_avatar(member))
-
+        if member.bot:
+            return
+        world = self.bot.tracked_worlds.get(member.guild.id)
         previously_registered = ""
         # If server is not tracking worlds, we don't check the database
-        if member.guild.id in config.lite_servers or self.bot.tracked_worlds.get(member.guild.id) is None:
-            await self.bot.send_log_message(member.guild, embed=embed)
-        else:
-            # Check if user already has characters registered and announce them on log_channel
-            # This could be because he rejoined the server or is in another server tracking the same worlds
-            world = self.bot.tracked_worlds.get(member.guild.id)
-            previously_registered = ""
-            if world is not None:
-                c = userDatabase.cursor()
-                try:
-                    c.execute("SELECT name, vocation, ABS(level) as level, guild "
-                              "FROM chars WHERE user_id = ? and world = ?", (member.id, world,))
-                    results = c.fetchall()
-                    if len(results) > 0:
-                        previously_registered = "\n\nYou already have these characters in {0} registered to you: *{1}*"\
-                            .format(world, join_list([r["name"] for r in results], ", ", " and "))
-                        characters = ["\u2023 {name} - Level {level} {voc} - **{guild}**"
-                                      .format(**c, voc=get_voc_abb_and_emoji(c["vocation"])) for c in results]
-                        embed.add_field(name="Registered characters", value="\n".join(characters))
-                finally:
-                    c.close()
-            self.bot.dispatch("character_change", member.id)
-            await self.bot.send_log_message(member.guild, embed=embed)
+        if member.guild.id not in self.bot.config.lite_servers and world is not None:
+            rows = await self.bot.pool.fetch("""SELECT name, vocation, abs(level) as level, guild
+                                                FROM "character" WHERE user_id = $1 AND world = $2""", member.id, world)
+            if rows:
+                characters = join_list([r['name'] for r in rows], ', ', ' and ')
+                previously_registered = f"\n\nYou already have these characters in {world} registered: *{characters}*"
 
-        welcome_message = get_server_property(member.guild.id, "welcome")
-        welcome_channel_id = get_server_property(member.guild.id, "welcome_channel", is_int=True)
+        welcome_message = await get_server_property(self.bot.pool, member.guild.id, "welcome")
+        welcome_channel_id = await get_server_property(self.bot.pool, member.guild.id, "welcome_channel")
         if welcome_message is None:
             return
         message = welcome_message.format(user=member, server=member.guild, bot=self.bot, owner=member.guild.owner)
@@ -148,199 +192,12 @@ class Core:
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
-        now = dt.datetime.utcnow()
         self.bot.members[member.id].remove(member.guild.id)
-        bot_member: discord.Member = member.guild.me
+        await self.bot.pool.execute("DELETE FROM user_server WHERE user_id = $1 AND server_id = $2",
+                                    member.id, member.guild.id)
 
-        embed = discord.Embed(description="Left the server or was kicked", colour=discord.Colour(0xffff00))
-        embed.set_author(name="{0.name}#{0.discriminator} (ID: {0.id})".format(member), icon_url=get_user_avatar(member))
-
-        # If bot can see audit log, he can see if it was a kick or member left on it's own
-        if bot_member.guild_permissions.view_audit_log:
-            async for entry in member.guild.audit_logs(limit=20, reverse=False, action=discord.AuditLogAction.kick,
-                                                       after=now-dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                if abs((entry.created_at-now).total_seconds()) >= 5:
-                    # After is broken in the API, so we must check if entry is too old.
-                    break
-                if entry.target.id == member.id:
-                    embed.description = "Kicked"
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
-                                     icon_url=get_user_avatar(entry.user))
-                    embed.colour = discord.Colour(0xff0000)
-                    if entry.reason:
-                        embed.description += f"\n**Reason:** {entry.reason}"
-                    await self.bot.send_log_message(member.guild, embed=embed)
-                    return
-            embed.description = "Left the server"
-            await self.bot.send_log_message(member.guild, embed=embed)
-            return
-        # Otherwise, we are not certain
-        await self.bot.send_log_message(member.guild, embed=embed)
-
-    async def on_member_ban(self, guild: discord.Guild, user: discord.User):
-        """Called when a member is banned from a guild."""
-        now = dt.datetime.utcnow()
-        bot_member: discord.Member = guild.me
-
-        embed = discord.Embed(description="Banned", color=discord.Color(0x7a0d0d))
-        embed.set_author(name="{0.name}#{0.discriminator}".format(user), icon_url=get_user_avatar(user))
-
-        # If bot can see audit log, we can get more details of the ban
-        if bot_member.guild_permissions.view_audit_log:
-            async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.ban,
-                                                after=now-dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                if abs((entry.created_at-now).total_seconds()) >= 5:
-                    # After is broken in the API, so we must check if entry is too old.
-                    break
-                if entry.target.id == user.id:
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
-                                     icon_url=get_user_avatar(entry.user))
-                    if entry.reason:
-                        embed.description += f"\n**Reason:** {entry.reason}"
-                    break
-        await self.bot.send_log_message(guild, embed=embed)
-
-    async def on_member_unban(self, guild: discord.Guild, user: discord.User):
-        """Called when a member is unbanned from a guild"""
-        now = dt.datetime.utcnow()
-        bot_member: discord.Member = guild.me
-
-        embed = discord.Embed(description="Unbanned", color=discord.Color(0xff9000))
-        embed.set_author(name="{0.name}#{0.discriminator} (ID {0.id})".format(user), icon_url=get_user_avatar(user))
-
-        if bot_member.guild_permissions.view_audit_log:
-            async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.unban,
-                                                after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                if abs((entry.created_at - now).total_seconds()) >= 5:
-                    # After is broken in the API, so we must check if entry is too old.
-                    break
-                if entry.target.id == user.id:
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
-                                     icon_url=get_user_avatar(entry.user))
-                    break
-        await self.bot.send_log_message(guild, embed=embed)
-
-    async def on_member_update(self, before: discord.Member, after: discord.Member):
-        """Called every time a member is updated"""
-        now = dt.datetime.utcnow()
-        guild = after.guild
-        bot_member = guild.me
-
-        embed = discord.Embed(description=f"{after.mention}: ", color=discord.Colour.blue())
-        embed.set_author(name=f"{after.name}#{after.discriminator} (ID: {after.id})", icon_url=get_user_avatar(after))
-        changes = True
-        if f"{before.name}#{before.discriminator}" != f"{after.name}#{after.discriminator}":
-            embed.description += "Name changed from **{0.name}#{0.discriminator}** to **{1.name}#{1.discriminator}**."\
-                .format(before, after)
-        elif before.nick != after.nick:
-            if before.nick is None:
-                embed.description += f"Nickname set to **{after.nick}**"
-            elif after.nick is None:
-                embed.description += f"Nickname **{before.nick}** deleted"
-            else:
-                embed.description += f"Nickname changed from **{before.nick}** to **{after.nick}**"
-            if bot_member.guild_permissions.view_audit_log:
-                async for entry in guild.audit_logs(limit=10, reverse=False, action=discord.AuditLogAction.member_update,
-                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                    if abs((entry.created_at - now).total_seconds()) >= 5:
-                        # After is broken in the API, so we must check if entry is too old.
-                        break
-                    if entry.target.id == after.id:
-                        # If the user changed their own nickname, no need to specify
-                        if entry.user.id == after.id:
-                            break
-                        icon_url = get_user_avatar(entry.user)
-                        embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
-                        break
-        else:
-            changes = False
-        if changes:
-            await self.bot.send_log_message(after.guild, embed=embed)
-        return
-
-    async def on_guild_emojis_update(self, guild: discord.Guild, before: List[discord.Emoji],
-                                     after: List[discord.Emoji]):
-        """Called every time an emoji is created, deleted or updated."""
-        now = dt.datetime.utcnow()
-        embed = discord.Embed(color=discord.Color.dark_orange())
-        emoji: discord.Emoji = None
-        # Emoji deleted
-        if len(before) > len(after):
-            emoji = discord.utils.find(lambda e: e not in after, before)
-            if emoji is None:
-                return
-            fix = ":" if emoji.require_colons else ""
-            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
-            embed.description = f"Emoji deleted."
-            action = discord.AuditLogAction.emoji_delete
-        # Emoji added
-        elif len(after) > len(before):
-            emoji = discord.utils.find(lambda e: e not in before, after)
-            if emoji is None:
-                return
-            fix = ":" if emoji.require_colons else ""
-            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
-            embed.description = f"Emoji added."
-            action = discord.AuditLogAction.emoji_create
-        else:
-            old_name = ""
-            for new_emoji in after:
-                for old_emoji in before:
-                    if new_emoji == old_emoji and new_emoji.name != old_emoji.name:
-                        old_name = old_emoji.name
-                        emoji = new_emoji
-                        break
-            if emoji is None:
-                return
-            fix = ":" if emoji.require_colons else ""
-            embed.set_author(name=f"{fix}{emoji.name}{fix} (ID: {emoji.id})", icon_url=emoji.url)
-            embed.description = f"Emoji renamed from `{fix}{old_name}{fix}` to `{fix}{emoji.name}{fix}`"
-            action = discord.AuditLogAction.emoji_update
-
-        # Find author
-        if action is not None and guild.me.guild_permissions.view_audit_log:
-            async for entry in guild.audit_logs(limit=10, reverse=False, action=action,
-                                                after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                if abs((entry.created_at - now).total_seconds()) >= 5:
-                    # After is broken in the API, so we must check if entry is too old.
-                    break
-                if entry.target.id == emoji.id:
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
-                    break
-        if emoji:
-            await self.bot.send_log_message(guild, embed=embed)
-
-    async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
-        """Called every time a guild is updated"""
-        now = dt.datetime.utcnow()
-        guild = after
-        bot_member = guild.me
-
-        embed = discord.Embed(color=discord.Colour(value=0x9b3ee8))
-        embed.set_author(name=after.name, icon_url=after.icon_url)
-
-        changes = True
-        if before.name != after.name:
-            embed.description = "Name changed from **{0.name}** to **{1.name}**".format(before, after)
-        elif before.region != after.region:
-            embed.description = "Region changed from **{0}** to **{1}**".format(get_region_string(before.region),
-                                                                                get_region_string(after.region))
-        elif before.icon_url != after.icon_url:
-            embed.description = "Icon changed"
-            embed.set_thumbnail(url=after.icon_url)
-        elif before.owner_id != after.owner_id:
-            embed.description = f"Ownership transferred to {after.owner.mention}"
-        else:
-            changes = False
-        if changes:
-            if bot_member.guild_permissions.view_audit_log:
-                async for entry in guild.audit_logs(limit=1, reverse=False, action=discord.AuditLogAction.guild_update,
-                                                    after=now - dt.timedelta(0, 5)):  # type: discord.AuditLogEntry
-                    icon_url = get_user_avatar(entry.user)
-                    embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user), icon_url=icon_url)
-                    break
-            await self.bot.send_log_message(after, embed=embed)
+    def __unload(self):
+        self.game_update_task.cancel()
 
 
 def setup(bot):

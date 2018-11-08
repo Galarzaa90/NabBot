@@ -4,13 +4,14 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks, config
 from .utils.context import NabCtx
-from .utils.database import set_server_property, get_server_property
+from .utils.database import get_server_property, set_server_property, get_prefixes, set_prefixes
 from .utils.tibia import tibia_worlds
 
 SETTINGS = {
     "world": {"title": "🌐 World", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "newschannel": {"title": "📰 News channel"},
     "eventschannel": {"title": "📣 Events channel"},
+    "serverlog": {"title": "📒 Server Log channel"},
     "levelschannel": {"title": "🌟☠ Tracking channel", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "minlevel": {"title": "📏 Min Announce Level", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "prefix": {"title": "❗ Prefix"},
@@ -64,9 +65,8 @@ class Settings:
         embed = discord.Embed(title=f"{ctx.me.display_name} settings", colour=discord.Color.blurple(),
                               description="Use the subcommands to change the settings for this server.")
         for name, info in SETTINGS.items():
-            if "check" in info:
-                if not info["check"](ctx):
-                    continue
+            if "check" in info and not info["check"](ctx):
+                continue
             embed.add_field(name=info["title"], value=f"`{ctx.clean_prefix}{ctx.invoked_with} {name}`")
         await ctx.send(embed=embed)
 
@@ -76,26 +76,9 @@ class Settings:
         """Changes the channel where longer replies for commands are given.
 
         In this channel, pagination commands show more entries at once and command replies in general are longer."""
-        current_channel_id = get_server_property(ctx.guild.id, "ask_channel", is_int=True)
-        current_channel = ctx.guild.get_channel(current_channel_id)
+        current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "ask_channel")
         if channel is None:
-            if current_channel:
-                perms = current_channel.permissions_for(ctx.me)
-            else:
-                perms = discord.Permissions()
-            ok = False
-            if current_channel_id is None:
-                current_value = f"None."
-            elif current_channel is None:
-                current_value = "Previous channel was deleted."
-            elif not perms.read_messages or not perms.send_messages:
-                current_value = f"{current_channel.mention}, but I can't use the channel."
-            else:
-                current_value = current_channel.mention
-                ok = True
-
-            if not ok:
-                current_value += f" By default, I'll use any channel named {config.ask_channel_name}."
+            current_value = self.get_current_channel(ctx, current_channel_id, default_name=config.ask_channel_name)
             await self.show_info_embed(ctx, current_value, "A channel's name or id, or `none`.", "channel/none")
             return
 
@@ -122,7 +105,7 @@ class Settings:
             await ctx.message.delete()
             return
 
-        set_server_property(ctx.guild.id, "ask_channel", new_value)
+        await set_server_property(ctx.pool, ctx.guild.id, "ask_channel", new_value)
         if new_value is 0:
             await ctx.send(f"{ctx.tick(True)} The command channel was deleted."
                            f"I will still use any channel named **{config.ask_channel_name}**.")
@@ -143,7 +126,7 @@ class Settings:
         def yes_no(choice: bool):
             return "Yes" if choice else "No"
         if option is None:
-            current = get_server_property(ctx.guild.id, "commandsonly", is_int=True)
+            current = await get_server_property(ctx.pool, ctx.guild.id, "commandsonly")
             if current is None:
                 current_value = f"{yes_no(config.ask_channel_delete)} (Global default)"
             else:
@@ -151,10 +134,10 @@ class Settings:
             await self.show_info_embed(ctx, current_value, "yes/no", "yes/no")
             return
         if option.lower() == "yes":
-            set_server_property(ctx.guild.id, "commandsonly", True)
+            await set_server_property(ctx.pool, ctx.guild.id, "commandsonly", True)
             await ctx.send(f"{ctx.tick(True)} I will delete non-commands in the command channel from now on.")
         elif option.lower() == "no":
-            set_server_property(ctx.guild.id, "commandsonly", False)
+            await set_server_property(ctx.pool, ctx.guild.id, "commandsonly", False)
             await ctx.send(f"{ctx.tick(True)} I won't delete non-commands in the command channel from now on.")
         else:
             await ctx.send("That's not a valid option, try **yes** or **no**.")
@@ -169,7 +152,7 @@ class Settings:
 
         If this is disabled, users that subscribed to the event will still receive notifications via PM.
         """
-        current_channel_id = get_server_property(ctx.guild.id, "events_channel", is_int=True, default=0)
+        current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "events_channel", default=0)
         if channel is None:
             current_value = self.get_current_channel(ctx, current_channel_id)
             await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")
@@ -197,7 +180,7 @@ class Settings:
             await ctx.message.delete()
             return
 
-        set_server_property(ctx.guild.id, "events_channel", new_value)
+        await set_server_property(ctx.pool, ctx.guild.id, "events_channel", new_value)
         if new_value is 0:
             await ctx.send(f"{ctx.tick(True)} The events channel has been disabled.")
         else:
@@ -214,7 +197,7 @@ class Settings:
 
         If this is disabled, Announcements won't be made, but there will still be tracking.
         """
-        current_channel_id = get_server_property(ctx.guild.id, "levels_channel", is_int=True)
+        current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "levels_channel")
         if channel is None:
             current_value = self.get_current_channel(ctx, current_channel_id)
             await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")
@@ -242,7 +225,7 @@ class Settings:
             await ctx.message.delete()
             return
 
-        set_server_property(ctx.guild.id, "levels_channel", new_value)
+        await set_server_property(ctx.pool, ctx.guild.id, "levels_channel", new_value)
         if new_value is 0:
             await ctx.send(f"{ctx.tick(True)} The level & deaths channel has been disabled.")
         else:
@@ -254,7 +237,7 @@ class Settings:
         """Sets the minimum level for death and level up announcements.
 
         Level ups and deaths under the minimum level are still and can be seen by checking the character directly."""
-        current_level = get_server_property(ctx.guild.id, "announce_level", is_int=True)
+        current_level = await get_server_property(ctx.pool, ctx.guild.id, "announce_level")
         if level is None:
             if current_level is None:
                 current_value = f"`{config.announce_threshold}` (global default)"
@@ -264,7 +247,7 @@ class Settings:
         if level < 1:
             return await ctx.send(f"{ctx.tick(False)} Level can't be lower than 1.")
 
-        set_server_property(ctx.guild.id, "announce_level", level)
+        await set_server_property(ctx.pool, ctx.guild.id, "announce_level", level)
         await ctx.send(f"{ctx.tick()} Minimum announce level has been set to `{level}`.")
 
     @checks.is_mod()
@@ -275,7 +258,7 @@ class Settings:
         This is where all news and articles posted in Tibia.com will be announced.
         If the assigned channel is deleted or forbidden, the top channel will be used.
         """
-        current_channel_id = get_server_property(ctx.guild.id, "news_channel", is_int=True, default=0)
+        current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "news_channel", default=0)
         if channel is None:
             current_value = self.get_current_channel(ctx, current_channel_id)
             await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")
@@ -303,7 +286,7 @@ class Settings:
             await ctx.message.delete()
             return
 
-        set_server_property(ctx.guild.id, "news_channel", new_value)
+        await set_server_property(ctx.pool, ctx.guild.id, "news_channel", new_value)
         if new_value is 0:
             await ctx.send(f"{ctx.tick(True)} The news channel has been disabled.")
         else:
@@ -323,7 +306,9 @@ class Settings:
         Multiple words also require using quotes.
 
         Mentioning the bot is always a valid command and can't be changed."""
-        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=list(config.command_prefix))
+        prefixes = await get_prefixes(ctx.pool, ctx.guild.id)
+        if prefixes is None:
+            prefixes = list(config.command_prefix)
         if prefix is None:
             current_value = ", ".join(f"`{p}`" for p in prefixes) if len(prefixes) > 0 else "Mentions only"
             await self.show_info_embed(ctx, current_value, "Any text", "prefix")
@@ -348,7 +333,46 @@ class Settings:
         else:
             prefixes.append(prefix)
             await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
-        set_server_property(ctx.guild.id, "prefixes", sorted(prefixes, reverse=True), serialize=True)
+        await set_prefixes(ctx.pool, ctx.guild.id, sorted(prefixes, reverse=True))
+
+    @checks.is_mod()
+    @settings.command(name="serverlog")
+    async def settings_serverlog(self, ctx: NabCtx, channel: str=None):
+        """Changes the channel used as the server log."""
+        current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "serverlog")
+        if channel is None:
+            current_value = self.get_current_channel(ctx, current_channel_id, default_name=config.log_channel_name)
+            await self.show_info_embed(ctx, current_value, "A channel's name or id, or `none`.", "channel/none")
+            return
+        if channel.lower() == "none":
+            if current_channel_id is None:
+                await ctx.send("There's no command channel set.")
+                return
+            message = await ctx.send(f"Are you sure you want to delete the set serverlog channel?")
+            new_value = 0
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new commands channel?")
+            new_value = new_channel.id
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        await set_server_property(ctx.pool, ctx.guild.id, "serverlog", new_value)
+        if new_value is 0:
+            await ctx.send(f"{ctx.tick(True)} The server log channel was deleted."
+                           f"I will still use any channel named **{config.ask_channel_name}**.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used as the server log.")
 
     @checks.is_mod()
     @settings.command(name="welcome")
@@ -369,7 +393,7 @@ class Settings:
         - {bot.mention} -> Mention the bot.
 
         Be sure to change the welcome channel too."""
-        current_message = get_server_property(ctx.guild.id, "welcome")
+        current_message = await get_server_property(ctx.pool, ctx.guild.id, "welcome")
         if message is None:
             await self.show_info_embed(ctx, current_message, "Any text", "message/disable")
             return
@@ -397,7 +421,7 @@ class Settings:
         if not confirm:
             await ctx.message.delete()
             return
-        set_server_property(ctx.guild.id, "welcome", new_value)
+        await set_server_property(ctx.pool, ctx.guild.id, "welcome", new_value)
         if new_value is None:
             await ctx.send(f"{ctx.tick(True)} The welcome message has been disabled.")
         else:
@@ -414,7 +438,7 @@ class Settings:
         Note that private messages are not reliable since new users can have them disabled before joining.
         To disable this, you must disable welcome messages using `settings welcome`.
         """
-        current_channel_id = get_server_property(ctx.guild.id, "welcome_channel", is_int=True)
+        current_channel_id = get_server_property(ctx.pool, ctx.guild.id, "welcome_channel")
         if channel is None:
             current_value = self.get_current_channel(ctx, current_channel_id, pm_fallback=True)
             await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `private`.", "channel/private")
@@ -442,7 +466,7 @@ class Settings:
             await ctx.message.delete()
             return
 
-        set_server_property(ctx.guild.id, "welcome_channel", new_value)
+        await set_server_property(ctx.pool, ctx.guild.id, "welcome_channel", new_value)
         if new_value is None:
             await ctx.send(f"{ctx.tick(True)} Welcome messages will be sent privately.")
         else:
@@ -476,8 +500,8 @@ class Settings:
             await ctx.message.delete()
             return
 
-        set_server_property(ctx.guild.id, "world", world)
-        self.bot.reload_worlds()
+        await set_server_property(ctx.pool, ctx.guild.id, "world", world)
+        await self.bot.reload_worlds()
         if world is None:
             await ctx.send(f"{ctx.tick(True)} This server is no longer tracking any world.")
         else:
@@ -488,39 +512,45 @@ class Settings:
         if isinstance(error, commands.BadArgument):
             await ctx.send(str(error))
 
-    def get_current_channel(self, ctx: NabCtx, current_channel_id, pm_fallback=False):
-        top_channel = self.bot.get_top_channel(ctx.guild)
+    @staticmethod
+    def get_current_channel(ctx: NabCtx, current_channel_id, *, pm_fallback=False, default_name=None):
+        """Displays information about the current stored channel.
+
+        :param ctx: The command context where this is called from.
+        :param current_channel_id: The currently saved id.
+        :param pm_fallback: Whether this falls back to PMs if the channel is invalid.
+        :param default_name: Whether this falls back to a channel with a certain name.
+        :return: A string representing the current state.
+        """
+        top_channel = ctx.bot.get_top_channel(ctx.guild)
         current_channel = ctx.guild.get_channel(current_channel_id)
         if current_channel:
             perms = current_channel.permissions_for(ctx.me)
         else:
             perms = discord.Permissions()
-        ok = False
         if current_channel_id is None and pm_fallback:
-            current_value = "Private Messages"
-            ok = True
+            return "Private Messages"
         elif current_channel_id == 0:
-            current_value = "Disabled."
-            ok = True
+            return "Disabled."
         elif current_channel_id is None:
-            current_value = "None,"
+            current_value = "None."
         elif current_channel is None:
             current_value = "None, previous channel was deleted."
         elif not perms.read_messages or not perms.send_messages:
             current_value = f"{current_channel.mention}, but I can't use the channel."
         else:
-            current_value = f"{current_channel.mention}"
-            ok = True
+            return f"{current_channel.mention}"
 
-        if not ok:
-            if pm_fallback:
-                current_value += " I will send direct messages meanwhile."
-            # This condition should be impossible to meet, because if the bot can't send messages on any channel,
-            # it wouldn't be able to reply to this command in the first place ¯\_(ツ)_/¯
-            elif top_channel is None:
-                current_value += " I have no channel to use."
-            else:
-                current_value += f" I will use {top_channel.mention} meanwhile."
+        if pm_fallback:
+            current_value += " I will send direct messages meanwhile."
+        # This condition should be impossible to meet, because if the bot can't send messages on any channel,
+        # it wouldn't be able to reply to this command in the first place ¯\_(ツ)_/¯
+        elif top_channel is None:
+            current_value += " I have no channel to use."
+        elif default_name:
+            current_value += f" By default I will use any channel named {default_name}."
+        else:
+            current_value += f" I will use {top_channel.mention} meanwhile."
         return current_value
 
 

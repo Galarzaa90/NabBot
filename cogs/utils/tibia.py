@@ -16,10 +16,10 @@ import aiohttp
 import cachetools
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
-from discord.ext import commands
 
+from cogs.utils.context import NabCtx
 from . import config, log, online_characters
-from .database import userDatabase, tibiaDatabase
+from .database import tibiaDatabase
 
 # Constants
 ERROR_NETWORK = 0
@@ -89,6 +89,7 @@ class Character:
     FREE_ACCOUNT = 0
     PREMIUM_ACCOUNT = 1
 
+
     def __init__(self, name: str, world: str, **kwargs):
         self.name = name
         self.world = world
@@ -114,6 +115,7 @@ class Character:
         # NabBot specific attributes:
         self.highscores = []
         self.owner = 0
+        self.id = 0
 
     def __repr__(self) -> str:
         kwargs = vars(self)
@@ -162,7 +164,7 @@ class Character:
 
     @classmethod
     def get_url(cls, name: str) -> str:
-        """Returns the url pointing to the character's tibia.com page
+        """Returns the URL pointing to the character's tibia.com page
 
         :param name: Name of the character
         :return: url of the character's information
@@ -189,20 +191,14 @@ class Character:
             character.residence = data["residence"]
         except KeyError:
             return None
-        if "former_names" in data:
-            character.former_names = data["former_names"]
+        character.former_names = data.get("former_names", [])
         if "deleted" in data:
-            character.deleted = parse_tibiadata_time(data["deleted"])
-        if "married_to" in data:
-            character.married_to = data["married_to"]
-        if "former_world" in data:
-            character.former_world = data["former_world"]
-        if "guild" in data:
-            character.guild = data["guild"]
-        if "house" in data:
-            character.house = data["house"]
-        if "comment" in data:
-            character.comment = data["comment"]
+            character.deleted = parse_tibiadata_time(data.get("deleted"))
+        character.married_to = data.get("married_to")
+        character.former_world = data.get("former_world")
+        character.guild = data.get("guild")
+        character.house = data.get("house")
+        character.comment = data.get("comment")
         character.account_status = cls.PREMIUM_ACCOUNT if data["account_status"] == "Premium Account" else cls.FREE_ACCOUNT
         if len(data["last_login"]) > 0:
             character.last_login = parse_tibiadata_time(data["last_login"][0])
@@ -366,7 +362,7 @@ class Guild:
 
     @classmethod
     def get_url(cls, name: str) -> str:
-        """Returns the URL pointing to the character's tibia.com page
+        """Returns the url pointing to the character's tibia.com page
 
         :param name: Name of the character
         :return: url of the character's information
@@ -401,7 +397,8 @@ class Guild:
         return tibia_guild
 
 
-async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Character]:
+# TODO: This function's signature changed, so it must be updated everywhere
+async def get_character(bot, name, tries=5) -> Optional[Character]:
     """Fetches a character from TibiaData, parses and returns a Character object
 
     The character object contains all the information available on Tibia.com
@@ -422,12 +419,11 @@ async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Ch
     except KeyError:
         req_log.info(f"get_character({name})")
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
-                    content = await resp.text(encoding='ISO-8859-1')
-        except Exception:
+            async with bot.session.get(url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
+        except (aiohttp.ClientError, asyncio.TimeoutError):
             await asyncio.sleep(config.network_retry_delay)
-            return await get_character(name, tries - 1)
+            return await get_character(bot, name, tries - 1)
 
         content_json = json.loads(content)
         character = Character.parse_from_tibiadata(content_json)
@@ -452,68 +448,62 @@ async def get_character(name, tries=5, *, bot: commands.Bot=None) -> Optional[Ch
     except KeyError:
         pass
 
-    # Database operations
-    c = userDatabase.cursor()
-    # Skills from highscores
-    c.execute("SELECT category, rank, value FROM highscores WHERE name LIKE ?", (character.name,))
-    results = c.fetchall()
-    if len(results) > 0:
-        character.highscores = results
-
-    # Check if this user was recently renamed, and update old reference to this
-    for old_name in character.former_names:
-        c.execute("SELECT id FROM chars WHERE name LIKE ? LIMIT 1", (old_name, ))
-        result = c.fetchone()
-        if result:
-            with userDatabase as conn:
-                conn.execute("UPDATE chars SET name = ? WHERE id = ?", (character.name, result["id"]))
-                log.info("{0} was renamed to {1} during get_character()".format(old_name, character.name))
-
-    # Discord owner
-    c.execute("SELECT user_id, vocation, name, id, world, guild FROM chars WHERE name LIKE ? OR name LIKE ?",
-              (name, character.name))
-    result = c.fetchone()
-    if result is None:
-        # Untracked character
-        return character
-
-    character.owner = result["user_id"]
-    if result["vocation"] != character.vocation:
-        with userDatabase as conn:
-            conn.execute("UPDATE chars SET vocation = ? WHERE id = ?", (character.vocation, result["id"],))
-            log.info("{0}'s vocation was set to {1} from {2} during get_character()".format(character.name,
-                                                                                                    character.vocation,
-                                                                                                    result["vocation"]))
-    # This condition PROBABLY can't be met again
-    if result["name"] != character.name:
-        with userDatabase as conn:
-            conn.execute("UPDATE chars SET name = ? WHERE id = ?", (character.name, result["id"],))
-            log.info("{0} was renamed to {1} during get_character()".format(result["name"], character.name))
-
-    if result["world"] != character.world:
-        with userDatabase as conn:
-            conn.execute("UPDATE chars SET world = ? WHERE id = ?", (character.world, result["id"],))
-            log.info("{0}'s world was set to {1} from {2} during get_character()".format(character.name,
-                                                                                                 character.world,
-                                                                                                 result["world"]))
-    if character.guild is not None and result["guild"] != character.guild["name"]:
-        with userDatabase as conn:
-            conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (character.guild["name"], result["id"],))
-            log.info("{0}'s guild was set to {1} from {2} during get_character()".format(character.name,
-                                                                                                 character.guild["name"],
-                                                                                                 result["guild"]))
-            if bot is not None:
-                bot.dispatch("character_change", character.owner)
-    if character.guild is None and result["guild"] is not None:
-        with userDatabase as conn:
-            conn.execute("UPDATE chars SET guild = ? WHERE id = ?", (None, result["id"],))
-            log.info("{0}'s guild was set to {1} from {2} during get_character()".format(character.name,
-                                                                                                 None,
-                                                                                                 result["guild"]))
-            if bot is not None:
-                bot.dispatch("character_change", character.owner)
-
+    await bind_database_character(bot, character)
     return character
+
+
+async def bind_database_character(bot, character: Character):
+    """Binds a Tibia.com character with a saved database character
+
+    Compliments information found on the database and performs updating."""
+    async with bot.pool.acquire() as conn:
+        # Skills from highscores
+        results = await conn.fetch("SELECT category, rank, value FROM highscores_entry WHERE name = $1",
+                                   character.name)
+        if len(results) > 0:
+            character.highscores = results
+
+        # Check if this user was recently renamed, and update old reference to this
+        for old_name in character.former_names:
+            char_id = await conn.fetchval('SELECT id FROM "character" WHERE name LIKE $1', old_name)
+            if char_id:
+                # TODO: Conflict handling is necessary now that name is a unique column
+                row = await conn.fetchrow('UPDATE "character" SET name = $1 WHERE id = $2 RETURNING id, user_id',
+                                           character.name, char_id)
+                character.owner = row["user_id"]
+                character.id = row["id"]
+                log.info(f"get_character(): {old_name} renamed to {character.name}")
+                bot.dispatch("character_rename", character, old_name)
+
+        # Discord owner
+        db_char = await conn.fetchrow("""SELECT id, user_id, name, user_id, vocation, world, guild
+                                        FROM "character"
+                                        WHERE name LIKE $1""", character.name)
+        if db_char is None:
+            # Untracked character
+            return
+
+        character.owner = db_char["user_id"]
+        character.id = db_char["id"]
+        if db_char["vocation"] != character.vocation:
+            await conn.execute('UPDATE "character" SET vocation = $1 WHERE id = $2', character.vocation, db_char["id"])
+            log.info(f"get_character(): {character.name}'s vocation: {db_char['vocation']} -> {character.vocation}")
+
+        if db_char["name"] != character.name:
+            await conn.execute('UPDATE "character" SET name = $1 WHERE id = $2', character.name, db_char["id"])
+            log.info(f"get_character: {db_char['name']} renamed to {character.name}")
+            bot.dispatch("character_rename", character, db_char['name'])
+
+        if db_char["world"] != character.world:
+            await conn.execute('UPDATE "character" SET world = $1 WHERE id = $2', character.world, db_char["id"])
+            log.info(f"get_character: {character.name}'s world updated {character.world} -> {db_char['world']}")
+            bot.dispatch("character_transferred", character, db_char['world'])
+
+        if db_char["guild"] != character.guild_name:
+            await conn.execute('UPDATE "character" SET guild = $1 WHERE id = $2', character.guild_name, db_char["id"])
+            log.info(f"get_character: {character.name}'s guild updated {db_char['guild']} -> {character.guild_name}")
+            bot.dispatch("character_change", character.owner)
+            bot.dispatch("character_guild_change", character, db_char['guild'])
 
 
 async def get_highscores(world, category, pagenum, profession=0, tries=5):
@@ -551,14 +541,14 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
         matches = re.findall(pattern, content)
         score_list = []
         for m in matches:
-            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': m[3].replace(',', '')})
+            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': int(m[3].replace(',', ''))})
     else:
         regex_deaths = r'<td>([^<]+)</TD><td><a href="https://www.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
         pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
         matches = re.findall(pattern, content)
         score_list = []
         for m in matches:
-            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': m[3].replace(',', '')})
+            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': int(m[3].replace(',', ''))})
     return score_list
 
 
@@ -1027,7 +1017,6 @@ async def get_house(name, world=None):
                     house["top_bid"] = int(m.group(2))
                     house["top_bidder"] = urllib.parse.unquote_plus(m.group(3))
                     break
-                pass
             break
         return house
     finally:

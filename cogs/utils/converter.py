@@ -22,7 +22,7 @@ class InsensitiveRole(IDConverter):
 
         match = self._get_id_match(argument) or re.match(r'<@&([0-9]+)>$', argument)
         if match:
-            result = discord.utils.get(guild.roles, id=int(match.group(1)))
+            result = guild.get_role(int(match.group(1)))
         else:
             result = discord.utils.find(lambda r: r.name.lower() == argument.lower(), guild.roles)
         if result is None:

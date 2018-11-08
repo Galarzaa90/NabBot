@@ -1,6 +1,6 @@
+import asyncpg
 import inspect
 import platform
-import sqlite3
 import textwrap
 import traceback
 from contextlib import redirect_stdout
@@ -10,9 +10,9 @@ import pkg_resources
 from discord.ext import commands
 
 # Exposing for /debug command
+from cogs.utils.database import get_affected_count
 from nabbot import NabBot
 from .utils import checks
-from .utils.database import get_server_property
 from .utils.context import NabCtx
 from .utils import *
 from .utils.messages import *
@@ -22,7 +22,6 @@ from .utils.tibiawiki import *
 
 req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")
-
 
 class Owner:
     """Commands exclusive to bot owners"""
@@ -75,7 +74,6 @@ class Owner:
         guild_admins = list(set([g.owner for g in self.bot.guilds]))
         for admin in guild_admins:
             await admin.send("{0}\n\t-{1.mention}".format(content, ctx.author))
-            pass
         await ctx.send("Message sent to "+join_list(["@"+a.name for a in guild_admins], ", ", " and "))
 
     # noinspection PyBroadException
@@ -226,21 +224,17 @@ class Owner:
         if not confirm:
             await ctx.send("Good, I hate doing that.")
             return
-        c = userDatabase.cursor()
-        try:
-            c.execute("UPDATE chars SET world = ? WHERE world LIKE ? ", (new_world, old_world))
-            affected_chars = c.rowcount
-            c.execute("UPDATE server_properties SET value = ? WHERE name = ? AND value LIKE ?",
-                      (new_world, "world", old_world))
-            affected_guilds = c.rowcount
-            c.execute("DELETE FROM highscores WHERE world LIKE ?", (old_world,))
+        async with ctx.pool.acquire() as conn:
+            result = await conn.execute('UPDATE "character" SET world = $1 WHERE world = $2', new_world, old_world)
+            affected_chars = get_affected_count(result)
+            result = await conn.execute("UPDATE server_property SET VALUE = $1 WHERE key = 'world' AND value = $2",
+                                        new_world, old_world)
+            affected_guilds = get_affected_count(result)
+            await conn.execute("DELETE FROM highscores WHERE world = $1", old_world)
             await ctx.send(f"Moved **{affected_chars:,}** characters to {new_world}. "
                            f"**{affected_guilds}** discord servers were affected.\n\n"
                            f"Enjoy **{new_world}**! 🔥♋")
-            self.bot.reload_worlds()
-        finally:
-            c.close()
-            userDatabase.commit()
+            await self.bot.reload_worlds()
 
     @commands.command(aliases=["namechange", "rename"], usage="<old name>,<new name>")
     @checks.is_owner()
@@ -268,83 +262,83 @@ class Owner:
 
         old_name = params[0]
         new_name = params[1]
+
         with ctx.typing():
-            c = userDatabase.cursor()
+            old_char_db = await ctx.pool.fetchrow("""SELECT id, name, level, vocation 
+                                                     FROM "character" WHERE lower(name) = $1""",
+                                                  old_name.lower())
+            # If character wasn't registered, there's nothing to do.
+            if old_char_db is None:
+                await ctx.send("I don't have a character registered with the name: **{0}**".format(old_name))
+                return
+            # Search old name to see if there's a result
             try:
-                c.execute("SELECT * FROM chars WHERE name LIKE ? LIMIT 1", (old_name,))
-                old_char_db = c.fetchone()
-                # If character wasn't registered, there's nothing to do.
-                if old_char_db is None:
-                    await ctx.send("I don't have a character registered with the name: **{0}**".format(old_name))
-                    return
-                # Search old name to see if there's a result
-                try:
-                    old_char = await get_character(old_name)
-                except NetworkError:
-                    await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
-                    return
-                # Check if returns a result
-                if old_char is not None:
-                    if old_name.lower() == old_char.name.lower():
-                        await ctx.send("The character **{0}** wasn't namelocked.".format(old_char.name))
-                    else:
-                        await ctx.send(
-                            "The character **{0}** was renamed to **{1}**.".format(old_name, old_char.name))
-                        # Renaming is actually done in get_character(), no need to do anything.
-                    return
+                old_char = await get_character(ctx.bot, old_name)
+            except NetworkError:
+                await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
+                return
+            # Check if returns a result
+            if old_char is not None:
+                if old_name.lower() == old_char.name.lower():
+                    await ctx.send("The character **{0}** wasn't namelocked.".format(old_char.name))
+                else:
+                    await ctx.send(
+                        "The character **{0}** was renamed to **{1}**.".format(old_name, old_char.name))
+                    # Renaming is actually done in get_character(), no need to do anything.
+                return
 
-                # Check if new name exists
-                try:
-                    new_char = await get_character(new_name)
-                except NetworkError:
-                    await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
-                    return
-                if new_char is None:
-                    await ctx.send("The character **{0}** doesn't exist.".format(new_name))
-                    return
-                # Check if vocations are similar
-                if not (old_char_db["vocation"].lower() in new_char.vocation.lower()
-                        or new_char.vocation.lower() in old_char_db["vocation"].lower()):
-                    await ctx.send("**{0}** was a *{1}* and **{2}** is a *{3}*. I think you're making a mistake."
-                                   .format(old_char_db["name"], old_char_db["vocation"],
-                                           new_char.name, new_char.vocation))
-                    return
-                confirm_message = "Are you sure **{0}** ({1} {2}) is **{3}** ({4} {5}) now? `yes/no`"
-                await ctx.send(confirm_message.format(old_char_db["name"], abs(old_char_db["level"]),
-                                                      old_char_db["vocation"], new_char.name, new_char.level,
-                                                      new_char.vocation))
+            # Check if new name exists
+            try:
+                new_char = await get_character(ctx.bot, new_name)
+            except NetworkError:
+                await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
+                return
+            if new_char is None:
+                await ctx.send("The character **{0}** doesn't exist.".format(new_name))
+                return
+            # Check if vocations are similar
+            if not (old_char_db["vocation"].lower() in new_char.vocation.lower()
+                    or new_char.vocation.lower() in old_char_db["vocation"].lower()):
+                await ctx.send("**{0}** was a *{1}* and **{2}** is a *{3}*. I think you're making a mistake."
+                               .format(old_char_db["name"], old_char_db["vocation"],
+                                       new_char.name, new_char.vocation))
+                return
+            confirm_message = "Are you sure **{0}** ({1} {2}) is **{3}** ({4} {5}) now? `yes/no`"
+            await ctx.send(confirm_message.format(old_char_db["name"], abs(old_char_db["level"]),
+                                                  old_char_db["vocation"], new_char.name, new_char.level,
+                                                  new_char.vocation))
 
-                def check(m):
-                    return m.channel == ctx.channel and m.author == ctx.author
+            def check(m):
+                return m.channel == ctx.channel and m.author == ctx.author
 
-                try:
-                    reply = await self.bot.wait_for("message", timeout=50.0, check=check)
-                    if reply.content.lower() not in ["yes", "y"]:
-                        await ctx.send("No then? Alright.")
-                        return
-                except asyncio.TimeoutError:
-                    await ctx.send("No answer? I guess you changed your mind.")
+            try:
+                reply = await self.bot.wait_for("message", timeout=50.0, check=check)
+                if reply.content.lower() not in ["yes", "y"]:
+                    await ctx.send("No then? Alright.")
                     return
+            except asyncio.TimeoutError:
+                await ctx.send("No answer? I guess you changed your mind.")
+                return
 
-                # Check if new name was already registered
-                c.execute("SELECT * FROM chars WHERE name LIKE ?", (new_char.name,))
-                new_char_db = c.fetchone()
+            # Check if new name was already registered
+            new_char_db = await ctx.pool.fetchrow('SELECT id, name, level, vocation FROM "character" WHERE name = $1',
+                                                  new_char.name)
 
+            async with ctx.pool.acquire() as conn:
                 if new_char_db is None:
-                    c.execute("UPDATE chars SET name = ?, vocation = ?, level = ? WHERE id = ?",
-                              (new_char.name, new_char.vocation, new_char.level, old_char_db["id"],))
+                    await conn.execute('UPDATE "character" SET name = $1, vocation = $2, level = $3 WHERE id = $4',
+                                       new_char.name, new_char.vocation, new_char.level, old_char_db["id"])
                 else:
                     # Replace new char with old char id and delete old char, reassign deaths and levelups
-                    c.execute("DELETE FROM chars WHERE id = ?", (old_char_db["id"]), )
-                    c.execute("UPDATE chars SET id = ? WHERE id = ?", (old_char_db["id"], new_char_db["id"],))
-                    c.execute("UPDATE char_deaths SET id = ? WHERE id = ?", (old_char_db["id"], new_char_db["id"],))
-                    c.execute("UPDATE char_levelups SET id = ? WHERE id = ?",
-                              (old_char_db["id"], new_char_db["id"],))
+                    await conn.execute('DELETE FROM "character" WHERE id = $1', old_char_db["id"])
+                    await conn.execute('UPDATE "character" SET id = $1 WHERE id = $2',
+                                       old_char_db["id"], new_char_db["id"])
+                    await conn.execute("UPDATE character_death SET id = $1 WHERE id = $2",
+                                       old_char_db["id"], new_char_db["id"])
+                    await conn.execute("UPDATE character_levelup SET id = $1 WHERE id = $2",
+                                       old_char_db["id"], new_char_db["id"])
 
-                await ctx.send("Character renamed successfully.")
-            finally:
-                c.close()
-                userDatabase.commit()
+            await ctx.send("Character renamed successfully.")
 
     @checks.is_owner()
     @commands.command()
@@ -485,13 +479,13 @@ class Owner:
 
         If the results are too long to display, a text file is generated and uploaded."""
         query = self.cleanup_code(query)
-
-        try:
-            start = time.perf_counter()
-            results = userDatabase.execute(query).fetchall()
-            dt = (time.perf_counter() - start) * 1000.0
-        except sqlite3.Error:
-            return await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+        async with ctx.pool.acquire() as conn:
+            try:
+                start = time.perf_counter()
+                results = await conn.fetch(query)
+                dt = (time.perf_counter() - start) * 1000.0
+            except asyncpg.PostgresError as e:
+                return await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')
         rows = len(results)
         if rows == 0:
             return await ctx.send(f'`{dt:.2f}ms: {results}`')
@@ -569,17 +563,18 @@ class Owner:
         def comp(operator, object1, object2):
             if operator == ">=":
                 return object1 >= object2
-            if operator == ">":
+            elif operator == ">":
                 return object1 > object2
-            if operator == "==":
+            elif operator == "==":
                 return object1 == object2
-            if operator == "<":
+            elif operator == "<":
                 return object1 < object2
-            if operator == "<=":
+            elif operator == "<=":
                 return object1 <= object2
 
         discordpy_version = pkg_resources.get_distribution("discord.py").version
         m = dpy_commit.search(discordpy_version)
+        dpy = f"v{discordpy_version}"
         if m:
             revision, commit = m.groups()
             is_valid = int(revision) >= self.bot.__min_discord__
@@ -587,8 +582,6 @@ class Owner:
             dpy = f"{ctx.tick(is_valid)}[v{discordpy_version}]({discordpy_url})"
             if not is_valid:
                 dpy += f"\n`{self.bot.__min_discord__ - int(revision)} commits behind`"
-        else:
-            dpy = f"v{discordpy_version}"
 
         embed = discord.Embed(title="NabBot", description="v"+self.bot.__version__)
         embed.add_field(name="discord.py", value=dpy)
@@ -614,6 +607,7 @@ class Owner:
                 value = f"{ctx.tick(True)}v{version}"
             embed.add_field(name=package[0], value=value)
         await ctx.send(embed=embed)
+
 
 def setup(bot):
     bot.add_cog(Owner(bot))
