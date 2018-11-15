@@ -13,37 +13,6 @@ def get_article_url(title: str) -> str:
     return f"http://tibia.wikia.com/wiki/{urllib.parse.quote(title)}"
 
 
-def get_monster(name):
-    """Returns a dictionary with a monster's info, if no exact match was found, it returns a list of suggestions.
-
-    The dictionary has the following keys: name, id, hp, exp, maxdmg, elem_physical, elem_holy,
-    elem_death, elem_fire, elem_energy, elem_ice, elem_earth, elem_drown, elem_lifedrain, senseinvis,
-    arm, image."""
-
-    # Reading monster database
-    c = tibiaDatabase.cursor()
-    c.execute("SELECT * FROM creatures WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%" + name + "%",))
-    result = c.fetchall()
-    if len(result) == 0:
-        return None
-    elif result[0]["title"].lower() == name.lower() or len(result) == 1:
-        monster = result[0]
-    else:
-        return [x['title'] for x in result]
-    try:
-        if monster['hitpoints'] is not None and monster['hitpoints'] < 1:
-            monster['hitpoints'] = None
-        c.execute("SELECT items.title as item, chance, min, max "
-                  "FROM creatures_drops, items "
-                  "WHERE items.id = creatures_drops.item_id AND creature_id = ? "
-                  "ORDER BY chance DESC",
-                  (monster["id"],))
-        monster["loot"] = c.fetchall()
-        return monster
-    finally:
-        c.close()
-
-
 def get_bestiary_classes() -> Dict[str, int]:
     """Gets all the bestiary classes
 

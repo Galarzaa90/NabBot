@@ -1,11 +1,14 @@
 import datetime as dt
 import random
 import re
+import sqlite3
 from contextlib import closing
-from typing import Dict
+from typing import Dict, Type, Union
 
 import discord
 from discord.ext import commands
+import tibiawikisql
+from tibiawikisql import models
 
 from nabbot import NabBot
 from .utils import checks
@@ -15,7 +18,7 @@ from .utils.database import tibiaDatabase
 from .utils.messages import split_message
 from .utils.pages import Pages, CannotPaginate
 from .utils.tibia import get_map_area
-from .utils.tibiawiki import get_item, get_monster, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
+from .utils.tibiawiki import get_item, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
     get_key, search_key, get_rashid_info, get_mapper_link, get_bestiary_classes, get_bestiary_creatures, get_imbuement
 
 WIKI_TITLE_CYCLOPEDIA_CHARMS = "Cyclopedia#List_of_Charms"
@@ -28,6 +31,8 @@ class TibiaWiki:
 
     def __init__(self, bot: NabBot):
         self.bot = bot
+        self.conn = sqlite3.connect("data/tibiawiki.db")
+        self.conn.row_factory = sqlite3.Row
 
     # Commands
     @checks.can_embed()
@@ -340,26 +345,28 @@ class TibiaWiki:
                                           "You can't hunt me.",
                                           "That's funny... If only I was programmed to laugh."]))
             return
-        monster = get_monster(name)
-        if monster is None:
+
+        entries = self.search_entry("creature", name)
+        if not entries:
             await ctx.send("I couldn't find a monster with that name.")
             return
-
-        if type(monster) is list:
-            name = await ctx.choose(monster)
-            if name is None:
+        if len(entries) > 1:
+            title = await ctx.choose([e["title"] for e in entries])
+            if title is None:
                 return
-            monster = get_monster(name)
+        else:
+            title = entries[0]["title"]
 
+        monster = self.get_entry(title, models.Creature)
         embed = await self.get_monster_embed(ctx, monster, await ctx.is_long())
 
         # Attach monster's image only if the bot has permissions
-        if ctx.bot_permissions.attach_files and monster["image"] is not None:
-            filename = re.sub(r"[^A-Za-z0-9]", "", monster["name"]) + ".gif"
+        if ctx.bot_permissions.attach_files and monster.image:
+            filename = re.sub(r"[^A-Za-z0-9]", "", monster.name) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
-            main_color = await ctx.execute_async(average_color, monster["image"])
-            embed.color = discord.Color.from_rgb(*main_color)
-            await ctx.send(file=discord.File(monster["image"], f"{filename}"), embed=embed)
+            main_color = await ctx.execute_async(average_color, monster.image)
+            embed.colour = discord.Colour.from_rgb(*main_color)
+            await ctx.send(file=discord.File(monster.image, f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
@@ -433,14 +440,13 @@ class TibiaWiki:
         await ctx.send(embed=embed)
 
     @checks.can_embed()
-    @commands.command(usage="<name/words>")
+    @commands.command(usage="<name|words>")
     async def spell(self, ctx: NabCtx, *, name_or_words: str):
         """Displays information about a spell.
 
         Shows the spell's attributes, NPCs that teach it and more.
 
         More information is displayed if used on private messages or the command channel."""
-
 
         spell = get_spell(name_or_words)
 
@@ -518,44 +524,39 @@ class TibiaWiki:
 
     # Helper methods
     @staticmethod
-    async def get_monster_embed(ctx: NabCtx, monster, long):
+    def _get_base_embed(article: Union[Type[models.Parseable], Type[tibiawikisql.Article]]):
+        embed = discord.Embed(title=article.title, url=article.url)
+        embed.set_author(name="TibiaWiki", icon_url=WIKI_ICON, url=article.url)
+        return embed
+
+
+    @staticmethod
+    async def get_monster_embed(ctx: NabCtx, monster: models.Creature, long):
         """Gets the monster embeds to show in /mob command
         The message is split in two embeds, the second contains loot only and is only shown if long is True"""
-        embed = discord.Embed(title=monster["title"], url=get_article_url(monster["title"]))
-        TibiaWiki._set_embed_author(embed, monster)
+        embed = TibiaWiki._get_base_embed(monster)
         TibiaWiki._set_monster_embed_description(embed, monster)
         TibiaWiki._set_monster_embed_attributes(ctx, embed, monster)
-        TibiaWiki._set_monster_embed_elem_modifiers(embed, monster, TibiaWiki._get_monster_elemental_modifiers())
-        TibiaWiki._set_monster_embed_bestiary(embed, monster)
+        TibiaWiki._set_monster_embed_elem_modifiers(embed, monster)
+        TibiaWiki._set_monster_embed_bestiary_info(embed, monster)
         TibiaWiki._set_monster_embed_damage(embed, long, monster)
         TibiaWiki._set_monster_embed_walks(embed, monster)
-        TibiaWiki._set_monster_embed_abilities(embed, monster)
+        embed.add_field(name="Abilities", value=monster.abilities, inline=False)
         TibiaWiki._set_monster_embed_loot(embed, long, monster)
         await TibiaWiki._set_monster_embed_more_info(ctx, embed, long, monster)
         return embed
 
+    # region Monster Embed Submethods
     @staticmethod
-    def _set_monster_embed_walks(embed, monster):
-        content = TibiaWiki._get_content_monster_walks(monster, "Through: ", "walksthrough")
-        content = TibiaWiki._get_content_monster_walks(monster, "Around: ", "walksaround", content)
-        if content:
-            embed.add_field(name="Field Walking", value=content, inline=True)
+    def _set_monster_embed_walks(embed, monster: models.Creature):
+        content = TibiaWiki._get_content_monster_walks(monster, "Through: ", "walks_through")
+        content += "\n"+TibiaWiki._get_content_monster_walks(monster, "Around: ", "walks_around")
+        if content.strip():
+            embed.add_field(name="Field Walking", value=content.strip(), inline=True)
 
     @staticmethod
-    def _get_monster_elemental_modifiers():
-        """Returns the elemental modifiers available for monsters."""
-        return ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
-
-    @staticmethod
-    def _get_elements_monster_walks():
-        """Returns the elements which monsters walk around/through."""
-        elements = TibiaWiki._get_monster_elemental_modifiers()
-        elements.append("poison")
-        return elements
-
-    @staticmethod
-    async def _set_monster_embed_more_info(ctx, embed, long, monster):
-        if monster["loot"] and not long:
+    async def _set_monster_embed_more_info(ctx, embed, long, monster: models.Creature):
+        if monster.loot and not long:
             ask_channel = await ctx.ask_channel_name()
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel
@@ -564,18 +565,17 @@ class TibiaWiki:
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
 
     @staticmethod
-    def _get_content_monster_walks(monster, walk_field_name, attribute_name, content=""):
+    def _get_content_monster_walks(monster, walk_field_name, attribute_name):
         """Adds the embed field describing which elemnts the monster walks around or through."""
-        attribute_value = str(monster[attribute_name])
-        if attribute_value is not None and not attribute_value.lower().__contains__("none"):
-            if content:
-                content += "\n"
-            content += walk_field_name
-
+        attribute_value = getattr(monster, attribute_name)
+        field_types = ["poison", "fire", "energy"]
+        content = ""
+        if attribute_value:
+            content = walk_field_name
             if config.use_elemental_emojis:
                 walks_elements = []
-                for element in TibiaWiki._get_elements_monster_walks():
-                    if not attribute_value.lower().__contains__(element):
+                for element in field_types:
+                    if element not in attribute_value.lower():
                         continue
                     walks_elements.append(element)
                 for element in walks_elements:
@@ -585,18 +585,14 @@ class TibiaWiki:
         return content
 
     @staticmethod
-    def _set_monster_embed_abilities(embed, monster):
-        embed.add_field(name="Abilities", value=monster["abilities"], inline=False)
-
-    @staticmethod
     def _set_monster_embed_damage(embed, long, monster):
-        if long or not monster["loot"]:
+        if long or not monster.loot:
             embed.add_field(name="Max damage",
-                            value="{max_damage:,}".format(**monster) if monster["max_damage"] is not None else "???")
+                            value=f"{monster.max_damage:,}" if monster.max_damage else "???")
 
     @staticmethod
     def _set_monster_embed_loot(embed, long, monster):
-        if monster["loot"] and long:
+        if monster.loot and long:
             split_loot = TibiaWiki._get_monster_split_loot(monster)
             for loot in split_loot:
                 if loot == split_loot[0]:
@@ -606,25 +602,26 @@ class TibiaWiki:
                 embed.add_field(name=name, value="`" + loot + "`")
 
     @staticmethod
-    def _get_monster_split_loot(monster):
+    def _get_monster_split_loot(monster: models.Creature):
         loot_string = ""
-        for item in monster["loot"]:
-            if item["chance"] is None:
+        for drop in monster.loot:  # type: models.CreatureDrop
+            item = {"name": drop.item_title}
+            if drop.chance is None:
                 item["chance"] = "??.??%"
-            elif item["chance"] >= 100:
+            elif drop.chance >= 100:
                 item["chance"] = "Always"
             else:
-                item["chance"] = "{0:05.2f}%".format(item['chance'])
-            if item["max"] > 1:
-                item["count"] = "({min}-{max})".format(**item)
+                item["chance"] = f"{drop.chance:05.2f}%"
+            if drop.max > 1:
+                item["count"] = f"({drop.min}-{drop.max})"
             else:
                 item["count"] = ""
-            loot_string += "{chance} {item} {count}\n".format(**item)
+            loot_string += "{chance} {name} {count}\n".format(**item)
         return split_message(loot_string, FIELD_VALUE_LIMIT - 20)
 
     @staticmethod
-    def _set_monster_embed_bestiary(embed, monster):
-        if monster["bestiary_class"] is not None:
+    def _set_monster_embed_bestiary_info(embed, monster):
+        if monster.bestiary_class:
             difficulties = {
                 "Harmless": config.difficulty_off_emoji * 4,
                 "Trivial": config.difficulty_on_emoji + config.difficulty_off_emoji * 3,
@@ -652,30 +649,32 @@ class TibiaWiki:
                 "Medium": 25,
                 "Hard": 50
             }
-            bestiary_info = monster['bestiary_class']
-            if monster["bestiary_level"] is not None:
-                difficulty = difficulties.get(monster["bestiary_level"], f"({monster['bestiary_level']})")
-                required_kills = kills[monster['bestiary_level']]
-                given_points = points[monster['bestiary_level']]
+            bestiary_info = monster.bestiary_class
+            if monster.bestiary_level:
+                difficulty = difficulties.get(monster.bestiary_level, f"({monster.bestiary_level})")
+                required_kills = kills[monster.bestiary_level]
+                given_points = points[monster.bestiary_level]
                 bestiary_info += f"\n{difficulty}"
-            if monster["occurrence"] is not None:
-                occurrence = occurrences.get(monster["occurrence"], f"")
-                if monster['occurrence'] == 'Very Rare':
+            if monster.bestiary_occurrence is not None:
+                occurrence = occurrences.get(monster.bestiary_occurrence, f"")
+                if monster.bestiary_occurrence == 'Very Rare':
                     required_kills = 5
-                    given_points = max(points[monster['bestiary_level']] * 2, 5)
+                    given_points = max(points[monster.bestiary_level] * 2, 5)
                 bestiary_info += f"\n{occurrence}"
-            if monster["bestiary_level"] is not None:
-                bestiary_info += f"\n{required_kills:,} kills | {given_points}{config.charms_emoji}️"
+            if monster.bestiary_level is not None:
+                bestiary_info += f"\n{required_kills:,} kills | {given_points}{config.charms_emoji}"
             embed.add_field(name="Bestiary Class", value=bestiary_info)
 
     @staticmethod
-    def _set_monster_embed_elem_modifiers(embed, monster, elements):
+    def _set_monster_embed_elem_modifiers(embed, monster):
         # Iterate through elemental types
         elemental_modifiers = {}
+        elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
         for element in elements:
-            if monster[element] is None or monster[element] == 100:
+            value = getattr(monster, f"modifier_{element}", None)
+            if value is None or value == 100:
                 continue
-            elemental_modifiers[element] = monster[element] - 100
+            elemental_modifiers[element] = value - 100
         elemental_modifiers = dict(sorted(elemental_modifiers.items(), key=lambda x: x[1]))
         if elemental_modifiers:
             content = ""
@@ -688,35 +687,26 @@ class TibiaWiki:
 
     @staticmethod
     def _set_monster_embed_attributes(ctx, embed, monster):
-        attributes = {"summon": "Summonable",
-                      "convince": "Convinceable",
+        attributes = {"summon_cost": "Summonable",
+                      "convince_cost": "Convinceable",
                       "illusionable": "Illusionable",
                       "pushable": "Pushable",
                       "paralysable": "Paralysable",
-                      "see_invisible": "Sees Invisible"
+                      "sees_invisible": "Sees Invisible"
                       }
-        attributes = "\n".join([f"{ctx.tick(monster[x])} {repl}" for x, repl in attributes.items()
-                                if monster[x] is not None])
-        embed.add_field(name="Attributes", value="Unknown" if not attributes else attributes)
+        attributes = "\n".join([f"{ctx.tick(getattr(monster,x))} {repl}" for x, repl in attributes.items()
+                                if getattr(monster,x) is not None])
+        embed.add_field(name="Attributes", value=attributes or "Unknown")
 
     @staticmethod
-    def _set_monster_embed_description(embed, monster):
-        hp = TibiaWiki._get_monster_hp(monster)
-        speed = TibiaWiki._get_monster_speed(monster)
-        experience = TibiaWiki._get_monster_exp(monster)
+    def _set_monster_embed_description(embed, monster: models.Creature):
+        hp = f"{monster.hitpoints:,}" if monster.hitpoints else "?"
+        speed = f"{monster.speed:,}" if monster.speed else "?"
+        experience = f"{monster.experience:,}" if monster.experience else "?"
         embed.description = f"**HP:** {hp} | **Exp:** {experience} | **Speed:** {speed}"
-
-    @staticmethod
-    def _get_monster_speed(monster):
-        return "?" if monster["speed"] is None else "{0:,}".format(monster["speed"])
-
-    @staticmethod
-    def _get_monster_exp(monster):
-        return "?" if monster["experience"] is None else "{0:,}".format(monster["experience"])
-
-    @staticmethod
-    def _get_monster_hp(monster):
-        return "?" if monster["hitpoints"] is None else "{0:,}".format(monster["hitpoints"])
+        if monster.armor:
+            embed.description += f" | **Armor** {monster.armor}"
+    # endregion
 
     @staticmethod
     def _set_embed_author(embed, article):
@@ -1132,7 +1122,20 @@ class TibiaWiki:
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         return embed
 
+    def search_entry(self, table, term, *, additional_field=False):
+        query = "SELECT article_id, title, name FROM %s WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15" % \
+                table
+        c = self.conn.execute(query, ("%%%s%%" % term,))
+        results = c.fetchall()
+        if not results:
+            return []
+        if results[0]["title"].lower() == term.lower():
+            return [dict(results[0])]
+        return [dict(r) for r in results]
 
+    def get_entry(self, title, model: Type[models.abc.Row]):
+        entry = model.get_by_field(self.conn, "title", title)
+        return entry
 
 def setup(bot):
     bot.add_cog(TibiaWiki(bot))
