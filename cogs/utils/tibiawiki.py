@@ -83,7 +83,7 @@ def get_rashid_info() -> Dict[str, Union[str, int]]:
     # Server save is at 10am, so in tibia a new day starts at that hour
     tibia_time = dt.datetime.now() + dt.timedelta(hours=offset - 10)
     c = tibiaDatabase.cursor()
-    c.execute("SELECT * FROM rashid_positions WHERE day = ?", (tibia_time.weekday(),))
+    c.execute("SELECT * FROM rashid_position WHERE day = ?", (tibia_time.weekday(),))
     info = c.fetchone()
     c.close()
     return info
