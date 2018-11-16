@@ -18,8 +18,8 @@ from .utils.database import tibiaDatabase
 from .utils.messages import split_message
 from .utils.pages import Pages, CannotPaginate
 from .utils.tibia import get_map_area
-from .utils.tibiawiki import get_item, get_spell, get_achievement, get_npc, WIKI_ICON, get_article_url, \
-    get_key, search_key, get_rashid_info, get_mapper_link, get_bestiary_classes, get_bestiary_creatures, get_imbuement
+from .utils.tibiawiki import get_item, get_spell, get_npc, WIKI_ICON, get_article_url, \
+    get_key, search_key, get_rashid_info, get_mapper_link
 
 WIKI_TITLE_CYCLOPEDIA_CHARMS = "Cyclopedia#List_of_Charms"
 
@@ -41,26 +41,28 @@ class TibiaWiki:
         """Displays an achievement's information.
 
         Shows the achievement's grade, points, description, and instructions on how to unlock."""
-        achievement = get_achievement(name)
 
-        if achievement is None:
+        entries = self.search_entry("achievement", name)
+        if not entries:
             await ctx.send("I couldn't find an achievement with that name.")
             return
-
-        if type(achievement) is list:
-            name = await ctx.choose(achievement)
-            if name is None:
+        if len(entries) > 1:
+            title = await ctx.choose([e["title"] for e in entries])
+            if title is None:
                 return
-            achievement = get_achievement(name)
+        else:
+            title = entries[0]["title"]
 
-        embed = discord.Embed(title=achievement["name"], description=achievement["description"],
-                              url=get_article_url(achievement["name"]))
+        achievement: models.Achievement = self.get_entry(title, models.Achievement)
+
+        embed = TibiaWiki._get_base_embed(achievement)
+        embed.description = achievement.description
         embed.set_author(name="TibiaWiki",
                          icon_url=WIKI_ICON,
-                         url=get_article_url(achievement["name"]))
-        embed.add_field(name="Grade", value="⭐" * int(achievement["grade"]))
-        embed.add_field(name="Points", value=achievement["points"])
-        embed.add_field(name="Spoiler", value=achievement["spoiler"], inline=True)
+                         url=get_article_url(achievement.name))
+        embed.add_field(name="Grade", value="⭐" * int(achievement.grade))
+        embed.add_field(name="Points", value=achievement.points)
+        embed.add_field(name="Spoiler", value=achievement.spoiler, inline=True)
 
         await ctx.send(embed=embed)
 
@@ -72,12 +74,12 @@ class TibiaWiki:
         If a category is specified, it will list all the creatures that belong to the category and their level.
         If no category is specified, it will list all the bestiary categories."""
         if _class is None:
-            categories = get_bestiary_classes()
+            categories = self.get_bestiary_classes()
             entries = [f"**{name}** - {count} creatures" for name, count in categories.items()]
             description = ""
             title = "Bestiary Classes"
         else:
-            creatures = get_bestiary_creatures(_class)
+            creatures = self.get_bestiary_creatures(_class)
             if not creatures:
                 await ctx.send("There's no class with that name.")
                 return
@@ -196,27 +198,29 @@ class TibiaWiki:
 
         name = params[0]
 
-        imbuement = get_imbuement(name)
-        if imbuement is None:
+        entries = self.search_entry("imbuement", name)
+        if not entries:
             await ctx.send("I couldn't find an imbuement with that name.")
             return
-
-        if type(imbuement) is list:
-            name = await ctx.choose(imbuement)
-            if name is None:
+        if len(entries) > 1:
+            title = await ctx.choose([e["title"] for e in entries])
+            if title is None:
                 return
-            imbuement = get_imbuement(name)
+        else:
+            title = entries[0]["title"]
 
-        embed = self.get_imbuement_embed(ctx, imbuement, await ctx.is_long(), prices)
+        imbuement: models.Imbuement = self.get_entry(title, models.Imbuement)
+
+        embed = self.get_imbuement_embed(ctx, imbuement, prices)
 
         # Attach imbuement's image only if the bot has permissions
         permissions = ctx.bot_permissions
-        if permissions.attach_files and imbuement["image"] is not None:
-            filename = re.sub(r"[^A-Za-z0-9]", "", imbuement["name"]) + ".gif"
+        if permissions.attach_files and imbuement.image:
+            filename = re.sub(r"[^A-Za-z0-9]", "", imbuement.name) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
-            main_color = await ctx.execute_async(average_color, imbuement["image"])
-            embed.color = discord.Color.from_rgb(*main_color)
-            await ctx.send(file=discord.File(imbuement["image"], f"{filename}"), embed=embed)
+            main_color = await ctx.execute_async(average_color, imbuement.image)
+            embed.colour = discord.Colour.from_rgb(*main_color)
+            await ctx.send(file=discord.File(imbuement.image, f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
@@ -231,25 +235,27 @@ class TibiaWiki:
         Yellow for Rashid, Blue and Green for Djinns and Purple for gems.
 
         More information is shown if used in private messages or in the command channel."""
-        item = get_item(name)
-        if item is None:
+        entries = self.search_entry("item", name)
+        if not entries:
             await ctx.send("I couldn't find an item with that name.")
             return
-
-        if type(item) is list:
-            name = await ctx.choose(item)
-            if name is None:
+        if len(entries) > 1:
+            title = await ctx.choose([e["title"] for e in entries])
+            if title is None:
                 return
-            item = get_item(name)
+        else:
+            title = entries[0]["title"]
+
+        item: models.Item = self.get_entry(title, models.Item)
 
         embed = await self.get_item_embed(ctx, item, await ctx.is_long())
 
         # Attach item's image only if the bot has permissions
         permissions = ctx.bot_permissions
-        if permissions.attach_files and item["image"] is not None:
-            filename = re.sub(r"[^A-Za-z0-9]", "", item["name"]) + ".gif"
+        if permissions.attach_files and item.image is not None:
+            filename = re.sub(r"[^A-Za-z0-9]", "", item.name) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
-            await ctx.send(file=discord.File(item["image"], f"{filename}"), embed=embed)
+            await ctx.send(file=discord.File(item.image, f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
@@ -523,6 +529,45 @@ class TibiaWiki:
         await ctx.send(embed=embed)
 
     # Helper methods
+    def get_bestiary_classes(self) -> Dict[str, int]:
+        """Gets all the bestiary classes
+
+        :return: The classes and how many creatures it has
+        :rtype: dict(str, int)
+        """
+        rows = self.conn.execute("SELECT DISTINCT bestiary_class, count(*) as count "
+                                 "FROM creature WHERE bestiary_class not NUll "
+                                 "GROUP BY bestiary_class ORDER BY bestiary_class")
+        classes = {}
+        for r in rows:
+            classes[r["bestiary_class"]] = r["count"]
+        return classes
+
+    def get_bestiary_creatures(self, _class: str) -> Dict[str, str]:
+        """Gets the creatures that belong to a bestiary class
+
+        :param _class: The name of the class
+        :type _class: str
+        :return: The creatures in the class, with their difficulty level.
+        :rtype: dict(str, str)
+        """
+        rows = self.conn.execute("""
+            SELECT title, bestiary_level
+            FROM creature
+            WHERE bestiary_class LIKE ?
+            ORDER BY
+                CASE bestiary_level
+                    WHEN "Trivial" THEN 0
+                    WHEN "Easy" THEN 1
+                    WHEN "Medium" THEN 2
+                    WHEN "Hard" THEN 3
+                END
+            """, (_class,))
+        creatures = {}
+        for r in rows:
+            creatures[r["title"]] = r["bestiary_level"]
+        return creatures
+
     @staticmethod
     def _get_base_embed(article: Union[Type[models.Parseable], Type[tibiawikisql.Article]]):
         embed = discord.Embed(title=article.title, url=article.url)
@@ -733,85 +778,88 @@ class TibiaWiki:
         return embed
 
     @staticmethod
-    def get_imbuement_embed(ctx: NabCtx, imbuement, long, prices):
+    def get_imbuement_embed(ctx: NabCtx, imbuement: models.Imbuement,  prices):
         """Gets the item embed to show in /item command"""
-        embed = discord.Embed(title=imbuement["name"], url=get_article_url(imbuement["name"]))
-        embed.set_author(name="TibiaWiki",
-                         icon_url=WIKI_ICON,
-                         url=get_article_url(imbuement["name"]))
-        embed.add_field(name="Effect", value=imbuement["effect"])
+        embed = TibiaWiki._get_base_embed(imbuement)
+        embed.add_field(name="Effect", value=imbuement.effect)
         materials = ""
         if not prices:
             embed.set_footer(text=f"Provide material prices to calculate costs."
                                   f" More info: {ctx.clean_prefix}help {ctx.invoked_with}")
-        elif len(prices) < len(imbuement["materials"]):
+        elif len(prices) < len(imbuement.materials):
             embed.set_footer(text="Not enough material prices provided for this tier.")
             prices = []
-        for i, material in enumerate(imbuement["materials"]):
-            price = ""
-            if prices:
-                price = f" ({prices[i]:,} gold each)"
-            materials += "\nx{amount} {name}{price}".format(**material, price=price)
-        if prices:
-            fees = [5000, 25000, 100000]  # Gold fees for each tier
-            fees_100 = [15000, 55000, 150000]  # Gold fees for each tier with 100% chance
-            tiers = {"Basic": 0, "Intricate": 1, "Powerful": 2}  # Tiers order
-            tokens = [2, 4, 6]  # Token cost for materials of each tier
-            tier = tiers[imbuement["tier"]]  # Current tier
-            token_imbuements = ["Vampirism", "Void", "Strike"]  # Imbuements that can be bought with gold tokens
-
-            tier_prices = []  # The total materials cost for each tier
-            materials_cost = 0  # The cost of all materials for the current tier
-            for m, p in zip(imbuement["materials"], prices):
-                materials_cost += m["amount"] * p
-                tier_prices.append(materials_cost)
-
-            def parse_prices(_tier: int, _materials: int):
-                return f"**Materials:** {_materials:,} gold.\n" \
-                       f"**Total:** {_materials+fees[_tier]:,} gold | " \
-                       f"{(_materials+fees[_tier])/20:,.0f} gold/hour\n" \
-                       f"**Total  (100% chance):** {_materials+fees_100[_tier]:,} gold | " \
-                       f"{(_materials+fees_100[_tier])/20:,.0f} gold/hour"
-            # If no gold token price was provided or the imbuement type is not applicable, just show material cost
-            if len(prices)-1 <= tier or imbuement["type"] not in token_imbuements:
-                embed.add_field(name="Materials", value=materials)
-                embed.add_field(name="Cost", value=parse_prices(tier, materials_cost), inline=False)
-                if imbuement["type"] in token_imbuements:
-                    embed.set_footer(text="Add gold token price at the end to find the cheapest option.")
-                return embed
-            token_price = prices[tier+1]  # Gold token's price
-            possible_tokens = "2" if tokens[tier] == 2 else f"2-{tokens[tier]}"
-            embed.add_field(name="Materials", value=f"{materials}\n――――――\n"
-                                                    f"{possible_tokens} Gold Tokens ({token_price:,} gold each)")
-            token_cost = 0  # The total cost of the part that will be bought with tokens
-            cheapeast_tier = -1  # The tier which materials are more expensive than gold tokens.
-            for i in range(tier+1):
-                _token_cost = token_price*tokens[i]
-                if _token_cost < tier_prices[i]:
-                    token_cost = _token_cost
-                    cheapeast_tier = i
-            # Using gold tokens is never cheaper.
-            if cheapeast_tier == -1:
-                embed.add_field(name="Cost", value=f"Getting the materials is cheaper.\n\n"
-                                                   f"{parse_prices(tier, materials_cost)}",
-                                inline=False)
-            # Buying everything with gold tokens is cheaper
-            elif cheapeast_tier == tier:
-                embed.add_field(name="Cost", value=f"Getting all materials with gold tokens is cheaper.\n\n"
-                                                   f"{parse_prices(tier, token_cost)}",
-                                inline=False)
-            else:
-                total_cost = token_cost+tier_prices[cheapeast_tier+1]-tier_prices[cheapeast_tier]
-                embed.add_field(name="Cost", value=f"Getting the materials for **{list(tiers.keys())[cheapeast_tier]} "
-                                                   f"{imbuement['type']}** with gold tokens and buying the rest is "
-                                                   f"cheaper.\n\n{parse_prices(tier, total_cost)}",
-                                inline=False)
-        else:
+        materials = TibiaWiki._parse_materials(imbuement, prices)
+        if not prices:
             embed.add_field(name="Materials", value=materials)
+            return embed
+        fees = [5000, 25000, 100000]  # Gold fees for each tier
+        fees_100 = [15000, 55000, 150000]  # Gold fees for each tier with 100% chance
+        tiers = {"Basic": 0, "Intricate": 1, "Powerful": 2}  # Tiers order
+        tokens = [2, 4, 6]  # Token cost for materials of each tier
+        tier = tiers[imbuement.tier]  # Current tier
+        token_imbuements = ["Vampirism", "Void", "Strike"]  # Imbuements that can be bought with gold tokens
+
+        tier_prices = []  # The total materials cost for each tier
+        materials_cost = 0  # The cost of all materials for the current tier
+        for m, p in zip(imbuement.materials, prices):
+            materials_cost += m.amount * p
+            tier_prices.append(materials_cost)
+
+        def parse_prices(_tier: int, _materials: int):
+            return f"**Materials:** {_materials:,} gold.\n" \
+                   f"**Total:** {_materials+fees[_tier]:,} gold | " \
+                   f"{(_materials+fees[_tier])/20:,.0f} gold/hour\n" \
+                   f"**Total  (100% chance):** {_materials+fees_100[_tier]:,} gold | " \
+                   f"{(_materials+fees_100[_tier])/20:,.0f} gold/hour"
+        # If no gold token price was provided or the imbuement type is not applicable, just show material cost
+        if len(prices)-1 <= tier or imbuement.type not in token_imbuements:
+            embed.add_field(name="Materials", value=materials)
+            embed.add_field(name="Cost", value=parse_prices(tier, materials_cost), inline=False)
+            if imbuement.type in token_imbuements:
+                embed.set_footer(text="Add gold token price at the end to find the cheapest option.")
+            return embed
+        token_price = prices[tier+1]  # Gold token's price
+        possible_tokens = "2" if tokens[tier] == 2 else f"2-{tokens[tier]}"
+        embed.add_field(name="Materials", value=f"{materials}\n――――――\n"
+                                                f"{possible_tokens} Gold Tokens ({token_price:,} gold each)")
+        token_cost = 0  # The total cost of the part that will be bought with tokens
+        cheapeast_tier = -1  # The tier which materials are more expensive than gold tokens.
+        for i in range(tier+1):
+            _token_cost = token_price*tokens[i]
+            if _token_cost < tier_prices[i]:
+                token_cost = _token_cost
+                cheapeast_tier = i
+        # Using gold tokens is never cheaper.
+        if cheapeast_tier == -1:
+            embed.add_field(name="Cost", value=f"Getting the materials is cheaper.\n\n"
+                                               f"{parse_prices(tier, materials_cost)}",
+                            inline=False)
+        # Buying everything with gold tokens is cheaper
+        elif cheapeast_tier == tier:
+            embed.add_field(name="Cost", value=f"Getting all materials with gold tokens is cheaper.\n\n"
+                                               f"{parse_prices(tier, token_cost)}",
+                            inline=False)
+        else:
+            total_cost = token_cost+tier_prices[cheapeast_tier+1]-tier_prices[cheapeast_tier]
+            embed.add_field(name="Cost", value=f"Getting the materials for **{list(tiers.keys())[cheapeast_tier]} "
+                                               f"{imbuement.type}** with gold tokens and buying the rest is "
+                                               f"cheaper.\n\n{parse_prices(tier, total_cost)}",
+                            inline=False)
         return embed
 
     @staticmethod
-    async def get_item_embed(ctx: NabCtx, item, long):
+    def _parse_materials(imbuement, prices):
+        content = ""
+        for i, material in enumerate(imbuement.materials):
+            price = ""
+            if prices:
+                price = f" ({prices[i]:,} gold each)"
+            content += "\nx{0.amount} {0.item_title}{1}".format(material, price)
+        return content
+
+    @staticmethod
+    async def get_item_embed(ctx: NabCtx, item: models.Item, long):
         """Gets the item embed to show in /item command"""
         short_limit = 5
         long_limit = 40
@@ -831,38 +879,40 @@ class TibiaWiki:
                 return 'his boat'
             return city
 
-        embed = discord.Embed(title=item["title"], description=item["flavor_text"],
-                              url=get_article_url(item["title"]))
-        TibiaWiki._set_embed_author(embed, item)
-        properties = f"Weight: {item['weight']} oz"
-        for attribute, value in item["attributes"].items():
-            if attribute in ["imbuements"]:
+        embed = TibiaWiki._get_base_embed(item)
+        embed.description = item.flavor_text
+        properties = f"Weight: {item.weight} oz"
+        for attribute in item.attributes:  # type: models.ItemAttribute
+            value = attribute.value
+            if attribute.name in ["imbuements"]:
                 continue
-            if attribute == "vocation":
-                value = ", ".join(value.title().split("+"))
-            properties += f"\n{attribute.replace('_',' ').title()}: {value}"
+            if attribute.name == "vocation":
+                value = ", ".join(attribute.value.title().split("+"))
+            properties += f"\n{attribute.name.replace('_',' ').title()}: {value}"
         embed.add_field(name="Properties", value=properties)
-        if "imbuements" in item["attributes"] and len(item["attributes"]["imbuements"]) > 0:
-            embed.add_field(name="Used for", value="\n".join(item["attributes"]["imbuements"]))
-        if item["sellers"]:
+        imbuement_attribute = discord.utils.get(item.attributes, name="imbuements")
+        if imbuement_attribute:
+            embed.add_field(name="Used for", value=imbuement_attribute.value)
+        if item.sold_by:
             item_value = 0
             currency = ""
             count = 0
             value = ""
-            for i, npc in enumerate(item["sellers"]):
+            for i, offer in enumerate(item.sold_by):  # type: models.NpcSellOffer
                 if i == 0:
-                    item_value = npc["value"]
-                    currency = npc["currency"]
-                if npc["value"] != item_value:
+                    item_value = offer.value
+                    currency = offer.currency_title
+                if offer.value != item_value:
                     break
-                npc["city"] = adjust_city(npc["name"], npc["city"])
-                value += "\n{name} ({city})".format(**npc)
+                city = adjust_city(offer.npc_title, offer.npc_city)
+                value += f"\n{offer.npc_title} ({city})"
                 count += 1
                 if count > short_limit and not long:
-                    value += "\n*...And {0} others*".format(len(item['sellers']) - short_limit)
+                    value += "\n*...And {0} others*".format(len(item.sold_by) - short_limit)
                     npcs_too_long = True
                     break
             embed.add_field(name=f"Sold for {item_value:,} {currency} by", value=value)
+        return embed
         if item["buyers"]:
             item_price = 0
             currency = ""
@@ -1133,7 +1183,7 @@ class TibiaWiki:
             return [dict(results[0])]
         return [dict(r) for r in results]
 
-    def get_entry(self, title, model: Type[models.abc.Row]):
+    def get_entry(self, title, model):
         entry = model.get_by_field(self.conn, "title", title)
         return entry
 

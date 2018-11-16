@@ -13,46 +13,6 @@ def get_article_url(title: str) -> str:
     return f"http://tibia.wikia.com/wiki/{urllib.parse.quote(title)}"
 
 
-def get_bestiary_classes() -> Dict[str, int]:
-    """Gets all the bestiary classes
-
-    :return: The classes and how many creatures it has
-    :rtype: dict(str, int)
-    """
-    rows = tibiaDatabase.execute("SELECT DISTINCT bestiary_class, count(*) as count "
-                                 "FROM creatures WHERE bestiary_class not NUll "
-                                 "GROUP BY bestiary_class ORDER BY bestiary_class")
-    classes = {}
-    for r in rows:
-        classes[r["bestiary_class"]] = r["count"]
-    return classes
-
-
-def get_bestiary_creatures(_class: str) -> Dict[str, str]:
-    """Gets the creatures that belong to a bestiary class
-
-    :param _class: The name of the class
-    :type _class: str
-    :return: The creatures in the class, with their difficulty level.
-    :rtype: dict(str, str)
-    """
-    rows = tibiaDatabase.execute("""
-        SELECT title, bestiary_level
-        FROM creatures
-        WHERE bestiary_class LIKE ?
-        ORDER BY
-            CASE bestiary_level
-                WHEN "Trivial" THEN 0
-                WHEN "Easy" THEN 1
-                WHEN "Medium" THEN 2
-                WHEN "Hard" THEN 3
-            END
-        """, (_class,))
-    creatures = {}
-    for r in rows:
-        creatures[r["title"]] = r["bestiary_level"]
-    return creatures
-
 
 def get_item(name):
     """Returns a dictionary containing an item's info, if no exact match was found, it returns a list of suggestions.
@@ -111,35 +71,6 @@ def get_item(name):
             else:
                 item["attributes"][row["attribute"]] = row["value"]
         return item
-    finally:
-        c.close()
-
-
-def get_imbuement(name):
-    """Returns a dictionary containing an item's info, if no exact match was found, it returns a list of suggestions.
-
-    The dictionary has the following keys: name, look_text, npcs_sold*, value_sell, npcs_bought*, value_buy.
-        *npcs_sold and npcs_bought are list, each element is a dictionary with the keys: name, city."""
-
-    # Reading item database
-    c = tibiaDatabase.cursor()
-
-    # Search query
-    c.execute("SELECT * FROM imbuements WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
-    result = c.fetchall()
-    if len(result) == 0:
-        return None
-    elif result[0]["name"].lower() == name.lower() or len(result) == 1:
-        imbuement = result[0]
-    else:
-        return [x['name'] for x in result]
-    try:
-        c.execute("SELECT items.title as name, amount "
-                  "FROM imbuements_materials "
-                  "INNER JOIN items on items.id = imbuements_materials.item_id "
-                  "WHERE imbuement_id = ?", (imbuement["id"],))
-        imbuement["materials"] = c.fetchall()
-        return imbuement
     finally:
         c.close()
 
@@ -265,24 +196,6 @@ def search_key(terms):
         elif len(result) == 1:
             return result[0]
         return result
-    finally:
-        c.close()
-
-
-def get_achievement(name):
-    """Returns an achievement (dictionary), a list of possible matches or none"""
-    c = tibiaDatabase.cursor()
-    try:
-        # Search query
-        c.execute("SELECT * FROM achievements WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15",
-                  ("%" + name + "%",))
-        result = c.fetchall()
-        if len(result) == 0:
-            return None
-        elif result[0]["name"].lower() == name.lower() or len(result) == 1:
-            return result[0]
-        else:
-            return [x['name'] for x in result]
     finally:
         c.close()
 
