@@ -24,7 +24,6 @@ from .utils.tibia import NetworkError, get_character, tibia_logo, get_share_rang
     url_house, get_stats, get_map_area, get_tibia_time_zone, get_world, tibia_worlds, get_world_bosses, get_recent_news, \
     get_news_article, Character, url_guild, highscore_format, get_character_url, url_character, get_house, \
     get_voc_abb_and_emoji, get_world_list, get_highscores_tibiadata
-from .utils.tibiawiki import get_rashid_info
 
 
 FLAGS = {"North America": "🇺🇸", "South America": "🇧🇷", "Europe": "🇬🇧"}

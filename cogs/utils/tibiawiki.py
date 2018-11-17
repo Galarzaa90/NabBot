@@ -3,7 +3,7 @@ import urllib.parse
 from typing import Dict, Union
 
 from cogs.utils import get_local_timezone
-from .database import tibiaDatabase
+from .database import wiki_db
 from .tibia import get_tibia_time_zone
 
 WIKI_ICON = "https://vignette.wikia.nocookie.net/tibia/images/b/bc/Wiki.png/revision/latest?path-prefix=en"
@@ -13,7 +13,6 @@ def get_article_url(title: str) -> str:
     return f"http://tibia.wikia.com/wiki/{urllib.parse.quote(title)}"
 
 
-
 def get_item(name):
     """Returns a dictionary containing an item's info, if no exact match was found, it returns a list of suggestions.
 
@@ -21,7 +20,7 @@ def get_item(name):
         *npcs_sold and npcs_bought are list, each element is a dictionary with the keys: name, city."""
 
     # Reading item database
-    c = tibiaDatabase.cursor()
+    c = wiki_db.cursor()
 
     # Search query
     c.execute("SELECT * FROM items WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%" + name + "%",))
@@ -75,23 +74,9 @@ def get_item(name):
         c.close()
 
 
-def get_rashid_info() -> Dict[str, Union[str, int]]:
-    """Returns a dictionary with rashid's info
-
-    Dictionary contains: the name of the week, city and x,y,z, positions."""
-    offset = get_tibia_time_zone() - get_local_timezone()
-    # Server save is at 10am, so in tibia a new day starts at that hour
-    tibia_time = dt.datetime.now() + dt.timedelta(hours=offset - 10)
-    c = tibiaDatabase.cursor()
-    c.execute("SELECT * FROM rashid_position WHERE day = ?", (tibia_time.weekday(),))
-    info = c.fetchone()
-    c.close()
-    return info
-
-
 def get_spell(name):
     """Returns a dictionary containing a spell's info, a list of possible matches or None"""
-    c = tibiaDatabase.cursor()
+    c = wiki_db.cursor()
     try:
         c.execute("SELECT * FROM spells WHERE words LIKE ? or name LIKE ?", (name,)*2)
         spell = c.fetchone()
@@ -122,7 +107,7 @@ def get_spell(name):
 
 def get_npc(name):
     """Returns a dictionary containing a NPC's info, a list of possible matches or None"""
-    c = tibiaDatabase.cursor()
+    c = wiki_db.cursor()
     try:
         # search query
         c.execute("SELECT * FROM npcs WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15", ("%" + name + "%",))
@@ -170,7 +155,7 @@ def get_npc(name):
 
 def get_key(number):
     """Returns a dictionary containing a NPC's info, a list of possible matches or None"""
-    c = tibiaDatabase.cursor()
+    c = wiki_db.cursor()
     try:
         # search query
         c.execute("SELECT items_keys.*, item.image FROM items_keys "
@@ -184,7 +169,7 @@ def get_key(number):
 
 def search_key(terms):
     """Returns a dictionary containing a NPC's info, a list of possible matches or None"""
-    c = tibiaDatabase.cursor()
+    c = wiki_db.cursor()
     try:
         # search query
         c.execute("SELECT items_keys.*, item.image FROM items_keys "

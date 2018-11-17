@@ -5,25 +5,13 @@ import json
 import sqlite3
 from typing import Any, List
 
-TIBIADB = "data/tibia_database.db"
+WIKIDB = "data/tibiawiki.db"
 
-tibiaDatabase = sqlite3.connect(TIBIADB)
+wiki_db = sqlite3.connect(WIKIDB)
+wiki_db.row_factory = sqlite3.Row
 
 # Pattern to match the number of affected rows
 result_patt = re.compile(r"\w+\s(\d+)")
-
-
-def dict_factory(cursor, row):
-    """Makes values returned by cursor fetch functions return a dictionary instead of a tuple.
-
-    To implement this, the connection's row_factory method must be replaced by this one."""
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
-
-
-tibiaDatabase.row_factory = dict_factory
 
 
 def get_affected_count(result: str) -> int:

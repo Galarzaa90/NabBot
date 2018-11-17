@@ -15,7 +15,7 @@ from nabbot import NabBot
 from .utils import checks, log, FIELD_VALUE_LIMIT
 from .utils.config import config
 from .utils.context import NabCtx
-from .utils.database import tibiaDatabase, dict_factory
+from .utils.database import wiki_db, dict_factory
 from .utils.messages import split_message
 from .utils.tibiawiki import get_item
 
@@ -161,7 +161,7 @@ class Loot:
                     if group == "No Value":
                         value += f"x{loot_list[item]['count']} {item}\n"
                     else:
-                        with closing(tibiaDatabase.cursor()) as c:
+                        with closing(wiki_db.cursor()) as c:
                             c.execute("SELECT name FROM items, items_attributes "
                                       "WHERE name LIKE ? AND id = item_id AND attribute = 'imbuement'"
                                       " LIMIT 1", (item,))

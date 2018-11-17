@@ -3,23 +3,22 @@ import random
 import re
 import sqlite3
 from contextlib import closing
-from typing import Dict, Type, Union
+from typing import Dict
 
 import discord
 from discord.ext import commands
-import tibiawikisql
 from tibiawikisql import models
 
 from nabbot import NabBot
 from .utils import checks
 from .utils import join_list, FIELD_VALUE_LIMIT, average_color, config
 from .utils.context import NabCtx
-from .utils.database import tibiaDatabase
+from .utils.database import wiki_db
 from .utils.messages import split_message
 from .utils.pages import Pages, CannotPaginate
-from .utils.tibia import get_map_area
-from .utils.tibiawiki import get_item, get_spell, get_npc, WIKI_ICON, get_article_url, \
-    get_key, search_key, get_rashid_info, get_mapper_link
+from .utils.tibia import get_map_area, get_tibia_weekday
+from .utils.tibiawiki import get_spell, get_npc, WIKI_ICON, get_article_url, \
+    get_key, search_key, get_mapper_link
 
 WIKI_TITLE_CYCLOPEDIA_CHARMS = "Cyclopedia#List_of_Charms"
 
@@ -31,8 +30,6 @@ class TibiaWiki:
 
     def __init__(self, bot: NabBot):
         self.bot = bot
-        self.conn = sqlite3.connect("data/tibiawiki.db")
-        self.conn.row_factory = sqlite3.Row
 
     # Commands
     @checks.can_embed()
@@ -168,7 +165,7 @@ class TibiaWiki:
     @staticmethod
     def _get_all_charms():
         charms = dict()
-        with closing(tibiaDatabase.cursor()) as c:
+        with closing(wiki_db.cursor()) as c:
             c.execute("SELECT name, description, type, points, image FROM charm")
             for charm in c.fetchall():
                 charms[charm["name"]] = charm
@@ -384,31 +381,32 @@ class TibiaWiki:
         Shows the NPC's item offers, their location and their travel destinations.
 
         More information is displayed if used on private messages or the command channel."""
-        npc = get_npc(name)
-
-        if npc is None:
-            await ctx.send("I don't know any NPC with that name.")
+        entries = self.search_entry("npc", name)
+        if not entries:
+            await ctx.send("I couldn't find an NPC with that name.")
             return
-
-        if type(npc) is list:
-            name = await ctx.choose(npc)
-            if name is None:
+        if len(entries) > 1:
+            title = await ctx.choose([e["title"] for e in entries])
+            if title is None:
                 return
-            npc = get_npc(name)
+        else:
+            title = entries[0]["title"]
+
+        npc: models.Npc = self.get_entry(title, models.Npc)
 
         embed = await self.get_npc_embed(ctx, npc, await ctx.is_long())
         # Attach spell's image only if the bot has permissions
         if ctx.bot_permissions.attach_files:
             files = []
-            if npc["image"] is not None:
-                filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + ".gif"
+            if npc.image is not None:
+                filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + ".gif"
                 embed.set_thumbnail(url=f"attachment://{filename}")
-                files.append(discord.File(npc["image"], filename))
-            if None not in [npc["x"], npc["y"], npc["z"]]:
-                map_filename = re.sub(r"[^A-Za-z0-9]", "", npc["name"]) + "-map.png"
-                map_image = get_map_area(npc["x"], npc["y"], npc["z"])
+                files.append(discord.File(npc.image, filename))
+            if None not in [npc.x, npc.y, npc.z]:
+                map_filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + "-map.png"
+                map_image = get_map_area(npc.x, npc.y, npc.z)
                 embed.set_image(url=f"attachment://{map_filename}")
-                embed.add_field(name="Location", value=f"[Mapper link]({get_mapper_link(npc['x'],npc['y'],npc['z'])})",
+                embed.add_field(name="Location", value=f"[Mapper link]({get_mapper_link(npc.x, npc.y, npc.z)})",
                                 inline=False)
                 files.append(discord.File(map_image, map_filename))
             await ctx.send(files=files, embed=embed)
@@ -421,7 +419,7 @@ class TibiaWiki:
         """Shows where Rashid is today.
 
         For more information, use `npc Rashid`."""
-        rashid = get_rashid_info()
+        rashid = self.get_rashid_position()
         npc = get_npc("Rashid")
         embed = discord.Embed(title="Rashid", url=get_article_url("Rashid"), color=discord.Colour.greyple())
         embed.set_author(name="TibiaWiki",
@@ -485,7 +483,7 @@ class TibiaWiki:
         embed.set_thumbnail(url=WIKI_ICON)
         version = ""
         gen_date = None
-        with closing(tibiaDatabase.cursor()) as c:
+        with closing(wiki_db.cursor()) as c:
             info = c.execute("SELECT * FROM database_info").fetchall()
             for entry in info:  # type: Dict[str, str]
                 if entry['key'] == "version":
@@ -569,7 +567,7 @@ class TibiaWiki:
         return creatures
 
     @staticmethod
-    def _get_base_embed(article: Union[Type[models.Parseable], Type[tibiawikisql.Article]]):
+    def _get_base_embed(article):
         embed = discord.Embed(title=article.title, url=article.url)
         embed.set_author(name="TibiaWiki", icon_url=WIKI_ICON, url=article.url)
         return embed
@@ -862,9 +860,6 @@ class TibiaWiki:
         """Gets the item embed to show in /item command"""
         short_limit = 5
         long_limit = 40
-        npcs_too_long = False
-        drops_too_long = False
-        quests_too_long = False
 
         embed = TibiaWiki._get_base_embed(item)
         embed.description = item.flavor_text
@@ -880,91 +875,108 @@ class TibiaWiki:
         imbuement_attribute = discord.utils.get(item.attributes, name="imbuements")
         if imbuement_attribute:
             embed.add_field(name="Used for", value=imbuement_attribute.value)
-        npcs_too_long = TibiaWiki._parse_item_offers(embed, item.sold_by, "Sold", long, short_limit)
-        npcs_too_long |= TibiaWiki._parse_item_offers(embed, item.bought_by, "Bought", long, short_limit)
+        too_long = self._parse_item_offers(embed, item.sold_by, "Sold", long, short_limit)
+        too_long |= self._parse_item_offers(embed, item.bought_by, "Bought", long, short_limit, True)
+        too_long |= self._parse_item_quest_rewards(embed, item.awarded_in, long, short_limit)
+        too_long |= self._parse_item_loot(embed, item.dropped_by, long, long_limit, short_limit)
 
-        if item.awarded_in:
-            value = ""
-            count = 0
-            name = "Awarded in"
-            for quest in item.awarded_in:  # type: models.QuestReward
-                count += 1
-                value += "\n" + quest.quest_title
-                if count >= short_limit and not long:
-                    value += "\n*...And {0} others*".format(len(item.awarded_in) - short_limit)
-                    quests_too_long = True
-                    break
-            embed.add_field(name=name, value=value)
-        if item.dropped_by:
-            name = "Dropped by"
-            count = 0
-            value = ""
-
-            for drop in item.dropped_by:  # type: models.CreatureDrop
-                count += 1
-                creature = {"name": drop.creature_title}
-                if drop.chance is None:
-                    creature["chance"] = "??.??%"
-                elif drop.chance >= 100:
-                    creature["chance"] = "Always"
-                else:
-                    creature["chance"] = f"{drop.chance:05.2f}%"
-                value += "\n`{chance} {name}`".format(**creature)
-                if count >= short_limit and not long:
-                    value += "\n*...And {0} others*".format(len(item.dropped_by) - short_limit)
-                    drops_too_long = True
-                    break
-                if long and count >= long_limit:
-                    value += "\n*...And {0} others*".format(len(item.dropped_by) - long_limit)
-                    break
-
-            embed.add_field(name=name, value=value, inline=not long)
-
-        if npcs_too_long or drops_too_long or quests_too_long:
+        if too_long:
             ask_channel = await ctx.ask_channel_name()
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel
             else:
                 askchannel_string = ""
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
-
         return embed
 
+    # region Item Embed Submethods
     @staticmethod
-    def _parse_item_offers(embed, offers, label, long, short_limit):
-        def adjust_city(name, city):
-            name = name.lower()
-            if name == 'alesar' or name == 'yaman':
-                return "Green Djinn's Fortress"
-            elif name == "nah'bob" or name == "haroun":
-                return "Blue Djinn's Fortress"
-            elif name == 'rashid':
-                # TODO: Fix this
-                return get_rashid_info()["city"]
-            elif name == 'Yasir':
-                return 'his boat'
-            return city
-        too_long = False
-        if offers:
-            item_value = 0
-            currency = ""
-            count = 0
-            value = ""
-            for i, offer in enumerate(offers):  # type: models.NpcSellOffer
-                if i == 0:
-                    item_value = offer.value
-                    currency = offer.currency_title
-                if offer.value != item_value:
-                    break
-                city = adjust_city(offer.npc_title, offer.npc_city)
-                value += f"\n{offer.npc_title} ({city})"
-                count += 1
-                if count > short_limit and not long:
-                    value += "\n*...And {0} others*".format(len(offers) - short_limit)
-                    too_long = True
-                    break
-            embed.add_field(name=f"{label} for {item_value:,} {currency} by", value=value)
+    def _parse_item_loot(embed, item_drops, long, long_limit, short_limit):
+        if not item_drops:
+            return False
+        too_long = True
+        name = "Dropped by"
+        count = 0
+        value = ""
+        for drop in item_drops:  # type: models.CreatureDrop
+            count += 1
+            creature = {"name": drop.creature_title}
+            if drop.chance is None:
+                creature["chance"] = "??.??%"
+            elif drop.chance >= 100:
+                creature["chance"] = "Always"
+            else:
+                creature["chance"] = f"{drop.chance:05.2f}%"
+            value += "\n`{chance} {name}`".format(**creature)
+            if count >= short_limit and not long:
+                value += "\n*...And {0} others*".format(len(item_drops) - short_limit)
+                too_long = True
+                break
+            if long and count >= long_limit:
+                value += "\n*...And {0} others*".format(len(item_drops) - long_limit)
+                break
+        embed.add_field(name=name, value=value, inline=not long)
         return too_long
+
+    @staticmethod
+    def _parse_item_quest_rewards(embed, quest_rewards, long, short_limit):
+        if not quest_rewards:
+            return False
+        value = ""
+        count = 0
+        name = "Awarded in"
+        too_long = False
+        for quest in quest_rewards:  # type: models.QuestReward
+            count += 1
+            value += "\n" + quest.quest_title
+            if count >= short_limit and not long:
+                value += "\n*...And {0} others*".format(len(quest_rewards) - short_limit)
+                too_long = True
+                break
+        embed.add_field(name=name, value=value)
+        return too_long
+
+    def adjust_city(self, name, city, embed):
+        name = name.lower()
+        if name == 'alesar' or name == 'yaman':
+            embed.colour = discord.Colour.green()
+            return "Green Djinn's Fortress"
+        elif name == "nah'bob" or name == "haroun":
+            embed.colour = discord.Colour.blue()
+            return "Blue Djinn's Fortress"
+        elif name == 'rashid':
+            embed.colour = discord.Colour(0xF0E916)
+            return self.get_rashid_position().city
+        elif name == 'yasir':
+            return 'his boat'
+        elif name == 'briasol':
+            embed.colour = discord.Colour(0xA958C4)
+        return city
+
+    def _parse_item_offers(self, embed, offers, label, long, short_limit, adjust_color=False):
+        too_long = False
+        if not offers:
+            return too_long
+        item_value = 0
+        currency = ""
+        count = 0
+        value = ""
+        for i, offer in enumerate(offers):  # type: models.NpcSellOffer
+            if i == 0:
+                item_value = offer.value
+                currency = offer.currency_title
+            if offer.value != item_value:
+                break
+            city = self.adjust_city(offer.npc_title, offer.npc_city, embed if adjust_color else discord.Embed())
+            value += f"\n{offer.npc_title} ({city})"
+            count += 1
+            if count > short_limit and not long:
+                value += "\n*...And {0} others*".format(len(offers) - short_limit)
+                too_long = True
+                break
+        embed.add_field(name=f"{label} for {item_value:,} {currency} by", value=value)
+        return too_long
+    # endregion
 
     @staticmethod
     async def get_spell_embed(ctx: NabCtx, spell, long):
@@ -1045,92 +1057,48 @@ class TibiaWiki:
         return embed
 
     @staticmethod
-    async def get_npc_embed(ctx: NabCtx, npc, long):
+    async def get_npc_embed(ctx: NabCtx, npc: models.Npc, long):
         """Gets the embed to show in /npc command"""
         short_limit = 5
         long_limit = 50
         too_long = False
 
-        if type(npc) is not dict:
-            return
-
-        embed = discord.Embed(title=npc["name"], url=get_article_url(npc["title"]))
-        TibiaWiki._set_embed_author(embed, npc)
-        embed.add_field(name="Job", value=npc["job"])
-        if npc["name"] == "Rashid":
-            rashid = get_rashid_info()
-            npc["city"] = rashid["city"]
-            npc["x"] = rashid["x"]
-            npc["y"] = rashid["y"]
-            npc["z"] = rashid["z"]
-        if npc["name"] == "Yasir":
-            npc["x"] = None
-            npc["y"] = None
-            npc["z"] = None
-        embed.add_field(name="City", value=npc["city"])
-        if npc["selling"]:
+        embed = TibiaWiki._get_base_embed(npc)
+        embed.add_field(name="Job", value=npc.job)
+        if npc.name == "Rashid":
+            rashid = TibiaWiki.get_rashid_position()
+            npc.city = rashid.city
+            npc.x = rashid.x
+            npc.y = rashid.y
+            npc.z = rashid.z
+        if npc.name == "Yasir":
+            npc.x = None
+            npc.y = None
+            npc.z = None
+        embed.add_field(name="City", value=npc.city)
+        too_long |= TibiaWiki._parse_npc_offers(embed, npc.sell_offers, long, long_limit, short_limit, "Selling")
+        too_long |= TibiaWiki._parse_npc_offers(embed, npc.buy_offers, long, long_limit, short_limit, "Buying")
+        if npc.destinations:
             count = 0
             value = ""
-            for item in npc["selling"]:
+            for destination in npc.destinations:  # type: models.NpcDestination
                 count += 1
-                item["currency"] = item["currency"].replace("gold coin", "gold")
-                value += "\n{name} \u2192 {value:,} {currency}".format(**item)
-                if count > short_limit and not long:
-                    value += "\n*...And {0} others*".format(len(npc['selling']) - short_limit)
-                    too_long = True
-                    break
-                if long and count > long_limit:
-                    value += "\n*...And {0} others*".format(len(npc['selling']) - long_limit)
-                    break
-            split_selling = split_message(value, FIELD_VALUE_LIMIT)
-            for value in split_selling:
-                if value == split_selling[0]:
-                    name = "Selling"
-                else:
-                    name = "\u200F"
-                embed.add_field(name=name, value=value)
-        if npc["buying"]:
-            count = 0
-            value = ""
-            for item in npc["buying"]:
-                count += 1
-                item["currency"] = item["currency"].replace("gold coin", "gold")
-                value += "\n{name} \u2192 {value:,} {currency}".format(**item)
-                if count > short_limit and not long:
-                    value += "\n*...And {0} others*".format(len(npc['buying']) - short_limit)
-                    too_long = True
-                    break
-                if long and count > long_limit:
-                    value += "\n*...And {0} others*".format(len(npc['buying']) - long_limit)
-                    break
-            split_buying = split_message(value, FIELD_VALUE_LIMIT)
-            for value in split_buying:
-                if value == split_buying[0]:
-                    name = "Buying"
-                else:
-                    name = "\u200F"
-                embed.add_field(name=name, value=value)
-        if npc["destinations"]:
-            count = 0
-            value = ""
-            for destination in npc["destinations"]:
-                count += 1
-                value += "\n{name} \u2192 {price} gold".format(**destination)
+                value += "\n{0.name} \u2192 {0.price} gold".format(destination)
             embed.add_field(name="Destinations", value=value)
         vocs = ["knight", "sorcerer", "paladin", "druid"]
-        if npc["spells"]:
+        if npc.teaches:
             values = {}
             count = {}
             skip = {}
-            for spell in npc["spells"]:
-                value = "\n{name} \u2014 {price:,} gold".format(**spell)
+            for spell in npc.teaches:
+                value = "\n{0.spell_title} \u2014 {0.price:,} gold".format(spell)
                 for voc in vocs:
                     if skip.get(voc, False):
                         continue
-                    if spell[voc] == 0:
+                    if not getattr(spell, voc):
                         continue
-                    values[voc] = values.get(voc, "")+value
-                    count[voc] = count.get(voc, 0)+1
+                    values[voc] = values.get(voc, "") + value
+                    count[voc] = count.get(voc, 0) + 1
                     if count.get(voc, 0) >= short_limit and not long:
                         values[voc] += "\n*...And more*"
                         too_long = True
@@ -1149,10 +1117,38 @@ class TibiaWiki:
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         return embed
 
-    def search_entry(self, table, term, *, additional_field=False):
+    @staticmethod
+    def _parse_npc_offers(embed, offers, long, long_limit, short_limit, label):
+        if not offers:
+            return False
+        too_long = False
+        count = 0
+        value = ""
+        for offer in offers:
+            count += 1
+            currency = offer.currency_title.replace("Gold Coin", "gold")
+            value += "\n{0.item_title} \u2192 {0.value:,} {1}".format(offer, currency)
+            if count > short_limit and not long:
+                value += "\n*...And {0} others*".format(len(offers) - short_limit)
+                too_long = True
+                break
+            if long and count > long_limit:
+                value += "\n*...And {0} others*".format(len(offers) - long_limit)
+                break
+        split_selling = split_message(value, FIELD_VALUE_LIMIT)
+        for value in split_selling:
+            if value == split_selling[0]:
+                name = label
+            else:
+                name = "\u200F"
+            embed.add_field(name=name, value=value)
+        return too_long
+
+    @staticmethod
+    def search_entry(table, term, *, additional_field=False):
         query = "SELECT article_id, title, name FROM %s WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15" % \
                 table
-        c = self.conn.execute(query, ("%%%s%%" % term,))
+        c = wiki_db.execute(query, ("%%%s%%" % term,))
         results = c.fetchall()
         if not results:
             return []
@@ -1160,9 +1156,14 @@ class TibiaWiki:
             return [dict(results[0])]
         return [dict(r) for r in results]
 
-    def get_entry(self, title, model):
-        entry = model.get_by_field(self.conn, "title", title)
+    @staticmethod
+    def get_entry(title, model):
+        entry = model.get_by_field(wiki_db, "title", title)
         return entry
+
+    @staticmethod
+    def get_rashid_position() -> models.RashidPosition:
+        return models.RashidPosition.get_by_field(wiki_db, "day", get_tibia_weekday())
 
 def setup(bot):
     bot.add_cog(TibiaWiki(bot))

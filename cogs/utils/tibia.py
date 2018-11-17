@@ -18,8 +18,8 @@ from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
 
 from cogs.utils.context import NabCtx
-from . import config, log, online_characters
-from .database import tibiaDatabase
+from . import config, log, online_characters, get_local_timezone
+from .database import wiki_db
 
 # Constants
 ERROR_NETWORK = 0
@@ -432,7 +432,7 @@ async def get_character(bot, name, tries=5) -> Optional[Character]:
         return None
 
     if character.house is not None:
-        with closing(tibiaDatabase.cursor()) as c:
+        with closing(wiki_db.cursor()) as c:
             c.execute("SELECT id FROM houses WHERE name LIKE ?", (character.house["name"].strip(),))
             result = c.fetchone()
             if result:
@@ -684,7 +684,7 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
         else:
             return None
     if guild.guildhall is not None:
-        with closing(tibiaDatabase.cursor()) as c:
+        with closing(wiki_db.cursor()) as c:
             c.execute("SELECT id FROM houses WHERE name LIKE ?", (guild.guildhall["name"].strip(),))
             result = c.fetchone()
             if result:
@@ -924,7 +924,7 @@ async def get_house(name, world=None):
     """Returns a dictionary containing a house's info, a list of possible matches or None.
 
     If world is specified, it will also find the current status of the house in that world."""
-    c = tibiaDatabase.cursor()
+    c = wiki_db.cursor()
     try:
         # Search query
         c.execute("SELECT * FROM houses WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
@@ -1075,7 +1075,7 @@ def get_map_area(x, y, z, size=15, scale=8, crosshair=True, client_coordinates=T
     if client_coordinates:
         x -= 124 * 256
         y -= 121 * 256
-    c = tibiaDatabase.cursor()
+    c = wiki_db.cursor()
     c.execute("SELECT * FROM map WHERE z LIKE ?", (z,))
     result = c.fetchone()
     im = Image.open(io.BytesIO(bytearray(result['image'])))
@@ -1172,3 +1172,30 @@ def load_tibia_worlds_file():
             return json.load(json_file)
     except Exception:
         log.error("load_tibia_worlds_file(): Error loading backup .json file.")
+
+
+def get_tibia_weekday() -> int:
+    """Returns the current weekday according to the game.
+
+    Since server save is at 10:00 CET, that's when a new day starts according to the game."""
+    offset = get_tibia_time_zone() - get_local_timezone()
+    # Server save is at 10am, so in tibia a new day starts at that hour
+    tibia_time = dt.datetime.now() + dt.timedelta(hours=offset - 10)
+    return tibia_time.weekday()
+
+
+RASHID_DAYS = ["Svargrond", "Liberty Bay", "Port Hope", "Ankrahmun", "Darashia", "Edron", "Carlin"]
+
+
+def get_rashid_city() -> Dict[str, Union[str, int]]:
+    """Returns a dictionary with rashid's info
+
+    Dictionary contains: the name of the week, city and x,y,z, positions."""
+    offset = get_tibia_time_zone() - get_local_timezone()
+    # Server save is at 10am, so in tibia a new day starts at that hour
+    tibia_time = dt.datetime.now() + dt.timedelta(hours=offset - 10)
+    c = wiki_db.cursor()
+    c.execute("SELECT * FROM rashid_position WHERE day = ?", (tibia_time.weekday(),))
+    info = c.fetchone()
+    c.close()
+    return info
