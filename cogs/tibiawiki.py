@@ -445,33 +445,35 @@ class TibiaWiki:
 
     @checks.can_embed()
     @commands.command(usage="<name|words>")
-    async def spell(self, ctx: NabCtx, *, name_or_words: str):
+    async def spell(self, ctx: NabCtx, *, name: str):
         """Displays information about a spell.
 
         Shows the spell's attributes, NPCs that teach it and more.
 
         More information is displayed if used on private messages or the command channel."""
 
-        spell = get_spell(name_or_words)
-
+        spell = models.Spell.get_by_field(wiki_db, "title", name, True)
         if spell is None:
-            await ctx.send("I don't know any spell with that name or words.")
-            return
-
-        if type(spell) is list:
-            name = await ctx.choose(spell)
-            if name is None:
+            spell = models.Spell.get_by_field(wiki_db, "words", name, True)
+        if spell is None:
+            entries = self.search_entry("spell", name, additional_field="words")
+            if not entries:
+                await ctx.send("I couldn't find a spell with that name or words.")
                 return
-            name = name.split("(")[0].strip()
-            spell = get_spell(name)
-
+            if len(entries) > 1:
+                title = await ctx.choose(["{title} ({words})".format(**e) for e in entries])
+                if title is None:
+                    return
+            else:
+                title = entries[0]["title"]
+            spell: models.Spell = self.get_entry(title, models.Spell)
         embed = await self.get_spell_embed(ctx, spell, await ctx.is_long())
 
         # Attach spell's image only if the bot has permissions
-        if ctx.bot_permissions.attach_files and spell["image"] is not None:
-            filename = re.sub(r"[^A-Za-z0-9]", "", spell["name"]) + ".gif"
+        if ctx.bot_permissions.attach_files and spell.image is not None:
+            filename = re.sub(r"[^A-Za-z0-9]", "", spell.name) + ".gif"
             embed.set_thumbnail(url=f"attachment://{filename}")
-            await ctx.send(file=discord.File(spell["image"], f"{filename}"), embed=embed)
+            await ctx.send(file=discord.File(spell.image, f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
@@ -567,8 +569,8 @@ class TibiaWiki:
         return creatures
 
     @staticmethod
-    def _get_base_embed(article):
-        embed = discord.Embed(title=article.title, url=article.url)
+    def _get_base_embed(article, alternate_title=""):
+        embed = discord.Embed(title=alternate_title if alternate_title else article.title, url=article.url)
         embed.set_author(name="TibiaWiki", icon_url=WIKI_ICON, url=article.url)
         return embed
 
@@ -979,50 +981,44 @@ class TibiaWiki:
     # endregion
 
     @staticmethod
-    async def get_spell_embed(ctx: NabCtx, spell, long):
+    async def get_spell_embed(ctx: NabCtx, spell: models.Spell, long):
         """Gets the embed to show in /spell command"""
         short_limit = 5
         too_long = False
+        words = spell.words
+        if "exani hur" in spell.words:
+            words = "exani hur up|down"
 
-        if type(spell) is not dict:
-            return
-        embed = discord.Embed(title="{name} ({words})".format(**spell), url=get_article_url(spell["name"]))
-        embed.set_author(name="TibiaWiki",
-                         icon_url=WIKI_ICON,
-                         url=get_article_url(spell["name"]))
+        embed = TibiaWiki._get_base_embed(spell, f"{spell.title} ({words})")
+        premium = "**premium**" if spell.premium else ""
+        mana = spell.mana if spell.mana else "variable"
+        voc_list = list()
+        if spell.knight: voc_list.append("knights")
+        if spell.paladin: voc_list.append("paladins")
+        if spell.druid: voc_list.append("druids")
+        if spell.sorcerer: voc_list.append("sorcerers")
+        vocs = join_list(voc_list, ", ", " and ")
 
-        spell["premium"] = "**premium** " if spell["premium"] else ""
-        if spell["mana"] < 0:
-            spell["mana"] = "variable"
-        if "exani hur" in spell["words"]:
-            spell["words"] = "exani hur up/down"
-        vocs = list()
-        if spell['knight']: vocs.append("knights")
-        if spell['paladin']: vocs.append("paladins")
-        if spell['druid']: vocs.append("druids")
-        if spell['sorcerer']: vocs.append("sorcerers")
-        spell["vocs"] = join_list(vocs, ", ", " and ")
+        description = f"A {premium}spell for level **{spell.level}** and up. " \
+                      f"It uses **{mana}** mana. It can be used by {vocs}"
 
-        description = "A {premium}spell for level **{level}** and up. " \
-                      "It uses **{mana}** mana. It can be used by {vocs}".format(**spell)
-
-        if spell["price"] == 0:
+        if spell.price == 0:
             description += "\nIt can be obtained for free."
         else:
-            description += "\nIt can be bought for {0:,} gold coins.".format(spell["price"])
+            description += f"\nIt can be bought for {spell.price:,} gold coins."
 
-        for voc in vocs:
+        for voc in voc_list:
             value = ""
             if len(vocs) == 1:
                 name = "Sold by"
             else:
                 name = "Sold by ({0})".format(voc.title())
             count = 0
-            for npc in spell["npcs"]:
-                if not npc[voc[:-1]]:
+            for npc in spell.taught_by:  # type: models.NpcSpell
+                if not getattr(npc, voc[:-1]):
                     continue
                 count += 1
-                value += "\n{name} ({city})".format(**npc)
+                value += f"\n{npc.npc_title} ({npc.npc_city})"
                 if count >= short_limit and not long:
                     value += "\n*...And more*"
                     too_long = True
@@ -1030,22 +1026,19 @@ class TibiaWiki:
             if value:
                 embed.add_field(name=name, value=value)
         # Set embed color based on element:
-        if spell["element"] == "Fire":
-            embed.colour = discord.Colour(0xFF9900)
-        if spell["element"] == "Ice":
-            embed.colour = discord.Colour(0x99FFFF)
-        if spell["element"] == "Energy":
-            embed.colour = discord.Colour(0xCC33FF)
-        if spell["element"] == "Earth":
-            embed.colour = discord.Colour(0x00FF00)
-        if spell["element"] == "Holy":
-            embed.colour = discord.Colour(0xFFFF00)
-        if spell["element"] == "Death":
-            embed.colour = discord.Colour(0x990000)
-        if spell["element"] == "Physical" or spell["element"] == "Bleed":
-            embed.colour = discord.Colour(0xF70000)
+        element_color = {
+            "Fire": discord.Colour(0xFF9900),
+            "Ice": discord.Colour(0x99FFFF),
+            "Energy": discord.Colour(0xCC33FF),
+            "Earth": discord.Colour(0x00FF00),
+            "Holy": discord.Colour(0xFFFF00),
+            "Death": discord.Colour(0x990000),
+            "Phyiscal": discord.Colour(0xF70000),
+            "Bleed": discord.Colour(0xF70000),
+        }
+        if spell.element in element_color:
+            embed.colour = element_color[spell.element]
         embed.description = description
-
         if too_long:
             ask_channel = await ctx.ask_channel_name()
             if ask_channel:
@@ -1145,14 +1138,23 @@ class TibiaWiki:
         return too_long
 
     @staticmethod
-    def search_entry(table, term, *, additional_field=False):
-        query = "SELECT article_id, title, name FROM %s WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15" % \
-                table
-        c = wiki_db.execute(query, ("%%%s%%" % term,))
+    def search_entry(table, term, *, additional_field=""):
+        if additional_field:
+            query = """SELECT article_id, title, name, %s FROM %s
+                       WHERE title LIKE ? or %s LIKE ?
+                       ORDER BY LENGTH(title) ASC LIMIT 15
+                       """ % (additional_field, table, additional_field)
+            params = ("%%%s%%" % term, "%%%s%%" % term)
+        else:
+            query = "SELECT article_id, title, name FROM %s WHERE title LIKE ? ORDER BY LENGTH(title) ASC LIMIT 15" % \
+                     table
+            params = ("%%%s%%" % term,)
+        c = wiki_db.execute(query, params)
         results = c.fetchall()
         if not results:
             return []
-        if results[0]["title"].lower() == term.lower():
+        if results[0]["title"].lower() == term.lower() or \
+                (additional_field and results[0][additional_field].lower() == term.lower()):
             return [dict(results[0])]
         return [dict(r) for r in results]
 
