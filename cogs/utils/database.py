@@ -7,7 +7,8 @@ from typing import Any, List
 
 WIKIDB = "data/tibiawiki.db"
 
-wiki_db = sqlite3.connect(WIKIDB)
+# Open database in read only mode.
+wiki_db = sqlite3.connect(f"file:{WIKIDB}?mode=ro", uri=True)
 wiki_db.row_factory = sqlite3.Row
 
 # Pattern to match the number of affected rows
