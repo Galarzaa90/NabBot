@@ -1,10 +1,6 @@
-import datetime as dt
 import urllib.parse
-from typing import Dict, Union
 
-from cogs.utils import get_local_timezone
 from .database import wiki_db
-from .tibia import get_tibia_time_zone
 
 WIKI_ICON = "https://vignette.wikia.nocookie.net/tibia/images/b/bc/Wiki.png/revision/latest?path-prefix=en"
 
@@ -74,25 +70,5 @@ def get_item(name):
         c.close()
 
 
-def search_key(terms):
-    """Returns a dictionary containing a NPC's info, a list of possible matches or None"""
-    c = wiki_db.cursor()
-    try:
-        # search query
-        c.execute("SELECT items_keys.*, item.image FROM items_keys "
-                  "INNER JOIN items item ON item.id = items_keys.item_id "
-                  "WHERE items_keys.name LIKE ? OR notes LIKE ? or origin LIKE ? LIMIT 10 ", ("%" + terms + "%",)*3)
-        result = c.fetchall()
-        if len(result) == 0:
-            return None
-        elif len(result) == 1:
-            return result[0]
-        return result
-    finally:
-        c.close()
 
 
-def get_mapper_link(x, y, z):
-    def convert_pos(pos):
-        return f"{(pos&0xFF00)>>8}.{pos&0x00FF}"
-    return f"http://tibia.wikia.com/wiki/Mapper?coords={convert_pos(x)}-{convert_pos(y)}-{z}-4-1-1"

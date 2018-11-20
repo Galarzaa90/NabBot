@@ -3,7 +3,7 @@ import random
 import re
 import sqlite3
 from contextlib import closing
-from typing import Dict, List, TypeVar
+from typing import Dict, List
 
 import discord
 from discord.ext import commands
@@ -17,7 +17,7 @@ from .utils.database import wiki_db
 from .utils.messages import split_message
 from .utils.pages import Pages, CannotPaginate
 from .utils.tibia import get_map_area, get_tibia_weekday
-from .utils.tibiawiki import WIKI_ICON, get_article_url, search_key, get_mapper_link
+from .utils.tibiawiki import WIKI_ICON, get_article_url
 
 WIKI_TITLE_CYCLOPEDIA_CHARMS = "Cyclopedia#List_of_Charms"
 
@@ -55,7 +55,7 @@ class TibiaWiki:
         embed.description = achievement.description
         embed.set_author(name="TibiaWiki",
                          icon_url=WIKI_ICON,
-                         url=get_article_url(achievement.name))
+                         url=achievement.url)
         embed.add_field(name="Grade", value="⭐" * int(achievement.grade))
         embed.add_field(name="Points", value=achievement.points)
         embed.add_field(name="Spoiler", value=achievement.spoiler, inline=True)
@@ -251,30 +251,22 @@ class TibiaWiki:
 
         if there are multiple matches, a list is shown.
         If only one matches, the key's information is shwon directly."""
-        keys = search_key(term)
+        keys = self.search_key(term)
 
         if keys is None:
             await ctx.send("I couldn't find any related keys.")
             return
 
-        if type(keys) is list:
+        if len(keys) > 1:
             embed = discord.Embed(title="Possible keys")
             embed.description = ""
             for key in keys:
-                name = "" if key.get("name") is None else f" - {key.get('name')}"
+                name = f" - {key['name']}" if key["name"] else ""
                 embed.description += f"\n**Key {key['number']}**{name}"
             await ctx.send(embed=embed)
             return
 
-        embed = self.get_key_embed(keys)
-
-        # Attach key's image only if the bot has permissions
-        if ctx.bot_permissions.attach_files and keys["image"] is not None:
-            filename = f"Key.gif"
-            embed.set_thumbnail(url=f"attachment://{filename}")
-            await ctx.send(file=discord.File(keys["image"], f"{filename}"), embed=embed)
-        else:
-            await ctx.send(embed=embed)
+        await ctx.invoke(self.bot.all_commands.get('key'), keys[0]["number"])
 
     @checks.can_embed()
     @commands.command(aliases=['mob', 'creature'])
@@ -481,16 +473,16 @@ class TibiaWiki:
             return 0
 
     @classmethod
-    async def _get_charms_embed(self, charms):
+    async def _get_charms_embed(cls, charms):
         embed = discord.Embed(title="List of Charms", url=get_article_url(WIKI_TITLE_CYCLOPEDIA_CHARMS))
-        charms_by_type = self._get_charms_by_type(charms)
+        charms_by_type = cls._get_charms_by_type(charms)
         for charm_type in sorted(charms_by_type, reverse=True):
             charms = charms_by_type[charm_type]
             msg = []
             for charm in charms:
                 msg.append("**" + charm["name"] + "** - " + str(charm["points"]))
             embed.add_field(name=charm_type, value="\n".join(msg))
-        self._set_embed_author(embed, {"title": WIKI_TITLE_CYCLOPEDIA_CHARMS})
+        cls._set_embed_author(embed, {"title": WIKI_TITLE_CYCLOPEDIA_CHARMS})
         return embed
 
     @staticmethod
@@ -1175,6 +1167,22 @@ class TibiaWiki:
         return [dict(r) for r in results]
 
     @classmethod
+    def search_key(cls, terms):
+        """Returns a dictionary containing a NPC's info, a list of possible matches or None"""
+        c = wiki_db.cursor()
+        try:
+            # search query
+            c.execute("SELECT article_id, number, name FROM item_key "
+                      "WHERE name LIKE ? OR notes LIKE ? or origin LIKE ? LIMIT 10 ",
+                      ("%" + terms + "%",) * 3)
+            result = c.fetchall()
+            if not result:
+                return []
+            return result
+        finally:
+            c.close()
+
+    @classmethod
     def get_entry(cls, title, model):
         entry = model.get_by_field(wiki_db, "title", title)
         return entry
@@ -1183,6 +1191,12 @@ class TibiaWiki:
     def get_rashid_position(cls) -> models.RashidPosition:
         return models.RashidPosition.get_by_field(wiki_db, "day", get_tibia_weekday())
 
+    @classmethod
+    def get_mapper_link(cls, x, y, z):
+        def convert_pos(pos):
+            return f"{(pos&0xFF00)>>8}.{pos&0x00FF}"
+
+        return f"http://tibia.wikia.com/wiki/Mapper?coords={convert_pos(x)}-{convert_pos(y)}-{z}-4-1-1"
     # endregion
 
 def setup(bot):
