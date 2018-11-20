@@ -3,6 +3,7 @@ import os
 import pickle
 import sqlite3
 import time
+import operator
 from contextlib import closing
 from typing import Any, List, Dict, Tuple, Optional, Union
 
@@ -21,7 +22,12 @@ from .utils.tibiawiki import get_item
 
 LOOTDB = "data/loot.db"
 DEBUG_FOLDER = "debug/loot"
-slot: Image.Image = Image.open("./images/slot.png")
+slot: Dict[str, Image.Image] = {'Normal': Image.open("./images/slot.png"),
+                              'Gray': Image.open("./images/slotgray.png"),
+                              'Green': Image.open("./images/slotgreen.png"),
+                              'Blue': Image.open("./images/slotblue.png"),
+                              'Violet': Image.open("./images/slotviolet.png"),
+                              'Golden': Image.open("./images/slotgolden.png")}
 slot_border = Image.open("./images/slotborder.png").convert("RGBA").getdata()
 number_blank: Image.Image = Image.open("./images/numblank.png")
 number_blank2: Image.Image = Image.open("./images/numblank2.png")
@@ -413,7 +419,7 @@ async def loot_scan(ctx: NabCtx, image: bytes, status_msg: discord.Message):
             if result['group'] != "Unknown":
                 detect = pickle.loads(result['frame'])
                 detect = Image.open(io.BytesIO(bytearray(detect)))
-                loot_image.paste(slot, (found_slot['x'], found_slot['y']))
+                loot_image.paste(slot['Normal'], (found_slot['x'], found_slot['y']))
                 detect = Image.alpha_composite(loot_image.crop(
                     (found_slot['x'] + 1, found_slot['y'] + 1, found_slot['x'] + 33, found_slot['y'] + 33)), detect)
                 if found_item_number > 1:
@@ -598,15 +604,33 @@ def number_scan(slot_image: Image.Image) -> Tuple[int, Any]:
 def make_transparent(slot_item: Image.Image):
     px = 0
     py = 0
-    while py < slot_item.size[1] and py < slot.size[1]:
+    while py < slot_item.size[1] and py < 34:
         slot_item_pixel = slot_item.getpixel((px, py))
         if slot_item_pixel == (255, 0, 255, 255):
             slot_item.putpixel((px, py), (255, 0, 255, 0))
         px += 1
-        if px == slot_item.size[0] or px == slot.size[0]:
+        if px == slot_item.size[0] or px == 34:
             py += 1
             px = 0
     return slot_item
+
+
+def get_background_type(lum):
+    """Guesses background color based on a pixels luminosity
+    """
+    if 24 < lum < 52:
+        return 'Normal'
+    elif 89 < lum < 94:
+        return 'Green'
+    elif 98 < lum < 101:
+        return 'Blue'
+    elif 110 < lum < 113:
+        return 'Violet'
+    elif 114 < lum < 124:
+        return 'Golden'
+    elif 126 < lum < 131:
+        return 'Gray'
+    return 'Other'
 
 
 def clear_background(slot_item: Image.Image, *, copy=False) -> Image.Image:
@@ -621,13 +645,33 @@ def clear_background(slot_item: Image.Image, *, copy=False) -> Image.Image:
     py = 0
     if copy:
         slot_item = slot_item.copy()
-    while py < slot_item.size[1] and py < slot.size[1]:
+
+    background = {'Normal':0,'Gray':0,'Green':0,'Blue':0,'Violet':0,'Golden':0,'Other':-255}
+    for i in range(0, 32):
+        pixel = slot_item.getpixel((i, 0))
+        lum = (0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2])
+        background[get_background_type(lum)]+=1
+    for i in range(0, 32):
+        pixel = slot_item.getpixel((0, i))
+        lum = (0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2])
+        background[get_background_type(lum)]+=1
+    for i in range(0, 32):
+        pixel = slot_item.getpixel((31, i))
+        lum = (0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2])
+        background[get_background_type(lum)]+=1
+    #no point checking the last row since its always blanked out
+    #for i in range(0, 32):
+    #    pixel = slot_item.getpixel((i, 31))
+    #    lum = (0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2])
+    #    background[get_background_type(lum)]+=1
+    background_type = max(background.items(), key=operator.itemgetter(1))[0]
+    while py < slot_item.size[1] and py < slot[background_type].size[1]:
         slot_item_pixel = slot_item.getpixel((px, py))
-        slot_pixel = slot.getpixel((px + 1, py + 1))
+        slot_pixel = slot[background_type].getpixel((px + 1, py + 1))
         if slot_item_pixel[:3] == slot_pixel[:3]:
             slot_item.putpixel((px, py), (255, 0, 255, 0))
         px += 1
-        if px == slot_item.size[0] or px == slot.size[0]:
+        if px == slot_item.size[0] or px == slot[background_type].size[0]:
             py += 1
             px = 0
     return slot_item
