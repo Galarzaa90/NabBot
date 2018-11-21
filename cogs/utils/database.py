@@ -16,7 +16,7 @@ result_patt = re.compile(r"\w+\s(\d+)")
 
 
 def get_affected_count(result: str) -> int:
-    """Gets the number of affected rows by a UPDATE or EXECUTE query."""
+    """Gets the number of affected rows by a UPDATE or DELETE query."""
     m = result_patt.search(result)
     if not m:
         return 0

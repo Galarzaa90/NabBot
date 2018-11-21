@@ -8,16 +8,17 @@ import urllib.parse
 from operator import attrgetter
 from typing import Optional
 
+import asyncpg
 import discord
 import pytz
 from discord.ext import commands
 
+from cogs.utils.tibia import get_rashid_city
 from nabbot import NabBot
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import get_server_property, set_server_property, get_global_property, set_global_property
-from .utils import get_time_diff, join_list, online_characters, get_local_timezone, log, \
-    is_numeric, get_user_avatar, config
+from .utils.database import get_server_property, get_global_property, set_global_property
+from .utils import get_time_diff, join_list, online_characters, get_local_timezone, log, is_numeric, get_user_avatar, config
 from .utils.messages import html_to_markdown, get_first_image, split_message
 from .utils.pages import Pages, CannotPaginate, VocationPages
 from .utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
@@ -1351,17 +1352,17 @@ class Tibia:
 
         reply = f"It's currently **{tibia_time.strftime('%H:%M')}** in Tibia's website ({timezone_name}).\n" \
                 f"Server save is in {server_save_str}.\n" \
-                f"Rashid is in **{get_rashid_info()['city']}** today."
+                f"Rashid is in **{get_rashid_city()}** today."
         if ctx.is_private:
             return await ctx.send(reply)
 
-        saved_times = await get_server_property(ctx.pool, ctx.guild.id, "times", default=[])
+        saved_times = await self.get_timezones(ctx.guild.id)
         if not saved_times:
             return await ctx.send(reply)
-        time_entries = sorted(saved_times, key=lambda k: now.astimezone(pytz.timezone(k["timezone"])).utcoffset())
+        time_entries = sorted(saved_times, key=lambda k: now.astimezone(pytz.timezone(k["zone"])).utcoffset())
         reply += "\n\n"
         for entry in time_entries:
-            timezone_time = now.astimezone(pytz.timezone(entry["timezone"]))
+            timezone_time = now.astimezone(pytz.timezone(entry["zone"]))
             reply += f"**{timezone_time.strftime('%H:%M')}** in {entry['name']}\n"
         await ctx.send(reply)
 
@@ -1399,13 +1400,11 @@ class Tibia:
         if len(display_name) > 40:
             return await ctx.send(f"{ctx.tick(False)} The display name can't be longer than 40 characters.")
 
-        saved_times = await get_server_property(ctx.pool, ctx.guild.id, "times", default=[])
-        if any(e["name"].lower() == display_name.lower() for e in saved_times):
-            return await ctx.send(f"{ctx.tick(False)} There's already a saved timezone with that display name,"
-                                  f"please use the command again.")
-
-        saved_times.append({"name": display_name.strip(), "timezone": _timezone})
-        await set_server_property(ctx.pool, ctx.guild.id, "times", saved_times)
+        try:
+            await ctx.pool.execute("INSERT INTO server_timezone(server_id, zone, name) VALUES($1, $2, $3)",
+                                   ctx.guild.id, _timezone, display_name.strip())
+        except asyncpg.UniqueViolationError:
+            return await ctx.error("That timezone already exists.")
         await ctx.send(f"{ctx.tick()} Timezone `{_timezone}` saved successfully as `{display_name.strip()}`.")
 
     @checks.is_mod()
@@ -1416,16 +1415,16 @@ class Tibia:
         """Shows a list of all the currently added timezones.
 
         Only Server Moderators can use this command."""
-        saved_times = await get_server_property(ctx.pool, ctx.guild.id, "times", default=[])
+        saved_times = await self.get_timezones(ctx.guild.id)
         if not saved_times:
-            return await ctx.send(f"{ctx.tick(False)} There are no saved times for this server.")
+            return await ctx.error(f"This server doesn't have any timezones saved yet.")
 
-        pages = Pages(ctx, entries=[f"**{e['name']}** — *{e['timezone']}*" for e in saved_times], per_page=10)
+        pages = Pages(ctx, entries=[f"**{e['name']}** — *{e['zone']}*" for e in saved_times], per_page=10)
         pages.embed.title = "Saved times"
         try:
             await pages.paginate()
         except CannotPaginate as e:
-            await ctx.send(e)
+            await ctx.error(e)
 
     @checks.is_mod()
     @commands.guild_only()
@@ -1434,17 +1433,20 @@ class Tibia:
         """Removes a timezone from the list.
 
         Only Server Moderators can use this command."""
-        _timezone = _timezone.strip()
-        saved_times: list = await get_server_property(ctx.pool, ctx.guild.id, "times", default=[])
+        saved_times = await self.get_timezones(ctx.guild.id)
         if not saved_times:
-            return await ctx.send(f"{ctx.tick(False)} There are no saved times for this server.")
+            return await ctx.error(f"This server doesn't have any timezones saved yet.")
 
-        for entry in saved_times:
-            if entry["name"].lower() == _timezone.lower():
-                saved_times.remove(entry)
-                await set_server_property(ctx.pool, ctx.guild.id, "times", saved_times)
-                return await ctx.send(f"{ctx.tick()} Timezone `{entry['name']}` removed succesfully.")
-        await ctx.send(f"{ctx.tick(False)} There's no timezone named `{_timezone}`.")
+        timezone = await ctx.pool.fetchrow("""SELECT zone, name FROM server_timezone
+                                              WHERE lower(zone) = $1 AND server_id = $2""",
+                                           _timezone.lower(), ctx.guild.id)
+        if not timezone:
+            return await ctx.error("There's no timezone saved with that name.\n"
+                                   "Remember to use the timezone's real name, not the display name.\n")
+
+        await ctx.pool.execute("DELETE FROM server_timezone WHERE server_id = $1 AND zone = $2",
+                               ctx.guild.id, timezone["zone"])
+        await ctx.success(f"Timezone {timezone['zone']} ({timezone['name']}) removed successfully.")
 
     @checks.can_embed()
     @commands.command(aliases=['check', 'char', 'character'])
@@ -1911,6 +1913,11 @@ class Tibia:
             member_user = self.bot.get_member(user_id, user_servers)
             users_cache[user_id] = member_user
             return member_user
+
+    async def get_timezones(self, server_id: int):
+        async with self.bot.pool.acquire() as conn:
+            results = await conn.fetch("SELECT zone, name FROM server_timezone WHERE server_id = $1", server_id)
+            return results
 
     def __unload(self):
         print("cogs.tibia: Cancelling pending tasks...")

@@ -262,6 +262,13 @@ tables = [
         event_type text NOT NULL,
         server_count int NOT NULL,
         date timestamptz default now()
+    );""",
+    """
+    CREATE TABLE server_timezone (
+        server_id bigint NOT NULL,
+        zone text NOT NULL,
+        name text NOT NULL,
+        PRIMARY KEY(server_id, zone)
     );"""
 ]
 functions = [
@@ -377,11 +384,13 @@ async def import_server_properties(conn: asyncpg.Connection, c: sqlite3.Cursor):
             server = int(server)
             if key == "prefixes":
                 await conn.execute("""INSERT INTO server_prefixes(server_id, prefixes) VALUES($1, $2)
-                                          ON CONFLICT DO NOTHING""", server, json.loads(value))
+                                          ON CONFLICT(server_id, prefixes) DO NOTHING""", server, json.loads(value))
                 continue
 
-            if key in ["times"]:
+            if key == "times":
                 value = json.dumps(json.loads(value))
+                await insert_timezone(conn, server, value)
+                continue
             elif key in ["events_channel", "levels_channel", "watched_channel", "news_channel", "welcome_channel",
                          "ask_channel", "watched_message"]:
                 value = json.dumps(int(value))
@@ -390,7 +399,14 @@ async def import_server_properties(conn: asyncpg.Connection, c: sqlite3.Cursor):
             else:
                 value = json.dumps(value)
             await conn.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
-                                      ON CONFLICT(server_id, key) DO NOTHING""", server, key, value)
+                                  ON CONFLICT(server_id, key) DO NOTHING""", server, key, value)
+
+
+async def insert_timezone(conn: asyncpg.Connection, server_id: int, entries: list):
+    for entry in entries:
+        await conn.execute("""INSERT INTO server_timezone(server_id, zone, name) VALUES($1, $2, $3)
+                              ON CONFLICT(server_id, name) DO NOTHING""",
+                           server_id, entry["zone"], entry["name"])
 
 
 async def import_events(conn: asyncpg.Connection, c: sqlite3.Cursor):

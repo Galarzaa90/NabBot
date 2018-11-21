@@ -352,7 +352,7 @@ class TibiaWiki:
                 map_filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + "-map.png"
                 map_image = get_map_area(npc.x, npc.y, npc.z)
                 embed.set_image(url=f"attachment://{map_filename}")
-                embed.add_field(name="Location", value=f"[Mapper link]({get_mapper_link(npc.x, npc.y, npc.z)})",
+                embed.add_field(name="Location", value=f"[Mapper link]({self.get_mapper_link(npc.x, npc.y, npc.z)})",
                                 inline=False)
                 files.append(discord.File(map_image, map_filename))
             await ctx.send(files=files, embed=embed)
@@ -382,7 +382,7 @@ class TibiaWiki:
                 map_image = get_map_area(rashid.x, rashid.y, rashid.z)
                 embed.set_image(url=f"attachment://{map_filename}")
                 embed.add_field(name="Location", value=f"[Mapper link]"
-                                                       f"({get_mapper_link(rashid.x,rashid.y,rashid.z)})",
+                                                       f"({self.get_mapper_link(rashid.x,rashid.y,rashid.z)})",
                                 inline=False)
                 files.append(discord.File(map_image, map_filename))
             return await ctx.send(files=files, embed=embed)

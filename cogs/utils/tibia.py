@@ -17,7 +17,6 @@ import cachetools
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
 
-from cogs.utils.context import NabCtx
 from . import config, log, online_characters, get_local_timezone
 from .database import wiki_db
 
@@ -1184,9 +1183,6 @@ def get_tibia_weekday() -> int:
     return tibia_time.weekday()
 
 
-RASHID_DAYS = ["Svargrond", "Liberty Bay", "Port Hope", "Ankrahmun", "Darashia", "Edron", "Carlin"]
-
-
 def get_rashid_city() -> Dict[str, Union[str, int]]:
     """Returns a dictionary with rashid's info
 
@@ -1198,4 +1194,4 @@ def get_rashid_city() -> Dict[str, Union[str, int]]:
     c.execute("SELECT * FROM rashid_position WHERE day = ?", (tibia_time.weekday(),))
     info = c.fetchone()
     c.close()
-    return info
+    return info["city"]
