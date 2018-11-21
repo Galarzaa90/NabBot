@@ -6,20 +6,21 @@ from contextlib import closing
 from typing import Dict, List
 
 import discord
+import tibiawikisql
 from discord.ext import commands
 from tibiawikisql import models
 
 from nabbot import NabBot
+from .utils import FIELD_VALUE_LIMIT, average_color, config, join_list
 from .utils import checks
-from .utils import join_list, FIELD_VALUE_LIMIT, average_color, config
 from .utils.context import NabCtx
 from .utils.database import wiki_db
 from .utils.messages import split_message
-from .utils.pages import Pages, CannotPaginate
+from .utils.pages import CannotPaginate, Pages
 from .utils.tibia import get_map_area, get_tibia_weekday
-from .utils.tibiawiki import WIKI_ICON, get_article_url
 
-WIKI_TITLE_CYCLOPEDIA_CHARMS = "Cyclopedia#List_of_Charms"
+WIKI_CHARMS_ARTICLE = "Cyclopedia#List_of_Charms"
+WIKI_ICON = "https://vignette.wikia.nocookie.net/tibia/images/b/bc/Wiki.png/revision/latest?path-prefix=en"
 
 
 class TibiaWiki:
@@ -51,11 +52,8 @@ class TibiaWiki:
 
         achievement: models.Achievement = self.get_entry(title, models.Achievement)
 
-        embed = TibiaWiki._get_base_embed(achievement)
+        embed = TibiaWiki.get_base_embed(achievement)
         embed.description = achievement.description
-        embed.set_author(name="TibiaWiki",
-                         icon_url=WIKI_ICON,
-                         url=achievement.url)
         embed.add_field(name="Grade", value="⭐" * int(achievement.grade))
         embed.add_field(name="Points", value=achievement.points)
         embed.add_field(name="Spoiler", value=achievement.spoiler, inline=True)
@@ -91,39 +89,17 @@ class TibiaWiki:
             await ctx.send(e)
 
     @checks.can_embed()
-    @commands.command()
-    async def charms(self, ctx: NabCtx):
-        """Displays summary information of all charms currently available in the database."""
-        charms = self._get_all_charms()
-        embed = await self._get_charms_embed(charms)
-        await ctx.send(embed=embed)
-
-    @checks.can_embed()
-    @commands.command()
+    @commands.command(aliases=["charms"])
     async def charm(self, ctx: NabCtx, name: str=None):
         """If no name is specified, displays a list of all charms for the user to choose from.
         If name is given and valid, or if one is chosen from the list, displays detailed information about it."""
-        charms = self._get_all_charms()
-        chosen_name = None
-        if not name:
-            chosen_name = await ctx.choose(list(charms.keys()), "", False)
-            if not chosen_name:
-                return
-        else:
-            for key in charms.keys():
-                if key.lower() == name.lower():
-                    chosen_name = key
-                    break
-            if not chosen_name:
-                await ctx.send("Invalid name. You can check all available ones with `/charms`.")
-                return
+        if name is None:
+            embed = self.get_charms_embed(ctx)
+            return await ctx.send(embed=embed)
 
-        charm = charms[chosen_name]
-        embed = await self._get_charm_embed(charm)
-        if ctx.bot_permissions.attach_files and charm["image"] is not None:
-            await self._send_embed_charm_with_image(charm, ctx, embed)
-        else:
-            await ctx.send(embed=embed)
+        charm = models.Charm.get_by_field(wiki_db, "name", name, True)
+        embed = await self.get_charm_embed(charm)
+        await self.send_embed_with_image(charm, ctx, embed, True, extension="png")
 
     @checks.can_embed()
     @commands.command(aliases=["imbue"], usage="<name>[,price1[,price2[,price3]]][,tokenprice]")
@@ -163,17 +139,7 @@ class TibiaWiki:
         imbuement: models.Imbuement = self.get_entry(title, models.Imbuement)
 
         embed = self.get_imbuement_embed(ctx, imbuement, prices)
-
-        # Attach imbuement's image only if the bot has permissions
-        permissions = ctx.bot_permissions
-        if permissions.attach_files and imbuement.image:
-            filename = re.sub(r"[^A-Za-z0-9]", "", imbuement.name) + ".gif"
-            embed.set_thumbnail(url=f"attachment://{filename}")
-            main_color = await ctx.execute_async(average_color, imbuement.image)
-            embed.colour = discord.Colour.from_rgb(*main_color)
-            await ctx.send(file=discord.File(imbuement.image, f"{filename}"), embed=embed)
-        else:
-            await ctx.send(embed=embed)
+        await self.send_embed_with_image(imbuement, ctx, embed, True)
 
     @checks.can_embed()
     @commands.command(aliases=["itemprice"])
@@ -200,15 +166,7 @@ class TibiaWiki:
         item: models.Item = self.get_entry(title, models.Item)
 
         embed = await self.get_item_embed(ctx, item, await ctx.is_long())
-
-        # Attach item's image only if the bot has permissions
-        permissions = ctx.bot_permissions
-        if permissions.attach_files and item.image is not None:
-            filename = re.sub(r"[^A-Za-z0-9]", "", item.name) + ".gif"
-            embed.set_thumbnail(url=f"attachment://{filename}")
-            await ctx.send(file=discord.File(item.image, f"{filename}"), embed=embed)
-        else:
-            await ctx.send(embed=embed)
+        await self.send_embed_with_image(item, ctx, embed)
 
     @checks.can_embed()
     @commands.group(invoke_without_command=True, case_insensitive=True)
@@ -234,12 +192,7 @@ class TibiaWiki:
         # Attach key's image only if the bot has permissions
         if key.item_id:
             item = models.Item.get_by_field(wiki_db, "article_id", key.item_id)
-            if ctx.bot_permissions.attach_files and item.image is not None:
-                filename = f"Key_{key.number:04}.gif"
-                main_color = await ctx.execute_async(average_color, item.image)
-                embed.colour = discord.Colour.from_rgb(*main_color)
-                embed.set_thumbnail(url=f"attachment://{filename}")
-                return await ctx.send(file=discord.File(item.image, f"{filename}"), embed=embed)
+            return await self.send_embed_with_image(item, ctx, embed, True)
         await ctx.send(embed=embed)
 
     @checks.can_embed()
@@ -308,16 +261,7 @@ class TibiaWiki:
 
         monster = self.get_entry(title, models.Creature)
         embed = await self.get_monster_embed(ctx, monster, await ctx.is_long())
-
-        # Attach monster's image only if the bot has permissions
-        if ctx.bot_permissions.attach_files and monster.image:
-            filename = re.sub(r"[^A-Za-z0-9]", "", monster.name) + ".gif"
-            embed.set_thumbnail(url=f"attachment://{filename}")
-            main_color = await ctx.execute_async(average_color, monster.image)
-            embed.colour = discord.Colour.from_rgb(*main_color)
-            await ctx.send(file=discord.File(monster.image, f"{filename}"), embed=embed)
-        else:
-            await ctx.send(embed=embed)
+        await self.send_embed_with_image(monster, ctx, embed, True)
 
     @checks.can_embed()
     @commands.command()
@@ -367,7 +311,7 @@ class TibiaWiki:
         For more information, use `npc Rashid`."""
         rashid = self.get_rashid_position()
         npc = models.Npc.get_by_field(wiki_db, "name", "Rashid")
-        embed = TibiaWiki._get_base_embed(npc)
+        embed = TibiaWiki.get_base_embed(npc)
         embed.colour = discord.Colour.greyple()
         embed.description = f"Rashid is in **{rashid.city}** today."
         embed.set_footer(text=rashid.location)
@@ -413,14 +357,7 @@ class TibiaWiki:
                 title = entries[0]["title"]
             spell: models.Spell = self.get_entry(title, models.Spell)
         embed = await self.get_spell_embed(ctx, spell, await ctx.is_long())
-
-        # Attach spell's image only if the bot has permissions
-        if ctx.bot_permissions.attach_files and spell.image is not None:
-            filename = re.sub(r"[^A-Za-z0-9]", "", spell.name) + ".gif"
-            embed.set_thumbnail(url=f"attachment://{filename}")
-            await ctx.send(file=discord.File(spell.image, f"{filename}"), embed=embed)
-        else:
-            await ctx.send(embed=embed)
+        await self.send_embed_with_image(spell, ctx, embed)
 
     @checks.can_embed()
     @commands.command(aliases=["wikiinfo"])
@@ -473,57 +410,59 @@ class TibiaWiki:
             return 0
 
     @classmethod
-    async def _get_charms_embed(cls, charms):
-        embed = discord.Embed(title="List of Charms", url=get_article_url(WIKI_TITLE_CYCLOPEDIA_CHARMS))
-        charms_by_type = cls._get_charms_by_type(charms)
-        for charm_type in sorted(charms_by_type, reverse=True):
-            charms = charms_by_type[charm_type]
-            msg = []
-            for charm in charms:
-                msg.append("**" + charm["name"] + "** - " + str(charm["points"]))
-            embed.add_field(name=charm_type, value="\n".join(msg))
-        cls._set_embed_author(embed, {"title": WIKI_TITLE_CYCLOPEDIA_CHARMS})
+    def get_charms_embed(cls, ctx: NabCtx):
+        charms = models.Charm.search(wiki_db, sort_by="type")
+        charms_url = f"{tibiawikisql.api.BASE_URL}/wiki/{WIKI_CHARMS_ARTICLE}"
+        embed = discord.Embed(title="Charms", url=charms_url)
+        embed.set_author(name="TibiaWiki", url=charms_url, icon_url=WIKI_ICON)
+        charm_fields = dict()
+        for charm in charms:  # type: models.Charm
+            if not charm_fields.get(charm.type):
+                charm_fields[charm.type] = ""
+            charm_fields[charm.type] += f"\n**{charm.name}** - {charm.points:,}"
+        for _type, content in charm_fields.items():
+            embed.add_field(name=_type, value=content.strip())
+        embed.set_footer(text=f"Use {ctx.clean_prefix}{ctx.invoked_with} <name> to see more information.")
         return embed
 
-    @staticmethod
-    def _get_charms_by_type(charms):
-        charms_by_type = {}
-        for charm in charms.values():
-            if not charm["type"] in charms_by_type.keys():
-                charms_by_type[charm["type"]] = []
-            charms_by_type[charm["type"]].append(charm)
-        return charms_by_type
+    @classmethod
+    async def send_embed_with_image(cls, entity, ctx, embed, apply_color=False, extension="gif"):
+        if ctx.bot_permissions.attach_files and entity.image:
+            filename = f"thumbnail.{extension}"
+            embed.set_thumbnail(url=f"attachment://{filename}")
+            if apply_color:
+                main_color = await ctx.execute_async(average_color, entity.image)
+                embed.color = discord.Color.from_rgb(*main_color)
+            await ctx.send(file=discord.File(entity.image, f"{filename}"), embed=embed)
+        else:
+            await ctx.send(embed=embed)
 
-    @staticmethod
-    async def _send_embed_charm_with_image(charm, ctx, embed):
-        filename = re.sub(r"[^A-Za-z0-9]", "", charm["name"]) + ".png"
-        embed.set_thumbnail(url=f"attachment://{filename}")
-        main_color = await ctx.execute_async(average_color, charm["image"])
-        embed.color = discord.Color.from_rgb(*main_color)
-        await ctx.send(file=discord.File(charm["image"], f"{filename}"), embed=embed)
-
-    async def _get_charm_embed(self, charm):
-        embed = discord.Embed(title=charm["name"], url=get_article_url(WIKI_TITLE_CYCLOPEDIA_CHARMS))
-        embed.description = "**Type**: %s | **Cost**: %s points" % (charm["type"], charm["points"])
-        embed.add_field(name="Description", value=charm["description"])
-        self._set_embed_author(embed, {"title": WIKI_TITLE_CYCLOPEDIA_CHARMS})
+    @classmethod
+    async def get_charm_embed(cls, charm: models.Charm):
+        charms_url = f"{tibiawikisql.api.BASE_URL}/wiki/{WIKI_CHARMS_ARTICLE}"
+        embed = discord.Embed(title=charm.name, url=charms_url)
+        embed.set_author(name="TibiaWiki", url=charms_url, icon_url=WIKI_ICON)
+        embed.description = f"**Type**: {charm.type} | **Cost**: {charm.points:,} points"
+        embed.add_field(name="Description", value=charm.description)
         return embed
 
-    @staticmethod
-    def _get_all_charms():
-        charms = dict()
-        with closing(wiki_db.cursor()) as c:
-            c.execute("SELECT name, description, type, points, image FROM charm")
-            for charm in c.fetchall():
-                charms[charm["name"]] = charm
-        return charms
+    @classmethod
+    def get_base_embed(cls, article, alternate_title="") -> discord.Embed:
+        """ Builds the base embed for TibiaWiki articles.
+
+        :param article: The article to display, must be a subclass of Article.
+        :param alternate_title: Alternate title to display instead of the article's title.
+        :return: The embed object.
+        """
+        embed = discord.Embed(title=alternate_title if alternate_title else article.title, url=article.url)
+        embed.set_author(name="TibiaWiki", icon_url=WIKI_ICON, url=tibiawikisql.api.BASE_URL)
+        return embed
 
     @classmethod
     def get_bestiary_classes(cls) -> Dict[str, int]:
         """Gets all the bestiary classes
 
-        :return: The classes and how many creatures it has
-        :rtype: dict(str, int)
+        :return: The classes and how many creatures it has.
         """
         rows = wiki_db.execute("SELECT DISTINCT bestiary_class, count(*) as count "
                                "FROM creature WHERE bestiary_class not NUll "
@@ -537,10 +476,8 @@ class TibiaWiki:
     def get_bestiary_creatures(cls, _class: str) -> Dict[str, str]:
         """Gets the creatures that belong to a bestiary class
 
-        :param _class: The name of the class
-        :type _class: str
+        :param _class: The name of the class.
         :return: The creatures in the class, with their difficulty level.
-        :rtype: dict(str, str)
         """
         rows = wiki_db.execute("""
             SELECT title, bestiary_level
@@ -559,201 +496,11 @@ class TibiaWiki:
             creatures[r["title"]] = r["bestiary_level"]
         return creatures
 
-    @staticmethod
-    def _get_base_embed(article, alternate_title=""):
-        embed = discord.Embed(title=alternate_title if alternate_title else article.title, url=article.url)
-        embed.set_author(name="TibiaWiki", icon_url=WIKI_ICON, url=article.url)
-        return embed
-
-    @classmethod
-    async def get_monster_embed(cls, ctx: NabCtx, monster: models.Creature, long):
-        """Gets the monster embeds to show in /mob command
-        The message is split in two embeds, the second contains loot only and is only shown if long is True"""
-        embed = TibiaWiki._get_base_embed(monster)
-        cls._set_monster_embed_description(embed, monster)
-        cls._set_monster_embed_attributes(ctx, embed, monster)
-        cls._set_monster_embed_elem_modifiers(embed, monster)
-        cls._set_monster_embed_bestiary_info(embed, monster)
-        cls._set_monster_embed_damage(embed, long, monster)
-        cls._set_monster_embed_walks(embed, monster)
-        embed.add_field(name="Abilities", value=monster.abilities, inline=False)
-        cls._set_monster_embed_loot(embed, long, monster)
-        await cls._set_monster_embed_more_info(ctx, embed, long, monster)
-        return embed
-
-    # region Monster Embed Submethods
-    @classmethod
-    def _set_monster_embed_walks(cls, embed, monster: models.Creature):
-        content = TibiaWiki._get_content_monster_walks(monster, "Through: ", "walks_through")
-        content += "\n"+TibiaWiki._get_content_monster_walks(monster, "Around: ", "walks_around")
-        if content.strip():
-            embed.add_field(name="Field Walking", value=content.strip(), inline=True)
-
-    @classmethod
-    async def _set_monster_embed_more_info(cls, ctx, embed, long, monster: models.Creature):
-        if monster.loot and not long:
-            ask_channel = await ctx.ask_channel_name()
-            if ask_channel:
-                askchannel_string = " or use #" + ask_channel
-            else:
-                askchannel_string = ""
-            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
-
-    @classmethod
-    def _get_content_monster_walks(cls, monster, walk_field_name, attribute_name):
-        """Adds the embed field describing which elemnts the monster walks around or through."""
-        attribute_value = getattr(monster, attribute_name)
-        field_types = ["poison", "fire", "energy"]
-        content = ""
-        if attribute_value:
-            content = walk_field_name
-            if config.use_elemental_emojis:
-                walks_elements = []
-                for element in field_types:
-                    if element not in attribute_value.lower():
-                        continue
-                    walks_elements.append(element)
-                for element in walks_elements:
-                    content += f"{config.elemental_emojis[element]}"
-            else:
-                content += attribute_value
-        return content
-
-    @classmethod
-    def _set_monster_embed_damage(cls, embed, long, monster):
-        if long or not monster.loot:
-            embed.add_field(name="Max damage",
-                            value=f"{monster.max_damage:,}" if monster.max_damage else "???")
-
-    @classmethod
-    def _set_monster_embed_loot(cls, embed, long, monster):
-        if monster.loot and long:
-            split_loot = TibiaWiki._get_monster_split_loot(monster)
-            for loot in split_loot:
-                if loot == split_loot[0]:
-                    name = "Loot"
-                else:
-                    name = "\u200F"
-                embed.add_field(name=name, value="`" + loot + "`")
-
-    @classmethod
-    def _get_monster_split_loot(cls, monster: models.Creature):
-        loot_string = ""
-        for drop in monster.loot:  # type: models.CreatureDrop
-            item = {"name": drop.item_title}
-            if drop.chance is None:
-                item["chance"] = "??.??%"
-            elif drop.chance >= 100:
-                item["chance"] = "Always"
-            else:
-                item["chance"] = f"{drop.chance:05.2f}%"
-            if drop.max > 1:
-                item["count"] = f"({drop.min}-{drop.max})"
-            else:
-                item["count"] = ""
-            loot_string += "{chance} {name} {count}\n".format(**item)
-        return split_message(loot_string, FIELD_VALUE_LIMIT - 20)
-
-    @classmethod
-    def _set_monster_embed_bestiary_info(cls, embed, monster):
-        if monster.bestiary_class:
-            difficulties = {
-                "Harmless": config.difficulty_off_emoji * 4,
-                "Trivial": config.difficulty_on_emoji + config.difficulty_off_emoji * 3,
-                "Easy": config.difficulty_on_emoji * 2 + config.difficulty_off_emoji * 2,
-                "Medium": config.difficulty_on_emoji * 3 + config.difficulty_off_emoji,
-                "Hard": config.difficulty_on_emoji * 4
-            }
-            occurrences = {
-                "Common": config.occurrence_on_emoji * 1 + config.occurrence_off_emoji * 3,
-                "Uncommon": config.occurrence_on_emoji * 2 + config.occurrence_off_emoji * 2,
-                "Rare": config.occurrence_on_emoji * 3 + config.occurrence_off_emoji * 1,
-                "Very Rare": config.occurrence_on_emoji * 4,
-            }
-            kills = {
-                "Harmless": 25,
-                "Trivial": 250,
-                "Easy": 500,
-                "Medium": 1000,
-                "Hard": 2500
-            }
-            points = {
-                "Harmless": 1,
-                "Trivial": 5,
-                "Easy": 15,
-                "Medium": 25,
-                "Hard": 50
-            }
-            bestiary_info = monster.bestiary_class
-            if monster.bestiary_level:
-                difficulty = difficulties.get(monster.bestiary_level, f"({monster.bestiary_level})")
-                required_kills = kills[monster.bestiary_level]
-                given_points = points[monster.bestiary_level]
-                bestiary_info += f"\n{difficulty}"
-            if monster.bestiary_occurrence is not None:
-                occurrence = occurrences.get(monster.bestiary_occurrence, f"")
-                if monster.bestiary_occurrence == 'Very Rare':
-                    required_kills = 5
-                    given_points = max(points[monster.bestiary_level] * 2, 5)
-                bestiary_info += f"\n{occurrence}"
-            if monster.bestiary_level is not None:
-                bestiary_info += f"\n{required_kills:,} kills | {given_points}{config.charms_emoji}"
-            embed.add_field(name="Bestiary Class", value=bestiary_info)
-
-    @classmethod
-    def _set_monster_embed_elem_modifiers(cls, embed, monster):
-        # Iterate through elemental types
-        elemental_modifiers = {}
-        elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
-        for element in elements:
-            value = getattr(monster, f"modifier_{element}", None)
-            if value is None or value == 100:
-                continue
-            elemental_modifiers[element] = value - 100
-        elemental_modifiers = dict(sorted(elemental_modifiers.items(), key=lambda x: x[1]))
-        if elemental_modifiers:
-            content = ""
-            for element, value in elemental_modifiers.items():
-                if config.use_elemental_emojis:
-                    content += f"\n{config.elemental_emojis[element]} {value:+}%"
-                else:
-                    content += f"\n{value:+}% {element.title()}"
-            embed.add_field(name="Elemental modifiers", value=content)
-
-    @classmethod
-    def _set_monster_embed_attributes(cls, ctx, embed, monster):
-        attributes = {"summon_cost": "Summonable",
-                      "convince_cost": "Convinceable",
-                      "illusionable": "Illusionable",
-                      "pushable": "Pushable",
-                      "paralysable": "Paralysable",
-                      "sees_invisible": "Sees Invisible"
-                      }
-        attributes = "\n".join([f"{ctx.tick(getattr(monster, x))} {repl}" for x, repl in attributes.items()
-                                if getattr(monster, x) is not None])
-        embed.add_field(name="Attributes", value=attributes or "Unknown")
-
-    @classmethod
-    def _set_monster_embed_description(cls, embed, monster: models.Creature):
-        hp = f"{monster.hitpoints:,}" if monster.hitpoints else "?"
-        speed = f"{monster.speed:,}" if monster.speed else "?"
-        experience = f"{monster.experience:,}" if monster.experience else "?"
-        embed.description = f"**HP:** {hp} | **Exp:** {experience} | **Speed:** {speed}"
-        if monster.armor:
-            embed.description += f" | **Armor** {monster.armor}"
-    # endregion
-
-    @staticmethod
-    def _set_embed_author(embed, article):
-        embed.set_author(name="TibiaWiki",
-                         icon_url=WIKI_ICON,
-                         url=get_article_url(article["title"]))
-
     @classmethod
     def get_key_embed(cls, key: models.Key):
         if key is None:
             return None
-        embed = TibiaWiki._get_base_embed(key)
+        embed = cls.get_base_embed(key)
         if key.name:
             embed.description = f"**Also known as:** {key.name}"
         if key.location:
@@ -764,10 +511,10 @@ class TibiaWiki:
             embed.add_field(name="Notes/Use", value=key.notes)
         return embed
 
-    @staticmethod
-    def get_imbuement_embed(ctx: NabCtx, imbuement: models.Imbuement,  prices):
+    @classmethod
+    def get_imbuement_embed(cls, ctx: NabCtx, imbuement: models.Imbuement,  prices):
         """Gets the item embed to show in /item command"""
-        embed = TibiaWiki._get_base_embed(imbuement)
+        embed = cls.get_base_embed(imbuement)
         embed.add_field(name="Effect", value=imbuement.effect)
         materials = ""
         if not prices:
@@ -776,7 +523,7 @@ class TibiaWiki:
         elif len(prices) < len(imbuement.materials):
             embed.set_footer(text="Not enough material prices provided for this tier.")
             prices = []
-        materials = TibiaWiki._parse_materials(imbuement, prices)
+        materials = cls.get_imbuement_embed_parse_materials(imbuement, prices)
         if not prices:
             embed.add_field(name="Materials", value=materials)
             return embed
@@ -835,8 +582,8 @@ class TibiaWiki:
                             inline=False)
         return embed
 
-    @staticmethod
-    def _parse_materials(imbuement, prices):
+    @classmethod
+    def get_imbuement_embed_parse_materials(cls, imbuement, prices):
         content = ""
         for i, material in enumerate(imbuement.materials):
             price = ""
@@ -850,24 +597,14 @@ class TibiaWiki:
         short_limit = 5
         long_limit = 40
 
-        embed = TibiaWiki._get_base_embed(item)
+        embed = self.get_base_embed(item)
         embed.description = item.flavor_text
-        properties = f"Weight: {item.weight} oz"
-        for attribute in item.attributes:  # type: models.ItemAttribute
-            value = attribute.value
-            if attribute.name in ["imbuements"]:
-                continue
-            if attribute.name == "vocation":
-                value = ", ".join(attribute.value.title().split("+"))
-            properties += f"\n{attribute.name.replace('_',' ').title()}: {value}"
-        embed.add_field(name="Properties", value=properties)
-        imbuement_attribute = discord.utils.get(item.attributes, name="imbuements")
-        if imbuement_attribute:
-            embed.add_field(name="Used for", value=imbuement_attribute.value)
-        too_long = self._parse_item_offers(embed, item.sold_by, "Sold", long, short_limit)
-        too_long |= self._parse_item_offers(embed, item.bought_by, "Bought", long, short_limit, True)
-        too_long |= self._parse_item_quest_rewards(embed, item.awarded_in, long, short_limit)
-        too_long |= self._parse_item_loot(embed, item.dropped_by, long, long_limit, short_limit)
+        await self.get_item_embed_parse_properties(embed, item)
+
+        too_long = self.get_item_embed_parse_offers(embed, item.sold_by, "Sold", long, short_limit)
+        too_long |= self.get_item_embed_parse_offers(embed, item.bought_by, "Bought", long, short_limit, True)
+        too_long |= self.get_item_embed_parse_rewards(embed, item.awarded_in, long, short_limit)
+        too_long |= self.get_item_embed_parse_loot(embed, item.dropped_by, long, long_limit, short_limit)
 
         if too_long:
             ask_channel = await ctx.ask_channel_name()
@@ -879,8 +616,23 @@ class TibiaWiki:
         return embed
 
     # region Item Embed Submethods
-    @staticmethod
-    def _parse_item_loot(embed, item_drops, long, long_limit, short_limit):
+    @classmethod
+    async def get_item_embed_parse_properties(cls, embed, item):
+        properties = f"Weight: {item.weight} oz"
+        for attribute in item.attributes:  # type: models.ItemAttribute
+            value = attribute.value
+            if attribute.name in ["imbuements"]:
+                continue
+            if attribute.name == "vocation":
+                value = ", ".join(attribute.value.title().split("+"))
+            properties += f"\n{attribute.name.replace('_', ' ').title()}: {value}"
+        embed.add_field(name="Properties", value=properties)
+        imbuement_attribute = discord.utils.get(item.attributes, name="imbuements")
+        if imbuement_attribute:
+            embed.add_field(name="Used for", value=imbuement_attribute.value)
+
+    @classmethod
+    def get_item_embed_parse_loot(cls, embed, item_drops, long, long_limit, short_limit):
         if not item_drops:
             return False
         too_long = True
@@ -907,8 +659,8 @@ class TibiaWiki:
         embed.add_field(name=name, value=value, inline=not long)
         return too_long
 
-    @staticmethod
-    def _parse_item_quest_rewards(embed, quest_rewards, long, short_limit):
+    @classmethod
+    def get_item_embed_parse_rewards(cls, embed, quest_rewards, long, short_limit):
         if not quest_rewards:
             return False
         value = ""
@@ -925,7 +677,8 @@ class TibiaWiki:
         embed.add_field(name=name, value=value)
         return too_long
 
-    def adjust_city(self, name, city, embed):
+    @classmethod
+    def get_item_embed_adjust_city(cls, name, city, embed):
         name = name.lower()
         if name == 'alesar' or name == 'yaman':
             embed.colour = discord.Colour.green()
@@ -935,14 +688,15 @@ class TibiaWiki:
             return "Blue Djinn's Fortress"
         elif name == 'rashid':
             embed.colour = discord.Colour(0xF0E916)
-            return self.get_rashid_position().city
+            return cls.get_rashid_position().city
         elif name == 'yasir':
             return 'his boat'
         elif name == 'briasol':
             embed.colour = discord.Colour(0xA958C4)
         return city
 
-    def _parse_item_offers(self, embed, offers, label, long, short_limit, adjust_color=False):
+    @classmethod
+    def get_item_embed_parse_offers(cls, embed, offers, label, long, short_limit, adjust_color=False):
         too_long = False
         if not offers:
             return too_long
@@ -956,7 +710,7 @@ class TibiaWiki:
                 currency = offer.currency_title
             if offer.value != item_value:
                 break
-            city = self.adjust_city(offer.npc_title, offer.npc_city, embed if adjust_color else discord.Embed())
+            city = cls.get_item_embed_adjust_city(offer.npc_title, offer.npc_city, embed if adjust_color else discord.Embed())
             value += f"\n{offer.npc_title} ({city})"
             count += 1
             if count > short_limit and not long:
@@ -967,22 +721,305 @@ class TibiaWiki:
         return too_long
     # endregion
 
-    @staticmethod
-    async def get_spell_embed(ctx: NabCtx, spell: models.Spell, long):
+    @classmethod
+    async def get_monster_embed(cls, ctx: NabCtx, monster: models.Creature, long):
+        """Gets the monster embeds to show in /mob command
+        The message is split in two embeds, the second contains loot only and is only shown if long is True"""
+        embed = cls.get_base_embed(monster)
+        cls.get_monster_embed_description(embed, monster)
+        cls.get_monster_embed_attributes(embed, monster, ctx)
+        cls.get_monster_embed_elemental_modifiers(embed, monster)
+        cls.get_monster_embed_bestiary_info(embed, monster)
+        cls.get_monster_embed_damage(embed, monster, long)
+        cls.get_monster_embed_field_walking(embed, monster)
+        embed.add_field(name="Abilities", value=monster.abilities, inline=False)
+        cls.get_monster_embed_loot(embed, monster, long)
+        await cls.get_monster_embed_footer(ctx, monster, embed, long)
+        return embed
+
+    # region Monster Embed Submethods
+    @classmethod
+    def get_monster_embed_field_walking(cls, embed, monster: models.Creature):
+        content = cls.get_monster_embed_parse_walking(monster, "Through: ", "walks_through")
+        content += "\n"+cls.get_monster_embed_parse_walking(monster, "Around: ", "walks_around")
+        if content.strip():
+            embed.add_field(name="Field Walking", value=content.strip(), inline=True)
+
+    @classmethod
+    async def get_monster_embed_footer(cls, ctx, monster: models.Creature, embed, long):
+        if monster.loot and not long:
+            ask_channel = await ctx.ask_channel_name()
+            if ask_channel:
+                askchannel_string = " or use #" + ask_channel
+            else:
+                askchannel_string = ""
+            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
+
+    @classmethod
+    def get_monster_embed_parse_walking(cls, monster: models.Creature, walk_field_name, attribute_name):
+        """Adds the embed field describing which elemnts the monster walks around or through."""
+        attribute_value = getattr(monster, attribute_name)
+        field_types = ["poison", "fire", "energy"]
+        content = ""
+        if attribute_value:
+            content = walk_field_name
+            if config.use_elemental_emojis:
+                walks_elements = []
+                for element in field_types:
+                    if element not in attribute_value.lower():
+                        continue
+                    walks_elements.append(element)
+                for element in walks_elements:
+                    content += f"{config.elemental_emojis[element]}"
+            else:
+                content += attribute_value
+        return content
+
+    @classmethod
+    def get_monster_embed_damage(cls, embed, monster, long):
+        if long or not monster.loot:
+            embed.add_field(name="Max damage",
+                            value=f"{monster.max_damage:,}" if monster.max_damage else "???")
+
+    @classmethod
+    def get_monster_embed_loot(cls, embed, monster, long):
+        if monster.loot and long:
+            split_loot = cls.get_monster_embed_parse_loot(monster.loot)
+            for loot in split_loot:
+                if loot == split_loot[0]:
+                    name = "Loot"
+                else:
+                    name = "\u200F"
+                embed.add_field(name=name, value="`" + loot + "`")
+
+    @classmethod
+    def get_monster_embed_parse_loot(cls, loot: List[models.CreatureDrop]):
+        loot_string = ""
+        for drop in loot:
+            item = {"name": drop.item_title}
+            if drop.chance is None:
+                item["chance"] = "??.??%"
+            elif drop.chance >= 100:
+                item["chance"] = "Always"
+            else:
+                item["chance"] = f"{drop.chance:05.2f}%"
+            if drop.max > 1:
+                item["count"] = f"({drop.min}-{drop.max})"
+            else:
+                item["count"] = ""
+            loot_string += "{chance} {name} {count}\n".format(**item)
+        return split_message(loot_string, FIELD_VALUE_LIMIT - 20)
+
+    @classmethod
+    def get_monster_embed_bestiary_info(cls, embed, monster):
+        if monster.bestiary_class:
+            difficulties = {
+                "Harmless": config.difficulty_off_emoji * 4,
+                "Trivial": config.difficulty_on_emoji + config.difficulty_off_emoji * 3,
+                "Easy": config.difficulty_on_emoji * 2 + config.difficulty_off_emoji * 2,
+                "Medium": config.difficulty_on_emoji * 3 + config.difficulty_off_emoji,
+                "Hard": config.difficulty_on_emoji * 4
+            }
+            occurrences = {
+                "Common": config.occurrence_on_emoji * 1 + config.occurrence_off_emoji * 3,
+                "Uncommon": config.occurrence_on_emoji * 2 + config.occurrence_off_emoji * 2,
+                "Rare": config.occurrence_on_emoji * 3 + config.occurrence_off_emoji * 1,
+                "Very Rare": config.occurrence_on_emoji * 4,
+            }
+            kills = {
+                "Harmless": 25,
+                "Trivial": 250,
+                "Easy": 500,
+                "Medium": 1000,
+                "Hard": 2500
+            }
+            points = {
+                "Harmless": 1,
+                "Trivial": 5,
+                "Easy": 15,
+                "Medium": 25,
+                "Hard": 50
+            }
+            bestiary_info = monster.bestiary_class
+            if monster.bestiary_level:
+                difficulty = difficulties.get(monster.bestiary_level, f"({monster.bestiary_level})")
+                required_kills = kills[monster.bestiary_level]
+                given_points = points[monster.bestiary_level]
+                bestiary_info += f"\n{difficulty}"
+                if monster.bestiary_occurrence is not None:
+                    occurrence = occurrences.get(monster.bestiary_occurrence, f"")
+                    if monster.bestiary_occurrence == 'Very Rare':
+                        required_kills = 5
+                        given_points = max(points[monster.bestiary_level] * 2, 5)
+                    bestiary_info += f"\n{occurrence}"
+                bestiary_info += f"\n{required_kills:,} kills | {given_points}{config.charms_emoji}"
+            embed.add_field(name="Bestiary Class", value=bestiary_info)
+
+    @classmethod
+    def get_monster_embed_elemental_modifiers(cls, embed, monster):
+        # Iterate through elemental types
+        elemental_modifiers = {}
+        elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
+        for element in elements:
+            value = getattr(monster, f"modifier_{element}", None)
+            if value is None or value == 100:
+                continue
+            elemental_modifiers[element] = value - 100
+        elemental_modifiers = dict(sorted(elemental_modifiers.items(), key=lambda x: x[1]))
+        if elemental_modifiers:
+            content = ""
+            for element, value in elemental_modifiers.items():
+                if config.use_elemental_emojis:
+                    content += f"\n{config.elemental_emojis[element]} {value:+}%"
+                else:
+                    content += f"\n{value:+}% {element.title()}"
+            embed.add_field(name="Elemental modifiers", value=content)
+
+    @classmethod
+    def get_monster_embed_attributes(cls, embed, monster, ctx):
+        attributes = {"summon_cost": "Summonable",
+                      "convince_cost": "Convinceable",
+                      "illusionable": "Illusionable",
+                      "pushable": "Pushable",
+                      "paralysable": "Paralysable",
+                      "sees_invisible": "Sees Invisible"
+                      }
+        attributes = "\n".join([f"{ctx.tick(getattr(monster, x))} {repl}" for x, repl in attributes.items()
+                                if getattr(monster, x) is not None])
+        embed.add_field(name="Attributes", value=attributes or "Unknown")
+
+    @classmethod
+    def get_monster_embed_description(cls, embed, monster: models.Creature):
+        hp = f"{monster.hitpoints:,}" if monster.hitpoints else "?"
+        speed = f"{monster.speed:,}" if monster.speed else "?"
+        experience = f"{monster.experience:,}" if monster.experience else "?"
+        embed.description = f"**HP:** {hp} | **Exp:** {experience} | **Speed:** {speed}"
+        if monster.armor:
+            embed.description += f" | **Armor** {monster.armor}"
+    # endregion
+
+    @classmethod
+    async def get_npc_embed(cls, ctx: NabCtx, npc: models.Npc, long):
+        """Gets the embed to show in /npc command"""
+        short_limit = 5
+        long_limit = 50
+        too_long = False
+
+        embed = cls.get_base_embed(npc)
+        cls.get_npc_embed_parse_basic_info(embed, npc)
+        too_long |= cls.get_npc_embed_parse_offers(embed, npc.sell_offers, long, long_limit, short_limit, "Selling")
+        too_long |= cls.get_npc_embed_parse_offers(embed, npc.buy_offers, long, long_limit, short_limit, "Buying")
+        if npc.destinations:
+            value = ""
+            for destination in npc.destinations:  # type: models.NpcDestination
+                value += "\n{0.name} \u2192 {0.price} gold".format(destination)
+            embed.add_field(name="Destinations", value=value)
+        too_long |= await cls.get_npc_embed_parse_spells(embed, npc.teaches, long, short_limit)
+        if too_long:
+            ask_channel = await ctx.ask_channel_name()
+            if ask_channel:
+                askchannel_string = " or use #" + ask_channel
+            else:
+                askchannel_string = ""
+            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
+        return embed
+
+    # region NPC submethods
+    @classmethod
+    def get_npc_embed_parse_basic_info(cls, embed, npc):
+        embed.add_field(name="Job", value=npc.job)
+        if npc.name == "Rashid":
+            rashid = cls.get_rashid_position()
+            npc.city = rashid.city
+            npc.x = rashid.x
+            npc.y = rashid.y
+            npc.z = rashid.z
+        if npc.name == "Yasir":
+            npc.x = None
+            npc.y = None
+            npc.z = None
+        embed.add_field(name="City", value=npc.city)
+
+    @classmethod
+    def get_npc_embed_parse_offers(cls, embed, offers, long, long_limit, short_limit, label):
+        if not offers:
+            return False
+        too_long = False
+        count = 0
+        value = ""
+        for offer in offers:
+            count += 1
+            currency = offer.currency_title.replace("Gold Coin", "gold")
+            value += "\n{0.item_title} \u2192 {0.value:,} {1}".format(offer, currency)
+            if count > short_limit and not long:
+                value += "\n*...And {0} others*".format(len(offers) - short_limit)
+                too_long = True
+                break
+            if long and count > long_limit:
+                value += "\n*...And {0} others*".format(len(offers) - long_limit)
+                break
+        split_selling = split_message(value, FIELD_VALUE_LIMIT)
+        for value in split_selling:
+            if value == split_selling[0]:
+                name = label
+            else:
+                name = "\u200F"
+            embed.add_field(name=name, value=value)
+        return too_long
+
+    @classmethod
+    async def get_npc_embed_parse_spells(cls, embed, spells: List[models.NpcSpell], long, short_limit):
+        vocs = ["knight", "sorcerer", "paladin", "druid"]
+        if not spells:
+            return False
+        too_long = False
+        values = {}
+        count = {}
+        skip = {}
+        for spell in spells:
+            value = "\n{0.spell_title} \u2014 {0.price:,} gold".format(spell)
+            for voc in vocs:
+                if skip.get(voc, False):
+                    continue
+                if not getattr(spell, voc):
+                    continue
+                values[voc] = values.get(voc, "") + value
+                count[voc] = count.get(voc, 0) + 1
+                if count.get(voc, 0) >= short_limit and not long:
+                    values[voc] += "\n*...And more*"
+                    too_long = True
+                    skip[voc] = True
+        for voc, content in values.items():
+            fields = split_message(content, FIELD_VALUE_LIMIT)
+            for i, split_field in enumerate(fields):
+                name = f"Teaches ({voc.title()}s)" if i == 0 else "\u200F"
+                embed.add_field(name=name, value=split_field, inline=not len(fields) > 1)
+        return too_long
+
+    # endregion
+
+
+
+    @classmethod
+    async def get_spell_embed(cls, ctx: NabCtx, spell: models.Spell, long):
         """Gets the embed to show in /spell command"""
         short_limit = 5
         words = spell.words
         if "exani hur" in spell.words:
             words = "exani hur up|down"
 
-        embed = TibiaWiki._get_base_embed(spell, f"{spell.title} ({words})")
+        embed = cls.get_base_embed(spell, f"{spell.title} ({words})")
         premium = "**premium** " if spell.premium else ""
         mana = spell.mana if spell.mana else "variable"
         voc_list = list()
-        if spell.knight: voc_list.append("knights")
-        if spell.paladin: voc_list.append("paladins")
-        if spell.druid: voc_list.append("druids")
-        if spell.sorcerer: voc_list.append("sorcerers")
+        if spell.knight:
+            voc_list.append("knights")
+        if spell.paladin:
+            voc_list.append("paladins")
+        if spell.druid:
+            voc_list.append("druids")
+        if spell.sorcerer:
+            voc_list.append("sorcerers")
         vocs = join_list(voc_list, ", ", " and ")
 
         description = f"A {premium}spell for level **{spell.level}** and up. " \
@@ -994,7 +1031,7 @@ class TibiaWiki:
             description += f"\nIt can be bought for {spell.price:,} gold coins."
         embed.description = description
 
-        too_long = await TibiaWiki._spell_parse_teachers(embed, spell.taught_by, long, short_limit, voc_list, vocs)
+        too_long = await cls.get_spell_embed_parse_teachers(embed, spell.taught_by, long, short_limit, voc_list, vocs)
         # Set embed color based on element:
         element_color = {
             "Fire": discord.Colour(0xFF9900),
@@ -1025,8 +1062,8 @@ class TibiaWiki:
 
         return embed
 
-    @staticmethod
-    async def _spell_parse_teachers(embed, teachers: List[models.NpcSpell], long, short_limit, voc_list, vocs):
+    @classmethod
+    async def get_spell_embed_parse_teachers(cls, embed, teachers: List[models.NpcSpell], long, short_limit, voc_list, vocs):
         if not teachers:
             return False
         too_long = False
@@ -1049,101 +1086,7 @@ class TibiaWiki:
                 embed.add_field(name=name, value=value)
         return too_long
 
-    @classmethod
-    async def get_npc_embed(cls, ctx: NabCtx, npc: models.Npc, long):
-        """Gets the embed to show in /npc command"""
-        short_limit = 5
-        long_limit = 50
-        too_long = False
 
-        embed = TibiaWiki._get_base_embed(npc)
-        embed.add_field(name="Job", value=npc.job)
-        if npc.name == "Rashid":
-            rashid = TibiaWiki.get_rashid_position()
-            npc.city = rashid.city
-            npc.x = rashid.x
-            npc.y = rashid.y
-            npc.z = rashid.z
-        if npc.name == "Yasir":
-            npc.x = None
-            npc.y = None
-            npc.z = None
-        embed.add_field(name="City", value=npc.city)
-        too_long |= cls._parse_npc_offers(embed, npc.sell_offers, long, long_limit, short_limit, "Selling")
-        too_long |= cls._parse_npc_offers(embed, npc.buy_offers, long, long_limit, short_limit, "Buying")
-        if npc.destinations:
-            value = ""
-            for destination in npc.destinations:  # type: models.NpcDestination
-                value += "\n{0.name} \u2192 {0.price} gold".format(destination)
-            embed.add_field(name="Destinations", value=value)
-        too_long |= await cls._npc_parse_spells(embed, npc.teaches, long, short_limit)
-        if too_long:
-            ask_channel = await ctx.ask_channel_name()
-            if ask_channel:
-                askchannel_string = " or use #" + ask_channel
-            else:
-                askchannel_string = ""
-            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
-        return embed
-
-    # region NPC submethods
-    @classmethod
-    def _parse_npc_offers(cls, embed, offers, long, long_limit, short_limit, label):
-        if not offers:
-            return False
-        too_long = False
-        count = 0
-        value = ""
-        for offer in offers:
-            count += 1
-            currency = offer.currency_title.replace("Gold Coin", "gold")
-            value += "\n{0.item_title} \u2192 {0.value:,} {1}".format(offer, currency)
-            if count > short_limit and not long:
-                value += "\n*...And {0} others*".format(len(offers) - short_limit)
-                too_long = True
-                break
-            if long and count > long_limit:
-                value += "\n*...And {0} others*".format(len(offers) - long_limit)
-                break
-        split_selling = split_message(value, FIELD_VALUE_LIMIT)
-        for value in split_selling:
-            if value == split_selling[0]:
-                name = label
-            else:
-                name = "\u200F"
-            embed.add_field(name=name, value=value)
-        return too_long
-
-    @classmethod
-    async def _npc_parse_spells(cls, embed, spells: List[models.NpcSpell], long, short_limit):
-        vocs = ["knight", "sorcerer", "paladin", "druid"]
-        if not spells:
-            return False
-        too_long = False
-        values = {}
-        count = {}
-        skip = {}
-        for spell in spells:
-            value = "\n{0.spell_title} \u2014 {0.price:,} gold".format(spell)
-            for voc in vocs:
-                if skip.get(voc, False):
-                    continue
-                if not getattr(spell, voc):
-                    continue
-                values[voc] = values.get(voc, "") + value
-                count[voc] = count.get(voc, 0) + 1
-                if count.get(voc, 0) >= short_limit and not long:
-                    values[voc] += "\n*...And more*"
-                    too_long = True
-                    skip[voc] = True
-        for voc, content in values.items():
-            fields = split_message(content, FIELD_VALUE_LIMIT)
-            for i, split_field in enumerate(fields):
-                name = f"Teaches ({voc.title()}s)" if i == 0 else "\u200F"
-                embed.add_field(name=name, value=split_field, inline=not len(fields) > 1)
-        return too_long
-
-    # endregion
 
     @classmethod
     def search_entry(cls, table, term, *, additional_field=""):
@@ -1198,6 +1141,7 @@ class TibiaWiki:
 
         return f"http://tibia.wikia.com/wiki/Mapper?coords={convert_pos(x)}-{convert_pos(y)}-{z}-4-1-1"
     # endregion
+
 
 def setup(bot):
     bot.add_cog(TibiaWiki(bot))

@@ -18,7 +18,6 @@ from .utils import *
 from .utils.messages import *
 from .utils.pages import Pages, CannotPaginate
 from .utils.tibia import *
-from .utils.tibiawiki import *
 
 req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")

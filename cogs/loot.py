@@ -9,6 +9,7 @@ from typing import Any, List, Dict, Tuple, Optional, Union
 
 import aiohttp
 import discord
+import tibiawikisql
 from PIL import Image
 from discord.ext import commands
 
@@ -18,7 +19,6 @@ from .utils.config import config
 from .utils.context import NabCtx
 from .utils.database import wiki_db
 from .utils.messages import split_message
-from .utils.tibiawiki import get_item
 
 LOOTDB = "data/loot.db"
 DEBUG_FOLDER = "debug/loot"
@@ -282,12 +282,12 @@ class Loot:
         params = params.split(",")
         if not len(params) == 3:
             return await ctx.error("Wrong parameters (item name,group,id)")
-        item, group,id = params
-        item = get_item(item)
-        if item is None or type(item) is list:
+        item, group, id = params
+        item: tibiawikisql.models.Item = tibiawikisql.models.Item.get_by_field(wiki_db, "title", item, True)
+        if item is None:
             return await ctx.error("No item found with that name.")
-        if item["value"] is None:
-            item["value"] = 0
+        if item.value_buy is None:
+            item.value_buy = 0
 
         attachment = ctx.message.attachments[0]
         if attachment.width != 32 or attachment.height != 32:
@@ -301,14 +301,14 @@ class Loot:
         except Exception:
             return await ctx.error("Either that wasn't an image or I failed to load it, please try again.")
 
-        result = await self.item_new(item['title'], frame_image, group, item['value'], 0, id)
+        result = await self.item_new(item.title, frame_image, group, item.value_buy, 0, id)
         if result is None:
             return await ctx.error("Could not add new item.")
         else:
             await ctx.success("Image added to item.", file=discord.File(result, "results.png"))
-            result, item = await self.item_show(item['title'])
+            result, saved_item = await self.item_show(item.title)
             if result is not None:
-                await ctx.send("Name: {name}, Group: {group}, Value: {value}, ID: {id}".format(**item[0]),
+                await ctx.send("Name: {name}, Group: {group}, Value: {value}, ID: {id}".format(**saved_item[0]),
                                file=discord.File(result, "results.png"))
 
     @checks.is_owner()
