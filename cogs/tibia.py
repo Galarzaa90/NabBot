@@ -14,6 +14,7 @@ import discord
 import pytz
 from discord.ext import commands
 
+from cogs.utils.converter import Stamina
 from cogs.utils.tibia import get_rashid_city
 from nabbot import NabBot
 from .utils import checks
@@ -1038,45 +1039,39 @@ class Tibia:
                             f"share experience."
                 await ctx.send(reply+f"\nTheir share range is from level **{low}** to **{high}**.")
 
-    @commands.command()
-    async def stamina(self, ctx: NabCtx, current_stamina: str):
+    @commands.command(usage="<current> [target]")
+    async def stamina(self, ctx: NabCtx, current: Stamina, target: Stamina=None):
         """Tells you the time you have to wait to restore stamina.
 
         To use it, you must provide your current stamina, in this format: `hh:mm`.
         The bot will show the time needed to reach full stamina if you were to start sleeping now.
 
-        The footer text shows the time in your timezone where your stamina would be full."""
+        Optionally, you can provide the target stamina you want.
 
-        hour_pattern = re.compile(r"(\d{1,2}):(\d{1,2})")
-        match = hour_pattern.match(current_stamina.strip())
-        if not match:
-            await ctx.send("You need to tell me your current stamina, in this format: `34:03`.")
-            return
-        hours = int(match.group(1))
-        minutes = int(match.group(2))
-        if minutes >= 60:
-            await ctx.send("Invalid time, minutes can't be 60 or greater.")
-            return
-        current = dt.timedelta(hours=hours, minutes=minutes)
-        if hours > 42 or (hours == 42 and minutes > 0):
-            await ctx.send("You can't have more than 42 hours of stamina.")
-            return
-        elif hours == 42:
-            await ctx.send("Your stamina is full already.")
-            return
+        The footer text shows the time in your timezone where your stamina would be full."""
+        if target is None:
+            target = Stamina("42:00")
+        if current > target:
+            return await ctx.error("Current stamina can't be greater than target stamina.")
+        if current == target:
+            return await ctx.error("Current stamina is already equal to target.")
+
+        delta = dt.timedelta(hours=current.hours, minutes=current.minutes)
+        target_delta = dt.timedelta(hours=target.hours, minutes=target.minutes)
         # Stamina takes 3 minutes to regenerate one minute until 40 hours.
-        resting_time = max((dt.timedelta(hours=40)-current).total_seconds(), 0)*3
-        # Last two hours of stamina take 10 minutes for a minute
-        resting_time += (dt.timedelta(hours=42)-max(dt.timedelta(hours=40), current)).total_seconds()*10
+        resting_time = max((dt.timedelta(hours=min(target.hours, 40))-delta).total_seconds(), 0)*3
+        if target.hours > 40 or (target.hours == 40 and target.minutes > 0):
+            # Last two hours of stamina take 10 minutes for a minute
+            resting_time += (target_delta-max(dt.timedelta(hours=40), delta)).total_seconds()*10
         # You must be logged off 10 minutes before you start gaining stamina
         resting_time += dt.timedelta(minutes=10).total_seconds()
 
-        hours, remainder = divmod(int(resting_time), 3600)
-        minutes, _ = divmod(remainder, 60)
-        if hours:
-            remaining = f'{hours} hours and {minutes} minutes'
+        current_hours, remainder = divmod(int(resting_time), 3600)
+        current_minutes, _ = divmod(remainder, 60)
+        if current_hours:
+            remaining = f'{current_hours} hours and {current_minutes} minutes'
         else:
-            remaining = f'{minutes} minutes'
+            remaining = f'{current_minutes} minutes'
 
         reply = f"You need to rest **{remaining}** to get back to full stamina."
         permissions = ctx.bot_permissions

@@ -291,38 +291,3 @@ def single_line(string: str) -> str:
     :return: The converted string.
     """
     return string.replace("\r\n", " ").replace("\n", " ")
-
-
-class BadTime(commands.BadArgument):
-    pass
-
-
-class TimeString:
-    def __init__(self, argument):
-        compiled = re.compile(r"(?:(?P<days>\d+)d)?(?:(?P<hours>\d+)h)?(?:(?P<minutes>\d+)m)?(?:(?P<seconds>\d+)s)?")
-        self.original = argument
-        match = compiled.match(argument)
-        if match is None or not match.group(0):
-            raise BadTime("That's not a valid time, try something like this: 1d7h or 4h20m")
-
-        self.seconds = 0
-        days = match.group('days')
-        if days is not None:
-            self.seconds += int(days) * 86400
-        hours = match.group('hours')
-        if hours is not None:
-            self.seconds += int(hours) * 3600
-        minutes = match.group('minutes')
-        if minutes is not None:
-            self.seconds += int(minutes) * 60
-        seconds = match.group('seconds')
-        if seconds is not None:
-            self.seconds += int(seconds)
-
-        if self.seconds < 0:
-            raise BadTime("I can't go back in time.")
-
-        if self.seconds > (60*60*24*30):
-            raise BadTime("That's a bit too far in the future... Try less than 30 days.")
-
-
