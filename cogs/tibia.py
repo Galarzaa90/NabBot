@@ -898,7 +898,7 @@ class Tibia:
                 await ctx.send(invalid_arguments)
                 return
             try:
-                char = await get_character(params[0])
+                char = await get_character(ctx.bot, params[0])
                 if char is None:
                     await ctx.send("I couldn't find a character with that name.")
                     return
@@ -989,7 +989,7 @@ class Tibia:
             if len(chars) == 1:
                 with ctx.typing():
                     try:
-                        char = await get_character(chars[0])
+                        char = await get_character(ctx.bot, chars[0])
                         if char is None:
                             await ctx.send('There is no character with that name.')
                             return
@@ -1009,7 +1009,7 @@ class Tibia:
             with ctx.typing():
                 for char in chars:
                     try:
-                        fetched_char = await get_character(char)
+                        fetched_char = await get_character(ctx.bot, char)
                         if fetched_char is None:
                             await ctx.send(f"There is no character named **{char}**.")
                             return
@@ -1108,7 +1108,7 @@ class Tibia:
                 return
             else:
                 try:
-                    char = await get_character(params[0])
+                    char = await get_character(ctx.bot, params[0])
                     if char is None:
                         await ctx.send("Sorry, can you try it again?")
                         return
@@ -1864,6 +1864,7 @@ class Tibia:
                 if recent_news is None:
                     await asyncio.sleep(30)
                     continue
+                log.debug("Checking Tibia.com recent news")
                 last_article = recent_news[0]["id"]
                 last_id = await get_global_property(self.bot.pool, "last_article", default=0)
                 await set_global_property(self.bot.pool, "last_article", last_article)
@@ -1918,7 +1919,7 @@ class Tibia:
             return results
 
     def __unload(self):
-        print("cogs.tibia: Cancelling pending tasks...")
+        log.info("Unloading cogs.tibia...")
         self.news_announcements_task.cancel()
 
 

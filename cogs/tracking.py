@@ -96,7 +96,6 @@ class Tracking:
                 continue
             for world in self.bot.tracked_worlds_list:
                 if world not in tibia_worlds:
-                    log.debug()
                     await asyncio.sleep(0.1)
                 try:
                     for category in HIGHSCORE_CATEGORIES:
@@ -199,6 +198,7 @@ class Tracking:
                 if len(current_world_online) == 0:
                     await asyncio.sleep(0.1)
                     continue
+                log.debug(f"Scanning online characters for '{world.name}'")
                 self.world_times[world.name] = time.time()
                 self.bot.dispatch("world_scanned", world)
                 # Save the online list in file
@@ -373,6 +373,7 @@ class Tracking:
         deleted = get_affected_count(result)
         if deleted:
             # Dispatch event so ServerLog cog can handle it.
+            log.info(f"Watchlist channel deleted (Channel ID: {channel.id}, Guild ID: {channel.guild.id})")
             self.bot.dispatch("watchlist_deleted", channel, deleted_entries)
 
     # endregion
@@ -988,6 +989,7 @@ class Tracking:
         except discord.HTTPException:
             await ctx.error(f"Something went wrong, the channel name you chose is probably invalid.")
         else:
+            log.info(f"Watchlist created (Channel ID: {channel.id}, Guild ID: {channel.guild.id})")
             await ctx.success(f"Channel created successfully: {channel.mention}\n")
             await channel.send("This is where I will post a list of online watched characters.\n"
                                "Edit this channel's permissions to allow the roles you want.\n"
@@ -1312,7 +1314,7 @@ class Tracking:
     # endregion
 
     def __unload(self):
-        print("cogs.tracking: Cancelling pending tasks...")
+        log.info("Unloading cogs.tracking...")
         self.scan_highscores_task.cancel()
         self.scan_online_chars_task.cancel()
 

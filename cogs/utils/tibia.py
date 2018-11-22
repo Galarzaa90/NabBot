@@ -397,8 +397,6 @@ class Guild:
 
         return tibia_guild
 
-
-# TODO: This function's signature changed, so it must be updated everywhere
 async def get_character(bot, name, tries=5) -> Optional[Character]:
     """Fetches a character from TibiaData, parses and returns a Character object
 
@@ -470,7 +468,7 @@ async def bind_database_character(bot, character: Character):
             if char_id:
                 # TODO: Conflict handling is necessary now that name is a unique column
                 row = await conn.fetchrow('UPDATE "character" SET name = $1 WHERE id = $2 RETURNING id, user_id',
-                                           character.name, char_id)
+                                          character.name, char_id)
                 character.owner = row["user_id"]
                 character.id = row["id"]
                 log.info(f"get_character(): {old_name} renamed to {character.name}")

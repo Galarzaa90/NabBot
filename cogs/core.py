@@ -98,18 +98,19 @@ class Core:
                     await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
                                    f'{error.original}```')
 
-    async def on_command(self, ctx):
+    async def on_command(self, ctx: commands.Context):
         command = ctx.command.qualified_name
         guild_id = ctx.guild.id if ctx.guild is not None else None
         query = """INSERT INTO command(server_id, channel_id, user_id, date, prefix, command)
                    VALUES ($1, $2, $3, $4, $5, $6)
                 """
+        log.info(f"Invoked command: {ctx.message.content}")
         await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
                                     ctx.message.created_at.replace(tzinfo=dt.timezone.utc), ctx.prefix, command)
 
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
-        log.info("Nab Bot added to server: {0.name} (ID: {0.id})".format(guild))
+        log.info(f"Bot added to guild: {guild} (ID: {guild.id})")
         message = f"**I've been added to this server.**\n" \
                   f"Some things you should know:\n" \
                   f"‣ My command prefix is: `{config.command_prefix[0]}` (it is customizable)\n" \
@@ -136,11 +137,11 @@ class Core:
                 return
             await channel.send(message)
         except discord.HTTPException as e:
-            log.error(f"Could not send join message on server: {guild.name}.", exc_info=e)
+            log.exception(f"Could not send join message on server: {guild.name}.")
 
     async def on_guild_remove(self, guild: discord.Guild):
         """Called when the bot leaves a guild (server)."""
-        log.info("Nab Bot left server: {0.name} (ID: {0.id})".format(guild))
+        log.info(f"Bot removed from guild: {guild} (ID: {guild.id})")
         for member in guild.members:
             if member.id in self.bot.members:
                 self.bot.members[member.id].remove(guild.id)
@@ -148,8 +149,14 @@ class Core:
         await self.bot.pool.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1,$2,$3)",
                                     guild.id, len(self.bot.guilds), "remove")
 
+    async def on_member_ban(self, guild: discord.Guild, user: discord.User):
+        """Called when a member is banned from a guild."""
+        log.info(f"{user.name}#{user.discriminator} banned from {guild.name} "
+                 f"(Member ID: {user.id}) Guild ID {guild.id}")
+
     async def on_member_join(self, member: discord.Member):
         """ Called when a member joins a guild (server) the bot is in."""
+        log.info(f"{member} joined {member.guild} (Member ID: {member.id}, Guild ID: {member.guild.id})")
         # Updating member list
         if member.id in self.bot.members:
             self.bot.members[member.id].append(member.guild.id)
@@ -194,9 +201,14 @@ class Core:
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
+        log.info(f"{member} left/kicked from {member.guild} (Member ID: {member.id}) Guild ID {member.guild.id}")
         self.bot.members[member.id].remove(member.guild.id)
         await self.bot.pool.execute("DELETE FROM user_server WHERE user_id = $1 AND server_id = $2",
                                     member.id, member.guild.id)
+
+    async def on_member_unban(self, guild: discord.Guild, user: discord.User):
+        """Called when a member is unbanned from a guild"""
+        log.info(f"{user} banned from {guild} (Member ID: {user.id}) Guild ID {guild.id}")
 
     def __unload(self):
         self.game_update_task.cancel()

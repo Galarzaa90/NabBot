@@ -39,8 +39,7 @@ class Settings:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    @staticmethod
-    async def __local_check(ctx):
+    async def __local_check(self, ctx):
         if ctx.guild is None:
             raise commands.NoPrivateMessage("Settings can't be modified on private messages.")
         return True

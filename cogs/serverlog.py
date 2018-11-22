@@ -259,8 +259,6 @@ class ServerLog:
 
     async def on_member_join(self, member: discord.Member):
         """ Called when a member joins a guild (server) the bot is in."""
-        log.info(f"{member.display_name} (ID: {member.id}) joined {member.guild.name}")
-
         embed = discord.Embed(description=f"{member.mention} joined.", colour=COLOUR_MEMBER_JOINED)
         embed.set_author(name=f"{member.name}#{member.discriminator} (ID: {member.id})",
                          icon_url=get_user_avatar(member))

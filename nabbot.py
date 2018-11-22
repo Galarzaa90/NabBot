@@ -62,13 +62,6 @@ class NabBot(commands.Bot):
         print(f"Version {self.__version__}")
         print('------')
 
-        # Notify reset author
-        if len(sys.argv) > 1:
-            user = self.get_member(int(sys.argv[1]))
-            sys.argv[1] = 0
-            if user is not None:
-                await user.send("Restart complete")
-
         # Populating members's guild list
         self.members = {}
         async with self.pool.acquire() as conn:
@@ -82,7 +75,8 @@ class NabBot(commands.Bot):
                     await conn.execute("INSERT INTO user_server(user_id, server_id) VALUES($1, $2)",
                                        member.id, guild.id)
 
-        log.info('Bot is online and ready')
+        log.info("Bot is online and ready")
+        log.debug("Debug mode enabled.")
 
     async def on_message(self, message: discord.Message):
         """Called every time a message is sent on a visible channel."""

@@ -98,9 +98,12 @@ def run_bot():
 
 
 @click.group(invoke_without_command=True, options_metavar='[options]')
+@click.option('--debug/--no-debug', default=False)
 @click.pass_context
-def main(ctx):
+def main(ctx, debug):
     """Launches the bot."""
+    if debug:
+        log.setLevel(logging.DEBUG)
     if ctx.invoked_subcommand is None:
         run_bot()
 
