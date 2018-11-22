@@ -9,7 +9,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from . import config
 from .context import NabCtx
-from .tibia import KNIGHT, DRUID, PALADIN, SORCERER
+from .tibia import DRUID, KNIGHT, PALADIN, SORCERER
 
 
 class CannotPaginate(Exception):

@@ -1,5 +1,6 @@
 import asyncio
-from typing import List, Dict
+import logging
+from typing import Dict, List
 
 import discord
 from discord.ext import commands
@@ -8,7 +9,9 @@ from nabbot import NabBot
 from .utils import checks, config
 from .utils.context import NabCtx
 from .utils.database import get_server_property
-from .utils.pages import Pages, CannotPaginate
+from .utils.pages import CannotPaginate, Pages
+
+log = logging.getLogger("nabbot")
 
 
 class Mod:

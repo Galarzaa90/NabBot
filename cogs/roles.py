@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import List
 
 import discord
@@ -7,11 +8,13 @@ from discord.ext import commands
 from cogs.utils.database import get_affected_count
 from nabbot import NabBot
 from .utils import checks
+from .utils import get_user_avatar
 from .utils.context import NabCtx
 from .utils.converter import InsensitiveRole
-from .utils import log, get_user_avatar
 from .utils.pages import CannotPaginate, Pages
-from .utils.tibia import get_guild, NetworkError
+from .utils.tibia import NetworkError, get_guild
+
+log = logging.getLogger("nabbot")
 
 
 class Roles:

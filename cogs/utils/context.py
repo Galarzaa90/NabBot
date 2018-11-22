@@ -1,11 +1,10 @@
 import asyncio
+import functools
+import re
+from typing import Any, Callable, Optional, Sequence, TypeVar, Union
 
 import aiohttp
 import asyncpg
-import functools
-import re
-from typing import Union, Optional, Callable, TypeVar, Any, Sequence
-
 import discord
 from discord.ext import commands
 

@@ -1,4 +1,5 @@
 import datetime as dt
+import logging
 import random
 import re
 import sqlite3
@@ -18,6 +19,8 @@ from .utils.database import wiki_db
 from .utils.messages import split_message
 from .utils.pages import CannotPaginate, Pages
 from .utils.tibia import get_map_area, get_tibia_weekday
+
+log = logging.getLogger("nabbot")
 
 WIKI_CHARMS_ARTICLE = "Cyclopedia#List_of_Charms"
 WIKI_ICON = "https://vignette.wikia.nocookie.net/tibia/images/b/bc/Wiki.png/revision/latest?path-prefix=en"

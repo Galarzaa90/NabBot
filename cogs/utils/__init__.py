@@ -1,12 +1,9 @@
 import datetime as dt
 import io
-import logging
-import os
 import re
 import time
 from calendar import timegm
-from logging.handlers import TimedRotatingFileHandler
-from typing import Optional, List, Union, Tuple
+from typing import List, Optional, Tuple, Union
 
 import discord
 from PIL import Image
@@ -19,30 +16,6 @@ from .config import config
 # characters are added as servername_charactername
 # The list is updated periodically on think() using get_server_online()
 online_characters = {}
-
-# Start logging
-# Create logs folder
-os.makedirs('logs/', exist_ok=True)
-# discord.py log
-discord_log = logging.getLogger('discord')
-discord_log.setLevel(logging.INFO)
-handler = logging.FileHandler(filename='logs/discord.log', encoding='utf-8', mode='a')
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-discord_log.addHandler(handler)
-# NabBot log
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-# Save log to file (info level)
-fileHandler = TimedRotatingFileHandler('logs/nabbot', when='midnight')
-fileHandler.suffix = "%Y_%m_%d.log"
-fileHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
-fileHandler.setLevel(logging.INFO)
-log.addHandler(fileHandler)
-# Print output to console too (debug level)
-consoleHandler = logging.StreamHandler()
-consoleHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
-consoleHandler.setLevel(logging.DEBUG)
-log.addHandler(consoleHandler)
 
 CONTENT_LIMIT = 2000
 DESCRIPTION_LIMIT = 2048

@@ -1,13 +1,14 @@
 import asyncio
 import datetime as dt
+import logging
 import random
-from typing import Dict, Optional, List, Any
+from typing import Any, Dict, List, Optional
 
 import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import TimeString, single_line, log, BadTime, get_user_avatar, clean_string, is_numeric, config
+from .utils import BadTime, TimeString, clean_string, config, get_user_avatar, is_numeric, single_line
 from .utils import checks
 from .utils.context import NabCtx
 from .utils.database import get_server_property
@@ -19,6 +20,7 @@ EVENT_DESCRIPTION_LIMIT = 400
 MAX_EVENTS = 3
 RECENT_THRESHOLD = dt.timedelta(minutes=30)
 
+log = logging.getLogger("nabbot")
 
 class General:
     def __init__(self, bot: NabBot):

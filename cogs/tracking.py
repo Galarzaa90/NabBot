@@ -1,28 +1,30 @@
 import asyncio
-import asyncpg
 import datetime as dt
 import json
+import logging
 import pickle
 import re
 import time
 import urllib.parse
 from typing import List
 
+import asyncpg
 import discord
 from discord.ext import commands
 
 from nabbot import NabBot
+from .utils import EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_numeric, join_list, online_characters
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import get_server_property, get_affected_count
-from .utils import online_characters, log, join_list, is_numeric, FIELD_VALUE_LIMIT, EMBED_LIMIT, \
-    get_user_avatar, config
-from .utils.messages import weighed_choice, death_messages_player, death_messages_monster, format_message, \
-    level_messages, split_message
-from .utils.pages import Pages, CannotPaginate, VocationPages
-from .utils.tibia import get_highscores, ERROR_NETWORK, tibia_worlds, get_world, get_character, get_voc_emoji, get_guild, \
-    get_voc_abb, get_character_url, url_guild, \
-    get_tibia_time_zone, NetworkError, Death, Character, HIGHSCORE_CATEGORIES, get_share_range, World
+from .utils.database import get_affected_count, get_server_property
+from .utils.messages import death_messages_monster, death_messages_player, format_message, level_messages, \
+    split_message, weighed_choice
+from .utils.pages import CannotPaginate, Pages, VocationPages
+from .utils.tibia import Character, Death, ERROR_NETWORK, HIGHSCORE_CATEGORIES, NetworkError, World, get_character, \
+    get_character_url, get_guild, get_highscores, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_emoji, \
+    get_world, tibia_worlds, url_guild
+
+log = logging.getLogger("nabbot")
 
 
 class Tracking:

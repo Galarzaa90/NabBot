@@ -1,4 +1,5 @@
 import json
+import logging
 
 import asyncpg
 import datetime as dt
@@ -14,11 +15,13 @@ from discord.ext import commands
 
 from cogs.utils import context, safe_delete_message
 from cogs.utils.database import get_prefixes, get_server_property
-from cogs.utils import config, log
+from cogs.utils import config
 from cogs.utils.tibia import populate_worlds, tibia_worlds
 
 initial_cogs = {"cogs.core", "cogs.serverlog", "cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia",
                 "cogs.general",  "cogs.loot", "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info"}
+
+log = logging.getLogger("nabbot")
 
 
 async def _prefix_callable(bot, msg):

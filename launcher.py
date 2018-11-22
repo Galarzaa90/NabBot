@@ -1,12 +1,29 @@
 import asyncio
 import json
+import logging
 import os
+from logging.handlers import TimedRotatingFileHandler
 
 import asyncpg
 import click
 
 from cogs.utils.database_migration import check_database, import_legacy_db
 from nabbot import NabBot
+
+logging_formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s')
+# Save log to file (info level)
+file_handler = TimedRotatingFileHandler('logs/nabbot', when='midnight')
+file_handler.suffix = "%Y_%m_%d.log"
+file_handler.setFormatter(logging_formatter)
+# Print output to console too (debug level)
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging_formatter)
+
+# NabBot log
+log = logging.getLogger("nabbot")
+log.setLevel(logging.INFO)
+log.addHandler(file_handler)
+log.addHandler(console_handler)
 
 
 def get_uri():
@@ -49,29 +66,30 @@ async def create_pool(uri, **kwargs) -> asyncpg.pool.Pool:
     try:
         pool = await asyncpg.create_pool(uri, init=init, **kwargs)
     except ValueError:
-        print("PostgreSQL error: Invalid URI, check postgresql.txt. "
-              "Format must be 'postresql://user:password@host/database'")
+        log.error("PostgreSQL error: Invalid URI, check postgresql.txt. "
+                  "Format must be 'postresql://user:password@host/database'")
     except asyncpg.PostgresError as e:
-        print(f"PostgreSQL error: {e}")
+        log.error(f"PostgreSQL error: {e}")
     except TimeoutError:
-        print("PostgreSQL error: Connection timed out.")
+        log.error("PostgreSQL error: Connection timed out.")
     except Exception as e:
-        print(f"Unexpected error: {e.__class__.__name__}: {e}")
+        log.error(f"Unexpected error: {e.__class__.__name__}: {e}")
     else:
         return pool
 
 
 def run_bot():
+    log.info("Launching bot...")
     loop = asyncio.get_event_loop()
 
     pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
     if pool is None:
-        print('Could not set up PostgreSQL. Exiting.')
+        log.error('Could not set up PostgreSQL. Exiting.')
         return
 
     result = loop.run_until_complete(check_database(pool))
     if not result:
-        print('Failed to check database')
+        log.error('Failed to check database')
         return
 
     bot = NabBot()
@@ -90,15 +108,16 @@ def main(ctx):
 @main.command()
 @click.option('-path', '--path', help="Name for the database file.", default="data/users.db")
 def migrate(path):
+    log.info("Starting migration")
     loop = asyncio.get_event_loop()
     pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
     if pool is None:
-        print('Could not set up PostgreSQL. Exiting.')
+        log.error('Could not set up PostgreSQL. Exiting.')
         return
 
     result = loop.run_until_complete(check_database(pool))
     if not result:
-        print('Failed to check database')
+        log.error('Failed to check database')
         return
 
     loop.run_until_complete(import_legacy_db(pool, path))

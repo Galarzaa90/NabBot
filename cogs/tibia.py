@@ -1,6 +1,7 @@
 import asyncio
 import calendar
 import datetime as dt
+import logging
 import random
 import re
 import time
@@ -16,15 +17,17 @@ from discord.ext import commands
 from cogs.utils.tibia import get_rashid_city
 from nabbot import NabBot
 from .utils import checks
+from .utils import config, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, join_list, online_characters
 from .utils.context import NabCtx
-from .utils.database import get_server_property, get_global_property, set_global_property
-from .utils import get_time_diff, join_list, online_characters, get_local_timezone, log, is_numeric, get_user_avatar, config
-from .utils.messages import html_to_markdown, get_first_image, split_message
-from .utils.pages import Pages, CannotPaginate, VocationPages
-from .utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
-    url_house, get_stats, get_map_area, get_tibia_time_zone, get_world, tibia_worlds, get_world_bosses, get_recent_news, \
-    get_news_article, Character, url_guild, highscore_format, get_character_url, url_character, get_house, \
-    get_voc_abb_and_emoji, get_world_list, get_highscores_tibiadata
+from .utils.database import get_global_property, get_server_property, set_global_property
+from .utils.messages import get_first_image, html_to_markdown, split_message
+from .utils.pages import CannotPaginate, Pages, VocationPages
+from .utils.tibia import Character, NetworkError, get_character, get_character_url, get_guild, get_highscores_tibiadata, \
+    get_house, get_map_area, get_news_article, get_recent_news, get_share_range, get_stats, get_tibia_time_zone, \
+    get_voc_abb, get_voc_abb_and_emoji, get_voc_emoji, get_world, get_world_bosses, get_world_list, highscore_format, \
+    tibia_logo, tibia_worlds, url_character, url_guild, url_house
+
+log = logging.getLogger("nabbot")
 
 
 FLAGS = {"North America": "🇺🇸", "South America": "🇧🇷", "Europe": "🇬🇧"}

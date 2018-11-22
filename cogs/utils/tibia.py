@@ -10,15 +10,17 @@ from calendar import timegm
 from contextlib import closing
 from html.parser import HTMLParser
 from logging.handlers import TimedRotatingFileHandler
-from typing import List, Union, Dict, Optional
+from typing import Dict, List, Optional, Union
 
 import aiohttp
 import cachetools
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
 
-from . import config, log, online_characters, get_local_timezone
+from . import config, get_local_timezone, online_characters
 from .database import wiki_db
+
+log = logging.getLogger("nabbot")
 
 # Constants
 ERROR_NETWORK = 0

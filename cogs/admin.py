@@ -1,13 +1,16 @@
+import logging
 from typing import List
 
 import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import checks, join_list, log, get_user_avatar
+from .utils import checks, get_user_avatar, join_list
 from .utils.config import config
 from .utils.context import NabCtx
-from .utils.tibia import get_character, NetworkError, Character
+from .utils.tibia import Character, NetworkError, get_character
+
+log = logging.getLogger("nabbot")
 
 
 class Admin:

@@ -1,8 +1,7 @@
+import logging
 import platform
-import re
 import time
 from collections import Counter
-from contextlib import closing
 from typing import List
 
 import discord
@@ -10,13 +9,15 @@ import psutil
 from discord.ext import commands
 
 from nabbot import NabBot
+from .utils import FIELD_VALUE_LIMIT, config, get_region_string, get_user_avatar, parse_uptime
 from .utils import checks
 from .utils.context import NabCtx
 from .utils.database import get_server_property
-from .utils import parse_uptime, FIELD_VALUE_LIMIT, get_region_string, get_user_avatar, config
 from .utils.messages import split_message
 from .utils.pages import HelpPaginator, _can_run
 from .utils.tibia import tibia_worlds
+
+log = logging.getLogger("nabbot")
 
 
 class Info:

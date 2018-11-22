@@ -4,7 +4,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils import checks, config
 from .utils.context import NabCtx
-from .utils.database import get_server_property, set_server_property, get_prefixes, set_prefixes
+from .utils.database import get_prefixes, get_server_property, set_prefixes, set_server_property
 from .utils.tibia import tibia_worlds
 
 SETTINGS = {

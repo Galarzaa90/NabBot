@@ -1,7 +1,7 @@
 import re
 
 import discord
-from discord.ext.commands import NoPrivateMessage, BadArgument, IDConverter
+from discord.ext.commands import BadArgument, IDConverter, NoPrivateMessage
 
 
 class InsensitiveRole(IDConverter):

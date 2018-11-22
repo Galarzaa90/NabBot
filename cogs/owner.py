@@ -1,4 +1,3 @@
-import asyncpg
 import inspect
 import platform
 import textwrap
@@ -6,18 +5,20 @@ import traceback
 from contextlib import redirect_stdout
 from distutils.version import StrictVersion
 
+import asyncpg
 import pkg_resources
-from discord.ext import commands
 
 # Exposing for /debug command
 from cogs.utils.database import get_affected_count
 from nabbot import NabBot
+from .utils import *
 from .utils import checks
 from .utils.context import NabCtx
-from .utils import *
 from .utils.messages import *
-from .utils.pages import Pages, CannotPaginate
+from .utils.pages import CannotPaginate, Pages
 from .utils.tibia import *
+
+log = logging.getLogger("nabbot")
 
 req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")

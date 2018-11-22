@@ -1,11 +1,12 @@
 import io
+import logging
 import operator
 import os
 import pickle
 import sqlite3
 import time
 from contextlib import closing
-from typing import Any, List, Dict, Tuple, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 import discord
@@ -14,11 +15,13 @@ from PIL import Image
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import checks, log, FIELD_VALUE_LIMIT
+from .utils import FIELD_VALUE_LIMIT, checks
 from .utils.config import config
 from .utils.context import NabCtx
 from .utils.database import wiki_db
 from .utils.messages import split_message
+
+log = logging.getLogger("nabbot")
 
 LOOTDB = "data/loot.db"
 DEBUG_FOLDER = "debug/loot"

@@ -1,9 +1,9 @@
-import re
-
-import asyncpg
 import json
+import re
 import sqlite3
 from typing import Any, List
+
+import asyncpg
 
 WIKIDB = "data/tibiawiki.db"
 

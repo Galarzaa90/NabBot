@@ -1,9 +1,6 @@
 import random
 import re
 
-import discord
-
-
 # We save the last messages so they are not repeated so often
 last_messages = [""]*10
 

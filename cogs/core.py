@@ -1,5 +1,6 @@
 import asyncio
 import datetime as dt
+import logging
 import random
 
 import discord
@@ -7,10 +8,11 @@ from discord.ext import commands
 
 from cogs.utils.database import get_server_property
 from nabbot import NabBot
-from .utils.checks import CannotEmbed
-from .utils import context, join_list
-from .utils import log
 from .utils import config
+from .utils import context, join_list
+from .utils.checks import CannotEmbed
+
+log = logging.getLogger("nabbot")
 
 
 class Core:

@@ -1,12 +1,15 @@
 import datetime as dt
+import logging
 from enum import Enum
-from typing import List, Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import discord
 
-from .utils import get_user_avatar, log, get_region_string
-from .utils.tibia import get_voc_abb_and_emoji, Character
 from nabbot import NabBot
+from .utils import get_region_string, get_user_avatar
+from .utils.tibia import Character, get_voc_abb_and_emoji
+
+log = logging.getLogger("nabbot")
 
 COLOUR_CHAR_REGISTERED = discord.Colour.dark_teal()
 COLOUR_CHAR_UNREGISTERED = discord.Colour.dark_teal()
