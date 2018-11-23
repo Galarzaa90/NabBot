@@ -2,6 +2,8 @@ import asyncio
 import datetime as dt
 import logging
 import random
+import re
+from typing import Tuple, Optional
 
 import discord
 from discord.ext import commands
@@ -14,6 +16,7 @@ from .utils.checks import CannotEmbed
 
 log = logging.getLogger("nabbot")
 
+bad_argument_pattern = re.compile(r'Converting to \"([^\"]+)\" failed for parameter \"([^\"]+)\"\.')
 
 class Core:
     """Cog with NabBot's main functions."""
@@ -78,6 +81,9 @@ class Core:
                            f"`{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
                            f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
         elif isinstance(error, commands.BadArgument):
+            _type, param = self.parse_bad_argument(str(error))
+            if _type == "int":
+                error = f"Parameter `{param}` must be numeric."
             await ctx.send(f"{ctx.tick(False)} {error}\n"
                            f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
         elif isinstance(error, commands.CommandInvokeError):
@@ -209,6 +215,13 @@ class Core:
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
         log.info(f"{user} banned from {guild} (Member ID: {user.id}) Guild ID {guild.id}")
+
+    @classmethod
+    def parse_bad_argument(cls, content: str) -> Tuple:
+        m = bad_argument_pattern.match(content)
+        if not m:
+            return None, None
+        return m.group(1), m.group(2)
 
     def __unload(self):
         self.game_update_task.cancel()
