@@ -5,7 +5,6 @@ import asyncpg
 import datetime as dt
 import os
 import re
-import sys
 import traceback
 from typing import Union, List, Optional
 
@@ -19,7 +18,8 @@ from cogs.utils import config
 from cogs.utils.tibia import populate_worlds, tibia_worlds
 
 initial_cogs = {"cogs.core", "cogs.serverlog", "cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia",
-                "cogs.general",  "cogs.loot", "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info"}
+                "cogs.general",  "cogs.loot", "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info",
+                "cogs.calculators"}
 
 log = logging.getLogger("nabbot")
 
