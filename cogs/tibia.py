@@ -14,7 +14,6 @@ import discord
 import pytz
 from discord.ext import commands
 
-from cogs.utils.converter import Stamina
 from cogs.utils.tibia import get_rashid_city
 from nabbot import NabBot
 from .utils import checks
@@ -24,7 +23,7 @@ from .utils.database import get_global_property, get_server_property, set_global
 from .utils.messages import get_first_image, html_to_markdown, split_message
 from .utils.pages import CannotPaginate, Pages, VocationPages
 from .utils.tibia import Character, NetworkError, get_character, get_character_url, get_guild, get_highscores_tibiadata, \
-    get_house, get_map_area, get_news_article, get_recent_news, get_share_range, get_stats, get_tibia_time_zone, \
+    get_house, get_map_area, get_news_article, get_recent_news, get_share_range, get_tibia_time_zone, \
     get_voc_abb, get_voc_abb_and_emoji, get_voc_emoji, get_world, get_world_bosses, get_world_list, highscore_format, \
     tibia_logo, tibia_worlds, url_character, url_guild, url_house
 
@@ -44,23 +43,6 @@ class Tibia:
         self.news_announcements_task = self.bot.loop.create_task(self.scan_news())
 
     # Commands
-    @commands.command(aliases=['bless'])
-    async def blessings(self, ctx: NabCtx, level: int):
-        """Calculates the price of blessings for a specific level.
-
-        For player over level 100, it will also display the cost of the Blessing of the Inquisition."""
-        if level < 1:
-            return await ctx.send("Very funny... Now tell me a valid level.")
-        bless_price = max(2000, 200 * (min(level, 120) - 20))
-        mountain_bless_price = max(2000, 200 * (min(level, 150) - 20))
-        inquisition = ""
-        if level >= 100:
-            inquisition = f"\nBlessing of the Inquisition costs **{int(bless_price*5*1.1):,}** gold coins."
-        await ctx.send(f"At that level you will pay **{bless_price:,}** gold coins per blessing for a total of "
-                       f"**{bless_price*5:,}** gold coins.{inquisition}"
-                       f"\nMountain blessings cost **{mountain_bless_price:,}** each, for a total of "
-                       f"**{int(mountain_bless_price*2):,}**.")
-
     # TODO: Needs a revision
     @checks.can_embed()
     @commands.command()
@@ -1038,131 +1020,6 @@ class Tibia:
                     reply = f"**{lowest_name}** ({lowest_level}) and **{highest_name}** ({highest_level}) can " \
                             f"share experience."
                 await ctx.send(reply+f"\nTheir share range is from level **{low}** to **{high}**.")
-
-    @commands.command(usage="<current> [target]")
-    async def stamina(self, ctx: NabCtx, current: Stamina, target: Stamina=None):
-        """Tells you the time you have to wait to restore stamina.
-
-        To use it, you must provide your current stamina, in this format: `hh:mm`.
-        The bot will show the time needed to reach full stamina if you were to start sleeping now.
-
-        Optionally, you can provide the target stamina you want.
-
-        The footer text shows the time in your timezone where your stamina would be full."""
-        if target is None:
-            target = Stamina("42:00")
-        if current > target:
-            return await ctx.error("Current stamina can't be greater than target stamina.")
-        if current == target:
-            return await ctx.error("Current stamina is already equal to target.")
-
-        delta = dt.timedelta(hours=current.hours, minutes=current.minutes)
-        target_delta = dt.timedelta(hours=target.hours, minutes=target.minutes)
-        # Stamina takes 3 minutes to regenerate one minute until 40 hours.
-        resting_time = max((dt.timedelta(hours=min(target.hours, 40))-delta).total_seconds(), 0)*3
-        if target.hours > 40 or (target.hours == 40 and target.minutes > 0):
-            # Last two hours of stamina take 10 minutes for a minute
-            resting_time += (target_delta-max(dt.timedelta(hours=40), delta)).total_seconds()*10
-        # You must be logged off 10 minutes before you start gaining stamina
-        resting_time += dt.timedelta(minutes=10).total_seconds()
-
-        current_hours, remainder = divmod(int(resting_time), 3600)
-        current_minutes, _ = divmod(remainder, 60)
-        if current_hours:
-            remaining = f'{current_hours} hours and {current_minutes} minutes'
-        else:
-            remaining = f'{current_minutes} minutes'
-
-        reply = f"You need to rest **{remaining}** to get back to full stamina."
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send(reply)
-            return
-
-        embed = discord.Embed(description=reply)
-        embed.set_footer(text="Full stamina")
-        embed.colour = discord.Color.green()
-        embed.timestamp = dt.datetime.utcnow()+dt.timedelta(seconds=resting_time)
-        await ctx.send(embed=embed)
-
-    @commands.command()
-    async def stats(self, ctx: NabCtx, *, params: str):
-        """Calculates character stats based on vocation and level.
-
-        Shows hitpoints, mana, capacity, total experience and experience to next level.
-
-        This command can be used in two ways:
-
-        1. To calculate the stats for a certain level and vocation. (`stats <level>,<vocation>`)
-        2. To calculate the stats of a character. (`stats <character>`)
-        """
-        invalid_arguments = "Invalid arguments, examples:\n" \
-                            f"```{ctx.clean_prefix}stats player\n" \
-                            f"{ctx.clean_prefix}stats level,vocation\n```"
-        params = params.split(",")
-        char = None
-        if len(params) == 1:
-            _digits = re.compile('\d')
-            if _digits.search(params[0]) is not None:
-                await ctx.send(invalid_arguments)
-                return
-            else:
-                try:
-                    char = await get_character(ctx.bot, params[0])
-                    if char is None:
-                        await ctx.send("Sorry, can you try it again?")
-                        return
-                except NetworkError:
-                    await ctx.send("Character **{0}** doesn't exist!".format(params[0]))
-                    return
-                level = int(char.level)
-                vocation = char.vocation
-        elif len(params) == 2:
-            try:
-                level = int(params[0])
-                vocation = params[1]
-            except ValueError:
-                try:
-                    level = int(params[1])
-                    vocation = params[0]
-                except ValueError:
-                    await ctx.send(invalid_arguments)
-                    return
-        else:
-            await ctx.send(invalid_arguments)
-            return
-        if level <= 0:
-            await ctx.send("Not even *you* can go down so low!")
-            return
-        if level >= 2000:
-            await ctx.send("Why do you care? You will __**never**__ reach this level " + str(chr(0x1f644)))
-            return
-        try:
-            stats = get_stats(level, vocation)
-        except ValueError as e:
-            await ctx.send(e)
-            return
-
-        if stats["vocation"] == "no vocation":
-            stats["vocation"] = "with no vocation"
-        if char:
-            await ctx.send("**{5}** is a level **{0}** {1}, {6} has:"
-                           "\n\t**{2:,}** HP"
-                           "\n\t**{3:,}** MP"
-                           "\n\t**{4:,}** Capacity"
-                           "\n\t**{7:,}** Total experience"
-                           "\n\t**{8:,}** to next level"
-                           .format(level, char.vocation.lower(), stats["hp"], stats["mp"], stats["cap"],
-                                   char.name, char.he_she.lower(), stats["exp"], stats["exp_tnl"]))
-        else:
-            await ctx.send("A level **{0}** {1} has:"
-                           "\n\t**{2:,}** HP"
-                           "\n\t**{3:,}** MP"
-                           "\n\t**{4:,}** Capacity"
-                           "\n\t**{5:,}** Experience"
-                           "\n\t**{6:,}** to next level"
-                           .format(level, stats["vocation"], stats["hp"], stats["mp"], stats["cap"],
-                                   stats["exp"], stats["exp_tnl"]))
 
     @commands.group(aliases=["story"], invoke_without_command=True, case_insensitive=True)
     @checks.is_tracking_world()
