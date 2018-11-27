@@ -29,6 +29,7 @@ class Roles:
 
             await ctx.send(f"You're using this too much! Try again in {error.retry_after:.0f} seconds.")
 
+    # region Discord Events
     async def on_guild_role_delete(self, role: discord.Role):
         """Called when a role is deleted.
 
@@ -43,7 +44,9 @@ class Roles:
                 self.bot.dispatch("role_auto_deleted", role)
             if deleted_joinable:
                 self.bot.dispatch("role_joinable_deleted", role)
+    # endregion
 
+    # region Custom Events
     # Todo: Requires optimization
     async def on_character_change(self, user_id: int):
         """Event occurs everytime a character changes guild or owner.
@@ -107,6 +110,9 @@ class Roles:
         except Exception:
             log.exception("Event: character_change")
 
+    # endregion
+    # region Commands
+
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
     @commands.group(case_insensitive=True)
@@ -136,23 +142,21 @@ class Roles:
             try:
                 guild = await get_guild(name)
                 if guild is None:
-                    await ctx.send(f"There's no guild named `{name}`")
+                    await ctx.error(f"There's no guild named `{name}`")
                     return
                 name = guild.name
             except NetworkError:
-                await ctx.send("I'm having network issues, try again later.")
+                await ctx.error("I'm having network issues, try again later.")
                 return
         result = await ctx.pool.fetchrow("SELECT true FROM role_auto WHERE role_id = $1 and rule = $2", role.id, name)
         if result:
-            await ctx.send(f"{ctx.tick(False)} Autorole rule already exists.")
+            await ctx.error("Autorole rule already exists.")
             return
 
         # Can't make autorole rule for role higher than the owner's top role
         top_role: discord.Role = ctx.author.top_role
         if role >= top_role:
-            await ctx.send(f"{ctx.tick(False)} You can't create an automatic role with a role higher or equals "
-                           f"than your highest.")
-            return
+            return await ctx.send("You can't create a rule for a a role higher or equals than your highest role.")
 
         if name != "*":
             msg = await ctx.send(f"Members of guild `{name}` will automatically receive the `{role.name}` role. "
@@ -166,17 +170,17 @@ class Roles:
 
         await ctx.pool.execute("INSERT INTO role_auto(server_id, role_id, rule) VALUES($1, $2, $3)",
                                ctx.guild.id, role.id, name)
-        await ctx.send(f"{ctx.tick()} Autorole rule created.")
+        await ctx.success("Autorole rule created.")
 
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
+    @checks.can_embed()
     @autorole.command(name="list", aliases=["rules"])
     async def autorole_list(self, ctx: NabCtx):
         """Shows a list of autorole rules."""
         rules = await ctx.pool.fetch("SELECT role_id, rule FROM role_auto WHERE server_id = $1", ctx.guild.id)
         if not rules:
-            await ctx.send(f"{ctx.tick(False)} This server has no autorole rules.")
-            return
+            return await ctx.error("This server has no autorole rules.")
 
         entries = []
         for role_id, guild in rules:
@@ -186,8 +190,7 @@ class Roles:
             entries.append(f"{role.mention} — `{guild}`")
 
         if not entries:
-            await ctx.send(f"{ctx.tick(False)} This server has no autorole rules.")
-            return
+            return await ctx.error("This server has no autorole rules.")
 
         per_page = 20 if await ctx.is_long() else 5
         pages = Pages(ctx, entries=entries, per_page=per_page)
@@ -195,7 +198,7 @@ class Roles:
         try:
             await pages.paginate()
         except CannotPaginate as e:
-            await ctx.send(e)
+            await ctx.error(e)
 
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
@@ -223,7 +226,7 @@ class Roles:
         try:
             await msg.edit(content=f"{ctx.tick()} Refresh done, roles will be updated shortly.")
         except discord.HTTPException:
-            await ctx.send(f"{ctx.tick()} Refresh done, roles will be updated shortly.")
+            await ctx.success("Refresh done, roles will be updated shortly.")
 
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
@@ -239,17 +242,16 @@ class Roles:
         exists = await ctx.pool.fetchval("SELECT true FROM role_auto WHERE role_id = $1 AND lower(rule) = $2",
                                          group.id, guild.lower())
         if not exists:
-            await ctx.send(f"{ctx.tick(False)} That rule doesn't exist.")
+            await ctx.error("That rule doesn't exist.")
             return
 
         # Can't modify role higher than the owner's top role
         top_role: discord.Role = ctx.author.top_role
         if group >= top_role:
-            await ctx.send(f"{ctx.tick(False)} You can't delete a role rule for a role higher than yours.")
+            await ctx.error("You can't delete a role rule for a role higher than yours.")
             return
 
-        await ctx.send(f"{ctx.tick()} Auto role rule removed. "
-                       f"Note that the role won't be removed from current members.")
+        await ctx.success(f"Auto role rule removed. Note that the role won't be removed from current members.")
         await ctx.pool.execute("DELETE FROM role_auto WHERE role_id = $1 AND lower(rule) = $2", group.id, guild.lower())
 
     @commands.guild_only()
@@ -265,7 +267,7 @@ class Roles:
         group: discord.Role = _group
         exists = await ctx.pool.fetchval("SELECT true FROM role_joinable WHERE role_id = $1", group.id)
         if not exists:
-            await ctx.send(f"{ctx.tick(False)} Group `{group.name}` doesn't exists.")
+            await ctx.error(f"Group `{group.name}` doesn't exists.")
             return
 
         # Check if user already has the role
@@ -277,14 +279,14 @@ class Roles:
             else:
                 await ctx.author.remove_roles(member_role, reason="Left group")
         except discord.Forbidden:
-            await ctx.send(f"{ctx.tick(False)} I need `Manage Roles` to manage groups.")
+            await ctx.error("I need `Manage Roles` to manage groups.")
         except discord.HTTPException:
-            await ctx.send(f"{ctx.tick(False)} Something went wrong. Try again later.")
+            await ctx.error("Something went wrong. Try again later.")
         else:
             if member_role is None:
-                await ctx.send(f"{ctx.tick(True)} Joined `{group.name}`.")
+                await ctx.success(f"Joined `{group.name}`.")
             else:
-                await ctx.send(f"{ctx.tick(True)} You left `{group.name}`.")
+                await ctx.success(f"You left `{group.name}`.")
 
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
@@ -308,25 +310,25 @@ class Roles:
                     raise discord.InvalidArgument()
                 role = await ctx.guild.create_role(name=name, reason="Created joinable role")
             except discord.Forbidden:
-                await ctx.send(f"{ctx.tick(False)} I need `Manage Roles` permission to create a group.")
+                await ctx.error("I need `Manage Roles` permission to create a group.")
                 return
             except discord.InvalidArgument:
-                await ctx.send(f"{ctx.tick(False)} Invalid group name.")
+                await ctx.error("Invalid group name.")
                 return
 
         exists = await ctx.pool.fetchval("SELECT true FROM role_joinable WHERE role_id = $1", role.id)
         if exists:
-            await ctx.send(f"{ctx.tick(False)} Group `{role.name}` already exists.")
+            await ctx.error(f"Group `{role.name}` already exists.")
             return
 
         # Can't make joinable group a role higher than the owner's top role
         top_role: discord.Role = ctx.author.top_role
         if role >= top_role:
-            await ctx.send(f"{ctx.tick(False)} You can't make a group with a role higher or equals than your highest.")
+            await ctx.error("You can't make a group from a role higher or equals than your highest role.")
             return
 
         await ctx.pool.execute("INSERT INTO role_joinable(server_id, role_id) VALUES($1, $2)", ctx.guild.id, role.id)
-        await ctx.send(f"{ctx.tick()} Group `{role.name}` created successfully.")
+        await ctx.success(f"Group `{role.name}` created successfully.")
 
     @commands.guild_only()
     @group.command(name="list")
@@ -334,7 +336,7 @@ class Roles:
         """Shows a list of available groups."""
         groups = await ctx.pool.fetch("SELECT role_id FROM role_joinable WHERE server_id = $1", ctx.guild.id)
         if not groups:
-            await ctx.send(f"{ctx.tick(False)} This server has no joinable groups.")
+            await ctx.error("This server has no joinable groups.")
             return
 
         flat_groups = [g['role_id'] for g in groups]
@@ -350,7 +352,7 @@ class Roles:
         try:
             await pages.paginate()
         except CannotPaginate as e:
-            await ctx.send(e)
+            await ctx.error(e)
 
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
@@ -364,14 +366,13 @@ class Roles:
         group: discord.Role = _group
         exists = await ctx.pool.fetchval("SELECT true FROM role_joinable WHERE role_id = $1", group.id)
         if not exists:
-            await ctx.send(f"{ctx.tick(False)} `{group.name}` is not a group.")
+            await ctx.error(f"`{group.name}` is not a group.")
             return
 
         # Can't modify role higher than the owner's top role
         top_role: discord.Role = ctx.author.top_role
         if group >= top_role:
-            await ctx.send(
-                f"{ctx.tick(False)} You can't delete a group of a role higher than yours.")
+            await ctx.error("You can't delete a group of a role higher than your highest role.")
             return
 
         msg = await ctx.send(f"Group `{group.name}` will be removed."
@@ -380,15 +381,16 @@ class Roles:
         if confirm is True:
             try:
                 await group.delete(reason=f"Group removed by {ctx.author}")
-                await ctx.send(f"{ctx.tick()} Group `{group.name}`  was removed and the role was deleted.")
+                await ctx.success(f"Group `{group.name}`  was removed and the role was deleted.")
             except discord.Forbidden:
-                await ctx.send(f"{ctx.tick(False)} I need `Manage Roles` permission to delete the role.\n"
-                               f"{ctx.tick()} Group `{group.name}` removed.")
+                await ctx.error(f"I need `Manage Roles` permission to delete the role.\n"
+                                f"{ctx.tick()} Group `{group.name}` removed.")
         else:
-            await ctx.send(f"{ctx.tick()} Group `{group.name}` was removed.")
+            await ctx.success(f"Group `{group.name}` was removed.")
         await ctx.pool.execute("DELETE FROM role_joinable WHERE role_id = $1", group.id)
 
     @commands.guild_only()
+    @checks.can_embed()
     @commands.command(aliases=["norole"])
     async def noroles(self, ctx: NabCtx):
         """Shows a list of members with no roles."""
@@ -409,7 +411,7 @@ class Roles:
         try:
             await pages.paginate()
         except CannotPaginate as e:
-            await ctx.send(e)
+            await ctx.error(e)
 
     @commands.guild_only()
     @commands.command(name="roleinfo")
@@ -417,23 +419,24 @@ class Roles:
         """Shows details about a role."""
         _role: discord.Role = role
         embed = discord.Embed(title=_role.name, colour=_role.colour, timestamp=_role.created_at,
-                              description=f"**ID** {role.id}")
-        embed.add_field(name="Members", value=f"{len(role.members):,}")
-        embed.add_field(name="Mentionable", value=f"{role.mentionable}")
-        embed.add_field(name="Hoisted", value=f"{role.hoist}")
-        embed.add_field(name="Position", value=f"{role.position}")
-        embed.add_field(name="Color", value=f"{role.colour}")
-        embed.add_field(name="Mention", value=f"`{role.mention}`")
+                              description=f"**ID** {_role.id}")
+        embed.add_field(name="Members", value=f"{len(_role.members):,}")
+        embed.add_field(name="Mentionable", value=f"{_role.mentionable}")
+        embed.add_field(name="Hoisted", value=f"{_role.hoist}")
+        embed.add_field(name="Position", value=f"{_role.position}")
+        embed.add_field(name="Color", value=f"{_role.colour}")
+        embed.add_field(name="Mention", value=f"`{_role.mention}`")
         embed.set_footer(text="Created on")
         await ctx.send(embed=embed)
 
     @commands.guild_only()
+    @checks.can_embed()
     @commands.command(name="rolemembers")
     async def role_members(self, ctx: NabCtx, *, role: InsensitiveRole):
         """Shows a list of members with that role."""
         _role: discord.Role = role
         if _role is None:
-            await ctx.send("There's no role with that name in here.")
+            await ctx.error("There's no role with that name in here.")
             return
 
         role_members = [m.mention for m in _role.members]
@@ -449,9 +452,10 @@ class Roles:
         try:
             await pages.paginate()
         except CannotPaginate as e:
-            await ctx.send(e)
+            await ctx.error(e)
 
     @commands.guild_only()
+    @checks.can_embed()
     @commands.command()
     async def roles(self, ctx: NabCtx, *, user: str=None):
         """Shows a user's roles or a list of server roles.
@@ -467,7 +471,7 @@ class Roles:
         else:
             member = self.bot.get_member(user, ctx.guild)
             if member is None:
-                await ctx.send(f"I don't see any user named **{user}**.")
+                await ctx.error(f"I don't see any user named **{user}**.")
                 return
             title = f"Roles for @{member.display_name}"
             roles: List[discord.Role] = member.roles[:]
@@ -486,7 +490,7 @@ class Roles:
         try:
             await pages.paginate()
         except CannotPaginate as e:
-            await ctx.send(e)
+            await ctx.error(e)
         return
 
 

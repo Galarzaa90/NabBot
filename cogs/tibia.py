@@ -51,11 +51,11 @@ class Tibia:
         if world is None and not ctx.is_private and ctx.world:
             world = ctx.world
         elif world is None:
-            await ctx.send("You need to tell me a world's name.")
+            await ctx.error("You need to tell me a world's name.")
             return
         world = world.title()
         if world not in tibia_worlds:
-            await ctx.send("That world doesn't exist.")
+            await ctx.error("That world doesn't exist.")
             return
         bosses = await get_world_bosses(world)
         if type(bosses) is not dict:
@@ -105,7 +105,7 @@ class Tibia:
             user_servers = [ctx.guild]
             user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
             if user_worlds[0] is None and name is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
+                await ctx.error("This server is not tracking any tibia worlds.")
                 return
 
         entries = []
@@ -369,6 +369,7 @@ class Tibia:
             embed.add_field(name="Most deaths per killer", value=content, inline=False)
         await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.group(aliases=['checkguild'], invoke_without_command=True, case_insensitive=True)
     async def guild(self, ctx: NabCtx, *, name):
         """Shows online characters in a guild.
@@ -376,19 +377,12 @@ class Tibia:
         Show's the number of members the guild has and a list of their users.
         It also shows whether the guild has a guildhall or not, and their funding date.
         """
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
         try:
             guild = await get_guild(name)
             if guild is None:
-                await ctx.send("The guild {0} doesn't exist.".format(name))
-                return
+                return await ctx.error("The guild {0} doesn't exist.".format(name))
         except NetworkError:
-            await ctx.send("Can you repeat that? I had some trouble communicating.")
-            return
+            return await ctx.error("I'm having network issues, can you try again")
 
         embed = discord.Embed()
         embed.set_author(name="{0.name} ({0.world})".format(guild), url=guild.url, icon_url=tibia_logo)
@@ -493,26 +487,18 @@ class Tibia:
 
         await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @guild.command(name="members", aliases=['list'])
     async def guild_members(self, ctx: NabCtx, *, name: str):
         """Shows a list of all guild members.
 
         Online members have an icon next to their name."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-        if name is None:
-            await ctx.send("Tell me the guild you want me to check.")
-            return
-
         try:
             guild = await get_guild(name)
             if guild is None:
-                await ctx.send("The guild {0} doesn't exist.".format(name))
-                return
+                return await ctx.error(f"The guild {name} doesn't exist.")
         except NetworkError:
-            await ctx.send("Can you repeat that? I had some trouble communicating.")
+            await ctx.error("Can you repeat that? I had some trouble communicating.")
             return
         title = "{0.name} ({0.world})".format(guild)
         entries = []
@@ -530,8 +516,9 @@ class Tibia:
         try:
             await pages.paginate()
         except CannotPaginate as e:
-            await ctx.send(e)
+            await ctx.error(e)
 
+    @checks.can_embed()
     @commands.command(usage="[world,category[,vocation]]")
     async def highscores(self, ctx: NabCtx, *, params=None):
         """Shows the entries in the highscores.
@@ -540,12 +527,8 @@ class Tibia:
 
         Available categories are: experience, magic, shielding, distance, sword, club, axe, fist and fishing.
         Available vocations are: all, paladin, druid, sorcerer, knight."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
         categories = ["experience", "magic", "shielding", "distance", "sword", "club", "axe", "fist", "fishing",
-                      "achievements","loyalty"]
+                      "achievements", "loyalty"]
         vocations = ["all", "paladin", "druid", "knight", "sorcerer"]
         if params is None:
             params = []
@@ -558,32 +541,29 @@ class Tibia:
         if world is None:
             world = ctx.world
         if world is None:
-            return await ctx.send(f"{ctx.tick(False)} You have to specify a world.")
+            return await ctx.error("You have to specify a world.")
 
+        # Default parameters
         if not params:
             category = "experience"
             vocation = "all"
 
         else:
             if params[0].strip().lower() not in categories:
-                return await ctx.send(f"{ctx.tick(False)} Invalid category, valid categories are: "
-                                      f"`{','.join(categories)}`.")
+                return await ctx.error(f"Invalid category, valid categories are: `{','.join(categories)}`.")
             category = params[0].strip().lower()
             del params[0]
-            if not params:
-                vocation = "all"
-            elif params[0].strip().lower() not in vocations:
-                return await ctx.send(f"{ctx.tick(False)} Invalid vocation, valid vocations are: "
-                                      f"`{','.join(vocations)}`.")
+            if params and params[0].strip().lower() not in vocations:
+                return await ctx.error(f"Invalid vocation, valid vocations are: `{','.join(vocations)}`.")
             else:
                 vocation = params[0].strip().lower()
         with ctx.typing():
             try:
                 highscores = await get_highscores_tibiadata(world, category, vocation)
                 if highscores is None:
-                    return await ctx.send(f"{ctx.tick(False)} I couldn't find any highscores entries.")
+                    return await ctx.error("I couldn't find any highscores entries.")
             except NetworkError:
-                return await ctx.send(f"{ctx.tick(False)} I couldn't fetch the highscores.")
+                return await ctx.error(f"I couldn't fetch the highscores.")
         entries = []
         for entry in highscores:
             entry["voc"] = get_voc_emoji(entry["vocation"])
@@ -600,6 +580,7 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
+    @checks.can_embed()
     @commands.command(aliases=["guildhall"], usage="<name>[,world]")
     async def house(self, ctx: NabCtx, *, name: str):
         """Shows info for a house or guildhall.
@@ -610,9 +591,6 @@ class Tibia:
         To specify a world, add the world at the end separated with a comma.
         """
         permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
         params = name.split(",")
         if len(params) > 1:
             name = ",".join(params[:-1])
@@ -630,8 +608,7 @@ class Tibia:
             world = world.title().strip()
         house = await get_house(name, world)
         if house is None:
-            await ctx.send(f"{ctx.tick(False)} I couldn't find a house named `{name}`.")
-            return
+            return await ctx.error(f"I couldn't find a house named `{name}`.")
 
         if type(house) is list:
             name = await ctx.choose(house)
@@ -767,6 +744,7 @@ class Tibia:
         except CannotPaginate as e:
             await ctx.send(e)
 
+    @checks.can_embed()
     @commands.command(usage="[id]")
     async def news(self, ctx: NabCtx, news_id: int=None):
         """Shows the latest news articles from Tibia.com.
@@ -776,7 +754,7 @@ class Tibia:
             try:
                 recent_news = await get_recent_news()
                 if recent_news is None:
-                    await ctx.send("Something went wrong getting recent news.")
+                    await ctx.error("Something went wrong getting recent news.")
             except NetworkError:
                 await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
                 return
@@ -791,20 +769,18 @@ class Tibia:
                 news["emoji"] = type_emojis.get(news["type"], "")
             limit = 20 if await ctx.is_long() else 10
             embed.description = "\n".join([news_format.format(**n) for n in recent_news[:limit]])
-            await ctx.send(embed=embed)
-        else:
-            try:
-                article = await get_news_article(news_id)
-                if article is None:
-                    await ctx.send("There's no article with that id.")
-                    return
-            except NetworkError:
-                await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
-                return
-            limit = 1900 if await ctx.is_long() else 600
-            embed = self.get_article_embed(article, limit)
-            await ctx.send(embed=embed)
+            return await ctx.send(embed=embed)
+        try:
+            article = await get_news_article(news_id)
+            if article is None:
+                return await ctx.error("There's no article with that id.")
+        except NetworkError:
+            return await ctx.error("I couldn't fetch the recent news, I'm having network problems.")
+        limit = 1900 if await ctx.is_long() else 600
+        embed = self.get_article_embed(article, limit)
+        await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.command(name="searchworld", aliases=["whereworld", "findworld"], usage="<params>[,world]")
     async def search_world(self, ctx: NabCtx, *, params):
         """Searches for online characters that meet the criteria.
@@ -820,11 +796,6 @@ class Tibia:
         You can add the world where you want to look in by adding a comma, followed by the name of the world.
         Example: `searchworld Cachero,Calmera`
         """
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
         invalid_arguments = "Invalid arguments used, examples:\n" \
                             "```/searchworld charname[,world]\n" \
                             "/searchworld level[,world]\n" \
@@ -837,14 +808,12 @@ class Tibia:
             world_name = params[-1].capitalize().strip()
             del params[-1]
         if not (1 <= len(params) <= 2):
-            await ctx.send(invalid_arguments)
-            return
+            return await ctx.error(invalid_arguments)
 
         tracked_world = ctx.world
         if world_name is None:
             if tracked_world is None:
-                await ctx.send("You must specify the world where you want to look in.")
-                return
+                return await ctx.error("You must specify the world where you want to look in.")
             else:
                 world_name = tracked_world
 
@@ -852,16 +821,14 @@ class Tibia:
             world = await get_world(world_name)
             if world is None:
                 # This really shouldn't happen...
-                await ctx.send(f"There's no world named **{world_name}**.")
+                await ctx.error(f"There's no world named **{world_name}**.")
                 return
         except NetworkError:
-            await ctx.send("I'm having 'network problems' as you humans say, please try again later.")
-            return
+            return await ctx.error("I'm having 'network problems' as you humans say, please try again later.")
 
         online_list = world.players_online
         if len(online_list) == 0:
-            await ctx.send(f"There is no one online in {world_name}.")
-            return
+            return await ctx.error(f"There is no one online in {world_name}.")
 
         # Sort by level, descending
         online_list = sorted(online_list, key=lambda x: x.level, reverse=True)
@@ -877,18 +844,17 @@ class Tibia:
         if not is_numeric(params[0]):
             # We shouldn't have another parameter if a character name was specified
             if len(params) == 2:
-                await ctx.send(invalid_arguments)
-                return
+                return await ctx.error(invalid_arguments)
             try:
                 char = await get_character(ctx.bot, params[0])
                 if char is None:
-                    await ctx.send("I couldn't find a character with that name.")
+                    await ctx.error("I couldn't find a character with that name.")
                     return
                 filter_name = char.name
                 if char.world != world.name:
                     content = f"**Note**: The character is in **{char.world}** and I'm searching **{world.name}**."
             except NetworkError:
-                await ctx.send("I couldn't fetch that character.")
+                await ctx.error("I couldn't fetch that character.")
                 return
             low, high = get_share_range(char.level)
             title = "Characters online in share range with {0}({1}-{2}):".format(char.name, low, high)
@@ -900,10 +866,10 @@ class Tibia:
                     level1 = int(params[0])
                     level2 = int(params[1])
                 except ValueError:
-                    await ctx.send(invalid_arguments)
+                    await ctx.error(invalid_arguments)
                     return
                 if level1 <= 0 or level2 <= 0:
-                    await ctx.send("You entered an invalid level.")
+                    await ctx.error("You entered an invalid level.")
                     return
                 low = min(level1, level2)
                 high = max(level1, level2)
@@ -912,7 +878,7 @@ class Tibia:
             # We only got a level, so we get the share range for it
             else:
                 if int(params[0]) <= 0:
-                    await ctx.send("You entered an invalid level.")
+                    await ctx.error("You entered an invalid level.")
                     return
                 low, high = get_share_range(int(params[0]))
                 title = "Characters online in share range with level {0} ({1}-{2})".format(params[0], low, high)
@@ -936,7 +902,7 @@ class Tibia:
         try:
             await pages.paginate()
         except CannotPaginate as e:
-            await ctx.send(e)
+            await ctx.error(e)
 
     @commands.command(aliases=['expshare', 'party'])
     async def share(self, ctx: NabCtx, *, param):
@@ -966,22 +932,21 @@ class Tibia:
         except ValueError:
             chars = param.split(",")
             if len(chars) > 5:
-                await ctx.send("I can only check up to 5 characters at a time.")
-                return
+                return await ctx.error("I can only check up to 5 characters at a time.")
             if len(chars) == 1:
                 with ctx.typing():
                     try:
                         char = await get_character(ctx.bot, chars[0])
                         if char is None:
-                            await ctx.send('There is no character with that name.')
+                            await ctx.error('There is no character with that name.')
                             return
                     except NetworkError:
-                        await ctx.send("I'm having connection issues right now, please try again.")
+                        await ctx.error("I'm having connection issues right now, please try again.")
                         return
                     name = char.name
                     level = char.level
                     low, high = get_share_range(char.level)
-                    await ctx.send(f"**{name}** ({level}) can share experience with levels **{low}** to **{high}**.")
+                    await ctx.success(f"**{name}** ({level}) can share experience with levels **{low}** to **{high}**.")
                     return
             char_data = []
             # Check if all characters are the same.
@@ -1008,22 +973,21 @@ class Tibia:
                 highest_name = char_data[-1].name
                 highest_level = char_data[-1].level
                 if low > char_data[0].level:
-                    await ctx.send(f"**{lowest_name}** ({lowest_level}) needs {low-lowest_level} more level"
-                                   f"{'s' if low-lowest_level > 1 else ''} to share experience with **{highest_name}** "
-                                   f"({highest_level}).")
+                    await ctx.error(f"**{lowest_name}** ({lowest_level}) needs {low-lowest_level} more level"
+                                    f"{'s' if low-lowest_level > 1 else ''} to share experience "
+                                    f"with **{highest_name}** ({highest_level}).")
                     return
                 # If it's more than two, just say they can all share
-                reply = ""
                 if len(chars) > 2:
                     reply = f"They can all share experience with each other."
                 else:
                     reply = f"**{lowest_name}** ({lowest_level}) and **{highest_name}** ({highest_level}) can " \
                             f"share experience."
-                await ctx.send(reply+f"\nTheir share range is from level **{low}** to **{high}**.")
+                await ctx.success(f"{reply}\nTheir share range is from level **{low}** to **{high}**.")
 
-    @commands.group(aliases=["story"], invoke_without_command=True, case_insensitive=True)
     @checks.is_tracking_world()
     @checks.can_embed()
+    @commands.group(aliases=["story"], invoke_without_command=True, case_insensitive=True)
     async def timeline(self, ctx: NabCtx, *, name: str = None):
         """Shows a character's recent level ups and deaths.
 

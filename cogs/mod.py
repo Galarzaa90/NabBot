@@ -25,7 +25,7 @@ class Mod:
         return ctx.is_private or ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_owner_check(ctx) \
                or checks.check_guild_permissions(ctx, {'manage_channels': True})
 
-    # Commands
+    # region Commands
     @commands.guild_only()
     @checks.is_channel_mod()
     @commands.command()
@@ -216,6 +216,7 @@ class Mod:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
+    # endregion
 
     async def reload_ignored(self):
         """Refresh the world list from the database

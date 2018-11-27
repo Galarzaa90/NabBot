@@ -21,9 +21,11 @@ log = logging.getLogger("nabbot")
 
 
 class Info:
+    """Commands that disploy general information."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
+    # region Commands
     @checks.can_embed()
     @commands.command()
     async def about(self, ctx: NabCtx):
@@ -45,10 +47,10 @@ class Info:
         embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
         embed.add_field(name="Users", value=f"{len(self.bot.users):,}")
         embed.add_field(name="Links", inline=False,
-                        value=f"[Add to your server](https://dbl.nabbot.xyz/)  |  "
-                              f"[Support Server](https://support.nabbot.xyz/)  |  "
-                              f"[Docs](https://docs.nabbot.xyz/)  |  "
-                              f"[Donate](https://donate.nabbot.xyz/)")
+                        value="[Add to your server](https://dbl.nabbot.xyz/)  |  "
+                              "[Support Server](https://support.nabbot.xyz/)  |  "
+                              "[Docs](https://docs.nabbot.xyz/)  |  "
+                              "[Donate](https://donate.nabbot.xyz/)")
         embed.set_footer(text=f"Uptime | {parse_uptime(self.bot.start_time, True)}")
         await ctx.send(embed=embed)
 
@@ -109,7 +111,7 @@ class Info:
             channel = ctx.channel
         if not channel.permissions_for(ctx.author).read_messages:
             return await ctx.error("You are not supposed to see that channel, so I can't show you anything.")
-        embed = discord.Embed(colour=discord.Colour.blurple(), title=f"#{channel}", description=f"**ID** {channel.id}",
+        embed = discord.Embed(title=f"#{channel}", description=f"**ID** {channel.id}", colour=discord.Colour.blurple(),
                               timestamp=channel.created_at)
         if channel.topic:
             embed.description += f"\n{channel.topic}"
@@ -241,31 +243,32 @@ class Info:
                             value=f"{ctx.tick(emoji.managed)} Twitch managed\n"
                                   f"{ctx.tick(emoji.require_colons)} Requires colons\n"
                                   f"{ctx.tick(len(emoji.roles) > 0)} Role limited")
-        else:
-            emojis: List[discord.Emoji] = ctx.guild.emojis
-            if not emojis:
-                return await ctx.send("This server has no custom emojis.")
-            normal = [str(e) for e in emojis if not e.animated]
-            animated = [str(e) for e in emojis if e.animated]
-            embed = discord.Embed(title="Custom Emojis", color=discord.Color.blurple())
-            if normal:
-                emojis_str = "\n".join(normal)
-                fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
-                for i, value in enumerate(fields):
-                    if i == 0:
-                        name = f"Regular ({len(normal)})"
-                    else:
-                        name = "\u200F"
-                    embed.add_field(name=name, value=value.replace("\n", ""))
-            if animated:
-                emojis_str = "\n".join(animated)
-                fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
-                for i, value in enumerate(fields):
-                    if i == 0:
-                        name = f"Animated (Nitro required) ({len(animated)})"
-                    else:
-                        name = "\u200F"
-                    embed.add_field(name=name, value=value.replace("\n", ""))
+            return await ctx.send(embed=embed)
+
+        emojis: List[discord.Emoji] = ctx.guild.emojis
+        if not emojis:
+            return await ctx.send("This server has no custom emojis.")
+        normal = [str(e) for e in emojis if not e.animated]
+        animated = [str(e) for e in emojis if e.animated]
+        embed = discord.Embed(title="Custom Emojis", color=discord.Color.blurple())
+        if normal:
+            emojis_str = "\n".join(normal)
+            fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
+            for i, value in enumerate(fields):
+                if i == 0:
+                    name = f"Regular ({len(normal)})"
+                else:
+                    name = "\u200F"
+                embed.add_field(name=name, value=value.replace("\n", ""))
+        if animated:
+            emojis_str = "\n".join(animated)
+            fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
+            for i, value in enumerate(fields):
+                if i == 0:
+                    name = f"Animated (Nitro required) ({len(animated)})"
+                else:
+                    name = "\u200F"
+                embed.add_field(name=name, value=value.replace("\n", ""))
         await ctx.send(embed=embed)
 
     @checks.can_embed()
@@ -421,6 +424,8 @@ class Info:
         embed.add_field(name="Highest role", value=f"{user.top_role.mention}")
 
         await ctx.send(embed=embed)
+    # endregion
+
 
 def setup(bot):
     bot.add_cog(Info(bot))

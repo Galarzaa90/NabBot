@@ -37,9 +37,9 @@ class Admin:
 
         target = self.bot.get_member(target_name, ctx.guild)
         if target is None:
-            return await ctx.send(f"{ctx.tick(False)} I couldn't find any users named @{target_name}")
+            return await ctx.error(f"I couldn't find any users named `{target_name}`")
         if target.bot:
-            return await ctx.send(f"{ctx.tick(False)} You can't register characters to discord bots!")
+            return await ctx.error("You can't register characters to discord bots!")
 
         # Get list of the user's shared servers with the bot
         target_guilds = self.bot.get_user_guilds(target.id)
