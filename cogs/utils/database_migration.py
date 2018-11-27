@@ -268,7 +268,17 @@ tables = [
         server_id bigint NOT NULL,
         zone text NOT NULL,
         name text NOT NULL,
+        created timestamptz DEFAULT now(),
         PRIMARY KEY(server_id, zone)
+    );""",
+    """
+    CREATE TABLE timer (
+        id serial NOT NULL,
+        name text NOT NULL,
+        type smallint NOT NULL DEFAULT 0,
+        extra jsonb DEFAULT '{}'::jsonb,
+        created timestamptz NOT NULL DEFAULT now(),
+        expires timestamptz NOT NULL
     );"""
 ]
 functions = [

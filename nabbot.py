@@ -17,9 +17,23 @@ from cogs.utils.database import get_prefixes, get_server_property
 from cogs.utils import config
 from cogs.utils.tibia import populate_worlds, tibia_worlds
 
-initial_cogs = {"cogs.core", "cogs.serverlog", "cogs.tracking", "cogs.owner", "cogs.mod", "cogs.admin", "cogs.tibia",
-                "cogs.general",  "cogs.loot", "cogs.tibiawiki", "cogs.roles", "cogs.settings", "cogs.info",
-                "cogs.calculators"}
+initial_cogs = {
+    "cogs.core",
+    "cogs.serverlog",
+    "cogs.tracking",
+    "cogs.owner",
+    "cogs.mod",
+    "cogs.admin",
+    "cogs.tibia",
+    "cogs.general",
+    "cogs.loot",
+    "cogs.tibiawiki",
+    "cogs.roles",
+    "cogs.settings",
+    "cogs.info",
+    "cogs.calculators",
+    "cogs.timers"
+}
 
 log = logging.getLogger("nabbot")
 
