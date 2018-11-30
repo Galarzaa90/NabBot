@@ -54,10 +54,7 @@ async def get_server_property(pool: asyncpg.pool.Pool, guild_id: int, key: str, 
     :return: The value of the key or the default value if specified.
     """
     value = await pool.fetchval("SELECT value FROM server_property WHERE server_id = $1 AND key = $2", guild_id, key)
-    try:
-        return json.loads(value) if value is not None else default
-    except json.JSONDecodeError:
-        return default
+    return value if value is not None else default
 
 
 async def set_server_property(pool: asyncpg.pool.Pool, guild_id: int, key: str, value: Any):
@@ -68,9 +65,9 @@ async def set_server_property(pool: asyncpg.pool.Pool, guild_id: int, key: str, 
     :param key: The property's key.
     :param value: The value to set to the property.
     """
-    await pool.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
+    await pool.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3::jsonb)
                           ON CONFLICT(server_id, key) DO UPDATE SET value = EXCLUDED.value""",
-                       guild_id, key, json.dumps(value))
+                       guild_id, key, value)
 
 
 async def get_global_property(pool: asyncpg.pool.Pool, key: str, default=None) -> Any:
@@ -83,7 +80,7 @@ async def get_global_property(pool: asyncpg.pool.Pool, key: str, default=None) -
     """
     value = await pool.fetchval("SELECT value FROM global_property WHERE key = $1", key)
     try:
-        return json.loads(value) if value is not None else default
+        return value if value is not None else default
     except json.JSONDecodeError:
         return default
 
@@ -95,5 +92,5 @@ async def set_global_property(pool: asyncpg.pool.Pool, key: str, value: Any):
     :param key: The property's key
     :param value: The new value the key will have.
     """
-    await pool.execute("""INSERT INTO global_property(key, value) VALUES($1, $2)
-                          ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value""", key, json.dumps(value))
+    await pool.execute("""INSERT INTO global_property(key, value) VALUES($1, $2::jsonb)
+                          ON CONFLICT(key) DO UPDATE SET value = EXCLUDED.value""", key, value)

@@ -115,7 +115,8 @@ class Pages:
             self.embed.set_footer(text=text)
 
         if not self.paginating:
-            self.embed.description = '\n'.join(p)
+            # Added for NabBot
+            self.embed.description = self.header + "\n" + '\n'.join(p)
             return await self.channel.send(embed=self.embed)
 
         if not first:
@@ -123,7 +124,7 @@ class Pages:
             await self.message.edit(embed=self.embed)
             return
 
-        # Added for nabBot
+        # Added for NabBot
         self.embed.description = self.header + "\n" + '\n'.join(p)
         # Original
         # self.embed.description = '\n'.join(p)

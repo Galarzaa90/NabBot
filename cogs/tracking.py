@@ -275,9 +275,11 @@ class Tracking:
             self.world_tasks[scanned_world.name] = self.bot.loop.create_task(self.scan_deaths(scanned_world.name))
         query = """SELECT t0.server_id, channel_id, message_id FROM watchlist t0
                    LEFT JOIN server_property t1 ON t1.server_id = t0.server_id AND key = 'world'
-                   WHERE (value->>0)::text = $1"""
-        rows = await self.bot.pool.fetch(query, json.dumps(scanned_world.name))
+                   WHERE value ? $1"""
+        rows = await self.bot.pool.fetch(query, scanned_world.name)
         for guild_id, watchlist_channel_id, watchlist_message_id in rows:
+            log.debug(f"[{self.__class__.__name__}] Checking entries for watchlist"
+                      f" (Guild ID: {guild_id}, Channel ID: {watchlist_channel_id}, World: {scanned_world.name})")
             guild: discord.Guild = self.bot.get_guild(guild_id)
             if guild is None:
                 await asyncio.sleep(0.01)

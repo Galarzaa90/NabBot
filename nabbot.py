@@ -269,7 +269,7 @@ class NabBot(commands.Bot):
         del self.tracked_worlds_list[:]
         if len(rows) > 0:
             for row in rows:
-                value = json.loads(row["value"])
+                value = row["value"]
                 if value not in self.tracked_worlds_list:
                     self.tracked_worlds_list.append(value)
                 tibia_servers_dict_temp[int(row["server_id"])] = value

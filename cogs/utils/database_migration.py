@@ -275,8 +275,9 @@ tables = [
     CREATE TABLE timer (
         id serial NOT NULL,
         name text NOT NULL,
+        user_id bigint NOT NULL,
         type smallint NOT NULL DEFAULT 0,
-        extra jsonb DEFAULT '{}'::jsonb,
+        extra jsonb,
         created timestamptz NOT NULL DEFAULT now(),
         expires timestamptz NOT NULL
     );"""

@@ -357,10 +357,12 @@ class Owner:
         try:
             self.bot.unload_extension(cog)
             self.bot.load_extension(cog)
+        except ModuleNotFoundError:
+            await ctx.error("Cog not found.")
         except Exception:
             await ctx.send(f'```py\n{traceback.format_exc()}\n```')
         else:
-            await ctx.send(f"{ctx.tick()} Cog reloaded successfully.")
+            await ctx.success(f"{ctx.tick()} Cog reloaded successfully.")
 
     @checks.is_owner()
     @commands.command(name="reloadconfig")

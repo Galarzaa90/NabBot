@@ -432,10 +432,10 @@ async def get_character(bot, name, tries=5) -> Optional[Character]:
 
     if character.house is not None:
         with closing(wiki_db.cursor()) as c:
-            c.execute("SELECT id FROM houses WHERE name LIKE ?", (character.house["name"].strip(),))
+            c.execute("SELECT house_id FROM house WHERE name LIKE ?", (character.house["name"].strip(),))
             result = c.fetchone()
             if result:
-                character.house["houseid"] = result["id"]
+                character.house["houseid"] = result["house_id"]
 
     # If the character exists in the online list use data from there where possible
     try:
@@ -684,10 +684,10 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
             return None
     if guild.guildhall is not None:
         with closing(wiki_db.cursor()) as c:
-            c.execute("SELECT id FROM houses WHERE name LIKE ?", (guild.guildhall["name"].strip(),))
+            c.execute("SELECT house_id FROM house WHERE name LIKE ?", (guild.guildhall["name"].strip(),))
             result = c.fetchone()
             if result:
-                guild.guildhall["id"] = result["id"]
+                guild.guildhall["id"] = result["house_id"]
     CACHE_GUILDS[name.lower()] = guild
     return guild
 
@@ -926,7 +926,7 @@ async def get_house(name, world=None):
     c = wiki_db.cursor()
     try:
         # Search query
-        c.execute("SELECT * FROM houses WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
+        c.execute("SELECT * FROM house WHERE name LIKE ? ORDER BY LENGTH(name) ASC LIMIT 15", ("%" + name + "%",))
         result = c.fetchall()
         if len(result) == 0:
             return None
@@ -938,7 +938,7 @@ async def get_house(name, world=None):
             house["fetch"] = False
             return house
         house["world"] = world
-        house["url"] = url_house.format(id=house["id"], world=world)
+        house["url"] = url_house.format(id=house["house_id"], world=world)
         tries = 5
         while True:
             try:

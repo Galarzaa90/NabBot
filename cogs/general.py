@@ -98,6 +98,16 @@ class General:
             await asyncio.sleep(20)
 
     # Commands
+    @commands.command(aliases=["checkdm"])
+    async def checkpm(self, ctx: NabCtx):
+        if ctx.guild is None:
+            return await ctx.success("This is a private message, so yes... PMs are working.")
+        try:
+            await ctx.author.send("Testing PMs...")
+            await ctx.success("You can receive PMs.")
+        except discord.Forbidden:
+            await ctx.error("You can't receive my PMs.\nTo enable, go to ")
+
     @commands.command(usage="<choices...>")
     async def choose(self, ctx, *choices: str):
         """Chooses between multiple choices.
