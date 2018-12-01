@@ -7,7 +7,7 @@ from logging.handlers import TimedRotatingFileHandler
 import asyncpg
 import click
 
-from cogs.utils.database_migration import check_database, import_legacy_db
+from cogs.utils.database_migration import check_database, import_legacy_db, drop_tables
 from nabbot import NabBot
 
 logging_formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s')
@@ -111,6 +111,12 @@ def main(ctx, debug):
 @main.command()
 @click.option('-path', '--path', help="Name for the database file.", default="data/users.db")
 def migrate(path):
+    """Migrates a v1.x.x SQLite to a PostgreSQL database.
+
+    This is a time consuming operation and cuation must be taken.
+    The original SQLite file is not affected.
+
+    Some checks are performed to avoid duplicates, but migrating more than one database may have unintended effects."""
     log.info("Starting migration")
     loop = asyncio.get_event_loop()
     pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
@@ -124,6 +130,24 @@ def migrate(path):
         return
 
     loop.run_until_complete(import_legacy_db(pool, path))
+
+
+@main.command()
+def empty():
+    """Empties out the database.
+
+    Drops all tables from the saved postgreSQL database.
+    This action is irreversible, so use with caution."""
+    confirm = click.confirm("Are you sure you want to drop all tables? This action is irreversible.")
+    if not confirm:
+        click.echo("Operation aborted.")
+
+    loop = asyncio.get_event_loop()
+    pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
+    if pool is None:
+        log.error('Could not set up PostgreSQL. Exiting.')
+        return
+    loop.run_until_complete(drop_tables(pool))
 
 
 if __name__ == "__main__":
