@@ -113,7 +113,7 @@ def main(ctx, debug):
 def migrate(path):
     """Migrates a v1.x.x SQLite to a PostgreSQL database.
 
-    This is a time consuming operation and cuation must be taken.
+    This is a time consuming operation and caution must be taken.
     The original SQLite file is not affected.
 
     Some checks are performed to avoid duplicates, but migrating more than one database may have unintended effects."""

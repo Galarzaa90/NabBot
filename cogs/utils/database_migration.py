@@ -34,7 +34,7 @@ async def check_database(pool: asyncpg.pool.Pool):
 
 async def drop_tables(pool: asyncpg.pool.Pool):
     async with pool.acquire() as con:
-        r = await con.execute("""
+        await con.execute("""
             DO $$ DECLARE
                 r RECORD;
             BEGIN
@@ -42,7 +42,6 @@ async def drop_tables(pool: asyncpg.pool.Pool):
                     EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
                 END LOOP;
             END $$;""")
-        print(r)
         await con.execute("""
                 DO $$ DECLARE
                     r RECORD;
@@ -415,22 +414,25 @@ async def import_server_properties(conn: asyncpg.Connection, c: sqlite3.Cursor):
         for row in bar:
             server, key, value = row
             server = int(server)
+            # Prefixes were stored as a json formatted string, now they are in their own table
             if key == "prefixes":
+                value = json.loads(value)
                 await conn.execute("""INSERT INTO server_prefixes(server_id, prefixes) VALUES($1, $2)
-                                          ON CONFLICT(server_id, prefixes) DO NOTHING""", server, json.loads(value))
+                                      ON CONFLICT(server_id) DO NOTHING""", server, value)
                 continue
-
+            # Timezones were stored as a json formatted string, now they are in their own table
             if key == "times":
-                value = json.dumps(json.loads(value))
+                value = json.loads(value)
                 await insert_timezone(conn, server, value)
                 continue
+            # The following keys were stored as a numeric string, now they are stored as a integer.
             elif key in ["events_channel", "levels_channel", "watched_channel", "news_channel", "welcome_channel",
                          "ask_channel", "watched_message"]:
-                value = json.dumps(int(value))
+                value = int(value)
+            # commandsonly key was stored as a integer reprsenting true/false with 0/1. Now stored as a boolean.
             elif key == "commandsonly":
-                value = json.dumps(bool(value))
-            else:
-                value = json.dumps(value)
+                value = bool(value)
+            # All other cases are strings
             await conn.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
                                   ON CONFLICT(server_id, key) DO NOTHING""", server, key, value)
 
@@ -438,8 +440,8 @@ async def import_server_properties(conn: asyncpg.Connection, c: sqlite3.Cursor):
 async def insert_timezone(conn: asyncpg.Connection, server_id: int, entries: list):
     for entry in entries:
         await conn.execute("""INSERT INTO server_timezone(server_id, zone, name) VALUES($1, $2, $3)
-                              ON CONFLICT(server_id, name) DO NOTHING""",
-                           server_id, entry["zone"], entry["name"])
+                              ON CONFLICT(server_id, zone) DO NOTHING""",
+                           server_id, entry["timezone"], entry["name"])
 
 
 async def import_events(conn: asyncpg.Connection, c: sqlite3.Cursor):
