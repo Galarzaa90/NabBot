@@ -204,7 +204,14 @@ death_messages_monster = [
      lambda min_level, level, voc, killer, levels_lost: killer == "souleater"],
     [150, "Oh look at that, rest in peace **{name}** ({level}),  ^that ^**{killer}** really got you. "
           "Hope you get your level back.",
-     lambda min_level, level, voc, killer, levels_lost: levels_lost > 0]
+     lambda min_level, level, voc, killer, levels_lost: levels_lost > 0],
+    [20000000000,
+     "**{name}** ({level}) met the strong wave of **{killer}**... Tip: stand in diagonal next time.",
+     lambda min_level, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord", "undead dragon",
+                                                                   "draken spellweaver", "hellhound",
+                                                                   "hellfire fighter", "frost dragon",
+                                                                   "medusa", "serpent spawn", "hydra", 
+                                                                   "grim reaper"]]
 ]
 
 # Deaths by players
