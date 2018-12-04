@@ -1,3 +1,4 @@
+import datetime as dt
 import random
 import re
 
@@ -228,7 +229,11 @@ death_messages_player = [
 
 
 def format_message(message) -> str:
-    """##handles stylization of messages, uppercasing \TEXT/, lowercasing /text\ and title casing /Text/"""
+    """Handles stylization of messages
+
+    uppercasing \TEXT/
+    lowercasing /text\
+    title casing /Text/"""
     upper = r'\\(.+?)/'
     upper = re.compile(upper, re.MULTILINE + re.S)
     lower = r'/(.+?)\\'
@@ -248,9 +253,13 @@ def format_message(message) -> str:
 
 def weighed_choice(choices, level: int, vocation: str = None, min_level=0, killer: str = None,
                    levels_lost: int = 0) -> str:
-    """Makes weighed choices from message lists where [0] is a value representing the relative odds
-    of picking a message and [1] is the message string"""
+    """Makes a weighed choice from a message list.
 
+    Each element of the list is a list with the following values:
+    - Relative weight of the message, the higher, the more common the message is relative to the others.
+    - The message's content
+    - A lambda expression with the parameters: min_level, level, voc, killer, levels_lost.
+    """
     # Find the max range by adding up the weigh of every message in the list
     # and purge out messages that don't fulfil the conditions
     weight_range = 0

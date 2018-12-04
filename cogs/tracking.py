@@ -1,6 +1,5 @@
 import asyncio
 import datetime as dt
-import json
 import logging
 import pickle
 import re
@@ -164,7 +163,7 @@ class Tracking:
                 if (time.time() - timestamp) < config.online_list_expiration:
                     online_characters.clear()
                     online_characters.update(saved_list)
-                    log.info("Loaded cached online list")
+                    log.info(f"[{self.__class__.__name__}] Loaded cached online list")
                 else:
                     log.info("Cached online list is too old, discarding")
         except FileNotFoundError:
@@ -671,13 +670,13 @@ class Tracking:
         self.bot.dispatch("character_unregistered", ctx.author, char)
 
     @commands.command()
+    @checks.can_embed()
     @checks.is_tracking_world()
     async def online(self, ctx: NabCtx):
         """Tells you which users are online on Tibia.
 
         This list gets updated based on Tibia.com online list, so it takes a couple minutes to be updated."""
-        world = self.bot.tracked_worlds.get(ctx.guild.id)
-
+        world = ctx.world
         per_page = 20 if await ctx.is_long() else 5
         now = dt.datetime.utcnow()
         uptime = (now - self.bot.start_time).total_seconds()

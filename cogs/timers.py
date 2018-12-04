@@ -199,7 +199,7 @@ class Timers:
         """Checks the first upcoming time and waits for it."""
         try:
             await self.bot.wait_until_ready()
-            log.debug(f"[{self.__class__.__name__}] Starting await_timers task")
+            log.debug(f"[{self.__class__.__name__}] Starting await_timers task %(funcName)s")
             while not self.bot.is_closed():
                 timer = self._next_timer = await self.await_next_timer(days=40)
                 log.debug(f"[{self.__class__.__name__}] Next timer: {timer}")
