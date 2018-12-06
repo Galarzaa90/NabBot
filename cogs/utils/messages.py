@@ -126,38 +126,35 @@ level_messages = [
 # Relative chance, message, lambda function as filter (takes min_level, level, voc, killer, levels_lost)
 # Only relative chance and message are mandatory.
 death_messages_monster = [
-    [100, "RIP **{name}** ({level}), you died the way you lived- inside {killer_article}**{killer}**."],
-    [100, "**{name}** ({level}) was just eaten by {killer_article}**{killer}**. Yum."],
-    [100, "Silly **{name}** ({level}), I warned you not to play with {killer_article}**{killer}**!"],
-    [100, "/{killer_article}**/{killer}** killed **{name}** at level {level}. Shame 🔔 shame 🔔 shame 🔔"],
-    [30,
-     "**{name}** ({level}) is no more! /{he_she}/ has ceased to be! /{he_she}/'s expired and gone to meet "
+    ###
+    # Not monster or vocation specific
+    ###
+    [30, "**{name}** ({level}) is no more! /{he_she}/ has ceased to be! /{he_she}/'s expired and gone to meet "
      "{his_her} maker! /{he_she}/'s a stiff! Bereft of life, {he_she} rests in peace! If {he_she} hadn't "
      "respawned {he_she}'d be pushing up the daisies! /{his_her}/ metabolic processes are now history! "
      "/{he_she}/'s off the server! /{he_she}/'s kicked the bucket, {he_she}'s shuffled off {his_her} mortal "
      "coil, kissed {killer_article}**{killer}**'s butt, run down the curtain and joined the bleeding choir "
      "invisible!! THIS IS AN EX-**\{name}/**."],
-    [100,
-     "RIP **{name}** ({level}), we hardly knew you! (^That ^**{killer}** got to know you pretty well "
-     "though 😉)"],
-    [80, "A priest, {killer_article}**{killer}** and **{name}** ({level}) walk into a bar. 💀ONLY ONE WALKS OUT.💀"],
-    [100, "RIP **{name}** ({level}), you were strong. ^The ^**{killer}** was stronger."],
-    [100,
-     "Oh, there goes **{name}** ({level}), killed by {killer_article}**{killer}**. So young, so full "
-     "of life. /{he_she}/ will be miss... oh nevermind, {he_she} respawned already."],
-    [100,
-     "Oh look! **{name}** ({level}) died by {killer_article}**{killer}**! What a surprise...🙄"],
-    [100,
-     "**{name}** ({level}) was killed by {killer_article}**{killer}**, but we all saw that coming."],
-    [100,
-     "**{name}** ({level}) tried sneaking around {killer_article}**{killer}**. I could hear Colonel "
-     "Campbell's voice over codec: *Snake? Snake!? SNAAAAAAAAAKE!!?*"],
-    [50,
-     "**{name}** ({level}) died to {killer_article}**{killer}**. But I bet it was because there was "
+    [50, "**{name}** ({level}) died to {killer_article}**{killer}**. But I bet it was because there was "
      "a flood and something broke with like 7200lb falling over the infrastructure of your city's internet, right?"],
     [70, "That's what you get **{name}** ({level}), for messing with ^that ^**{killer}**!"],
-    [100,
-     "Oh no! **{name}** died at level {level}. Well, it's okay, just blame lag, I'm sure ^the ^"
+    [70, "To be or not to be 💀, that is the-- Well I guess **{name}** ({level}) made his choice, "
+         "or ^that ^**{killer}** chose for him..."],
+    [80, "A priest, {killer_article}**{killer}** and **{name}** ({level}) walk into a bar. 💀ONLY ONE WALKS OUT.💀"],
+    [100, "RIP **{name}** ({level}), you died the way you lived- inside {killer_article}**{killer}**."],
+    [100, "**{name}** ({level}) was just eaten by {killer_article}**{killer}**. Yum."],
+    [100, "Silly **{name}** ({level}), I warned you not to play with {killer_article}**{killer}**!"],
+    [100, "/{killer_article}**/{killer}** killed **{name}** at level {level}. Shame 🔔 shame 🔔 shame 🔔"],
+    [100, "RIP **{name}** ({level}), we hardly knew you! (^That ^**{killer}** got to know you pretty well "
+     "though 😉)"],
+    [100, "RIP **{name}** ({level}), you were strong. ^The ^**{killer}** was stronger."],
+    [100, "Oh, there goes **{name}** ({level}), killed by {killer_article}**{killer}**. So young, so full "
+     "of life. /{he_she}/ will be miss... oh nevermind, {he_she} respawned already."],
+    [100, "Oh look! **{name}** ({level}) died by {killer_article}**{killer}**! What a surprise...🙄"],
+    [100, "**{name}** ({level}) was killed by {killer_article}**{killer}**, but we all saw that coming."],
+    [100, "**{name}** ({level}) tried sneaking around {killer_article}**{killer}**. I could hear Colonel "
+     "Campbell's voice over codec: *Snake? Snake!? SNAAAAAAAAAKE!!?*"],
+    [100, "Oh no! **{name}** died at level {level}. Well, it's okay, just blame lag, I'm sure ^the ^"
      "**{killer}** had nothing to do with it."],
     [100, "**{name}** ({level}) + **{killer}** = dedd."],
     [100, "**{name}** ({level}) got killed by a **{killer}**. Another one bites the dust!"],
@@ -166,8 +163,12 @@ death_messages_monster = [
     [100, "Alas, poor **{name}** ({level}), I knew {him_her} Horatio; a fellow of infinite jest, of most "
      "excellent fancy; {he_she} hath borne me on {his_her} back a thousand times; and now, {he_she} got rekt "
      "by {killer_article}**{killer}**."],
-    [70, "To be or not to be 💀, that is the-- Well I guess **{name}** ({level}) made his choice, "
-         "or ^that ^**{killer}** chose for him..."],
+    [150, "Oh look at that, rest in peace **{name}** ({level}),  ^that ^**{killer}** really got you. "
+          "Hope you get your level back.",
+     lambda min_level, level, voc, killer, levels_lost: levels_lost > 0],
+    ###
+    # Vocation specific
+    ###
     [500, "**{name}** ({level}) just died to {killer_article}**{killer}**, why did nobody sio {him_her}!?",
      lambda min_level, level, voc, killer, levels_lost: "Knight" in voc],
     [500, "Poor **{name}** ({level}) has died. Killed by {killer_article}**{killer}**. I bet it was your "
@@ -184,7 +185,12 @@ death_messages_monster = [
      lambda min_level, level, voc, killer, levels_lost: "Druid" in voc],
     [600, "**{name}** ({level}) died to {killer_article}**{killer}**. \"Don't worry\" they said, \"They are weaker\" "
      "they said.",
+     ###
+     # Monster specific
+     ###
      lambda min_level, level, voc, killer, levels_lost: killer in ["weakened frazzlemaw", "enfeebled silencer"]],
+    [1000, "Damn! The koolaid they drink in that cult must have steroids on it, **{name}** ({level}).",
+     lambda min_level, level, voc, killer, levels_lost: "cult" in killer],
     [2000, "Another paladin bites the dust! **{killer}** strikes again! Rest in peace **{name}** ({level}).",
      lambda min_level, level, voc, killer, levels_lost: "Paladin" in voc and killer == "Lady Tenebris"],
     [2000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! 👻",
@@ -202,44 +208,38 @@ death_messages_monster = [
      lambda min_level, level, voc, killer, levels_lost: "vampire" in killer],
     [2000, "Yeah, those are a little stronger than regular orcs, **{name}** ({level}).",
      lambda min_level, level, voc, killer, levels_lost: "orc cult" in killer],
-    [1000, "Damn! The koolaid they drink in that cult must have steroids on it, **{name}** ({level}).",
-     lambda min_level, level, voc, killer, levels_lost: "cult" in killer],
-    [2500, "**{name}** ({level}) met {his_her} demise at the hands of a **{killer}**. That's hot.",
-     lambda min_level, level, voc, killer, levels_lost: killer in ["true dawnfire asura", "dawnfire asura", "fury"]],
-    [2500, "Poor **{name}** ({level}) just wanted some love! That cold hearted... Witch.",
-     lambda min_level, level, voc, killer, levels_lost: killer in ["true frost flower asura", "frost flower asura",
-                                                                   "frost giantess", "ice witch"]],
     [2000, "Asian chicks are no joke **{name}** ({level}) 🔪💔.",
      lambda min_level, level, voc, killer, levels_lost: "asura" in killer],
-    [2500, "Asian chicks sure age well, don't you think so, **{name}** ({level})? 😍👵.",
-     lambda min_level, level, voc, killer, levels_lost: "true" in killer and "asura" in killer],
     [2000, "**{name}** ({level}) got destroyed by {killer_article}**{killer}**. I bet {he_she} regrets going down"
            "that hole 🕳️",
      lambda min_level, level, voc, killer, levels_lost: level < 120 and killer in ["breach brood", "dread intruder",
                                                                                    "reality reaver",
                                                                                    "spark of destruction", "sparkion"]],
-    [2000,
-     "Watch out for that **{killer}**'s wav... Oh😐... Rest in peace **{name}** ({level}).",
+    [2000, "Watch out for that **{killer}**'s wav... Oh😐... Rest in peace **{name}** ({level}).",
      lambda min_level, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord", "undead dragon",
                                                                    "draken spellweaver", "hellhound",
                                                                    "hellfire fighter"]],
     [2000, "**{name}** ({level}) died to {killer_article}**{killer}**! Don't worry, {he_she} didn't have a soul anyway",
      lambda min_level, level, voc, killer, levels_lost: killer == "souleater"],
-    [150, "Oh look at that, rest in peace **{name}** ({level}),  ^that ^**{killer}** really got you. "
-          "Hope you get your level back.",
-     lambda min_level, level, voc, killer, levels_lost: levels_lost > 0],
     [2000, "**{name}** ({level}) met the strong wave of {killer_article}**{killer}**... Pro Tip: next time, stand in "
            "diagonal.",
      lambda min_level, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord", "undead dragon",
                                                                    "draken spellweaver", "hellhound",
                                                                    "hellfire fighter", "frost dragon",
-                                                                   "medusa", "serpent spawn", "hydra", 
+                                                                   "medusa", "serpent spawn", "hydra",
                                                                    "grim reaper"]],
     [2000, "**{name}** ({level}) had his life drained by {killer_article}**{killer}**. Garlic plx!",
      lambda min_level, level, voc, killer, levels_lost: killer in ["vampire", "vampire bride", "vampire viscount",
                                                                    "grimeleech", "undead dragon", "lich", "lost soul",
                                                                    "skeleton elite warrior",
-                                                                   "undead elite gladiator"]]
+                                                                   "undead elite gladiator"]],
+    [2500, "**{name}** ({level}) met {his_her} demise at the hands of a **{killer}**. That's hot.",
+     lambda min_level, level, voc, killer, levels_lost: killer in ["true dawnfire asura", "dawnfire asura", "fury"]],
+    [2500, "Poor **{name}** ({level}) just wanted some love! That cold hearted... Witch.",
+     lambda min_level, level, voc, killer, levels_lost: killer in ["true frost flower asura", "frost flower asura",
+                                                                   "frost giantess", "ice witch"]],
+    [2500, "Asian chicks sure age well, don't you think so, **{name}** ({level})? 😍👵.",
+     lambda min_level, level, voc, killer, levels_lost: "true" in killer and "asura" in killer]
 ]
 
 # Deaths by players
