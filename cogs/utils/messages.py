@@ -10,90 +10,113 @@ last_messages = [""]*10
 # Relative chance, message, lambda function as filter (takes min_level, level, voc)
 # Only relative chance and message are mandatory.
 level_messages = [
-    [100, "Congratulations to **{name}** on reaching level {level}!"],
-    [100, "**{name}** is level {level} now, congrats!"],
-    [80, "**{name}** has reached level {level}, die and lose it, noob!"],
-    [100, "Well, look at **{name}** with {his_her} new fancy level {level}."],
-    [80, "**{name}** is level {level}, watch out world..."],
-    [100, "**{name}** is level {level} now. Noice."],
-    [100, "**{name}** has finally made it to level {level}, yay!"],
-    [80, "**{name}** reached level {level}! What a time to be alive...🙄"],
-    [70, "**{name}** got level {level}! So stronk now!💪"],
+    ####
+    # Not vocation or level specific
+    ####
     [30, "**{name}** is level {level}🍰\r\n" +
      "I'm making a note here:🎶\r\n" +
      "Huge success!🎶\r\n" +
      "It's hard to overstate my🎶\r\n" +
      "Satisfaction🤖"],
-    [100, "**{name}**, you reached level {level}? Here, have a cookie 🍪"],
-    [80, "**{name}** got level {level}. I guess this justifies all those creatures {he_she} murdered."],
-    [90, "**{name}** is level {level}. Better than {he_she} was. Better, stronger, faster."],
+    [70, "**{name}** got level {level}! So stronk now!💪"],
     [70, "Congrats **{name}** on getting level {level}! Maybe you can solo rats now?"],
     [70, "**{name}** is level {level} now! And we all thought {he_she}'d never achieve anything in life."],
+    [80, "**{name}** has reached level {level}, die and lose it, noob!"],
+    [80, "**{name}** is level {level}, watch out world..."],
+    [80, "**{name}** reached level {level}! What a time to be alive...🙄"],
+    [80, "**{name}** got level {level}. I guess this justifies all those creatures {he_she} murdered."],
+    [90, "**{name}** is level {level}. Better than {he_she} was. Better, stronger, faster."],
+    [100, "Congratulations to **{name}** on reaching level {level}!"],
+    [100, "**{name}** is level {level} now, congrats!"],
+    [100, "Well, look at **{name}** with {his_her} new fancy level {level}."],
+    [100, "**{name}** is level {level} now. Noice."],
+    [100, "**{name}** has finally made it to level {level}, yay!"],
+    [100, "**{name}**, you reached level {level}? Here, have a cookie 🍪"],
+    ####
     # EK Only
+    ####
     [50, "**{name}** has reached level {level}. That's 9 more mana potions you can carry now!",
      lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
     [200, "**{name}** is level {level}. Stick them with the pointy end! 🗡️",
      lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
     [200, "**{name}** is a fat level {level} meatwall now. BLOCK FOR ME SENPAI.",
      lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
+    ####
+    # EK Only - Level specific
+    ####
+    [20000, "**{name}** is now level {level}! Time to go berserk! 💢",
+     lambda min_level, level, voc, *_: level == 35 and "Knight" in voc],
+    ####
     # RP Only
+    ####
     [50, "**{name}** has reached level {level}. But {he_she} still misses arrows...",
      lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
     [150, "Congrats on level {level}, **{name}**. You can stop running around now.",
      lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
     [150, "**{name}** is level {level}. Bullseye!🎯",
      lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
-    # MS Only
-    [50, "Level {level}, **{name}**? Nice. Don't you wish you were a druid though?",
-     lambda min_level, level, voc, *_: level >= 100 and "Sorcerer" in voc],
-    [150, "**{name}** is level {level}. Watch out for {his_her} SDs!",
-     lambda min_level, level, voc, *_: level >= 45 and "Sorcerer" in voc],
-    [150, "**{name}** got level {level}. If {he_she} only stopped missing beams.",
-     lambda min_level, level, voc, *_: level >= 23 and "Sorcerer" in voc],
-    [150,
-     "**{name}** is level {level}. 🔥🔥BURN THEM ALL🔥🔥",
-     lambda min_level, level, voc, *_: level >= 100 and "Sorcerer" in voc],
-    # ED Only
-    [50, "**{name}** has reached level {level}. Flower power!🌼",
-     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
-    [150, "Congrats on level {level}, **{name}**. Sio plz.",
-     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
-    [150, "**{name}** is level {level}. 🔥🔥BURN THEM ALL... Or... Give them frostbite...?❄❄",
-     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
-    # Level specific
-    [20000, "**{name}** is level {level}! UMPs so good 🍷",
-     lambda min_level, level, voc, *_: level == 130 and ("Druid" in voc or "Sorcerer" in voc)],
-    [20000, "**{name}** is level {level} now! Eternal Winter is coming!❄",
-     lambda min_level, level, voc, *_: level == 60 and "Druid" in voc],
-    [20000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature🍃🍃... just look at that wrath.",
-     lambda min_level, level, voc, *_: level == 55 and "Druid" in voc],
-    [20000, "**{name}** is now level {level}. Don't forget to buy a Gearwheel Chain!📿",
-     lambda min_level, level, voc, *_: level == 75],
+    ####
+    # RP Only - Level specific
+    ####
     [30000, "**{name}** is level {level}! You can become a ninja now!👤",
      lambda min_level, level, voc, *_: level == 80 and "Paladin" in voc],
     [30000, "**{name}** is level {level}! Time to get some crystalline arrows!🏹",
      lambda min_level, level, voc, *_: level == 90 and "Paladin" in voc],
+    ####
+    # MS Only
+    ####
+    [150, "**{name}** got level {level}. If {he_she} only stopped missing beams.",
+     lambda min_level, level, voc, *_: level >= 23 and "Sorcerer" in voc],
+    [50, "Level {level}, **{name}**? Nice. Don't you wish you were a druid though?",
+     lambda min_level, level, voc, *_: level >= 100 and "Sorcerer" in voc],
+    [150, "**{name}** is level {level}. 🔥🔥BURN THEM ALL🔥🔥",
+     lambda min_level, level, voc, *_: level >= 100 and "Sorcerer" in voc],
+    ####
+    # MS Only - Level specific
+    ####
+    [20000, "**{name}** is level {level}. Watch out for {his_her} SDs!",
+     lambda min_level, level, voc, *_: level == 45 and "Sorcerer" in voc],
+    ####
+    # ED Only
+    ####
+    [50, "**{name}** has reached level {level}. Flower power!🌼",
+     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
+    [150, "Congrats on level {level}, **{name}**. Sio plz.",
+     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
+    [150, "**{name}** is level {level}. 🔥🔥BURN THEM ALL... Or... Give them frostbite?❄❄",
+     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
+    ####
+    # ED Only - Level specific
+    ####
+    [20000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature🍃🍃... Just look at that wrath...",
+     lambda min_level, level, voc, *_: level == 55 and "Druid" in voc],
+    [20000, "**{name}** is level {level} now! Eternal Winter is coming!❄",
+     lambda min_level, level, voc, *_: level == 60 and "Druid" in voc],
+    ####
+    # Mage - Level specific
+    ####
+    [20000, "**{name}** is level {level}! UMPs so good 🍷",
+     lambda min_level, level, voc, *_: level == 130 and ("Druid" in voc or "Sorcerer" in voc)],
+    ####
+    # No vocation - Level specific
+    ####
     [20000, "Level {level}, **{name}**? You're finally important enough for me to notice!",
      lambda min_level, level, voc, *_: level == min_level],
     [20000, "Congratulations on level {level} **{name}**! Now you're relevant to me. As relevant a human can be anyway",
      lambda min_level, level, voc, *_: level == min_level],
-    [20000, "**{name}** is now level {level}! Time to go berserk! 💢",
-     lambda min_level, level, voc, *_: level == 35 and "Knight" in voc],
+    [20000, "**{name}** is now level {level}. Don't forget to buy a Gearwheel Chain!📿",
+     lambda min_level, level, voc, *_: level == 75],
+    [30000, "**{name}** is level {level}!!!!\r\n Sweet, sweet triple digits!",
+     lambda min_level, level, voc, *_: level == 100],
+    [20000, "**{name}** is level {level}!!!!\r\n WOOO",
+     lambda min_level, level, voc, *_: level % 100 == 0],
+    [20000, "**{name}** is level {level}!!!!\r\n Yaaaay milestone!",
+     lambda min_level, level, voc, *_: level % 100 == 0],
+    [20000, "**{name}** is level {level}!!!!\r\n Holy crap!",
+     lambda min_level, level, voc, *_: level % 100 == 0],
     [20000, "Congratulations on level {level} **{name}**! Now you can become an umbral master, but is your"
      " bank account ready?💸",
-     lambda min_level, level, voc, *_: level == 250],
-    [30000, "**{name}** is level {level}!!!!\r\n" +
-     "Sweet, sweet triple digits!",
-     lambda min_level, level, voc, *_: level == 100],
-    [20000, "**{name}** is level {level}!!!!\r\n" +
-     "WOOO",
-     lambda min_level, level, voc, *_: level % 100 == 0],
-    [20000, "**{name}** is level {level}!!!!\r\n" +
-     "yaaaay milestone!",
-     lambda min_level, level, voc, *_: level % 100 == 0],
-    [20000, "**{name}** is level {level}!!!!\r\n" +
-     "holy crap!",
-     lambda min_level, level, voc, *_: level % 100 == 0]]
+     lambda min_level, level, voc, *_: level == 250]]
 
 # Message list for announce death.
 # Parameters: ({name},{level},{killer},{killer_article},{he_she}, {his_her},{him_her}
