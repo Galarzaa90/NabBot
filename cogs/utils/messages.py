@@ -127,7 +127,7 @@ level_messages = [
 # Only relative chance and message are mandatory.
 death_messages_monster = [
     ###
-    # Not monster or vocation specific
+    # Not specific
     ###
     [30, "**{name}** ({level}) is no more! /{he_she}/ has ceased to be! /{he_she}/'s expired and gone to meet "
      "{his_her} maker! /{he_she}/'s a stiff! Bereft of life, {he_she} rests in peace! If {he_she} hadn't "
@@ -163,6 +163,9 @@ death_messages_monster = [
     [100, "Alas, poor **{name}** ({level}), I knew {him_her} Horatio; a fellow of infinite jest, of most "
      "excellent fancy; {he_she} hath borne me on {his_her} back a thousand times; and now, {he_she} got rekt "
      "by {killer_article}**{killer}**."],
+    ###
+    # General specific
+    ###
     [150, "Oh look at that, rest in peace **{name}** ({level}),  ^that ^**{killer}** really got you. "
           "Hope you get your level back.",
      lambda min_level, level, voc, killer, levels_lost: levels_lost > 0],
@@ -183,16 +186,14 @@ death_messages_monster = [
     [500, "**{name}** ({level}) was killed by {killer_article}**{killer}**. I guess {he_she} couldn't "
      "sio {him_her}self.",
      lambda min_level, level, voc, killer, levels_lost: "Druid" in voc],
+    ###
+    # Monster specific
+    ###
     [600, "**{name}** ({level}) died to {killer_article}**{killer}**. \"Don't worry\" they said, \"They are weaker\" "
      "they said.",
-     ###
-     # Monster specific
-     ###
      lambda min_level, level, voc, killer, levels_lost: killer in ["weakened frazzlemaw", "enfeebled silencer"]],
     [1000, "Damn! The koolaid they drink in that cult must have steroids on it, **{name}** ({level}).",
      lambda min_level, level, voc, killer, levels_lost: "cult" in killer],
-    [2000, "Another paladin bites the dust! **{killer}** strikes again! Rest in peace **{name}** ({level}).",
-     lambda min_level, level, voc, killer, levels_lost: "Paladin" in voc and killer == "Lady Tenebris"],
     [2000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! 👻",
      lambda min_level, level, voc, killer, levels_lost: killer == "something evil"],
     [2000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.",
@@ -210,11 +211,6 @@ death_messages_monster = [
      lambda min_level, level, voc, killer, levels_lost: "orc cult" in killer],
     [2000, "Asian chicks are no joke **{name}** ({level}) 🔪💔.",
      lambda min_level, level, voc, killer, levels_lost: "asura" in killer],
-    [2000, "**{name}** ({level}) got destroyed by {killer_article}**{killer}**. I bet {he_she} regrets going down"
-           "that hole 🕳️",
-     lambda min_level, level, voc, killer, levels_lost: level < 120 and killer in ["breach brood", "dread intruder",
-                                                                                   "reality reaver",
-                                                                                   "spark of destruction", "sparkion"]],
     [2000, "Watch out for that **{killer}**'s wav... Oh😐... Rest in peace **{name}** ({level}).",
      lambda min_level, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord", "undead dragon",
                                                                    "draken spellweaver", "hellhound",
@@ -239,7 +235,20 @@ death_messages_monster = [
      lambda min_level, level, voc, killer, levels_lost: killer in ["true frost flower asura", "frost flower asura",
                                                                    "frost giantess", "ice witch"]],
     [2500, "Asian chicks sure age well, don't you think so, **{name}** ({level})? 😍👵.",
-     lambda min_level, level, voc, killer, levels_lost: "true" in killer and "asura" in killer]
+     lambda min_level, level, voc, killer, levels_lost: "true" in killer and "asura" in killer],
+    ###
+    # Level and monster specific
+    ###
+    [2000, "**{name}** ({level}) got destroyed by {killer_article}**{killer}**. I bet {he_she} regrets going down"
+           "that hole 🕳️",
+     lambda min_level, level, voc, killer, levels_lost: level < 120 and killer in ["breach brood", "dread intruder",
+                                                                                   "reality reaver",
+                                                                                   "spark of destruction", "sparkion"]],
+    ###
+    # Vocation and monster specific
+    ###
+    [2000, "Another paladin bites the dust! **{killer}** strikes again! Rest in peace **{name}** ({level}).",
+     lambda min_level, level, voc, killer, levels_lost: "Paladin" in voc and killer == "Lady Tenebris"]
 ]
 
 # Deaths by players
