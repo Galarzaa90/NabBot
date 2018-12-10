@@ -3,6 +3,8 @@ import re
 
 # We save the last messages so they are not repeated so often
 last_messages = [""]*10
+WAVE_MONSTERS = ["dragon", "dragon lord", "undead dragon", "draken spellweaver", "hellhound", "hellfire fighter",
+                 "frost dragon", "medusa", "serpent spawn", "hydra", "grim reaper"]
 
 # Message list for announce_level
 # Parameters: {name}, {level} , {he_she}, {his_her}, {him_her}
@@ -212,18 +214,12 @@ death_messages_monster = [
     [2000, "Asian chicks are no joke **{name}** ({level}) 🔪💔.",
      lambda min_level, level, voc, killer, levels_lost: "asura" in killer],
     [2000, "Watch out for that **{killer}**'s wav... Oh😐... Rest in peace **{name}** ({level}).",
-     lambda min_level, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord", "undead dragon",
-                                                                   "draken spellweaver", "hellhound",
-                                                                   "hellfire fighter"]],
+     lambda min_level, level, voc, killer, levels_lost: killer in WAVE_MONSTERS],
     [2000, "**{name}** ({level}) died to {killer_article}**{killer}**! Don't worry, {he_she} didn't have a soul anyway",
      lambda min_level, level, voc, killer, levels_lost: killer == "souleater"],
     [2000, "**{name}** ({level}) met the strong wave of {killer_article}**{killer}**... Pro Tip: next time, stand in "
            "diagonal.",
-     lambda min_level, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord", "undead dragon",
-                                                                   "draken spellweaver", "hellhound",
-                                                                   "hellfire fighter", "frost dragon",
-                                                                   "medusa", "serpent spawn", "hydra",
-                                                                   "grim reaper"]],
+     lambda min_level, level, voc, killer, levels_lost: killer in WAVE_MONSTERS],
     [2000, "**{name}** ({level}) had his life drained by {killer_article}**{killer}**. Garlic plx!",
      lambda min_level, level, voc, killer, levels_lost: killer in ["vampire", "vampire bride", "vampire viscount",
                                                                    "grimeleech", "undead dragon", "lich", "lost soul",
