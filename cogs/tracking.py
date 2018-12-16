@@ -1186,7 +1186,6 @@ class Tracking:
             # This will cause a small amount of deaths to not be announced but it's probably worth the tradeoff
             return
 
-        was_logged = False
         guilds = [s for s, w in self.bot.tracked_worlds.items() if w == char.world]
         for guild_id in guilds:
             guild = self.bot.get_guild(guild_id)
@@ -1214,28 +1213,17 @@ class Tracking:
             try:
                 channel_id = await get_server_property(self.bot.pool, guild.id, "levels_channel")
                 channel = self.bot.get_channel_or_top(guild, channel_id)
-                log_msg = f"Announcing death: {char.name}({death.level}) | {death.killer}"
-                was_logged = await self.log_info_message_on_condition(log_msg, was_logged)
                 await channel.send(message[:1].upper() + message[1:])
             except discord.Forbidden:
                 log.warning("announce_death: Missing permissions.")
             except discord.HTTPException:
                 log.warning("announce_death: Malformed message.")
 
-    @staticmethod
-    async def log_info_message_on_condition(msg, was_logged: False):
-        """Will only log the message to console if it was not logged before.
-        Will always return true because it either just logged the message or the message was already logged."""
-        if not was_logged:
-            log.info(msg)
-        return True
-
     async def announce_level(self, char: Character, level: int):
         """Announces a level up on corresponding servers."""
         if char is None:
             return
 
-        was_logged = False
         guilds = [s for s, w in self.bot.tracked_worlds.items() if w == char.world]
         for guild_id in guilds:
             guild: discord.Guild = self.bot.get_guild(guild_id)
@@ -1257,8 +1245,6 @@ class Tracking:
                 message = message.format(**level_info)
                 # Format extra stylization
                 message = f"{config.levelup_emoji} {format_message(message)}"
-                log_msg = f"Announcing level up: {char.name} ({level})"
-                was_logged = self.log_info_message_on_condition(log_msg, was_logged)
                 await channel.send(message)
             except discord.Forbidden:
                 log.warning("announce_level: Missing permissions.")
@@ -1294,10 +1280,17 @@ class Tracking:
                     continue
                 await conn.execute("INSERT INTO character_death_killer(death_id, name, player) VALUES($1, $2, $3)",
                                    death_id, death.killer, death.by_player)
-                if time.time() - death.time.timestamp() >= (30 * 60):
-                    log.info(f"Death detected, too old to announce: {char.name}({death.level}) | {death.killer}")
+                log_msg = f"Death detected: {char.name}({death.level}) | {death.killer}"
+                if self.is_old_death(death):
+                    log_msg += ", but it is too old to announce."
                 else:
+                    log.info(log_msg)
                     await self.announce_death(char, death, max(death.level - char.level, 0))
+
+    @staticmethod
+    def is_old_death(death):
+        """Deaths older than 30 minutes will not be announced."""
+        return time.time() - death.time.timestamp() >= (30 * 60)
 
     async def compare_levels(self, char: Character):
         """Compares the character's level with the stored level in database.
@@ -1317,6 +1310,7 @@ class Tracking:
                 await conn.execute("INSERT INTO character_levelup(character_id, level) VALUES($1, $2)",
                                    row["id"], char.level)
                 # Announce the level up
+                log.info(f"Level up detected: {char.name} ({char.level})")
                 await self.announce_level(char, char.level)
 
     @staticmethod
