@@ -1165,7 +1165,6 @@ class Tracking:
         # Don't announce for low level players
         if char is None:
             return
-        log.info(f"Announcing death: {char.name}({death.level}) | {death.killer}")
 
         # Find killer article (a/an)
         killer_article = ""
@@ -1187,6 +1186,7 @@ class Tracking:
             # This will cause a small amount of deaths to not be announced but it's probably worth the tradeoff
             return
 
+        was_logged = False
         guilds = [s for s, w in self.bot.tracked_worlds.items() if w == char.world]
         for guild_id in guilds:
             guild = self.bot.get_guild(guild_id)
@@ -1214,18 +1214,28 @@ class Tracking:
             try:
                 channel_id = await get_server_property(self.bot.pool, guild.id, "levels_channel")
                 channel = self.bot.get_channel_or_top(guild, channel_id)
+                log_msg = f"Announcing death: {char.name}({death.level}) | {death.killer}"
+                was_logged = await self.log_info_message_on_condition(log_msg, was_logged)
                 await channel.send(message[:1].upper() + message[1:])
             except discord.Forbidden:
                 log.warning("announce_death: Missing permissions.")
             except discord.HTTPException:
                 log.warning("announce_death: Malformed message.")
 
+    @staticmethod
+    async def log_info_message_on_condition(msg, was_logged: False):
+        """Will only log the message to console if it was not logged before.
+        Will always return true because it either just logged the message or the message was already logged."""
+        if not was_logged:
+            log.info(msg)
+        return True
+
     async def announce_level(self, char: Character, level: int):
         """Announces a level up on corresponding servers."""
         if char is None:
             return
 
-        log.info(f"Announcing level up: {char.name} ({level})")
+        was_logged = False
         guilds = [s for s, w in self.bot.tracked_worlds.items() if w == char.world]
         for guild_id in guilds:
             guild: discord.Guild = self.bot.get_guild(guild_id)
@@ -1247,6 +1257,8 @@ class Tracking:
                 message = message.format(**level_info)
                 # Format extra stylization
                 message = f"{config.levelup_emoji} {format_message(message)}"
+                log_msg = f"Announcing level up: {char.name} ({level})"
+                was_logged = self.log_info_message_on_condition(log_msg, was_logged)
                 await channel.send(message)
             except discord.Forbidden:
                 log.warning("announce_level: Missing permissions.")
