@@ -1282,7 +1282,7 @@ class Tracking:
                                    death_id, death.killer, death.by_player)
                 log_msg = f"Death detected: {char.name}({death.level}) | {death.killer}"
                 if self.is_old_death(death):
-                    log_msg += ", but it is too old to announce."
+                    log.info(log_msg + ", but it is too old to announce.")
                 else:
                     log.info(log_msg)
                     await self.announce_death(char, death, max(death.level - char.level, 0))
