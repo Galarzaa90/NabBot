@@ -1165,7 +1165,6 @@ class Tracking:
         # Don't announce for low level players
         if char is None:
             return
-        log.info(f"Announcing death: {char.name}({death.level}) | {death.killer}")
 
         # Find killer article (a/an)
         killer_article = ""
@@ -1225,7 +1224,6 @@ class Tracking:
         if char is None:
             return
 
-        log.info(f"Announcing level up: {char.name} ({level})")
         guilds = [s for s, w in self.bot.tracked_worlds.items() if w == char.world]
         for guild_id in guilds:
             guild: discord.Guild = self.bot.get_guild(guild_id)
@@ -1282,10 +1280,17 @@ class Tracking:
                     continue
                 await conn.execute("INSERT INTO character_death_killer(death_id, name, player) VALUES($1, $2, $3)",
                                    death_id, death.killer, death.by_player)
-                if time.time() - death.time.timestamp() >= (30 * 60):
-                    log.info(f"Death detected, too old to announce: {char.name}({death.level}) | {death.killer}")
+                log_msg = f"Death detected: {char.name}({death.level}) | {death.killer}"
+                if self.is_old_death(death):
+                    log.info(log_msg + ", but it is too old to announce.")
                 else:
+                    log.info(log_msg)
                     await self.announce_death(char, death, max(death.level - char.level, 0))
+
+    @staticmethod
+    def is_old_death(death):
+        """Deaths older than 30 minutes will not be announced."""
+        return time.time() - death.time.timestamp() >= (30 * 60)
 
     async def compare_levels(self, char: Character):
         """Compares the character's level with the stored level in database.
@@ -1305,6 +1310,7 @@ class Tracking:
                 await conn.execute("INSERT INTO character_levelup(character_id, level) VALUES($1, $2)",
                                    row["id"], char.level)
                 # Announce the level up
+                log.info(f"Level up detected: {char.name} ({char.level})")
                 await self.announce_level(char, char.level)
 
     @staticmethod
