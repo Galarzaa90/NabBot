@@ -5,11 +5,12 @@ import pickle
 import re
 import time
 import urllib.parse
-from typing import List
+from typing import List, Union
 
 import asyncpg
 import discord
 from discord.ext import commands
+from tibiapy import OnlineCharacter, World, Death
 
 from nabbot import NabBot
 from .utils import EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_numeric, join_list, online_characters
@@ -19,9 +20,9 @@ from .utils.database import get_affected_count, get_server_property
 from .utils.messages import death_messages_monster, death_messages_player, format_message, level_messages, \
     split_message, weighed_choice
 from .utils.pages import CannotPaginate, Pages, VocationPages
-from .utils.tibia import Character, Death, ERROR_NETWORK, HIGHSCORE_CATEGORIES, NetworkError, World, get_character, \
-    get_character_url, get_guild, get_highscores, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_emoji, \
-    get_world, tibia_worlds, url_guild
+from .utils.tibia import ERROR_NETWORK, HIGHSCORE_CATEGORIES, NabChar, NetworkError, get_character, get_character_url, \
+    get_guild, get_highscores, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_emoji, get_world, \
+    tibia_worlds, url_guild
 
 log = logging.getLogger("nabbot")
 
@@ -193,7 +194,7 @@ class Tracking:
                 except NetworkError:
                     await asyncio.sleep(0.1)
                     continue
-                current_world_online = world.players_online
+                current_world_online = world.online_players
                 if len(current_world_online) == 0:
                     await asyncio.sleep(0.1)
                     continue
@@ -310,7 +311,7 @@ class Tracking:
                     if len(tibia_guild.online):
                         guild_online[tibia_guild.name] = tibia_guild.online
                 # If it is a character, check if he's in the online list
-                for online_char in scanned_world.players_online:
+                for online_char in scanned_world.online_players:
                     if online_char.name == watched["name"]:
                         # Add to online list
                         currently_online.append(online_char)
@@ -452,7 +453,7 @@ class Tracking:
 
         skipped = []
         updated = []
-        added: List[Character] = []
+        added: List[NabChar] = []
         existent = []
         with ctx.typing():
             for char in chars:
@@ -569,7 +570,7 @@ class Tracking:
 
         skipped = []
         updated = []
-        added: List[Character] = []
+        added: List[NabChar] = []
         existent = []
         for char in chars:
             # Skip chars in non-tracked worlds
@@ -1160,7 +1161,7 @@ class Tracking:
     # endregion
 
     # region Methods
-    async def announce_death(self, char: Character, death: Death, levels_lost=0):
+    async def announce_death(self, char: NabChar, death: Death, levels_lost=0):
         """Announces a level up on the corresponding servers."""
         # Don't announce for low level players
         if char is None:
@@ -1194,7 +1195,7 @@ class Tracking:
             min_level = await get_server_property(self.bot.pool, guild_id, "announce_level", config.announce_threshold)
             if death.level < min_level:
                 continue
-            if guild.get_member(char.owner) is None:
+            if guild.get_member(char.owner_id) is None:
                 continue
             # Select a message
             if death.by_player:
@@ -1219,7 +1220,7 @@ class Tracking:
             except discord.HTTPException:
                 log.warning("announce_death: Malformed message.")
 
-    async def announce_level(self, char: Character, level: int):
+    async def announce_level(self, char: Union[NabChar, OnlineCharacter], level: int):
         """Announces a level up on corresponding servers."""
         if char is None:
             return
@@ -1232,7 +1233,7 @@ class Tracking:
             min_level = await get_server_property(self.bot.pool, guild_id, "announce_level", config.announce_threshold)
             if char.level < min_level:
                 continue
-            if guild.get_member(char.owner) is None:
+            if guild.get_member(char.owner_id) is None:
                 continue
             try:
                 channel_id = await get_server_property(self.bot.pool, guild.id, "levels_channel")
@@ -1251,7 +1252,7 @@ class Tracking:
             except discord.HTTPException:
                 log.warning("announce_level: Malformed message.")
 
-    async def compare_deaths(self, char: Character):
+    async def compare_deaths(self, char: NabChar):
         """Checks if the player has new deaths."""
         if char is None:
             return
@@ -1292,7 +1293,7 @@ class Tracking:
         """Deaths older than 30 minutes will not be announced."""
         return time.time() - death.time.timestamp() >= (30 * 60)
 
-    async def compare_levels(self, char: Character):
+    async def compare_levels(self, char: Union[NabChar, OnlineCharacter]):
         """Compares the character's level with the stored level in database.
 
         This should only be used on online characters or characters that just became offline."""
@@ -1303,7 +1304,7 @@ class Tracking:
             row = await conn.fetchrow('SELECT id, name, level, user_id FROM "character" WHERE name = $1', char.name)
             if not row:
                 return
-            char.owner = row["user_id"]
+            char.owner_id = row["user_id"]
             await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', char.level, row["id"])
             if char.level > row["level"] > 0:
                 # Saving level up date in database

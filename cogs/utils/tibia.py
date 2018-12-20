@@ -9,13 +9,13 @@ import urllib.parse
 from calendar import timegm
 from contextlib import closing
 from html.parser import HTMLParser
-from logging.handlers import TimedRotatingFileHandler
 from typing import Dict, List, Optional, Union
 
 import aiohttp
 import cachetools
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
+from tibiapy import World, Character, Sex, Guild
 
 from . import config, get_local_timezone, online_characters
 from .database import wiki_db
@@ -61,16 +61,6 @@ tibia_worlds: List[str] = []
 HIGHSCORE_CATEGORIES = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
                         "magic_ek", "magic_rp", "loyalty", "achievements"]
 
-# Request log
-req_log = logging.getLogger()
-req_log.setLevel(logging.DEBUG)
-# Save log to file (info level)
-log_handler = TimedRotatingFileHandler('logs/requests', when='midnight')
-log_handler.suffix = "%Y_%m_%d.log"
-log_handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
-log_handler.setLevel(logging.INFO)
-req_log.addHandler(log_handler)
-
 CACHE_CHARACTERS = cachetools.TTLCache(1000, 30)
 CACHE_GUILDS = cachetools.TTLCache(1000, 120)
 CACHE_WORLDS = cachetools.TTLCache(100, 50)
@@ -82,322 +72,30 @@ class NetworkError(Exception):
     pass
 
 
-# TODO: Generate character from tibia.com response
-class Character:
-    SEX_MALE = 0
-    SEX_FEMALE = 1
+class NabChar(Character):
+    """Adds extra attributes to the Character class."""
+    __slots__ = ("id", "highscores", "owner_id")
 
-    FREE_ACCOUNT = 0
-    PREMIUM_ACCOUNT = 1
-
-
-    def __init__(self, name: str, world: str, **kwargs):
-        self.name = name
-        self.world = world
-        self.level = kwargs.get("level", 0)
-        self.achievement_points = kwargs.get("achievement_points", 0)
-        self.sex = kwargs.get("sex", 0)
-        self.former_names = kwargs.get("former_names", [])
-        self.former_world = kwargs.get("former_world")
-        self.residence = kwargs.get("residence")
-        self.vocation = kwargs.get("vocation")
-        self.married_to = kwargs.get("married_to")
-        self.guild = kwargs.get("guild")
-        self.house = kwargs.get("house")
-        self.last_login: dt.datetime = kwargs.get("last_login")
-        self.deleted: dt.datetime = kwargs.get("last_login")
-        self.online: bool = kwargs.get("online")
-        self.achievements: List[Achievement] = kwargs.get("achivements", [])
-        self.deaths: List[Death] = kwargs.get("deaths", [])
-        self.other_characters = kwargs.get("other_characters", [])
-        self.account_status = kwargs.get("account_status", 0)
-        self.comment = kwargs.get("comment")
-
-        # NabBot specific attributes:
-        self.highscores = []
-        self.owner = 0
+    def __init__(self, name=None, world=None, vocation=None, level=0, sex=None, **kwargs):
+        super().__init__(name, world, vocation, level, sex, **kwargs)
         self.id = 0
-
-    def __repr__(self) -> str:
-        kwargs = vars(self)
-        attributes = ""
-        for k, v in kwargs.items():
-            if k in ["name", "world"]:
-                continue
-            if v is None:
-                continue
-            if isinstance(v, int) and v == 0:
-                continue
-            if isinstance(v, list) and len(v) == 0:
-                continue
-            attributes += f", {k} = {v.__repr__()}"
-        return f"Character({self.name!r}, {self.world!r}{attributes})"
-
-    def __eq__(self, o: object) -> bool:
-        """Overrides the default implementation"""
-        if isinstance(o, self.__class__):
-            return self.name.lower() == o.name.lower()
-        return False
+        self.owner_id = 0
+        self.highscores = 0
 
     @property
     def he_she(self) -> str:
-        return ["He", "She"][self.sex]
+        return "He" if self.sex == Sex.MALE else "She"
 
     @property
     def his_her(self) -> str:
-        return ["His", "Her"][self.sex]
+        return "His" if self.sex == Sex.MALE else "Her"
 
     @property
     def him_her(self) -> str:
-        return ["Him", "Her"][self.sex]
-
-    @property
-    def url(self) -> str:
-        return self.get_url(self.name)
-
-    @property
-    def guild_name(self) -> Optional[str]:
-        return None if self.guild is None else self.guild["name"]
-
-    @property
-    def guild_rank(self) -> Optional[str]:
-        return None if self.guild is None else self.guild["rank"]
-
-    @classmethod
-    def get_url(cls, name: str) -> str:
-        """Returns the URL pointing to the character's tibia.com page
-
-        :param name: Name of the character
-        :return: url of the character's information
-        """
-        return url_character + urllib.parse.quote(name.encode('iso-8859-1'))
-
-    @classmethod
-    def parse_from_tibiadata(cls, content_json: Dict):
-        """Parses the response from TibiaData and returns a Character
-
-        :param content_json: The json object returned by TibiaData
-        :return: a Character object or None if the character doesn't exist.
-        """
-        char = content_json["characters"]
-        if "error" in char:
-            return None
-        try:
-            data = char["data"]
-            character = Character(data["name"], data["world"])
-            character.level = data["level"]
-            character.achievement_points = data["achievement_points"]
-            character.sex = cls.SEX_MALE if data["sex"] == "male" else cls.SEX_FEMALE
-            character.vocation = data["vocation"]
-            character.residence = data["residence"]
-        except KeyError:
-            return None
-        character.former_names = data.get("former_names", [])
-        if "deleted" in data:
-            character.deleted = parse_tibiadata_time(data.get("deleted"))
-        character.married_to = data.get("married_to")
-        character.former_world = data.get("former_world")
-        character.guild = data.get("guild")
-        character.house = data.get("house")
-        character.comment = data.get("comment")
-        character.account_status = cls.PREMIUM_ACCOUNT if data["account_status"] == "Premium Account" else cls.FREE_ACCOUNT
-        if len(data["last_login"]) > 0:
-            character.last_login = parse_tibiadata_time(data["last_login"][0])
-
-        for achievement in char["achievements"]:
-            character.achievements.append(Achievement(achievement["name"], int(achievement["stars"])))
-
-        for death in char["deaths"]:
-            try:
-                level = int(death["level"])
-                death_time = parse_tibiadata_time(death["date"])
-                by_player = False
-
-                match = re.search("by ([^.]+)", death["reason"])
-                killed_by = match.group(1).strip()  # Complete list of killers
-                killers = [k.strip() for k in killed_by.replace(" and ", " ,").split(",")]
-                participants = []
-                if death["involved"]:
-                    involved = [x["name"] for x in death["involved"]]
-                    killer = killers[0]
-                    # If killer is player, and there's another player in killers, assume it was the other player
-                    if killer == character.name:
-                        next_player = next((p for p in killers if p in involved and p != character.name), None)
-                        if next_player is not None:
-                            killer = next_player
-                    by_player = True
-                    for i, name in enumerate(killers):
-                        # If the name is not in involved list, it's a creature
-                        if name not in involved:
-                            # If the only other killer is the player itself, only count the creature
-                            if len(involved) == 1 and involved[0] == character.name:
-                                killer = name
-                                by_player = False
-                                break
-                        elif name != character.name and i != 0 and killer != name:
-                            participants.append(name)
-
-                else:
-                    killer = killers[0]
-                character.deaths.append(Death(level, killer, death_time, by_player, participants))
-            except ValueError:
-                # TODO: Handle deaths with no level
-                continue
-
-        for other_character in char["other_characters"]:
-            online = other_character["status"] == "online"
-            character.other_characters.append(Character(other_character["name"],
-                                                        other_character["world"],
-                                                        online=online))
-
-        return character
+        return "Him" if self.sex == Sex.MALE else "Her"
 
 
-class Achievement:
-    def __init__(self, name: str, grade: int):
-        self.name = name
-        self.grade = grade
-
-    def __repr__(self) -> str:
-        return f"Achievement({self.name!r},{self.grade})"
-
-
-# TODO: Handle deaths by multiple killers
-class Death:
-    def __init__(self, level: int, killer: str, time: dt.datetime, by_player: bool, participants=None):
-        if participants is None:
-            participants = []
-        self.level = level
-        self.killer = killer
-        self.time = time
-        self.by_player = by_player
-        self.participants = participants
-
-    def __repr__(self) -> str:
-        return f"Death({self.level},{self.killer!r},{self.time!r},{self.by_player},{self.participants!r})"
-
-
-class World:
-    """
-    Represents a Tibia world
-    """
-    def __init__(self, name, **kwargs):
-        self.name = name
-        self.online = kwargs.get("online", 0)
-        self.record_online = kwargs.get("record_online", 0)
-        self.record_date: dt.datetime = None
-        self.creation = None
-        self.pvp_type = kwargs.get("pvp_type")
-        self.premium_type = kwargs.get("premium_type")
-        self.transfer_type = kwargs.get("transfer_type")
-        self.location = kwargs.get("location")
-        self.players_online: List[Character] = []
-        self.online_count = kwargs.get("online_count", 0)
-        self.quests: List[str] = None
-
-    def __repr__(self) -> str:
-        kwargs = vars(self)
-        attributes = ""
-        for k, v in kwargs.items():
-            if k in ["players_online", "name"]:
-                continue
-            if v is None:
-                continue
-            if isinstance(v, int) and v == 0:
-                continue
-            if isinstance(v, list) and len(v) == 0:
-                continue
-            attributes += f", {k} = {v.__repr__()}"
-        return f"World({self.name!r}{attributes})"
-
-    @classmethod
-    def parse_from_tibiadata(cls, name: str, content_json: Dict):
-        _world = content_json["world"]
-        if "error" in _world:
-            return None
-        world_info = _world["world_information"]
-        world = World(name.capitalize())
-        world.online = int(world_info.get("players_online", 0))
-        if "online_record" in world_info:
-            world.record_online = int(world_info["online_record"]["players"])
-            world.record_date = parse_tibiadata_time(world_info["online_record"]["date"])
-        try:
-            world.creation = world_info["creation_date"]
-        except KeyError:
-            return None
-        world.location = world_info["location"]
-        world.pvp_type = world_info["pvp_type"]
-        world.premium_type = world_info.get("premium_type")
-        world.transfer_type = world_info.get("transfer_type")
-        # TODO: Parse battleye status
-        if "world_quest_titles" in world_info:
-            world.quests = world_info["world_quest_titles"]
-
-        for player in _world.get("players_online", []):
-            world.players_online.append(Character(player["name"], world.name, level=int(player["level"]),
-                                                  vocation=player["vocation"], online=True))
-        world.online_count = len(world.players_online)
-        return world
-
-
-class Guild:
-    def __init__(self, name, world, **kwargs):
-        self.name = name
-        self.world = world
-        self.application = kwargs.get("application", False)
-        self.description = kwargs.get("description")
-        self.founded = kwargs.get("founded")
-        self.logo = kwargs.get("logo")
-        self.homepage = kwargs.get("homepage")
-        self.guildhall = kwargs.get("guildhall")
-        self.members = kwargs.get("members", [])
-        self.invited = kwargs.get("invited", [])
-
-    @property
-    def url(self) -> str:
-        return self.get_url(self.name)
-
-    @property
-    def online(self) -> List:
-        return [m for m in self.members if m["status"] == "online"]
-
-    @classmethod
-    def get_url(cls, name: str) -> str:
-        """Returns the url pointing to the character's tibia.com page
-
-        :param name: Name of the character
-        :return: url of the character's information
-        """
-        return url_guild + urllib.parse.quote(name.encode('iso-8859-1'))
-
-    @classmethod
-    def parse_from_tibiadata(cls, content_json: Dict):
-        guild = content_json["guild"]
-        if "error" in guild:
-            return None
-        data = guild["data"]
-        tibia_guild = Guild(data["name"], data["world"])
-        tibia_guild.application = data["application"]
-        tibia_guild.description = data["description"]
-        tibia_guild.founded = data["founded"]
-        tibia_guild.logo = data["guildlogo"]
-        tibia_guild.members = []
-        for rank in guild["members"]:
-            rank_name = rank["rank_title"]
-            for member in rank["characters"]:
-                member["rank"] = rank_name
-                tibia_guild.members.append(member)
-        tibia_guild.invited = guild["invited"]
-        if "homepage" in data:
-            tibia_guild.homepage = data["homepage"]
-        if type(data["guildhall"]) is dict:
-            tibia_guild.guildhall = data["guildhall"]
-        else:
-            tibia_guild.guildhall = None
-
-        return tibia_guild
-
-async def get_character(bot, name, tries=5) -> Optional[Character]:
+async def get_character(bot, name, tries=5) -> Optional[NabChar]:
     """Fetches a character from TibiaData, parses and returns a Character object
 
     The character object contains all the information available on Tibia.com
@@ -409,33 +107,30 @@ async def get_character(bot, name, tries=5) -> Optional[Character]:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
         raise NetworkError()
     try:
-        url = f"https://api.tibiadata.com/v2/characters/{urllib.parse.quote(name.strip(), safe='')}.json"
+        url = Character.get_url_tibiadata(name)
     except UnicodeEncodeError:
         return None
     # Fetch website
     try:
         character = CACHE_CHARACTERS[name.lower()]
     except KeyError:
-        req_log.info(f"get_character({name})")
         try:
             async with bot.session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
+                character = NabChar.from_tibiadata(content)
         except (aiohttp.ClientError, asyncio.TimeoutError):
             await asyncio.sleep(config.network_retry_delay)
             return await get_character(bot, name, tries - 1)
-
-        content_json = json.loads(content)
-        character = Character.parse_from_tibiadata(content_json)
         CACHE_CHARACTERS[name.lower()] = character
     if character is None:
         return None
 
-    if character.house is not None:
+    if character.house:
         with closing(wiki_db.cursor()) as c:
-            c.execute("SELECT house_id FROM house WHERE name LIKE ?", (character.house["name"].strip(),))
+            c.execute("SELECT house_id FROM house WHERE name LIKE ?", (character.house.name.strip(),))
             result = c.fetchone()
             if result:
-                character.house["houseid"] = result["house_id"]
+                character.house.id = result["house_id"]
 
     # If the character exists in the online list use data from there where possible
     try:
@@ -451,7 +146,7 @@ async def get_character(bot, name, tries=5) -> Optional[Character]:
     return character
 
 
-async def bind_database_character(bot, character: Character):
+async def bind_database_character(bot, character: NabChar):
     """Binds a Tibia.com character with a saved database character
 
     Compliments information found on the database and performs updating."""
@@ -469,7 +164,7 @@ async def bind_database_character(bot, character: Character):
                 # TODO: Conflict handling is necessary now that name is a unique column
                 row = await conn.fetchrow('UPDATE "character" SET name = $1 WHERE id = $2 RETURNING id, user_id',
                                           character.name, char_id)
-                character.owner = row["user_id"]
+                character.owner_id = row["user_id"]
                 character.id = row["id"]
                 log.info(f"get_character(): {old_name} renamed to {character.name}")
                 bot.dispatch("character_rename", character, old_name)
@@ -482,7 +177,7 @@ async def bind_database_character(bot, character: Character):
             # Untracked character
             return
 
-        character.owner = db_char["user_id"]
+        character.owner_id = db_char["user_id"]
         character.id = db_char["id"]
         if db_char["vocation"] != character.vocation:
             await conn.execute('UPDATE "character" SET vocation = $1 WHERE id = $2', character.vocation, db_char["id"])
@@ -501,7 +196,7 @@ async def bind_database_character(bot, character: Character):
         if db_char["guild"] != character.guild_name:
             await conn.execute('UPDATE "character" SET guild = $1 WHERE id = $2', character.guild_name, db_char["id"])
             log.info(f"get_character: {character.name}'s guild updated {db_char['guild']} -> {character.guild_name}")
-            bot.dispatch("character_change", character.owner)
+            bot.dispatch("character_change", character.owner_id)
             bot.dispatch("character_guild_change", character, db_char['guild'])
 
 
@@ -516,7 +211,6 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
         return ERROR_NETWORK
 
     # Fetch website
-    req_log.info(f"get_highscores({world}, {category}, {pagenum}, {profession})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -558,7 +252,6 @@ async def get_highscores_tibiadata(world, category=None, vocation=None, tries=5)
     if category is None:
         category = "experience"
     url = f"https://api.tibiadata.com/v2/highscores/{world}/{category}/{vocation}.json"
-    req_log.info(f"get_highscores_tibiadata({world}, {category}, {vocation})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -580,7 +273,6 @@ async def get_highscores_tibiadata(world, category=None, vocation=None, tries=5)
 
 
 async def get_world(name, tries=5) -> Optional[World]:
-    url = f"https://api.tibiadata.com/v2/world/{name}.json"
     name = name.strip().title()
     if tries == 0:
         log.error("get_world: Couldn't fetch {0}, network error.".format(name))
@@ -591,17 +283,14 @@ async def get_world(name, tries=5) -> Optional[World]:
         return world
     except KeyError:
         pass
-    req_log.info(f"get_world({name})")
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
+            async with session.get(World.get_url_tibiadata(name)) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
+                world = World.from_tibiadata(content)
+    except aiohttp.ClientError:
         await asyncio.sleep(config.network_retry_delay)
         return await get_world(name, tries - 1)
-
-    content_json = json.loads(content)
-    world = World.parse_from_tibiadata(name, content_json)
     return world
 
 
@@ -663,31 +352,21 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
     else:
         name = name.title()
 
-    tibiadata_url = f"https://api.tibiadata.com/v2/guild/{urllib.parse.quote(name)}.json"
-
     # Fetch website
-    req_log.info(f"get_guild({name})")
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(tibiadata_url) as resp:
+            async with session.get(Guild.get_url_tibiadata(name)) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
+                guild = Guild.from_tibiadata(content)
     except Exception:
         await asyncio.sleep(config.network_retry_delay)
         return await get_guild(name, title_case, tries - 1)
 
-    content_json = json.loads(content)
-    guild = Guild.parse_from_tibiadata(content_json)
     if guild is None:
         if title_case:
             return await get_guild(name, False)
         else:
             return None
-    if guild.guildhall is not None:
-        with closing(wiki_db.cursor()) as c:
-            c.execute("SELECT house_id FROM house WHERE name LIKE ?", (guild.guildhall["name"].strip(),))
-            result = c.fetchone()
-            if result:
-                guild.guildhall["id"] = result["house_id"]
     CACHE_GUILDS[name.lower()] = guild
     return guild
 
@@ -706,7 +385,6 @@ async def get_recent_news(tries=5):
         return news
     except KeyError:
         pass
-    req_log.info(f"get_recent_news()")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -744,7 +422,6 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
     except KeyError:
         pass
     # Fetch website
-    req_log.info(f"get_news_article({article_id})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -942,7 +619,6 @@ async def get_house(name, world=None):
         tries = 5
         while True:
             try:
-                req_log.info(f"get_house({name})")
                 async with aiohttp.ClientSession() as session:
                     async with session.get(house["url"]) as resp:
                         content = await resp.text(encoding='ISO-8859-1')
@@ -1046,6 +722,7 @@ def get_voc_abb(vocation: str) -> str:
 
 def get_voc_emoji(vocation: str) -> str:
     """Given a vocation name, returns a emoji representing it"""
+    vocation = str(vocation)
     emoji = {"none": config.novoc_emoji, "druid": config.druid_emoji, "sorcerer": config.sorcerer_emoji,
              "paladin": config.paladin_emoji, "knight": config.knight_emoji, "elder druid": config.druid_emoji,
              "master sorcerer": config.sorcerer_emoji, "royal paladin": config.paladin_emoji,

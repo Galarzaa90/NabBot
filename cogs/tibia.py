@@ -13,16 +13,17 @@ import asyncpg
 import discord
 import pytz
 from discord.ext import commands
+from tibiapy import TransferType, GuildHouse
 
 from cogs.utils.tibia import get_rashid_city
 from nabbot import NabBot
 from .utils import checks
 from .utils import config, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, join_list, online_characters
 from .utils.context import NabCtx
-from .utils.database import get_global_property, get_server_property, set_global_property
+from .utils.database import get_global_property, get_server_property, set_global_property, wiki_db
 from .utils.messages import get_first_image, html_to_markdown, split_message
 from .utils.pages import CannotPaginate, Pages, VocationPages
-from .utils.tibia import Character, NetworkError, get_character, get_character_url, get_guild, get_highscores_tibiadata, \
+from .utils.tibia import NabChar, NetworkError, get_character, get_character_url, get_guild, get_highscores_tibiadata, \
     get_house, get_map_area, get_news_article, get_recent_news, get_share_range, get_tibia_time_zone, \
     get_voc_abb, get_voc_abb_and_emoji, get_voc_emoji, get_world, get_world_bosses, get_world_list, highscore_format, \
     tibia_logo, tibia_worlds, url_character, url_guild, url_house
@@ -88,6 +89,7 @@ class Tibia:
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         await ctx.send(embed=embed)
 
+    # TODO: Update to tibiapy.Death
     @checks.can_embed()
     @commands.group(aliases=['deathlist'], invoke_without_command=True, case_insensitive=True)
     async def deaths(self, ctx: NabCtx, *, name: str = None):
@@ -155,8 +157,8 @@ class Tibia:
             name = char.name
             voc_emoji = get_voc_emoji(char.vocation)
             title = "{1} {0} latest deaths:".format(name, voc_emoji)
-            if ctx.guild is not None and char.owner:
-                owner: discord.Member = ctx.guild.get_member(char.owner)
+            if ctx.guild is not None and char.owner_id:
+                owner: discord.Member = ctx.guild.get_member(char.owner_id)
                 if owner is not None:
                     author = owner.display_name
                     author_icon = owner.avatar_url
@@ -164,7 +166,7 @@ class Tibia:
                 last_time = death.time
                 death_time = get_time_diff(dt.datetime.now(tz=dt.timezone.utc) - death.time)
                 if death.by_player and show_links:
-                    killer = f"[{death.killer}]({Character.get_url(death.killer)})"
+                    killer = f"[{death.killer}]({NabChar.get_url(death.killer)})"
                 elif death.by_player:
                     killer = f"**{death.killer}**"
                 else:
@@ -387,37 +389,36 @@ class Tibia:
         embed = discord.Embed()
         embed.set_author(name="{0.name} ({0.world})".format(guild), url=guild.url, icon_url=tibia_logo)
         embed.description = ""
-        embed.set_thumbnail(url=guild.logo)
+        embed.set_thumbnail(url=guild.logo_url)
         if guild.guildhall is not None:
-            embed.description += "They own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
-                                                                               url_house.format(id=guild.guildhall["id"],
-                                                                                                world=guild.world))
+            url = GuildHouse.get_url(self._get_house_id(guild.guildhall.name), guild.world)
+            embed.description += f"They own the guildhall [{guild.guildhall.name}]({url}).\n"
 
-        if len(guild.online) < 1:
-            embed.description += f"Nobody is online. It has **{len(guild.members)}** members."
+        if len(guild.online_members) < 1:
+            embed.description += f"Nobody is online. It has **{guild.member_count:,}** members."
             await ctx.send(embed=embed)
             return
 
         embed.set_footer(text=f"The guild was founded on {guild.founded}")
 
         plural = ""
-        if len(guild.online) > 1:
+        if len(guild.online_members) > 1:
             plural = "s"
-        embed.description += f"It has **{len(guild.online)}** player{plural} online out of **{len(guild.members)}**:"
+        embed.description += f"It has **{len(guild.online_members):,}** player{plural} online out of " \
+            f"**{guild.member_count:,}**:"
         current_field = ""
         result = ""
-        for member in guild.online:
+        for member in guild.online_members:
             if current_field == "":
-                current_field = member['rank']
-            elif member['rank'] != current_field and member["rank"] != "":
+                current_field = member.rank
+            elif member.rank != current_field and member.rank != "":
                 embed.add_field(name=current_field, value=result, inline=False)
                 result = ""
-                current_field = member['rank']
+                current_field = member.rank
+            title = '(*' + member.title + '*) ' if member.title else ''
+            vocation = get_voc_abb(member.vocation.value)
 
-            member["nick"] = '(*' + member['nick'] + '*) ' if member['nick'] != '' else ''
-            member["vocation"] = get_voc_abb(member["vocation"])
-
-            result += "{name} {nick}\u2192 {level} {vocation}\n".format(**member)
+            result += f"{member.name} {title}\u2192 {member.level:,} {vocation}\n"
         embed.add_field(name=current_field, value=result, inline=False)
         await ctx.send(embed=embed)
 
@@ -440,13 +441,12 @@ class Tibia:
             await ctx.send("Can you repeat that? I had some trouble communicating.")
             return
         embed = discord.Embed(title=f"{guild.name} ({guild.world})", description=guild.description, url=guild.url)
-        embed.set_thumbnail(url=guild.logo)
+        embed.set_thumbnail(url=guild.logo_url)
         embed.set_footer(text=f"The guild was founded on {guild.founded}")
         if guild.guildhall is not None:
-            embed.description += "\nThey own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
-                                                                               url_house.format(id=guild.guildhall["id"],
-                                                                                               world=guild.world))
-        applications = f"{ctx.tick(True)} Open" if guild.application else f"{ctx.tick(False)} Closed"
+            url = GuildHouse.get_url(self._get_house_id(guild.guildhall.name), guild.world)
+            embed.description += f"\nThey own the guildhall [{guild.guildhall.name}]({url}).\n"
+        applications = f"{ctx.tick(True)} Open" if guild.open_applications else f"{ctx.tick(False)} Closed"
         embed.add_field(name="Applications", value=applications)
         if guild.homepage is not None:
             embed.add_field(name="Homepage", value=f"[{guild.homepage}]({guild.homepage})")
@@ -456,28 +456,26 @@ class Tibia:
         druid = 0
         none = 0
         total_level = 0
-        highest_member = None
+        highest_member = guild.members[0]
         for member in guild.members:
-            if highest_member is None:
+            if highest_member.level < member.level:
                 highest_member = member
-            elif highest_member["level"] < member["level"]:
-                highest_member = member
-            total_level += member["level"]
-            if "knight" in member["vocation"].lower():
+            total_level += member.level
+            if "knight" in member.vocation.value.lower():
                 knight += 1
-            if "sorcerer" in member["vocation"].lower():
+            if "sorcerer" in member.vocation.value.lower():
                 sorcerer += 1
-            if "druid" in member["vocation"].lower():
+            if "druid" in member.vocation.value.lower():
                 druid += 1
-            if "paladin" in member["vocation"].lower():
+            if "paladin" in member.vocation.value.lower():
                 paladin += 1
-            if "none" in member["vocation"].lower():
+            if "none" in member.vocation.value.lower():
                 none += 1
 
-        embed.add_field(name="Members online", value=f"{len(guild.online)}/{len(guild.members)}")
+        embed.add_field(name="Members online", value=f"{len(guild.online_members)}/{guild.member_count}")
         embed.add_field(name="Average level", value=f"{total_level/len(guild.members):.0f}")
-        embed.add_field(name="Highest member", value="{name} - {level} {emoji}".
-                        format(**highest_member, emoji=get_voc_emoji(highest_member["vocation"])))
+        embed.add_field(name="Highest member", value=f"{highest_member.name} - {highest_member.level:,}"
+                                                     f"{get_voc_emoji(highest_member.vocation)}")
         embed.add_field(name="Vocations distribution", value=f"{knight} {get_voc_emoji('knight')} | "
                                                              f"{druid} {get_voc_emoji('druid')} | "
                                                              f"{sorcerer} {get_voc_emoji('sorcerer')} | "
@@ -503,16 +501,16 @@ class Tibia:
         title = "{0.name} ({0.world})".format(guild)
         entries = []
         vocations = []
-        for member in guild.members:
-            member["nick"] = '(*' + member['nick'] + '*) ' if member['nick'] != '' else ''
-            vocations.append(member["vocation"])
-            member["emoji"] = get_voc_emoji(member["vocation"])
-            member["vocation"] = get_voc_abb(member["vocation"])
-            member["online"] = config.online_emoji if member["status"] == "online" else ""
-            entries.append("{rank}\u2014 {online}**{name}** {nick} (Lvl {level} {vocation}{emoji})".format(**member))
+        for m in guild.members:
+            nick = f'(*{m.title}*) ' if m.title else ''
+            vocations.append(m.vocation.value)
+            emoji = get_voc_emoji(m.vocation.value)
+            voc_abb = get_voc_abb(m.vocation.value)
+            online = config.online_emoji if m.online else ""
+            entries.append(f"{m.rank} \u2014 {online}**{m.name}** {nick} (Lvl {m.level} {voc_abb}{emoji})")
         per_page = 20 if await ctx.is_long() else 5
         pages = VocationPages(ctx, entries=entries, per_page=per_page, vocations=vocations)
-        pages.embed.set_author(name=title, icon_url=guild.logo, url=guild.url)
+        pages.embed.set_author(name=title, icon_url=guild.logo_url, url=guild.url)
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -826,8 +824,8 @@ class Tibia:
         except NetworkError:
             return await ctx.error("I'm having 'network problems' as you humans say, please try again later.")
 
-        online_list = world.players_online
-        if len(online_list) == 0:
+        online_list = world.online_players
+        if not online_list:
             return await ctx.error(f"There is no one online in {world_name}.")
 
         # Sort by level, descending
@@ -1326,7 +1324,7 @@ class Tibia:
             # Check if we found a char too
             if char is not None:
                 # If it's owned by the user, we append it to the same embed.
-                if char.owner == int(user.id):
+                if char.owner_id == int(user.id):
                     embed.add_field(name="Character", value=char_string, inline=False)
                     if char.last_login is not None:
                         embed.set_footer(text="Last login")
@@ -1373,7 +1371,7 @@ class Tibia:
         else:
             embed = discord.Embed(description="")
             if char is not None:
-                owner = None if char.owner == 0 else self.bot.get_member(char.owner, guild_filter)
+                owner = None if char.owner_id == 0 else self.bot.get_member(char.owner_id, guild_filter)
                 if owner is not None:
                     # Char is owned by a discord user
                     embed = await self.get_user_embed(ctx, owner)
@@ -1410,44 +1408,49 @@ class Tibia:
 
         url = 'https://www.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
         embed = discord.Embed(url=url, title=name.capitalize())
-        if world.online == 0:
+        if world.status != "Online":
             embed.description = "This world is offline."
             embed.colour = discord.Colour.red()
         else:
             embed.colour = discord.Colour.green()
-        embed.add_field(name="Players online", value=str(world.online))
-        embed.set_footer(text=f"The players online record is {world.record_online}")
+        embed.add_field(name="Players online", value=str(world.online_count))
+        embed.set_footer(text=f"The players online record is {world.record_count}")
         embed.timestamp = world.record_date
-        created = world.creation.split("-")
+        created = world.creation_date.split("/")
         try:
-            month = calendar.month_name[int(created[1])]
-            year = int(created[0])
+            month = calendar.month_name[int(created[0])]
+            year = int(created[1])
+            if year > 90:
+                year += 1900
+            else:
+                year += 2000
             embed.add_field(name="Created", value=f"{month} {year}")
         except (IndexError, ValueError):
             pass
 
-        embed.add_field(name="Location", value=f"{FLAGS.get(world.location,'')} {world.location}")
-        embed.add_field(name="PvP Type", value=f"{PVP.get(world.pvp_type,'')} {world.pvp_type}")
-        if world.premium_type is not None:
+        embed.add_field(name="Location", value=f"{FLAGS.get(world.location.value,'')} {world.location.value}")
+        embed.add_field(name="PvP Type", value=f"{PVP.get(world.pvp_type.value,'')} {world.pvp_type.value}")
+        if world.premium_only:
             embed.add_field(name="Premium restricted", value=ctx.tick(True))
-        if world.transfer_type is not None:
-            embed.add_field(name="Transfers", value=f"{TRANSFERS.get(world.transfer_type,'')} {world.transfer_type}")
+        if world.transfer_type != TransferType.REGULAR:
+            embed.add_field(name="Transfers",
+                            value=f"{TRANSFERS.get(world.transfer_type.value,'')} {world.transfer_type.value}")
 
         knight = 0
         paladin = 0
         sorcerer = 0
         druid = 0
         none = 0
-        for character in world.players_online:
-            if "knight" in character.vocation.lower():
+        for character in world.online_players:
+            if "knight" in character.vocation.value.lower():
                 knight += 1
-            if "sorcerer" in character.vocation.lower():
+            if "sorcerer" in character.vocation.value.lower():
                 sorcerer += 1
-            if "druid" in character.vocation.lower():
+            if "druid" in character.vocation.value.lower():
                 druid += 1
-            if "paladin" in character.vocation.lower():
+            if "paladin" in character.vocation.value.lower():
                 paladin += 1
-            if "none" in character.vocation.lower():
+            if "none" in character.vocation.value.lower():
                 none += 1
 
         embed.add_field(name="Vocations distribution", value=f"{knight} {get_voc_emoji('knight')} | "
@@ -1552,7 +1555,7 @@ class Tibia:
         return embed
 
     @staticmethod
-    def get_char_string(char: Character) -> str:
+    def get_char_string(char: NabChar) -> str:
         """Returns a formatted string containing a character's info."""
         if char is None:
             return None
@@ -1569,7 +1572,7 @@ class Tibia:
                                                                          char.guild_name,
                                                                          guild_url)
         if char.married_to is not None:
-            married_url = Character.get_url(char.married_to)
+            married_url = NabChar.get_url(char.married_to)
             reply += "\n{0.he_she} is married to [{0.married_to}]({1}).".format(char, married_url)
         if char.house is not None:
             house_url = url_house.format(id=char.house["houseid"], world=char.world)
@@ -1636,6 +1639,13 @@ class Tibia:
             plural = "s are" if len(char_list) > 1 else " is"
             embed.description = char_string.format(user, plural, join_list(char_list, ", ", " and "))
         return embed
+
+    @classmethod
+    def _get_house_id(cls, name):
+        try:
+            return wiki_db.execute("SELECT house_id FROM house WHERE name LIKE ?", (name,)).fetchone()["house_id"]
+        except (AttributeError, KeyError):
+            return None
 
     @staticmethod
     def get_house_embed(ctx: NabCtx, house):
