@@ -1256,6 +1256,9 @@ class Tracking:
         """Checks if the player has new deaths."""
         if char is None:
             return
+        # TODO: Reenable when the changes from Tibia.py are applied properly
+        if True:
+            return
         async with self.bot.pool.acquire() as conn:
             char_id = await conn.fetchval('SELECT id FROM "character" WHERE name = $1', char.name)
             if char_id is None:
