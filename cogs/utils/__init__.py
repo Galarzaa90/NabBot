@@ -3,7 +3,7 @@ import io
 import re
 import time
 from calendar import timegm
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Type
 
 import discord
 from PIL import Image
@@ -23,6 +23,15 @@ FIELD_NAME_LIMIT = 256
 FIELD_VALUE_LIMIT = 1024
 FIELD_AMOUNT = 25
 EMBED_LIMIT = 6000
+
+
+class CogUtil:
+    @property
+    def _name(self) -> str:
+        """Shortcut to get the class's name.
+
+        Used in Cogs for logging purposes."""
+        return self.__class__.__name__
 
 
 def clean_string(ctx: commands.Context, string: str) -> str:

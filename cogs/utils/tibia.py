@@ -25,9 +25,6 @@ ERROR_DOESNTEXIST = 1
 ERROR_NOTINDATABASE = 2
 
 # Tibia.com URLs:
-url_character = "https://www.tibia.com/community/?subtopic=characters&name="
-url_guild = "https://www.tibia.com/community/?subtopic=guilds&page=view&GuildName="
-url_house = "https://www.tibia.com/community/?subtopic=houses&page=view&houseid={id}&world={world}"
 url_highscores = "https://www.tibia.com/community/?subtopic=highscores&world={0}&list={1}&profession={2}&currentpage={3}"
 
 TIBIACOM_ICON = "https://ssl-static-tibia.akamaized.net/images/global/general/apple-touch-icon-72x72.png"
@@ -63,12 +60,12 @@ tibia_worlds: List[str] = []
 HIGHSCORE_CATEGORIES = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
                         "magic_ek", "magic_rp", "loyalty", "achievements"]
 
+# Cache storages, the first parameter is the number of entries, the second the amount of seconds to live of each entry
 CACHE_CHARACTERS = cachetools.TTLCache(1000, 30)
 CACHE_GUILDS = cachetools.TTLCache(1000, 120)
 CACHE_WORLDS = cachetools.TTLCache(100, 50)
 CACHE_NEWS = cachetools.TTLCache(100, 1800)
 CACHE_WORLD_LIST = cachetools.TTLCache(10, 120)
-
 
 class NetworkError(Exception):
     pass
@@ -443,12 +440,6 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
     CACHE_NEWS[article_id] = article
     return article
 
-
-def get_character_url(name):
-    """Gets a character's tibia.com URL"""
-    return url_character + urllib.parse.quote(name.encode('iso-8859-1'))
-
-
 def parse_tibiadata_time(time_dict: Dict[str, Union[int, str]]) -> Optional[dt.datetime]:
     """Parses the time objects from TibiaData API
 
@@ -689,21 +680,21 @@ async def populate_worlds():
     print('Fetching list of Tibia worlds...')
     worlds = await get_world_list()
     # Couldn't fetch world list, getting json backup
-    if worlds is None:
+    if not worlds:
         world_list = load_tibia_worlds_file()
     else:
-        # Convert list of World objects to simple list of world names.
+        # Convert list of ListedWorld objects to simple list of world names.
         world_list = [w.name for w in worlds]
         save_tibia_worlds_file(world_list)
     tibia_worlds.extend(world_list)
     print("\tDone")
 
 
-async def get_world_list(tries=3) -> Optional[List[ListedWorld]]:
+async def get_world_list(tries=3) -> List[ListedWorld]:
     """Fetch the list of Tibia worlds from TibiaData"""
     if tries == 0:
         log.error("get_world_list(): Couldn't fetch TibiaData for the worlds list, network error.")
-        return
+        raise NetworkError()
 
     # Fetch website
     try:

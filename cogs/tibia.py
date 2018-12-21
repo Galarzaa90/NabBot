@@ -28,8 +28,7 @@ from .utils.messages import get_first_image, html_to_markdown, split_message
 from .utils.pages import CannotPaginate, Pages, VocationPages
 from .utils.tibia import NabChar, NetworkError, TIBIACOM_ICON, get_character, get_guild, get_highscores_tibiadata, \
     get_house, get_map_area, get_news_article, get_recent_news, get_share_range, get_tibia_time_zone, get_voc_abb, \
-    get_voc_abb_and_emoji, get_voc_emoji, get_world, get_world_bosses, get_world_list, highscore_format, tibia_worlds, \
-    url_character
+    get_voc_abb_and_emoji, get_voc_emoji, get_world, get_world_bosses, get_world_list, highscore_format, tibia_worlds
 
 log = logging.getLogger("nabbot")
 
@@ -407,7 +406,7 @@ class Tibia:
         plural = ""
         if len(guild.online_members) > 1:
             plural = "s"
-        embed.description += f"It has **{len(guild.online_members):,}** player{plural} online out of " \
+        embed.description += f"It has **{guild.online_count:,}** player{plural} online out of " \
             f"**{guild.member_count:,}**:"
         current_field = ""
         result = ""
@@ -475,8 +474,8 @@ class Tibia:
             if "none" in member.vocation.value.lower():
                 none += 1
 
-        embed.add_field(name="Members online", value=f"{len(guild.online_members)}/{guild.member_count}")
-        embed.add_field(name="Average level", value=f"{total_level/len(guild.members):.0f}")
+        embed.add_field(name="Members online", value=f"{guild.online_count}/{guild.member_count}")
+        embed.add_field(name="Average level", value=f"{total_level/guild.member_count:.0f}")
         embed.add_field(name="Highest member", value=f"{highest_member.name} - {highest_member.level:,}"
                                                      f"{get_voc_emoji(highest_member.vocation)}")
         embed.add_field(name="Vocations distribution", value=f"{knight} {get_voc_emoji('knight')} | "
@@ -1429,17 +1428,8 @@ class Tibia:
         embed.add_field(name="Players online", value=str(world.online_count))
         embed.set_footer(text=f"The players online record is {world.record_count}")
         embed.timestamp = world.record_date
-        created = world.creation_date.split("/")
-        try:
-            month = calendar.month_name[int(created[0])]
-            year = int(created[1])
-            if year > 90:
-                year += 1900
-            else:
-                year += 2000
-            embed.add_field(name="Created", value=f"{month} {year}")
-        except (IndexError, ValueError):
-            pass
+        month = calendar.month_name[world.creation_month]
+        embed.add_field(name="Created", value=f"{month} {world.creation_year}")
 
         embed.add_field(name="Location", value=f"{FLAGS.get(world.location.value,'')} {world.location.value}")
         embed.add_field(name="PvP Type", value=f"{PVP.get(world.pvp_type.value,'')} {world.pvp_type.value}")
@@ -1473,7 +1463,7 @@ class Tibia:
         `optional pvp`, `open pvp`, `retro open pvp`, `hardcore pvp` or `retro hardcore pvp` to filter by pvp type."""
         try:
             worlds = await get_world_list()
-            if worlds is None:
+            if not worlds:
                 return await ctx.send(f"{ctx.tick(False)} Something went wrong...")
         except NetworkError:
             return await ctx.send(f"{ctx.tick(False)} I'm having network errors, please try again later.")
@@ -1619,7 +1609,7 @@ class Tibia:
         for char in characters:
             online = config.online_emoji if char["name"] in online_list else ""
             voc_abb = get_voc_abb(char["vocation"])
-            char_url = url_character + urllib.parse.quote(char["name"].encode('iso-8859-1'))
+            char_url = NabChar.get_url(char["name"])
             if len(characters) <= 10:
                 char_list.append("[{name}]({url}){online} (Lvl {level} {voc})".format(**char, url=char_url, voc=voc_abb,
                                                                                       online=online))
