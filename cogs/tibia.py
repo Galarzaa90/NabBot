@@ -168,11 +168,11 @@ class Tibia:
                 last_time = death.time
                 death_time = get_time_diff(dt.datetime.now(tz=dt.timezone.utc) - death.time)
                 if death.by_player and show_links:
-                    killer = f"[{death.killer}]({NabChar.get_url(death.killer)})"
+                    killer = f"[{death.killer}]({NabChar.get_url(death.killer.name)})"
                 elif death.by_player:
-                    killer = f"**{death.killer}**"
+                    killer = f"**{death.killer.name}**"
                 else:
-                    killer = f"{death.killer}"
+                    killer = f"{death.killer.name}"
                 entries.append("At level **{0.level}** by {name} - *{time} ago*".format(death, time=death_time,
                                                                                         name=killer))
                 count += 1

@@ -10,9 +10,10 @@ from typing import Dict, List, Optional, Union
 
 import aiohttp
 import cachetools
+import tibiapy
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
-from tibiapy import World, Character, Sex, Guild, ListedWorld, Vocation, House
+from tibiapy import World, Character, Sex, Guild, ListedWorld, Vocation, House, OnlineCharacter
 
 from . import config, get_local_timezone, online_characters
 from .database import wiki_db
@@ -67,6 +68,7 @@ CACHE_WORLDS = cachetools.TTLCache(100, 50)
 CACHE_NEWS = cachetools.TTLCache(100, 1800)
 CACHE_WORLD_LIST = cachetools.TTLCache(10, 120)
 
+
 class NetworkError(Exception):
     pass
 
@@ -80,6 +82,13 @@ class NabChar(Character):
         self.id = 0
         self.owner_id = 0
         self.highscores = []
+
+    @classmethod
+    def from_online(cls, o_char: OnlineCharacter, sex=None, owner_id=0):
+        """Creates a NabChar from an OnlineCharacter"""
+        char =  cls(o_char.name, o_char.world, o_char.vocation, o_char.level, tibiapy.utils.try_enum(Sex, sex))
+        char.owner_id = owner_id
+        return char
 
     @property
     def he_she(self) -> str:
@@ -167,7 +176,7 @@ async def bind_database_character(bot, character: NabChar):
                 bot.dispatch("character_rename", character, old_name)
 
         # Discord owner
-        db_char = await conn.fetchrow("""SELECT id, user_id, name, user_id, vocation, world, guild
+        db_char = await conn.fetchrow("""SELECT id, user_id, name, user_id, vocation, world, guild, sex
                                         FROM "character"
                                         WHERE name LIKE $1""", character.name)
         if db_char is None:
@@ -181,6 +190,11 @@ async def bind_database_character(bot, character: NabChar):
             await conn.execute('UPDATE "character" SET vocation = $1 WHERE id = $2', _vocation, db_char["id"])
             log.info(f"get_character(): {character.name}'s vocation: {db_char['vocation']} -> {_vocation}")
 
+        _sex = character.sex.value
+        if db_char["sex"] != _sex:
+            await conn.execute('UPDATE "character" SET sex = $1 WHERE id = $2', _sex, db_char["id"])
+            log.info(f"get_character(): {character.name}'s sex: {db_char['sex']} -> {_sex}")
+
         if db_char["name"] != character.name:
             await conn.execute('UPDATE "character" SET name = $1 WHERE id = $2', character.name, db_char["id"])
             log.info(f"get_character: {db_char['name']} renamed to {character.name}")
@@ -193,7 +207,7 @@ async def bind_database_character(bot, character: NabChar):
 
         if db_char["guild"] != character.guild_name:
             await conn.execute('UPDATE "character" SET guild = $1 WHERE id = $2', character.guild_name, db_char["id"])
-            log.info(f"get_character: {character.name}'s guild updated {db_char['guild']} -> {character.guild_name}")
+            log.info(f"get_character: {character.name}'s guild updated {db_char['guild']!r} -> {character.guild_name!r}")
             bot.dispatch("character_change", character.owner_id)
             bot.dispatch("character_guild_change", character, db_char['guild'])
 

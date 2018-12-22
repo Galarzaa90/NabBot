@@ -10,6 +10,10 @@ import click
 from cogs.utils.database_migration import check_database, import_legacy_db, drop_tables
 from nabbot import NabBot
 
+# Logging optimization
+logging.logThreads = 0
+logging.logProcesses = 0
+logging._srcfile = None
 logging_formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s')
 # Save log to file (info level)
 file_handler = TimedRotatingFileHandler('logs/nabbot', when='midnight')

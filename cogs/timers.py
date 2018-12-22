@@ -10,6 +10,7 @@ import tibiawikisql
 from discord.ext import commands
 from discord.ext.commands import clean_content
 
+from cogs.utils import CogUtils
 from cogs.utils.context import NabCtx
 from cogs.utils.converter import TimeString
 from cogs.utils.database import wiki_db
@@ -188,7 +189,7 @@ class Timer:
         return f'<Timer id={self.id} name={self.name} expires={self.expires} type={self.type}>'
 
 
-class Timers:
+class Timers(CogUtils):
     def __init__(self, bot: NabBot):
         self.bot = bot
         self._timer_available = asyncio.Event(loop=bot.loop)
@@ -199,14 +200,14 @@ class Timers:
         """Checks the first upcoming time and waits for it."""
         try:
             await self.bot.wait_until_ready()
-            log.debug(f"[{self.__class__.__name__}] Starting await_timers task")
+            log.debug(f"{self.tag} Starting await_timers task")
             while not self.bot.is_closed():
                 timer = self._next_timer = await self.await_next_timer(days=40)
-                log.debug(f"[{self.__class__.__name__}] Next timer: {timer}")
+                log.debug(f"{self.tag} Next timer: {timer}")
                 now = dt.datetime.now(tz=dt.timezone.utc)
                 if timer.expires >= now:
                     wait_time = (timer.expires-now)
-                    log.debug(f"[{self.__class__.__name__}] Sleeping for {wait_time}")
+                    log.debug(f"{self.tag} Sleeping for {wait_time}")
                     await asyncio.sleep(wait_time.total_seconds())
                 await self.run_timer(timer)
         except asyncio.CancelledError:
@@ -215,14 +216,14 @@ class Timers:
             self.timers_task.cancel()
             self.timers_task = self.bot.loop.create_task(self.check_timers())
         except:
-            log.exception(f"[{self.__class__.__name__}] Error in task")
+            log.exception(f"{self.tag} Error in task")
 
     async def run_timer(self, timer, short=False):
         """Dispatches an event for the timer."""
         if not short:
             query = "DELETE FROM timer WHERE id=$1;"
             await self.bot.pool.execute(query, timer.id)
-        log.debug(f"[{self.__class__.__name__}] Executing timer {timer}")
+        log.debug(f"{self.tag} Executing timer {timer}")
         if timer.type == ReminderType.CUSTOM:
             self.bot.dispatch("custom_timer_complete", timer)
         if timer.type == ReminderType.BOSS:
@@ -241,15 +242,16 @@ class Timers:
             if channel is None:
                 # Check if it is a PM
                 channel = user.dm_channel
-                log.debug(f"[{self.__class__.__name__}] Timer in channel that no longer exists.")
-                return
+                if channel is None:
+                    log.debug(f"{self.tag} Timer in channel that no longer exists.")
+                    return
             guild_id = channel.guild.id if isinstance(channel, discord.TextChannel) else "@me"
             message_id = timer.extra["message"]
 
             await channel.send(f'{user.mention}, you asked me to remind you this: {timer.name}'
                                f'\n<https://discordapp.com/channels/{guild_id}/{channel.id}/{message_id}>')
         except KeyError:
-            log.debug(f"[{self.__class__.__name__}] Corrupt custom timer.")
+            log.debug(f"{self.tag} Corrupt custom timer.")
 
     async def on_boss_timer_complete(self, timer: Timer):
         author: discord.User = self.bot.get_user(timer.user_id)
@@ -267,7 +269,7 @@ class Timers:
             else:
                 await author.send(embed=embed)
         except discord.Forbidden:
-            log.debug(f"[{self.__class__.__name__}] Couldn't send boss timer to user {author} due to privacy settings.")
+            log.debug(f"{self.tag} Couldn't send boss timer to user {author} due to privacy settings.")
 
     @commands.group(invoke_without_command=True, case_insensitive=True, usage="<boss>[,character]")
     async def boss(self, ctx: NabCtx, *, params: str=None):
@@ -466,18 +468,18 @@ class Timers:
 
         timer = Timer.build(name=name, expires=expires, type=type, extra=extra, user_id=user_id, created=created)
         if delta <= 60:
-            log.debug(f"[{self.__class__.__name__}] Reminder is too short.")
+            log.debug(f"{self.tag} Reminder is too short.")
             self.bot.loop.create_task(self.run_short_timer(delta, timer))
             return timer
 
         id = await conn.fetchval(query, name, type.value, extra, expires, created, user_id)
         timer.id = id
-        log.debug(f"[{self.__class__.__name__}] Timer created {timer}")
+        log.debug(f"{self.tag} Timer created {timer}")
         if delta <= (86400 * 40):  # 40 days
             self._timer_available.set()
 
         if self._next_timer and expires < self._next_timer.expires:
-            log.debug(f"[{self.__class__.__name__}] Timer is newer than next timer, restarting task")
+            log.debug(f"{self.tag} Timer is newer than next timer, restarting task")
             self.timers_task.cancel()
             self.timers_task = self.bot.loop.create_task(self.check_timers())
         return timer
@@ -488,9 +490,9 @@ class Timers:
         If the timer was the next timer, it restarts the task."""
         conn = connection or self.bot.pool
         await conn.execute("DELETE FROM timer WHERE id = $1", timer_id)
-        log.debug(f"[{self.__class__.__name__}] Timer with id {timer_id} deleted.")
+        log.debug(f"{self.tag} Timer with id {timer_id} deleted.")
         if self._next_timer and self._next_timer.id == timer_id:
-            log.debug(f"[{self.__class__.__name__}] Next timer was deleted, restarting task.")
+            log.debug(f"{self.tag} Next timer was deleted, restarting task.")
             self.timers_task.cancel()
             self.timers_task = self.bot.loop.create_task(self.check_timers())
 

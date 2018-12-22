@@ -10,7 +10,7 @@ from discord.ext import commands
 
 from cogs.utils.database import get_server_property
 from nabbot import NabBot
-from .utils import config
+from .utils import config, CogUtils
 from .utils import context, join_list
 from .utils.checks import CannotEmbed
 
@@ -18,7 +18,8 @@ log = logging.getLogger("nabbot")
 
 bad_argument_pattern = re.compile(r'Converting to \"([^\"]+)\" failed for parameter \"([^\"]+)\"\.')
 
-class Core:
+
+class Core(CogUtils):
     """Cog with NabBot's main functions."""
 
     def __init__(self, bot: NabBot):
@@ -46,11 +47,12 @@ class Core:
             "l:the voices in my head", "l:your breath", "l:the screams", "complaints"
         ]
         await self.bot.wait_until_ready()
+        log.info(f"{self.tag} Staring game_update task")
         while not self.bot.is_closed():
             try:
                 if random.randint(0, 9) >= 7:
-                    await self.bot.change_presence(activity=discord.Activity(name=f"{len(self.bot.guilds)} servers",
-                                                                             type=discord.ActivityType.watching))
+                    choice = f"{len(self.bot.guilds)} servers"
+                    activity_type = discord.ActivityType.watching
                 else:
                     choice = random.choice(presence_list)
                     activity_type = discord.ActivityType.playing
@@ -60,7 +62,8 @@ class Core:
                     elif choice.startswith("l:"):
                         choice = choice[2:]
                         activity_type = discord.ActivityType.listening
-                    await self.bot.change_presence(activity=discord.Activity(name=choice, type=activity_type))
+                log.info(f"{self.tag} Updating presence | {activity_type.name} | {choice}")
+                await self.bot.change_presence(activity=discord.Activity(name=choice, type=activity_type))
             except asyncio.CancelledError:
                 break
             except discord.DiscordException:

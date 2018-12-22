@@ -13,7 +13,7 @@ from tibiapy import Death, Guild, OnlineCharacter, World
 
 from nabbot import NabBot
 from .utils import EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_numeric, join_list, online_characters, \
-    CogUtil
+    CogUtils
 from .utils import checks
 from .utils.context import NabCtx
 from .utils.database import get_affected_count, get_server_property
@@ -27,7 +27,7 @@ from .utils.tibia import ERROR_NETWORK, HIGHSCORE_CATEGORIES, NabChar, NetworkEr
 log = logging.getLogger("nabbot")
 
 
-class Tracking(CogUtil):
+class Tracking(CogUtils):
     """Commands related to NabBot's tracking system."""
 
     def __init__(self, bot: NabBot):
@@ -49,7 +49,7 @@ class Tracking(CogUtil):
         # Do not touch anything, enter at your own risk #
         #################################################
         await self.bot.wait_until_ready()
-        log.debug(f"[{self._name}][{world}] Starting scan_deaths task")
+        log.debug(f"[{self.name}][{world}] Starting scan_deaths task")
         while not self.bot.is_closed():
             try:
                 await asyncio.sleep(config.death_scan_interval)
@@ -78,7 +78,7 @@ class Tracking(CogUtil):
             except KeyError:
                 continue
             except Exception:
-                log.exception(f"[{self._name}][{world}] scan_deaths")
+                log.exception(f"[{self.name}][{world}] scan_deaths")
                 continue
 
     async def scan_highscores(self):
@@ -90,7 +90,7 @@ class Tracking(CogUtil):
         # Do not touch anything, enter at your own risk #
         #################################################
         await self.bot.wait_until_ready()
-        log.debug(f"[{self._name}] Starting scan_highscores task")
+        log.debug(f"[{self.name}] Starting scan_highscores task")
         while not self.bot.is_closed():
             if len(self.bot.tracked_worlds_list) == 0:
                 # If no worlds are tracked, just sleep, worlds might get registered later
@@ -160,20 +160,21 @@ class Tracking(CogUtil):
         # Do not touch anything, enter at your own risk #
         #################################################
         await self.bot.wait_until_ready()
-        log.info(f"[{self._name}] scan_online_chars task started")
+        log.info(f"[{self.name}] scan_online_chars task started")
         try:
             with open("data/online_list.dat", "rb") as f:
                 saved_list, timestamp = pickle.load(f)
                 if (time.time() - timestamp) < config.online_list_expiration:
                     online_characters.clear()
                     online_characters.update(saved_list)
-                    log.info(f"[{self._name}] Loaded cached online list")
+                    count = len([c for v in online_characters.values() for c in v])
+                    log.info(f"[{self.name}] Loaded cached online list | {count:,} players")
                 else:
-                    log.info(f"[{self._name}] Cached online list is too old, discarding")
+                    log.info(f"[{self.name}] Cached online list is too old, discarding")
         except FileNotFoundError:
             pass
         except (ValueError, pickle.PickleError):
-            log.info("Couldn't read cached online list.")
+            log.info(f"[{self.name}] Couldn't read cached online list.")
         while not self.bot.is_closed():
             try:
                 # Pop last server in queue, reinsert it at the beginning
@@ -201,7 +202,8 @@ class Tracking(CogUtil):
                 if len(current_world_online) == 0:
                     await asyncio.sleep(0.1)
                     continue
-                log.debug(f"[{self._name}][{world.name}] Scanning online players")
+                log_msg = f"[{self.name}][{world.name}]"
+                log.debug(f"{log_msg} Scanning online players")
                 self.world_times[world.name] = time.time()
                 self.bot.dispatch("world_scanned", world)
                 # Save the online list in file
@@ -214,6 +216,7 @@ class Tracking(CogUtil):
                 offline_list = [c for c in online_characters[current_world] if c not in current_world_online]
                 for offline_char in offline_list:
                     # Check if characters got level ups when they went offline
+                    log.debug(f"{log_msg} Character no longer online | {offline_char.name}")
                     online_characters[current_world].remove(offline_char)
                     try:
                         _char = await get_character(self.bot, offline_char.name)
@@ -231,6 +234,7 @@ class Tracking(CogUtil):
                             # If the character wasn't in the online list we add them
                             # (We insert them at the beginning of the list to avoid messing with the death checks order)
                             server_char.last_check = time.time()
+                            log.debug(f"{log_msg} Character added to online list | {server_char.name}")
                             online_characters[current_world].insert(0, server_char)
                             _char = await get_character(self.bot, server_char.name)
                             await self.compare_deaths(_char)
@@ -281,7 +285,7 @@ class Tracking(CogUtil):
                    WHERE value ? $1"""
         rows = await self.bot.pool.fetch(query, scanned_world.name)
         for guild_id, watchlist_channel_id, watchlist_message_id in rows:
-            log.debug(f"[{self._name}] Checking entries for watchlist"
+            log.debug(f"[{self.name}][{scanned_world.name}] Checking entries for watchlist"
                       f" (Guild ID: {guild_id}, Channel ID: {watchlist_channel_id}, World: {scanned_world.name})")
             guild: discord.Guild = self.bot.get_guild(guild_id)
             if guild is None:
@@ -311,8 +315,8 @@ class Tracking(CogUtil):
                         guild_online[watched["name"]] = None
                         continue
                     # If there's at least one member online, add guild to list
-                    if len(tibia_guild.online):
-                        guild_online[tibia_guild.name] = tibia_guild.online
+                    if tibia_guild.online_count:
+                        guild_online[tibia_guild.name] = tibia_guild.online_members
                 # If it is a character, check if he's in the online list
                 for online_char in scanned_world.online_players:
                     if online_char.name == watched["name"]:
@@ -378,7 +382,7 @@ class Tracking(CogUtil):
         deleted = get_affected_count(result)
         if deleted:
             # Dispatch event so ServerLog cog can handle it.
-            log.info(f"Watchlist channel deleted (Channel ID: {channel.id}, Guild ID: {channel.guild.id})")
+            log.info(f"[{self.name}] Watchlist channel deleted | Channel {channel.id} | Guild {channel.guild.id}")
             self.bot.dispatch("watchlist_deleted", channel, deleted_entries)
 
     # endregion
@@ -1166,11 +1170,7 @@ class Tracking(CogUtil):
     # region Methods
     async def announce_death(self, char: NabChar, death: Death, levels_lost=0):
         """Announces a level up on the corresponding servers."""
-        # Don't announce for low level players
-        if char is None:
-            return
-
-        log_msg = f"[{self._name}][{char.world}] announce_death"
+        log_msg = f"[{self.name}][{char.world}] announce_death: {char.name} | {death.level} | {death.killer.name}"
         # Find killer article (a/an)
         killer_article = ""
         if not death.by_player:
@@ -1189,7 +1189,7 @@ class Tracking(CogUtil):
                                          "pit scourge"] and levels_lost == 0:
             # Skip element damage deaths unless player lost a level to avoid spam from arena deaths
             # This will cause a small amount of deaths to not be announced but it's probably worth the tradeoff
-            log.debug(f"[{self._name}][{char.world}] announce_death: Skipping Arena Death | {death.killer.name!r}")
+            log.debug(f"{log_msg} | Skipping arena death")
             return
 
         guilds = [s for s, w in self.bot.tracked_worlds.items() if w == char.world]
@@ -1199,8 +1199,10 @@ class Tracking(CogUtil):
                 continue
             min_level = await get_server_property(self.bot.pool, guild_id, "announce_level", config.announce_threshold)
             if death.level < min_level:
+                log.debug(f"{log_msg} | Guild skipped {guild_id} | Level under limit")
                 continue
             if guild.get_member(char.owner_id) is None:
+                log.debug(f"{log_msg} | Guild skipped  {guild_id} | Owner not in server")
                 continue
             # Select a message
             if death.by_player:
@@ -1220,16 +1222,15 @@ class Tracking(CogUtil):
             channel = self.bot.get_channel_or_top(guild, channel_id)
             try:
                 await channel.send(message[:1].upper() + message[1:])
+                log.debug(f"{log_msg} | Announced in {guild_id}")
             except discord.Forbidden:
-                log.warning(f"[{self._name} announce_death: Forbidden error | Channel {channel.id} | Server {guild.id}")
+                log.warning(f"{log_msg} | Forbidden error | Channel {channel.id} | Server {guild.id}")
             except discord.HTTPException:
-                log.exception(f"[{self._name}] announce_death | {char.name} | {death.killer.name}")
+                log.exception(f"{log_msg}")
 
-    async def announce_level(self, char: Union[NabChar, OnlineCharacter], level: int):
+    async def announce_level(self, char: NabChar, level: int):
         """Announces a level up on corresponding servers."""
-        if char is None:
-            return
-        log_msg = f"[{self._name}][{char.world}] announce_level"
+        log_msg = f"[{self.name}][{char.world}] announce_level: : {char.name} | {level}"
         guilds = [s for s, w in self.bot.tracked_worlds.items() if w == char.world]
         for guild_id in guilds:
             guild: discord.Guild = self.bot.get_guild(guild_id)
@@ -1237,16 +1238,16 @@ class Tracking(CogUtil):
                 continue
             min_level = await get_server_property(self.bot.pool, guild_id, "announce_level", config.announce_threshold)
             if char.level < min_level:
-                log.debug(f"{log_msg}: {char.name} | {level} | Guild skipped {guild_id} | Level under limit")
+                log.debug(f"{log_msg} | Guild skipped {guild_id} | Level under limit")
                 continue
             if guild.get_member(char.owner_id) is None:
-                log.debug(f"{log_msg}: {char.name} | {level} | Guild skipped  {guild_id} | Owner not in server")
+                log.debug(f"{log_msg} | Guild skipped  {guild_id} | Owner not in server")
                 continue
             channel_id = await get_server_property(self.bot.pool, guild.id, "levels_channel")
             channel = self.bot.get_channel_or_top(guild, channel_id)
             try:
                 # Select a message
-                message = weighed_choice(level_messages, vocation=char.vocation, level=level, min_level=min_level)
+                message = weighed_choice(level_messages, vocation=char.vocation.value, level=level, min_level=min_level)
                 level_info = {'name': char.name, 'level': level, 'he_she': char.he_she.lower(),
                               'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
                 # Format message with level information
@@ -1254,11 +1255,11 @@ class Tracking(CogUtil):
                 # Format extra stylization
                 message = f"{config.levelup_emoji} {format_message(message)}"
                 await channel.send(message)
-                log.debug(f"{log_msg}: {char.name} | {level} | Announced in {guild_id}")
+                log.debug(f"{log_msg} | Announced in {guild_id}")
             except discord.Forbidden:
-                log.warning(f"{log_msg}: Forbidden error | Channel {channel.id} | Server {guild.id}")
+                log.warning(f"{log_msg} | Forbidden error | Channel {channel.id} | Server {guild.id}")
             except discord.HTTPException:
-                log.exception(f"{log_msg}: | {char.name} | {level}")
+                log.exception(f"{log_msg}")
 
     async def compare_deaths(self, char: NabChar):
         """Checks if the player has new deaths.
@@ -1291,11 +1292,12 @@ class Tracking(CogUtil):
                     continue
                 await conn.execute("INSERT INTO character_death_killer(death_id, name, player) VALUES($1, $2, $3)",
                                    death_id, death.killer.name, death.by_player)
-                log_msg = f"[{self._name}][{char.world}] Death detected: {char.name} | {death.level}  " \
-                    f"| {death.killer.name}"
+                log_msg = f"[{self.name}][{char.world}] Death detected: {char.name} | {death.level} |" \
+                    f" {death.killer.name}"
                 if self.is_old_death(death):
                     log.info(f"{log_msg} | Too old to announce.")
-                else:
+                # Only try to announce if character has an owner
+                elif char.owner_id:
                     log.info(log_msg)
                     await self.announce_death(char, death, max(death.level - char.level, 0))
 
@@ -1311,18 +1313,25 @@ class Tracking(CogUtil):
         if char is None:
             return
         async with self.bot.pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT id, name, level, user_id FROM "character" WHERE name = $1', char.name)
+            row = await conn.fetchrow('SELECT id, name, level, user_id, sex FROM "character" WHERE name = $1',
+                                      char.name)
             if not row:
                 return
-            char.owner_id = row["user_id"]
+            # OnlineCharacter has no sex attribute, so we get it from database and convert to NabChar
+            if isinstance(char, OnlineCharacter):
+                char = NabChar.from_online(char, row["sex"], row["user_id"])
             await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', char.level, row["id"])
             if char.level > row["level"] > 0:
                 # Saving level up date in database
                 await conn.execute("INSERT INTO character_levelup(character_id, level) VALUES($1, $2)",
                                    row["id"], char.level)
                 # Announce the level up
-                log.info(f"[{self._name}][{char.world}] Level up detected: {char.name} | {char.level}")
-                await self.announce_level(char, char.level)
+                log.info(f"[{self.name}][{char.world}] Level up detected: {char.name} | {char.level}")
+                # Only try to announce level if char has an owner.
+                if char.owner_id:
+                    await self.announce_level(char, char.level)
+                else:
+                    log.info(f"[{self.name}][{char.world}] Character has no owner, skipping")
 
     @staticmethod
     async def is_watchlist(ctx: NabCtx, channel: discord.TextChannel):

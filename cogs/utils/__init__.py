@@ -3,19 +3,18 @@ import io
 import re
 import time
 from calendar import timegm
-from typing import List, Optional, Tuple, Union, Type
+from typing import List, Optional, Tuple, Union, Dict
 
 import discord
+import tibiapy
 from PIL import Image
 from discord.ext import commands
 
 from .config import config
 
-# This is the global online list
+# This is the global online dictionary
 # don't look at it too closely or you'll go blind!
-# characters are added as servername_charactername
-# The list is updated periodically on think() using get_server_online()
-online_characters = {}
+online_characters = {}  # type: Dict[str, List[tibiapy.OnlineCharacter]]
 
 CONTENT_LIMIT = 2000
 DESCRIPTION_LIMIT = 2048
@@ -25,13 +24,17 @@ FIELD_AMOUNT = 25
 EMBED_LIMIT = 6000
 
 
-class CogUtil:
+class CogUtils:
     @property
-    def _name(self) -> str:
+    def name(self) -> str:
         """Shortcut to get the class's name.
 
         Used in Cogs for logging purposes."""
         return self.__class__.__name__
+
+    @property
+    def tag(self) -> str:
+        return f"[{self.name}]"
 
 
 def clean_string(ctx: commands.Context, string: str) -> str:

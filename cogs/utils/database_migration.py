@@ -94,6 +94,7 @@ tables = [
         world text,
         vocation text,
         guild text,
+        sex text NOT NULL DEFAULT 'male',
         modified timestamptz DEFAULT now(),
         created timestamptz DEFAULT now(),
         PRIMARY KEY (id),
