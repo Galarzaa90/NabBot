@@ -8,7 +8,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import clean_string, config, get_user_avatar, is_numeric, single_line
+from .utils import clean_string, config, get_user_avatar, is_numeric, single_line, CogUtils
 from .utils import checks
 from .utils.context import NabCtx
 from .utils.converter import BadTime, TimeString
@@ -23,7 +23,7 @@ RECENT_THRESHOLD = dt.timedelta(minutes=30)
 
 log = logging.getLogger("nabbot")
 
-class General:
+class General(CogUtils):
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.events_announce_task = self.bot.loop.create_task(self.events_announce())
@@ -93,7 +93,7 @@ class General:
             except asyncio.CancelledError:
                 break
             except Exception:
-                log.exception("Task: events_announce")
+                log.exception(f"{self.tag} events_announce")
                 continue
             await asyncio.sleep(20)
 
@@ -1111,6 +1111,7 @@ class General:
         return event
 
     def __unload(self):
+        log.info(f"{self.tag} Unloading cog")
         self.events_announce_task.cancel()
 
 

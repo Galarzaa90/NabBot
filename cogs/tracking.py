@@ -49,7 +49,7 @@ class Tracking(CogUtils):
         # Do not touch anything, enter at your own risk #
         #################################################
         await self.bot.wait_until_ready()
-        log.debug(f"[{self.name}][{world}] Starting scan_deaths task")
+        log.debug(f"{self.tag}[{world}] Starting scan_deaths task")
         while not self.bot.is_closed():
             try:
                 await asyncio.sleep(config.death_scan_interval)
@@ -78,7 +78,7 @@ class Tracking(CogUtils):
             except KeyError:
                 continue
             except Exception:
-                log.exception(f"[{self.name}][{world}] scan_deaths")
+                log.exception(f"{self.tag}[{world}] scan_deaths")
                 continue
 
     async def scan_highscores(self):
@@ -90,7 +90,7 @@ class Tracking(CogUtils):
         # Do not touch anything, enter at your own risk #
         #################################################
         await self.bot.wait_until_ready()
-        log.debug(f"[{self.name}] Starting scan_highscores task")
+        log.debug(f"{self.tag} Starting scan_highscores task")
         while not self.bot.is_closed():
             if len(self.bot.tracked_worlds_list) == 0:
                 # If no worlds are tracked, just sleep, worlds might get registered later
@@ -160,7 +160,7 @@ class Tracking(CogUtils):
         # Do not touch anything, enter at your own risk #
         #################################################
         await self.bot.wait_until_ready()
-        log.info(f"[{self.name}] scan_online_chars task started")
+        log.info(f"{self.tag} scan_online_chars task started")
         try:
             with open("data/online_list.dat", "rb") as f:
                 saved_list, timestamp = pickle.load(f)
@@ -168,13 +168,13 @@ class Tracking(CogUtils):
                     online_characters.clear()
                     online_characters.update(saved_list)
                     count = len([c for v in online_characters.values() for c in v])
-                    log.info(f"[{self.name}] Loaded cached online list | {count:,} players")
+                    log.info(f"{self.tag} Loaded cached online list | {count:,} players")
                 else:
-                    log.info(f"[{self.name}] Cached online list is too old, discarding")
+                    log.info(f"{self.tag} Cached online list is too old, discarding")
         except FileNotFoundError:
             pass
         except (ValueError, pickle.PickleError):
-            log.info(f"[{self.name}] Couldn't read cached online list.")
+            log.info(f"{self.tag} Couldn't read cached online list.")
         while not self.bot.is_closed():
             try:
                 # Pop last server in queue, reinsert it at the beginning
@@ -202,7 +202,7 @@ class Tracking(CogUtils):
                 if len(current_world_online) == 0:
                     await asyncio.sleep(0.1)
                     continue
-                log_msg = f"[{self.name}][{world.name}]"
+                log_msg = f"{self.tag}[{world.name}]"
                 log.debug(f"{log_msg} Scanning online players")
                 self.world_times[world.name] = time.time()
                 self.bot.dispatch("world_scanned", world)
@@ -285,7 +285,7 @@ class Tracking(CogUtils):
                    WHERE value ? $1"""
         rows = await self.bot.pool.fetch(query, scanned_world.name)
         for guild_id, watchlist_channel_id, watchlist_message_id in rows:
-            log.debug(f"[{self.name}][{scanned_world.name}] Checking entries for watchlist"
+            log.debug(f"{self.tag}[{scanned_world.name}] Checking entries for watchlist"
                       f" (Guild ID: {guild_id}, Channel ID: {watchlist_channel_id}, World: {scanned_world.name})")
             guild: discord.Guild = self.bot.get_guild(guild_id)
             if guild is None:
@@ -382,7 +382,7 @@ class Tracking(CogUtils):
         deleted = get_affected_count(result)
         if deleted:
             # Dispatch event so ServerLog cog can handle it.
-            log.info(f"[{self.name}] Watchlist channel deleted | Channel {channel.id} | Guild {channel.guild.id}")
+            log.info(f"{self.tag} Watchlist channel deleted | Channel {channel.id} | Guild {channel.guild.id}")
             self.bot.dispatch("watchlist_deleted", channel, deleted_entries)
 
     # endregion
@@ -1170,7 +1170,7 @@ class Tracking(CogUtils):
     # region Methods
     async def announce_death(self, char: NabChar, death: Death, levels_lost=0):
         """Announces a level up on the corresponding servers."""
-        log_msg = f"[{self.name}][{char.world}] announce_death: {char.name} | {death.level} | {death.killer.name}"
+        log_msg = f"{self.tag}[{char.world}] announce_death: {char.name} | {death.level} | {death.killer.name}"
         # Find killer article (a/an)
         killer_article = ""
         if not death.by_player:
@@ -1230,7 +1230,7 @@ class Tracking(CogUtils):
 
     async def announce_level(self, char: NabChar, level: int):
         """Announces a level up on corresponding servers."""
-        log_msg = f"[{self.name}][{char.world}] announce_level: : {char.name} | {level}"
+        log_msg = f"{self.tag}[{char.world}] announce_level: : {char.name} | {level}"
         guilds = [s for s, w in self.bot.tracked_worlds.items() if w == char.world]
         for guild_id in guilds:
             guild: discord.Guild = self.bot.get_guild(guild_id)
@@ -1292,7 +1292,7 @@ class Tracking(CogUtils):
                     continue
                 await conn.execute("INSERT INTO character_death_killer(death_id, name, player) VALUES($1, $2, $3)",
                                    death_id, death.killer.name, death.by_player)
-                log_msg = f"[{self.name}][{char.world}] Death detected: {char.name} | {death.level} |" \
+                log_msg = f"{self.tag}[{char.world}] Death detected: {char.name} | {death.level} |" \
                     f" {death.killer.name}"
                 if self.is_old_death(death):
                     log.info(f"{log_msg} | Too old to announce.")
@@ -1326,12 +1326,12 @@ class Tracking(CogUtils):
                 await conn.execute("INSERT INTO character_levelup(character_id, level) VALUES($1, $2)",
                                    row["id"], char.level)
                 # Announce the level up
-                log.info(f"[{self.name}][{char.world}] Level up detected: {char.name} | {char.level}")
+                log.info(f"{self.tag}[{char.world}] Level up detected: {char.name} | {char.level}")
                 # Only try to announce level if char has an owner.
                 if char.owner_id:
                     await self.announce_level(char, char.level)
                 else:
-                    log.info(f"[{self.name}][{char.world}] Character has no owner, skipping")
+                    log.info(f"{self.tag}[{char.world}] Character has no owner, skipping")
 
     @staticmethod
     async def is_watchlist(ctx: NabCtx, channel: discord.TextChannel):
@@ -1341,7 +1341,7 @@ class Tracking(CogUtils):
     # endregion
 
     def __unload(self):
-        log.info("Unloading cogs.tracking...")
+        log.info(f"{self.tag} Unloading cog")
         self.scan_highscores_task.cancel()
         self.scan_online_chars_task.cancel()
 

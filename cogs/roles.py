@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from cogs.utils.database import get_affected_count
 from nabbot import NabBot
-from .utils import checks
+from .utils import checks, CogUtils
 from .utils import get_user_avatar
 from .utils.context import NabCtx
 from .utils.converter import InsensitiveRole
@@ -17,7 +17,7 @@ from .utils.tibia import NetworkError, get_guild
 log = logging.getLogger("nabbot")
 
 
-class Roles:
+class Roles(CogUtils):
     """Commands related to role management."""
     def __init__(self, bot: NabBot):
         self.bot = bot
@@ -108,7 +108,7 @@ class Roles:
                 except discord.HTTPException:
                     pass
         except Exception:
-            log.exception("Event: character_change")
+            log.exception(f"{self.tag} character_change")
 
     # endregion
     # region Commands

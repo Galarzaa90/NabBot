@@ -47,7 +47,7 @@ class Core(CogUtils):
             "l:the voices in my head", "l:your breath", "l:the screams", "complaints"
         ]
         await self.bot.wait_until_ready()
-        log.info(f"{self.tag} Staring game_update task")
+        log.info(f"{self.tag} Starting game_update task")
         while not self.bot.is_closed():
             try:
                 if random.randint(0, 9) >= 7:
@@ -119,7 +119,7 @@ class Core(CogUtils):
 
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
-        log.info(f"Bot added to guild: {guild} (ID: {guild.id})")
+        log.info(f"{self.tag} Bot added | Guild {guild} ({guild.id})")
         message = f"**I've been added to this server.**\n" \
                   f"Some things you should know:\n" \
                   f"‣ My command prefix is: `{config.command_prefix[0]}` (it is customizable)\n" \
@@ -150,7 +150,7 @@ class Core(CogUtils):
 
     async def on_guild_remove(self, guild: discord.Guild):
         """Called when the bot leaves a guild (server)."""
-        log.info(f"Bot removed from guild: {guild} (ID: {guild.id})")
+        log.info(f"{self.tag} Bot removed | Guild {guild} ({guild.id})")
         for member in guild.members:
             if member.id in self.bot.members:
                 self.bot.members[member.id].remove(guild.id)
@@ -160,12 +160,11 @@ class Core(CogUtils):
 
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
-        log.info(f"{user.name}#{user.discriminator} banned from {guild.name} "
-                 f"(Member ID: {user.id}) Guild ID {guild.id}")
+        log.info(f"{self.tag} Member banned | Member {user} ({user.id}) | Guild {guild.id}")
 
     async def on_member_join(self, member: discord.Member):
         """ Called when a member joins a guild (server) the bot is in."""
-        log.info(f"{member} joined {member.guild} (Member ID: {member.id}, Guild ID: {member.guild.id})")
+        log.info(f"{self.tag} Member joined | Member {member} ({member.id}) | Guild {member.guild.id}")
         # Updating member list
         if member.id in self.bot.members:
             self.bot.members[member.id].append(member.guild.id)
@@ -210,14 +209,14 @@ class Core(CogUtils):
 
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
-        log.info(f"{member} left/kicked from {member.guild} (Member ID: {member.id}) Guild ID {member.guild.id}")
+        log.info(f"{self.tag} Member left/kicked | Member {member} ({member.id}) | Guild {member.guild.id}")
         self.bot.members[member.id].remove(member.guild.id)
         await self.bot.pool.execute("DELETE FROM user_server WHERE user_id = $1 AND server_id = $2",
                                     member.id, member.guild.id)
 
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
-        log.info(f"{user} banned from {guild} (Member ID: {user.id}) Guild ID {guild.id}")
+        log.info(f"{self.tag} Member unbanned | Member {user} ({user.id}) | Guild {guild.id}")
 
     @classmethod
     def parse_bad_argument(cls, content: str) -> Tuple:

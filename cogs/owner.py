@@ -17,6 +17,7 @@ from .utils.context import NabCtx
 from .utils.messages import *
 from .utils.pages import CannotPaginate, Pages
 from .utils.tibia import *
+from .utils.database import DbChar
 
 log = logging.getLogger("nabbot")
 
@@ -362,15 +363,15 @@ class Owner:
         except Exception:
             await ctx.send(f'```py\n{traceback.format_exc()}\n```')
         else:
-            await ctx.success(f"{ctx.tick()} Cog reloaded successfully.")
+            await ctx.success(f"Cog reloaded successfully.")
 
     @checks.is_owner()
     @commands.command(name="reloadconfig")
-    async def reload_config(self, ctx):
+    async def reload_config(self, ctx: NabCtx):
         """Reloads the configuration file."""
         try:
             config.parse()
-            await ctx.send(f"{ctx.tick()} Config file reloaded.")
+            await ctx.success(f"Config file reloaded.")
         except Exception:
             await ctx.send(f'```py\n{traceback.format_exc()}\n```')
 

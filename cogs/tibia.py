@@ -20,7 +20,7 @@ from tibiawikisql import models
 
 from cogs.utils.tibia import get_house_id, get_rashid_city, normalize_vocation
 from nabbot import NabBot
-from .utils import checks
+from .utils import checks, CogUtils
 from .utils import config, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, join_list, online_characters
 from .utils.context import NabCtx
 from .utils.database import get_global_property, get_server_property, set_global_property
@@ -39,7 +39,7 @@ PVP = {"Optional PvP": "🕊️", "Hardcore PvP": "💀", "Open PvP": "⚔",
 TRANSFERS = {"locked": "🔒", "blocked": "⛔"}
 
 
-class Tibia:
+class Tibia(CogUtils):
     """Commands related to Tibia, gathered from information present in Tibia.com"""
     def __init__(self, bot: NabBot):
         self.bot = bot
@@ -1673,13 +1673,14 @@ class Tibia:
 
     async def scan_news(self):
         await self.bot.wait_until_ready()
+        log.info(f"{self.tag} Starting scan_news task")
         while not self.bot.is_closed():
             try:
                 recent_news = await get_recent_news()
                 if recent_news is None:
                     await asyncio.sleep(30)
                     continue
-                log.debug("Checking Tibia.com recent news")
+                log.debug(f"{self.tag} scan_news: Checking recent news")
                 last_article = recent_news[0]["id"]
                 last_id = await get_global_property(self.bot.pool, "last_article", default=0)
                 await set_global_property(self.bot.pool, "last_article", last_article)
@@ -1692,7 +1693,7 @@ class Tibia:
                     if fetched_article is not None:
                         new_articles.insert(0, fetched_article)
                 for article in new_articles:
-                    log.info("Announcing new article: {id} - {title}".format(**article))
+                    log.info(f"{self.tag} scan_news: New article: {article['id']} - {article['title']}")
                     for guild in self.bot.guilds:
                         news_channel_id = await get_server_property(self.bot.pool, guild.id, "news_channel", default=0)
                         if news_channel_id == 0:
@@ -1702,12 +1703,12 @@ class Tibia:
                             await channel.send("New article posted on Tibia.com",
                                                embed=self.get_article_embed(article, 1000))
                         except discord.Forbidden:
-                            log.warning("scan_news: Missing permissions.")
+                            log.warning(f"{self.tag} scan_news: Missing permissions.")
                         except discord.HTTPException:
-                            log.warning("scan_news: Malformed message.")
+                            log.warning(f"{self.tag} scan_news: Malformed message.")
                 await asyncio.sleep(60 * 60 * 2)
             except (IndexError, KeyError):
-                log.warning("scan_news: Error getting recent news")
+                log.warning(f"{self.tag} scan_news: Error getting recent news")
                 await asyncio.sleep(60*30)
                 continue
             except NetworkError:
@@ -1717,7 +1718,7 @@ class Tibia:
                 # Task was cancelled, so this is fine
                 break
             except Exception:
-                log.exception("Task: scan_news")
+                log.exception(f"{self.tag} scan_news")
 
     @staticmethod
     def _get_cached_user_(self, user_id, users_cache, user_servers):
@@ -1734,7 +1735,7 @@ class Tibia:
             return results
 
     def __unload(self):
-        log.info("Unloading cogs.tibia...")
+        log.info(f"{self.tag} Unloading cog")
         self.news_announcements_task.cancel()
 
 

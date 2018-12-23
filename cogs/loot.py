@@ -15,7 +15,7 @@ from PIL import Image
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import FIELD_VALUE_LIMIT, checks
+from .utils import FIELD_VALUE_LIMIT, checks, CogUtils
 from .utils.config import config
 from .utils.context import NabCtx
 from .utils.database import wiki_db
@@ -77,7 +77,7 @@ class LootScanException(commands.CommandError):
     pass
 
 
-class Loot:
+class Loot(CogUtils):
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.processing_users = []
@@ -128,7 +128,7 @@ class Loot:
                 async with session.get(attachment.url) as resp:
                     loot_image = await resp.read()
         except aiohttp.ClientError:
-            log.exception("loot: Couldn't parse image")
+            log.exception(f"{self.tag} Couldn't parse image")
             await ctx.error("I failed to load your image. Please try again.")
             return
 
