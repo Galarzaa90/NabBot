@@ -1,5 +1,4 @@
 git+https://github.com/Rapptz/discord.py@rewrite
-git+https://github.com/Galarzaa90/tibia.py@dev
 aiohttp>=3.3.0,<3.4.0
 asyncpg>=0.17.0,<1.0
 beautifulsoup4>=4.6.0,<5.0
@@ -10,3 +9,4 @@ psutil>=5.2,<6.0
 PyYAML>=3.12,<4.0
 pytz>=2018.5,<3000.0
 tibiawikisql>=2.0,<3.0
+tibia.py>=1.0,<2.0
