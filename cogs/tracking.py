@@ -16,7 +16,7 @@ from .utils import EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_n
     CogUtils
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import get_affected_count, get_server_property
+from .utils.database import get_affected_count, get_server_property, DbChar
 from .utils.messages import death_messages_monster, death_messages_player, format_message, level_messages, \
     split_message, weighed_choice
 from .utils.pages import CannotPaginate, Pages, VocationPages
@@ -226,10 +226,8 @@ class Tracking(CogUtils):
                         continue
                 # Add new online chars and announce level differences
                 for server_char in current_world_online:
-                    async with self.bot.pool.acquire() as conn:
-                        row = await conn.fetchrow('SELECT id, name, level FROM "character" WHERE name = $1',
-                                                  server_char.name)
-                    if row:
+                    db_char = await DbChar.get_by_name(self.bot.pool, server_char.name)
+                    if db_char:
                         if server_char not in online_characters[current_world]:
                             # If the character wasn't in the online list we add them
                             # (We insert them at the beginning of the list to avoid messing with the death checks order)
@@ -693,16 +691,16 @@ class Tracking(CogUtils):
         vocations = []
         for char in online_characters.get(world, []):
             name = char.name
-            row = await ctx.pool.fetchrow('SELECT user_id FROM "character" WHERE name = $1', name)
-            if row is None:
+            db_char = await DbChar.get_by_name(ctx.pool, name)
+            if not db_char:
                 continue
             # Skip characters of members not in the server
-            owner = ctx.guild.get_member(row["user_id"])
+            owner = ctx.guild.get_member(db_char.user_id)
             if owner is None:
                 continue
             owner = owner.display_name
             emoji = get_voc_emoji(char.vocation)
-            vocations.append(char.vocation)
+            vocations.append(char.vocation.value)
             vocation = get_voc_abb(char.vocation)
             entries.append(f"{char.name} (Lvl {char.level} {vocation}{emoji}, **@{owner}**)")
             count += 1

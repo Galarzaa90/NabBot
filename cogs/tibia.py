@@ -23,7 +23,7 @@ from nabbot import NabBot
 from .utils import checks, CogUtils
 from .utils import config, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, join_list, online_characters
 from .utils.context import NabCtx
-from .utils.database import get_global_property, get_server_property, set_global_property
+from .utils.database import get_global_property, get_server_property, set_global_property, DbChar
 from .utils.messages import get_first_image, html_to_markdown, split_message
 from .utils.pages import CannotPaginate, Pages, VocationPages
 from .utils.tibia import NabChar, NetworkError, TIBIACOM_ICON, get_character, get_guild, get_highscores_tibiadata, \
@@ -677,24 +677,23 @@ class Tibia(CogUtils):
                             break
         else:
             async with ctx.pool.acquire() as conn:
-                char = await conn.fetchrow('SELECT id, user_id, name, vocation FROM "character" WHERE lower(name) = $1',
-                                           name.lower())
+                char = await DbChar.get_by_name(conn, name)
                 if char is None:
                     return await ctx.send("I don't have a character with that name registered.")
-                owner = ctx.guild.get_member(char["user_id"])
+                owner = ctx.guild.get_member(char.user_id)
                 if owner is None:
                     return await ctx.send("I don't have a character with that name registered.")
                 author = owner.display_name
                 author_icon = owner.avatar_url
-                name = char["name"]
-                emoji = get_voc_emoji(char["vocation"])
+                name = char.name
+                emoji = get_voc_emoji(char.vocation)
                 title = f"{emoji} {name} latest level ups"
                 async with conn.transaction():
                     async for row in conn.cursor("""SELECT l.level, date
                                                     FROM character_levelup l
                                                     LEFT JOIN "character" c ON c.id = l.character_id
                                                     WHERE character_id = $1
-                                                    ORDER BY date DESC""", char["id"]):
+                                                    ORDER BY date DESC""", char.id):
                         count += 1
                         level_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
                         entries.append("Level **{level}** - *{time} ago*".format(**row, time=level_time))

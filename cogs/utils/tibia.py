@@ -578,7 +578,8 @@ def get_house_id(name) -> Optional[int]:
     Name is lowercase."""
     try:
         return wiki_db.execute("SELECT house_id FROM house WHERE name LIKE ?", (name,)).fetchone()["house_id"]
-    except (AttributeError, KeyError):
+    except (AttributeError, KeyError, TypeError):
+        log.debug(f"Couldn't find house_id of house '{name}'")
         return None
 
 

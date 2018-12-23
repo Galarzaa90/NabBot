@@ -123,12 +123,25 @@ class DbChar(tibiapy.abc.BaseCharacter):
             return cls(**row)
 
     @classmethod
-    async def get_chars_by_user(cls, pool, user: Union[int, discord.User, discord.Member]):
+    async def get_chars_by_user(cls, conn, user: Union[int, discord.User, discord.Member],
+                                worlds: Union[List[str], str] = None):
+        """Gets a list of characters registered to a user
+
+        :param conn: A connection pool or single connection to the database.
+        :param user: The user or user id to check.
+        :param worlds: Whether to filter out chars not in the provided worlds.
+        :return: The list of characters registered to the user.
+        """
         if not isinstance(user, int):
             user = user.id
-        rows = await pool.fetchrow('SELECT * FROM "character" WHERE user_id = $1', user)
-        if rows:
-            return [cls(**row) for row in rows]
-
+        rows = await conn.fetch('SELECT * FROM "character" WHERE user_id = $1', user)
+        if not rows:
+            return []
+        chars = [cls(**row) for row in rows]
+        if isinstance(worlds, str):
+            worlds = [worlds]
+        if worlds is not None:
+            return list(filter(lambda c: c.world in worlds, chars))
+        return chars
 
 
