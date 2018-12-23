@@ -8,7 +8,7 @@ from nabbot import NabBot
 from .utils import checks, get_user_avatar, join_list
 from .utils.config import config
 from .utils.context import NabCtx
-from .utils.tibia import Character, NetworkError, get_character
+from .utils.tibia import NabChar, NetworkError, get_character
 
 log = logging.getLogger("nabbot")
 
@@ -60,7 +60,7 @@ class Admin:
             chars = [char]
         skipped = []
         updated = []
-        added: List[Character] = []
+        added: List[NabChar] = []
         existent = []
         for char in chars:
             # Skip chars in non-tracked worlds

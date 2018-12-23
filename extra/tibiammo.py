@@ -3,7 +3,7 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from cogs.utils.context import NabCtx
-from cogs.utils.tibia import get_guild, NetworkError, get_character_url
+from cogs.utils.tibia import get_guild, NetworkError
 
 
 # This cog has a specific use, and probably has no use for anyone else but me
@@ -63,9 +63,9 @@ class TibiaMMO:
 
         embed = discord.Embed(title=f"{guild.name} ({guild.world})", description=guild.description,
                               colour=discord.Colour.blurple(), url=guild.url)
-        embed.set_thumbnail(url=guild.logo)
-        embed.add_field(name="In-game contact", value=f"[{guild.members[0]['name']}]"
-                                                      f"({get_character_url(guild.members[0]['name'])})")
+        embed.set_thumbnail(url=guild.logo_url)
+        embed.add_field(name="In-game contact", value=f"[{guild.members[0].name}]"
+                                                      f"({guild.members[0].url})")
         if member is not None:
             embed.add_field(name="Discord contact", value=member.mention)
         if not invite or invite != "-":

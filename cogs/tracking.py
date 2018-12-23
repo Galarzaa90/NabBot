@@ -4,29 +4,30 @@ import logging
 import pickle
 import re
 import time
-import urllib.parse
-from typing import List
+from typing import List, Union
 
 import asyncpg
 import discord
 from discord.ext import commands
+from tibiapy import Death, Guild, OnlineCharacter, World
 
 from nabbot import NabBot
-from .utils import EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_numeric, join_list, online_characters
+from .utils import EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_numeric, join_list, online_characters, \
+    CogUtils
 from .utils import checks
 from .utils.context import NabCtx
 from .utils.database import get_affected_count, get_server_property
 from .utils.messages import death_messages_monster, death_messages_player, format_message, level_messages, \
     split_message, weighed_choice
 from .utils.pages import CannotPaginate, Pages, VocationPages
-from .utils.tibia import Character, Death, ERROR_NETWORK, HIGHSCORE_CATEGORIES, NetworkError, World, get_character, \
-    get_character_url, get_guild, get_highscores, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_emoji, \
-    get_world, tibia_worlds, url_guild
+from .utils.tibia import ERROR_NETWORK, HIGHSCORE_CATEGORIES, NabChar, NetworkError, get_character, \
+    get_guild, get_highscores, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_emoji, get_world, \
+    tibia_worlds
 
 log = logging.getLogger("nabbot")
 
 
-class Tracking:
+class Tracking(CogUtils):
     """Commands related to NabBot's tracking system."""
 
     def __init__(self, bot: NabBot):
@@ -48,6 +49,7 @@ class Tracking:
         # Do not touch anything, enter at your own risk #
         #################################################
         await self.bot.wait_until_ready()
+        log.debug(f"{self.tag}[{world}] Starting scan_deaths task")
         while not self.bot.is_closed():
             try:
                 await asyncio.sleep(config.death_scan_interval)
@@ -76,7 +78,7 @@ class Tracking:
             except KeyError:
                 continue
             except Exception:
-                log.exception("Task: scan_deaths")
+                log.exception(f"{self.tag}[{world}] scan_deaths")
                 continue
 
     async def scan_highscores(self):
@@ -88,6 +90,7 @@ class Tracking:
         # Do not touch anything, enter at your own risk #
         #################################################
         await self.bot.wait_until_ready()
+        log.debug(f"{self.tag} Starting scan_highscores task")
         while not self.bot.is_closed():
             if len(self.bot.tracked_worlds_list) == 0:
                 # If no worlds are tracked, just sleep, worlds might get registered later
@@ -157,19 +160,21 @@ class Tracking:
         # Do not touch anything, enter at your own risk #
         #################################################
         await self.bot.wait_until_ready()
+        log.info(f"{self.tag} scan_online_chars task started")
         try:
             with open("data/online_list.dat", "rb") as f:
                 saved_list, timestamp = pickle.load(f)
                 if (time.time() - timestamp) < config.online_list_expiration:
                     online_characters.clear()
                     online_characters.update(saved_list)
-                    log.info(f"[{self.__class__.__name__}] Loaded cached online list")
+                    count = len([c for v in online_characters.values() for c in v])
+                    log.info(f"{self.tag} Loaded cached online list | {count:,} players")
                 else:
-                    log.info("Cached online list is too old, discarding")
+                    log.info(f"{self.tag} Cached online list is too old, discarding")
         except FileNotFoundError:
             pass
         except (ValueError, pickle.PickleError):
-            log.info("Couldn't read cached online list.")
+            log.info(f"{self.tag} Couldn't read cached online list.")
         while not self.bot.is_closed():
             try:
                 # Pop last server in queue, reinsert it at the beginning
@@ -193,11 +198,12 @@ class Tracking:
                 except NetworkError:
                     await asyncio.sleep(0.1)
                     continue
-                current_world_online = world.players_online
+                current_world_online = world.online_players
                 if len(current_world_online) == 0:
                     await asyncio.sleep(0.1)
                     continue
-                log.debug(f"Scanning online characters for '{world.name}'")
+                log_msg = f"{self.tag}[{world.name}]"
+                log.debug(f"{log_msg} Scanning online players")
                 self.world_times[world.name] = time.time()
                 self.bot.dispatch("world_scanned", world)
                 # Save the online list in file
@@ -210,6 +216,7 @@ class Tracking:
                 offline_list = [c for c in online_characters[current_world] if c not in current_world_online]
                 for offline_char in offline_list:
                     # Check if characters got level ups when they went offline
+                    log.debug(f"{log_msg} Character no longer online | {offline_char.name}")
                     online_characters[current_world].remove(offline_char)
                     try:
                         _char = await get_character(self.bot, offline_char.name)
@@ -227,6 +234,7 @@ class Tracking:
                             # If the character wasn't in the online list we add them
                             # (We insert them at the beginning of the list to avoid messing with the death checks order)
                             server_char.last_check = time.time()
+                            log.debug(f"{log_msg} Character added to online list | {server_char.name}")
                             online_characters[current_world].insert(0, server_char)
                             _char = await get_character(self.bot, server_char.name)
                             await self.compare_deaths(_char)
@@ -277,7 +285,7 @@ class Tracking:
                    WHERE value ? $1"""
         rows = await self.bot.pool.fetch(query, scanned_world.name)
         for guild_id, watchlist_channel_id, watchlist_message_id in rows:
-            log.debug(f"[{self.__class__.__name__}] Checking entries for watchlist"
+            log.debug(f"{self.tag}[{scanned_world.name}] Checking entries for watchlist"
                       f" (Guild ID: {guild_id}, Channel ID: {watchlist_channel_id}, World: {scanned_world.name})")
             guild: discord.Guild = self.bot.get_guild(guild_id)
             if guild is None:
@@ -307,10 +315,10 @@ class Tracking:
                         guild_online[watched["name"]] = None
                         continue
                     # If there's at least one member online, add guild to list
-                    if len(tibia_guild.online):
-                        guild_online[tibia_guild.name] = tibia_guild.online
+                    if tibia_guild.online_count:
+                        guild_online[tibia_guild.name] = tibia_guild.online_members
                 # If it is a character, check if he's in the online list
-                for online_char in scanned_world.players_online:
+                for online_char in scanned_world.online_players:
                     if online_char.name == watched["name"]:
                         # Add to online list
                         currently_online.append(online_char)
@@ -374,7 +382,7 @@ class Tracking:
         deleted = get_affected_count(result)
         if deleted:
             # Dispatch event so ServerLog cog can handle it.
-            log.info(f"Watchlist channel deleted (Channel ID: {channel.id}, Guild ID: {channel.guild.id})")
+            log.info(f"{self.tag} Watchlist channel deleted | Channel {channel.id} | Guild {channel.guild.id}")
             self.bot.dispatch("watchlist_deleted", channel, deleted_entries)
 
     # endregion
@@ -452,7 +460,7 @@ class Tracking:
 
         skipped = []
         updated = []
-        added: List[Character] = []
+        added: List[NabChar] = []
         existent = []
         with ctx.typing():
             for char in chars:
@@ -569,7 +577,7 @@ class Tracking:
 
         skipped = []
         updated = []
-        added: List[Character] = []
+        added: List[NabChar] = []
         existent = []
         for char in chars:
             # Skip chars in non-tracked worlds
@@ -1072,7 +1080,7 @@ class Tracking:
         if not results:
             return await ctx.error(f"This watchlist has no registered characters.")
 
-        entries = [f"[{r['name']}]({get_character_url(r['name'])})" for r in results]
+        entries = [f"[{r['name']}]({NabChar.get_url(r['name'])})" for r in results]
 
         pages = Pages(ctx, entries=entries)
         pages.embed.title = "Watched Characters"
@@ -1096,7 +1104,7 @@ class Tracking:
         if not results:
             return await ctx.error(f"This watchlist has no guilds registered.")
 
-        entries = [f"[{r['name']}]({url_guild+urllib.parse.quote(r['name'])})" for r in results]
+        entries = [f"[{r['name']}]({Guild.get_url(r['name'])})" for r in results]
         pages = Pages(ctx, entries=entries)
         pages.embed.title = "Watched Guilds"
         try:
@@ -1160,30 +1168,28 @@ class Tracking:
     # endregion
 
     # region Methods
-    async def announce_death(self, char: Character, death: Death, levels_lost=0):
+    async def announce_death(self, char: NabChar, death: Death, levels_lost=0):
         """Announces a level up on the corresponding servers."""
-        # Don't announce for low level players
-        if char is None:
-            return
-
+        log_msg = f"{self.tag}[{char.world}] announce_death: {char.name} | {death.level} | {death.killer.name}"
         # Find killer article (a/an)
         killer_article = ""
         if not death.by_player:
-            killer_article = death.killer.split(" ", 1)
+            killer_article = death.killer.name.split(" ", 1)
             if killer_article[0] in ["a", "an"] and len(killer_article) > 1:
-                death.killer = killer_article[1]
+                death.killer.name = killer_article[1]
                 killer_article = killer_article[0] + " "
             else:
                 killer_article = ""
 
-        if death.killer.lower() in ["death", "energy", "earth", "fire", "pit battler", "pit berserker",
-                                    "pit blackling",
-                                    "pit brawler", "pit condemned", "pit demon", "pit destroyer", "pit fiend",
-                                    "pit groveller", "pit grunt", "pit lord", "pit maimer", "pit overlord",
-                                    "pit reaver",
-                                    "pit scourge"] and levels_lost == 0:
+        if death.killer.name.lower() in ["death", "energy", "earth", "fire", "pit battler", "pit berserker",
+                                         "pit blackling",
+                                         "pit brawler", "pit condemned", "pit demon", "pit destroyer", "pit fiend",
+                                         "pit groveller", "pit grunt", "pit lord", "pit maimer", "pit overlord",
+                                         "pit reaver",
+                                         "pit scourge"] and levels_lost == 0:
             # Skip element damage deaths unless player lost a level to avoid spam from arena deaths
             # This will cause a small amount of deaths to not be announced but it's probably worth the tradeoff
+            log.debug(f"{log_msg} | Skipping arena death")
             return
 
         guilds = [s for s, w in self.bot.tracked_worlds.items() if w == char.world]
@@ -1193,37 +1199,38 @@ class Tracking:
                 continue
             min_level = await get_server_property(self.bot.pool, guild_id, "announce_level", config.announce_threshold)
             if death.level < min_level:
+                log.debug(f"{log_msg} | Guild skipped {guild_id} | Level under limit")
                 continue
-            if guild.get_member(char.owner) is None:
+            if guild.get_member(char.owner_id) is None:
+                log.debug(f"{log_msg} | Guild skipped  {guild_id} | Owner not in server")
                 continue
             # Select a message
             if death.by_player:
-                message = weighed_choice(death_messages_player, vocation=char.vocation, level=death.level,
+                message = weighed_choice(death_messages_player, vocation=char.vocation.value, level=death.level,
                                          levels_lost=levels_lost, min_level=min_level)
             else:
-                message = weighed_choice(death_messages_monster, vocation=char.vocation, level=death.level,
-                                         levels_lost=levels_lost, killer=death.killer, min_level=min_level)
+                message = weighed_choice(death_messages_monster, vocation=char.vocation.value, level=death.level,
+                                         levels_lost=levels_lost, killer=death.killer.name, min_level=min_level)
             # Format message with death information
-            death_info = {'name': char.name, 'level': death.level, 'killer': death.killer,
+            death_info = {'name': char.name, 'level': death.level, 'killer': death.killer.name,
                           'killer_article': killer_article, 'he_she': char.he_she.lower(),
                           'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
             message = message.format(**death_info)
             # Format extra stylization
             message = f"{config.pvpdeath_emoji if death.by_player else config.death_emoji} {format_message(message)}"
+            channel_id = await get_server_property(self.bot.pool, guild.id, "levels_channel")
+            channel = self.bot.get_channel_or_top(guild, channel_id)
             try:
-                channel_id = await get_server_property(self.bot.pool, guild.id, "levels_channel")
-                channel = self.bot.get_channel_or_top(guild, channel_id)
                 await channel.send(message[:1].upper() + message[1:])
+                log.debug(f"{log_msg} | Announced in {guild_id}")
             except discord.Forbidden:
-                log.warning("announce_death: Missing permissions.")
+                log.warning(f"{log_msg} | Forbidden error | Channel {channel.id} | Server {guild.id}")
             except discord.HTTPException:
-                log.warning("announce_death: Malformed message.")
+                log.exception(f"{log_msg}")
 
-    async def announce_level(self, char: Character, level: int):
+    async def announce_level(self, char: NabChar, level: int):
         """Announces a level up on corresponding servers."""
-        if char is None:
-            return
-
+        log_msg = f"{self.tag}[{char.world}] announce_level: : {char.name} | {level}"
         guilds = [s for s, w in self.bot.tracked_worlds.items() if w == char.world]
         for guild_id in guilds:
             guild: discord.Guild = self.bot.get_guild(guild_id)
@@ -1231,14 +1238,16 @@ class Tracking:
                 continue
             min_level = await get_server_property(self.bot.pool, guild_id, "announce_level", config.announce_threshold)
             if char.level < min_level:
+                log.debug(f"{log_msg} | Guild skipped {guild_id} | Level under limit")
                 continue
-            if guild.get_member(char.owner) is None:
+            if guild.get_member(char.owner_id) is None:
+                log.debug(f"{log_msg} | Guild skipped  {guild_id} | Owner not in server")
                 continue
+            channel_id = await get_server_property(self.bot.pool, guild.id, "levels_channel")
+            channel = self.bot.get_channel_or_top(guild, channel_id)
             try:
-                channel_id = await get_server_property(self.bot.pool, guild.id, "levels_channel")
-                channel = self.bot.get_channel_or_top(guild, channel_id)
                 # Select a message
-                message = weighed_choice(level_messages, vocation=char.vocation, level=level, min_level=min_level)
+                message = weighed_choice(level_messages, vocation=char.vocation.value, level=level, min_level=min_level)
                 level_info = {'name': char.name, 'level': level, 'he_she': char.he_she.lower(),
                               'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
                 # Format message with level information
@@ -1246,13 +1255,16 @@ class Tracking:
                 # Format extra stylization
                 message = f"{config.levelup_emoji} {format_message(message)}"
                 await channel.send(message)
+                log.debug(f"{log_msg} | Announced in {guild_id}")
             except discord.Forbidden:
-                log.warning("announce_level: Missing permissions.")
+                log.warning(f"{log_msg} | Forbidden error | Channel {channel.id} | Server {guild.id}")
             except discord.HTTPException:
-                log.warning("announce_level: Malformed message.")
+                log.exception(f"{log_msg}")
 
-    async def compare_deaths(self, char: Character):
-        """Checks if the player has new deaths."""
+    async def compare_deaths(self, char: NabChar):
+        """Checks if the player has new deaths.
+
+        New deaths are announced if they are not older than 30 minutes."""
         if char is None:
             return
         async with self.bot.pool.acquire() as conn:
@@ -1266,7 +1278,7 @@ class Tracking:
                                              INNER JOIN character_death_killer dk ON dk.death_id = d.id
                                              WHERE character_id = $1 AND date = $2 AND name = $3 AND level = $4
                                              AND position = 0""",
-                                          char_id, death.time, death.killer, death.level)
+                                          char_id, death.time, death.killer.name, death.level)
                 if _id is not None:
                     # We already have this death, we're assuming we already have older deaths
                     break
@@ -1279,11 +1291,13 @@ class Tracking:
                 if death_id is None:
                     continue
                 await conn.execute("INSERT INTO character_death_killer(death_id, name, player) VALUES($1, $2, $3)",
-                                   death_id, death.killer, death.by_player)
-                log_msg = f"Death detected: {char.name}({death.level}) | {death.killer}"
+                                   death_id, death.killer.name, death.by_player)
+                log_msg = f"{self.tag}[{char.world}] Death detected: {char.name} | {death.level} |" \
+                    f" {death.killer.name}"
                 if self.is_old_death(death):
-                    log.info(log_msg + ", but it is too old to announce.")
-                else:
+                    log.info(f"{log_msg} | Too old to announce.")
+                # Only try to announce if character has an owner
+                elif char.owner_id:
                     log.info(log_msg)
                     await self.announce_death(char, death, max(death.level - char.level, 0))
 
@@ -1292,26 +1306,32 @@ class Tracking:
         """Deaths older than 30 minutes will not be announced."""
         return time.time() - death.time.timestamp() >= (30 * 60)
 
-    async def compare_levels(self, char: Character):
+    async def compare_levels(self, char: Union[NabChar, OnlineCharacter]):
         """Compares the character's level with the stored level in database.
 
         This should only be used on online characters or characters that just became offline."""
-        # Check for deaths and level ups when removing from online list
         if char is None:
             return
         async with self.bot.pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT id, name, level, user_id FROM "character" WHERE name = $1', char.name)
+            row = await conn.fetchrow('SELECT id, name, level, user_id, sex FROM "character" WHERE name = $1',
+                                      char.name)
             if not row:
                 return
-            char.owner = row["user_id"]
+            # OnlineCharacter has no sex attribute, so we get it from database and convert to NabChar
+            if isinstance(char, OnlineCharacter):
+                char = NabChar.from_online(char, row["sex"], row["user_id"])
             await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', char.level, row["id"])
             if char.level > row["level"] > 0:
                 # Saving level up date in database
                 await conn.execute("INSERT INTO character_levelup(character_id, level) VALUES($1, $2)",
                                    row["id"], char.level)
                 # Announce the level up
-                log.info(f"Level up detected: {char.name} ({char.level})")
-                await self.announce_level(char, char.level)
+                log.info(f"{self.tag}[{char.world}] Level up detected: {char.name} | {char.level}")
+                # Only try to announce level if char has an owner.
+                if char.owner_id:
+                    await self.announce_level(char, char.level)
+                else:
+                    log.info(f"{self.tag}[{char.world}] Character has no owner, skipping")
 
     @staticmethod
     async def is_watchlist(ctx: NabCtx, channel: discord.TextChannel):
@@ -1321,7 +1341,7 @@ class Tracking:
     # endregion
 
     def __unload(self):
-        log.info("Unloading cogs.tracking...")
+        log.info(f"{self.tag} Unloading cog")
         self.scan_highscores_task.cancel()
         self.scan_online_chars_task.cancel()
 

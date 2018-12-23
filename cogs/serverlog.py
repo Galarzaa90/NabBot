@@ -7,7 +7,7 @@ import discord
 
 from nabbot import NabBot
 from .utils import get_region_string, get_user_avatar
-from .utils.tibia import Character, get_voc_abb_and_emoji
+from .utils.tibia import NabChar, get_voc_abb_and_emoji
 
 log = logging.getLogger("nabbot")
 
@@ -41,7 +41,7 @@ class ServerLog:
         self.bot = bot
 
     # region Custom Events
-    async def on_characters_registered(self, user: discord.User, added: List[Character], updated: List[Dict[str, Any]],
+    async def on_characters_registered(self, user: discord.User, added: List[NabChar], updated: List[Dict[str, Any]],
                                        author: discord.User=None):
         """Called when a user registers new characters
 
@@ -51,7 +51,7 @@ class ServerLog:
         embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
 
         for char in added:
-            await self.add_character_history(char.id, ChangeType.OWNER, "0", str(char.owner))
+            await self.add_character_history(char.id, ChangeType.OWNER, "0", str(char.owner_id))
         for char in updated:
             await self.add_character_history(char["id"], ChangeType.OWNER, str(char["prevowner"]), str(user.id))
 
@@ -95,11 +95,11 @@ class ServerLog:
                                 f"\n‣ {char['name']} - Level {char['level']} {voc} - **{tibia_guild}**"
             await self.bot.send_log_message(guild, embed=embed)
 
-    async def on_character_rename(self, char: Character, old_name: str):
+    async def on_character_rename(self, char: NabChar, old_name: str):
         """Called when a character is renamed.
 
         Announces it in the server log of the relevant servers."""
-        user_id = char.owner
+        user_id = char.owner_id
         new_name = char.name
         user_guilds = self.bot.get_user_guilds(user_id)
         await self.add_character_history(char.id, ChangeType.NAME, old_name, char.name)
@@ -116,11 +116,11 @@ class ServerLog:
             embed.set_author(name=f"{member.name}#{member.discriminator}", icon_url=get_user_avatar(member))
             await self.bot.send_log_message(guild, embed=embed)
 
-    async def on_character_transferred(self, char: Character, old_world: str):
+    async def on_character_transferred(self, char: NabChar, old_world: str):
         """Called when a character switches world.
 
         Announces it in the server log of the relevant servers, i.e. servers tracking the former or new world."""
-        user_id = char.owner
+        user_id = char.owner_id
         user_guilds = self.bot.get_user_guilds(user_id)
         voc = get_voc_abb_and_emoji(char.vocation)
         await self.add_character_history(char.id, ChangeType.NAME, old_world, char.world)
@@ -138,7 +138,7 @@ class ServerLog:
             embed.set_author(name=f"{member.name}#{member.discriminator}", icon_url=get_user_avatar(member))
             await self.bot.send_log_message(guild, embed=embed)
 
-    async def on_character_guild_change(self, char: Character, old_guild: str):
+    async def on_character_guild_change(self, char: NabChar, old_guild: str):
         """Called when a character is renamed.
 
         Adds an entry to the character's history."""

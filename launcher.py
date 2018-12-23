@@ -10,6 +10,10 @@ import click
 from cogs.utils.database_migration import check_database, import_legacy_db, drop_tables
 from nabbot import NabBot
 
+# Logging optimization
+logging.logThreads = 0
+logging.logProcesses = 0
+logging._srcfile = None
 logging_formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s')
 # Save log to file (info level)
 file_handler = TimedRotatingFileHandler('logs/nabbot', when='midnight')
@@ -136,7 +140,7 @@ def migrate(path):
 def empty():
     """Empties out the database.
 
-    Drops all tables from the saved postgreSQL database.
+    Drops all tables from the saved PostgreSQL database.
     This action is irreversible, so use with caution."""
     confirm = click.confirm("Are you sure you want to drop all tables? This action is irreversible.")
     if not confirm:
@@ -147,7 +151,9 @@ def empty():
     if pool is None:
         log.error('Could not set up PostgreSQL. Exiting.')
         return
+    click.echo("Clearing database...")
     loop.run_until_complete(drop_tables(pool))
+    click.echo("Done!")
 
 
 if __name__ == "__main__":

@@ -417,7 +417,7 @@ class TibiaWiki:
         charms = models.Charm.search(wiki_db, sort_by="type")
         charms_url = f"{tibiawikisql.api.BASE_URL}/wiki/{WIKI_CHARMS_ARTICLE}"
         embed = discord.Embed(title="Charms", url=charms_url)
-        embed.set_author(name="TibiaWiki", url=charms_url, icon_url=WIKI_ICON)
+        embed.set_author(name="TibiaWiki", url=tibiawikisql.api.BASE_URL, icon_url=WIKI_ICON)
         charm_fields = dict()
         for charm in charms:  # type: models.Charm
             if not charm_fields.get(charm.type):
@@ -444,7 +444,7 @@ class TibiaWiki:
     async def get_charm_embed(cls, charm: models.Charm):
         charms_url = f"{tibiawikisql.api.BASE_URL}/wiki/{WIKI_CHARMS_ARTICLE}"
         embed = discord.Embed(title=charm.name, url=charms_url)
-        embed.set_author(name="TibiaWiki", url=charms_url, icon_url=WIKI_ICON)
+        embed.set_author(name="TibiaWiki", url=charms_url, icon_url=tibiawikisql.api.BASE_URL)
         embed.description = f"**Type**: {charm.type} | **Cost**: {charm.points:,} points"
         embed.add_field(name="Description", value=charm.description)
         return embed
@@ -1088,8 +1088,6 @@ class TibiaWiki:
             if value:
                 embed.add_field(name=name, value=value)
         return too_long
-
-
 
     @classmethod
     def search_entry(cls, table, term, *, additional_field=""):

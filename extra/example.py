@@ -3,7 +3,7 @@ from discord.ext import commands
 from nabbot import NabBot
 from cogs.utils import checks
 from cogs.utils.config import config
-from cogs.utils.tibia import get_character_url
+from cogs.utils.tibia import get_share_range
 
 
 class Example:
@@ -39,9 +39,9 @@ class Example:
         output += f"\n```py\nself.bot.get_member({ctx.author.id})\n> {member}```"
 
         output += "\nUsing methods from `utils/tibia.py`:"
-        url = get_character_url("Galarzaa Fidera")
-        output += f"\n```py\nfrom utils.tibia import get_character_url\nget_character_url(\"Galarzaa Fidera\")" \
-                  f"\n> {url!r}```"
+        range = get_share_range(300)
+        output += f"\n```py\nfrom utils.tibia import get_share_range\nget_share_range(300)" \
+                  f"\n> {range!r}```"
 
         output += "\nUsing values from `utils/config.py` (values in `config.yml`):"
         prefixes = config.command_prefix

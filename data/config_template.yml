@@ -23,7 +23,6 @@ command_prefix:
 # Level up and deaths announcements are disabled
 lite_servers:
   - 140054830252163072
-  - 441991938200305674
 
 # Add extra features by adding your own cogs.
 # Example: extra/twitch.py would be added as 'extra.twitch'
