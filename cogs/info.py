@@ -103,7 +103,7 @@ class Info:
     @checks.can_embed()
     @commands.guild_only()
     @commands.command()
-    async def channelinfo(self, ctx: NabCtx, channel: discord.TextChannel=None):
+    async def channelinfo(self, ctx: NabCtx, channel: discord.TextChannel = None):
         """Shows information about a channel.
 
         If no channel is specified, the information for the current channel is shown."""
@@ -225,7 +225,7 @@ class Info:
 
     @commands.guild_only()
     @commands.command(name="emojiinfo")
-    async def emoji_info(self, ctx: NabCtx, *, emoji: discord.Emoji=None):
+    async def emoji_info(self, ctx: NabCtx, *, emoji: discord.Emoji = None):
         """Shows information about an emoji, or shows all emojis.
 
         If the command is used with no arguments, all the server emojis are shown.

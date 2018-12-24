@@ -482,7 +482,7 @@ class Loot(CogUtils):
         high = 60
         color_diff = 15
         return (pixel[0] >= low and pixel[1] >= low and pixel[2] >= low) \
-               and (pixel[0] <= high and pixel[1] <= high and pixel[2] <= high) \
+            and (pixel[0] <= high and pixel[1] <= high and pixel[2] <= high) \
             and max(abs(pixel[0] - pixel[1]), abs(pixel[0] - pixel[2]), abs(pixel[1] - pixel[2])) < color_diff
 
     @classmethod
@@ -762,7 +762,8 @@ class Loot(CogUtils):
         return int(color[0]), int(color[1]), int(color[2])
 
     @classmethod
-    def scan_item(cls, slot_item: Image.Image, item_list: List[Dict[str, Any]]) -> Union[Dict[str, Union[str, int]], str]:
+    def scan_item(cls, slot_item: Image.Image, item_list: List[Dict[str, Any]]) -> \
+            Union[Dict[str, Union[str, int]], str]:
         """Scans an item's image, and looks for it among similar items in the database.
 
         :param slot_item: The item's cropped image.

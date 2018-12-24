@@ -49,11 +49,11 @@ class TibiaMMO:
             try:
                 guild = await get_guild(guild)
                 if guild is None:
-                    ctx.send(f"I couldn't find any guild named '**{guild}**'. "
-                             f"Please use quotes for names with multiple words.", delete_after=10)
+                    await ctx.send(f"I couldn't find any guild named '**{guild}**'. "
+                                   f"Please use quotes for names with multiple words.", delete_after=10)
                     return
             except NetworkError:
-                ctx.send("I'm having network issues, please try later.", delete_after=10)
+                await ctx.send("I'm having network issues, please try later.", delete_after=10)
                 return
 
         channel: discord.TextChannel = ctx.guild.get_channel(GUILDS_CHANNEL)

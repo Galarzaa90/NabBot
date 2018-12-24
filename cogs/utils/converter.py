@@ -71,6 +71,7 @@ class TimeString:
 
 stamina_pattern = re.compile(r"(\d{1,2}):(\d{1,2})")
 
+
 @functools.total_ordering
 class Stamina:
     def __init__(self, argument):

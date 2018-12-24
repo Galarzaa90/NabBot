@@ -64,7 +64,8 @@ class Calculators:
                        f"**{int(mountain_bless_price*2):,}**.")
 
     @commands.command()
-    async def distanceskill(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str, loyalty: int=0):
+    async def distanceskill(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str,
+                            loyalty: int = 0):
         """Calculates the training time required to reach a target distance skill level.
 
         For the moment, online and offline training calculation is unavailable."""
@@ -98,7 +99,7 @@ class Calculators:
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def magiclevel(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str, loyalty: int=0):
+    async def magiclevel(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str, loyalty: int = 0):
         """Calculates the training time required to reach a target skill level.
 
         This only applies to axe, club and sword fighting."""
@@ -140,7 +141,8 @@ class Calculators:
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def meleeskill(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str, loyalty: int=0):
+    async def meleeskill(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str,
+                         loyalty: int = 0):
         """Calculates the training time required to reach a target skill level.
 
         This only applies to axe, club and sword fighting."""
@@ -243,7 +245,7 @@ class Calculators:
         params = params.split(",")
         char = None
         if len(params) == 1:
-            _digits = re.compile('\d')
+            _digits = re.compile(r'\d')
             if _digits.search(params[0]) is not None:
                 await ctx.send(invalid_arguments)
                 return

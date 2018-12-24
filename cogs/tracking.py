@@ -16,7 +16,7 @@ from .utils import EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_n
     CogUtils
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import get_affected_count, get_server_property, DbChar
+from .utils.database import get_affected_count, get_server_property, DbChar, DbLevelUp
 from .utils.messages import death_messages_monster, death_messages_player, format_message, level_messages, \
     split_message, weighed_choice
 from .utils.pages import CannotPaginate, Pages, VocationPages
@@ -1311,25 +1311,24 @@ class Tracking(CogUtils):
         if char is None:
             return
         async with self.bot.pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT id, name, level, user_id, sex FROM "character" WHERE name = $1',
-                                      char.name)
-            if not row:
+            db_char = await DbChar.get_by_name(conn, char.name)
+            if not db_char:
                 return
             # OnlineCharacter has no sex attribute, so we get it from database and convert to NabChar
             if isinstance(char, OnlineCharacter):
-                char = NabChar.from_online(char, row["sex"], row["user_id"])
-            await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', char.level, row["id"])
-            if char.level > row["level"] > 0:
-                # Saving level up date in database
-                await conn.execute("INSERT INTO character_levelup(character_id, level) VALUES($1, $2)",
-                                   row["id"], char.level)
-                # Announce the level up
-                log.info(f"{self.tag}[{char.world}] Level up detected: {char.name} | {char.level}")
-                # Only try to announce level if char has an owner.
-                if char.owner_id:
-                    await self.announce_level(char, char.level)
-                else:
-                    log.debug(f"{self.tag}[{char.world}] Character has no owner, skipping")
+                char = NabChar.from_online(char, db_char.sex, db_char.user_id)
+            await db_char.update_level(conn, char.level, False)
+            if not (char.level > db_char.level > 0):
+                return
+            # Saving level up date in database
+            await DbLevelUp.insert(conn, db_char.id, char.level)
+        # Announce the level up
+        log.info(f"{self.tag}[{char.world}] Level up detected: {char.name} | {char.level}")
+        # Only try to announce level if char has an owner.
+        if char.owner_id:
+            await self.announce_level(char, char.level)
+        else:
+            log.debug(f"{self.tag}[{char.world}] Character has no owner, skipping")
 
     @staticmethod
     async def is_watchlist(ctx: NabCtx, channel: discord.TextChannel):

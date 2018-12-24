@@ -358,15 +358,15 @@ def html_to_markdown(html_string):
     # Replace <br> tags with line jumps
     html_string = re.sub(r'<br\s?/?>', "\n", html_string)
     # Replace <strong> and <b> with bold
-    html_string = re.sub(r'<strong>([^<]+)</strong>', '**\g<1>**', html_string)
-    html_string = re.sub(r'<b>([^<]+)</b>', '**\g<1>**', html_string)
-    html_string = re.sub(r'<li>([^<]+)</li>', '- \g<1>\n', html_string)
+    html_string = re.sub(r'<strong>([^<]+)</strong>', r'**\g<1>**', html_string)
+    html_string = re.sub(r'<b>([^<]+)</b>', r'**\g<1>**', html_string)
+    html_string = re.sub(r'<li>([^<]+)</li>', r'- \g<1>\n', html_string)
     # Replace links
-    html_string = re.sub(r'<a href=\"([^\"]+)\"[^>]+>([^<]+)</a>', "[\g<2>](\g<1>)", html_string)
+    html_string = re.sub(r'<a href=\"([^\"]+)\"[^>]+>([^<]+)</a>', r"[\g<2>](\g<1>)", html_string)
     # Paragraphs with jumpline
-    html_string = re.sub(r'<p>([^<]+)</p>', "\g<1>\n", html_string)
+    html_string = re.sub(r'<p>([^<]+)</p>', r"\g<1>\n", html_string)
     # Replace youtube embeds with link to youtube
-    html_string = re.sub(r'<iframe src=\"([^\"]+)\"[^>]+></iframe>', "[YouTube](\g<1>)", html_string)
+    html_string = re.sub(r'<iframe src=\"([^\"]+)\"[^>]+></iframe>', r"[YouTube](\g<1>)", html_string)
     # Remove leftover html tags
     html_string = re.sub(r'<[^>]+>', "", html_string)
     html_string = html_string.replace("\n\n", "\n")

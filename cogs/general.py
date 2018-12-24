@@ -23,6 +23,7 @@ RECENT_THRESHOLD = dt.timedelta(minutes=30)
 
 log = logging.getLogger("nabbot")
 
+
 class General(CogUtils):
     def __init__(self, bot: NabBot):
         self.bot = bot
@@ -124,7 +125,7 @@ class General(CogUtils):
     @commands.guild_only()
     @checks.can_embed()
     @commands.group(aliases=["event"], invoke_without_command=True, case_insensitive=True, usage="[event id]")
-    async def events(self, ctx: NabCtx, event_id: int=None):
+    async def events(self, ctx: NabCtx, event_id: int = None):
         """Shows a list of upcoming and recent events.
 
         If a number is specified, it will show details for that event. Same as using `events info`"""
@@ -349,14 +350,14 @@ class General(CogUtils):
             await ctx.send(f"{ctx.tick()} Event's description changed successfully.")
             creator = self.bot.get_member(event["user_id"])
             if creator is not None:
-                await creator.send(f"Your event **{event['name']}** had its description changed by {ctx.author.mention}",
-                                   embed=embed)
+                await creator.send(f"Your event **{event['name']}** had its description changed by "
+                                   f"{ctx.author.mention}", embed=embed)
         await self.notify_subscribers(event_id, f"The description of event **{event['name']}** was changed.",
                                       embed=embed, skip_creator=True)
 
     @commands.guild_only()
     @event_edit.command(name="joinable", aliases=["open"], usage="<id> [yes/no]")
-    async def event_edit_joinable(self, ctx: NabCtx, event_id: int, *, yes_no: str=None):
+    async def event_edit_joinable(self, ctx: NabCtx, event_id: int, *, yes_no: str = None):
         """Changes whether anyone can join an event or only the owner may add people.
 
         If an event is joinable, anyone can join using `event join id`  .
@@ -450,7 +451,7 @@ class General(CogUtils):
 
     @commands.guild_only()
     @event_edit.command(name="slots", aliases=["size"], usage="<id> [new slots]")
-    async def event_edit_slots(self, ctx: NabCtx, event_id: int, slots: int=None):
+    async def event_edit_slots(self, ctx: NabCtx, event_id: int, slots: int = None):
         """Edits an event's number of slots
 
         Slots is the number of characters an event can have. By default this is 0, which means no limit."""
@@ -504,7 +505,7 @@ class General(CogUtils):
     @commands.guild_only()
     @checks.can_embed()
     @event_edit.command(name="time", aliases=["start"], usage="<id> [new start time]")
-    async def event_edit_time(self, ctx: NabCtx, event_id: int, starts_in: TimeString=None):
+    async def event_edit_time(self, ctx: NabCtx, event_id: int, starts_in: TimeString = None):
         """Edit's an event's start time.
 
         If no new time is provided initially, the bot will ask for one."""
@@ -953,7 +954,7 @@ class General(CogUtils):
     @commands.has_permissions(manage_roles=True)
     @checks.can_embed()
     @commands.command(nam="permissions", aliases=["perms"])
-    async def permissions(self, ctx: NabCtx, member: discord.Member=None, channel: discord.TextChannel=None):
+    async def permissions(self, ctx: NabCtx, member: discord.Member = None, channel: discord.TextChannel = None):
         """Shows a member's permissions in the current channel.
 
         If no member is provided, it will show your permissions.
@@ -1067,7 +1068,7 @@ class General(CogUtils):
             result += "\nWho would have thought? 🙄"
         await ctx.send(result)
 
-    async def notify_subscribers(self, event_id: int, content, *, embed: discord.Embed=None, skip_creator=False):
+    async def notify_subscribers(self, event_id: int, content, *, embed: discord.Embed = None, skip_creator=False):
         """Sends a message to all users subscribed to an event"""
         async with self.bot.pool.acquire() as conn:
             creator = await conn.fetchval("SELECT user_id FROM event WHERE id = $1", event_id)
