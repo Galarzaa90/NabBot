@@ -15,7 +15,7 @@ import discord
 import pytz
 import tibiawikisql
 from discord.ext import commands
-from tibiapy import GuildHouse, House, HouseStatus, Sex, TransferType
+from tibiapy import GuildHouse, House, HouseStatus, Sex, TransferType, AccountStatus
 from tibiawikisql import models
 
 from cogs.utils.tibia import get_house_id, get_rashid_city, normalize_vocation, TIBIA_URL
@@ -1529,18 +1529,21 @@ class Tibia(CogUtils):
             description += f"\n{char.he_she} is married to [{char.married_to}]({char.married_to_url})."
         if char.house is not None:
             description += f"\n{char.he_she} owns [{char.house.name}]({char.house.url}) in {char.house.town}."
-        if char.last_login is not None:
-            now = dt.datetime.utcnow()
-            now = now.replace(tzinfo=dt.timezone.utc)
-            time_diff = now - char.last_login
-            if time_diff.days > 7:
-                description += f"\n{char.he_she} hasn't logged in for **{get_time_diff(time_diff)}**."
-        else:
-            description += f"\n{char.he_she} has never logged in."
-
         if char.last_login:
             embed.set_footer(text="Last login")
             embed.timestamp = char.last_login
+        else:
+            embed.set_footer(text=f"{char.he_she} has never logged in.")
+
+        extra = [f"**{char.account_status.value}**"]
+        if char.hidden:
+            extra.append("**Hidden**")
+        if char.account_information:
+            if char.account_information.loyalty_title:
+                extra.append(f"**{char.account_information.loyalty_title}**")
+            if char.account_information.position:
+                extra.append(f"**{char.account_information.position}**")
+        description += f"\n{' | '.join(extra)}"
 
         # Insert any highscores this character holds
         for highscore in char.highscores:
