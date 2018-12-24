@@ -140,7 +140,7 @@ class DbChar(tibiapy.abc.BaseCharacter):
         chars = [cls(**row) for row in rows]
         if isinstance(worlds, str):
             worlds = [worlds]
-        if worlds is not None:
+        if worlds:
             return list(filter(lambda c: c.world in worlds, chars))
         return chars
 

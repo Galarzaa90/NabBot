@@ -1329,7 +1329,7 @@ class Tracking(CogUtils):
                 if char.owner_id:
                     await self.announce_level(char, char.level)
                 else:
-                    log.info(f"{self.tag}[{char.world}] Character has no owner, skipping")
+                    log.debug(f"{self.tag}[{char.world}] Character has no owner, skipping")
 
     @staticmethod
     async def is_watchlist(ctx: NabCtx, channel: discord.TextChannel):

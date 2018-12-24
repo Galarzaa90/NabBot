@@ -26,6 +26,7 @@ ERROR_DOESNTEXIST = 1
 ERROR_NOTINDATABASE = 2
 
 # Tibia.com URLs:
+TIBIA_URL = "https://www.tibia.com/"
 url_highscores = "https://www.tibia.com/community/?subtopic=highscores&world={0}&list={1}&profession={2}&currentpage={3}"
 
 TIBIACOM_ICON = "https://ssl-static-tibia.akamaized.net/images/global/general/apple-touch-icon-72x72.png"
@@ -41,6 +42,8 @@ SORCERER = ["sorcerer", "master sorcerer", "ms", "s", "sorc", "mastersorcerer", 
 MAGE = DRUID + SORCERER + ["mage"]
 NO_VOCATION = ["no vocation", "no voc", "novoc", "nv", "n v", "none", "no", "n", "noob", "noobie", "rook", "rookie",
                Vocation.NONE]
+
+invalid_name = re.compile(r"[^\sA-Za-zÀ-ÖØ-öø-ÿ'\-]")
 
 highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on rank **{2}**",
                     "axe": "{0} __axe fighting__ level is **{1}**, on rank **{2}**",
@@ -117,6 +120,9 @@ async def get_character(bot, name, tries=5) -> Optional[NabChar]:
     try:
         url = Character.get_url_tibiadata(name)
     except UnicodeEncodeError:
+        return None
+
+    if invalid_name.search(name):
         return None
     # Fetch website
     try:

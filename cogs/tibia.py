@@ -18,7 +18,7 @@ from discord.ext import commands
 from tibiapy import GuildHouse, House, HouseStatus, Sex, TransferType
 from tibiawikisql import models
 
-from cogs.utils.tibia import get_house_id, get_rashid_city, normalize_vocation
+from cogs.utils.tibia import get_house_id, get_rashid_city, normalize_vocation, TIBIA_URL
 from nabbot import NabBot
 from .utils import checks, CogUtils
 from .utils import config, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, join_list, online_characters
@@ -1290,20 +1290,6 @@ class Tibia(CogUtils):
 
         Additionally, if the character is in the highscores, their ranking will be shown.
         """
-        if ctx.is_lite:
-            try:
-                char = await get_character(ctx.bot, name)
-                if char is None:
-                    await ctx.send("I couldn't find a character with that name")
-                    return
-            except NetworkError:
-                await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
-                return
-            embed = discord.Embed(description=self.get_char_string(char))
-            embed.set_author(name=char.name, url=char.url, icon_url=TIBIACOM_ICON)
-            await ctx.send(embed=embed)
-            return
-
         if name.lower() == ctx.me.display_name.lower():
             await ctx.invoke(self.bot.all_commands.get('about'))
             return
@@ -1311,97 +1297,81 @@ class Tibia(CogUtils):
         try:
             char = await get_character(ctx.bot, name)
         except NetworkError:
-            await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
-            return
-        char_string = self.get_char_string(char)
+            return await ctx.error("Sorry, I couldn't fetch the character's info, maybe you should try again...")
+
+        if ctx.is_lite or (not ctx.is_private and not ctx.world):
+            if char is None:
+                return await ctx.error("I couldn't find a character with that name.")
+            log.debug("{self.tag} Found character, lite mode")
+            return await ctx.send(embed=self.get_char_embed(char))
         # If the command is used on a DM, only search users in the servers the author is in
         # Otherwise, just search on the current server
         if ctx.is_private:
             guild_filter = self.bot.get_user_guilds(ctx.author.id)
+            user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if
+                                 server in [s.id for s in guild_filter]]
         else:
             guild_filter = ctx.guild
+            user_tibia_worlds = [ctx.world] if ctx.world else []
         # If the user is a bot, then don't, just don't
         user = self.bot.get_member(name, guild_filter)
-        if user is not None and user.bot:
+        if user and user.bot:
             user = None
-        embed = await self.get_user_embed(ctx, user)
 
         # No user or char with that name
         if char is None and user is None:
-            await ctx.send("I don't see any user or character with that name.")
-            return
+            return await ctx.error("I don't see any user or character with that name.")
         # We found a user
-        if embed is not None:
+        if user is not None:
+            user_embed = await self.get_user_embed(ctx, user)
             # Check if we found a char too
             if char is not None:
+                char_embed = self.get_char_embed(char)
                 # If it's owned by the user, we append it to the same embed.
                 if char.owner_id == int(user.id):
-                    embed.add_field(name="Character", value=char_string, inline=False)
-                    if char.last_login is not None:
-                        embed.set_footer(text="Last login")
-                        embed.timestamp = char.last_login
-                    await ctx.send(embed=embed)
-                    return
+                    char_embed.add_field(name="Character", value=char_embed.description, inline=False)
+                    char_embed.description = user_embed.description
+                    char_embed.set_thumbnail(url=user_embed.thumbnail.url)
+                    log.debug(f"{self.tag} Matches user and char, same name.")
+                    return await ctx.send(embed=char_embed)
                 # Not owned by same user, we display a separate embed
                 else:
-                    char_embed = discord.Embed(description=char_string)
-                    char_embed.set_author(name=char.name, url=char.url, icon_url=TIBIACOM_ICON)
-                    if char.last_login is not None:
-                        char_embed.set_footer(text="Last login")
-                        char_embed.timestamp = char.last_login
-                    await ctx.send(embed=embed)
+                    log.debug(f"{self.tag} Matches user and char, different owner")
+                    await ctx.send(embed=user_embed)
                     await ctx.send(embed=char_embed)
                     return
-            else:
-                # Tries to display user's highest level character since there is no character match
-                if ctx.is_private:
-                    display_name = '@'+user.name
-                    user_guilds = self.bot.get_user_guilds(ctx.author.id)
-                    user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if
-                                         server in [s.id for s in user_guilds]]
-                else:
-                    if self.bot.tracked_worlds.get(ctx.guild.id) is None:
-                        user_tibia_worlds = []
-                    else:
-                        user_tibia_worlds = [self.bot.tracked_worlds[ctx.guild.id]]
-                if len(user_tibia_worlds) != 0:
-                    character = await ctx.pool.fetchrow("""SELECT name, abs(level) as level FROM "character"
-                                                           WHERE user_id = $1 and world = any($2)
-                                                           ORDER by level DESC""", user.id, user_tibia_worlds)
-                    if character:
+            # Tries to display user's highest level character since there is no character match
+            if user_tibia_worlds:
+                chars = await DbChar.get_chars_by_user(ctx.pool, user, user_tibia_worlds)
+                if chars:
+                    chars.sort(key=lambda c: c.level, reverse=True)
+                    character = chars[0]
+                    try:
                         char = await get_character(ctx.bot, character["name"])
-                        char_string = self.get_char_string(char)
+                    except NetworkError:
+                        pass
+                    else:
                         if char is not None:
-                            char_embed = discord.Embed(description=char_string)
-                            char_embed.set_author(name=char.name, url=char.url, icon_url=TIBIACOM_ICON)
-                            embed.add_field(name="Highest character", value=char_string, inline=False)
+                            char_embed = self.get_char_embed(char)
+                            user_embed.add_field(name="Highest character", value=char_embed.description, inline=False)
                             if char.last_login is not None:
-                                embed.set_footer(text="Last login")
-                                embed.timestamp = char.last_login
-                await ctx.send(embed=embed)
-        else:
-            embed = discord.Embed(description="")
-            if char is not None:
-                owner = None if char.owner_id == 0 else self.bot.get_member(char.owner_id, guild_filter)
-                if owner is not None:
-                    # Char is owned by a discord user
-                    embed = await self.get_user_embed(ctx, owner)
-                    if embed is None:
-                        embed = discord.Embed(description="")
-                    embed.add_field(name="Character", value=char_string, inline=False)
-                    if char.last_login is not None:
-                        embed.set_footer(text="Last login")
-                        embed.timestamp = char.last_login
-                    await ctx.send(embed=embed)
-                    return
-                else:
-                    embed.set_author(name=char.name, url=char.url, icon_url=TIBIACOM_ICON)
-                    embed.description += char_string
-                    if char.last_login:
-                        embed.set_footer(text="Last login")
-                        embed.timestamp = char.last_login
-
-            await ctx.send(embed=embed)
+                                user_embed.set_footer(text="Last login")
+                                user_embed.timestamp = char.last_login
+            log.debug(f"{self.tag} Found user only, no char")
+            return await ctx.send(embed=user_embed)
+        owner = self.bot.get_member(char.owner_id, guild_filter) if char.owner_id else None
+        if owner is not None and char.world in user_tibia_worlds:
+            # Char is owned by a discord user
+            user_embed = await self.get_user_embed(ctx, owner)
+            char_embed = self.get_char_embed(char)
+            char_embed.add_field(name="Character", value=char_embed.description, inline=False)
+            char_embed.description = user_embed.description
+            char_embed.set_thumbnail(url=user_embed.thumbnail.url)
+            log.debug(f"{self.tag} Found char only, owner is in same server")
+            await ctx.send(embed=char_embed)
+            return
+        log.debug(f"{self.tag} Found char only")
+        await ctx.send(embed=self.get_char_embed(char))
 
     @commands.command(name="world")
     async def world_info(self, ctx: NabCtx, name: str):
@@ -1543,80 +1513,75 @@ class Tibia(CogUtils):
         return embed
 
     @classmethod
-    def get_char_string(self, char: NabChar) -> str:
+    def get_char_embed(cls, char: NabChar) -> discord.Embed:
         """Returns a formatted string containing a character's info."""
-        if char is None:
-            return None
-        reply = f"[{char.name}]({char.url}) is a level {char.level} __{char.vocation}__." \
-                f" {char.he_she} resides in __{char.residence}__ in the world of __{char.world}__"
+        embed = cls._get_tibia_embed()
+
+        description = f"[{char.name}]({char.url}) is a level {char.level} __{char.vocation}__." \
+                      f" {char.he_she} resides in __{char.residence}__ in the world of __{char.world}__"
         if char.former_world is not None:
-            reply += f" (formerly __{char.former_world}__)"
-        reply += f". {char.he_she} has {char.achievement_points:,} achievement points."
+            description += f" (formerly __{char.former_world}__)"
+        description += f". {char.he_she} has {char.achievement_points:,} achievement points."
 
         if char.guild_membership is not None:
-            reply += f"\n{char.he_she} is __{char.guild_rank}__ of the [{char.guild_name}]({char.guild_url})."
+            description += f"\n{char.he_she} is __{char.guild_rank}__ of the [{char.guild_name}]({char.guild_url})."
         if char.married_to is not None:
-            reply += f"\n{char.he_she} is married to [{char.married_to}]({char.married_to_url})."
+            description += f"\n{char.he_she} is married to [{char.married_to}]({char.married_to_url})."
         if char.house is not None:
-            reply += f"\n{char.he_she} owns [{char.house.name}]({char.house.url}) in {char.house.town}."
+            description += f"\n{char.he_she} owns [{char.house.name}]({char.house.url}) in {char.house.town}."
         if char.last_login is not None:
             now = dt.datetime.utcnow()
             now = now.replace(tzinfo=dt.timezone.utc)
             time_diff = now - char.last_login
             if time_diff.days > 7:
-                reply += f"\n{char.he_she} hasn't logged in for **{get_time_diff(time_diff)}**."
+                description += f"\n{char.he_she} hasn't logged in for **{get_time_diff(time_diff)}**."
         else:
-            reply += f"\n{char.he_she} has never logged in."
+            description += f"\n{char.he_she} has never logged in."
+
+        if char.last_login:
+            embed.set_footer(text="Last login")
+            embed.timestamp = char.last_login
 
         # Insert any highscores this character holds
         for highscore in char.highscores:
             highscore_string = highscore_format[highscore["category"]].format(char.his_her,
                                                                               highscore["value"],
                                                                               highscore['rank'])
-            reply += "\n🏆 {0}".format(highscore_string)
+            description += "\n🏆 {0}".format(highscore_string)
+        embed.description = description
+        return embed
 
-        return reply
-
-    async def get_user_embed(self, ctx: NabCtx, user: discord.Member) -> Optional[discord.Embed]:
-        if user is None:
-            return None
+    @classmethod
+    async def get_user_embed(cls, ctx: NabCtx, user: discord.Member) -> Optional[discord.Embed]:
         embed = discord.Embed()
+        user_tibia_worlds = []
         if ctx.is_private:
             display_name = f'@{user.name}'
-            user_guilds = self.bot.get_user_guilds(ctx.author.id)
-            user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if
+            user_guilds = ctx.bot.get_user_guilds(ctx.author.id)
+            user_tibia_worlds = [world for server, world in ctx.bot.tracked_worlds.items() if
                                  server in [s.id for s in user_guilds]]
         else:
             display_name = f'@{user.display_name}'
             embed.colour = user.colour
-            if ctx.world is None:
-                user_tibia_worlds = []
-            else:
+            if ctx.world:
                 user_tibia_worlds = [ctx.world]
-        if len(user_tibia_worlds) == 0:
-            return None
         embed.set_thumbnail(url=user.avatar_url)
-        characters = await ctx.pool.fetch("""SELECT name, abs(level) AS level, vocation
-                                             FROM "character"
-                                             WHERE user_id = $1 AND world = any($2)
-                                             ORDER BY level DESC""", user.id, user_tibia_worlds)
+        characters = await DbChar.get_chars_by_user(ctx.pool, user.id, user_tibia_worlds)
         if not characters:
-            embed.description = f"I don't know who **{display_name}** is..."
+            embed.description = f"**{display_name}** has no registered characters here."
             return embed
-        online_list = [x.name for v in online_characters.values() for x in v]
+        characters.sort(key=lambda c: c.level, reverse=True)
+        online_list = [x.name for k, v in online_characters.items() if k in user_tibia_worlds for x in v]
         char_list = []
         for char in characters:
-            online = config.online_emoji if char["name"] in online_list else ""
-            voc_abb = get_voc_abb(char["vocation"])
-            char_url = NabChar.get_url(char["name"])
+            online = config.online_emoji if char.name in online_list else ""
+            voc_abb = get_voc_abb(char.vocation)
             if len(characters) <= 10:
-                char_list.append("[{name}]({url}){online} (Lvl {level} {voc})".format(**char, url=char_url, voc=voc_abb,
-                                                                                      online=online))
+                char_list.append(f"[{char.name}]({char.url}){online} (Lvl {char.level} {voc_abb})")
             else:
-                char_list.append("**{name}**{online} (Lvl {level} {voc})".format(**char, voc=voc_abb, online=online))
-            char_string = "@**{0.display_name}**'s character{1}: {2}"
+                char_list.append(f"**{char.name}**{online} (Lvl {char.level} {voc_abb})")
             plural = "s are" if len(char_list) > 1 else " is"
-            embed.description = char_string.format(user, plural, join_list(char_list, ", ", " and "))
+            embed.description = f"**{display_name}**' character{plural}: {join_list(char_list, ', ', ' and ')}"
         return embed
 
     @classmethod
@@ -1636,7 +1601,7 @@ class Tibia(CogUtils):
             return embed
         # Update embed
         embed.url = house.url
-        embed.set_author(name="Tibia.com", url="https://www.tibia.com/", icon_url=TIBIACOM_ICON)
+        embed.set_author(name="Tibia.com", url=TIBIA_URL, icon_url=TIBIACOM_ICON)
 
         description += f"\nIn **{house.world}**, this {house_type} is "
         embed.url = house.url
@@ -1718,6 +1683,12 @@ class Tibia(CogUtils):
                 break
             except Exception:
                 log.exception(f"{self.tag} scan_news")
+
+    @classmethod
+    def _get_tibia_embed(cls, title=None, url=None):
+        embed = discord.Embed(title=title, url=url)
+        embed.set_author(name="Tibia.com", url=TIBIA_URL, icon_url=TIBIACOM_ICON)
+        return embed
 
     @staticmethod
     def _get_cached_user_(self, user_id, users_cache, user_servers):
