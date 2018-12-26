@@ -23,7 +23,7 @@ from nabbot import NabBot
 from .utils import checks, CogUtils
 from .utils import config, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, join_list, online_characters
 from .utils.context import NabCtx
-from .utils.database import get_global_property, get_server_property, set_global_property, DbChar
+from .utils.database import get_global_property, get_server_property, set_global_property, DbChar, DbLevelUp
 from .utils.messages import get_first_image, html_to_markdown, split_message
 from .utils.pages import CannotPaginate, Pages, VocationPages
 from .utils.tibia import NabChar, NetworkError, TIBIACOM_ICON, get_character, get_guild, get_highscores_tibiadata, \
@@ -132,7 +132,7 @@ class Tibia(CogUtils):
                                                     WHERE d.level > $1 AND position = 0 AND world = any($2)
                                                     ORDER by date DESC""", config.announce_threshold, user_worlds):
 
-                        user = self._get_cached_user_(self, row["user_id"], users_cache, user_servers)
+                        user = self._get_cached_user_(row["user_id"], users_cache, user_servers)
                         if user is None:
                             continue
                         if row["world"] not in user_worlds:
@@ -652,29 +652,23 @@ class Tibia(CogUtils):
         author = None
         author_icon = discord.Embed.Empty
         count = 0
-        now = time.time()
+        now = dt.datetime.now(dt.timezone.utc)
         per_page = 20 if await ctx.is_long() else 5
         user_cache = dict()
         if name is None:
             title = "Latest level ups"
             async with ctx.pool.acquire() as conn:
-                async with conn.transaction():
-                    async for row in conn.cursor("""SELECT name, user_id, world, vocation, l.level, date
-                                                    FROM character_levelup l
-                                                    LEFT JOIN "character" c ON c.id = l.character_id
-                                                    WHERE l.level >= $1 AND world = $2
-                                                    ORDER BY date DESC""", config.announce_threshold, ctx.world):
-                        user = self._get_cached_user_(self, row["user_id"], user_cache, ctx.guild)
-                        if user is None:
-                            continue
-                        count += 1
-                        level_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
-                        user_name = user.display_name
-                        emoji = get_voc_emoji(row["vocation"])
-                        entries.append("{emoji} {name} - Level **{level}** - (**@{user}**) - *{time} ago*"
-                                       .format(**row, time=level_time, user=user_name, emoji=emoji))
-                        if count >= 100:
-                            break
+                async for lvl in DbLevelUp.get_latest(conn, config.announce_threshold, worlds=ctx.world):
+                    user = self._get_cached_user_(lvl.char.user_id, user_cache, ctx.guild)
+                    if user is None:
+                        continue
+                    count += 1
+                    diff = get_time_diff(now - lvl.date)
+                    emoji = get_voc_emoji(lvl.char.vocation)
+                    entries.append(f"{emoji} {lvl.char.name} - Level **{lvl.level}** - **@{user.display_name}** - "
+                                   f"*{diff} ago*")
+                    if count >= 100:
+                        break
         else:
             async with ctx.pool.acquire() as conn:
                 db_char = await DbChar.get_by_name(conn, name)
@@ -688,10 +682,10 @@ class Tibia(CogUtils):
                 name = db_char.name
                 emoji = get_voc_emoji(db_char.vocation)
                 title = f"{emoji} {name} latest level ups"
-                for level_up in db_char.get_level_ups(conn):
+                async for lvl in db_char.get_level_ups(conn):
                     count += 1
-                    level_time = get_time_diff(dt.timedelta(seconds=now - level_up.date.timestamp()))
-                    entries.append(f"Level **{level_up.level}** - *{level_time} ago*")
+                    diff = get_time_diff(dt.timedelta(now - lvl.date))
+                    entries.append(f"Level **{lvl.level}** - *{diff} ago*")
                     if count >= 100:
                         break
         if count == 0:
@@ -719,20 +713,14 @@ class Tibia(CogUtils):
 
         count = 0
         entries = []
-        now = time.time()
+        now = dt.datetime.now(dt.timezone.utc)
         per_page = 20 if await ctx.is_long() else 5
         async with ctx.pool.acquire() as conn:
-            async with conn.transaction():
-                async for row in conn.cursor("""SELECT name, l.level, date, world, vocation
-                                                FROM character_levelup l
-                                                LEFT JOIN "character" c on c.id = l.character_id
-                                                WHERE user_id = $1 AND world = $2
-                                                ORDER BY date DESC""", user.id, ctx.world):
+            async for l in DbLevelUp.get_latest(conn, user_id=ctx.author.id, worlds=ctx.world):
                     count += 1
-                    level_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
-                    emoji = get_voc_emoji(row["vocation"])
-                    entries.append("{emoji} {name} - Level **{level}** - *{time} ago*".format(**row, time=level_time,
-                                                                                              emoji=emoji))
+                    level_time = get_time_diff(now - l.date)
+                    emoji = get_voc_emoji(l.char.vocation)
+                    entries.append(f"{emoji} {l.char.name} - Level **{l.level}** - *{level_time} ago*")
                     if count >= 100:
                         break
         if count == 0:
@@ -1336,7 +1324,7 @@ class Tibia(CogUtils):
                     return
             # Tries to display user's highest level character since there is no character match
             if user_tibia_worlds:
-                chars = await DbChar.get_chars_by_user(ctx.pool, user, user_tibia_worlds)
+                chars = await DbChar.get_chars_by_user(ctx.pool, user.id, worlds=user_tibia_worlds)
                 if chars:
                     chars.sort(key=lambda c: c.level, reverse=True)
                     character = chars[0]
@@ -1563,7 +1551,7 @@ class Tibia(CogUtils):
             if ctx.world:
                 user_tibia_worlds = [ctx.world]
         embed.set_thumbnail(url=user.avatar_url)
-        characters = await DbChar.get_chars_by_user(ctx.pool, user.id, user_tibia_worlds)
+        characters = await DbChar.get_chars_by_user(ctx.pool, user.id, worlds=user_tibia_worlds)
         if not characters:
             embed.description = f"**{display_name}** has no registered characters here."
             return embed
@@ -1687,7 +1675,6 @@ class Tibia(CogUtils):
         embed.set_author(name="Tibia.com", url=TIBIA_URL, icon_url=TIBIACOM_ICON)
         return embed
 
-    @staticmethod
     def _get_cached_user_(self, user_id, users_cache, user_servers):
         if user_id in users_cache:
             return users_cache.get(user_id)

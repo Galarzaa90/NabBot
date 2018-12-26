@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import sqlite3
+import time
 from operator import itemgetter
 
 import asyncpg
@@ -329,7 +330,6 @@ triggers = [
     """
 ]
 
-
 # Legacy SQlite migration
 # This may be removed in later versions or kept separate
 async def import_legacy_db(pool: asyncpg.pool.Pool, path):
@@ -341,71 +341,60 @@ async def import_legacy_db(pool: asyncpg.pool.Pool, path):
     if not check_sql_database(legacy_conn):
         print("Can't import sqlite database.")
         return
-
+    print("Importing SQLite rows")
+    start = time.time()
     c = legacy_conn.cursor()
+    clean_up_old_db(c)
     async with pool.acquire() as conn:
         await import_characters(conn, c)
         await import_server_properties(conn, c)
         await import_roles(conn, c)
         await import_events(conn, c)
         await import_ignored_channels(conn, c)
+    print(f"Importing finished in {time.time()-start:,} seconds.")
 
 
 async def import_characters(conn: asyncpg.Connection, c: sqlite3.Cursor):
     c.execute("""SELECT id, user_id, name, level, vocation, world, guild FROM chars ORDER By id ASC""")
     rows = c.fetchall()
-    levelups = []
+    # Dictionary that maps character names to their SQL ID
+    old_ids = {}
+    # Dictionary that maps SQL IDs to their PSQL ID
+    new_ids = {}
+
+    chars = []
+    for char_id, user_id, name, level, vocation, world, guild in rows:
+        chars.append((user_id, name, level, vocation, world, guild))
+        old_ids[name] = char_id
+    await conn.copy_records_to_table("character",
+                                     records=chars, columns=["user_id", "name", "level", "vocation", "world", "guild"])
+    new_chars = await conn.fetch('SELECT id, name FROM "character"')
+    for new_id, name in new_chars:
+        new_ids[old_ids[name]] = new_id
+
+    c.execute("""SELECT char_id, level, killer, date, byplayer FROM char_deaths ORDER BY date ASC""")
+    rows = c.fetchall()
+    ids = 1
     deaths = []
-    with _progressbar(rows, label="Migrating characters") as bar:
-        for row in bar:
-            old_id, *char = row
-            # Try to insert character, if it exist return existing character's ID
-            char_id = await conn.fetchval("""
-                    INSERT INTO "character" (user_id, name, level, vocation, world, guild)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                    ON CONFLICT(name) DO UPDATE SET name=EXCLUDED.name RETURNING id""", *char)
-            c.execute("SELECT ?, level, date FROM char_levelups WHERE char_id = ? ORDER BY date ASC",
-                      (char_id, old_id))
-            levelups.extend(c.fetchall())
-            c.execute("SELECT ?, level, date, killer, byplayer FROM char_deaths WHERE char_id = ?",
-                      (char_id, old_id))
-            deaths.extend(c.fetchall())
-    deaths = sorted(deaths, key=itemgetter(2))
-    skipped_deaths = 0
-    with _progressbar(deaths, label="Migrating deaths") as bar:
-        for death in bar:
-            char_id, level, date, killer, byplayer = death
-            byplayer = byplayer == 1
-            date = datetime.datetime.utcfromtimestamp(date)
-            # If there's another death at the exact same timestamp by the same character, we ignore it
-            exists = await conn.fetchrow("""SELECT id FROM character_death
-                                                WHERE date = $1 AND character_id = $2""", date, char_id)
-            if exists:
-                skipped_deaths += 1
-                continue
-            death_id = await conn.fetchval("""INSERT INTO character_death(character_id, level, date)
-                                              VALUES ($1, $2, $3) RETURNING id""", char_id, level, date)
-            await conn.execute("""INSERT INTO character_death_killer(death_id, name, player)
-                                  VALUES ($1, $2, $3)""", death_id, killer, byplayer)
-    if skipped_deaths:
-        print(f"Skipped {skipped_deaths:,} duplicate deaths.")
-    levelups = sorted(levelups, key=itemgetter(2))
-    skipped_levelups = 0
-    with _progressbar(levelups, label="Migrating level ups") as bar:
-        for levelup in bar:
-            char_id, level, date = levelup
-            date = datetime.datetime.utcfromtimestamp(date)
-            # If there's another levelup within a 15 seconds margin, we ignore it
-            exists = await conn.fetchrow("""SELECT id FROM character_levelup
-                                                WHERE character_id = $1 AND
-                                                GREATEST($2-date,date-$2) <= interval '15' second""", char_id, date)
-            if exists:
-                skipped_levelups += 1
-                continue
-            await conn.execute("""INSERT INTO character_levelup(character_id, level, date)
-                                      VALUES ($1, $2, $3)""", char_id, level, date)
-    if skipped_levelups:
-        print(f"Skipped {skipped_levelups:,} duplicate level ups.")
+    killers = []
+    # This doesn't seem very safe to do, maybe it would be better to import deaths the old way
+    for char_id, level, killer, date, byplayer in rows:
+        byplayer = byplayer == 1
+        date = datetime.datetime.utcfromtimestamp(date)
+        deaths.append((new_ids[char_id], level, date))
+        killers.append((ids, killer, byplayer))
+        ids += 1
+    await conn.copy_records_to_table("character_death",
+                                     records=deaths, columns=["character_id", "level", "date"])
+    await conn.copy_records_to_table("character_death_killer",
+                                     records=killers, columns=["death_id", "name", "player"])
+    c.execute("""SELECT char_id, level, date FROM char_levelups ORDER BY date ASC""")
+    rows = c.fetchall()
+    levelups = []
+    for char_id, level, date in rows:
+        date = datetime.datetime.utcfromtimestamp(date)
+        levelups.append((new_ids[char_id], level, date))
+    await conn.copy_records_to_table("character_levelup", records=levelups, columns=["character_id", "level", "date"])
 
 
 async def import_server_properties(conn: asyncpg.Connection, c: sqlite3.Cursor):
@@ -751,3 +740,45 @@ def check_sql_database(conn: sqlite3.Connection):
     finally:
         c.close()
         conn.commit()
+
+
+def clean_up_old_db(c: sqlite3.Cursor):
+    # Remove duplicate characters
+    c.execute("SELECT min(id), name as id FROM chars GROUP BY name HAVING COUNT(*) > 1")
+    rows = c.fetchall()
+    with _progressbar(rows, label="Removing duplicate characters", item_show_func=lambda x: x[1] if x else '') as bar:
+        for id, name in bar:
+            c.execute("""UPDATE char_levelups SET char_id = ?
+                         WHERE char_id IN 
+                            (SELECT id FROM chars WHERE name = ? ORDER BY id LIMIT 1)""", (id, name))
+            c.execute("""UPDATE char_deaths SET char_id = ?
+                         WHERE char_id IN 
+                            (SELECT id FROM chars WHERE name = ? ORDER BY id LIMIT 1)""", (id, name))
+            c.execute("""UPDATE event_participants SET char_id = ?
+                         WHERE char_id IN 
+                            (SELECT id FROM chars WHERE name = ? ORDER BY id LIMIT 1)""", (id, name))
+            c.execute("DELETE FROM chars WHERE name = ? AND id != ?", (name, id))
+    # Remove duplicate deaths
+    c.execute("""DELETE FROM char_deaths
+                 WHERE rowid NOT IN 
+                    (SELECT min(rowid) FROM char_deaths GROUP BY char_id, date)""")
+    print(f"Removed {c.rowcount:,} duplicate deaths")
+    c.execute("""DELETE FROM char_deaths
+                     WHERE char_id NOT IN 
+                        (SELECT id FROM chars)""")
+    print(f"Removed {c.rowcount:,} orphaned deaths")
+    c.execute("""SELECT min(rowid), min(date), max(date)-min(date) as diff, count() as c, char_id, level
+                 FROM char_levelups
+                 GROUP BY char_id, level HAVING c > 1 AND diff < 15""")
+    rows = c.fetchall()
+    count = 0
+    for rowid, date, diff, _count, char_id, level in rows:
+        c.execute("""DELETE FROM char_levelups
+                     WHERE rowid != ? AND char_id = ? AND level = ? AND date-15 < ? AND date+15 > ?""",
+                  (rowid, char_id, level, date, date))
+        count += c.rowcount
+    print(f"Removed {count:,} duplicate level ups")
+    c.execute("""DELETE FROM char_levelups
+                     WHERE char_id NOT IN 
+                        (SELECT id FROM chars)""")
+    print(f"Removed {c.rowcount:,} orphaned levelups")
