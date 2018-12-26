@@ -109,7 +109,6 @@ class DbChar(tibiapy.abc.BaseCharacter):
         self.guild = kwargs.get("guild")
         self.world = kwargs.get("world")
         self.deaths = []
-        self.level_ups = []
 
     def __repr__(self):
         return f"<{self.__class__.__name__} id={self.id} user_id={self.user_id} name={self.name!r}, level={self.level}>"
@@ -126,6 +125,18 @@ class DbChar(tibiapy.abc.BaseCharacter):
         if result and update_self:
             self.level = level
         return result
+
+    async def get_level_ups(self, conn, minimum_level=0):
+        """Gets an asynchronous generator of the character's levelups.
+
+        :param conn: Connection to the database.
+        :param minimum_level: The minimum level to show.
+        :return: An asynchronous generator containing the levels.
+        """
+        async with conn.transaction():
+            async for row in conn.cursor("""SELECT * ROM character_levelup l WHERE character_id = $1 AND level >= $2
+                                            ORDER BY date DESC""", self.id, minimum_level):
+                yield DbLevelUp(**row)
 
     @classmethod
     async def update_level_by_id(cls, conn: PoolConn, char_id: int, level: int) -> bool:
@@ -214,4 +225,3 @@ class DbLevelUp:
             row_id = await conn.fetchval("""INSERT INTO character_levelup(character_id, level, date) VALUES($1, $2, $3)
                                             RETURNING id""", char_id, level, date)
         return cls(id=row_id, character_id=char_id, level=level, date=date)
-

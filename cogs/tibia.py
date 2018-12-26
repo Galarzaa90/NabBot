@@ -677,32 +677,26 @@ class Tibia(CogUtils):
                             break
         else:
             async with ctx.pool.acquire() as conn:
-                char = await DbChar.get_by_name(conn, name)
-                if char is None:
+                db_char = await DbChar.get_by_name(conn, name)
+                if not db_char:
                     return await ctx.send("I don't have a character with that name registered.")
-                owner = ctx.guild.get_member(char.user_id)
-                if owner is None:
+                owner = ctx.guild.get_member(db_char.user_id)
+                if not owner:
                     return await ctx.send("I don't have a character with that name registered.")
                 author = owner.display_name
                 author_icon = owner.avatar_url
-                name = char.name
-                emoji = get_voc_emoji(char.vocation)
+                name = db_char.name
+                emoji = get_voc_emoji(db_char.vocation)
                 title = f"{emoji} {name} latest level ups"
-                async with conn.transaction():
-                    async for row in conn.cursor("""SELECT l.level, date
-                                                    FROM character_levelup l
-                                                    LEFT JOIN "character" c ON c.id = l.character_id
-                                                    WHERE character_id = $1
-                                                    ORDER BY date DESC""", char.id):
-                        count += 1
-                        level_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
-                        entries.append("Level **{level}** - *{time} ago*".format(**row, time=level_time))
-                        if count >= 100:
-                            break
-            if count == 0:
-                await ctx.send("There are no registered levels.")
-                return
-
+                for level_up in db_char.get_level_ups(conn):
+                    count += 1
+                    level_time = get_time_diff(dt.timedelta(seconds=now - level_up.date.timestamp()))
+                    entries.append(f"Level **{level_up.level}** - *{level_time} ago*")
+                    if count >= 100:
+                        break
+        if count == 0:
+            await ctx.send("There are no registered levels.")
+            return
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
         if author is not None:
