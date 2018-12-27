@@ -16,7 +16,7 @@ from .utils import EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_n
     CogUtils
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import get_affected_count, get_server_property, DbChar, DbLevelUp
+from .utils.database import get_affected_count, get_server_property, DbChar, DbLevelUp, DbDeath
 from .utils.messages import death_messages_monster, death_messages_player, format_message, level_messages, \
     split_message, weighed_choice
 from .utils.pages import CannotPaginate, Pages, VocationPages
@@ -1266,30 +1266,22 @@ class Tracking(CogUtils):
         if char is None:
             return
         async with self.bot.pool.acquire() as conn:
-            char_id = await conn.fetchval('SELECT id FROM "character" WHERE name = $1', char.name)
-            if char_id is None:
+            db_char = await DbChar.get_by_name(conn, char.name)
+            if db_char is None:
                 return
             pending_deaths = []
             for death in char.deaths:
                 # Check if we have a death that matches the time
-                _id = await conn.fetchval("""SELECT id FROM character_death d
-                                             INNER JOIN character_death_killer dk ON dk.death_id = d.id
-                                             WHERE character_id = $1 AND date = $2 AND name = $3 AND level = $4
-                                             AND position = 0""",
-                                          char_id, death.time, death.killer.name, death.level)
-                if _id is not None:
+                exists = await DbDeath.exists(conn, db_char.id, death.level, death.time, death.killer.name)
+                if exists:
                     # We already have this death, we're assuming we already have older deaths
                     break
                 pending_deaths.append(death)
             # Announce and save deaths from older to new
             for death in reversed(pending_deaths):
-                death_id = await conn.fetchval("""INSERT INTO character_death(character_id, level, date)
-                                                  VALUES($1, $2, $3) ON CONFLICT DO NOTHING RETURNING id""",
-                                               char_id, death.level, death.time)
-                if death_id is None:
-                    continue
-                await conn.execute("INSERT INTO character_death_killer(death_id, name, player) VALUES($1, $2, $3)",
-                                   death_id, death.killer.name, death.by_player)
+                db_death = DbDeath.from_tibiapy(death)
+                db_death.character_id = db_char.id
+                await db_death.save(conn)
                 log_msg = f"{self.tag}[{char.world}] Death detected: {char.name} | {death.level} |" \
                     f" {death.killer.name}"
                 if self.is_old_death(death):

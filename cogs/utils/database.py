@@ -1,3 +1,4 @@
+import datetime
 import re
 import sqlite3
 from typing import Any, List, Union, Optional
@@ -256,3 +257,164 @@ class DbLevelUp:
                                        user_id=row["user_id"], world=row["world"], sex=row["sex"],
                                        vocation=row["vocation"], guild=row["guild"])
                 yield level_up
+
+
+class DbKiller:
+    """Represents a killer from the database."""
+    def __init__(self, **kwargs):
+        self.death_id = kwargs.get("death_id")
+        self.position = kwargs.get("position")
+        self.name = kwargs.get("name")
+        self.player = kwargs.get("player")
+
+    @classmethod
+    def from_tibiapy(cls, killer: tibiapy.Killer) -> 'DbKiller':
+        """Converts a Killer object from Tibia.py into a DbKiller object.
+
+        :param killer: A killer object
+        :return: The equivalent DbKiller object, without its positon and death_id set.
+        """
+        return cls(name=killer.name, player=killer.player)
+
+    async def save(self, conn: PoolConn):
+        """Saves the current killer to the database.
+
+        An error will be returned if death_id has not been set.
+
+        :param conn: Connection to the database.
+        """
+        await self.insert(conn, self.death_id, self.position, self.name, self.player)
+
+    @classmethod
+    async def insert(cls, conn: PoolConn, death_id, position, name, player) -> 'DbKiller':
+        """Inserts a killer into the database.
+
+        :param conn: Connection to the database,
+        :param death_id: The id of the death the killer belongs to.
+        :param position: The position of the killer in the death's list of killers.
+        :param name: The name of the killer.
+        :param player: Whether the killer is a player or not.
+        :return: The inserted DbKiller object.
+        """
+        await conn.execute("""INSERT INTO character_death_killer(death_id, position, name, player)
+                              VALUES($1, $2, $3, $4)""", death_id, position, name, player)
+        return cls(death_id=death_id, position=position, name=name, player=player)
+
+
+class DbAssist:
+    """Represents an assister from the database."""
+    def __init__(self, **kwargs):
+        self.death_id = kwargs.get("death_id")
+        self.position = kwargs.get("position")
+        self.name = kwargs.get("name")
+
+    @classmethod
+    def from_tibiapy(cls, killer: tibiapy.Killer):
+        """Converts a Killer object from Tibia.py into a DbAssist object.
+
+        :param killer: A killer object
+        :return: The equivalent DbAssist object, without its positon and death_id set.
+        """
+        return cls(name=killer.name)
+
+    async def save(self, conn):
+        """Saves the current assister to the database.
+
+        An error will be returned if death_id has not been set.
+
+        :param conn: Connection to the database.
+        """
+        await self.insert(conn, self.death_id, self.position, self.name)
+
+    @classmethod
+    async def insert(cls, conn: PoolConn, death_id, position, name) -> 'DbAssist':
+        """Inserts an assister into the database.
+
+        :param conn: Connection to the database,
+        :param death_id: The id of the death the assister belongs to.
+        :param position: The position of the assisters in the death's list of assists.
+        :param name: The name of the assister.
+        :return: The inserted DbAssist object.
+        """
+        await conn.execute("""INSERT INTO character_death_assist(death_id, position, name)
+                              VALUES($1, $2, $3)""", death_id, position, name)
+        return cls(death_id=death_id, position=position, name=name)
+
+
+class DbDeath:
+    """Represents a death in the database."""
+    def __init__(self, **kwargs):
+        self.id = kwargs.get("id")
+        self.character_id = kwargs.get("character_id")
+        self.level = kwargs.get("level")
+        self.date = kwargs.get("date")
+        self.killers = []
+        self.assists = []
+
+    async def save(self, conn: PoolConn):
+        """Saves the current death to the database.
+
+        This will fail if id or character_id is not set.
+
+        :param conn: A connection to the database."""
+        await self.insert(conn, self.character_id, self.level, self.date, self.killers, self.assists)
+
+    @classmethod
+    async def exists(cls, conn: PoolConn, char_id: int, level: int, date: datetime.datetime, killer) -> bool:
+        """Checks if a death matching the provided parameters exists.
+
+        :param conn: Connection to the database.
+        :param char_id: The id of the character.
+        :param level: The level of the death.
+        :param date: The date when the death happened.
+        :param killer: The main killer of the death.
+        :return: True if it exists, False otherwise.
+        """
+        _id = await conn.fetchval("""SELECT id FROM character_death d
+                                                     INNER JOIN character_death_killer dk ON dk.death_id = d.id
+                                                     WHERE character_id = $1 AND date = $2 AND name = $3 AND level = $4
+                                                     AND position = 0""",
+                                  char_id, date, killer, level)
+        if _id:
+            return True
+        return False
+
+    @classmethod
+    def from_tibiapy(cls, death: tibiapy.Death) -> 'DbDeath':
+        """Creates a DbDeath object from a Tibia.py death.
+
+        :param death: The Tibia.py death object.
+        :return: A DbDeath object.
+        """
+        db_death = cls(level=death.level, date=death.time)
+        db_death.killers = [DbKiller.from_tibiapy(k) for k in death.killers]
+        db_death.assists = [DbAssist.from_tibiapy(a) for a in death.assists]
+        return db_death
+
+    @classmethod
+    async def insert(cls, conn: PoolConn, char_id: int, level: int, date: datetime.date,
+                     killers: List[DbKiller], assists: List[DbAssist]) -> 'DbDeath':
+        """
+
+        :param conn: The connection to the database.
+        :param char_id: The id of the character the death belongs to
+        :param level: The death to register.
+        :param date: The date of the death.
+        :param killers: List of players or creatures that contributed to the death
+        :param assists: List of players that contributed to the death indirectly.
+        :return: The inserted entry.
+        """
+        row_id = await conn.fetchval("""INSERT INTO character_death(character_id, level, date) VALUES($1, $2, $3)
+                                                RETURNING id""", char_id, level, date)
+        for pos, killer in enumerate(killers):
+            killer.death_id = row_id
+            killer.position = pos
+            await killer.save(conn)
+        for pos, assist in enumerate(assists):
+            assist.death_id = row_id
+            assist.position = pos
+            await assist.save(conn)
+        death = cls(id=row_id, character_id=char_id, level=level, date=date)
+        death.killers = killers
+        death.assists = assists
+        return death

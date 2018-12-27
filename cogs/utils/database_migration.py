@@ -125,6 +125,14 @@ tables = [
     );
     """,
     """
+    CREATE TABLE character_death_assist (
+        death_id integer NOT NULL,
+        position smallint NOT NULL DEFAULT 0,
+        name text NOT NULL,
+        FOREIGN KEY (death_id) REFERENCES character_death (id)
+    );
+    """,
+    """
     CREATE TABLE character_levelup (
         id serial NOT NULL,
         character_id integer NOT NULL,
@@ -422,13 +430,13 @@ async def import_characters(conn: asyncpg.Connection, c: sqlite3.Cursor, new_ids
 
 
 async def import_server_properties(conn: asyncpg.Connection, c: sqlite3.Cursor):
-    rows = c.fetchall()
     properties = []
     prefixes = []
     times = []
     log.debug("Gathering server property records from sqlite...")
     log.info("Importing server properties...")
     c.execute("SELECT server_id, name, value FROM server_properties")
+    rows = c.fetchall()
     for server_id, key, value in rows:
         server_id = int(server_id)
         if key == "prefixes":
