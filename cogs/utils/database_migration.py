@@ -1,40 +1,41 @@
 import datetime
 import json
+import logging
 import os
 import sqlite3
 import time
-from operator import itemgetter
+from typing import Dict
 
 import asyncpg
-import click
+
+from cogs.utils.database import get_affected_count
 
 LATEST_VERSION = 1
 SQL_DB_LASTVERSION = 22
 
-
-def _progressbar(*args, **kwargs):
-    return click.progressbar(*args, **kwargs, fill_char="█", empty_char=" ", show_pos=True)
+log = logging.getLogger("nabbot")
 
 
 async def check_database(pool: asyncpg.pool.Pool):
-    print("Checking database version...")
+    log.info("Checking database version...")
     try:
         async with pool.acquire() as con:
             version = await get_version(con)
             if version <= 0:
-                print("Schema is empty, creating tables.")
+                log.info("Schema is empty, creating tables.")
                 await create_database(con)
                 await set_version(con, 1)
             else:
-                print("\tVersion 1 found.")
+                log.info("\tVersion 1 found.")
     except asyncpg.InsufficientPrivilegeError as e:
-        print(f"PostgreSQL error: {e}")
+        log.error(f"PostgreSQL error: {e}")
         return False
     return True
 
 
 async def drop_tables(pool: asyncpg.pool.Pool):
     async with pool.acquire() as con:
+        log.debug("Dropping tables")
         await con.execute("""
             DO $$ DECLARE
                 r RECORD;
@@ -52,19 +53,20 @@ async def drop_tables(pool: asyncpg.pool.Pool):
                         EXECUTE 'DROP FUNCTION ' || quote_ident(r.routine_name) || ' CASCADE';
                     END LOOP;
                 END $$;""")
+        log.debug("Tables dropped")
 
 
 async def create_database(con: asyncpg.connection.Connection):
-    print("Creating tables...")
+    log.info("Creating tables...")
     for create_query in tables:
         await con.execute(create_query)
-    print("Creating functions...")
+    log.info("Creating functions...")
     for f in functions:
         await con.execute(f)
-    print("Creating triggers...")
+    log.info("Creating triggers...")
     for trigger in triggers:
         await con.execute(trigger)
-    print("Setting version to 1...")
+    log.info("Setting version to 1...")
     await set_version(con, LATEST_VERSION)
 
 
@@ -330,53 +332,63 @@ triggers = [
     """
 ]
 
+
 # Legacy SQlite migration
 # This may be removed in later versions or kept separate
 async def import_legacy_db(pool: asyncpg.pool.Pool, path):
     if not os.path.isfile(path):
-        print("Database file doesn't exist or path is invalid.")
+        log.error("Database file doesn't exist or path is invalid.")
         return
     legacy_conn = sqlite3.connect(path)
-    print("Checking old database...")
+    log.info("Checking old database...")
     if not check_sql_database(legacy_conn):
-        print("Can't import sqlite database.")
+        log.error("Can't import sqlite database.")
         return
-    print("Importing SQLite rows")
+    log.info("Importing SQLite rows")
     start = time.time()
     c = legacy_conn.cursor()
     clean_up_old_db(c)
-    async with pool.acquire() as conn:
-        await import_characters(conn, c)
-        await import_server_properties(conn, c)
-        await import_roles(conn, c)
-        await import_events(conn, c)
-        await import_ignored_channels(conn, c)
-    print(f"Importing finished in {time.time()-start:,} seconds.")
 
-
-async def import_characters(conn: asyncpg.Connection, c: sqlite3.Cursor):
-    c.execute("""SELECT id, user_id, name, level, vocation, world, guild FROM chars ORDER By id ASC""")
-    rows = c.fetchall()
-    # Dictionary that maps character names to their SQL ID
-    old_ids = {}
     # Dictionary that maps SQL IDs to their PSQL ID
     new_ids = {}
+    async with pool.acquire() as conn:
+        await import_characters(conn, c, new_ids)
+        await import_server_properties(conn, c)
+        await import_roles(conn, c)
+        await import_events(conn, c, new_ids)
+        await import_ignored_channels(conn, c)
+    log.info(f"Importing finished in {time.time()-start:,.2f} seconds.")
 
+
+async def import_characters(conn: asyncpg.Connection, c: sqlite3.Cursor, new_ids: Dict[int, int]):
+    log.info("Importing characters...")
+    # Dictionary that maps character names to their SQL ID
+    old_ids = {}
     chars = []
+    log.debug("Gathering character records from sqlite...")
+    c.execute("""SELECT id, user_id, name, level, vocation, world, guild FROM chars ORDER By id ASC""")
+    rows = c.fetchall()
     for char_id, user_id, name, level, vocation, world, guild in rows:
         chars.append((user_id, name, level, vocation, world, guild))
         old_ids[name] = char_id
-    await conn.copy_records_to_table("character",
-                                     records=chars, columns=["user_id", "name", "level", "vocation", "world", "guild"])
+    log.debug(f"Collected {len(chars):,} records from old database.")
+    log.info("Copying records to character table")
+    res = await conn.copy_records_to_table("character", records=chars,
+                                           columns=["user_id", "name", "level", "vocation", "world", "guild"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
     new_chars = await conn.fetch('SELECT id, name FROM "character"')
+    log.debug("Generating old id to new id mapping...")
+    new_ids.clear()
     for new_id, name in new_chars:
         new_ids[old_ids[name]] = new_id
+    log.debug("Old id to new id mapping generated.")
 
-    c.execute("""SELECT char_id, level, killer, date, byplayer FROM char_deaths ORDER BY date ASC""")
-    rows = c.fetchall()
     ids = 1
     deaths = []
     killers = []
+    log.debug("Gathering death records from sqlite...")
+    c.execute("""SELECT char_id, level, killer, date, byplayer FROM char_deaths ORDER BY date ASC""")
+    rows = c.fetchall()
     # This doesn't seem very safe to do, maybe it would be better to import deaths the old way
     for char_id, level, killer, date, byplayer in rows:
         byplayer = byplayer == 1
@@ -384,141 +396,173 @@ async def import_characters(conn: asyncpg.Connection, c: sqlite3.Cursor):
         deaths.append((new_ids[char_id], level, date))
         killers.append((ids, killer, byplayer))
         ids += 1
-    await conn.copy_records_to_table("character_death",
-                                     records=deaths, columns=["character_id", "level", "date"])
-    await conn.copy_records_to_table("character_death_killer",
-                                     records=killers, columns=["death_id", "name", "player"])
+    log.debug(f"Collected {len(deaths):,} records from old database.")
+    log.info("Copying records to deaths table.")
+    res = await conn.copy_records_to_table("character_death", records=deaths, columns=["character_id", "level", "date"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
+
+    log.info("Copying records to death killers table.")
+    res = await conn.copy_records_to_table("character_death_killer", records=killers,
+                                           columns=["death_id", "name", "player"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
+
+    log.debug("Gathering level up records from sqlite...")
     c.execute("""SELECT char_id, level, date FROM char_levelups ORDER BY date ASC""")
     rows = c.fetchall()
     levelups = []
     for char_id, level, date in rows:
         date = datetime.datetime.utcfromtimestamp(date)
         levelups.append((new_ids[char_id], level, date))
-    await conn.copy_records_to_table("character_levelup", records=levelups, columns=["character_id", "level", "date"])
+    log.debug(f"Collected {len(levelups):,} records from old database.")
+    log.info("Copying records to level ups table.")
+    res = await conn.copy_records_to_table("character_levelup", records=levelups,
+                                           columns=["character_id", "level", "date"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
+    log.info("Finished importing characters.")
 
 
 async def import_server_properties(conn: asyncpg.Connection, c: sqlite3.Cursor):
-    c.execute("SELECT server_id, name, value FROM server_properties")
     rows = c.fetchall()
-    with _progressbar(rows, label="Migrating server properties") as bar:
-        for row in bar:
-            server, key, value = row
-            server = int(server)
-            # Prefixes were stored as a json formatted string, now they are in their own table
-            if key == "prefixes":
-                value = json.loads(value)
-                await conn.execute("""INSERT INTO server_prefixes(server_id, prefixes) VALUES($1, $2)
-                                      ON CONFLICT(server_id) DO NOTHING""", server, value)
-                continue
-            # Timezones were stored as a json formatted string, now they are in their own table
-            if key == "times":
-                value = json.loads(value)
-                await insert_timezone(conn, server, value)
-                continue
-            # The following keys were stored as a numeric string, now they are stored as a integer.
-            elif key in ["events_channel", "levels_channel", "watched_channel", "news_channel", "welcome_channel",
-                         "ask_channel", "watched_message"]:
-                value = int(value)
-            # commandsonly key was stored as a integer reprsenting true/false with 0/1. Now stored as a boolean.
-            elif key == "commandsonly":
-                value = bool(value)
-            # All other cases are strings
-            await conn.execute("""INSERT INTO server_property(server_id, key, value) VALUES($1, $2, $3)
-                                  ON CONFLICT(server_id, key) DO NOTHING""", server, key, value)
+    properties = []
+    prefixes = []
+    times = []
+    log.debug("Gathering server property records from sqlite...")
+    log.info("Importing server properties...")
+    c.execute("SELECT server_id, name, value FROM server_properties")
+    for server_id, key, value in rows:
+        server_id = int(server_id)
+        if key == "prefixes":
+            prefixes.append((server_id, json.loads(value)))
+            continue
+        if key == "times":
+            value = json.loads(value)
+            for entry in value:
+                times.append((server_id, entry["timezone"], entry["name"]))
+            continue
+        elif key in ["events_channel", "levels_channel", "watched_channel", "news_channel", "welcome_channel",
+                     "ask_channel", "watched_message"]:
+            value = int(value)
+        elif key == "commandsonly":
+            value = bool(value)
+        properties.append((server_id, key, value))
+    log.debug(f"Collected {len(properties):,} properties, {len(times):,} timezones and {len(prefixes):,} prefixes"
+              f" from old database.")
+    log.info("Copying records to server property table")
+    res = await conn.copy_records_to_table("server_property", records=properties, columns=["server_id", "key", "value"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
+
+    log.info("Copying records to server prefixes table")
+    res = await conn.copy_records_to_table("server_prefixes", records=prefixes, columns=["server_id", "prefixes"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
+
+    log.info("Copying records to server timezone table")
+    res = await conn.copy_records_to_table("server_timezone", records=times, columns=["server_id", "zone", "name"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
+    log.info("Finished importing server properties.")
 
 
-async def insert_timezone(conn: asyncpg.Connection, server_id: int, entries: list):
-    for entry in entries:
-        await conn.execute("""INSERT INTO server_timezone(server_id, zone, name) VALUES($1, $2, $3)
-                              ON CONFLICT(server_id, zone) DO NOTHING""",
-                           server_id, entry["timezone"], entry["name"])
-
-
-async def import_events(conn: asyncpg.Connection, c: sqlite3.Cursor):
+async def import_events(conn: asyncpg.Connection, c: sqlite3.Cursor, new_char_ids: Dict[int, int]):
+    log.info("Importing events...")
+    events = []
+    subscribers = []
+    participants = []
+    new_event_ids = {}
+    i = 1
+    log.debug("Gathering event records from sqlite...")
     c.execute("SELECT id, creator, name, start, active, status, description, server, joinable, slots FROM events")
     rows = c.fetchall()
-    event_subscribers = []
-    event_participants = []
-    with _progressbar(rows, label="Migrating events") as bar:
-        for row in bar:
-            old_id, creator, name, start, active, status, description, server, joinable, slots = row
-            start = datetime.datetime.utcfromtimestamp(start)
-            active = bool(active)
-            joinable = bool(joinable)
-            status = 4 - status
-            event_id = await conn.fetchval("""INSERT INTO event(user_id, name, start, active, description, server_id,
-                                              joinable, slots, reminder)
-                                              VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id""",
-                                           creator, name, start, active, description, server, joinable, slots, status)
-            c.execute("SELECT ?, user_id FROM event_subscribers WHERE event_id = ?", (event_id, old_id))
-            event_subscribers.extend(c.fetchall())
-            c.execute("SELECT ?, name FROM event_participants LEFT JOIN chars ON id = char_id WHERE event_id = ?",
-                      (event_id, old_id))
-            event_participants.extend(c.fetchall())
-    with _progressbar(event_subscribers, label="Migrating event subscribers") as bar:
-        for row in bar:
-            await conn.execute("""INSERT INTO event_subscriber(event_id, user_id) VALUES($1, $2)
-                                  ON CONFLICT(event_id, user_id) DO NOTHING""", *row)
-    with _progressbar(event_participants, label="Migrating event participants") as bar:
-        for row in bar:
-            event_id, name = row
-            char_id = await conn.fetchval('SELECT id FROM "character" WHERE name = $1', name)
-            if char_id is None:
-                continue
-            await conn.execute("""INSERT INTO event_participant(event_id, character_id) VALUES($1, $2)
-                                  ON CONFLICT(event_id, character_id) DO NOTHING""", event_id, char_id)
+    for event_id, creator, name, start, active, status, description, server, joinable, slots in rows:
+        new_event_ids[event_id] = i
+        start = datetime.datetime.utcfromtimestamp(start)
+        active = bool(active)
+        joinable = bool(joinable)
+        status = 4 - status
+        events.append((creator, name, start, active, description, server, joinable, slots, status))
+        i += 1
+    log.debug(f"Collected {len(events):,} records from old database.")
+    log.info("Copying records to events table")
+    res = await conn.copy_records_to_table("event", records=events,
+                                           columns=["user_id", "name", "start", "active", "description", "server_id",
+                                                    "joinable", "slots", "reminder"])
+    log.debug(f"Copied {get_affected_count(res):,} records successfully.")
+
+    log.debug("Gathering event subscribers from sqlite...")
+    c.execute("SELECT event_id, user_id FROM event_subscribers")
+    rows = c.fetchall()
+    for event_id, user_id in rows:
+        subscribers.append((new_event_ids[event_id], user_id))
+    log.debug(f"Collected {len(subscribers):,} records from old database.")
+
+    log.info("Copying records to event subscribers table")
+    res = await conn.copy_records_to_table("event_subscriber", records=subscribers, columns=["event_id", "user_id"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
+
+    log.debug("Gathering event participants from sqlite...")
+    c.execute("SELECT event_id, char_id FROM event_participants")
+    rows = c.fetchall()
+    for event_id, char_id in rows:
+        participants.append((new_event_ids[event_id], new_char_ids[char_id]))
+    log.debug(f"Collected {len(participants):,} records from old database.")
+
+    log.info("Copying records to event participants table")
+    res = await conn.copy_records_to_table("event_participant", records=participants,
+                                           columns=["event_id", "character_id"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
+    log.info("Finished importing events.")
 
 
 async def import_roles(conn: asyncpg.Connection, c: sqlite3.Cursor):
+    log.info("Importing roles...")
+    auto_roles = []
+    joinable_roles = []
+    log.debug("Gathering auto roles from sqlite...")
     c.execute("SELECT server_id, role_id, guild FROM auto_roles")
     rows = c.fetchall()
-    with _progressbar(rows, label="Migrating auto roles") as bar:
-        for row in bar:
-            await conn.execute("""INSERT INTO role_auto(server_id, role_id, rule) VALUES($1, $2, $3)
-                                  ON CONFLICT(server_id, role_id, rule) DO NOTHING""", *row)
+    for server_id, role_id, guild in rows:
+        auto_roles.append((server_id, role_id, guild))
+    log.debug(f"Collected {len(auto_roles):,} records from old database.")
+    log.info("Copying records to auto roles table")
+    res = await conn.copy_records_to_table("role_auto", records=auto_roles, columns=["server_id", "role_id", "rule"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
+
+    log.debug("Gathering joinable roles from sqlite...")
     c.execute("SELECT server_id, role_id FROM joinable_roles")
     rows = c.fetchall()
-    with _progressbar(rows, label="Migrating joinable roles") as bar:
-        for row in bar:
-            await conn.execute("""INSERT INTO role_joinable(server_id, role_id) VALUES($1, $2)
-                                  ON CONFLICT(server_id, role_id) DO NOTHING""", *row)
+    for server_id, role_id in rows:
+        joinable_roles.append((server_id, role_id))
+    log.debug(f"Collected {len(joinable_roles):,} records from old database.")
+    log.info("Copying records to joinable roles table")
+    res = await conn.copy_records_to_table("role_joinable", records=joinable_roles, columns=["server_id", "role_id"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
+    log.info("Finished importing roles.")
 
 
 async def import_ignored_channels(conn: asyncpg.Connection, c: sqlite3.Cursor):
+    log.info("Importing ignored channels...")
+    channels = []
+    log.debug("Gathering ignored channels from sqlite...")
     c.execute("SELECT server_id, channel_id FROM ignored_channels")
     rows = c.fetchall()
-    with _progressbar(rows, label="Migrating ignored channels") as bar:
-        for row in bar:
-            await conn.execute("""INSERT INTO channel_ignored(server_id, channel_id) VALUES($1, $2)
-                                  ON CONFLICT(server_id, channel_id) DO NOTHING""", *row)
-
-
-async def import_watch_list(conn: asyncpg.Connection, c: sqlite3.Cursor):
-    c.execute("SELECT name, is_guild, server_id, reason, author, added FROM watched_list")
-    rows = c.fetchall()
-    with _progressbar(rows, label="Migrating watchlist entries") as bar:
-        for row in bar:
-            name, is_guild, server_id, reason, author, added = row
-            if added is not None:
-                added = datetime.datetime.now(datetime.timezone.utc)
-            is_guild = bool(is_guild)
-            await conn.execute("""INSERT INTO watchlist_entry(name, is_guild, server_id, reason, user_id, created)
-                                  VALUES($1, $2, $3, $4, $5, $6)
-                                  ON CONFLICT(name, server_id, is_guild) DO NOTHING""",
-                               name, is_guild, server_id, reason, author, added)
+    for server_id, channel_id in rows:
+        channels.append((server_id, channel_id))
+    log.debug(f"Collected {len(channels):,} records from old database.")
+    log.info("Copying records to ignored channels table")
+    res = await conn.copy_records_to_table("channel_ignored", records=channels, columns=["server_id", "channel_id"])
+    log.info(f"Copied {get_affected_count(res):,} records successfully.")
+    log.info("Finished importing channels.")
 
 
 def check_sql_database(conn: sqlite3.Connection):
     """Initializes and/or updates the database to the current version"""
     # Database file is automatically created with connect, now we have to check if it has tables
-    print("Checking sqlite database version...")
+    log.info("Checking sqlite database version...")
     c = conn.cursor()
     try:
         c.execute("SELECT COUNT(*) as count FROM sqlite_master WHERE type = 'table'")
         result = c.fetchone()
         # Database is empty
         if result[0] == 0:
-            print("\tDatabase is empty.")
+            log.warning("\tDatabase is empty.")
             return False
         c.execute("SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND name LIKE 'db_info'")
         result = c.fetchone()
@@ -530,13 +574,13 @@ def check_sql_database(conn: sqlite3.Connection):
                       )""")
             c.execute("INSERT INTO db_info(key,value) VALUES('version','1')")
             db_version = 1
-            print("\tNo version found, version 1 assumed")
+            log.warning("\tNo version found, version 1 assumed")
         else:
             c.execute("SELECT value FROM db_info WHERE key LIKE 'version'")
             db_version = int(c.fetchone()[0])
-            print("\tVersion {0}".format(db_version))
+            log.info("\tVersion {0}".format(db_version))
         if db_version == SQL_DB_LASTVERSION:
-            print("\tDatabase is up to date.")
+            log.info("\tDatabase is up to date.")
             return True
         # Code to patch database changes
         if db_version == 1:
@@ -731,11 +775,11 @@ def check_sql_database(conn: sqlite3.Connection):
                 guild TEXT NOT NULL
             );""")
             db_version += 1
-        print("\tUpdated database to version {0}".format(db_version))
+        log.info("\tUpdated database to version {0}".format(db_version))
         c.execute("UPDATE db_info SET value = ? WHERE key LIKE 'version'", (db_version,))
         return True
     except Exception as e:
-        print(f"\tError reading sqlite database: {e}")
+        log.error(f"\tError reading sqlite database: {e}")
         return False
     finally:
         c.close()
@@ -743,42 +787,80 @@ def check_sql_database(conn: sqlite3.Connection):
 
 
 def clean_up_old_db(c: sqlite3.Cursor):
-    # Remove duplicate characters
+    log.info("Cleaning up old database")
+    # Clean up characters
     c.execute("SELECT min(id), name as id FROM chars GROUP BY name HAVING COUNT(*) > 1")
     rows = c.fetchall()
-    with _progressbar(rows, label="Removing duplicate characters", item_show_func=lambda x: x[1] if x else '') as bar:
-        for id, name in bar:
-            c.execute("""UPDATE char_levelups SET char_id = ?
-                         WHERE char_id IN 
-                            (SELECT id FROM chars WHERE name = ? ORDER BY id LIMIT 1)""", (id, name))
-            c.execute("""UPDATE char_deaths SET char_id = ?
-                         WHERE char_id IN 
-                            (SELECT id FROM chars WHERE name = ? ORDER BY id LIMIT 1)""", (id, name))
-            c.execute("""UPDATE event_participants SET char_id = ?
-                         WHERE char_id IN 
-                            (SELECT id FROM chars WHERE name = ? ORDER BY id LIMIT 1)""", (id, name))
-            c.execute("DELETE FROM chars WHERE name = ? AND id != ?", (name, id))
-    # Remove duplicate deaths
+    log.debug("Removing duplicate characters...")
+    for char_id, name in rows:
+        c.execute("""UPDATE char_levelups SET char_id = ?
+                     WHERE char_id IN 
+                        (SELECT id FROM chars WHERE name = ? ORDER BY id LIMIT 1)""", (char_id, name))
+        c.execute("""UPDATE char_deaths SET char_id = ?
+                     WHERE char_id IN 
+                        (SELECT id FROM chars WHERE name = ? ORDER BY id LIMIT 1)""", (char_id, name))
+        c.execute("""UPDATE event_participants SET char_id = ?
+                     WHERE char_id IN 
+                        (SELECT id FROM chars WHERE name = ? ORDER BY id LIMIT 1)""", (char_id, name))
+        c.execute("DELETE FROM chars WHERE name = ? AND id != ?", (name, char_id))
+    log.info(f"Removed {len(rows):,} duplicate characters")
+
+    # Clean up deaths
+    log.debug("Removing duplicate deaths...")
     c.execute("""DELETE FROM char_deaths
                  WHERE rowid NOT IN 
                     (SELECT min(rowid) FROM char_deaths GROUP BY char_id, date)""")
-    print(f"Removed {c.rowcount:,} duplicate deaths")
+    log.info(f"Removed {c.rowcount:,} duplicate deaths")
+
+    log.debug("Removing orphaned  deaths...")
     c.execute("""DELETE FROM char_deaths
                      WHERE char_id NOT IN 
                         (SELECT id FROM chars)""")
-    print(f"Removed {c.rowcount:,} orphaned deaths")
+    log.info(f"Removed {c.rowcount:,} orphaned deaths")
+
+    # Clean up level ups
+    log.debug("Removing duplicate level ups...")
     c.execute("""SELECT min(rowid), min(date), max(date)-min(date) as diff, count() as c, char_id, level
                  FROM char_levelups
-                 GROUP BY char_id, level HAVING c > 1 AND diff < 15""")
+                 GROUP BY char_id, level HAVING c > 1 AND diff < 30""")
     rows = c.fetchall()
     count = 0
     for rowid, date, diff, _count, char_id, level in rows:
         c.execute("""DELETE FROM char_levelups
-                     WHERE rowid != ? AND char_id = ? AND level = ? AND date-15 < ? AND date+15 > ?""",
+                     WHERE rowid != ? AND char_id = ? AND level = ? AND date-30 < ? AND date+30 > ?""",
                   (rowid, char_id, level, date, date))
         count += c.rowcount
-    print(f"Removed {count:,} duplicate level ups")
+    log.info(f"Removed {count:,} duplicate level ups")
+
+    log.debug("Removing orphaned level ups...")
     c.execute("""DELETE FROM char_levelups
                      WHERE char_id NOT IN 
                         (SELECT id FROM chars)""")
-    print(f"Removed {c.rowcount:,} orphaned levelups")
+    log.info(f"Removed {c.rowcount:,} orphaned levelups")
+
+    # Clean up event participants
+    log.debug("Removing duplicate event participants...")
+    c.execute("""DELETE FROM event_participants
+                     WHERE rowid NOT IN 
+                        (SELECT min(rowid) FROM event_participants GROUP BY event_id, char_id)""")
+    log.info(f"Removed {c.rowcount:,} duplicate event participants")
+
+    log.debug("Removing orphaned event participants...")
+    c.execute("""DELETE FROM event_participants
+                         WHERE char_id NOT IN 
+                            (SELECT id FROM chars)""")
+    log.info(f"Removed {c.rowcount:,} orphaned event participants")
+
+    # Clean up event subscribers
+    log.debug("Removing duplicate event subscribers...")
+    c.execute("""DELETE FROM event_subscribers
+                     WHERE rowid NOT IN 
+                        (SELECT min(rowid) FROM event_subscribers GROUP BY event_id, user_id)""")
+    log.info(f"Removed {c.rowcount:,} duplicate event subscribers")
+
+    # Remove server properties
+    log.debug("Removing duplicate server properties...")
+    c.execute("""DELETE FROM server_properties
+                         WHERE rowid NOT IN 
+                            (SELECT min(rowid) FROM server_properties GROUP BY server_id, name)""")
+    log.info(f"Removed {c.rowcount:,} duplicate server properties")

@@ -59,15 +59,16 @@ def get_uri():
 
 async def create_pool(uri, **kwargs) -> asyncpg.pool.Pool:
     def _encode_jsonb(value):
-        return json.dumps(value)
+        return b'\x01' + json.dumps(value).encode('utf-8')
 
     def _decode_jsonb(value):
-        return json.loads(value)
+        return json.loads(value[1:].decode('utf-8'))
 
     async def init(con):
         await con.set_type_codec('jsonb', schema='pg_catalog', encoder=_encode_jsonb, decoder=_decode_jsonb,
-                                 format='text')
+                                 format="binary")
     try:
+        log.debug("Creating connection pool")
         pool = await asyncpg.create_pool(uri, init=init, **kwargs)
     except ValueError:
         log.error("PostgreSQL error: Invalid URI, check postgresql.txt. "
@@ -108,6 +109,7 @@ def main(ctx, debug):
     """Launches the bot."""
     if debug:
         log.setLevel(logging.DEBUG)
+    log.debug("Debug mode enabled.")
     if ctx.invoked_subcommand is None:
         run_bot()
 
@@ -132,23 +134,24 @@ def migrate(path):
 
     confirm = click.confirm("Migrating a SQL database requires an empty PostgreSQL database.\n"
                             f"Confirming will delete all data from the database '{db_name}'.\n"
-                            f"The SQL database located in {path} will be imported afterwards."
+                            f"The SQL database located in {path} will be imported afterwards.\n"
                             "Are you sure you want to continue? This action is irreversible.")
     if not confirm:
-        click.echo("Operation aborted.")
+        log.warning("Operation aborted.")
         return
 
-    click.echo("Clearing database...")
+    log.info("Clearing database...")
     loop.run_until_complete(drop_tables(pool))
-    click.echo("Done!")
+    log.info("Database cleared")
 
-    log.info("Starting migration")
+    log.info("Starting migration...")
     result = loop.run_until_complete(check_database(pool))
     if not result:
         log.error('Failed to check database')
         return
 
     loop.run_until_complete(import_legacy_db(pool, path))
+    log.info("Migration complete")
 
 
 if __name__ == "__main__":
