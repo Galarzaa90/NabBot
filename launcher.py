@@ -59,15 +59,16 @@ def get_uri():
 
 async def create_pool(uri, **kwargs) -> asyncpg.pool.Pool:
     def _encode_jsonb(value):
-        return json.dumps(value)
+        return b'\x01' + json.dumps(value).encode('utf-8')
 
     def _decode_jsonb(value):
-        return json.loads(value)
+        return json.loads(value[1:].decode('utf-8'))
 
     async def init(con):
         await con.set_type_codec('jsonb', schema='pg_catalog', encoder=_encode_jsonb, decoder=_decode_jsonb,
-                                 format='text')
+                                 format="binary")
     try:
+        log.debug("Creating connection pool")
         pool = await asyncpg.create_pool(uri, init=init, **kwargs)
     except ValueError:
         log.error("PostgreSQL error: Invalid URI, check postgresql.txt. "
@@ -108,6 +109,7 @@ def main(ctx, debug):
     """Launches the bot."""
     if debug:
         log.setLevel(logging.DEBUG)
+    log.debug("Debug mode enabled.")
     if ctx.invoked_subcommand is None:
         run_bot()
 
@@ -118,42 +120,38 @@ def migrate(path):
     """Migrates a v1.x.x SQLite to a PostgreSQL database.
 
     This is a time consuming operation and caution must be taken.
-    The original SQLite file is not affected.
-
-    Some checks are performed to avoid duplicates, but migrating more than one database may have unintended effects."""
-    log.info("Starting migration")
+    The original SQLite file is not affected."""
     loop = asyncio.get_event_loop()
     pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
     if pool is None:
         log.error('Could not set up PostgreSQL. Exiting.')
         return
 
+    async def get_db_name(pool):
+        return await pool.fetchval("SELECT current_database()")
+
+    db_name = loop.run_until_complete(get_db_name(pool))
+
+    confirm = click.confirm("Migrating a SQL database requires an empty PostgreSQL database.\n"
+                            f"Confirming will delete all data from the database '{db_name}'.\n"
+                            f"The SQL database located in {path} will be imported afterwards.\n"
+                            "Are you sure you want to continue? This action is irreversible.")
+    if not confirm:
+        log.warning("Operation aborted.")
+        return
+
+    log.info("Clearing database...")
+    loop.run_until_complete(drop_tables(pool))
+    log.info("Database cleared")
+
+    log.info("Starting migration...")
     result = loop.run_until_complete(check_database(pool))
     if not result:
         log.error('Failed to check database')
         return
 
     loop.run_until_complete(import_legacy_db(pool, path))
-
-
-@main.command()
-def empty():
-    """Empties out the database.
-
-    Drops all tables from the saved PostgreSQL database.
-    This action is irreversible, so use with caution."""
-    confirm = click.confirm("Are you sure you want to drop all tables? This action is irreversible.")
-    if not confirm:
-        click.echo("Operation aborted.")
-
-    loop = asyncio.get_event_loop()
-    pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
-    if pool is None:
-        log.error('Could not set up PostgreSQL. Exiting.')
-        return
-    click.echo("Clearing database...")
-    loop.run_until_complete(drop_tables(pool))
-    click.echo("Done!")
+    log.info("Migration complete")
 
 
 if __name__ == "__main__":

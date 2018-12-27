@@ -1,4 +1,3 @@
-import json
 import logging
 
 import asyncpg
@@ -90,7 +89,6 @@ class NabBot(commands.Bot):
                                        member.id, guild.id)
 
         log.info("Bot is online and ready")
-        log.debug("Debug mode enabled.")
 
     async def on_message(self, message: discord.Message):
         """Called every time a message is sent on a visible channel."""
