@@ -252,24 +252,17 @@ class Tibia(CogUtils):
 
         count = 0
         entries = []
-        now = time.time()
+        now = dt.datetime.now(dt.timezone.utc)
         per_page = 20 if await ctx.is_long() else 5
         async with ctx.pool.acquire() as conn:
-            async with conn.transaction():
-                async for row in conn.cursor("""SELECT d.level, date, player, k.name as killer, user_id, c.name, world,
-                                                vocation
-                                                FROM character_death d
-                                                LEFT JOIN character_death_killer k ON k.death_id = d.id
-                                                LEFT JOIN "character" c on c.id = d.character_id
-                                                WHERE position = 0 AND user_id = $1 AND world = $2
-                                                ORDER BY date DESC """, user.id, ctx.world):
-                    count += 1
-                    death_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
-                    emoji = get_voc_emoji(row["vocation"])
-                    entries.append("{emoji} {name} - At level **{level}** by {killer} - *{time} ago*"
-                                   .format(**row, time=death_time, emoji=emoji))
-                    if count >= 100:
-                        break
+            async for death in DbDeath.get_latest(conn, config.announce_threshold, user_id=user.id, worlds=ctx.world):
+                count += 1
+                death_time = get_time_diff(now - death.date)
+                emoji = get_voc_emoji(death.char.vocation)
+                entries.append(f"{emoji} {death.char.name} - At level **{death.level}** by {death.killer.name} - "
+                               f"*{death_time} ago*")
+                if count >= 100:
+                    break
         if count == 0:
             await ctx.send("There are not registered deaths by this user.")
             return
@@ -306,18 +299,18 @@ class Tibia(CogUtils):
             embed.set_footer(text=f"For a shorter period, try {ctx.clean_prefix}{ctx.command.qualified_name} week or "
                                   f"{ctx.clean_prefix}{ctx.command.qualified_name} month")
         async with ctx.pool.acquire() as conn:
-            total = await conn.fetchval("""SELECT count(*) FROM character_death
-                                           WHERE CURRENT_TIMESTAMP-date < $1""", period)
+            total = await conn.fetchval("""SELECT count(*) FROM character_death WHERE CURRENT_TIMESTAMP-date < $1""",
+                                        period)
             embed.description = f"There are {total:,} deaths registered{description_suffix}."
             async with conn.transaction():
                 count = 0
                 content = ""
-                async for row in conn.cursor("""SELECT COUNT(*), name, user_id
-                                                FROM character_death d
-                                                LEFT JOIN "character" c on c.id = d.character_id
-                                                WHERE CURRENT_TIMESTAMP-date < $1 AND world = $2
-                                                GROUP by name, user_id
-                                                ORDER BY count DESC""", period, ctx.world):
+                async for row in conn.cursor("""
+                        SELECT COUNT(*), name, user_id
+                        FROM character_death d
+                        LEFT JOIN "character" c on c.id = d.character_id
+                        WHERE CURRENT_TIMESTAMP-date < $1 AND world = $2
+                        GROUP by name, user_id ORDER BY count DESC""", period, ctx.world):
                     user = self.bot.get_member(row["user_id"], ctx.guild)
                     if user is None:
                         continue

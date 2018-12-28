@@ -128,22 +128,15 @@ class DbChar(tibiapy.abc.BaseCharacter):
     async def get_deaths(self, conn: PoolConn, minimum_level=0):
         async with conn.transaction():
             async for row in conn.cursor("""
-            SELECT d.*, json_agg(dk)::jsonb as killers, json_agg(da)::jsonb as assists FROM character_death d
-            LEFT JOIN character_death_killer dk ON dk.death_id = d.id
-            LEFT JOIN character_death_assist da ON da.death_id = d.id
-            WHERE character_id = $1 AND level >= $2
-            GROUP BY d.id
-            ORDER BY date DESC
-            """, self.id, minimum_level):
+                    SELECT d.*, json_agg(dk)::jsonb as killers, json_agg(da)::jsonb as assists FROM character_death d
+                    LEFT JOIN character_death_killer dk ON dk.death_id = d.id
+                    LEFT JOIN character_death_assist da ON da.death_id = d.id
+                    WHERE character_id = $1 AND level >= $2
+                    GROUP BY d.id
+                    ORDER BY date DESC
+                    """, self.id, minimum_level):
                 death = DbDeath(**row)
-                if row["killers"]:
-                    for killer in row["killers"]:
-                        if killer:
-                            death.killers.append(DbKiller(**killer))
-                if row["assists"]:
-                    for assist in row["assists"]:
-                        if assist:
-                            death.assists.append(DbAssist(**assist))
+                death.char = self
                 yield death
 
     async def get_level_ups(self, conn: PoolConn, minimum_level=0):
@@ -376,7 +369,17 @@ class DbDeath:
         self.date = kwargs.get("date")
         self.char = None  # type: Optional[DbChar]
         self.killers = []  # type: List[DbKiller]
-        self.assists = [] # type: List[DbAssist]
+        self.assists = []  # type: List[DbAssist]
+        if "char" in kwargs:
+            self.char = DbChar(**kwargs["char"])
+        for killer in kwargs.get("killers", []):
+            if killer is None:
+                break
+            self.killers.append(DbKiller(**killer))
+        for assist in kwargs.get("assists", []):
+            if assist is None:
+                break
+            self.assists.append(DbAssist(**assist))
 
     def __repr__(self):
         return f"<{self.__class__.__name__} id={self.id} character_id={self.character_id} level={self.level}" \
@@ -407,17 +410,15 @@ class DbDeath:
         :return: True if it exists, False otherwise.
         """
         _id = await conn.fetchval("""SELECT id FROM character_death d
-                                                     INNER JOIN character_death_killer dk ON dk.death_id = d.id
-                                                     WHERE character_id = $1 AND date = $2 AND name = $3 AND level = $4
-                                                     AND position = 0""",
-                                  char_id, date, killer, level)
+                 INNER JOIN character_death_killer dk ON dk.death_id = d.id
+                 WHERE character_id = $1 AND date = $2 AND name = $3 AND level = $4
+                 AND position = 0""", char_id, date, killer, level)
         if _id:
             return True
         return False
 
     @classmethod
-    async def get_latest(cls, conn: PoolConn, minimum_level=0, *, user_id=0, worlds: Union[List[str], str] = None,
-                         char_id=0):
+    async def get_latest(cls, conn: PoolConn, minimum_level=0, *, user_id=0, worlds: Union[List[str], str] = None):
         """Gets an asynchronous generator of recent level ups.
 
         :param conn: Connection to the database.
@@ -432,21 +433,17 @@ class DbDeath:
             worlds = []
         async with conn.transaction():
             async for row in conn.cursor("""
-                    SELECT d.*, c.name, c.level as char_level, c.world, c.vocation, c.user_id,
-                    c.id as char_id, c.guild, c.sex, k.name as killer, player
+                    SELECT (json_agg(c)->>0)::jsonb as char, d.*, 
+                    json_agg(dk)::jsonb as killers, json_agg(da)::jsonb as assists
                     FROM character_death d
+                    LEFT JOIN character_death_killer dk ON dk.death_id = d.id
+                    LEFT JOIN character_death_assist da ON da.death_id = d.id
                     LEFT JOIN "character" c ON c.id = d.character_id
-                    LEFT JOIN character_death_killer k ON death_id = d.id
-                    WHERE ($1::bigint = 0 OR c.user_id = $1) AND 
-                    ($4::bigint = 0 OR c.id = $ 4)
-                    (cardinality($2::text[]) = 0 OR c.world = any($2))
-                    AND d.level >= $3 AND position = 0
-                    ORDER BY date DESC""", user_id, worlds, minimum_level, char_id):
+                    WHERE ($1::bigint = 0 OR c.user_id = $1) AND
+                    (cardinality($2::text[]) = 0 OR c.world = any($2)) AND d.level >= $3
+                    GROUP BY d.id ORDER BY date DESC
+                    """, user_id, worlds, minimum_level):
                 death = DbDeath(**row)
-                death.killers = [DbKiller(name=row["killer"], player=row["player"])]
-                death.char = DbChar(id=row["user_id"], name=row['name'], level=row['char_level'],
-                                    user_id=row["user_id"], world=row["world"], sex=row["sex"],
-                                    vocation=row["vocation"], guild=row["guild"])
                 yield death
 
     @classmethod
