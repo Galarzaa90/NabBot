@@ -123,7 +123,7 @@ class ServerLog:
         user_id = char.owner_id
         user_guilds = self.bot.get_user_guilds(user_id)
         voc = get_voc_abb_and_emoji(char.vocation)
-        await self.add_character_history(char.id, ChangeType.NAME, old_world, char.world)
+        await self.add_character_history(char.id, ChangeType.WORLD, old_world, char.world)
         for guild in user_guilds:
             tracked_world = self.bot.tracked_worlds.get(guild.id)
             if not(char.world == tracked_world or old_world == tracked_world):
