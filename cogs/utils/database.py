@@ -189,18 +189,6 @@ class DbChar(tibiapy.abc.BaseCharacter):
 
     # region Class methods
     @classmethod
-    async def update_level_by_id(cls, conn: PoolConn, char_id: int, level: int) -> bool:
-        """Updates the level of a character with a given id.
-
-        :param conn: Connection to the database.
-        :param char_id: The id of the character.
-        :param level:  The new level to set.
-        :return: Whether the database was updated or not.
-        """
-        result = await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', level, char_id)
-        return bool(get_affected_count(result))
-
-    @classmethod
     async def get_by_id(cls, conn: PoolConn, char_id: int) -> Optional['DbChar']:
         """Gets a character with a given ID.
 
@@ -244,6 +232,33 @@ class DbChar(tibiapy.abc.BaseCharacter):
         if not rows:
             return []
         return [cls(**row) for row in rows]
+
+    @classmethod
+    async def get_chars_in_range(cls, conn: PoolConn, minimum: int, maximum: int, world: str):
+        """Gets a generator with characters in a level range and world, from highest level to lowest.
+
+        :param conn: A connection pool or single connection to the database.
+        :param minimum: The minimum level to find.
+        :param maximum: The maximum level to find.
+        :param world: Only characters in this world will be shown.
+        :return: A generator containing the characters.
+        """
+        async with conn.transaction():
+            async for row in conn.cursor("""SELECT * FROM "character" WHERE level >= $1 AND level <= $2 AND world = $3
+                                            ORDER BY level DESC""", minimum, maximum, world):
+                yield DbChar(**row)
+
+    @classmethod
+    async def update_level_by_id(cls, conn: PoolConn, char_id: int, level: int) -> bool:
+        """Updates the level of a character with a given id.
+
+        :param conn: Connection to the database.
+        :param char_id: The id of the character.
+        :param level:  The new level to set.
+        :return: Whether the database was updated or not.
+        """
+        result = await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', level, char_id)
+        return bool(get_affected_count(result))
 
     # endregion
 

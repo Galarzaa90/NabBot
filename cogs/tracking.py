@@ -808,29 +808,24 @@ class Tracking(CogUtils):
         async with ctx.pool.acquire() as conn:
             count = 0
             online_list = [x.name for v in online_characters.values() for x in v]
-            async with conn.transaction():
-                async for row in conn.cursor("""SELECT name, user_id, abs(level) as level, vocation FROM "character"
-                                                WHERE level >= $1 AND level <= $2 AND world = $3
-                                                ORDER BY level DESC""", low, high, ctx.world):
-                    if char is not None and char.name == row["name"]:
-                        continue
-                    owner = ctx.guild.get_member(row["user_id"])
-                    if owner is None:
-                        continue
-                    count += 1
-                    row = dict(row)
-                    row["owner"] = owner.display_name
-                    row["online"] = ""
-                    row["emoji"] = get_voc_emoji(row["vocation"])
-                    row["voc"] = get_voc_abb(row["vocation"])
-                    line_format = "**{name}** - Level {level} {voc}{emoji} - @**{owner}** {online}"
-                    if row["name"] in online_list:
-                        row["online"] = config.online_emoji
-                        online_entries.append(line_format.format(**row))
-                        online_vocations.append(row["vocation"])
-                    else:
-                        entries.append(line_format.format(**row))
-                        vocations.append(row["vocation"])
+            async for db_char in DbChar.get_chars_in_range(conn, low, high, ctx.world):
+                if char is not None and char.name == db_char.name:
+                    continue
+                owner = ctx.guild.get_member(db_char.user_id)
+                if owner is None:
+                    continue
+                count += 1
+                owner = owner.display_name
+                emoji = get_voc_emoji(db_char.vocation)
+                voc_abb = get_voc_abb(db_char.vocation)
+                entry = f"**{db_char.name}** - Level {abs(db_char.level)} {voc_abb}{emoji} - @**{owner}**"
+                if db_char.name in online_list:
+                    entry = f"{config.online_emoji}{entry}"
+                    online_entries.append(entry)
+                    online_vocations.append(db_char.vocation)
+                else:
+                    entries.append(entry)
+                    vocations.append(db_char.vocation)
             if count < 1:
                 await ctx.send(empty)
                 return
