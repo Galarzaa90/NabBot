@@ -447,6 +447,35 @@ class DbDeath:
                 yield death
 
     @classmethod
+    async def get_by_killer(cls, conn: PoolConn, killer, minimum_level=0, *, worlds: Union[List[str], str] = None):
+        """Gets an asynchronous generator of recent level ups.
+
+        :param conn: Connection to the database.
+        :param killer: Name of the killer to filter deaths from.
+        :param minimum_level: The minimum level to show.
+        :param worlds: A list of worlds to only show deaths of characters in that world.
+        :return: An asynchronous generator containing the deaths.
+        """
+        if isinstance(worlds, str):
+            worlds = [worlds]
+        if not worlds:
+            worlds = []
+        async with conn.transaction():
+            async for row in conn.cursor("""
+                        SELECT (json_agg(c)->>0)::jsonb as char, d.*, 
+                        json_agg(dk)::jsonb as killers, json_agg(da)::jsonb as assists
+                        FROM character_death d
+                        LEFT JOIN character_death_killer dk ON dk.death_id = d.id
+                        LEFT JOIN character_death_assist da ON da.death_id = d.id
+                        LEFT JOIN "character" c ON c.id = d.character_id
+                        WHERE lower(dk.name) SIMILAR TO $1 AND
+                        (cardinality($2::text[]) = 0 OR c.world = any($2)) AND d.level >= $3
+                        GROUP BY d.id ORDER BY date DESC
+                        """, f"[a|an]?\\s?{killer.lower()}", worlds, minimum_level):
+                death = DbDeath(**row)
+                yield death
+
+    @classmethod
     def from_tibiapy(cls, death: tibiapy.Death) -> 'DbDeath':
         """Creates a DbDeath object from a Tibia.py death.
 

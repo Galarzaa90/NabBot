@@ -199,35 +199,21 @@ class Tibia(CogUtils):
         """Shows the latest deaths caused by a specific monster."""
         count = 0
         entries = []
-        now = time.time()
+        now = dt.datetime.now(dt.timezone.utc)
         per_page = 20 if await ctx.is_long() else 5
-
-        if name[:1] in ["a", "e", "i", "o", "u"]:
-            name_with_article = "an " + name
-        else:
-            name_with_article = "a " + name
         async with ctx.pool.acquire() as conn:
-            async with conn.transaction():
-                async for row in conn.cursor("""SELECT c.name, user_id, vocation, world, d.level, date,
-                                                k.name as killer, player
-                                                FROM character_death_killer k
-                                                LEFT JOIN character_death d ON d.id = k.death_id
-                                                LEFT JOIN "character" c on c.id = d.character_id
-                                                WHERE lower(k.name) = $1 OR lower(k.name) = $2 AND world = $3
-                                                ORDER BY date DESC""",
-                                             name.lower(), name_with_article.lower(), ctx.world):
-                    user = self.bot.get_member(row["user_id"], ctx.guild)
+            async for death in DbDeath.get_by_killer(conn, name, worlds=ctx.world):
+                    user = self.bot.get_member(death.char.user_id, ctx.guild)
                     if user is None:
                         continue
                     count += 1
-                    death_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
+                    death_time = get_time_diff(now-death.date)
                     user_name = user.display_name
-                    emoji = get_voc_emoji(row["vocation"])
-                    entries.append("{emoji} {name} (**@{user}**) - At level **{level}** - *{time} ago*"
-                                   .format(**row, time=death_time, user=user_name, emoji=emoji))
+                    emoji = get_voc_emoji(death.char.vocation)
+                    entries.append(f"{emoji} {death.char.name} (**@{user_name}**) - At level **{death.level}** - "
+                                   f"*{death_time} ago*")
                     if count >= 100:
                         break
-
         if count == 0:
             await ctx.send("There are no registered deaths by that killer.")
             return
