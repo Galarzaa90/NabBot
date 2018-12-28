@@ -4,7 +4,6 @@ import datetime as dt
 import logging
 import random
 import re
-import time
 from collections import Counter
 from operator import attrgetter
 from typing import Optional
@@ -22,7 +21,8 @@ from nabbot import NabBot
 from .utils import checks, CogUtils
 from .utils import config, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, join_list, online_characters
 from .utils.context import NabCtx
-from .utils.database import get_global_property, get_server_property, set_global_property, DbChar, DbLevelUp, DbDeath
+from .utils.database import get_global_property, get_server_property, set_global_property, DbChar, DbLevelUp, DbDeath, \
+    get_recent_timeline
 from .utils.messages import get_first_image, html_to_markdown, split_message
 from .utils.pages import CannotPaginate, Pages, VocationPages
 from .utils.tibia import NabChar, NetworkError, TIBIACOM_ICON, get_character, get_guild, get_highscores_tibiadata, \
@@ -623,7 +623,7 @@ class Tibia(CogUtils):
         if name is None:
             title = "Latest level ups"
             async with ctx.pool.acquire() as conn:
-                async for lvl in DbLevelUp.get_latest(conn, config.announce_threshold, worlds=ctx.world):
+                async for lvl in DbLevelUp.get_latest(conn, minimum_level=config.announce_threshold, worlds=ctx.world):
                     user = self._get_cached_user_(lvl.char.user_id, user_cache, ctx.guild)
                     if user is None:
                         continue
@@ -649,7 +649,7 @@ class Tibia(CogUtils):
                 title = f"{emoji} {name} latest level ups"
                 async for lvl in db_char.get_level_ups(conn):
                     count += 1
-                    diff = get_time_diff(dt.timedelta(now - lvl.date))
+                    diff = get_time_diff(now - lvl.date)
                     entries.append(f"Level **{lvl.level}** - *{diff} ago*")
                     if count >= 100:
                         break
@@ -949,7 +949,7 @@ class Tibia(CogUtils):
 
         If no character is provided, the timeline of all registered characters in the server will be shown.
 
-        Characters must be registered in order to see their timelines.
+        Characters must be registered in order to have a timeline.
 
         - 🌟 Indicates level ups
         - 💀 Indicates deaths
@@ -958,83 +958,56 @@ class Tibia(CogUtils):
         author = None
         author_icon = discord.Embed.Empty
         count = 0
-        now = time.time()
+        now = dt.datetime.now(dt.timezone.utc)
         per_page = 20 if await ctx.is_long() else 5
         await ctx.channel.trigger_typing()
         user_cache = dict()
         if name is None:
             title = "Timeline"
             async with ctx.pool.acquire() as conn:
-                async with conn.transaction():
-                    async for row in conn.cursor("""(SELECT c.user_id, c.name, c.vocation, d.level, k.name as killer,
-                                                    'death' AS type, d.date
-                                                    FROM character_death d
-                                                    LEFT JOIN character_death_killer k ON k.death_id = d.id
-                                                    LEFT JOIN "character" c ON c.id = d.character_id
-                                                    WHERE world = $1 AND d.level >= $2)
-                                                    UNION
-                                                    (SELECT c.user_id, c.name, c.vocation, l.level, NULL,
-                                                    'level' AS type, l.date
-                                                    FROM character_levelup l
-                                                    LEFT JOIN "character" c ON c.id = l.character_id
-                                                    WHERE world = $1 AND l.level >= $2)
-                                                    ORDER by DATE DESC""", ctx.world, config.announce_threshold):
-                        user = self._get_cached_user_(self, row["user_id"], user_cache, ctx.guild)
-                        if user is None:
-                            continue
-                        count += 1
-                        entry_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
-                        user_name = user.display_name
-                        voc_emoji = get_voc_emoji(row["vocation"])
-                        if row["type"] == "death":
-                            emoji = config.death_emoji
-                            entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - At level **{level}** by {killer} "
-                                           "- *{time} ago*".format(**row, voc_emoji=voc_emoji, user=user_name,
-                                                                   time=entry_time, emoji=emoji))
-                        else:
-                            emoji = config.levelup_emoji
-                            entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - Level **{level}** - *{time} ago*"
-                                           .format(**row, voc_emoji=voc_emoji, user=user_name, time=entry_time,
-                                                   emoji=emoji))
-                        if count >= 200:
-                            break
+                async for entry in get_recent_timeline(conn, minimum_level=config.announce_threshold, worlds=ctx.world):
+                    user = self._get_cached_user_(entry.char.user_id, user_cache, ctx.guild)
+                    if user is None:
+                        continue
+                    count += 1
+                    entry_time = get_time_diff(now - entry.date)
+                    user_name = user.display_name
+                    voc_emoji = get_voc_emoji(entry.char.vocation)
+                    if isinstance(entry, DbDeath):
+                        emoji = config.death_emoji
+                        entries.append(f"{emoji}{voc_emoji} {entry.char.name} (**@{user_name}**) - "
+                                       f"At level **{entry.level}** by {entry.killer.name} - *{entry_time} ago*")
+                    else:
+                        emoji = config.levelup_emoji
+                        entries.append(f"{emoji}{voc_emoji} {entry.char.name} (**@{user_name}**) -"
+                                       f" Level **{entry.level}** - *{entry_time} ago*")
+                    if count >= 100:
+                        break
         else:
             async with ctx.pool.acquire() as conn:
-                char = await conn.fetchrow("""SELECT id, name, vocation, user_id FROM "character"
-                                              WHERE lower(name) = $1 AND world = $2""", name.lower(), ctx.world)
-                if char is None:
+                db_char = await DbChar.get_by_name(conn, name)
+                if db_char is None or db_char.world != ctx.world:
                     return await ctx.send("I don't have a character with that name registered.")
-                owner = ctx.guild.get_member(char["user_id"])
+                owner = ctx.guild.get_member(db_char.user_id)
                 if owner is None:
                     return await ctx.send("I don't have a character with that name registered.")
                 author = owner.display_name
                 author_icon = owner.avatar_url
-                name = char["name"]
-                emoji = get_voc_emoji(char["vocation"])
+                name = db_char.name
+                emoji = get_voc_emoji(db_char.vocation)
                 title = f"{emoji} {name} timeline"
-                async with conn.transaction():
-                    async for row in conn.cursor("""(SELECT d.level, k.name as killer, 'death' AS type, d.date
-                                                    FROM character_death d
-                                                    LEFT JOIN character_death_killer k ON k.death_id = d.id
-                                                    WHERE character_id = $1)
-                                                    UNION
-                                                    (SELECT l.level, NULL, 'level' AS type, l.date
-                                                    FROM character_levelup l
-                                                    WHERE character_id = $1)
-                                                    ORDER by DATE DESC""", char["id"]):
-                        count += 1
-                        entry_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
-                        if row["type"] == "death":
-                            emoji = config.death_emoji
-                            entries.append("{emoji} At level **{level}** by {killer} - *{time} ago*"
-                                           .format(**row, time=entry_time, emoji=emoji)
-                                           )
-                        else:
-                            emoji = config.levelup_emoji
-                            entries.append("{emoji} Level **{level}** - *{time} ago*".format(**row, time=entry_time,
-                                                                                             emoji=emoji))
-                        if count >= 200:
-                            break
+                async for entry in db_char.get_timeline(conn):
+                    count += 1
+                    entry_time = get_time_diff(now - entry.date)
+                    if isinstance(entry, DbDeath):
+                        emoji = config.death_emoji
+                        entries.append(f"{emoji} At level **{entry.level}** by {entry.killer.name} - "
+                                       f"*{entry_time} ago*")
+                    else:
+                        emoji = config.levelup_emoji
+                        entries.append(f"{emoji} Level **{entry.level}** - *{entry_time} ago*")
+                    if count >= 100:
+                        break
         if count == 0:
             await ctx.send("There are no registered events.")
             return
@@ -1059,39 +1032,24 @@ class Tibia(CogUtils):
 
         entries = []
         count = 0
-        now = time.time()
+        now = dt.datetime.now(dt.timezone.utc)
         per_page = 20 if await ctx.is_long() else 5
 
         async with ctx.pool.acquire() as conn:
             title = f"{user.display_name} timeline"
-            async with conn.transaction():
-                async for row in conn.cursor("""(SELECT c.name, c.vocation, d.level, k.name as killer,
-                                                'death' AS type, d.date
-                                                FROM character_death d
-                                                LEFT JOIN character_death_killer k ON k.death_id = d.id
-                                                LEFT JOIN "character" c ON c.id = d.character_id
-                                                WHERE world = $1 AND user_id = $2)
-                                                UNION
-                                                (SELECT c.name, c.vocation, l.level, NULL,
-                                                'level' AS type, l.date
-                                                FROM character_levelup l
-                                                LEFT JOIN "character" c ON c.id = l.character_id
-                                                WHERE world = $1 AND user_id = $2)
-                                                ORDER by DATE DESC""", ctx.world, user.id):
-                    count += 1
-                    entry_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
-                    voc_emoji = get_voc_emoji(row["vocation"])
-                    if row["type"] == "death":
-                        emoji = config.death_emoji
-                        entries.append("{emoji}{voc_emoji} {name} - At level **{level}** by {killer} - *{time} ago*"
-                                       .format(**row, time=entry_time, voc_emoji=voc_emoji, emoji=emoji)
-                                       )
-                    else:
-                        emoji = config.levelup_emoji
-                        entries.append("{emoji}{voc_emoji} {name} - Level **{level}** - *{time} ago*"
-                                       .format(**row, time=entry_time, voc_emoji=voc_emoji, emoji=emoji))
-                    if count >= 200:
-                        break
+            async for entry in get_recent_timeline(conn, worlds=ctx.world, user_id=user.id):
+                count += 1
+                entry_time = get_time_diff(now - entry.date)
+                voc_emoji = get_voc_emoji(entry.char.vocation)
+                if isinstance(entry, DbDeath):
+                    emoji = config.death_emoji
+                    entries.append(f"{emoji}{voc_emoji} {entry.char.name} - At level **{entry.level}** "
+                                   f"by {entry.killer.name} - *{entry_time} ago*")
+                else:
+                    emoji = config.levelup_emoji
+                    entries.append(f"{emoji}{voc_emoji} {entry.char.name} Level **{entry.level}** - *{entry_time} ago*")
+                if count >= 200:
+                    break
 
         if count == 0:
             await ctx.send("There are no registered events.")

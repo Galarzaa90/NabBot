@@ -16,6 +16,7 @@ wiki_db.row_factory = sqlite3.Row
 result_patt = re.compile(r"(\d+)$")
 
 PoolConn = Union[asyncpg.pool.Pool, asyncpg.Connection]
+"""A type alias for an union of Pool and Connection."""
 
 
 def get_affected_count(result: str) -> int:
@@ -100,17 +101,76 @@ class DbChar(tibiapy.abc.BaseCharacter):
     """Represents a character from the database."""
 
     def __init__(self, **kwargs):
-        self.id = kwargs.get("id")
-        self.name = kwargs.get("name")
-        self.level = kwargs.get("level")
-        self.user_id = kwargs.get("user_id")
-        self.vocation = kwargs.get("vocation")
-        self.sex = kwargs.get("sex")
-        self.guild = kwargs.get("guild")
-        self.world = kwargs.get("world")
+        self.id: int = kwargs.get("id")
+        """The unique id of the character in the database."""
+        self.name: str = kwargs.get("name")
+        """The name of the character."""
+        self.level: int = kwargs.get("level")
+        """The last registered level on the database."""
+        self.user_id: int = kwargs.get("user_id")
+        """The id of the discord user that owns this character."""
+        self.vocation: str = kwargs.get("vocation")
+        """The last seen vocation of the character."""
+        self.sex: str = kwargs.get("sex")
+        """The last seen sex of the character."""
+        self.guild: Optional[str] = kwargs.get("guild")
+        """The last seen guild of the character."""
+        self.world: str = kwargs.get("world")
+        """The last seen world of the character."""
 
     def __repr__(self):
         return f"<{self.__class__.__name__} id={self.id} user_id={self.user_id} name={self.name!r}, level={self.level}>"
+
+    # region Instance methods
+    async def get_deaths(self, conn: PoolConn):
+        """An async generator of the character's deaths, from newest to oldest.
+
+        Note that the yielded deaths won't have the char attribute set.
+
+        :param conn: Connection to the database.
+        """
+        async for death in DbDeath.get_from_character(conn, self.id):
+            yield death
+
+    async def get_level_ups(self, conn: PoolConn):
+        """Gets an asynchronous generator of the character's level ups.
+
+        Note that the yielded deaths won't have the char attribute set.
+
+        :param conn: Connection to the database.
+        :return: An asynchronous generator containing the entries.
+        """
+        async for level_up in DbLevelUp.get_from_character(conn, self.id):
+            yield level_up
+
+    async def get_timeline(self, conn: PoolConn):
+        """Gets an asynchronous generator of character's recent deaths and level ups.
+
+        :param conn: Connection to the database.
+        :return: An asynchronous generator containing the entries.
+        """
+        async with conn.transaction():
+            async for row in conn.cursor("""
+                    (
+                        SELECT d.*, json_agg(k)::jsonb as killers, 'd' AS type
+                        FROM character_death d
+                        LEFT JOIN character_death_killer k ON k.death_id = d.id
+                        WHERE d.character_id = $1
+                        GROUP BY d.id
+                    )
+                    UNION
+                    (
+                        SELECT l.*, NULL, 'l' AS type
+                        FROM character_levelup l
+                        WHERE l.character_id = $1
+                        GROUP BY l.id
+                    )
+                    ORDER by date DESC
+                    """, self.id):
+                if row["type"] == "l":
+                    yield DbLevelUp(**row)
+                else:
+                    yield DbDeath(**row)
 
     async def update_level(self, conn: PoolConn, level: int, update_self=True) -> bool:
         """Updates the level of the character on the database.
@@ -125,32 +185,9 @@ class DbChar(tibiapy.abc.BaseCharacter):
             self.level = level
         return result
 
-    async def get_deaths(self, conn: PoolConn, minimum_level=0):
-        async with conn.transaction():
-            async for row in conn.cursor("""
-                    SELECT d.*, json_agg(dk)::jsonb as killers, json_agg(da)::jsonb as assists FROM character_death d
-                    LEFT JOIN character_death_killer dk ON dk.death_id = d.id
-                    LEFT JOIN character_death_assist da ON da.death_id = d.id
-                    WHERE character_id = $1 AND level >= $2
-                    GROUP BY d.id
-                    ORDER BY date DESC
-                    """, self.id, minimum_level):
-                death = DbDeath(**row)
-                death.char = self
-                yield death
+    # endregion
 
-    async def get_level_ups(self, conn: PoolConn, minimum_level=0):
-        """Gets an asynchronous generator of the character's levelups.
-
-        :param conn: Connection to the database.
-        :param minimum_level: The minimum level to show.
-        :return: An asynchronous generator containing the levels.
-        """
-        async with conn.transaction():
-            async for row in conn.cursor("""SELECT * ROM character_levelup l WHERE character_id = $1 AND level >= $2
-                                            ORDER BY date DESC""", self.id, minimum_level):
-                yield DbLevelUp(**row)
-
+    # region Class methods
     @classmethod
     async def update_level_by_id(cls, conn: PoolConn, char_id: int, level: int) -> bool:
         """Updates the level of a character with a given id.
@@ -208,24 +245,32 @@ class DbChar(tibiapy.abc.BaseCharacter):
             return []
         return [cls(**row) for row in rows]
 
+    # endregion
+
 
 class DbLevelUp:
     """Represents a level up in the database."""
     char: Optional[DbChar]
 
     def __init__(self, **kwargs):
-        self.id = kwargs.get("id", 0)
-        self.char_id = kwargs.get("character_id", 0)
+        self.id: int = kwargs.get("id", 0)
+        """The id of the level up entry."""
+        self.character_id: int = kwargs.get("character_id", 0)
+        """The id of the character this level up belongs to."""
         self.level = kwargs.get("level", 0)
+        """The level obtained in this entry."""
         self.date = kwargs.get("date")
-        self.char = None  # type: Optional[DbChar]
+        """The date when this level up was detected."""
+        self.char: Optional[DbChar] = DbChar(**kwargs["char"]) if "char" in kwargs else None
+        """The character this entry belongs to."""
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} id={self.id} char_id={self.char_id} level={self.level}, date={self.date!r}>"
+        return f"<{self.__class__.__name__} id={self.id} character_id={self.character_id} level={self.level} " \
+            f"date={self.date!r}>"
 
     @classmethod
-    async def insert(cls, conn: PoolConn, char_id, level, date=None) -> 'DbLevelUp':
-        """
+    async def insert(cls, conn: PoolConn, char_id, level, date:datetime.datetime = None) -> 'DbLevelUp':
+        """Inserts a new level up into the database.
 
         :param conn: The connection to the database.
         :param char_id: The id of the character the level up belongs to
@@ -242,8 +287,21 @@ class DbLevelUp:
         return cls(id=row_id, character_id=char_id, level=level, date=date)
 
     @classmethod
-    async def get_latest(cls, conn: PoolConn, minimum_level=0, *, user_id=0, worlds: Union[List[str], str] = None):
-        """Gets an asynchronous generator of the character's levelups.
+    async def get_from_character(cls, conn: PoolConn, character_id: int):
+        """Gets an asynchronous generator of the level ups of a character, from most recent.
+
+        :param conn: Connection to the database.
+        :param character_id: The id of the character.
+        :return: An asynchronous generator containing the level ups.
+        """
+        async with conn.transaction():
+            async for row in conn.cursor("SELECT * FROM character_levelup WHERE character_id = $1 ORDER BY date DESC",
+                                         character_id):
+                yield cls(**row)
+
+    @classmethod
+    async def get_latest(cls, conn: PoolConn, *, minimum_level=0, user_id=0, worlds: Union[List[str], str] = None):
+        """Gets an asynchronous generator of the character's level ups.
 
         :param conn: Connection to the database.
         :param minimum_level: The minimum level to show.
@@ -256,19 +314,14 @@ class DbLevelUp:
         if not worlds:
             worlds = []
         async with conn.transaction():
-            async for row in conn.cursor("""SELECT l.*, c.name, c.level as char_level, c.world, c.vocation, c.user_id,
-                                            c.id as char_id, c.guild, c.sex
-                                            FROM character_levelup l
-                                            LEFT JOIN "character" c ON c.id = l.character_id
-                                            WHERE ($1::bigint = 0 OR c.user_id = $1) AND 
-                                            (cardinality($2::text[]) = 0 OR c.world = any($2))
-                                            AND l.level >= $3 
-                                            ORDER BY date DESC""", user_id, worlds, minimum_level):
-                level_up = DbLevelUp(**row)
-                level_up.char = DbChar(id=row["user_id"], name=row['name'], level=row['char_level'],
-                                       user_id=row["user_id"], world=row["world"], sex=row["sex"],
-                                       vocation=row["vocation"], guild=row["guild"])
-                yield level_up
+            async for row in conn.cursor("""
+                    SELECT l.*, (json_agg(c)->>0)::jsonb as char FROM character_levelup l
+                    LEFT JOIN "character" c ON c.id = l.character_id
+                    WHERE ($1::bigint = 0 OR c.user_id = $1) AND (cardinality($2::text[]) = 0 OR c.world = any($2))
+                    AND l.level >= $3
+                    GROUP BY l.id
+                    ORDER BY date DESC""", user_id, worlds, minimum_level):
+                yield cls(**row)
 
 
 class DbKiller:
@@ -363,23 +416,32 @@ class DbAssist:
 class DbDeath:
     """Represents a death in the database."""
     def __init__(self, **kwargs):
-        self.id = kwargs.get("id")
-        self.character_id = kwargs.get("character_id")
+        self.id: int = kwargs.get("id")
+        """The id of the entry in the database."""
+        self.character_id: int = kwargs.get("character_id")
+        """The id of the character this death belongs to."""
         self.level = kwargs.get("level")
+        """The level the  character had when the death occured."""
         self.date = kwargs.get("date")
-        self.char = None  # type: Optional[DbChar]
-        self.killers = []  # type: List[DbKiller]
-        self.assists = []  # type: List[DbAssist]
-        if "char" in kwargs:
-            self.char = DbChar(**kwargs["char"])
+        """The date when the death occurred."""
+        self.char: Optional[DbChar] = DbChar(**kwargs["char"]) if "char" in kwargs else None
+        """The character this deaths belongs to."""
+
+        killers = []
         for killer in kwargs.get("killers", []):
             if killer is None:
                 break
-            self.killers.append(DbKiller(**killer))
+            killers.append(DbKiller(**killer))
+        assists = []
         for assist in kwargs.get("assists", []):
             if assist is None:
                 break
-            self.assists.append(DbAssist(**assist))
+            assists.append(DbAssist(**assist))
+
+        self.killers: List[DbKiller] = killers
+        """List of killers involved in the death."""
+        self.assists: List[DbAssist] = assists
+        """List of assists involved in the death."""
 
     def __repr__(self):
         return f"<{self.__class__.__name__} id={self.id} character_id={self.character_id} level={self.level}" \
@@ -393,10 +455,15 @@ class DbDeath:
     async def save(self, conn: PoolConn):
         """Saves the current death to the database.
 
-        This will fail if id or character_id is not set.
+        This will fail if character_id is not set.
 
-        :param conn: A connection to the database."""
-        await self.insert(conn, self.character_id, self.level, self.date, self.killers, self.assists)
+        :param conn: A connection to the database.
+        :return: Whether the death was saved or not."""
+        death = await self.insert(conn, self.character_id, self.level, self.date, self.killers, self.assists)
+        if death:
+            self.id = death.id
+            return True
+        return False
 
     @classmethod
     async def exists(cls, conn: PoolConn, char_id: int, level: int, date: datetime.datetime, killer) -> bool:
@@ -416,6 +483,25 @@ class DbDeath:
         if _id:
             return True
         return False
+
+    @classmethod
+    async def get_from_character(cls, conn: PoolConn, character_id: int):
+        """Gets an asynchronous generator of the deaths of a character, from most recent.
+
+        :param conn: Connection to the database.
+        :param character_id: The id of the character.
+        :return: An asynchronous generator containing the deaths.
+        """
+        async with conn.transaction():
+            async for row in conn.cursor("""
+                    SELECT d.*, json_agg(dk)::jsonb as killers, json_agg(da)::jsonb as assists FROM character_death d
+                    LEFT JOIN character_death_killer dk ON dk.death_id = d.id
+                    LEFT JOIN character_death_assist da ON da.death_id = d.id
+                    WHERE character_id = $1
+                    GROUP BY d.id
+                    ORDER BY date DESC
+                    """, character_id):
+                yield DbDeath(**row)
 
     @classmethod
     async def get_latest(cls, conn: PoolConn, minimum_level=0, *, user_id=0, worlds: Union[List[str], str] = None):
@@ -514,3 +600,44 @@ class DbDeath:
         death.killers = killers
         death.assists = assists
         return death
+
+
+async def get_recent_timeline(conn: PoolConn, *, minimum_level=0, user_id=0, worlds: Union[List[str], str] = None):
+    """Gets an asynchronous generator of recent deaths and level ups
+
+    :param conn: Connection to the database.
+    :param minimum_level: The minimum level to show.
+    :param user_id: The id of an user to only show entries of characters they own.
+    :param worlds: A list of worlds to only show entries of characters in that world.
+    :return: An asynchronous generator containing the entries.
+    """
+    if isinstance(worlds, str):
+        worlds = [worlds]
+    if not worlds:
+        worlds = []
+    async with conn.transaction():
+        async for row in conn.cursor("""
+                (
+                    SELECT d.*, (json_agg(c)->>0)::jsonb as char, json_agg(k)::jsonb as killers, 'd' AS type
+                    FROM character_death d
+                    LEFT JOIN character_death_killer k ON k.death_id = d.id
+                    LEFT JOIN "character" c ON c.id = d.character_id
+                    WHERE ($1::bigint = 0 OR c.user_id = $1) AND
+                    (cardinality($2::text[]) = 0 OR c.world = any($2)) AND d.level >= $3
+                    GROUP BY d.id
+                )
+                UNION
+                (
+                    SELECT l.*, (json_agg(c)->>0)::jsonb as char, NULL, 'l' AS type
+                    FROM character_levelup l
+                    LEFT JOIN "character" c ON c.id = l.character_id
+                    WHERE ($1::bigint = 0 OR c.user_id = $1) AND
+                    (cardinality($2::text[]) = 0 OR c.world = any($2)) AND l.level >= $3
+                    GROUP BY l.id
+                )
+                ORDER by date DESC
+                """, user_id, worlds, minimum_level):
+            if row["type"] == "l":
+                yield DbLevelUp(**row)
+            else:
+                yield DbDeath(**row)
