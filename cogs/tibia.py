@@ -5,7 +5,6 @@ import logging
 import random
 import re
 import time
-import urllib.parse
 from collections import Counter
 from operator import attrgetter
 from typing import Optional
@@ -15,7 +14,7 @@ import discord
 import pytz
 import tibiawikisql
 from discord.ext import commands
-from tibiapy import GuildHouse, House, HouseStatus, Sex, TransferType, AccountStatus
+from tibiapy import GuildHouse, House, HouseStatus, Sex, TransferType
 from tibiawikisql import models
 
 from cogs.utils.tibia import get_house_id, get_rashid_city, normalize_vocation, TIBIA_URL
@@ -23,7 +22,7 @@ from nabbot import NabBot
 from .utils import checks, CogUtils
 from .utils import config, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, join_list, online_characters
 from .utils.context import NabCtx
-from .utils.database import get_global_property, get_server_property, set_global_property, DbChar, DbLevelUp
+from .utils.database import get_global_property, get_server_property, set_global_property, DbChar, DbLevelUp, DbDeath
 from .utils.messages import get_first_image, html_to_markdown, split_message
 from .utils.pages import CannotPaginate, Pages, VocationPages
 from .utils.tibia import NabChar, NetworkError, TIBIACOM_ICON, get_character, get_guild, get_highscores_tibiadata, \
@@ -116,35 +115,27 @@ class Tibia(CogUtils):
         author = None
         author_icon = discord.Embed.Empty
         count = 0
-        now = time.time()
+        now = dt.datetime.now(dt.timezone.utc)
         show_links = not await ctx.is_long()
         per_page = 20 if await ctx.is_long() else 5
         users_cache = dict()
         if name is None:
             title = "Latest deaths"
             async with ctx.pool.acquire() as conn:
-                async with conn.transaction():
-                    async for row in conn.cursor("""SELECT c.name, user_id, world, vocation, d.level, date,
-                                                    k.name as killer, player
-                                                    FROM character_death d
-                                                    LEFT JOIN "character" c on c.id = character_id
-                                                    LEFT JOIN character_death_killer k on death_id = d.id
-                                                    WHERE d.level > $1 AND position = 0 AND world = any($2)
-                                                    ORDER by date DESC""", config.announce_threshold, user_worlds):
-
-                        user = self._get_cached_user_(row["user_id"], users_cache, user_servers)
-                        if user is None:
-                            continue
-                        if row["world"] not in user_worlds:
-                            continue
-                        count += 1
-                        time_diff = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
-                        user_name = user.display_name
-                        emoji = get_voc_emoji(row["vocation"])
-                        entries.append("{emoji} {name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*"
-                                       .format(**row, time=time_diff, emoji=emoji, user=user_name))
-                        if count >= 100:
-                            break
+                async for death in DbDeath.get_latest(conn, config.announce_threshold, worlds=user_worlds):
+                    user = self._get_cached_user_(death.char.user_id, users_cache, user_servers)
+                    if user is None:
+                        continue
+                    if death.char.world not in user_worlds:
+                        continue
+                    count += 1
+                    time_diff = get_time_diff(now-death.date)
+                    user_name = user.display_name
+                    emoji = get_voc_emoji(death.char.vocation)
+                    entries.append(f"{emoji} {death.char.name} (**{user_name}**) - At level **{death.char.level}** "
+                                   f"by {death.killer.name} - *{time_diff} ago*")
+                    if count >= 100:
+                        break
         else:
             try:
                 char = await get_character(self.bot, name)
@@ -155,10 +146,10 @@ class Tibia(CogUtils):
                 await ctx.send("Sorry, I had trouble checking that character, try it again.")
                 return
             deaths = char.deaths
-            last_time = dt.datetime.now()
+            last_time = dt.datetime.now(dt.timezone.utc)
             name = char.name
             voc_emoji = get_voc_emoji(char.vocation)
-            title = "{1} {0} latest deaths:".format(name, voc_emoji)
+            title = f"{voc_emoji} {name} latest deaths:"
             if ctx.guild is not None and char.owner_id:
                 owner: discord.Member = ctx.guild.get_member(char.owner_id)
                 if owner is not None:
@@ -176,26 +167,21 @@ class Tibia(CogUtils):
                 entries.append("At level **{0.level}** by {name} - *{time} ago*".format(death, time=death_time,
                                                                                         name=killer))
                 count += 1
-
-            char_id = await ctx.pool.fetchval('SELECT id FROM "character" WHERE name = $1', name)
-            if char_id is not None and not ctx.is_lite:
+            db_char = await DbChar.get_by_name(ctx.pool, name)
+            if db_char is not None and not ctx.is_lite:
                 async with ctx.pool.acquire() as conn:
-                    async with conn.transaction():
-                        async for row in conn.cursor("""SELECT level, date, player, name as killer
-                                                                    FROM character_death d
-                                                                    LEFT JOIN character_death_killer k ON k.death_id = d.id
-                                                                    WHERE position = 0 AND character_id = $1 and date < $2
-                                                                    ORDER BY date DESC""",
-                                                     char_id, last_time):
-                            count += 1
-                            death_time = get_time_diff(dt.timedelta(seconds=now - row["date"].timestamp()))
-                            entries.append("At level **{level}** by {killer} - *{time} ago*".format(**row,
-                                                                                                    time=death_time))
-                            if count >= 100:
-                                break
-            if count == 0:
-                await ctx.send("There are no registered deaths.")
-                return
+                    async for death in db_char.get_deaths(conn):
+                        # Do not show deaths that are already displayed from Tibia.com
+                        if death.date > last_time:
+                            continue
+                        count += 1
+                        death_time = get_time_diff(now-death.date)
+                        entries.append(f"At level **{death.level}** by {death.killer.name} - *{death_time} ago*")
+                        if count >= 100:
+                            break
+        if count == 0:
+            await ctx.send("There are no registered deaths.")
+            return
 
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title

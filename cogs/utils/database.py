@@ -1,10 +1,9 @@
 import datetime
 import re
 import sqlite3
-from typing import Any, List, Union, Optional
+from typing import Any, List, Optional, Union
 
 import asyncpg
-import discord
 import tibiapy
 
 WIKIDB = "data/tibiawiki.db"
@@ -109,7 +108,6 @@ class DbChar(tibiapy.abc.BaseCharacter):
         self.sex = kwargs.get("sex")
         self.guild = kwargs.get("guild")
         self.world = kwargs.get("world")
-        self.deaths = []
 
     def __repr__(self):
         return f"<{self.__class__.__name__} id={self.id} user_id={self.user_id} name={self.name!r}, level={self.level}>"
@@ -127,7 +125,28 @@ class DbChar(tibiapy.abc.BaseCharacter):
             self.level = level
         return result
 
-    async def get_level_ups(self, conn, minimum_level=0):
+    async def get_deaths(self, conn: PoolConn, minimum_level=0):
+        async with conn.transaction():
+            async for row in conn.cursor("""
+            SELECT d.*, json_agg(dk)::jsonb as killers, json_agg(da)::jsonb as assists FROM character_death d
+            LEFT JOIN character_death_killer dk ON dk.death_id = d.id
+            LEFT JOIN character_death_assist da ON da.death_id = d.id
+            WHERE character_id = $1 AND level >= $2
+            GROUP BY d.id
+            ORDER BY date DESC
+            """, self.id, minimum_level):
+                death = DbDeath(**row)
+                if row["killers"]:
+                    for killer in row["killers"]:
+                        if killer:
+                            death.killers.append(DbKiller(**killer))
+                if row["assists"]:
+                    for assist in row["assists"]:
+                        if assist:
+                            death.assists.append(DbAssist(**assist))
+                yield death
+
+    async def get_level_ups(self, conn: PoolConn, minimum_level=0):
         """Gets an asynchronous generator of the character's levelups.
 
         :param conn: Connection to the database.
@@ -206,7 +225,7 @@ class DbLevelUp:
         self.char_id = kwargs.get("character_id", 0)
         self.level = kwargs.get("level", 0)
         self.date = kwargs.get("date")
-        self.char = None
+        self.char = None  # type: Optional[DbChar]
 
     def __repr__(self):
         return f"<{self.__class__.__name__} id={self.id} char_id={self.char_id} level={self.level}, date={self.date!r}>"
@@ -267,6 +286,10 @@ class DbKiller:
         self.name = kwargs.get("name")
         self.player = kwargs.get("player")
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} death_id={self.death_id} position={self.position} name={self.name!r} " \
+            f"player={self.player}>"
+
     @classmethod
     def from_tibiapy(cls, killer: tibiapy.Killer) -> 'DbKiller':
         """Converts a Killer object from Tibia.py into a DbKiller object.
@@ -308,6 +331,9 @@ class DbAssist:
         self.position = kwargs.get("position")
         self.name = kwargs.get("name")
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} death_id={self.death_id} position={self.position} name={self.name!r}>"
+
     @classmethod
     def from_tibiapy(cls, killer: tibiapy.Killer):
         """Converts a Killer object from Tibia.py into a DbAssist object.
@@ -348,8 +374,18 @@ class DbDeath:
         self.character_id = kwargs.get("character_id")
         self.level = kwargs.get("level")
         self.date = kwargs.get("date")
-        self.killers = []
-        self.assists = []
+        self.char = None  # type: Optional[DbChar]
+        self.killers = []  # type: List[DbKiller]
+        self.assists = [] # type: List[DbAssist]
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} character_id={self.character_id} level={self.level}" \
+            f"date={self.date!r} killers={self.killers!r} assists={self.assists!r}>"
+
+    @property
+    def killer(self) -> DbKiller:
+        """Returns the first killer"""
+        return self.killers[0] if self.killers else None
 
     async def save(self, conn: PoolConn):
         """Saves the current death to the database.
@@ -378,6 +414,40 @@ class DbDeath:
         if _id:
             return True
         return False
+
+    @classmethod
+    async def get_latest(cls, conn: PoolConn, minimum_level=0, *, user_id=0, worlds: Union[List[str], str] = None,
+                         char_id=0):
+        """Gets an asynchronous generator of recent level ups.
+
+        :param conn: Connection to the database.
+        :param minimum_level: The minimum level to show.
+        :param user_id: The id of an user to only show deaths of characters they own.
+        :param worlds: A list of worlds to only show deaths of characters in that world.
+        :return: An asynchronous generator containing the deaths.
+        """
+        if isinstance(worlds, str):
+            worlds = [worlds]
+        if not worlds:
+            worlds = []
+        async with conn.transaction():
+            async for row in conn.cursor("""
+                    SELECT d.*, c.name, c.level as char_level, c.world, c.vocation, c.user_id,
+                    c.id as char_id, c.guild, c.sex, k.name as killer, player
+                    FROM character_death d
+                    LEFT JOIN "character" c ON c.id = d.character_id
+                    LEFT JOIN character_death_killer k ON death_id = d.id
+                    WHERE ($1::bigint = 0 OR c.user_id = $1) AND 
+                    ($4::bigint = 0 OR c.id = $ 4)
+                    (cardinality($2::text[]) = 0 OR c.world = any($2))
+                    AND d.level >= $3 AND position = 0
+                    ORDER BY date DESC""", user_id, worlds, minimum_level, char_id):
+                death = DbDeath(**row)
+                death.killers = [DbKiller(name=row["killer"], player=row["player"])]
+                death.char = DbChar(id=row["user_id"], name=row['name'], level=row['char_level'],
+                                    user_id=row["user_id"], world=row["world"], sex=row["sex"],
+                                    vocation=row["vocation"], guild=row["guild"])
+                yield death
 
     @classmethod
     def from_tibiapy(cls, death: tibiapy.Death) -> 'DbDeath':
