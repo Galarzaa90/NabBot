@@ -6,10 +6,11 @@ import re
 import discord
 from discord.ext import commands
 
-from cogs.utils.context import NabCtx
-from cogs.utils.converter import Stamina
-from cogs.utils.tibia import DRUID, KNIGHT, NetworkError, PALADIN, SORCERER, get_character, get_stats
 from nabbot import NabBot
+from .utils.context import NabCtx
+from .utils.converter import Stamina
+from .utils.errors import NetworkError
+from .utils.tibia import DRUID, KNIGHT, PALADIN, SORCERER, get_character, get_stats
 
 log = logging.getLogger("nabbot")
 

@@ -3,16 +3,16 @@ import datetime as dt
 import logging
 import random
 import re
-from typing import Tuple, Optional
+from typing import Tuple
 
 import discord
 from discord.ext import commands
 
-from cogs.utils.database import get_server_property
 from nabbot import NabBot
-from .utils import config, CogUtils
+from .utils import CogUtils, config
 from .utils import context, join_list
-from .utils.checks import CannotEmbed
+from .utils.database import get_server_property
+from .utils.errors import CannotEmbed
 
 log = logging.getLogger("nabbot")
 

@@ -13,10 +13,11 @@ import cachetools
 import tibiapy
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
-from tibiapy import World, Character, Sex, Guild, ListedWorld, Vocation, House, OnlineCharacter
+from tibiapy import Character, Guild, House, ListedWorld, OnlineCharacter, Sex, Vocation, World
 
 from . import config, get_local_timezone, online_characters
 from .database import wiki_db
+from .errors import NetworkError
 
 log = logging.getLogger("nabbot")
 
@@ -72,10 +73,6 @@ CACHE_NEWS = cachetools.TTLCache(100, 1800)
 CACHE_WORLD_LIST = cachetools.TTLCache(10, 120)
 
 
-class NetworkError(Exception):
-    pass
-
-
 class NabChar(Character):
     """Adds extra attributes to the Character class."""
     __slots__ = ("id", "highscores", "owner_id")
@@ -112,7 +109,7 @@ async def get_character(bot, name, tries=5) -> Optional[NabChar]:
     The character object contains all the information available on Tibia.com
     Information from the user's database is also added, like owner and highscores.
     If the character can't be fetch due to a network error, an NetworkError exception is raised
-    If the character doesn 't exist, None is returned.
+    If the character doesn't exist, None is returned.
     """
     if tries == 0:
         log.error("get_character: Couldn't fetch {0}, network error.".format(name))
@@ -770,11 +767,8 @@ def get_rashid_city() -> Dict[str, Union[str, int]]:
     """Returns a dictionary with rashid's info
 
     Dictionary contains: the name of the week, city and x,y,z, positions."""
-    offset = get_tibia_time_zone() - get_local_timezone()
-    # Server save is at 10am, so in tibia a new day starts at that hour
-    tibia_time = dt.datetime.now() + dt.timedelta(hours=offset - 10)
     c = wiki_db.cursor()
-    c.execute("SELECT * FROM rashid_position WHERE day = ?", (tibia_time.weekday(),))
+    c.execute("SELECT * FROM rashid_position WHERE day = ?", (get_tibia_weekday(),))
     info = c.fetchone()
     c.close()
     return info["city"]

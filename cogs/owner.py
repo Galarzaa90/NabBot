@@ -9,15 +9,15 @@ import asyncpg
 import pkg_resources
 
 # Exposing for /debug command
-from cogs.utils.database import get_affected_count
+from .utils.database import get_affected_count
 from nabbot import NabBot
 from .utils import *
 from .utils import checks
 from .utils.context import NabCtx
 from .utils.messages import *
-from .utils.pages import CannotPaginate, Pages
+from .utils.pages import Pages
+from .utils.errors import CannotPaginate
 from .utils.tibia import *
-from .utils.database import DbChar
 
 log = logging.getLogger("nabbot")
 

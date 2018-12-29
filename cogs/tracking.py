@@ -12,15 +12,16 @@ from discord.ext import commands
 from tibiapy import Death, Guild, OnlineCharacter, World
 
 from nabbot import NabBot
-from .utils import EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_numeric, join_list, online_characters, \
-    CogUtils
+from .utils import CogUtils, EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_numeric, join_list, \
+    online_characters
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import get_affected_count, get_server_property, DbChar, DbLevelUp, DbDeath
+from .utils.database import DbChar, DbDeath, DbLevelUp, get_affected_count, get_server_property
+from .utils.errors import CannotPaginate, NetworkError
 from .utils.messages import death_messages_monster, death_messages_player, format_message, level_messages, \
     split_message, weighed_choice
-from .utils.pages import CannotPaginate, Pages, VocationPages
-from .utils.tibia import ERROR_NETWORK, HIGHSCORE_CATEGORIES, NabChar, NetworkError, get_character, \
+from .utils.pages import Pages, VocationPages
+from .utils.tibia import ERROR_NETWORK, HIGHSCORE_CATEGORIES, NabChar, get_character, \
     get_guild, get_highscores, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_emoji, get_world, \
     tibia_worlds
 
@@ -540,10 +541,7 @@ class Tracking(CogUtils):
         # List of servers the user shares with the bot
         user_guilds = self.bot.get_user_guilds(user.id)
         # List of Tibia worlds tracked in the servers the user is
-        user_tibia_worlds = [world for guild, world in self.bot.tracked_worlds.items() if
-                             guild in [g.id for g in user_guilds]]
-        # Remove duplicate entries from list
-        user_tibia_worlds = list(set(user_tibia_worlds))
+        user_tibia_worlds = ctx.bot.get_guild_worlds(user_guilds)
 
         if not ctx.is_private and ctx.world is None:
             return await ctx.send("This server is not tracking any tibia worlds.")

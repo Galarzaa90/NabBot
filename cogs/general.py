@@ -8,12 +8,13 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import clean_string, config, get_user_avatar, is_numeric, single_line, CogUtils
+from .utils import CogUtils, clean_string, config, get_user_avatar, is_numeric, single_line
 from .utils import checks
 from .utils.context import NabCtx
 from .utils.converter import BadTime, TimeString
 from .utils.database import get_server_property
-from .utils.pages import CannotPaginate, VocationPages
+from .utils.errors import CannotPaginate
+from .utils.pages import VocationPages
 from .utils.tibia import get_voc_abb, get_voc_emoji
 
 EVENT_NAME_LIMIT = 50

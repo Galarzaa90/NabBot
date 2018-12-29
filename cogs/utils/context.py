@@ -8,6 +8,7 @@ import asyncpg
 import discord
 from discord.ext import commands
 
+import nabbot
 from . import config
 from .database import get_server_property
 
@@ -18,6 +19,7 @@ T = TypeVar('T')
 
 class NabCtx(commands.Context):
     """An override of :class:`commands.Context` that provides properties and methods for NabBot."""
+    bot: "nabbot.NabBot"
     guild: discord.Guild
     message: discord.Message
     channel: discord.TextChannel

@@ -9,7 +9,8 @@ from nabbot import NabBot
 from .utils import checks, config
 from .utils.context import NabCtx
 from .utils.database import get_server_property
-from .utils.pages import CannotPaginate, Pages
+from .utils.errors import CannotPaginate
+from .utils.pages import Pages
 
 log = logging.getLogger("nabbot")
 

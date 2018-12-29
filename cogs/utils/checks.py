@@ -1,12 +1,9 @@
 from discord.ext import commands
 from discord.ext.commands import MissingPermissions
 
+from .errors import CannotEmbed
 from . import config
 from .context import NabCtx
-
-
-class CannotEmbed(commands.CheckFailure):
-    pass
 
 
 def is_owner():

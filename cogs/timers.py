@@ -10,13 +10,13 @@ import tibiawikisql
 from discord.ext import commands
 from discord.ext.commands import clean_content
 
-from cogs.utils import CogUtils
-from cogs.utils.context import NabCtx
-from cogs.utils.converter import TimeString
-from cogs.utils.database import wiki_db
-from cogs.utils.pages import Pages, CannotPaginate
 from nabbot import NabBot
-
+from .utils import CogUtils
+from .utils.context import NabCtx
+from .utils.converter import TimeString
+from .utils.database import wiki_db
+from .utils.errors import CannotPaginate
+from .utils.pages import Pages
 
 BOSS_ALIASES = {
     "tenebris": "Lady Tenebris",

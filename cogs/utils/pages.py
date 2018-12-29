@@ -9,11 +9,8 @@ from discord.ext import commands
 from nabbot import NabBot
 from . import config
 from .context import NabCtx
+from .errors import CannotPaginate
 from .tibia import DRUID, KNIGHT, PALADIN, SORCERER
-
-
-class CannotPaginate(Exception):
-    pass
 
 
 class Pages:

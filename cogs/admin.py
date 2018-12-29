@@ -8,7 +8,8 @@ from nabbot import NabBot
 from .utils import checks, get_user_avatar, join_list
 from .utils.config import config
 from .utils.context import NabCtx
-from .utils.tibia import NabChar, NetworkError, get_character
+from .utils.errors import NetworkError
+from .utils.tibia import NabChar, get_character
 
 log = logging.getLogger("nabbot")
 

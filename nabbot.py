@@ -1,19 +1,19 @@
-import logging
-
-import asyncpg
 import datetime as dt
+import logging
 import os
 import re
 import traceback
-from typing import Union, List, Optional
+from typing import List, Optional, Union
 
 import aiohttp
+import asyncpg
 import discord
 from discord.ext import commands
 
-from cogs.utils import context, safe_delete_message
-from cogs.utils.database import get_prefixes, get_server_property
+import cogs.utils.context
 from cogs.utils import config
+from cogs.utils import safe_delete_message
+from cogs.utils.database import get_prefixes, get_server_property
 from cogs.utils.tibia import populate_worlds, tibia_worlds
 
 initial_cogs = {
@@ -96,7 +96,7 @@ class NabBot(commands.Bot):
         if message.author.bot:
             return
 
-        ctx = await self.get_context(message, cls=context.NabCtx)
+        ctx = await self.get_context(message, cls=cogs.utils.context.NabCtx)
         if ctx.command is not None:
             return await self.invoke(ctx)
         # This is a PM, no further info needed
@@ -177,14 +177,17 @@ class NabBot(commands.Bot):
         except KeyError:
             return []
 
-    def get_user_worlds(self, user_id: int, guild_list=None) -> List[str]:
+    def get_guild_worlds(self, guild_list: List[discord.Guild]) -> List[str]:
+        """Returns a list of all tracked worlds found in a list of guilds."""
+        return list(set([world for guild, world in self.tracked_worlds.items() if guild in [g.id for g in guild_list]]))
+
+    def get_user_worlds(self, user_id: int) -> List[str]:
         """Returns a list of all the tibia worlds the user is tracked in.
 
         This is based on the tracked world of each guild the user belongs to.
         guild_list can be passed to search in a specific set of guilds. Note that the user may not belong to them."""
-        if guild_list is None:
-            guild_list = self.get_user_guilds(user_id)
-        return list(set([world for guild, world in self.tracked_worlds.items() if guild in [g.id for g in guild_list]]))
+        guild_list = self.get_user_guilds(user_id)
+        return self.get_guild_worlds(guild_list)
 
     def get_channel_or_top(self, guild: discord.Guild, channel_id: int) -> discord.TextChannel:
         """Returns a guild's channel by id, returns none if channel doesn't exist

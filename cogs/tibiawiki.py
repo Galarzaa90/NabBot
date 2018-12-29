@@ -16,8 +16,9 @@ from .utils import FIELD_VALUE_LIMIT, average_color, config, join_list
 from .utils import checks
 from .utils.context import NabCtx
 from .utils.database import wiki_db
+from .utils.errors import CannotPaginate
 from .utils.messages import split_message
-from .utils.pages import CannotPaginate, Pages
+from .utils.pages import Pages
 from .utils.tibia import get_map_area, get_tibia_weekday
 
 log = logging.getLogger("nabbot")
