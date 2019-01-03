@@ -28,7 +28,6 @@ initial_cogs = {
     "cogs.loot",
     "cogs.tibiawiki",
     "cogs.roles",
-    "cogs.settings",
     "cogs.info",
     "cogs.calculators",
     "cogs.timers"

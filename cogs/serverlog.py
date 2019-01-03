@@ -52,9 +52,9 @@ class ServerLog:
         embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
 
         for char in added:
-            await self.add_character_history(char.id, ChangeType.OWNER, "0", str(char.owner_id), author)
+            await self.add_character_history(char.id, ChangeType.OWNER, 0, user.id, author)
         for char in updated:
-            await self.add_character_history(char.id, ChangeType.OWNER, str(char.user_id), str(user.id), author)
+            await self.add_character_history(char.id, ChangeType.OWNER, char.user_id, user.id, author)
 
         if author:
             embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))
@@ -361,7 +361,7 @@ class ServerLog:
 
     @staticmethod
     async def get_audit_entry(guild: discord.Guild, action: discord.AuditLogAction,
-                              target: Any=None) -> Optional[discord.AuditLogEntry]:
+                              target: Any = None) -> Optional[discord.AuditLogEntry]:
         """Gets an audit log entry of the specified action type.
 
         The type of the action depends on the action.

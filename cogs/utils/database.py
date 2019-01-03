@@ -203,6 +203,26 @@ class DbChar(tibiapy.abc.BaseCharacter):
 
     # region Class methods
     @classmethod
+    async def insert(cls, conn: PoolConn, name: str, level: int, vocation: str, user_id: int, world: str,
+                     guild: str = None) -> 'DbChar':
+        """Inserts a new level up into the database.
+
+        :param conn: The connection to the database.
+        :param name: The name of the character.
+        :param level: The current level of the character. It will always be inserted as a negative.
+        :param user_id: The discord id of the user owning the character.
+        :param vocation: The current vocation of the character.
+        :param world: The world where the character currently is.
+        :param guild: The name of the guild the character belongs to.
+        :return: The inserted entry.
+        """
+        row_id = await conn.fetchval("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
+                                        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id""",
+                                     name, level*-1, vocation, user_id, world, guild)
+        return cls(id=row_id, name=name, level=level, vocation=vocation, user_id=user_id, world=world, guild=guild)
+
+
+    @classmethod
     async def get_by_id(cls, conn: PoolConn, char_id: int) -> Optional['DbChar']:
         """Gets a character with a given ID.
 

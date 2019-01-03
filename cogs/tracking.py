@@ -4,13 +4,12 @@ import logging
 import pickle
 import re
 import time
-from collections import namedtuple
-from typing import List, Union, NamedTuple
+from typing import List, NamedTuple, Union
 
 import asyncpg
 import discord
 from discord.ext import commands
-from tibiapy import Death, Guild, OnlineCharacter, World, OtherCharacter
+from tibiapy import Death, Guild, OnlineCharacter, OtherCharacter, World
 
 from nabbot import NabBot
 from .utils import CogUtils, EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_numeric, join_list, \
@@ -35,6 +34,7 @@ class CharactersResult(NamedTuple):
     same_owner: List[DbChar]
     different_user: List[DbChar]
     new: List[NabChar]
+    all_skipped: bool
 
 
 class Tracking(CogUtils):
@@ -396,6 +396,70 @@ class Tracking(CogUtils):
     # endregion
 
     # region Commands
+    @checks.is_owner()
+    @checks.is_tracking_world()
+    @commands.command(name="addaccount", aliases=["addacc"], usage="<user>,<character>")
+    async def add_account(self, ctx: NabCtx, *, params):
+        """Register a character and all other visible characters to a discord user.
+
+        If a character is hidden, only that character will be added. Characters in other worlds are skipped."""
+        params = params.split(",")
+        if len(params) != 2:
+            raise commands.BadArgument()
+        target_name, char_name = params
+
+        user = ctx.author
+        world = ctx.world
+
+        target = self.bot.get_member(target_name, ctx.guild)
+        if target is None:
+            return await ctx.error(f"I couldn't find any users named `{target_name}`")
+        if target.bot:
+            return await ctx.error("You can't register characters to discord bots!")
+
+        msg = await ctx.send(f"{config.loading_emoji} Fetching characters...")
+        try:
+            char = await get_character(ctx.bot, char_name)
+            if char is None:
+                return await msg.edit(content="That character doesn't exist.")
+
+            results = await self.process_character(ctx, target.id, char, [world], True)
+        except NetworkError:
+            return await msg.edit(content="I couldn't fetch the character, please try again.")
+
+        if results.all_skipped:
+            await ctx.send(f"Sorry, I couldn't find any characters in **{world}**.")
+            return
+
+        reply = ""
+        if results.same_owner:
+            existent_names = [e.name for e in results.same_owner]
+            reply += f"\nThe following characters were already registered to @{target.display_name}: " \
+                f"{join_list(existent_names)}"
+
+        if results.new:
+            added_names = [a.name for a in results.new]
+            reply += f"\nThe following characters were added to @{target.display_name}: {join_list(added_names)}"
+
+        if results.no_user:
+            updated_names = [r.name for r in results.no_user]
+            reply += f"\nThe following characters were reassigned to @{target.display_name}: {join_list(updated_names)}"
+
+        async with ctx.pool.acquire() as conn:
+            for char in results.no_user:
+                await char.update_user(conn, target.id)
+                log.info(f"{user.display_name} reassigned character {char.name} to {target.display_name} (ID: {target.id})")
+            for char in results.new:
+                db_char = await DbChar.insert(conn, char.name, char.level, char.vocation.value, target.id, char.world,
+                                              char.guild_name)
+                char.id = db_char.id
+                log.info("{2.display_name} registered character {0} was assigned to {1.display_name} (ID: {1.id})"
+                         .format(char.name, target, user))
+
+        await safe_delete_message(msg)
+        await ctx.send(reply)
+        self.bot.dispatch("characters_registered", target, results.new, results.no_user, ctx.author)
+
     @checks.is_admin()
     @checks.is_tracking_world()
     @commands.command(name="addchar", aliases=["registerchar"], usage="<user>,<character>")
@@ -422,36 +486,34 @@ class Tracking(CogUtils):
             except NetworkError:
                 await ctx.error("I couldn't fetch the character, please try again.")
                 return
-            if char.world != ctx.world:
-                await ctx.send(f"**{char.name}** ({char.world}) is not in a world you can manage.")
-                return
-            if char.deleted is not None:
-                await ctx.send(f"**{char.name}** ({char.world}) is scheduled for deletion and can't be added.")
-                return
-            async with ctx.pool.acquire() as conn:
-                db_char = await DbChar.get_by_name(conn, char.name)
-                if db_char is not None:
-                    # Registered to a different user
-                    if db_char != user.id:
-                        current_user = self.bot.get_user(db_char)
-                        # User registered to someone else
-                        if current_user is not None:
-                            await ctx.send("This character is already registered to someone else.")
-                            return
-                        # User no longer in any servers
-                        await db_char.update_user(conn, user.id, False)
-                        await ctx.send("This character was reassigned to this user successfully.")
-                        char_dict = {"name": char.name, "level": char.level, "vocation": char.vocation,
-                                     "guild": char.guild_name, "world": char.world, "prevowner": db_char.user_id}
-                        self.bot.dispatch("characters_registered", user, [], [char_dict], ctx.author)
-                    else:
-                        await ctx.send("This character is already registered to this user.")
-                    return
-                await conn.execute("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
-                                          VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT(name) DO NOTHING""",
-                                   char.name, -char.level, char.vocation, user.id, char.world, char.guild_name)
-                await ctx.send("**{0}** was registered successfully to this user.".format(char.name))
+
+        if char.world != ctx.world:
+            await ctx.error(f"**{char.name}** ({char.world}) is not in a world you can manage.")
+            return
+        if char.deleted is not None:
+            await ctx.error(f"**{char.name}** ({char.world}) is scheduled for deletion and can't be added.")
+            return
+        async with ctx.pool.acquire() as conn:
+            db_char = await DbChar.get_by_name(conn, char.name)
+            if db_char is None:
+                new_db_char = await DbChar.insert(conn, char.name, char.level, char.vocation.value, user.id, char.world,
+                                                  char.guild_name)
+                char.id = new_db_char.id
+                await ctx.success(f"**{char.name}** was registered successfully to this user.")
                 self.bot.dispatch("characters_registered", user, [char], [], ctx.author)
+                return
+            # Registered to the same user
+            if db_char.user_id == user.id:
+                return await ctx.error("This character is already registered to this user.")
+            current_user = self.bot.get_user(db_char.user_id)
+            # User registered to someone else
+            if current_user is not None:
+                return await ctx.error("This character is already registered to someone else.")
+            # User no longer in any servers
+            await db_char.update_user(conn, user.id, False)
+            await ctx.success("This character was reassigned to this user successfully.")
+            self.bot.dispatch("characters_registered", user, [], [db_char], ctx.author)
+            return
 
     @commands.command()
     @checks.is_in_tracking_world()
@@ -490,15 +552,14 @@ class Tracking(CogUtils):
                            f"claim, and then use `/claim character_name`.")
             return
 
-        await ctx.trigger_typing()
+        msg = await ctx.send(f"{config.loading_emoji} Fetching character...")
         try:
             char = await get_character(ctx.bot, char_name)
             if char is None:
-                await ctx.error("That character doesn't exist.")
-                return
+                return await msg.edit(content=f"{ctx.tick(False)} That character doesn't exist.")
         except NetworkError:
-            await ctx.error("I couldn't fetch the character, please try again.")
-            return
+            return await msg.edit(content=f"{ctx.tick(False)} I couldn't fetch the character, please try again.")
+
         match = claim_pattern.search(char.comment if char.comment is not None else "")
         if not match:
             await ctx.error(f"Couldn't find verification code on character's comment.\n"
@@ -518,74 +579,51 @@ class Tracking(CogUtils):
         if check_other is None:
             return await ctx.send("You ran out of time, try again."
                                   "Remember you have to react or click on the reactions.")
-        if not check_other:
-            chars = [char]
+        if check_other:
+            await safe_delete_message(msg)
+            msg = await ctx.send(f"{config.loading_emoji} Fetching characters...")
 
-        skipped = []
-        updated = []
-        added = []
-        existent = []
-        with ctx.typing():
-            for char in chars:
-                # Skip chars in non-tracked worlds
-                if char.world not in user_tibia_worlds:
-                    skipped.append(char)
-                    continue
-                db_char = await DbChar.get_by_name(ctx.pool, char.name)
-                if db_char is not None:
-                    owner = self.bot.get_user(db_char.user_id)
-                    # Char already registered to this user
-                    if owner and owner.id == user.id:
-                        existent.append(f"{char.name} ({char.world})")
-                        continue
-                    else:
-                        updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
-                                        'vocation': db_char["vocation"], 'level': db_char['level'],
-                                        'guild': db_char['guild'], 'id': db_char['id']
-                                        })
-                # If we only have one char, it already contains full data
-                if len(chars) > 1:
-                    try:
-                        await ctx.channel.trigger_typing()
-                        char = await get_character(self.bot, char.name)
-                    except NetworkError:
-                        await ctx.send("I'm having network troubles, please try again.")
-                        return
-                if char.deleted is not None:
-                    skipped.append(char)
-                    continue
-                added.append(char)
+        try:
+            results = await self.process_character(ctx, ctx.author.id, char, user_tibia_worlds, check_other)
+        except NetworkError:
+            return await msg.edit("I'm having network issues, please try again.")
 
-        if len(skipped) == len(chars):
-            await ctx.send(f"Sorry, I couldn't find any characters from the servers I track "
-                            f"({join_list(user_tibia_worlds, ', ', ' and ')}).")
-            return
+        if results.all_skipped:
+            reply = "Sorry, I couldn't find any characters from the worlds in the context ({0})."
+            return await msg.edit(content=reply.format(join_list(user_tibia_worlds)))
 
         reply = ""
-        if len(existent) > 0:
-            reply += f"\nThe following characters were already registered to you: {join_list(existent, ', ', ' and ')}"
+        if results.same_owner:
+            existent_chars = [c.name for c in results.same_owner]
+            reply += f"\n⚫ The following characters were already registered to you: {join_list(existent_chars)}"
 
-        if len(added) > 0:
-            reply += "\nThe following characters were added to your account: {0}" \
-                .format(join_list(["{0.name} ({0.world})".format(c) for c in added], ", ", " and "))
-            for char in added:
-                log.info(f"Character {char.name} was assigned to {user.display_name} (ID: {user.id})")
+        if results.new:
+            added_chars = [c.name for c in results.new]
+            reply += f"\n🔵 The following characters are now registered to you: {join_list(added_chars)}"
 
-        if len(updated) > 0:
-            reply += "\nThe following characters were reassigned to you: {0}" \
-                .format(join_list(["{name} ({world})".format(**c) for c in updated], ", ", " and "))
-            for char in updated:
+        if results.no_user:
+            updated_chars = [c.name for c in results.no_user]
+            reply += f"\n⚪ The following characters were reassigned to you: {join_list(updated_chars)}"
+            for char in results.no_user:
+                log.info(f"Character {char['name']} was reassigned to {user.display_name} (ID: {user.id})")
+
+        if results.different_user:
+            reclaimed_chars = [c.name for c in results.different_user]
+            reply += f"\n⚪ The following characters were reclaimed by you: {join_list(reclaimed_chars)}"
+            for char in results.different_user:
                 log.info(f"Character {char['name']} was reassigned to {user.display_name} (ID: {user.id})")
 
         async with ctx.pool.acquire() as conn:
-            for char in updated:
-                await conn.execute('UPDATE "character" SET user_id = $1 WHERE name = $2', user.id, char['name'])
-            for char in added:
-                await conn.execute("""INSERT INTO "character"(name,level,vocation,user_id, world, guild)
-                                      VALUES ($1, $2, $3, $4, $5, $6)""",
-                                   char.name, char.level * -1, char.vocation, user.id, char.world, char.guild_name)
+            for char in results.no_user:
+                await char.update_user(conn, user.id)
+            for char in results.new:
+                db_char = await DbChar.insert(conn, char.name, char.level, char.vocation.value, user.id, char.world,
+                                              char.guild_name)
+                char.id = db_char.id
+                log.info(f"Character {char.name} was assigned to {user.display_name} (ID: {user.id})")
+        await safe_delete_message(msg)
         await ctx.send(reply)
-        self.bot.dispatch("characters_registered", ctx.author, added, updated)
+        self.bot.dispatch("characters_registered", ctx.author, results.new, results.no_user)
         self.bot.dispatch("character_change", ctx.author.id)
 
     @checks.is_in_tracking_world()
@@ -600,10 +638,10 @@ class Tracking(CogUtils):
 
         If a character is already registered to someone else, `claim` can be used."""
         user = ctx.author
+        # List of Tibia worlds tracked in the servers the user is
         if ctx.is_private:
             user_tibia_worlds = [ctx.world]
         else:
-            # List of Tibia worlds tracked in the servers the user is
             user_tibia_worlds = ctx.bot.get_user_worlds(user.id)
 
         if not ctx.is_private and ctx.world is None:
@@ -616,10 +654,11 @@ class Tracking(CogUtils):
         try:
             char = await get_character(ctx.bot, char_name)
             if char is None:
-                return await msg.edit(content="That character doesn't exist.")
+                return await msg.edit(content=f"{ctx.tick(False)} That character doesn't exist.")
         except NetworkError:
-            return await msg.edit(content="I couldn't fetch the character, please try again.")
-        chars = char.other_characters
+            return await msg.edit(content=f"{ctx.tick(False)} I couldn't fetch the character, please try again.")
+
+        chars: List[Union[NabChar, OtherCharacter]] = char.other_characters
         check_other = False
         if len(chars) > 1:
             await msg.edit(content="Do you want to attempt to add the other visible characters in this account?")
@@ -628,19 +667,16 @@ class Tracking(CogUtils):
             await safe_delete_message(msg)
             return await ctx.send("You didn't reply in time, try again."
                                   "Remember that you have to react or click on the icons.")
-        if not check_other:
-            chars = [char]
-
         if check_other:
             await safe_delete_message(msg)
             msg = await ctx.send(f"{config.loading_emoji} Fetching characters...")
 
         try:
-            results = await self.process_character_list(ctx, ctx.author.id, chars, user_tibia_worlds)
+            results = await self.process_character(ctx, ctx.author.id, char, user_tibia_worlds, check_other)
         except NetworkError:
             return await msg.edit("I'm having network issues, please try again.")
 
-        if len(results.skipped) == len(chars):
+        if results.all_skipped:
             reply = "Sorry, I couldn't find any characters from the worlds in the context ({0})."
             return await msg.edit(content=reply.format(join_list(user_tibia_worlds)))
 
@@ -662,12 +698,9 @@ class Tracking(CogUtils):
             for char in results.no_user:
                 await char.update_user(conn, user.id)
             for char in results.new:
-                # Todo: Replace with DbChar class method
-                new_id = await conn.fetchval("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
-                                      VALUES ($1, $2, $3, $4, $5, $6)""",
-                                             char.name, char.level * -1, char.vocation.value, user.id, char.world,
-                                             char.guild_name)
-                char.id = new_id
+                db_char = await DbChar.insert(conn, char.name, char.level, char.vocation.value, user.id, char.world,
+                                              char.guild_name)
+                char.id = db_char.id
                 log.info(f"Character {char.name} was assigned to {user.display_name} (ID: {user.id})")
         await safe_delete_message(msg)
         await ctx.send(reply)
@@ -699,6 +732,41 @@ class Tracking(CogUtils):
 
         self.bot.dispatch("character_change", ctx.author.id)
         self.bot.dispatch("character_unregistered", ctx.author, db_char)
+
+    @checks.is_admin()
+    @checks.is_tracking_world()
+    @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
+    async def remove_char(self, ctx: NabCtx, *, name):
+        """Removes a registered character.
+
+        Note that you can only remove chars if they are from users exclusively in your server.
+        You can't remove any characters that would alter other servers NabBot is in."""
+        # This could be used to remove deleted chars so we don't need to check anything
+        # Except if the char exists in the database...
+        db_char = await DbChar.get_by_name(ctx.pool, name.strip())
+        if db_char is None or db_char.user_id == 0:
+            return await ctx.error("There's no character with that name registered.")
+        if db_char.world != ctx.world:
+            return await ctx.error(f"The character **{db_char.name}** is in a different world.")
+
+        user = self.bot.get_user(db_char.user_id)
+        if user is not None:
+            user_guilds = self.bot.get_user_guilds(user.id)
+            # Iterating every world where the user is, to check if it wouldn't affect other admins.
+            for guild in user_guilds:
+                if guild == ctx.guild:
+                    continue
+                if self.bot.tracked_worlds.get(guild.id, None) != ctx.world:
+                    continue
+                author: discord.Member = guild.get_member(ctx.author.id)
+                if author is None or not author.guild_permissions.manage_guild:
+                    await ctx.error(f"The user of this server is also in another server tracking "
+                                    f"**{ctx.world}**, where you are not an admin. You can't alter other servers.")
+                    return
+        username = "unknown" if user is None else user.display_name
+        await db_char.update_user(ctx.pool, 0)
+        await ctx.send("**{0}** was removed successfully from **@{1}**.".format(db_char.name, username))
+        self.bot.dispatch("character_unregistered", user, db_char, ctx.author)
 
     @commands.command()
     @checks.can_embed()
@@ -1317,8 +1385,16 @@ class Tracking(CogUtils):
         return time.time() - death.time.timestamp() >= (30 * 60)
 
     @classmethod
-    async def process_character_list(cls, ctx: NabCtx, user_id: int, chars: List[Union[OtherCharacter, NabChar]],
-                                     worlds: List[str]):
+    async def process_character(cls, ctx: NabCtx, user_id: int, char: NabChar, worlds: List[str], check_other=False):
+        """Processes a character and optionally other characters in the account and classifies them by ownership.
+
+        :param ctx: The command context where this is called.
+        :param user_id: The id of the user against which the characters will be checked for.
+        :param char: The character to be checked.
+        :param worlds: The worlds to filter characters from.
+        :param check_other: Whether other characters in the same account should be processed to or not.
+        :return: A named tuple containing the different categories of characters found.
+        """
         skipped = []  # type: List[OtherCharacter]
         """Characters that were skipped due to being in another world or scheduled for deletion."""
         no_user = []  # type: List[DbChar]
@@ -1329,6 +1405,13 @@ class Tracking(CogUtils):
         """Characters belonging to a different user."""
         unregistered = []  # type: List[NabChar]
         """Characters that have never been registered."""
+        if check_other and not char.hidden:
+            chars: List[Union[OtherCharacter, NabChar]] = char.other_characters
+            _char = next((x for x in chars if x.name == char.name))
+            chars[chars.index(_char)] = char
+        else:
+            chars = [char]
+
         for char in chars:
             if char.world not in worlds or char.deleted:
                 skipped.append(char)
@@ -1347,7 +1430,8 @@ class Tracking(CogUtils):
             if isinstance(char, OtherCharacter):
                 char = await get_character(ctx.bot, char.name)
             unregistered.append(char)
-        return CharactersResult._make((skipped, no_user, same_owner, different_user, unregistered))
+        return CharactersResult._make((skipped, no_user, same_owner, different_user, unregistered,
+                                       len(skipped) == len(chars)))
 
     async def compare_levels(self, char: Union[NabChar, OnlineCharacter]):
         """Compares the character's level with the stored level in database.

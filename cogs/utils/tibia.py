@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 from tibiapy import Character, Guild, House, ListedWorld, OnlineCharacter, Sex, Vocation, World
 
 from . import config, get_local_timezone, online_characters
-from .database import wiki_db
+from .database import wiki_db, DbChar
 from .errors import NetworkError
 
 log = logging.getLogger("nabbot")
@@ -86,7 +86,7 @@ class NabChar(Character):
     @classmethod
     def from_online(cls, o_char: OnlineCharacter, sex=None, owner_id=0):
         """Creates a NabChar from an OnlineCharacter"""
-        char =  cls(o_char.name, o_char.world, o_char.vocation, o_char.level, tibiapy.utils.try_enum(Sex, sex))
+        char = cls(o_char.name, o_char.world, o_char.vocation, o_char.level, tibiapy.utils.try_enum(Sex, sex))
         char.owner_id = owner_id
         return char
 
