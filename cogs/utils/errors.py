@@ -18,3 +18,8 @@ class NetworkError(NabError):
 class CannotPaginate(NabError):
     """Exception raised when a context doesn't meet all the requirements for pagination."""
     pass
+
+
+class NotTracking(NabError):
+    """Exception raised when a command is used from a server that is not tracking any worlds."""
+    pass

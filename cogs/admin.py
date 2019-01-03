@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import checks, get_user_avatar, join_list
+from .utils import checks, join_list
 from .utils.config import config
 from .utils.context import NabCtx
 from .utils.errors import NetworkError
@@ -135,68 +135,7 @@ class Admin:
         await ctx.send(reply)
         self.bot.dispatch("characters_registered", target, added, updated, ctx.author)
 
-    @checks.is_admin()
-    @checks.is_tracking_world()
-    @commands.command(name="addchar", aliases=["registerchar"], usage="<user>,<character>")
-    async def add_char(self, ctx: NabCtx, *, params):
-        """Registers a character to a user.
 
-        The character must be in the world you're tracking.
-        If the desired character is already assigned to someone else, the user must use `claim`."""
-        params = params.split(",")
-        if len(params) != 2:
-            raise commands.BadArgument()
-
-        user = self.bot.get_member(params[0], ctx.guild)
-        if user is None:
-            return await ctx.send(f"{ctx.tick(False)} I don't see any user named **{params[0]}** in this server.")
-        if user.bot:
-            return await ctx.send(f"{ctx.tick(False)} You can't register characters to discord bots!")
-        with ctx.typing():
-            try:
-                char = await get_character(ctx.bot, params[1])
-                if char is None:
-                    await ctx.send("That character doesn't exist")
-                    return
-            except NetworkError:
-                await ctx.send("I couldn't fetch the character, please try again.")
-                return
-            if char.world != ctx.world:
-                await ctx.send("**{0.name}** ({0.world}) is not in a world you can manage.".format(char))
-                return
-            if char.deleted is not None:
-                await ctx.send("**{0.name}** ({0.world}) is scheduled for deletion and can't be added.".format(char))
-                return
-            embed = discord.Embed()
-            embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-            embed.colour = discord.Colour.dark_teal()
-            icon_url = get_user_avatar(ctx.author)
-            embed.set_footer(text="{0.name}#{0.discriminator}".format(ctx.author), icon_url=icon_url)
-            async with ctx.pool.acquire() as conn:
-                result = await conn.fetchrow('SELECT id, name, user_id FROM "character" WHERE name = $1', char.name)
-                if result is not None:
-                    # Registered to a different user
-                    if result["user_id"] != user.id:
-                        current_user = self.bot.get_member(result["user_id"])
-                        # User registered to someone else
-                        if current_user is not None:
-                            await ctx.send("This character is already registered to  **{0.name}#{0.discriminator}**"
-                                           .format(current_user))
-                            return
-                        # User no longer in any servers
-                        await conn.execute('UPDATE "character" SET user_id = $1 WHERE id = $2', user.id, result["id"])
-                        await ctx.send("This character was reassigned to this user successfully.")
-                        char_dict = {"name": char.name, "level": char.level, "vocation": char.vocation,
-                                     "guild": char.guild_name, "world": char.world, "prevowner": result["user_id"]}
-                        self.bot.dispatch("characters_registered", user, [], [char_dict], ctx.author)
-                    else:
-                        await ctx.send("This character is already registered to this user.")
-                    return
-                await conn.execute("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
-                                      VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT(name) DO NOTHING""",
-                                   char.name, -char.level, char.vocation, user.id, char.world, char.guild_name)
-                await ctx.send("**{0}** was registered successfully to this user.".format(char.name))
-                self.bot.dispatch("characters_registered", user, [char], [], ctx.author)
 
     @checks.is_admin()
     @commands.guild_only()

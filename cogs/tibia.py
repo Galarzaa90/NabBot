@@ -1486,9 +1486,9 @@ class Tibia(CogUtils):
             online = config.online_emoji if char.name in online_list else ""
             voc_abb = get_voc_abb(char.vocation)
             if len(characters) <= 10:
-                char_list.append(f"[{char.name}]({char.url}){online} (Lvl {char.level} {voc_abb})")
+                char_list.append(f"[{char.name}]({char.url}){online} (Lvl {abs(char.level)} {voc_abb})")
             else:
-                char_list.append(f"**{char.name}**{online} (Lvl {char.level} {voc_abb})")
+                char_list.append(f"**{char.name}**{online} (Lvl {abs(char.level)} {voc_abb})")
             plural = "s are" if len(char_list) > 1 else " is"
             embed.description = f"**{display_name}**' character{plural}: {join_list(char_list, ', ', ' and ')}"
         return embed

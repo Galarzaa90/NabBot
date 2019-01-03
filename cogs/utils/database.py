@@ -1,7 +1,7 @@
 import datetime
 import re
 import sqlite3
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Union, TypeVar, Tuple
 
 import asyncpg
 import tibiapy
@@ -17,6 +17,7 @@ result_patt = re.compile(r"(\d+)$")
 
 PoolConn = Union[asyncpg.pool.Pool, asyncpg.Connection]
 """A type alias for an union of Pool and Connection."""
+T = TypeVar('T')
 
 
 def get_affected_count(result: str) -> int:
@@ -180,10 +181,23 @@ class DbChar(tibiapy.abc.BaseCharacter):
         :param update_self: Whether to also update the object or not.
         :return: Whether the level was updated in the database or not.
         """
-        result = await self.update_level_by_id(conn, self.id, level)
+        result = await self.update_field_by_id(conn, self.id, "level", level)
         if result and update_self:
             self.level = level
-        return result
+        return result is not None
+
+    async def update_user(self, conn: PoolConn, user_id: int, update_self=True) -> bool:
+        """Updates the user of the character on the database.
+
+        :param conn: Connection to the database.
+        :param user_id: The new user_id to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the level was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "user_id", user_id)
+        if result and update_self:
+            self.user_id = user_id
+        return result is not None
 
     # endregion
 
@@ -249,16 +263,27 @@ class DbChar(tibiapy.abc.BaseCharacter):
                 yield DbChar(**row)
 
     @classmethod
-    async def update_level_by_id(cls, conn: PoolConn, char_id: int, level: int) -> bool:
-        """Updates the level of a character with a given id.
+    async def update_field_by_id(cls, conn: PoolConn, char_id: int, column: str, value: T) -> Optional[Tuple[T, T]]:
+        """Updates a field of a character with a given id.
+
+        This may result in an exception if an invalid column is provided.
+
+        Warning: The column parameter should NEVER be open to user input, as it may lead to SQL injection.
 
         :param conn: Connection to the database.
         :param char_id: The id of the character.
-        :param level:  The new level to set.
-        :return: Whether the database was updated or not.
+        :param column: The field or column that will be updated.
+        :param value: The new value to store.
+        :return: A tuple containing the old value and the new value or None if nothing was affected.
         """
-        result = await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', level, char_id)
-        return bool(get_affected_count(result))
+        result = await conn.fetchrow(f"""
+            UPDATE "character" new SET {column} = $2 FROM "character" old
+            WHERE new.id = old.id AND new.id = $1
+            RETURNING old.level as old_value, new.level as new_value
+        """, char_id, value)
+        if not result:
+            return None
+        return result["old_value"], result["new_value"]
 
     # endregion
 
