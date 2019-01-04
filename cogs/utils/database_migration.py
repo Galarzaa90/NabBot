@@ -146,8 +146,8 @@ tables = [
     CREATE TABLE character_history (
         character_id integer,
         change_type text NOT NULL,
-        before text,
-        after text,
+        before jsonb,
+        after jsonb,
         user_id bigint,
         date timestamptz NOT NULL DEFAULT now(),
         FOREIGN KEY (character_id) REFERENCES "character" (id)

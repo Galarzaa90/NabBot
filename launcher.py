@@ -114,6 +114,35 @@ def main(ctx, debug):
         run_bot()
 
 
+async def get_db_name(pool):
+    return await pool.fetchval("SELECT current_database()")
+
+
+@main.command()
+def empty():
+    """Empties out the database.
+
+    Drops all tables and funcctions from the saved PostgreSQL database.
+    This action is irreversible, so use with caution."""
+    loop = asyncio.get_event_loop()
+    pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
+    if pool is None:
+        log.error('Could not set up PostgreSQL. Exiting.')
+        return
+
+    db_name = loop.run_until_complete(get_db_name(pool))
+
+    confirm = click.confirm(f"You are about to drop all the tables and functions of the database '{db_name}'.\n"
+                            "Are you sure you want to continue? This action is irreversible.")
+    if not confirm:
+        log.warning("Operation aborted.")
+        return
+
+    log.info("Clearing database...")
+    loop.run_until_complete(drop_tables(pool))
+    log.info("Database cleared")
+
+
 @main.command()
 @click.option('-path', '--path', help="Name for the database file.", default="data/users.db")
 def migrate(path):
@@ -126,9 +155,6 @@ def migrate(path):
     if pool is None:
         log.error('Could not set up PostgreSQL. Exiting.')
         return
-
-    async def get_db_name(pool):
-        return await pool.fetchval("SELECT current_database()")
 
     db_name = loop.run_until_complete(get_db_name(pool))
 

@@ -16,7 +16,7 @@ from bs4 import BeautifulSoup
 from tibiapy import Character, Guild, House, ListedWorld, OnlineCharacter, Sex, Vocation, World
 
 from . import config, get_local_timezone, online_characters
-from .database import wiki_db
+from .database import wiki_db, DbChar
 from .errors import NetworkError
 
 log = logging.getLogger("nabbot")
@@ -86,7 +86,7 @@ class NabChar(Character):
     @classmethod
     def from_online(cls, o_char: OnlineCharacter, sex=None, owner_id=0):
         """Creates a NabChar from an OnlineCharacter"""
-        char =  cls(o_char.name, o_char.world, o_char.vocation, o_char.level, tibiapy.utils.try_enum(Sex, sex))
+        char = cls(o_char.name, o_char.world, o_char.vocation, o_char.level, tibiapy.utils.try_enum(Sex, sex))
         char.owner_id = owner_id
         return char
 
@@ -178,41 +178,39 @@ async def bind_database_character(bot, character: NabChar):
                 log.info(f"get_character(): {old_name} renamed to {character.name}")
                 bot.dispatch("character_rename", character, old_name)
 
-        # Discord owner
-        db_char = await conn.fetchrow("""SELECT id, user_id, name, user_id, vocation, world, guild, sex
-                                        FROM "character"
-                                        WHERE name LIKE $1""", character.name)
+        # Get character in database
+        db_char = await DbChar.get_by_name(conn, character.name)
         if db_char is None:
             # Untracked character
             return
 
-        character.owner_id = db_char["user_id"]
-        character.id = db_char["id"]
+        character.owner_id = db_char.user_id
+        character.id = db_char.id
         _vocation = character.vocation.value
-        if db_char["vocation"] != _vocation:
-            await conn.execute('UPDATE "character" SET vocation = $1 WHERE id = $2', _vocation, db_char["id"])
-            log.info(f"get_character(): {character.name}'s vocation: {db_char['vocation']} -> {_vocation}")
+        if db_char.vocation != _vocation:
+            await db_char.update_vocation(conn, _vocation, False)
+            log.info(f"get_character(): {character.name}'s vocation: {db_char.vocation} -> {_vocation}")
 
         _sex = character.sex.value
-        if db_char["sex"] != _sex:
-            await conn.execute('UPDATE "character" SET sex = $1 WHERE id = $2', _sex, db_char["id"])
-            log.info(f"get_character(): {character.name}'s sex: {db_char['sex']} -> {_sex}")
+        if db_char.sex != _sex:
+            await db_char.update_sex(conn, _sex, False)
+            log.info(f"get_character(): {character.name}'s sex: {db_char.sex} -> {_sex}")
 
-        if db_char["name"] != character.name:
-            await conn.execute('UPDATE "character" SET name = $1 WHERE id = $2', character.name, db_char["id"])
-            log.info(f"get_character: {db_char['name']} renamed to {character.name}")
-            bot.dispatch("character_rename", character, db_char['name'])
+        if db_char.name != character.name:
+            await db_char.update_name(conn, character.name, False)
+            log.info(f"get_character: {db_char.name} renamed to {character.name}")
+            bot.dispatch("character_rename", character, db_char.name)
 
-        if db_char["world"] != character.world:
-            await conn.execute('UPDATE "character" SET world = $1 WHERE id = $2', character.world, db_char["id"])
-            log.info(f"get_character: {character.name}'s world updated {character.world} -> {db_char['world']}")
-            bot.dispatch("character_transferred", character, db_char['world'])
+        if db_char.world != character.world:
+            await db_char.update_world(conn, character.world, False)
+            log.info(f"get_character: {character.name}'s world updated {character.world} -> {db_char.world}")
+            bot.dispatch("character_transferred", character, db_char.world)
 
-        if db_char["guild"] != character.guild_name:
-            await conn.execute('UPDATE "character" SET guild = $1 WHERE id = $2', character.guild_name, db_char["id"])
-            log.info(f"get_character: {character.name}'s guild updated {db_char['guild']!r} -> {character.guild_name!r}")
+        if db_char.guild != character.guild_name:
+            await db_char.update_guild(conn, character.guild_name, False)
+            log.info(f"get_character: {character.name}'s guild updated {db_char.guild!r} -> {character.guild_name!r}")
             bot.dispatch("character_change", character.owner_id)
-            bot.dispatch("character_guild_change", character, db_char['guild'])
+            bot.dispatch("character_guild_change", character, db_char.guild)
 
 
 async def get_highscores(world, category, pagenum, profession=0, tries=5):

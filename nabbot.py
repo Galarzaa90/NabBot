@@ -28,7 +28,6 @@ initial_cogs = {
     "cogs.loot",
     "cogs.tibiawiki",
     "cogs.roles",
-    "cogs.settings",
     "cogs.info",
     "cogs.calculators",
     "cogs.timers"
@@ -139,7 +138,7 @@ class NabBot(commands.Bot):
         else:
             user_id = int(match.group(1))
             if guild is None:
-                return discord.utils.get(self.get_all_members(), id=user_id)
+                return self.get_user(user_id)
             if type(guild) is list and len(guild) > 0:
                 members = [m for ml in [g.members for g in guild] for m in ml]
                 return discord.utils.find(lambda m: m.id == user_id, members)

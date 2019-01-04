@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 import discord
 
+from cogs.utils.database import DbChar
 from nabbot import NabBot
 from .utils import get_region_string, get_user_avatar
 from .utils.tibia import NabChar, get_voc_abb_and_emoji
@@ -12,7 +13,7 @@ from .utils.tibia import NabChar, get_voc_abb_and_emoji
 log = logging.getLogger("nabbot")
 
 COLOUR_CHAR_REGISTERED = discord.Colour.dark_teal()
-COLOUR_CHAR_UNREGISTERED = discord.Colour.dark_teal()
+COLOUR_CHAR_UNREGISTERED = discord.Colour.dark_magenta()
 COLOUR_CHAR_RENAME = discord.Colour.blurple()
 COLOUR_CHAR_TRANSFERRED = discord.Colour.greyple()
 COLOUR_MEMBER_JOINED = discord.Colour.green()
@@ -41,8 +42,8 @@ class ServerLog:
         self.bot = bot
 
     # region Custom Events
-    async def on_characters_registered(self, user: discord.User, added: List[NabChar], updated: List[Dict[str, Any]],
-                                       author: discord.User=None):
+    async def on_characters_registered(self, user: discord.User, added: List[NabChar], updated: List[DbChar],
+                                       author: discord.User = None):
         """Called when a user registers new characters
 
         Announces the new characters in the server log of the relevant servers."""
@@ -51,48 +52,48 @@ class ServerLog:
         embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
 
         for char in added:
-            await self.add_character_history(char.id, ChangeType.OWNER, "0", str(char.owner_id))
+            await self.add_character_history(char.id, ChangeType.OWNER, 0, user.id, author)
         for char in updated:
-            await self.add_character_history(char["id"], ChangeType.OWNER, str(char["prevowner"]), str(user.id))
+            await self.add_character_history(char.id, ChangeType.OWNER, char.user_id, user.id, author)
 
-        if author is not None:
+        if author:
             embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))
         for guild in user_guilds:
             world = self.bot.tracked_worlds.get(guild.id)
             _added = [c for c in added if c.world == world]
-            _updated = [c for c in updated if c["world"] == world]
+            _updated = [c for c in updated if c.world == world]
             if not _added and not _updated:
                 continue
             description = f"{user.mention} registered the following characters:"
             for char in _added:
-                tibia_guild = char.guild or "No guild"
+                tibia_guild = char.guild_name or "No guild"
                 voc = get_voc_abb_and_emoji(char.vocation)
                 description += f"\n‣ {char.name} - Level {char.level} {voc} - **{tibia_guild}**"
             for char in _updated:
-                voc = get_voc_abb_and_emoji(char["vocation"])
-                tibia_guild = char["guild"] or "No guild"
-                description += f"\n‣ {char['name']} - Level {char['level']} {voc} - **{tibia_guild}** (Reassigned)"
+                voc = get_voc_abb_and_emoji(char.vocation)
+                tibia_guild = char.guild or "No guild"
+                description += f"\n‣ {char.name} - Level {abs(char.level)} {voc} - **{tibia_guild}** (Reassigned)"
             embed.description = description
             await self.bot.send_log_message(guild, embed=embed)
 
-    async def on_character_unregistered(self, user: discord.user, char: Dict[str, Any], author: discord.User=None):
+    async def on_character_unregistered(self, user: discord.user, char: DbChar, author: discord.User = None):
         """Called when a user unregisters a character.
 
         Announces the unregistered in the server log of the relevant servers."""
         user_guilds = self.bot.get_user_guilds(user.id)
         embed = discord.Embed(colour=COLOUR_CHAR_UNREGISTERED)
         embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-        voc = get_voc_abb_and_emoji(char["vocation"])
-        tibia_guild = char["guild"] if char["guild"] else "No guild"
-        await self.add_character_history(char["id"], ChangeType.OWNER, str(user.id), None)
+        voc = get_voc_abb_and_emoji(char.vocation)
+        tibia_guild = char.guild if char.guild else "No guild"
+        await self.add_character_history(char.id, ChangeType.OWNER, user.id, 0)
         if author is not None:
             embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))
         for guild in user_guilds:
             world = self.bot.tracked_worlds.get(guild.id)
-            if char["world"] != world:
+            if char.world != world:
                 continue
             embed.description = f"{user.mention} unregistered:" \
-                                f"\n‣ {char['name']} - Level {char['level']} {voc} - **{tibia_guild}**"
+                                f"\n‣ {char.name} - Level {abs(char.level)} {voc} - **{tibia_guild}**"
             await self.bot.send_log_message(guild, embed=embed)
 
     async def on_character_rename(self, char: NabChar, old_name: str):
@@ -360,7 +361,7 @@ class ServerLog:
 
     @staticmethod
     async def get_audit_entry(guild: discord.Guild, action: discord.AuditLogAction,
-                              target: Any=None) -> Optional[discord.AuditLogEntry]:
+                              target: Any = None) -> Optional[discord.AuditLogEntry]:
         """Gets an audit log entry of the specified action type.
 
         The type of the action depends on the action.

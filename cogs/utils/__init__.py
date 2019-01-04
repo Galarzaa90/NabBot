@@ -25,12 +25,20 @@ EMBED_LIMIT = 6000
 
 
 class CogUtils:
+
     @property
     def tag(self) -> str:
         """
         Gets the cog's logging tag, composed of the cog's name between brackets, e.g. [Tracking]
         """
-        return f"[{self.__class__.__name__}]"
+        return self.get_tag()
+
+    @classmethod
+    def get_tag(cls) -> str:
+        """
+            Gets the cog's logging tag, composed of the cog's name between brackets, e.g. [Tracking]
+        """
+        return f"[{cls.__name__}]"
 
 
 def clean_string(ctx: commands.Context, string: str) -> str:
@@ -237,8 +245,8 @@ def is_numeric(s: str) -> bool:
         return False
 
 
-def join_list(_list: List, separator: str, end_separator: str) -> str:
-    """Joins elements in a list, using a different sepaator for the last item.
+def join_list(_list: List, separator: str = ",", end_separator: str = " and ") -> str:
+    """Joins elements in a list, using a different separator for the last item.
 
     :param _list: The list to join.
     :param separator: The string that will separate the items.

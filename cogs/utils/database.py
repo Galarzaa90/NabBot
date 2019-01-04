@@ -1,7 +1,7 @@
 import datetime
 import re
 import sqlite3
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Union, TypeVar, Tuple
 
 import asyncpg
 import tibiapy
@@ -17,6 +17,7 @@ result_patt = re.compile(r"(\d+)$")
 
 PoolConn = Union[asyncpg.pool.Pool, asyncpg.Connection]
 """A type alias for an union of Pool and Connection."""
+T = TypeVar('T')
 
 
 def get_affected_count(result: str) -> int:
@@ -172,6 +173,19 @@ class DbChar(tibiapy.abc.BaseCharacter):
                 else:
                     yield DbDeath(**row)
 
+    async def update_guild(self, conn: PoolConn, guild: str, update_self=True) -> bool:
+        """Updates the guild of the character on the database.
+
+        :param conn: Connection to the database.
+        :param guild: The new guild to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the guild was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "guild", guild)
+        if result and update_self:
+            self.guild = guild
+        return result is not None
+
     async def update_level(self, conn: PoolConn, level: int, update_self=True) -> bool:
         """Updates the level of the character on the database.
 
@@ -180,14 +194,98 @@ class DbChar(tibiapy.abc.BaseCharacter):
         :param update_self: Whether to also update the object or not.
         :return: Whether the level was updated in the database or not.
         """
-        result = await self.update_level_by_id(conn, self.id, level)
+        result = await self.update_field_by_id(conn, self.id, "level", level)
         if result and update_self:
             self.level = level
-        return result
+        return result is not None
+
+    async def update_name(self, conn: PoolConn, name: str, update_self=True) -> bool:
+        """Updates the name of the character on the database.
+
+        :param conn: Connection to the database.
+        :param name: The new name to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the name was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "name", name)
+        if result and update_self:
+            self.name = name
+        return result is not None
+
+    async def update_sex(self, conn: PoolConn, sex: str, update_self=True) -> bool:
+        """Updates the sex of the character on the database.
+
+        :param conn: Connection to the database.
+        :param sex: The new sex to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the sex was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "sex", sex)
+        if result and update_self:
+            self.sex = sex
+        return result is not None
+
+    async def update_user(self, conn: PoolConn, user_id: int, update_self=True) -> bool:
+        """Updates the user of the character on the database.
+
+        :param conn: Connection to the database.
+        :param user_id: The new user_id to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the level was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "user_id", user_id)
+        if result and update_self:
+            self.user_id = user_id
+        return result is not None
+
+    async def update_vocation(self, conn: PoolConn, vocation: str, update_self=True) -> bool:
+        """Updates the vocation of the character on the database.
+
+        :param conn: Connection to the database.
+        :param vocation: The new vocation to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the vocation was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "vocation", vocation)
+        if result and update_self:
+            self.vocation = vocation
+        return result is not None
+
+    async def update_world(self, conn: PoolConn, world: str, update_self=True) -> bool:
+        """Updates the world of the character on the database.
+
+        :param conn: Connection to the database.
+        :param world: The new world to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the world was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "world", world)
+        if result and update_self:
+            self.world = world
+        return result is not None
 
     # endregion
 
     # region Class methods
+    @classmethod
+    async def insert(cls, conn: PoolConn, name: str, level: int, vocation: str, user_id: int, world: str,
+                     guild: str = None) -> 'DbChar':
+        """Inserts a new level up into the database.
+
+        :param conn: The connection to the database.
+        :param name: The name of the character.
+        :param level: The current level of the character. It will always be inserted as a negative.
+        :param user_id: The discord id of the user owning the character.
+        :param vocation: The current vocation of the character.
+        :param world: The world where the character currently is.
+        :param guild: The name of the guild the character belongs to.
+        :return: The inserted entry.
+        """
+        row_id = await conn.fetchval("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
+                                        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id""",
+                                     name, level*-1, vocation, user_id, world, guild)
+        return cls(id=row_id, name=name, level=level, vocation=vocation, user_id=user_id, world=world, guild=guild)
+
     @classmethod
     async def get_by_id(cls, conn: PoolConn, char_id: int) -> Optional['DbChar']:
         """Gets a character with a given ID.
@@ -208,7 +306,7 @@ class DbChar(tibiapy.abc.BaseCharacter):
         :param name: The name of the character to look for.
         :return: The found character or None.
         """
-        row = await conn.fetchrow('SELECT * FROM "character" WHERE lower(name) = $1', name.lower())
+        row = await conn.fetchrow('SELECT * FROM "character" WHERE lower(name) = $1 ORDER BY id', name.lower())
         if row:
             return cls(**row)
 
@@ -249,16 +347,27 @@ class DbChar(tibiapy.abc.BaseCharacter):
                 yield DbChar(**row)
 
     @classmethod
-    async def update_level_by_id(cls, conn: PoolConn, char_id: int, level: int) -> bool:
-        """Updates the level of a character with a given id.
+    async def update_field_by_id(cls, conn: PoolConn, char_id: int, column: str, value: T) -> Optional[Tuple[T, T]]:
+        """Updates a field of a character with a given id.
+
+        This may result in an exception if an invalid column is provided.
+
+        Warning: The column parameter should NEVER be open to user input, as it may lead to SQL injection.
 
         :param conn: Connection to the database.
         :param char_id: The id of the character.
-        :param level:  The new level to set.
-        :return: Whether the database was updated or not.
+        :param column: The field or column that will be updated.
+        :param value: The new value to store.
+        :return: A tuple containing the old value and the new value or None if nothing was affected.
         """
-        result = await conn.execute('UPDATE "character" SET level = $1 WHERE id = $2', level, char_id)
-        return bool(get_affected_count(result))
+        result = await conn.fetchrow(f"""
+            UPDATE "character" new SET {column} = $2 FROM "character" old
+            WHERE new.id = old.id AND new.id = $1
+            RETURNING old.level as old_value, new.level as new_value
+        """, char_id, value)
+        if not result:
+            return None
+        return result["old_value"], result["new_value"]
 
     # endregion
 
