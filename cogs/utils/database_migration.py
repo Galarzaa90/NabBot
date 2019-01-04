@@ -317,7 +317,7 @@ tables = [
 ]
 functions = [
     """
-    CREATE FUNCTION update_modified_column() RETURNS trigger
+    CREATE OR REPLACE FUNCTION update_modified_column() RETURNS trigger
         LANGUAGE plpgsql
         AS $$
     BEGIN
@@ -325,6 +325,14 @@ functions = [
         RETURN NEW;
     END;
     $$;
+    """,
+    """
+    CREATE OR REPLACE FUNCTION get_exp(lvl integer) RETURNS bigint
+        LANGUAGE 'sql'
+
+        COST 100
+        VOLATILE 
+    AS $BODY$SELECT CEIL((50*POWER(lvl,3)/3) - 100*POWER(lvl,2) + 850*lvl/3 - 200)::bigint$BODY$;
     """
 ]
 triggers = [
