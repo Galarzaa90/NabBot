@@ -49,7 +49,7 @@ class Owner:
 
     # Commands
     @commands.command(aliases=["notifyadmins"])
-    @checks.is_owner()
+    @checks.owner_only()
     async def admins_message(self, ctx: NabCtx, *, content: str=None):
         """Sends a private message to all server owners.
 
@@ -79,7 +79,7 @@ class Owner:
 
     # noinspection PyBroadException
     @commands.command(name="eval")
-    @checks.is_owner()
+    @checks.owner_only()
     async def _eval(self, ctx: NabCtx, *, body: str):
         """Evaluates Python code.
 
@@ -136,7 +136,7 @@ class Owner:
                 await ctx.send(f'```py\n{value}{ret}\n```')
 
     @commands.command()
-    @checks.is_owner()
+    @checks.owner_only()
     async def leave(self, ctx: NabCtx, *, server: str):
         """Makes the bot leave a server.
 
@@ -181,7 +181,7 @@ class Owner:
             await ctx.send("Something went wrong, I guess they don't want to let me go.")
 
     @commands.command(name="load")
-    @checks.is_owner()
+    @checks.owner_only()
     async def load_cog(self, ctx: NabCtx, cog: str):
         """Loads a cog.
 
@@ -198,8 +198,8 @@ class Owner:
             await ctx.send('{}: {}'.format(type(e).__name__, e))
 
     @commands.command(usage="<old world> <new world>")
-    @checks.is_owner()
-    @checks.is_not_lite()
+    @checks.owner_only()
+    @checks.not_lite_only()
     async def merge(self, ctx: NabCtx, old_world: str, new_world: str):
         """Renames all references of an old world to a new one.
 
@@ -238,8 +238,8 @@ class Owner:
             await self.bot.reload_worlds()
 
     @commands.command(aliases=["namechange", "rename"], usage="<old name>,<new name>")
-    @checks.is_owner()
-    @checks.is_not_lite()
+    @checks.owner_only()
+    @checks.not_lite_only()
     @commands.guild_only()
     async def namelock(self, ctx: NabCtx, *, params):
         """Register the name of a new character that was namelocked.
@@ -341,7 +341,7 @@ class Owner:
 
             await ctx.send("Character renamed successfully.")
 
-    @checks.is_owner()
+    @checks.owner_only()
     @commands.command()
     async def ping(self, ctx: NabCtx):
         """Shows the bot's response times."""
@@ -350,7 +350,7 @@ class Owner:
         await resp.edit(content=f'Pong! That took {1000*diff.total_seconds():.1f}ms.\n'
                                 f'Socket latency is {1000*self.bot.latency:.1f}ms')
 
-    @checks.is_owner()
+    @checks.owner_only()
     @commands.command(name="reload")
     async def reload_cog(self, ctx: NabCtx, *, cog):
         """Reloads a cog (module)"""
@@ -365,7 +365,7 @@ class Owner:
         else:
             await ctx.success(f"Cog reloaded successfully.")
 
-    @checks.is_owner()
+    @checks.owner_only()
     @commands.command(name="reloadconfig")
     async def reload_config(self, ctx: NabCtx):
         """Reloads the configuration file."""
@@ -376,7 +376,7 @@ class Owner:
             await ctx.send(f'```py\n{traceback.format_exc()}\n```')
 
     @commands.command(hidden=True)
-    @checks.is_owner()
+    @checks.owner_only()
     async def repl(self, ctx: NabCtx):
         """Starts a REPL session in the current channel.
 
@@ -469,14 +469,14 @@ class Owner:
                 await ctx.send(f'Unexpected error: `{e}`')
 
     @commands.command()
-    @checks.is_owner()
+    @checks.owner_only()
     async def shutdown(self, ctx: NabCtx):
         """Shutdowns the bot."""
         await ctx.send('Shutting down...')
         await self.bot.logout()
 
     @commands.command()
-    @checks.is_owner()
+    @checks.owner_only()
     async def sql(self, ctx: NabCtx, *, query: str):
         """Executes a SQL query and shows the results.
 
@@ -506,7 +506,7 @@ class Owner:
         else:
             await ctx.send(fmt)
 
-    @checks.is_owner()
+    @checks.owner_only()
     @checks.can_embed()
     @commands.command()
     async def servers(self, ctx: NabCtx, sort=None):
@@ -545,7 +545,7 @@ class Owner:
             await ctx.send(e)
 
     @commands.command(name="unload")
-    @checks.is_owner()
+    @checks.owner_only()
     async def unload_cog(self, ctx: NabCtx, cog: str):
         """Unloads a cog."""
         try:
@@ -555,7 +555,7 @@ class Owner:
             await ctx.send('{}: {}'.format(type(e).__name__, e))
 
     @commands.command()
-    @checks.is_owner()
+    @checks.owner_only()
     async def versions(self, ctx: NabCtx):
         """Shows version info about NabBot and its dependencies.
 

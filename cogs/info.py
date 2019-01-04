@@ -319,7 +319,7 @@ class Info:
     async def serverinfo(self, ctx: NabCtx, server=None):
         """Shows the server's information.
         """
-        if await checks.is_owner_check(ctx) and server is not None:
+        if await checks.is_owner(ctx) and server is not None:
             try:
                 guild = self.bot.get_guild(int(server))
                 if guild is None:

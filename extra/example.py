@@ -30,7 +30,7 @@ class Example:
 
         This is also called when you /help is called, to check if the command is available to the user."""
         # Only the bot owner can use the commands in this cog
-        return await checks.is_owner_check(ctx)
+        return await checks.is_owner(ctx)
 
     @commands.command()
     async def example(self, ctx):

@@ -396,8 +396,8 @@ class Tracking(CogUtils):
     # endregion
 
     # region Commands
-    @checks.is_owner()
-    @checks.is_tracking_world()
+    @checks.owner_only()
+    @checks.tracking_world_only()
     @commands.command(name="addchar", aliases=["registerchar"], usage="<user>,<character>")
     async def add_char(self, ctx: NabCtx, *, params):
         """Register a character and optionally all other visible characters to a discord user.
@@ -449,7 +449,7 @@ class Tracking(CogUtils):
         await ctx.send(reply)
 
     @commands.command()
-    @checks.is_in_tracking_world()
+    @checks.tracking_world_somewhere()
     async def claim(self, ctx: NabCtx, *, char_name: str = None):
         """Claims a character registered as yours.
 
@@ -529,7 +529,7 @@ class Tracking(CogUtils):
         await safe_delete_message(msg)
         await ctx.send(reply)
 
-    @checks.is_in_tracking_world()
+    @checks.tracking_world_somewhere()
     @commands.command(aliases=["i'm", "iam"])
     async def im(self, ctx: NabCtx, *, char_name: str):
         """Lets you add your tibia character(s) for the bot to track.
@@ -586,7 +586,7 @@ class Tracking(CogUtils):
         await safe_delete_message(msg)
         await ctx.send(reply)
 
-    @checks.is_in_tracking_world()
+    @checks.tracking_world_somewhere()
     @commands.command(aliases=["i'mnot"])
     async def imnot(self, ctx: NabCtx, *, name):
         """Removes a character assigned to you.
@@ -612,8 +612,8 @@ class Tracking(CogUtils):
         self.bot.dispatch("character_change", ctx.author.id)
         self.bot.dispatch("character_unregistered", ctx.author, db_char)
 
-    @checks.is_admin()
-    @checks.is_tracking_world()
+    @checks.server_admin_only()
+    @checks.tracking_world_only()
     @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
     async def remove_char(self, ctx: NabCtx, *, name):
         """Removes a registered character from someone.
@@ -649,7 +649,7 @@ class Tracking(CogUtils):
 
     @commands.command()
     @checks.can_embed()
-    @checks.is_tracking_world()
+    @checks.tracking_world_only()
     async def online(self, ctx: NabCtx):
         """Tells you which users are online on Tibia.
 
@@ -691,7 +691,7 @@ class Tracking(CogUtils):
             await ctx.send(e)
 
     @commands.command(name="searchteam", aliases=["whereteam", "findteam"], usage="<params>")
-    @checks.is_tracking_world()
+    @checks.tracking_world_only()
     @checks.can_embed()
     async def search_team(self, ctx: NabCtx, *, params=None):
         """Searches for a registered character that meets the criteria
@@ -809,8 +809,8 @@ class Tracking(CogUtils):
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @checks.is_mod()
-    @checks.is_tracking_world()
+    @checks.server_mod_only()
+    @checks.tracking_world_only()
     @commands.group(invoke_without_command=True, case_insensitive=True)
     async def watchlist(self, ctx: NabCtx):
         """Create or manage watchlists.
@@ -822,8 +822,8 @@ class Tracking(CogUtils):
         await ctx.send("To manage watchlists, use one of the subommands.\n"
                        f"Try `{ctx.clean_prefix}help {ctx.invoked_with}`.")
 
-    @checks.is_tracking_world()
-    @checks.is_channel_mod_somewhere()
+    @checks.tracking_world_only()
+    @checks.channel_mod_somewhere()
     @watchlist.command(name="add", aliases=["addplayer", "addchar"], usage="<channel> <name>[,reason]")
     async def watchlist_add(self, ctx: NabCtx, channel: discord.TextChannel, *, params=None):
         """Adds a character to a watchlist.
@@ -875,8 +875,8 @@ class Tracking(CogUtils):
         except asyncpg.UniqueViolationError:
             await ctx.error(f"**{char.name}** is already registered to {channel.mention}")
 
-    @checks.is_tracking_world()
-    @checks.is_channel_mod_somewhere()
+    @checks.tracking_world_only()
+    @checks.channel_mod_somewhere()
     @watchlist.command(name="addguild", usage="<channel> <name>[,reason]")
     async def watchlist_addguild(self, ctx: NabCtx, channel: discord.TextChannel, *, params=None):
         """Adds an entire guild to a watchlist.
@@ -928,8 +928,8 @@ class Tracking(CogUtils):
         except asyncpg.UniqueViolationError:
             await ctx.error(f"**{guild.name}** is already registered to {channel.mention}")
 
-    @checks.is_mod()
-    @checks.is_tracking_world()
+    @checks.server_mod_only()
+    @checks.tracking_world_only()
     @watchlist.command(name="create")
     async def watchlist_create(self, ctx: NabCtx, *, name):
         """Creates a watchlist channel.
@@ -976,8 +976,8 @@ class Tracking(CogUtils):
             await ctx.pool.execute("INSERT INTO watchlist(server_id, channel_id, user_id) VALUES($1, $2, $3)",
                                    ctx.guild.id, channel.id, ctx.author.id)
 
-    @checks.is_mod_somewhere()
-    @checks.is_tracking_world()
+    @checks.server_mod_somewhere()
+    @checks.tracking_world_only()
     @watchlist.command(name="info", aliases=["details", "reason"])
     async def watchlist_info(self, ctx: NabCtx, channel: discord.TextChannel, *, name: str):
         """Shows information about a watchlist entry.
@@ -1003,8 +1003,8 @@ class Tracking(CogUtils):
             embed.timestamp = row["created"]
         await ctx.send(embed=embed)
 
-    @checks.is_mod_somewhere()
-    @checks.is_tracking_world()
+    @checks.server_mod_somewhere()
+    @checks.tracking_world_only()
     @watchlist.command(name="infoguild", aliases=["detailsguild", "reasonguild"])
     async def watchlist_infoguild(self, ctx: NabCtx, channel: discord.TextChannel, *, name: str):
         """"Shows details about a guild entry in the watchlist.
@@ -1030,8 +1030,8 @@ class Tracking(CogUtils):
             embed.timestamp = row["created"]
         await ctx.send(embed=embed)
 
-    @checks.is_mod_somewhere()
-    @checks.is_tracking_world()
+    @checks.server_mod_somewhere()
+    @checks.tracking_world_only()
     @watchlist.command(name="list")
     async def watchlist_list(self, ctx: NabCtx, channel: discord.TextChannel):
         """Shows characters belonging to that watchlist.
@@ -1054,8 +1054,8 @@ class Tracking(CogUtils):
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @checks.is_mod_somewhere()
-    @checks.is_tracking_world()
+    @checks.server_mod_somewhere()
+    @checks.tracking_world_only()
     @watchlist.command(name="listguilds", aliases=["guilds", "guildlist"])
     async def watchlist_list_guild(self, ctx: NabCtx, channel: discord.TextChannel):
         """Shows a list of guilds in the watchlist
@@ -1077,8 +1077,8 @@ class Tracking(CogUtils):
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @checks.is_mod_somewhere()
-    @checks.is_tracking_world()
+    @checks.server_mod_somewhere()
+    @checks.tracking_world_only()
     @watchlist.command(name="remove", aliases=["removeplayer", "removechar"])
     async def watchlist_remove(self, ctx: NabCtx, channel: discord.TextChannel, *, name):
         """Removes a character from a watchlist."""
@@ -1104,8 +1104,8 @@ class Tracking(CogUtils):
                                channel.id, name.lower())
         await ctx.success("Character removed from the watchlist.")
 
-    @checks.is_mod()
-    @checks.is_tracking_world()
+    @checks.server_mod_only()
+    @checks.tracking_world_only()
     @watchlist.command(name="removeguild")
     async def watchlist_removeguild(self, ctx: NabCtx, channel: discord.TextChannel, *, name):
         """Removes a guild from the watchlist."""

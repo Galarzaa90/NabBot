@@ -52,7 +52,7 @@ class Admin:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    @checks.is_admin()
+    @checks.server_admin_only()
     @commands.guild_only()
     @commands.command()
     async def checkchannel(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
@@ -93,7 +93,7 @@ class Admin:
             content += f"\n{ctx.tick(True)} All permissions are correct!"
         await ctx.send(content)
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @setting_command()
     @commands.group(case_insensitive=True, aliases=["config"])
     async def settings(self, ctx: NabCtx):
@@ -108,7 +108,7 @@ class Admin:
             embed.add_field(name=info["title"], value=f"`{ctx.clean_prefix}{ctx.invoked_with} {name}`")
         await ctx.send(embed=embed)
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @settings.command(name="askchannel", aliases=["commandchannel"])
     async def settings_askchannel(self, ctx: NabCtx, channel: str = None):
         """Changes the channel where longer replies for commands are given.
@@ -150,7 +150,7 @@ class Admin:
         else:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used as a command channel.")
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @settings.command(name="commandsonly")
     async def settings_commandsonly(self, ctx: NabCtx, option: str = None):
         """Sets whether only commands are allowed in the command channel.
@@ -182,7 +182,7 @@ class Admin:
         else:
             await ctx.send("That's not a valid option, try **yes** or **no**.")
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @settings.command(name="eventschannel")
     async def settings_eventschannel(self, ctx: NabCtx, channel: str = None):
         """Changes the channel where upcoming events are announced.
@@ -226,7 +226,7 @@ class Admin:
         else:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for events.")
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @settings.command(name="levelschannel", aliases=["deathschannel", "trackingchannel"])
     async def settings_levelschannel(self, ctx: NabCtx, channel: str = None):
         """Changes the channel where levelup and deaths are announced.
@@ -271,7 +271,7 @@ class Admin:
         else:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used.")
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @settings.command(name="minlevel", aliases=["announcelevel"])
     async def settings_minlevel(self, ctx: NabCtx, level: int = None):
         """Sets the minimum level for death and level up announcements.
@@ -290,7 +290,7 @@ class Admin:
         await set_server_property(ctx.pool, ctx.guild.id, "announce_level", level)
         await ctx.send(f"{ctx.tick()} Minimum announce level has been set to `{level}`.")
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @settings.command(name="newschannel")
     async def settings_newschannel(self, ctx: NabCtx, channel: str = None):
         """Changes the channel where Tibia news are announced.
@@ -332,7 +332,7 @@ class Admin:
         else:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for Tibia news.")
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @settings.command(name="prefix")
     async def settings_prefix(self, ctx: NabCtx, prefix: PrefixConverter = None):
         """Changes the command prefix for this server.
@@ -380,7 +380,7 @@ class Admin:
         if isinstance(error, commands.BadArgument):
             await ctx.send(str(error))
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @settings.command(name="serverlog")
     async def settings_serverlog(self, ctx: NabCtx, channel: str = None):
         """Changes the channel used as the server log."""
@@ -419,7 +419,7 @@ class Admin:
         else:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used as the server log.")
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @settings.command(name="welcome")
     async def settings_welcome(self, ctx: NabCtx, *, message: str = None):
         """Changes the message new members receive when joining.
@@ -472,7 +472,7 @@ class Admin:
         else:
             await ctx.send(f"{ctx.tick(True)} Welcome message updated.")
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @settings.command(name="welcomechannel")
     async def settings_welcomechannel(self, ctx: NabCtx, channel: str = None):
         """Changes the channel where new members are welcomed.
@@ -517,8 +517,8 @@ class Admin:
         else:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for welcome messages.")
 
-    @checks.is_mod()
-    @checks.is_not_lite()
+    @checks.server_mod_only()
+    @checks.not_lite_only()
     @settings.command(name="world")
     async def settings_world(self, ctx: NabCtx, world: str = None):
         """Changes the world this discord server tracks.

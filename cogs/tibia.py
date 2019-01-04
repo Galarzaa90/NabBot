@@ -193,7 +193,7 @@ class Tibia(CogUtils):
         except CannotPaginate as e:
             await ctx.send(e)
 
-    @checks.is_tracking_world()
+    @checks.tracking_world_only()
     @checks.can_embed()
     @deaths.command(name="monster", aliases=["mob", "killer"])
     async def deaths_monsters(self, ctx: NabCtx, *, name: str):
@@ -229,7 +229,7 @@ class Tibia(CogUtils):
 
     @deaths.command(name="user")
     @checks.can_embed()
-    @checks.is_tracking_world()
+    @checks.tracking_world_only()
     async def deaths_user(self, ctx: NabCtx, *, name: str):
         """Shows a user's recent deaths on his/her registered characters."""
         user = self.bot.get_member(name, ctx.guild)
@@ -264,7 +264,7 @@ class Tibia(CogUtils):
             await ctx.send(e)
 
     @deaths.command(name="stats", usage="[week/month]")
-    @checks.is_tracking_world()
+    @checks.tracking_world_only()
     @checks.can_embed()
     async def deaths_stats(self, ctx: NabCtx, *, period: str = None):
         """Shows death statistics
@@ -604,7 +604,7 @@ class Tibia(CogUtils):
             await ctx.send(embed=self.get_house_embed(ctx, wiki_house, house))
 
     @commands.group(aliases=['levelups'], invoke_without_command=True, case_insensitive=True)
-    @checks.is_tracking_world()
+    @checks.tracking_world_only()
     @checks.can_embed()
     async def levels(self, ctx: NabCtx, *, name: str=None):
         """Shows a character's or everyone's recent level ups.
@@ -668,7 +668,7 @@ class Tibia(CogUtils):
             await ctx.send(e)
 
     @levels.command(name="user")
-    @checks.is_tracking_world()
+    @checks.tracking_world_only()
     @checks.can_embed()
     async def levels_user(self, ctx: NabCtx, *, name: str):
         """Shows a user's recent level ups on their registered characters."""
@@ -942,7 +942,7 @@ class Tibia(CogUtils):
                             f"share experience."
                 await ctx.success(f"{reply}\nTheir share range is from level **{low}** to **{high}**.")
 
-    @checks.is_tracking_world()
+    @checks.tracking_world_only()
     @checks.can_embed()
     @commands.group(aliases=["story"], invoke_without_command=True, case_insensitive=True)
     async def timeline(self, ctx: NabCtx, *, name: str = None):
@@ -1023,7 +1023,7 @@ class Tibia(CogUtils):
             await ctx.send(e)
 
     @timeline.command(name="user")
-    @checks.is_in_tracking_world()
+    @checks.tracking_world_somewhere()
     async def timeline_user(self, ctx: NabCtx, *, name: str):
         """Shows a users's recent level ups and deaths on their characters."""
         user = self.bot.get_member(name, ctx.guild)
@@ -1100,7 +1100,7 @@ class Tibia(CogUtils):
             reply += f"**{timezone_time.strftime('%H:%M')}** in {entry['name']}\n"
         await ctx.send(reply)
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @commands.guild_only()
     @time.command(name="add", usage="<timezone>")
     async def time_add(self, ctx: NabCtx, *, _timezone):
@@ -1141,7 +1141,7 @@ class Tibia(CogUtils):
             return await ctx.error("That timezone already exists.")
         await ctx.send(f"{ctx.tick()} Timezone `{_timezone}` saved successfully as `{display_name.strip()}`.")
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @checks.can_embed()
     @commands.guild_only()
     @time.command(name="list")
@@ -1160,7 +1160,7 @@ class Tibia(CogUtils):
         except CannotPaginate as e:
             await ctx.error(e)
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @commands.guild_only()
     @time.command(name="remove", aliases=["delete"], usage="<timezone>")
     async def time_remove(self, ctx: NabCtx, *, _timezone):

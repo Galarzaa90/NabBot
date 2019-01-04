@@ -23,12 +23,12 @@ class Mod:
         self.bot.loop.run_until_complete(self.reload_ignored())
 
     def __global_check(self, ctx: NabCtx):
-        return ctx.is_private or ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_owner_check(ctx) \
+        return ctx.is_private or ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_owner(ctx) \
                or checks.check_guild_permissions(ctx, {'manage_channels': True})
 
     # region Commands
     @commands.guild_only()
-    @checks.is_channel_mod()
+    @checks.channel_mod_only()
     @commands.command()
     async def cleanup(self, ctx: NabCtx, limit: int=50):
         """Cleans the channel from bot commands.
@@ -57,7 +57,7 @@ class Mod:
         await ctx.send(f"{ctx.tick()} Deleted {count:,} messages.", delete_after=20)
 
     @commands.guild_only()
-    @checks.is_channel_mod()
+    @checks.channel_mod_only()
     @commands.group(invoke_without_command=True, case_insensitive=True)
     async def ignore(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
         """Makes the bot ignore a channel.
@@ -80,7 +80,7 @@ class Mod:
         await self.reload_ignored()
 
     @commands.guild_only()
-    @checks.is_channel_mod()
+    @checks.channel_mod_only()
     @ignore.command(name="list")
     async def ignore_list(self, ctx: NabCtx):
         """Shows a list of ignored channels."""
@@ -96,7 +96,7 @@ class Mod:
             await ctx.send(e)
 
     @commands.command()
-    @checks.is_channel_mod_somewhere()
+    @checks.channel_mod_somewhere()
     async def makesay(self, ctx: NabCtx, *, message: str):
         """Makes the bot say a message.
 
@@ -165,7 +165,7 @@ class Mod:
             await ctx.channel.send(message)
 
     @commands.guild_only()
-    @checks.is_channel_mod()
+    @checks.channel_mod_only()
     @commands.command()
     async def unignore(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
         """Unignores a channel.
@@ -186,8 +186,8 @@ class Mod:
         await ctx.send(f"{channel.mention} is not ignored anymore.")
         await self.reload_ignored()
 
-    @checks.is_channel_mod()
-    @checks.is_tracking_world()
+    @checks.channel_mod_only()
+    @checks.tracking_world_only()
     @commands.command()
     async def unregistered(self, ctx: NabCtx):
         """Shows a list of users with no registered characters."""

@@ -103,7 +103,7 @@ class Loot(CogUtils):
 
         The bot shows the total loot value and a list of the items detected, separated into the NPC that buy them.
         """
-        if ctx.author.id in self.processing_users and not checks.is_owner_check(ctx):
+        if ctx.author.id in self.processing_users and not checks.is_owner(ctx):
             await ctx.error("I'm already scanning an image for you! Wait for me to finish that one.")
             return
 
@@ -235,7 +235,7 @@ class Loot(CogUtils):
             else:
                 await ctx.send(short_message)
 
-    @checks.is_owner()
+    @checks.owner_only()
     @loot.command(name="add")
     async def loot_add(self, ctx: NabCtx, *, item: str):
         """Adds an image to an existing loot item in the database."""
@@ -274,7 +274,7 @@ class Loot(CogUtils):
             await ctx.send(file=discord.File(f))
             f.close()
 
-    @checks.is_owner()
+    @checks.owner_only()
     @loot.command(name="new", usage="[item],[group],[id]")
     async def loot_new(self, ctx: NabCtx, *, params=None):
         """Adds a new item to the loot database."""
@@ -314,7 +314,7 @@ class Loot(CogUtils):
                 await ctx.send("Name: {name}, Group: {group}, Value: {value}, ID: {id}".format(**saved_item[0]),
                                file=discord.File(result, "results.png"))
 
-    @checks.is_owner()
+    @checks.owner_only()
     @loot.command(name="remove", aliases=["delete", "del"])
     async def loot_remove(self, ctx: NabCtx, *, item: str):
         """Removes an item from the loot database."""
@@ -323,7 +323,7 @@ class Loot(CogUtils):
             return await ctx.error("Couldn't find an item with that name.")
         await ctx.send("Item \"" + result + "\" removed from loot database.")
 
-    @checks.is_owner()
+    @checks.owner_only()
     @loot.command(name="show")
     async def loot_show(self, ctx, *, item: str):
         """Shows item info from loot database."""
