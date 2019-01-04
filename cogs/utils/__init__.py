@@ -25,12 +25,20 @@ EMBED_LIMIT = 6000
 
 
 class CogUtils:
+
     @property
     def tag(self) -> str:
         """
         Gets the cog's logging tag, composed of the cog's name between brackets, e.g. [Tracking]
         """
-        return f"[{self.__class__.__name__}]"
+        return self.get_tag()
+
+    @classmethod
+    def get_tag(cls) -> str:
+        """
+            Gets the cog's logging tag, composed of the cog's name between brackets, e.g. [Tracking]
+        """
+        return f"[{cls.__name__}]"
 
 
 def clean_string(ctx: commands.Context, string: str) -> str:

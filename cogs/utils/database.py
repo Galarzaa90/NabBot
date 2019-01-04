@@ -173,6 +173,19 @@ class DbChar(tibiapy.abc.BaseCharacter):
                 else:
                     yield DbDeath(**row)
 
+    async def update_guild(self, conn: PoolConn, guild: str, update_self=True) -> bool:
+        """Updates the guild of the character on the database.
+
+        :param conn: Connection to the database.
+        :param guild: The new guild to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the guild was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "guild", guild)
+        if result and update_self:
+            self.guild = guild
+        return result is not None
+
     async def update_level(self, conn: PoolConn, level: int, update_self=True) -> bool:
         """Updates the level of the character on the database.
 
@@ -186,6 +199,32 @@ class DbChar(tibiapy.abc.BaseCharacter):
             self.level = level
         return result is not None
 
+    async def update_name(self, conn: PoolConn, name: str, update_self=True) -> bool:
+        """Updates the name of the character on the database.
+
+        :param conn: Connection to the database.
+        :param name: The new name to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the name was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "name", name)
+        if result and update_self:
+            self.name = name
+        return result is not None
+
+    async def update_sex(self, conn: PoolConn, sex: str, update_self=True) -> bool:
+        """Updates the sex of the character on the database.
+
+        :param conn: Connection to the database.
+        :param sex: The new sex to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the sex was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "sex", sex)
+        if result and update_self:
+            self.sex = sex
+        return result is not None
+
     async def update_user(self, conn: PoolConn, user_id: int, update_self=True) -> bool:
         """Updates the user of the character on the database.
 
@@ -197,6 +236,32 @@ class DbChar(tibiapy.abc.BaseCharacter):
         result = await self.update_field_by_id(conn, self.id, "user_id", user_id)
         if result and update_self:
             self.user_id = user_id
+        return result is not None
+
+    async def update_vocation(self, conn: PoolConn, vocation: str, update_self=True) -> bool:
+        """Updates the vocation of the character on the database.
+
+        :param conn: Connection to the database.
+        :param vocation: The new vocation to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the vocation was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "vocation", vocation)
+        if result and update_self:
+            self.vocation = vocation
+        return result is not None
+
+    async def update_world(self, conn: PoolConn, world: str, update_self=True) -> bool:
+        """Updates the world of the character on the database.
+
+        :param conn: Connection to the database.
+        :param world: The new world to set.
+        :param update_self: Whether to also update the object or not.
+        :return: Whether the world was updated in the database or not.
+        """
+        result = await self.update_field_by_id(conn, self.id, "world", world)
+        if result and update_self:
+            self.world = world
         return result is not None
 
     # endregion
@@ -221,7 +286,6 @@ class DbChar(tibiapy.abc.BaseCharacter):
                                      name, level*-1, vocation, user_id, world, guild)
         return cls(id=row_id, name=name, level=level, vocation=vocation, user_id=user_id, world=world, guild=guild)
 
-
     @classmethod
     async def get_by_id(cls, conn: PoolConn, char_id: int) -> Optional['DbChar']:
         """Gets a character with a given ID.
@@ -242,7 +306,7 @@ class DbChar(tibiapy.abc.BaseCharacter):
         :param name: The name of the character to look for.
         :return: The found character or None.
         """
-        row = await conn.fetchrow('SELECT * FROM "character" WHERE lower(name) = $1', name.lower())
+        row = await conn.fetchrow('SELECT * FROM "character" WHERE lower(name) = $1 ORDER BY id', name.lower())
         if row:
             return cls(**row)
 
