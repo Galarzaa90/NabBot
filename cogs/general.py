@@ -36,7 +36,10 @@ class General(CogUtils):
             return
 
     async def events_announce(self):
+        """Announces upcoming events"""
+        task_tag = " Task: events_announce |"
         await self.bot.wait_until_ready()
+        log.info(f"{self.tag}{task_tag} Started")
         while not self.bot.is_closed():
             """Announces when an event is close to starting."""
             first_announce = dt.timedelta(hours=1)
@@ -93,15 +96,20 @@ class General(CogUtils):
                         await announce_channel.send(message)
                     await self.notify_subscribers(event["id"], message)
             except asyncio.CancelledError:
-                break
+                log.info(f"{self.tag}{task_tag} Stopped")
+                return
             except Exception:
-                log.exception(f"{self.tag} events_announce")
+                log.exception(f"{self.tag} Exception")
                 continue
             await asyncio.sleep(20)
 
     # Commands
     @commands.command(aliases=["checkdm"])
     async def checkpm(self, ctx: NabCtx):
+        """Checks if you can receive PMs from the bot.
+
+        If you can't receive PMs, you need to enable 'Allow direct messages from server members.' in the Privay Settings
+         of any server where NabBot is in."""
         if ctx.guild is None:
             return await ctx.success("This is a private message, so yes... PMs are working.")
         try:

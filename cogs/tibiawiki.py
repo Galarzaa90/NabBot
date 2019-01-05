@@ -3,6 +3,7 @@ import logging
 import random
 import re
 import sqlite3
+from collections import defaultdict
 from contextlib import closing
 from typing import Dict, List
 
@@ -12,8 +13,7 @@ from discord.ext import commands
 from tibiawikisql import models
 
 from nabbot import NabBot
-from .utils import FIELD_VALUE_LIMIT, average_color, config, join_list
-from .utils import checks
+from .utils import FIELD_VALUE_LIMIT, average_color, checks, config, join_list
 from .utils.context import NabCtx
 from .utils.database import wiki_db
 from .utils.errors import CannotPaginate
@@ -379,7 +379,7 @@ class TibiaWiki:
                 if entry['key'] == "timestamp":
                     gen_date = float(entry['value'])
             embed.description += f"**‣ Achievements:** {self.count_table('achievement'):,}"
-            embed.description += f"\n**‣ Charm:** {self.count_table('charm'):,}"
+            embed.description += f"\n**‣ Charms:** {self.count_table('charm'):,}"
             embed.description += f"\n**‣ Creatures:** {self.count_table('creature'):,}"
             embed.description += f"\n\t**‣ Drops:** {self.count_table('creature_drop'):,}"
             embed.description += f"\n**‣ Houses:** {self.count_table('house'):,}"
@@ -974,22 +974,18 @@ class TibiaWiki:
     @classmethod
     async def get_npc_embed_parse_spells(cls, embed, spells: List[models.NpcSpell], long, short_limit):
         vocs = ["knight", "sorcerer", "paladin", "druid"]
-        if not spells:
-            return False
         too_long = False
-        values = {}
-        count = {}
-        skip = {}
+        values = defaultdict(str)
+        count = defaultdict(int)
+        skip = defaultdict(bool)
         for spell in spells:
-            value = "\n{0.spell_title} \u2014 {0.price:,} gold".format(spell)
+            value = f"\n{spell.spell_title} \u2014 {spell.price:,} gold"
             for voc in vocs:
-                if skip.get(voc, False):
+                if skip[voc] or not getattr(spell, voc):
                     continue
-                if not getattr(spell, voc):
-                    continue
-                values[voc] = values.get(voc, "") + value
-                count[voc] = count.get(voc, 0) + 1
-                if count.get(voc, 0) >= short_limit and not long:
+                values[voc] += value
+                count[voc] += 1
+                if count[voc] >= short_limit and not long:
                     values[voc] += "\n*...And more*"
                     too_long = True
                     skip[voc] = True

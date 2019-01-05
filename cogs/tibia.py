@@ -1545,15 +1545,16 @@ class Tibia(CogUtils):
         return embed
 
     async def scan_news(self):
+        task_tag = " Task: scan_news |"
         await self.bot.wait_until_ready()
-        log.info(f"{self.tag} Starting scan_news task")
+        log.info(f"{self.tag}{task_tag} Started")
         while not self.bot.is_closed():
             try:
                 recent_news = await get_recent_news()
                 if recent_news is None:
                     await asyncio.sleep(30)
                     continue
-                log.debug(f"{self.tag} scan_news: Checking recent news")
+                log.debug(f"{self.tag}{task_tag} Checking recent news")
                 last_article = recent_news[0]["id"]
                 last_id = await get_global_property(self.bot.pool, "last_article", default=0)
                 await set_global_property(self.bot.pool, "last_article", last_article)
@@ -1566,7 +1567,7 @@ class Tibia(CogUtils):
                     if fetched_article is not None:
                         new_articles.insert(0, fetched_article)
                 for article in new_articles:
-                    log.info(f"{self.tag} scan_news: New article: {article['id']} - {article['title']}")
+                    log.info(f"{self.tag}{task_tag} New article: {article['id']} - {article['title']}")
                     for guild in self.bot.guilds:
                         news_channel_id = await get_server_property(self.bot.pool, guild.id, "news_channel", default=0)
                         if news_channel_id == 0:
@@ -1576,12 +1577,12 @@ class Tibia(CogUtils):
                             await channel.send("New article posted on Tibia.com",
                                                embed=self.get_article_embed(article, 1000))
                         except discord.Forbidden:
-                            log.warning(f"{self.tag} scan_news: Missing permissions.")
+                            log.warning(f"{self.tag}{task_tag} Missing permissions.")
                         except discord.HTTPException:
-                            log.warning(f"{self.tag} scan_news: Malformed message.")
+                            log.warning(f"{self.tag}{task_tag} Malformed message.")
                 await asyncio.sleep(60 * 60 * 2)
             except (IndexError, KeyError):
-                log.warning(f"{self.tag} scan_news: Error getting recent news")
+                log.warning(f"{self.tag}{task_tag} Error getting recent news")
                 await asyncio.sleep(60*30)
                 continue
             except NetworkError:
@@ -1591,7 +1592,7 @@ class Tibia(CogUtils):
                 # Task was cancelled, so this is fine
                 break
             except Exception:
-                log.exception(f"{self.tag} scan_news")
+                log.exception(f"{self.tag}{task_tag} Exception")
 
     @classmethod
     def _get_tibia_embed(cls, title=None, url=None):

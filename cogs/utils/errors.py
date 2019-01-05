@@ -20,6 +20,6 @@ class CannotPaginate(NabError):
     pass
 
 
-class NotTracking(NabError):
+class NotTracking(NabError, commands.CheckFailure):
     """Exception raised when a command is used from a server that is not tracking any worlds."""
     pass

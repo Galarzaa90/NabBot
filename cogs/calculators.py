@@ -10,7 +10,7 @@ from nabbot import NabBot
 from .utils.context import NabCtx
 from .utils.converter import Stamina
 from .utils.errors import NetworkError
-from .utils.tibia import DRUID, KNIGHT, PALADIN, SORCERER, get_character, get_stats
+from .utils.tibia import get_character, get_stats, normalize_vocation
 
 log = logging.getLogger("nabbot")
 
@@ -70,7 +70,7 @@ class Calculators:
         """Calculates the training time required to reach a target distance skill level.
 
         For the moment, online and offline training calculation is unavailable."""
-        voc = self.parse_vocation(vocation)
+        voc = normalize_vocation(vocation, allow_no_voc=False)
         if not voc:
             return await ctx.error("Unknown vocation.")
         if voc != "paladin":
@@ -104,7 +104,7 @@ class Calculators:
         """Calculates the training time required to reach a target skill level.
 
         This only applies to axe, club and sword fighting."""
-        voc = self.parse_vocation(vocation)
+        voc = normalize_vocation(vocation, allow_no_voc=False)
         if not voc:
             return await ctx.error("Unknown vocation.")
         if current >= target:
@@ -157,7 +157,7 @@ class Calculators:
             return await ctx.error("Percentage must be between 0 and 99.")
         if 0 > loyalty > 50 or loyalty % 5:
             return await ctx.error("Loyalty must be between 0 and 50, and a multiple of 5.")
-        voc = self.parse_vocation(vocation)
+        voc = normalize_vocation(vocation, allow_no_voc=False)
         if not voc:
             return await ctx.error("Unknown vocation.")
         factor = MELEE_FACTOR[voc]
@@ -344,18 +344,6 @@ class Calculators:
         except OverflowError:
             content += "You will be dead before you can use them all."
         return content
-
-    @classmethod
-    def parse_vocation(cls, name):
-        if name.lower() in KNIGHT:
-            return "knight"
-        elif name.lower() in PALADIN:
-            return "paladin"
-        elif name.lower() in DRUID:
-            return "druid"
-        elif name.lower() in SORCERER:
-            return "sorcerer"
-        return None
 
 
 def setup(bot):

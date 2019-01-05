@@ -614,7 +614,7 @@ def get_tibia_time_zone() -> int:
     return 1
 
 
-def normalize_vocation(vocation) -> str:
+def normalize_vocation(vocation, allow_no_voc=True) -> str:
     """Attempts to normalize a vocation string into a base vocation."""
     if vocation in PALADIN:
         return "paladin"
@@ -624,7 +624,7 @@ def normalize_vocation(vocation) -> str:
         return "sorcerer"
     if vocation in KNIGHT:
         return "knight"
-    if vocation in NO_VOCATION:
+    if vocation in NO_VOCATION and allow_no_voc:
         return "none"
     return None
 

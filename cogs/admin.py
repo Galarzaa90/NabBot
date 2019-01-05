@@ -3,12 +3,12 @@ import logging
 import discord
 from discord.ext import commands
 
-from cogs.utils.database import get_server_property, set_server_property, get_prefixes, set_prefixes
-from cogs.utils.tibia import tibia_worlds
 from nabbot import NabBot
 from .utils import checks
 from .utils.config import config
 from .utils.context import NabCtx
+from .utils.database import get_prefixes, get_server_property, set_prefixes, set_server_property
+from .utils.tibia import tibia_worlds
 
 log = logging.getLogger("nabbot")
 
@@ -28,6 +28,8 @@ SETTINGS = {
 
 
 class PrefixConverter(commands.Converter):
+    """Custom converter to validate prefix input for the settings subcommand."""
+
     async def convert(self, ctx, argument):
         user_id = ctx.bot.user.id
         if argument.startswith((f'<@{user_id}>', f'<@!{user_id}>')):
@@ -38,6 +40,7 @@ class PrefixConverter(commands.Converter):
 
 
 def setting_command():
+    """Local check that provides a custom message when used on PMs."""
     async def predicate(ctx):
         if ctx.guild is None:
             raise commands.NoPrivateMessage("Settings can't be modified on private messages.")
@@ -53,7 +56,6 @@ class Admin:
         self.bot = bot
 
     @checks.server_admin_only()
-    @commands.guild_only()
     @commands.command()
     async def checkchannel(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
         """Checks the channel's permissions.

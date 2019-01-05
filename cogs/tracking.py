@@ -58,8 +58,9 @@ class Tracking(CogUtils):
         #             Nezune's cave                     #
         # Do not touch anything, enter at your own risk #
         #################################################
+        task_tag = f"[{world}] Task: scan_deaths |"
         await self.bot.wait_until_ready()
-        log.debug(f"{self.tag}[{world}] Starting scan_deaths task")
+        log.info(f"{self.tag}{task_tag} Started")
         while not self.bot.is_closed():
             try:
                 await asyncio.sleep(config.death_scan_interval)
@@ -88,7 +89,7 @@ class Tracking(CogUtils):
             except KeyError:
                 continue
             except Exception:
-                log.exception(f"{self.tag}[{world}] scan_deaths")
+                log.exception(f"{self.tag}{task_tag} scan_deaths")
                 continue
 
     async def scan_highscores(self):
@@ -99,8 +100,9 @@ class Tracking(CogUtils):
         #             Nezune's cave                     #
         # Do not touch anything, enter at your own risk #
         #################################################
+        task_tag = f"Task: scan_highscores |"
         await self.bot.wait_until_ready()
-        log.debug(f"{self.tag} Starting scan_highscores task")
+        log.info(f"{self.tag}{task_tag} Started")
         while not self.bot.is_closed():
             if len(self.bot.tracked_worlds_list) == 0:
                 # If no worlds are tracked, just sleep, worlds might get registered later
@@ -154,7 +156,7 @@ class Tracking(CogUtils):
                     # Task was cancelled, so this is fine
                     break
                 except Exception:
-                    log.exception("Task: scan_highscores")
+                    log.exception(f"{self.tag}{task_tag}")
                     continue
                 await asyncio.sleep(10)
 
@@ -545,10 +547,7 @@ class Tracking(CogUtils):
         if ctx.is_private:
             user_tibia_worlds = [ctx.world]
         else:
-            user_tibia_worlds = ctx.bot.get_user_worlds(user.id)
-
-        if not ctx.is_private and ctx.world is None:
-            return await ctx.send("This server is not tracking any tibia worlds.")
+            user_tibia_worlds = ctx.bot.get_user_worlds(ctx.author.id)
 
         if len(user_tibia_worlds) == 0:
             return

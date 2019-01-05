@@ -77,7 +77,9 @@ def tracking_world_only():
     def predicate(ctx):
         if ctx.guild is None:
             raise commands.NoPrivateMessage("This command cannot be used in private messages.")
-        return ctx.guild.id in ctx.bot.tracked_worlds
+        if not ctx.bot.tracked_worlds.get(ctx.guild.id):
+            raise errors.NotTracking("This server is not tracking any worlds.")
+        return True
     return commands.check(predicate)
 
 
@@ -90,9 +92,11 @@ def tracking_world_somewhere():
     Similar to tracking_world_only but allows PM usage.
     This check may be slow and shouldn't be used much"""
     def predicate(ctx):
-        if ctx.guild is not None:
-            return ctx.guild.id in ctx.bot.tracked_worlds
-        return len(ctx.bot.get_user_worlds(ctx.author.id)) > 0
+        if ctx.guild is not None and not ctx.bot.tracked_worlds.get(ctx.guild.id):
+            raise errors.NotTracking("This server is not tracking any worlds.")
+        if not len(ctx.bot.get_user_worlds(ctx.author.id)) > 0:
+            raise errors.NotTracking("You're not in any server tracking a world.")
+        return True
 
     return commands.check(predicate)
 

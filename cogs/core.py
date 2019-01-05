@@ -9,10 +9,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import CogUtils, config
-from .utils import context, join_list
-from .utils.database import get_server_property
-from .utils.errors import CannotEmbed
+from .utils import CogUtils, config, context, errors, join_list, database
 
 log = logging.getLogger("nabbot")
 
@@ -31,7 +28,8 @@ class Core(CogUtils):
 
         A random status is selected every 20 minutes.
         """
-        # Entries are prefixes with "Playing "
+        task_tag = " Task: game_update |"
+        # Entries are prefixed with "Playing "
         # Entries starting with "w:" are prefixed with "Watching "
         # Entries starting with "l:" are prefixed with "Listening to "
         presence_list = [
@@ -47,7 +45,7 @@ class Core(CogUtils):
             "l:the voices in my head", "l:your breath", "l:the screams", "complaints"
         ]
         await self.bot.wait_until_ready()
-        log.info(f"{self.tag} Starting game_update task")
+        log.info(f"{self.tag}{task_tag} Started")
         while not self.bot.is_closed():
             try:
                 if random.randint(0, 9) >= 7:
@@ -62,12 +60,13 @@ class Core(CogUtils):
                     elif choice.startswith("l:"):
                         choice = choice[2:]
                         activity_type = discord.ActivityType.listening
-                log.info(f"{self.tag} Updating presence | {activity_type.name} | {choice}")
+                log.info(f"{self.tag}{task_tag} Updating presence | {activity_type.name} | {choice}")
                 await self.bot.change_presence(activity=discord.Activity(name=choice, type=activity_type))
             except asyncio.CancelledError:
-                break
+                log.info(f"{self.tag}{task_tag} Stopped")
+                return
             except discord.DiscordException:
-                log.exception("Task: game_update")
+                log.exception(f"{self.tag} Exception")
                 continue
             await asyncio.sleep(60*20)  # Change game every 20 minutes
 
@@ -75,22 +74,21 @@ class Core(CogUtils):
         """Handles command errors"""
         if isinstance(error, commands.errors.CommandNotFound):
             return
-        elif isinstance(error, commands.NoPrivateMessage):
-            await ctx.send(error)
-        elif isinstance(error, CannotEmbed):
-            await ctx.send(f"{ctx.tick(False)} Sorry, `Embed Links` permission is required for this command.")
+        elif isinstance(error, (commands.NoPrivateMessage, errors.NotTracking)):
+            await ctx.error(error)
+        elif isinstance(error, errors.CannotEmbed):
+            await ctx.error(f"Sorry, `Embed Links` permission is required for this command.")
         elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(f"{ctx.tick(False)} The correct syntax is: "
-                           f"`{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
-                           f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
+            await ctx.error(f"The correct syntax is: `{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
+                            f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
         elif isinstance(error, commands.BadArgument):
             _type, param = self.parse_bad_argument(str(error))
+            # Making these errors more understandable.
             if _type == "int":
                 error = f"Parameter `{param}` must be numeric."
-            await ctx.send(f"{ctx.tick(False)} {error}\n"
-                           f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
+            await ctx.error(f"{error}\nTry `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
         elif isinstance(error, commands.CommandInvokeError):
-            log.error(f"Exception in command: {ctx.message.clean_content}", exc_info=error.original)
+            log.error(f"{self.tag} Exception in command: {ctx.message.clean_content}", exc_info=error.original)
             if isinstance(error.original, discord.HTTPException):
                 await ctx.send("Sorry, the message was too long to send.")
             else:
@@ -104,8 +102,7 @@ class Core(CogUtils):
                                     inline=False)
                     await ctx.send(embed=embed)
                 else:
-                    await ctx.send(f'{ctx.tick(False)} Command error:\n```py\n{error.original.__class__.__name__}:'
-                                   f'{error.original}```')
+                    await ctx.error(f'Command error:\n```py\n{error.original.__class__.__name__}: {error.original}```')
 
     async def on_command(self, ctx: commands.Context):
         command = ctx.command.qualified_name
@@ -113,7 +110,7 @@ class Core(CogUtils):
         query = """INSERT INTO command(server_id, channel_id, user_id, date, prefix, command)
                    VALUES ($1, $2, $3, $4, $5, $6)
                 """
-        log.info(f"Invoked command: {ctx.message.content}")
+        log.info(f"{self.tag} Invoked command: {ctx.message.clean_content}")
         await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
                                     ctx.message.created_at.replace(tzinfo=dt.timezone.utc), ctx.prefix, command)
 
@@ -142,11 +139,12 @@ class Core(CogUtils):
         try:
             channel = self.bot.get_top_channel(guild)
             if channel is None:
-                log.warning(f"Could not send join message on server: {guild.name}. No allowed channel found.")
+                log.warning(f"{self.tag} Could not send join message on server: {guild.name}."
+                            f"No allowed channel found.")
                 return
             await channel.send(message)
         except discord.HTTPException as e:
-            log.exception(f"Could not send join message on server: {guild.name}.")
+            log.exception(f"{self.tag} Could not send join message on server: {guild.name}.")
 
     async def on_guild_remove(self, guild: discord.Guild):
         """Called when the bot leaves a guild (server)."""
@@ -163,7 +161,7 @@ class Core(CogUtils):
         log.info(f"{self.tag} Member banned | Member {user} ({user.id}) | Guild {guild.id}")
 
     async def on_member_join(self, member: discord.Member):
-        """ Called when a member joins a guild (server) the bot is in."""
+        """Called when a member joins a guild (server) the bot is in."""
         log.info(f"{self.tag} Member joined | Member {member} ({member.id}) | Guild {member.guild.id}")
         # Updating member list
         if member.id in self.bot.members:
@@ -185,8 +183,8 @@ class Core(CogUtils):
                 characters = join_list([r['name'] for r in rows], ', ', ' and ')
                 previously_registered = f"\n\nYou already have these characters in {world} registered: *{characters}*"
 
-        welcome_message = await get_server_property(self.bot.pool, member.guild.id, "welcome")
-        welcome_channel_id = await get_server_property(self.bot.pool, member.guild.id, "welcome_channel")
+        welcome_message = await database.get_server_property(self.bot.pool, member.guild.id, "welcome")
+        welcome_channel_id = await database.get_server_property(self.bot.pool, member.guild.id, "welcome_channel")
         if welcome_message is None:
             return
         message = welcome_message.format(user=member, server=member.guild, bot=self.bot, owner=member.guild.owner)
@@ -226,6 +224,7 @@ class Core(CogUtils):
         return m.group(1), m.group(2)
 
     def __unload(self):
+        log.info(f"{self.tag} Unloading cog")
         self.game_update_task.cancel()
 
 

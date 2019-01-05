@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import checks, config
+from .utils import checks, config, safe_delete_message
 from .utils.context import NabCtx
 from .utils.database import get_server_property
 from .utils.errors import CannotPaginate
@@ -36,7 +36,7 @@ class Mod:
         If the bot has `Manage Messages` permission, it will also delete command invocation messages."""
         count = 0
         prefixes = await get_server_property(ctx.pool, ctx.guild.id, "prefixes", default=config.command_prefix)
-        # Also skip death and levelup messages from cleanup
+        # Also skip death and level up messages from cleanup
         announce_prefix = (config.levelup_emoji, config.death_emoji, config.pvpdeath_emoji)
         if ctx.bot_permissions.manage_messages:
             def check(m: discord.Message):
@@ -54,7 +54,7 @@ class Mod:
         if not count:
             return await ctx.send("There are no messages to clean.", delete_after=10)
 
-        await ctx.send(f"{ctx.tick()} Deleted {count:,} messages.", delete_after=20)
+        await ctx.success(f"Deleted {count:,} messages.", delete_after=20)
 
     @commands.guild_only()
     @checks.channel_mod_only()
@@ -161,6 +161,7 @@ class Mod:
                 return await ctx.send(f"{ctx.tick(False)} I need `Manage Messages` permission to use this command.")
             if not ctx.author_permissions.manage_channels:
                 return await ctx.send(f"{ctx.tick(False)} You need `Manage Channel` permission to use this command.")
+            await safe_delete_message(ctx.message)
             await ctx.message.delete()
             await ctx.channel.send(message)
 
@@ -197,9 +198,7 @@ class Mod:
             return
 
         results = await ctx.pool.fetch('SELECT user_id FROM "character" WHERE world = $1 GROUP BY user_id', ctx.world)
-        if len(results) <= 0:
-            await ctx.send("There are no unregistered users.")
-            return
+        # Flatten list
         users = [i["user_id"] for i in results]
         for member in ctx.guild.members:  # type: discord.Member
             # Skip bots

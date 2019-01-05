@@ -117,11 +117,12 @@ class Roles(CogUtils):
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
     @commands.group(case_insensitive=True)
-    async def autorole(self, ctx):
+    async def autorole(self, ctx: NabCtx):
         """Autorole commands.
 
         All the subcommands require having `Manage Roles` permission."""
-        pass
+        if ctx.invoked_subcommand is None:
+            await ctx.show_help('autorole')
 
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
@@ -133,7 +134,8 @@ class Roles(CogUtils):
         When a user has a registered character in said guild, they receive the role.
         If they stop having a character in the guild, the role is removed.
 
-        If `*` is used as a guild. It means that the role will be given for having any assigned character.
+        If `*` is used as a guild. It means that the role will be given for having any assigned character
+        in the tracked world.
 
         Role names, role mentions or role ids are allowed. Role names with multiple words must be quoted.
         Note that current members will be updated until their characters or guilds change."""

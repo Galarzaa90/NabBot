@@ -2,6 +2,7 @@ import inspect
 import platform
 import textwrap
 import traceback
+from collections import defaultdict
 from contextlib import redirect_stdout
 from distutils.version import StrictVersion
 
@@ -24,30 +25,15 @@ log = logging.getLogger("nabbot")
 req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")
 
-class Owner:
+
+class Owner(CogUtils):
     """Commands exclusive to bot owners"""
     def __init__(self, bot: NabBot):
         self.bot = bot
         self._last_result = None
         self.sessions = set()
 
-    @staticmethod
-    def cleanup_code(content):
-        """Automatically removes code blocks from the code."""
-        # remove ```py\n```
-        if content.startswith('```') and content.endswith('```'):
-            return '\n'.join(content.split('\n')[1:-1])
-
-        # remove `foo`
-        return content.strip('` \n')
-
-    @staticmethod
-    def get_syntax_error(e):
-        if e.text is None:
-            return '```py\n{0.__class__.__name__}: {0}\n```'.format(e)
-        return '```py\n{0.text}{1:>{0.offset}}\n{2}: {0}```'.format(e, '^', type(e).__name__)
-
-    # Commands
+    # region Commands
     @commands.command(aliases=["notifyadmins"])
     @checks.owner_only()
     async def admins_message(self, ctx: NabCtx, *, content: str=None):
@@ -135,6 +121,36 @@ class Owner:
                 self._last_result = ret
                 await ctx.send(f'```py\n{value}{ret}\n```')
 
+    @checks.owner_only()
+    @commands.command(name="invalidworlds")
+    async def invalid_worlds(self, ctx: NabCtx):
+        """Checks if there are any characters in invalid worlds or servers tracking invalid worlds.
+
+        They can be fixed by using the merge command to rename them to their corresponding new name."""
+        async with ctx.pool.acquire() as conn:
+            invalid = defaultdict(lambda: {"servers": 0, "characters": 0})
+            # Count servers tracking other worlds
+            rows = await conn.fetch("SELECT count(*), value as world FROM server_property "
+                                    "WHERE key = 'world' AND NOT value = ANY($1) "
+                                    "GROUP BY 2", tibia_worlds)
+            for row in rows:
+                invalid[row["world"]]["servers"] = row["count"]
+            # Count characters in other worlds
+            rows = await conn.fetch('SELECT count(*), world FROM "character" '
+                                    'WHERE NOT world = ANY($1) '
+                                    'GROUP BY 2', tibia_worlds)
+            for row in rows:
+                invalid[row["world"]]["characters"] = row["count"]
+
+            entries = [f"**{k}** - {v['servers']} servers, {v['characters']} characters" for k, v in invalid.items()]
+
+            pages = Pages(ctx, entries=entries, per_page=10)
+            pages.embed.title = f"Invalid worlds"
+            try:
+                await pages.paginate()
+            except CannotPaginate as e:
+                await ctx.error(e)
+
     @commands.command()
     @checks.owner_only()
     async def leave(self, ctx: NabCtx, *, server: str):
@@ -149,21 +165,20 @@ class Owner:
         if match:
             guild = self.bot.get_guild(int(match.group(1)))
             if guild is None:
-                await ctx.send(f"I'm not in any server with the id {server}.")
+                await ctx.error(f"I'm not in any server with the id {server}.")
                 return
         else:
             guild = self.bot.get_guild_by_name(server)
             if guild is None:
-                await ctx.send(f"I'm not in any server named {server}")
+                await ctx.error(f"I'm not in any server named {server}")
                 return
 
-        embed = discord.Embed(title=guild.name)
+        embed = discord.Embed(title=guild.name, timestamp=guild.created_at)
         embed.set_footer(text="Created")
         embed.set_author(name=guild.owner.name, icon_url=get_user_avatar(guild.owner))
         embed.set_thumbnail(url=guild.icon_url)
         embed.add_field(name="Members", value=str(guild.member_count))
         embed.add_field(name="Joined", value=str(guild.me.joined_at))
-        embed.timestamp = guild.created_at
 
         message = await ctx.send("Are you sure you want me to leave this server?", embed=embed)
         confirm = await ctx.react_confirm(message)
@@ -176,9 +191,10 @@ class Owner:
 
         try:
             await guild.leave()
-            await ctx.send(f"I just left the server **{guild.name}**.")
-        except discord.HTTPException:
-            await ctx.send("Something went wrong, I guess they don't want to let me go.")
+            await ctx.success(f"I just left the server **{guild.name}**.")
+        except discord.HTTPException as e:
+            log.warning(f"{self.tag} Could not leave server: {e}")
+            await ctx.error("Something went wrong, I guess they don't want to let me go.")
 
     @commands.command(name="load")
     @checks.owner_only()
@@ -199,7 +215,6 @@ class Owner:
 
     @commands.command(usage="<old world> <new world>")
     @checks.owner_only()
-    @checks.not_lite_only()
     async def merge(self, ctx: NabCtx, old_world: str, new_world: str):
         """Renames all references of an old world to a new one.
 
@@ -265,49 +280,46 @@ class Owner:
         new_name = params[1]
 
         with ctx.typing():
-            old_char_db = await ctx.pool.fetchrow("""SELECT id, name, level, vocation 
-                                                     FROM "character" WHERE lower(name) = $1""",
-                                                  old_name.lower())
+            old_char_db = await DbChar.get_by_name(ctx.pool, old_name)
             # If character wasn't registered, there's nothing to do.
             if old_char_db is None:
-                await ctx.send("I don't have a character registered with the name: **{0}**".format(old_name))
+                await ctx.error(f"I don't have a character registered with the name: **{old_name}**")
                 return
             # Search old name to see if there's a result
             try:
                 old_char = await get_character(ctx.bot, old_name)
             except NetworkError:
-                await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
+                await ctx.error("I'm having problem with 'the internet' as you humans say, try again.")
                 return
             # Check if returns a result
             if old_char is not None:
                 if old_name.lower() == old_char.name.lower():
-                    await ctx.send("The character **{0}** wasn't namelocked.".format(old_char.name))
+                    await ctx.error(f"The character **{old_char.name}** wasn't namelocked.")
                 else:
-                    await ctx.send(
-                        "The character **{0}** was renamed to **{1}**.".format(old_name, old_char.name))
+                    await ctx.success(f"The character **{old_name}** was renamed to **{old_char.name}**.")
                     # Renaming is actually done in get_character(), no need to do anything.
                 return
 
             # Check if new name exists
             try:
                 new_char = await get_character(ctx.bot, new_name)
+                if new_char is None:
+                    await ctx.error(f"The character **{new_name}** doesn't exist.")
+                    return
             except NetworkError:
-                await ctx.send("I'm having problem with 'the internet' as you humans say, try again.")
+                await ctx.error("I'm having problem with 'the internet' as you humans say, try again.")
                 return
-            if new_char is None:
-                await ctx.send("The character **{0}** doesn't exist.".format(new_name))
-                return
+
             # Check if vocations are similar
-            if not (old_char_db["vocation"].lower() in new_char.vocation.lower()
-                    or new_char.vocation.lower() in old_char_db["vocation"].lower()):
-                await ctx.send("**{0}** was a *{1}* and **{2}** is a *{3}*. I think you're making a mistake."
-                               .format(old_char_db["name"], old_char_db["vocation"],
-                                       new_char.name, new_char.vocation))
+            if not (old_char_db.vocation.lower() in new_char.vocation.value.lower()
+                    or new_char.vocation.value.lower() in old_char_db.vocation.lower()):
+                await ctx.error(f"**{old_char_db.name}** was a *{old_char_db.vocation}* and "
+                                f"**{new_char.name}** is a *{new_char.vocation.value}*. "
+                                f"I think you're making a mistake.")
                 return
-            confirm_message = "Are you sure **{0}** ({1} {2}) is **{3}** ({4} {5}) now? `yes/no`"
-            await ctx.send(confirm_message.format(old_char_db["name"], abs(old_char_db["level"]),
-                                                  old_char_db["vocation"], new_char.name, new_char.level,
-                                                  new_char.vocation))
+
+            await ctx.send(f"Are you sure **{old_char_db.name}** ({abs(old_char_db.level)} {old_char_db.vocation}) is"
+                           f" **{new_char.name}** ({new_char.level} {new_char.vocation}) now? `yes/no`")
 
             def check(m):
                 return m.channel == ctx.channel and m.author == ctx.author
@@ -322,24 +334,25 @@ class Owner:
                 return
 
             # Check if new name was already registered
-            new_char_db = await ctx.pool.fetchrow('SELECT id, name, level, vocation FROM "character" WHERE name = $1',
-                                                  new_char.name)
+            new_char_db = await DbChar.get_by_name(ctx.pool, new_char.name)
 
             async with ctx.pool.acquire() as conn:
                 if new_char_db is None:
-                    await conn.execute('UPDATE "character" SET name = $1, vocation = $2, level = $3 WHERE id = $4',
-                                       new_char.name, new_char.vocation, new_char.level, old_char_db["id"])
+                    await old_char_db.update_level(conn, new_char.level)
+                    await old_char_db.update_name(conn, new_char.name)
+                    await old_char_db.update_vocation(conn, new_char.vocation.value)
                 else:
                     # Replace new char with old char id and delete old char, reassign deaths and levelups
-                    await conn.execute('DELETE FROM "character" WHERE id = $1', old_char_db["id"])
+                    # TODO: Handle conflicts, specially in deaths
+                    await conn.execute('DELETE FROM "character" WHERE id = $1', old_char_db.id)
                     await conn.execute('UPDATE "character" SET id = $1 WHERE id = $2',
-                                       old_char_db["id"], new_char_db["id"])
+                                       old_char_db.id, new_char_db.id)
                     await conn.execute("UPDATE character_death SET id = $1 WHERE id = $2",
-                                       old_char_db["id"], new_char_db["id"])
+                                       old_char_db.id, new_char_db.id)
                     await conn.execute("UPDATE character_levelup SET id = $1 WHERE id = $2",
-                                       old_char_db["id"], new_char_db["id"])
+                                       old_char_db.id, new_char_db.id)
 
-            await ctx.send("Character renamed successfully.")
+            await ctx.success("Character renamed successfully.")
 
     @checks.owner_only()
     @commands.command()
@@ -530,10 +543,11 @@ class Owner:
             "created": (lambda g: g.created_at, False, lambda g: f"Created: {g.created_at.date()}"),
             "joined": (lambda g: g.me.joined_at, False, lambda g: f"Joined: {g.me.joined_at.date()}")
         }
+
         if sort is None:
             sort = "name"
         if sort not in sorters:
-            return await ctx.send(f"{ctx.tick(False)} Invalid sort value. Valid values are: `{', '.join(sorters)}`")
+            return await ctx.error(f"Invalid sort value. Valid values are: `{', '.join(sorters)}`")
         guilds = sorted(self.bot.guilds, key=sorters[sort][0], reverse=sorters[sort][1])
         for guild in guilds:
             entries.append(f"**{guild.name}** (ID: **{guild.id}**) - {sorters[sort][2](guild)}")
@@ -542,7 +556,7 @@ class Owner:
         try:
             await pages.paginate()
         except CannotPaginate as e:
-            await ctx.send(e)
+            await ctx.error(e)
 
     @commands.command(name="unload")
     @checks.owner_only()
@@ -550,9 +564,9 @@ class Owner:
         """Unloads a cog."""
         try:
             self.bot.unload_extension(cog)
-            await ctx.send("Cog unloaded successfully.")
+            await ctx.success("Cog unloaded successfully.")
         except Exception as e:
-            await ctx.send('{}: {}'.format(type(e).__name__, e))
+            await ctx.error('{}: {}'.format(type(e).__name__, e))
 
     @commands.command()
     @checks.owner_only()
@@ -610,6 +624,25 @@ class Owner:
                 value = f"{ctx.tick(True)}v{version}"
             embed.add_field(name=package[0], value=value)
         await ctx.send(embed=embed)
+    # endregion
+
+    # region Auxiliary functions
+    @staticmethod
+    def cleanup_code(content):
+        """Automatically removes code blocks from the code."""
+        # remove ```py\n```
+        if content.startswith('```') and content.endswith('```'):
+            return '\n'.join(content.split('\n')[1:-1])
+
+        # remove `foo`
+        return content.strip('` \n')
+
+    @staticmethod
+    def get_syntax_error(e):
+        if e.text is None:
+            return '```py\n{0.__class__.__name__}: {0}\n```'.format(e)
+        return '```py\n{0.text}{1:>{0.offset}}\n{2}: {0}```'.format(e, '^', type(e).__name__)
+    # endregion
 
 
 def setup(bot):
