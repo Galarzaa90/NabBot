@@ -13,10 +13,11 @@ import cachetools
 import tibiapy
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
-from tibiapy import Character, Guild, House, ListedWorld, OnlineCharacter, Sex, Vocation, World
+from tibiapy import Category, Character, Guild, Highscores, House, ListedWorld, OnlineCharacter, Sex, Vocation, \
+    VocationFilter, World
 
 from . import config, get_local_timezone, online_characters
-from .database import wiki_db, DbChar
+from .database import DbChar, wiki_db
 from .errors import NetworkError
 
 log = logging.getLogger("nabbot")
@@ -258,31 +259,22 @@ async def get_highscores(world, category, pagenum, profession=0, tries=5):
     return score_list
 
 
-async def get_highscores_tibiadata(world, category=None, vocation=None, tries=5):
+async def get_highscores_tibiadata(world, category=Category.EXPERIENCE, vocation=VocationFilter.ALL, tries=5):
     """Gets all the highscores entries of a world, category and vocation."""
-    if vocation is None:
-        vocation = "all"
-    if category is None:
-        category = "experience"
-    url = f"https://api.tibiadata.com/v2/highscores/{world}/{category}/{vocation}.json"
+    if tries == 0:
+        log.error("get_highscores_tibiadata: Couldn't fetch {0}, network error.".format(world))
+        raise NetworkError()
+
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
+            async with session.get(Highscores.get_url_tibiadata(world, category, vocation)) as resp:
+                content = await resp.text()
+                highscores = Highscores.from_tibiadata(content, vocation)
+    except (aiohttp.ClientError, asyncio.TimeoutError):
         await asyncio.sleep(config.network_retry_delay)
         return await get_highscores_tibiadata(world, category, vocation, tries - 1)
-    content_json = json.loads(content)
-    try:
-        if not isinstance(content_json["highscores"]["data"], list):
-            return None
-    except KeyError:
-        return None
-    entries = content_json["highscores"]["data"]
-    for entry in entries:
-        entry["vocation"] = entry["voc"]
-        del entry["voc"]
-    return entries
+
+    return highscores
 
 
 async def get_world(name, tries=5) -> Optional[World]:
@@ -304,6 +296,7 @@ async def get_world(name, tries=5) -> Optional[World]:
     except aiohttp.ClientError:
         await asyncio.sleep(config.network_retry_delay)
         return await get_world(name, tries - 1)
+    CACHE_WORLDS[name] = world
     return world
 
 

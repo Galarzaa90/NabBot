@@ -11,24 +11,25 @@ from typing import Optional
 import asyncpg
 import discord
 import pytz
+import tibiapy
 import tibiawikisql
 from discord.ext import commands
-from tibiapy import GuildHouse, House, HouseStatus, Sex, TransferType
+from tibiapy import Category, GuildHouse, House, HouseStatus, Sex, TransferType, VocationFilter
 from tibiawikisql import models
 
 from nabbot import NabBot
-from .utils import CogUtils, checks
-from .utils import config, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, join_list, online_characters
+from .utils import CogUtils, checks, config, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, join_list, \
+    online_characters
 from .utils.context import NabCtx
 from .utils.database import DbChar, DbDeath, DbLevelUp, get_global_property, get_recent_timeline, get_server_property, \
     set_global_property
 from .utils.errors import CannotPaginate, NetworkError
 from .utils.messages import get_first_image, html_to_markdown, split_message
 from .utils.pages import Pages, VocationPages
-from .utils.tibia import NabChar, TIBIACOM_ICON, get_character, get_guild, get_highscores_tibiadata, \
-    get_house, get_map_area, get_news_article, get_recent_news, get_share_range, get_tibia_time_zone, get_voc_abb, \
-    get_voc_abb_and_emoji, get_voc_emoji, get_world, get_world_bosses, get_world_list, highscore_format, tibia_worlds
-from .utils.tibia import TIBIA_URL, get_house_id, get_rashid_city, normalize_vocation
+from .utils.tibia import NabChar, TIBIACOM_ICON, TIBIA_URL, get_character, get_guild, get_highscores_tibiadata, \
+    get_house, get_house_id, get_map_area, get_news_article, get_rashid_city, get_recent_news, get_share_range, \
+    get_tibia_time_zone, get_voc_abb, get_voc_abb_and_emoji, get_voc_emoji, get_world, get_world_bosses, get_world_list, \
+    highscore_format, normalize_vocation, tibia_worlds
 
 log = logging.getLogger("nabbot")
 
@@ -493,36 +494,34 @@ class Tibia(CogUtils):
 
         Available categories are: experience, magic, shielding, distance, sword, club, axe, fist and fishing.
         Available vocations are: all, paladin, druid, sorcerer, knight."""
-        categories = ["experience", "magic", "shielding", "distance", "sword", "club", "axe", "fist", "fishing",
-                      "achievements", "loyalty"]
-        vocations = ["all", "paladin", "druid", "knight", "sorcerer"]
         if params is None:
             params = []
         else:
             params = params.split(",")
-        world = None
+        world = ctx.world
         if params and params[0].strip().title() in tibia_worlds:
             world = params[0].strip().title()
             del params[0]
-        if world is None:
-            world = ctx.world
         if world is None:
             return await ctx.error("You have to specify a world.")
 
         # Default parameters
         if not params:
-            category = "experience"
-            vocation = "all"
-
+            category = Category.EXPERIENCE
+            vocation = VocationFilter.ALL
         else:
-            if params[0].strip().lower() not in categories:
-                return await ctx.error(f"Invalid category, valid categories are: `{','.join(categories)}`.")
-            category = params[0].strip().lower()
-            del params[0]
-            if params and params[0].strip().lower() not in vocations:
-                return await ctx.error(f"Invalid vocation, valid vocations are: `{','.join(vocations)}`.")
-            else:
-                vocation = params[0].strip().lower()
+            category = tibiapy.utils.try_enum(Category, params[0].strip().lower())
+            if category is None:
+                return await ctx.error(f"Invalid category, valid categories are: "
+                                       f"{join_list([f'`{c.value}`' for c in Category])}")
+            try:
+                vocation = VocationFilter.from_name(params[1].strip().lower())
+                if vocation is None:
+                    return await ctx.error(f"Invalid vocation, valid vocations are: "
+                                           f"`{join_list([f'`{v.name.lower()}`' for v in VocationFilter])}.")
+            except IndexError:
+                vocation = VocationFilter.ALL
+
         with ctx.typing():
             try:
                 highscores = await get_highscores_tibiadata(world, category, vocation)
@@ -531,16 +530,23 @@ class Tibia(CogUtils):
             except NetworkError:
                 return await ctx.error(f"I couldn't fetch the highscores.")
         entries = []
-        for entry in highscores:
-            entry["voc"] = get_voc_emoji(entry["vocation"])
-            if category == "experience":
-                entries.append("**{name}**{voc} - Level {level} ({points:,} exp)".format(**entry))
+        for entry in highscores.entries:
+            name = f"[{entry.name}]({entry.url})" if not await ctx.is_long() else entry.name
+            emoji = get_voc_emoji(entry.vocation)
+            content = f"**{name}**{emoji} - "
+            if category == Category.EXPERIENCE:
+                content += f"Level {entry.level} ({entry.value:,} exp)"
+            elif category in [Category.LOYALTY_POINTS, Category.ACHIEVEMENTS]:
+                content += f"{entry.value:,} points"
             else:
-                entries.append("**{name}**{voc} - Level {level}".format(**entry))
+                content += f"Level {entry.value}"
+            entries.append(content)
         pages = Pages(ctx, entries=entries, per_page=20 if await ctx.is_long() else 10)
-        pages.embed.title = f"🏆 {category.title()} highscores for {world}"
-        if vocation != "all":
-            pages.embed.title += f" ({vocation}s)"
+        pages.embed.url = highscores.url
+        pages.embed.set_author(name="Tibia.com", url=TIBIA_URL, icon_url=TIBIACOM_ICON)
+        pages.embed.title = f"🏆 {category.name.replace('_', ' ').title()} highscores for {world}"
+        if vocation != VocationFilter.ALL:
+            pages.embed.title += f" ({vocation.name.lower()})"
         try:
             await pages.paginate()
         except CannotPaginate as e:
