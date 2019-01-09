@@ -26,10 +26,10 @@ from .utils.database import DbChar, DbDeath, DbLevelUp, get_global_property, get
 from .utils.errors import CannotPaginate, NetworkError
 from .utils.messages import get_first_image, html_to_markdown, split_message
 from .utils.pages import Pages, VocationPages
-from .utils.tibia import NabChar, TIBIACOM_ICON, TIBIA_URL, get_character, get_guild, get_highscores_tibiadata, \
+from .utils.tibia import HIGHSCORES_FORMAT, NabChar, TIBIACOM_ICON, TIBIA_URL, get_character, get_guild, get_highscores, \
     get_house, get_house_id, get_map_area, get_news_article, get_rashid_city, get_recent_news, get_share_range, \
     get_tibia_time_zone, get_voc_abb, get_voc_abb_and_emoji, get_voc_emoji, get_world, get_world_bosses, get_world_list, \
-    highscore_format, normalize_vocation, tibia_worlds
+    normalize_vocation, tibia_worlds
 
 log = logging.getLogger("nabbot")
 
@@ -524,7 +524,7 @@ class Tibia(CogUtils):
 
         with ctx.typing():
             try:
-                highscores = await get_highscores_tibiadata(world, category, vocation)
+                highscores = await get_highscores(world, category, vocation)
                 if highscores is None:
                     return await ctx.error("I couldn't find any highscores entries.")
             except NetworkError:
@@ -1459,9 +1459,9 @@ class Tibia(CogUtils):
 
         # Insert any highscores this character holds
         for highscore in char.highscores:
-            highscore_string = highscore_format[highscore["category"]].format(char.his_her,
-                                                                              highscore["value"],
-                                                                              highscore['rank'])
+            highscore_string = HIGHSCORES_FORMAT[highscore["category"]].format(char.his_her,
+                                                                               highscore["value"],
+                                                                               highscore['rank'])
             description += "\n🏆 {0}".format(highscore_string)
         embed.description = description
         return embed

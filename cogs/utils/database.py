@@ -590,20 +590,18 @@ class DbDeath:
         return False
 
     @classmethod
-    async def exists(cls, conn: PoolConn, char_id: int, level: int, date: datetime.datetime, killer) -> bool:
+    async def exists(cls, conn: PoolConn, char_id: int, level: int, date: datetime.datetime) -> bool:
         """Checks if a death matching the provided parameters exists.
 
         :param conn: Connection to the database.
         :param char_id: The id of the character.
         :param level: The level of the death.
         :param date: The date when the death happened.
-        :param killer: The main killer of the death.
         :return: True if it exists, False otherwise.
         """
         _id = await conn.fetchval("""SELECT id FROM character_death d
                  INNER JOIN character_death_killer dk ON dk.death_id = d.id
-                 WHERE character_id = $1 AND date = $2 AND name = $3 AND level = $4
-                 AND position = 0""", char_id, date, killer, level)
+                 WHERE character_id = $1 AND date = $2 AND level = $3""", char_id, date, level)
         if _id:
             return True
         return False

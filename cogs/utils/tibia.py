@@ -29,7 +29,6 @@ ERROR_NOTINDATABASE = 2
 
 # Tibia.com URLs:
 TIBIA_URL = "https://www.tibia.com/"
-url_highscores = "https://www.tibia.com/community/?subtopic=highscores&world={0}&list={1}&profession={2}&currentpage={3}"
 
 TIBIACOM_ICON = "https://ssl-static-tibia.akamaized.net/images/global/general/apple-touch-icon-72x72.png"
 
@@ -47,24 +46,38 @@ NO_VOCATION = ["no vocation", "no voc", "novoc", "nv", "n v", "none", "no", "n",
 
 invalid_name = re.compile(r"[^\sA-Za-zÀ-ÖØ-öø-ÿ'\-]")
 
-highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on rank **{2}**",
-                    "axe": "{0} __axe fighting__ level is **{1}**, on rank **{2}**",
-                    "club": "{0} __club fighting__ level is **{1}**, on rank **{2}**",
-                    "distance": "{0} __distance fighting__ level is **{1}**, on rank **{2}**",
-                    "fishing": "{0} __fishing__ level is **{1}**, on rank **{2}**",
-                    "fist": "{0} __fist fighting__ level is **{1}**, on rank **{2}**",
-                    "loyalty": "{0} __loyalty points__ are **{1}**, on rank **{2}**",
-                    "magic": "{0} __magic level__ is **{1}**, on rank **{2}**",
-                    "magic_ek": "{0} __magic level__ is **{1}**, on rank **{2}** (knights)",
-                    "magic_rp": "{0} __magic level__ is **{1}**, on rank **{2}** (paladins)",
-                    "shielding": "{0} __shielding__ level is **{1}**, on rank **{2}**",
-                    "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
+
+HIGHSCORE_CATEGORIES = {"sword": (Category.SWORD_FIGHTING, VocationFilter.ALL),
+                        "axe": (Category.AXE_FIGHTING, VocationFilter.ALL),
+                        "club": (Category.CLUB_FIGHTING, VocationFilter.ALL),
+                        "distance": (Category.DISTANCE_FIGHTING, VocationFilter.ALL),
+                        "shielding": (Category.SHIELDING, VocationFilter.ALL),
+                        "fist": (Category.FIST_FIGHTING, VocationFilter.ALL),
+                        "fishing": (Category.FISHING, VocationFilter.ALL),
+                        "magic": (Category.MAGIC_LEVEL, VocationFilter.ALL),
+                        "magic_knights": (Category.MAGIC_LEVEL, VocationFilter.KNIGHTS),
+                        "magic_paladins": (Category.MAGIC_LEVEL, VocationFilter.PALADINS),
+                        "loyalty": (Category.LOYALTY_POINTS, VocationFilter.ALL),
+                        "achievements": (Category.ACHIEVEMENTS, VocationFilter.ALL),
+                        "experience": (Category.EXPERIENCE, VocationFilter.ALL)}
+
+HIGHSCORES_FORMAT = {"achievements": "{0} __achievement points__ are **{1}**, on rank **{2}**",
+                     "axe": "{0} __axe fighting__ level is **{1}**, on rank **{2}**",
+                     "club": "{0} __club fighting__ level is **{1}**, on rank **{2}**",
+                     "experience": "{0} __level__ **{1}**, on rank **{2}**",
+                     "distance": "{0} __distance fighting__ level is **{1}**, on rank **{2}**",
+                     "fishing": "{0} __fishing__ level is **{1}**, on rank **{2}**",
+                     "fist": "{0} __fist fighting__ level is **{1}**, on rank **{2}**",
+                     "loyalty": "{0} __loyalty points__ are **{1}**, on rank **{2}**",
+                     "magic": "{0} __magic level__ is **{1}**, on rank **{2}**",
+                     "magic_knights": "{0} __magic level__ is **{1}**, on rank **{2}** (knights)",
+                     "magic_paladins": "{0} __magic level__ is **{1}**, on rank **{2}** (paladins)",
+                     "shielding": "{0} __shielding__ level is **{1}**, on rank **{2}**",
+                     "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
 
 # This is preloaded on startup
 tibia_worlds: List[str] = []
 
-HIGHSCORE_CATEGORIES = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
-                        "magic_ek", "magic_rp", "loyalty", "achievements"]
 
 # Cache storages, the first parameter is the number of entries, the second the amount of seconds to live of each entry
 CACHE_CHARACTERS = cachetools.TTLCache(1000, 30)
@@ -165,7 +178,7 @@ async def bind_database_character(bot, character: NabChar):
         results = await conn.fetch("SELECT category, rank, value FROM highscores_entry WHERE name = $1",
                                    character.name)
         if len(results) > 0:
-            character.highscores = results
+            character.highscores = dict(results)
 
         # Check if this user was recently renamed, and update old reference to this
         for old_name in character.former_names:
@@ -214,52 +227,8 @@ async def bind_database_character(bot, character: NabChar):
             bot.dispatch("character_guild_change", character, db_char.guild)
 
 
-async def get_highscores(world, category, pagenum, profession=0, tries=5):
-    """Gets a specific page of the highscores
-    Each list element is a dictionary with the following keys: rank, name, value.
-    May return ERROR_NETWORK"""
-    url = url_highscores.format(world, category, profession, pagenum)
-
-    if tries == 0:
-        log.error("get_highscores: Couldn't fetch {0}, {1}, page {2}, network error.".format(world, category, pagenum))
-        return ERROR_NETWORK
-
-    # Fetch website
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
-        await asyncio.sleep(config.network_retry_delay)
-        return await get_highscores(world, category, pagenum, profession, tries - 1)
-
-    # Trimming content to reduce load
-    try:
-        start_index = content.index('<td style="width: 20%;" >Vocation</td>')
-        end_index = content.index('<div style="float: left;"><b>&raquo; Pages:')
-        content = content[start_index:end_index]
-    except ValueError:
-        await asyncio.sleep(config.network_retry_delay)
-        return await get_highscores(world, category, pagenum, profession, tries - 1)
-
-    if category == "loyalty":
-        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://www.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
-        pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
-        matches = re.findall(pattern, content)
-        score_list = []
-        for m in matches:
-            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': int(m[3].replace(',', ''))})
-    else:
-        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://www.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
-        pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
-        matches = re.findall(pattern, content)
-        score_list = []
-        for m in matches:
-            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': int(m[3].replace(',', ''))})
-    return score_list
-
-
-async def get_highscores_tibiadata(world, category=Category.EXPERIENCE, vocation=VocationFilter.ALL, tries=5):
+async def get_highscores(world, category=Category.EXPERIENCE, vocation=VocationFilter.ALL, tries=5) \
+        -> Optional[Highscores]:
     """Gets all the highscores entries of a world, category and vocation."""
     if tries == 0:
         log.error("get_highscores_tibiadata: Couldn't fetch {0}, network error.".format(world))
@@ -272,7 +241,7 @@ async def get_highscores_tibiadata(world, category=Category.EXPERIENCE, vocation
                 highscores = Highscores.from_tibiadata(content, vocation)
     except (aiohttp.ClientError, asyncio.TimeoutError):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_highscores_tibiadata(world, category, vocation, tries - 1)
+        return await get_highscores(world, category, vocation, tries - 1)
 
     return highscores
 
@@ -605,6 +574,21 @@ def get_tibia_time_zone() -> int:
     if dst_start < germany_date < dst_end:
         return 2
     return 1
+
+
+def get_current_server_save_time(current_time: Optional[dt.datetime] = None) -> dt.datetime:
+    """Gets the time of the last server save that occurred.
+
+    :param current_time: The time used to get the current server save time of. By default, datetime.now() is used.
+    :return: The time of the last server save that occurred according to the provided time.
+    """
+    if current_time is None:
+        current_time = dt.datetime.now(dt.timezone.utc)
+
+    current_ss = current_time.replace(hour=10 - get_tibia_time_zone(), minute=0, second=0, microsecond=0)
+    if current_time < current_ss:
+        return current_ss - dt.timedelta(days=1)
+    return current_ss
 
 
 def normalize_vocation(vocation, allow_no_voc=True) -> str:
