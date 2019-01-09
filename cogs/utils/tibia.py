@@ -178,7 +178,7 @@ async def bind_database_character(bot, character: NabChar):
         results = await conn.fetch("SELECT category, rank, value FROM highscores_entry WHERE name = $1",
                                    character.name)
         if len(results) > 0:
-            character.highscores = dict(results)
+            character.highscores = [dict(r) for r in results]
 
         # Check if this user was recently renamed, and update old reference to this
         for old_name in character.former_names:

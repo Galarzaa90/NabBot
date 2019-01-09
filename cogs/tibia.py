@@ -30,7 +30,7 @@ from .utils.pages import Pages, VocationPages
 from .utils.tibia import HIGHSCORES_FORMAT, NabChar, TIBIACOM_ICON, TIBIA_URL, get_character, get_guild, get_highscores, \
     get_house, get_house_id, get_map_area, get_news_article, get_rashid_city, get_recent_news, get_share_range, \
     get_tibia_time_zone, get_voc_abb, get_voc_abb_and_emoji, get_voc_emoji, get_world, get_world_bosses, get_world_list, \
-    normalize_vocation, tibia_worlds
+    normalize_vocation, tibia_worlds, HIGHSCORE_CATEGORIES
 
 log = logging.getLogger("nabbot")
 
@@ -554,8 +554,43 @@ class Tibia(CogUtils):
             await ctx.send(e)
 
     @checks.can_embed()
-    async def highscores_global(self, ctx, category, experience):
-        pass
+    @highscores.command(name="global")
+    async def highscores_global(self, ctx: NabCtx, category="experience"):
+        if category not in HIGHSCORE_CATEGORIES:
+            return await ctx.error(f"Invalid category, valid categories are: "
+                                   f"{join_list([f'`{k}`' for k,v in HIGHSCORE_CATEGORIES.items()])}")
+
+        _category, vocation = HIGHSCORE_CATEGORIES[category]
+        rows = await ctx.pool.fetch("SELECT * FROM highscores_entry WHERE category = $1 ORDER BY VALUE DESC LIMIT 300",
+                                    category)
+        entries = []
+        for row in rows:
+            if await ctx.is_long():
+                name = row['name']
+            else:
+                name = f"[{row['name']}]({tibiapy.Character.get_url(row['name'])})"
+
+            emoji = get_voc_emoji(row['vocation'])
+            content = f"**{name}**{emoji} ({row['world']}) - "
+            if _category == Category.EXPERIENCE:
+                level = self.get_level_by_experience(row['value'])
+                content += f"Level {level} ({row['value']:,} exp)"
+            elif _category in [Category.LOYALTY_POINTS, Category.ACHIEVEMENTS]:
+                content += f"{row['value']:,} points"
+            else:
+                content += f"Level {row['value']}"
+            entries.append(content)
+
+        pages = Pages(ctx, entries=entries, per_page=20 if await ctx.is_long() else 10)
+        pages.embed.title = f"🏆Global {_category.name.replace('_', ' ').title()} highscores"
+        if vocation != VocationFilter.ALL:
+            pages.embed.title += f" ({vocation.name.lower()})"
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
+
 
     @checks.can_embed()
     @commands.command(aliases=["guildhall"], usage="<name>[,world]")
