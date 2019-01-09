@@ -121,6 +121,7 @@ class Tracking(CogUtils):
                         if last_scan:
                             last_scan_ss = get_current_server_save_time(last_scan)
                             current_ss = get_current_server_save_time()
+                            # If the saved results are from the current server save, saving is skipped
                             if last_scan_ss >= current_ss:
                                 log.debug(f"{tag} {values[0].name} | {values[1].name} | Already saved")
                                 await asyncio.sleep(0.1)

@@ -227,6 +227,7 @@ async def bind_database_character(bot, character: NabChar):
             bot.dispatch("character_guild_change", character, db_char.guild)
 
 
+# TODO: Add caching
 async def get_highscores(world, category=Category.EXPERIENCE, vocation=VocationFilter.ALL, tries=5) \
         -> Optional[Highscores]:
     """Gets all the highscores entries of a world, category and vocation."""

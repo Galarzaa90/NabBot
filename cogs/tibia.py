@@ -2,6 +2,7 @@ import asyncio
 import calendar
 import datetime as dt
 import logging
+import math
 import random
 import re
 from collections import Counter
@@ -486,7 +487,7 @@ class Tibia(CogUtils):
             await ctx.error(e)
 
     @checks.can_embed()
-    @commands.command(usage="[world,category[,vocation]]")
+    @commands.group(usage="[world,category[,vocation]]", invoke_without_command=True, case_insensitive=True)
     async def highscores(self, ctx: NabCtx, *, params=None):
         """Shows the entries in the highscores.
 
@@ -551,6 +552,10 @@ class Tibia(CogUtils):
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
+
+    @checks.can_embed()
+    async def highscores_global(self, ctx, category, experience):
+        pass
 
     @checks.can_embed()
     @commands.command(aliases=["guildhall"], usage="<name>[,world]")
@@ -1618,6 +1623,19 @@ class Tibia(CogUtils):
         async with self.bot.pool.acquire() as conn:
             results = await conn.fetch("SELECT zone, name FROM server_timezone WHERE server_id = $1", server_id)
             return results
+
+    @classmethod
+    def get_experience_for_level(cls, lvl):
+        return int(math.ceil((50*math.pow(lvl, 3)/3) - 100*math.pow(lvl, 2) + 850*lvl/3 - 200))
+
+    # TODO: Solve formula instead of using loop
+    @classmethod
+    def get_level_by_experience(cls, experience):
+        level = 1
+        while True:
+            if cls.get_experience_for_level(level) >= experience:
+                return level
+            level += 1
 
     def __unload(self):
         log.info(f"{self.tag} Unloading cog")
