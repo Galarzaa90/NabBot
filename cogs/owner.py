@@ -22,7 +22,7 @@ from .utils.tibia import *
 
 log = logging.getLogger("nabbot")
 
-req_pattern = re.compile(r"([\w]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
+req_pattern = re.compile(r"([\w.]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")
 
 
@@ -103,7 +103,9 @@ class Owner(CogUtils):
         func = env["func"]
         try:
             with redirect_stdout(stdout):
+                start = time.perf_counter()
                 ret = await func()
+                run_time = time.perf_counter()-start
         except Exception:
             value = stdout.getvalue()
             await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
@@ -114,12 +116,20 @@ class Owner(CogUtils):
             except discord.HTTPException:
                 pass
 
+            embed = discord.Embed(title="Evaluation Result")
+            embed.set_footer(text=f"Executed in {run_time*1000:,.2f} ms")
+            embed.set_author(name=ctx.author.name, icon_url=get_user_avatar(ctx.author))
+
             if ret is None:
                 if value:
-                    await ctx.send(f'```py\n{value}\n```')
+                    embed.colour = discord.Colour.teal()
+                    embed.description = f'```py\n{value}\n```'
+                    await ctx.send(embed=embed)
             else:
                 self._last_result = ret
-                await ctx.send(f'```py\n{value}{ret}\n```')
+                embed.colour = discord.Colour.dark_teal()
+                embed.description = f'```py\n{value}{ret}\n```'
+                await ctx.send(embed=embed)
 
     @checks.owner_only()
     @commands.command(name="invalidworlds")
@@ -615,6 +625,7 @@ class Owner(CogUtils):
 
         dependencies = req_pattern.findall(requirements)
         for package in dependencies:
+            print(package)
             version = pkg_resources.get_distribution(package[0]).version
             if not comp(package[1], StrictVersion(version), StrictVersion(package[2])):
                 value = f"{ctx.tick(False)}v{version}\n`At least v{package[2]} expected`"

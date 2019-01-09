@@ -30,7 +30,7 @@ from .utils.pages import Pages, VocationPages
 from .utils.tibia import HIGHSCORES_FORMAT, NabChar, TIBIACOM_ICON, TIBIA_URL, get_character, get_guild, get_highscores, \
     get_house, get_house_id, get_map_area, get_news_article, get_rashid_city, get_recent_news, get_share_range, \
     get_tibia_time_zone, get_voc_abb, get_voc_abb_and_emoji, get_voc_emoji, get_world, get_world_bosses, get_world_list, \
-    normalize_vocation, tibia_worlds, HIGHSCORE_CATEGORIES
+    normalize_vocation, tibia_worlds, HIGHSCORE_CATEGORIES, get_level_by_experience
 
 log = logging.getLogger("nabbot")
 
@@ -556,6 +556,9 @@ class Tibia(CogUtils):
     @checks.can_embed()
     @highscores.command(name="global")
     async def highscores_global(self, ctx: NabCtx, category="experience"):
+        """Shows the combined highscores of all worlds.
+
+        Only certain categories are available. Ties are shown in no particular order."""
         if category not in HIGHSCORE_CATEGORIES:
             return await ctx.error(f"Invalid category, valid categories are: "
                                    f"{join_list([f'`{k}`' for k,v in HIGHSCORE_CATEGORIES.items()])}")
@@ -573,7 +576,7 @@ class Tibia(CogUtils):
             emoji = get_voc_emoji(row['vocation'])
             content = f"**{name}**{emoji} ({row['world']}) - "
             if _category == Category.EXPERIENCE:
-                level = self.get_level_by_experience(row['value'])
+                level = get_level_by_experience(row['value'])
                 content += f"Level {level} ({row['value']:,} exp)"
             elif _category in [Category.LOYALTY_POINTS, Category.ACHIEVEMENTS]:
                 content += f"{row['value']:,} points"
@@ -589,8 +592,6 @@ class Tibia(CogUtils):
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
-
-
 
     @checks.can_embed()
     @commands.command(aliases=["guildhall"], usage="<name>[,world]")
@@ -1658,19 +1659,6 @@ class Tibia(CogUtils):
         async with self.bot.pool.acquire() as conn:
             results = await conn.fetch("SELECT zone, name FROM server_timezone WHERE server_id = $1", server_id)
             return results
-
-    @classmethod
-    def get_experience_for_level(cls, lvl):
-        return int(math.ceil((50*math.pow(lvl, 3)/3) - 100*math.pow(lvl, 2) + 850*lvl/3 - 200))
-
-    # TODO: Solve formula instead of using loop
-    @classmethod
-    def get_level_by_experience(cls, experience):
-        level = 1
-        while True:
-            if cls.get_experience_for_level(level) >= experience:
-                return level
-            level += 1
 
     def __unload(self):
         log.info(f"{self.tag} Unloading cog")

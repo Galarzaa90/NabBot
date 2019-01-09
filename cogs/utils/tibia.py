@@ -3,6 +3,7 @@ import datetime as dt
 import io
 import json
 import logging
+import math
 import re
 import urllib.parse
 from html.parser import HTMLParser
@@ -277,8 +278,6 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
     Guilds are case sensitive on tibia.com so guildstats.eu is checked for correct case.
     If the guild can't be fetched due to a network error, an NetworkError exception is raised
     If the character doesn't exist, None is returned."""
-    guildstats_url = f"http://guildstats.eu/guild?guild={urllib.parse.quote(name)}"
-
     if tries == 0:
         log.error("get_guild_online: Couldn't fetch {0}, network error.".format(name))
         raise NetworkError()
@@ -292,39 +291,7 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
         pass
 
     if not title_case:
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(guildstats_url) as resp:
-                    content = await resp.text(encoding='ISO-8859-1')
-        except Exception:
-            await asyncio.sleep(config.network_retry_delay)
-            return await get_guild(name, title_case, tries - 1)
-
-        # Make sure we got a healthy fetch
-        try:
-            content.index('<div class="footer">')
-        except ValueError:
-            await asyncio.sleep(config.network_retry_delay)
-            return await get_guild(name, title_case, tries - 1)
-
-        # Check if the guild doesn't exist
-        if "<div>Sorry!" in content:
-            return None
-
-        # Failsafe in case guildstats.eu changes their websites format
-        try:
-            content.index("General info")
-            content.index("Recruitment")
-        except Exception:
-            log.error("get_guild_online: -IMPORTANT- guildstats.eu seems to have changed their websites format.")
-            raise NetworkError
-
-        start_index = content.index("General info")
-        end_index = content.index("Recruitment")
-        content = content[start_index:end_index]
-        m = re.search(r'<a href="set=(.+?)"', content)
-        if m:
-            name = urllib.parse.unquote_plus(m.group(1))
+        name = await get_guild_name_from_guildstats(name, tries=tries)
     else:
         name = name.title()
 
@@ -345,6 +312,47 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
             return None
     CACHE_GUILDS[name.lower()] = guild
     return guild
+
+
+async def get_guild_name_from_guildstats(name, title_case=True, tries=5):
+    if tries == 0:
+        raise NetworkError()
+    guildstats_url = f"http://guildstats.eu/guild?guild={urllib.parse.quote(name)}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(guildstats_url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
+    except Exception:
+        await asyncio.sleep(config.network_retry_delay)
+        return await get_guild_name_from_guildstats(name, title_case, tries - 1)
+
+    # Make sure we got a healthy fetch
+    try:
+        content.index('<div class="footer">')
+    except ValueError:
+        await asyncio.sleep(config.network_retry_delay)
+        return await get_guild_name_from_guildstats(name, title_case, tries - 1)
+
+    # Check if the guild doesn't exist
+    if "<div>Sorry!" in content:
+        return None
+
+    # Failsafe in case guildstats.eu changes their websites format
+    try:
+        content.index("General info")
+        content.index("Recruitment")
+    except Exception:
+        log.error("get_guild_online: -IMPORTANT- guildstats.eu seems to have changed their websites format.")
+        raise NetworkError
+
+    start_index = content.index("General info")
+    end_index = content.index("Recruitment")
+    content = content[start_index:end_index]
+    m = re.search(r'<a href="set=(.+?)"', content)
+    if m:
+        return urllib.parse.unquote_plus(m.group(1))
+    log.error("get_guild_online: -IMPORTANT- guildstats.eu seems to have changed their websites format.")
+    raise NetworkError
 
 
 async def get_recent_news(tries=5):
@@ -417,6 +425,7 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
     article["date"] = parse_tibiadata_time(article["date"]).date()
     CACHE_NEWS[article_id] = article
     return article
+
 
 def parse_tibiadata_time(time_dict: Dict[str, Union[int, str]]) -> Optional[dt.datetime]:
     """Parses the time objects from TibiaData API
@@ -592,7 +601,7 @@ def get_current_server_save_time(current_time: Optional[dt.datetime] = None) -> 
     return current_ss
 
 
-def normalize_vocation(vocation, allow_no_voc=True) -> str:
+def normalize_vocation(vocation, allow_no_voc=True) -> Optional[str]:
     """Attempts to normalize a vocation string into a base vocation."""
     if vocation in PALADIN:
         return "paladin"
@@ -748,3 +757,19 @@ def get_rashid_city() -> Dict[str, Union[str, int]]:
     info = c.fetchone()
     c.close()
     return info["city"]
+
+
+def get_experience_for_level(level: int) -> int:
+    """Gets experience needed for a specific level.
+    """
+    return int(math.ceil((50 * math.pow(level, 3) / 3) - 100 * math.pow(level, 2) + 850 * level / 3 - 200))
+
+
+# TODO: Solve by math
+def get_level_by_experience(experience: int) -> int:
+    """Gets the level a character would have with the specified experience."""
+    level = 1
+    while True:
+        if get_experience_for_level(level+1) > experience:
+            return level
+        level += 1
