@@ -558,33 +558,32 @@ class Tibia(CogUtils):
     async def highscores_global(self, ctx: NabCtx, category="experience"):
         """Shows the combined highscores of all worlds.
 
-        Only certain categories are available. Ties are shown in no particular order."""
+        Only certain categories are available."""
         if category not in HIGHSCORE_CATEGORIES:
             return await ctx.error(f"Invalid category, valid categories are: "
                                    f"{join_list([f'`{k}`' for k,v in HIGHSCORE_CATEGORIES.items()])}")
 
         _category, vocation = HIGHSCORE_CATEGORIES[category]
-        rows = await ctx.pool.fetch("SELECT * FROM highscores_entry WHERE category = $1 ORDER BY VALUE DESC LIMIT 300",
-                                    category)
+        rows = await ctx.pool.fetch("""SELECT rank() OVER (ORDER BY value DESC), name, world, vocation, value 
+                                       FROM highscores_entry WHERE category = $1
+                                       ORDER BY value DESC, name ASC LIMIT 300""", category)
         entries = []
-        for row in rows:
-            if await ctx.is_long():
-                name = row['name']
-            else:
-                name = f"[{row['name']}]({tibiapy.Character.get_url(row['name'])})"
+        for rank, name, world, voc, value in rows:
+            if not await ctx.is_long():
+                name = f"[{name}]({tibiapy.Character.get_url(name)})"
 
-            emoji = get_voc_emoji(row['vocation'])
-            content = f"**{name}**{emoji} ({row['world']}) - "
+            emoji = get_voc_emoji(voc)
+            content = f"{rank}. **{name}**{emoji} ({world}) - "
             if _category == Category.EXPERIENCE:
-                level = get_level_by_experience(row['value'])
-                content += f"Level {level} ({row['value']:,} exp)"
+                level = get_level_by_experience(value)
+                content += f"Level {level} ({value:,} exp)"
             elif _category in [Category.LOYALTY_POINTS, Category.ACHIEVEMENTS]:
-                content += f"{row['value']:,} points"
+                content += f"{value:,} points"
             else:
-                content += f"Level {row['value']}"
+                content += f"Level {value}"
             entries.append(content)
 
-        pages = Pages(ctx, entries=entries, per_page=20 if await ctx.is_long() else 10)
+        pages = Pages(ctx, entries=entries, per_page=20 if await ctx.is_long() else 10, show_numbers=False)
         pages.embed.title = f"🏆Global {_category.name.replace('_', ' ').title()} highscores"
         if vocation != VocationFilter.ALL:
             pages.embed.title += f" ({vocation.name.lower()})"
@@ -1499,11 +1498,13 @@ class Tibia(CogUtils):
         description += f"\n{' | '.join(extra)}"
 
         # Insert any highscores this character holds
-        for highscore in char.highscores:
-            highscore_string = HIGHSCORES_FORMAT[highscore["category"]].format(char.his_her,
-                                                                               highscore["value"],
-                                                                               highscore['rank'])
-            description += "\n🏆 {0}".format(highscore_string)
+        highscores_field = ""
+        for category, highscore in char.highscores.items():
+            highscore_string = HIGHSCORES_FORMAT[category].format(char.he_she.lower(),
+                                                                  highscore["value"], highscore["rank"])
+            highscores_field += "\n🏆 {0}".format(highscore_string)
+        if highscores_field:
+            embed.add_field(name="Highscores entries", value=highscores_field, inline=False)
         embed.description = description
         return embed
 

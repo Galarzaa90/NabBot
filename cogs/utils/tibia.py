@@ -48,7 +48,8 @@ NO_VOCATION = ["no vocation", "no voc", "novoc", "nv", "n v", "none", "no", "n",
 invalid_name = re.compile(r"[^\sA-Za-zÀ-ÖØ-öø-ÿ'\-]")
 
 
-HIGHSCORE_CATEGORIES = {"sword": (Category.SWORD_FIGHTING, VocationFilter.ALL),
+HIGHSCORE_CATEGORIES = {"experience": (Category.EXPERIENCE, VocationFilter.ALL),
+                        "sword": (Category.SWORD_FIGHTING, VocationFilter.ALL),
                         "axe": (Category.AXE_FIGHTING, VocationFilter.ALL),
                         "club": (Category.CLUB_FIGHTING, VocationFilter.ALL),
                         "distance": (Category.DISTANCE_FIGHTING, VocationFilter.ALL),
@@ -59,22 +60,21 @@ HIGHSCORE_CATEGORIES = {"sword": (Category.SWORD_FIGHTING, VocationFilter.ALL),
                         "magic_knights": (Category.MAGIC_LEVEL, VocationFilter.KNIGHTS),
                         "magic_paladins": (Category.MAGIC_LEVEL, VocationFilter.PALADINS),
                         "loyalty": (Category.LOYALTY_POINTS, VocationFilter.ALL),
-                        "achievements": (Category.ACHIEVEMENTS, VocationFilter.ALL),
-                        "experience": (Category.EXPERIENCE, VocationFilter.ALL)}
+                        "achievements": (Category.ACHIEVEMENTS, VocationFilter.ALL)}
 
-HIGHSCORES_FORMAT = {"achievements": "{0} __achievement points__ are **{1}**, on rank **{2}**",
-                     "axe": "{0} __axe fighting__ level is **{1}**, on rank **{2}**",
-                     "club": "{0} __club fighting__ level is **{1}**, on rank **{2}**",
-                     "experience": "{0} __level__ **{1}**, on rank **{2}**",
-                     "distance": "{0} __distance fighting__ level is **{1}**, on rank **{2}**",
-                     "fishing": "{0} __fishing__ level is **{1}**, on rank **{2}**",
-                     "fist": "{0} __fist fighting__ level is **{1}**, on rank **{2}**",
-                     "loyalty": "{0} __loyalty points__ are **{1}**, on rank **{2}**",
-                     "magic": "{0} __magic level__ is **{1}**, on rank **{2}**",
-                     "magic_knights": "{0} __magic level__ is **{1}**, on rank **{2}** (knights)",
-                     "magic_paladins": "{0} __magic level__ is **{1}**, on rank **{2}** (paladins)",
-                     "shielding": "{0} __shielding__ level is **{1}**, on rank **{2}**",
-                     "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
+HIGHSCORES_FORMAT = {"achievements": "In __achievement points__, {0} has rank **{2}**, with **{1}**",
+                     "axe": "In __axe fighting__, {0} has rank **{2}**, with level **{1}**",
+                     "club": "In __club fighting__, {0} has rank **{2}**, with level **{1}**",
+                     "experience": "In __experience points__, {0} has rank **{2}**",
+                     "distance": "In __distance fighting__, {0} has rank **{2}**, with level **{1}**",
+                     "fishing": "In __fishing__, {0} has rank **{2}**, with level **{1}**",
+                     "fist": "In __fist fighting__, {0} has rank **{2}**, with level **{1}**",
+                     "loyalty": "In __loyalty points__, {0} has rank **{2}**, with **{1}**",
+                     "magic": "In __magic level__, {0} has rank **{2}**, with level **{1}**",
+                     "magic_knights": "In __magic level__ (knights), {0} has rank **{2}**, with level **{1}**",
+                     "magic_paladins": "In __magic level__ (paladins), {0} has rank **{2}**, with level **{1}**",
+                     "shielding": "In __shielding__, {0} has rank **{2}**, with level **{1}**",
+                     "sword": "In __sword fighting__, {0} has rank **{2}**, with level **{1}**"}
 
 # This is preloaded on startup
 tibia_worlds: List[str] = []
@@ -96,7 +96,7 @@ class NabChar(Character):
         super().__init__(name, world, vocation, level, sex, **kwargs)
         self.id = 0
         self.owner_id = 0
-        self.highscores = []
+        self.highscores = {}  # type: Dict[Dict[str, int]]
 
     @classmethod
     def from_online(cls, o_char: OnlineCharacter, sex=None, owner_id=0):
@@ -178,8 +178,7 @@ async def bind_database_character(bot, character: NabChar):
         # Skills from highscores
         results = await conn.fetch("SELECT category, rank, value FROM highscores_entry WHERE name = $1",
                                    character.name)
-        if len(results) > 0:
-            character.highscores = [dict(r) for r in results]
+        character.highscores = {category: {'rank': rank, 'value': value} for category, rank, value in results}
 
         # Check if this user was recently renamed, and update old reference to this
         for old_name in character.former_names:
