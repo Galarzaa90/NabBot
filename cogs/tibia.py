@@ -2,7 +2,6 @@ import asyncio
 import calendar
 import datetime as dt
 import logging
-import math
 import random
 import re
 from collections import Counter
@@ -19,18 +18,17 @@ from tibiapy import Category, GuildHouse, House, HouseStatus, Sex, TransferType,
 from tibiawikisql import models
 
 from nabbot import NabBot
-from .utils import CogUtils, checks, config, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, join_list, \
-    online_characters
+from .utils import CogUtils, checks, config, errors, get_local_timezone, get_time_diff, get_user_avatar, is_numeric, \
+    join_list, online_characters
 from .utils.context import NabCtx
 from .utils.database import DbChar, DbDeath, DbLevelUp, get_global_property, get_recent_timeline, get_server_property, \
     set_global_property
-from .utils.errors import CannotPaginate, NetworkError
 from .utils.messages import get_first_image, html_to_markdown, split_message
 from .utils.pages import Pages, VocationPages
-from .utils.tibia import HIGHSCORES_FORMAT, NabChar, TIBIACOM_ICON, TIBIA_URL, get_character, get_guild, get_highscores, \
-    get_house, get_house_id, get_map_area, get_news_article, get_rashid_city, get_recent_news, get_share_range, \
-    get_tibia_time_zone, get_voc_abb, get_voc_abb_and_emoji, get_voc_emoji, get_world, get_world_bosses, get_world_list, \
-    normalize_vocation, tibia_worlds, HIGHSCORE_CATEGORIES, get_level_by_experience
+from .utils.tibia import HIGHSCORES_FORMAT, HIGHSCORE_CATEGORIES, NabChar, TIBIACOM_ICON, TIBIA_URL, get_character, \
+    get_guild, get_highscores, get_house, get_house_id, get_level_by_experience, get_map_area, get_news_article, \
+    get_rashid_city, get_recent_news, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_abb_and_emoji, \
+    get_voc_emoji, get_world, get_world_bosses, get_world_list, normalize_vocation, tibia_worlds
 
 log = logging.getLogger("nabbot")
 
@@ -140,14 +138,9 @@ class Tibia(CogUtils):
                     if count >= 100:
                         break
         else:
-            try:
-                char = await get_character(self.bot, name)
-                if char is None:
-                    await ctx.send("That character doesn't exist.")
-                    return
-            except NetworkError:
-                await ctx.send("Sorry, I had trouble checking that character, try it again.")
-                return
+            char = await get_character(self.bot, name)
+            if char is None:
+                return await ctx.send("That character doesn't exist.")
             deaths = char.deaths
             last_time = dt.datetime.now(dt.timezone.utc)
             name = char.name
@@ -192,7 +185,7 @@ class Tibia(CogUtils):
             pages.embed.set_author(name=author, icon_url=author_icon)
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @checks.tracking_world_only()
@@ -226,7 +219,7 @@ class Tibia(CogUtils):
 
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @deaths.command(name="user")
@@ -262,7 +255,7 @@ class Tibia(CogUtils):
         pages.embed.set_author(name=title, icon_url=icon_url)
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @deaths.command(name="stats", usage="[week/month]")
@@ -349,12 +342,9 @@ class Tibia(CogUtils):
         Show's the number of members the guild has and a list of their users.
         It also shows whether the guild has a guildhall or not, and their funding date.
         """
-        try:
-            guild = await get_guild(name)
-            if guild is None:
-                return await ctx.error("The guild {0} doesn't exist.".format(name))
-        except NetworkError:
-            return await ctx.error("I'm having network issues, can you try again")
+        guild = await get_guild(name)
+        if guild is None:
+            return await ctx.error("The guild {0} doesn't exist.".format(name))
 
         embed = discord.Embed()
         embed.set_author(name="{0.name} ({0.world})".format(guild), url=guild.url, icon_url=TIBIACOM_ICON)
@@ -392,24 +382,15 @@ class Tibia(CogUtils):
         embed.add_field(name=current_field, value=result, inline=False)
         await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @guild.command(name="info", aliases=["stats"])
     async def guild_info(self, ctx: NabCtx, *, name: str):
         """Shows basic information and stats about a guild.
 
         It shows their description, homepage, guildhall, number of members and more."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        try:
-            guild = await get_guild(name)
-            if guild is None:
-                await ctx.send("The guild {0} doesn't exist.".format(name))
-                return
-        except NetworkError:
-            await ctx.send("Can you repeat that? I had some trouble communicating.")
-            return
+        guild = await get_guild(name)
+        if guild is None:
+            return await ctx.send("The guild {0} doesn't exist.".format(name))
         embed = discord.Embed(title=f"{guild.name} ({guild.world})", description=guild.description, url=guild.url)
         embed.set_thumbnail(url=guild.logo_url)
         embed.set_footer(text=f"The guild was founded on {guild.founded}")
@@ -461,13 +442,9 @@ class Tibia(CogUtils):
         """Shows a list of all guild members.
 
         Online members have an icon next to their name."""
-        try:
-            guild = await get_guild(name)
-            if guild is None:
-                return await ctx.error(f"The guild {name} doesn't exist.")
-        except NetworkError:
-            await ctx.error("Can you repeat that? I had some trouble communicating.")
-            return
+        guild = await get_guild(name)
+        if guild is None:
+            return await ctx.error(f"The guild {name} doesn't exist.")
         title = "{0.name} ({0.world})".format(guild)
         entries = []
         vocations = []
@@ -483,7 +460,7 @@ class Tibia(CogUtils):
         pages.embed.set_author(name=title, icon_url=guild.logo_url, url=guild.url)
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.error(e)
 
     @checks.can_embed()
@@ -524,12 +501,9 @@ class Tibia(CogUtils):
                 vocation = VocationFilter.ALL
 
         with ctx.typing():
-            try:
-                highscores = await get_highscores(world, category, vocation)
-                if highscores is None:
-                    return await ctx.error("I couldn't find any highscores entries.")
-            except NetworkError:
-                return await ctx.error(f"I couldn't fetch the highscores.")
+            highscores = await get_highscores(world, category, vocation)
+            if highscores is None:
+                return await ctx.error("I couldn't find any highscores entries.")
         entries = []
         for entry in highscores.entries:
             name = f"[{entry.name}]({entry.url})" if not await ctx.is_long() else entry.name
@@ -550,7 +524,7 @@ class Tibia(CogUtils):
             pages.embed.title += f" ({vocation.name.lower()})"
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @checks.can_embed()
@@ -589,7 +563,7 @@ class Tibia(CogUtils):
             pages.embed.title += f" ({vocation.name.lower()})"
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @checks.can_embed()
@@ -638,7 +612,7 @@ class Tibia(CogUtils):
         if world:
             try:
                 house = await get_house(wiki_house.house_id, world)
-            except NetworkError:
+            except errors.NetworkError:
                 pass
         # Attach image only if the bot has permissions
         if ctx.bot_permissions.attach_files:
@@ -652,7 +626,7 @@ class Tibia(CogUtils):
     @commands.group(aliases=['levelups'], invoke_without_command=True, case_insensitive=True)
     @checks.tracking_world_only()
     @checks.can_embed()
-    async def levels(self, ctx: NabCtx, *, name: str=None):
+    async def levels(self, ctx: NabCtx, *, name: str = None):
         """Shows a character's or everyone's recent level ups.
 
         If a character is specified, it displays a list of its recent level ups.
@@ -710,7 +684,7 @@ class Tibia(CogUtils):
 
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @levels.command(name="user")
@@ -744,23 +718,19 @@ class Tibia(CogUtils):
         pages.embed.set_author(name=title, icon_url=get_user_avatar(user))
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @checks.can_embed()
     @commands.command(usage="[id]")
-    async def news(self, ctx: NabCtx, news_id: int=None):
+    async def news(self, ctx: NabCtx, news_id: int = None):
         """Shows the latest news articles from Tibia.com.
 
         If no id is supplied, a list of recent articles is shown, otherwise, a snippet of the article is shown."""
         if news_id is None:
-            try:
-                recent_news = await get_recent_news()
-                if recent_news is None:
-                    await ctx.error("Something went wrong getting recent news.")
-            except NetworkError:
-                await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
-                return
+            recent_news = await get_recent_news()
+            if recent_news is None:
+                await ctx.error("Something went wrong getting recent news.")
             embed = discord.Embed(title="Recent news")
             embed.set_footer(text="To see a specific article, use the command /news <id>")
             news_format = "{emoji} `{id}`\t[{news}]({tibiaurl})"
@@ -777,7 +747,7 @@ class Tibia(CogUtils):
             article = await get_news_article(news_id)
             if article is None:
                 return await ctx.error("There's no article with that id.")
-        except NetworkError:
+        except errors.NetworkError:
             return await ctx.error("I couldn't fetch the recent news, I'm having network problems.")
         limit = 1900 if await ctx.is_long() else 600
         embed = self.get_article_embed(article, limit)
@@ -820,14 +790,11 @@ class Tibia(CogUtils):
             else:
                 world_name = tracked_world
 
-        try:
-            world = await get_world(world_name)
-            if world is None:
-                # This really shouldn't happen...
-                await ctx.error(f"There's no world named **{world_name}**.")
-                return
-        except NetworkError:
-            return await ctx.error("I'm having 'network problems' as you humans say, please try again later.")
+        world = await get_world(world_name)
+        if world is None:
+            # This really shouldn't happen...
+            await ctx.error(f"There's no world named **{world_name}**.")
+            return
 
         online_list = world.online_players
         if not online_list:
@@ -848,17 +815,13 @@ class Tibia(CogUtils):
             # We shouldn't have another parameter if a character name was specified
             if len(params) == 2:
                 return await ctx.error(invalid_arguments)
-            try:
-                char = await get_character(ctx.bot, params[0])
-                if char is None:
-                    await ctx.error("I couldn't find a character with that name.")
-                    return
-                filter_name = char.name
-                if char.world != world.name:
-                    content = f"**Note**: The character is in **{char.world}** and I'm searching **{world.name}**."
-            except NetworkError:
-                await ctx.error("I couldn't fetch that character.")
+            char = await get_character(ctx.bot, params[0])
+            if char is None:
+                await ctx.error("I couldn't find a character with that name.")
                 return
+            filter_name = char.name
+            if char.world != world.name:
+                content = f"**Note**: The character is in **{char.world}** and I'm searching **{world.name}**."
             low, high = get_share_range(char.level)
             title = "Characters online in share range with {0}({1}-{2}):".format(char.name, low, high)
             empty = "I didn't find anyone in share range with **{0}**({1}-{2})".format(char.name, low, high)
@@ -904,7 +867,7 @@ class Tibia(CogUtils):
 
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.error(e)
 
     @commands.command(aliases=['expshare', 'party'])
@@ -938,13 +901,9 @@ class Tibia(CogUtils):
                 return await ctx.error("I can only check up to 5 characters at a time.")
             if len(chars) == 1:
                 with ctx.typing():
-                    try:
-                        char = await get_character(ctx.bot, chars[0])
-                        if char is None:
-                            await ctx.error('There is no character with that name.')
-                            return
-                    except NetworkError:
-                        await ctx.error("I'm having connection issues right now, please try again.")
+                    char = await get_character(ctx.bot, chars[0])
+                    if char is None:
+                        await ctx.error('There is no character with that name.')
                         return
                     name = char.name
                     level = char.level
@@ -963,7 +922,7 @@ class Tibia(CogUtils):
                         if fetched_char is None:
                             await ctx.send(f"There is no character named **{char}**.")
                             return
-                    except NetworkError:
+                    except errors.NetworkError:
                         await ctx.send("I'm having connection issues, please try again in a bit.")
                         return
                     char_data.append(fetched_char)
@@ -1065,7 +1024,7 @@ class Tibia(CogUtils):
             pages.embed.set_author(name=author, icon_url=author_icon)
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @timeline.command(name="user")
@@ -1106,7 +1065,7 @@ class Tibia(CogUtils):
         pages.embed.set_author(name=title, icon_url=author_icon)
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @commands.group(aliases=['serversave'], invoke_without_command=True)
@@ -1203,7 +1162,7 @@ class Tibia(CogUtils):
         pages.embed.title = "Saved times"
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.error(e)
 
     @checks.server_mod_only()
@@ -1246,10 +1205,7 @@ class Tibia(CogUtils):
             await ctx.invoke(self.bot.all_commands.get('about'))
             return
 
-        try:
-            char = await get_character(ctx.bot, name)
-        except NetworkError:
-            return await ctx.error("Sorry, I couldn't fetch the character's info, maybe you should try again...")
+        char = await get_character(ctx.bot, name)
 
         if ctx.is_lite or (not ctx.is_private and not ctx.world):
             if char is None:
@@ -1300,7 +1256,7 @@ class Tibia(CogUtils):
                     character = chars[0]
                     try:
                         char = await get_character(ctx.bot, character["name"])
-                    except NetworkError:
+                    except errors.NetworkError:
                         pass
                     else:
                         if char is not None:
@@ -1330,13 +1286,9 @@ class Tibia(CogUtils):
         """Shows basic information about a Tibia world.
 
         Shows information like PvP type, online count, server location, vocation distribution, and more."""
-        try:
-            world = await get_world(name)
-            if world is None:
-                await ctx.send("There's no world with that name.")
-                return
-        except NetworkError:
-            await ctx.send("I'm having connection issues right now.")
+        world = await get_world(name)
+        if world is None:
+            await ctx.send("There's no world with that name.")
             return
 
         url = 'https://www.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
@@ -1382,12 +1334,7 @@ class Tibia(CogUtils):
         `descending` to reverse the order.
         `europe`, `south america` or `north america` to filter by location.
         `optional pvp`, `open pvp`, `retro open pvp`, `hardcore pvp` or `retro hardcore pvp` to filter by pvp type."""
-        try:
-            worlds = await get_world_list()
-            if not worlds:
-                return await ctx.send(f"{ctx.tick(False)} Something went wrong...")
-        except NetworkError:
-            return await ctx.send(f"{ctx.tick(False)} I'm having network errors, please try again later.")
+        worlds = await get_world_list()
         if query is None:
             params = []
         else:
@@ -1443,7 +1390,7 @@ class Tibia(CogUtils):
         pages.embed.colour = discord.Colour.blurple()
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     # Utilities
@@ -1633,7 +1580,7 @@ class Tibia(CogUtils):
                 log.warning(f"{self.tag}{task_tag} Error getting recent news")
                 await asyncio.sleep(60*30)
                 continue
-            except NetworkError:
+            except errors.NetworkError:
                 await asyncio.sleep(30)
                 continue
             except asyncio.CancelledError:

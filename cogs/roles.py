@@ -6,12 +6,11 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import CogUtils, checks
+from .utils import CogUtils, checks, errors
 from .utils import get_user_avatar
 from .utils.context import NabCtx
 from .utils.converter import InsensitiveRole
 from .utils.database import get_affected_count
-from .utils.errors import CannotPaginate, NetworkError
 from .utils.pages import Pages
 from .utils.tibia import get_guild
 
@@ -142,15 +141,11 @@ class Roles(CogUtils):
         role: discord.Role = _role
         name = guild.replace("\"", "")
         if guild != "*":
-            try:
-                guild = await get_guild(name)
-                if guild is None:
-                    await ctx.error(f"There's no guild named `{name}`")
-                    return
-                name = guild.name
-            except NetworkError:
-                await ctx.error("I'm having network issues, try again later.")
+            guild = await get_guild(name)
+            if guild is None:
+                await ctx.error(f"There's no guild named `{name}`")
                 return
+            name = guild.name
         result = await ctx.pool.fetchrow("SELECT true FROM role_auto WHERE role_id = $1 and rule = $2", role.id, name)
         if result:
             await ctx.error("Autorole rule already exists.")
@@ -200,7 +195,7 @@ class Roles(CogUtils):
         pages.embed.title = "Autorole rules"
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.error(e)
 
     @checks.has_guild_permissions(manage_roles=True)
@@ -354,7 +349,7 @@ class Roles(CogUtils):
         pages.embed.title = "Joinable groups"
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.error(e)
 
     @checks.has_guild_permissions(manage_roles=True)
@@ -413,7 +408,7 @@ class Roles(CogUtils):
         pages.embed.title = "Members with no roles"
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.error(e)
 
     @commands.guild_only()
@@ -454,7 +449,7 @@ class Roles(CogUtils):
         pages.embed.colour = _role.colour
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.error(e)
 
     @commands.guild_only()
@@ -492,7 +487,7 @@ class Roles(CogUtils):
         pages.embed.title = title
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.error(e)
         return
 

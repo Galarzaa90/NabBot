@@ -19,7 +19,7 @@ from tibiapy import Category, Character, Guild, Highscores, House, ListedWorld, 
 
 from . import config, get_local_timezone, online_characters
 from .database import DbChar, wiki_db
-from .errors import NetworkError
+from . import errors
 
 log = logging.getLogger("nabbot")
 
@@ -118,7 +118,7 @@ class NabChar(Character):
         return "Him" if self.sex == Sex.MALE else "Her"
 
 
-async def get_character(bot, name, tries=5) -> Optional[NabChar]:
+async def get_character(bot, name, *, tries=5) -> Optional[NabChar]:
     """Fetches a character from TibiaData, parses and returns a Character object
 
     The character object contains all the information available on Tibia.com
@@ -127,8 +127,7 @@ async def get_character(bot, name, tries=5) -> Optional[NabChar]:
     If the character doesn't exist, None is returned.
     """
     if tries == 0:
-        log.error("get_character: Couldn't fetch {0}, network error.".format(name))
-        raise NetworkError()
+        raise errors.NetworkError(f"get_character({name})")
     try:
         url = Character.get_url_tibiadata(name)
     except UnicodeEncodeError:
@@ -144,9 +143,9 @@ async def get_character(bot, name, tries=5) -> Optional[NabChar]:
             async with bot.session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
                 character = NabChar.from_tibiadata(content)
-        except (aiohttp.ClientError, asyncio.TimeoutError):
+        except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
             await asyncio.sleep(config.network_retry_delay)
-            return await get_character(bot, name, tries - 1)
+            return await get_character(bot, name, tries=tries - 1)
         CACHE_CHARACTERS[name.lower()] = character
     if character is None:
         return None
@@ -175,7 +174,7 @@ async def bind_database_character(bot, character: NabChar):
 
     Compliments information found on the database and performs updating."""
     async with bot.pool.acquire() as conn:
-        # Skills from highscores
+        # Highscore entries
         results = await conn.fetch("SELECT category, rank, value FROM highscores_entry WHERE name = $1",
                                    character.name)
         character.highscores = {category: {'rank': rank, 'value': value} for category, rank, value in results}
@@ -228,31 +227,28 @@ async def bind_database_character(bot, character: NabChar):
 
 
 # TODO: Add caching
-async def get_highscores(world, category=Category.EXPERIENCE, vocation=VocationFilter.ALL, tries=5) \
+async def get_highscores(world, category=Category.EXPERIENCE, vocation=VocationFilter.ALL, *, tries=5) \
         -> Optional[Highscores]:
     """Gets all the highscores entries of a world, category and vocation."""
     if tries == 0:
-        log.error("get_highscores_tibiadata: Couldn't fetch {0}, network error.".format(world))
-        raise NetworkError()
+        raise errors.NetworkError(f"get_highscores_tibiadata({world},{category},{vocation})")
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(Highscores.get_url_tibiadata(world, category, vocation)) as resp:
                 content = await resp.text()
                 highscores = Highscores.from_tibiadata(content, vocation)
-    except (aiohttp.ClientError, asyncio.TimeoutError):
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_highscores(world, category, vocation, tries - 1)
+        return await get_highscores(world, category, vocation, tries=tries - 1)
 
     return highscores
 
 
-async def get_world(name, tries=5) -> Optional[World]:
+async def get_world(name, *, tries=5) -> Optional[World]:
     name = name.strip().title()
     if tries == 0:
-        log.error("get_world: Couldn't fetch {0}, network error.".format(name))
-        raise NetworkError()
-        # Fetch website
+        raise errors.NetworkError(f"get_world({name})")
     try:
         world = CACHE_WORLDS[name]
         return world
@@ -263,14 +259,14 @@ async def get_world(name, tries=5) -> Optional[World]:
             async with session.get(World.get_url_tibiadata(name)) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
                 world = World.from_tibiadata(content)
-    except aiohttp.ClientError:
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_world(name, tries - 1)
+        return await get_world(name, tries=tries - 1)
     CACHE_WORLDS[name] = world
     return world
 
 
-async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
+async def get_guild(name, title_case=True, *, tries=5) -> Optional[Guild]:
     """Fetches a guild from TibiaData, parses and returns a Guild object
 
     The Guild object contains all the information available on Tibia.com
@@ -278,8 +274,7 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
     If the guild can't be fetched due to a network error, an NetworkError exception is raised
     If the character doesn't exist, None is returned."""
     if tries == 0:
-        log.error("get_guild_online: Couldn't fetch {0}, network error.".format(name))
-        raise NetworkError()
+        raise errors.NetworkError(f"get_guild({name})")
 
     # Fix casing using guildstats.eu if needed
     # Sorry guildstats.eu :D
@@ -300,9 +295,9 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
             async with session.get(Guild.get_url_tibiadata(name)) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
                 guild = Guild.from_tibiadata(content)
-    except Exception:
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_guild(name, title_case, tries - 1)
+        return await get_guild(name, title_case, tries=tries - 1)
 
     if guild is None:
         if title_case:
@@ -315,13 +310,13 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
 
 async def get_guild_name_from_guildstats(name, title_case=True, tries=5):
     if tries == 0:
-        raise NetworkError()
+        raise errors.NetworkError(f"get_guild_name_from_guildstats({name})")
     guildstats_url = f"http://guildstats.eu/guild?guild={urllib.parse.quote(name)}"
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(guildstats_url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
         return await get_guild_name_from_guildstats(name, title_case, tries - 1)
 
@@ -340,9 +335,8 @@ async def get_guild_name_from_guildstats(name, title_case=True, tries=5):
     try:
         content.index("General info")
         content.index("Recruitment")
-    except Exception:
-        log.error("get_guild_online: -IMPORTANT- guildstats.eu seems to have changed their websites format.")
-        raise NetworkError
+    except ValueError:
+        raise errors.NetworkError(f"get_guild_name_from_guildstats({name}): Guildstats.eu format might have changed.")
 
     start_index = content.index("General info")
     end_index = content.index("Recruitment")
@@ -350,14 +344,12 @@ async def get_guild_name_from_guildstats(name, title_case=True, tries=5):
     m = re.search(r'<a href="set=(.+?)"', content)
     if m:
         return urllib.parse.unquote_plus(m.group(1))
-    log.error("get_guild_online: -IMPORTANT- guildstats.eu seems to have changed their websites format.")
-    raise NetworkError
+    raise errors.NetworkError(f"get_guild_name_from_guildstats({name}): Guildstats.eu format might have changed.")
 
 
-async def get_recent_news(tries=5):
+async def get_recent_news(*, tries=5):
     if tries == 0:
-        log.error("get_recent_news: network error.")
-        raise NetworkError()
+        raise errors.NetworkError(f"get_recent_news()")
     try:
         url = f"https://api.tibiadata.com/v2/latestnews.json"
     except UnicodeEncodeError:
@@ -372,9 +364,9 @@ async def get_recent_news(tries=5):
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_recent_news(tries - 1)
+        return await get_recent_news(tries=tries - 1)
 
     content_json = json.loads(content)
     try:
@@ -387,13 +379,12 @@ async def get_recent_news(tries=5):
     return newslist["data"]
 
 
-async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union[str, dt.date]]]:
+async def get_news_article(article_id: int, *, tries=5) -> Optional[Dict[str, Union[str, dt.date]]]:
     """Returns a news article with the specified id or None if it doesn't exist
 
     If there's a network error, NetworkError exception is raised"""
     if tries == 0:
-        log.error("get_recent_news: network error.")
-        raise NetworkError()
+        raise errors.NetworkError(f"get_news_article({article_id})")
     try:
         url = f"https://api.tibiadata.com/v2/news/{article_id}.json"
     except UnicodeEncodeError:
@@ -409,9 +400,9 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_recent_news(tries - 1)
+        return await get_recent_news(tries=tries - 1)
 
     content_json = json.loads(content)
     try:
@@ -555,13 +546,12 @@ def get_house_id(name) -> Optional[int]:
         return None
 
 
-async def get_house(house_id, world, tries=5) -> House:
+async def get_house(house_id, world, *, tries=5) -> House:
     """Returns a dictionary containing a house's info, a list of possible matches or None.
 
     If world is specified, it will also find the current status of the house in that world."""
     if tries == 0:
-        log.error(f"get_house: Couldn't fetch {house_id}, {world}, network error.")
-        raise NetworkError()
+        raise errors.NetworkError(f"get_house({house_id},{world})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(House.get_url_tibiadata(house_id, world)) as resp:
@@ -569,7 +559,7 @@ async def get_house(house_id, world, tries=5) -> House:
                 house = House.from_tibiadata(content)
     except aiohttp.ClientError:
         await asyncio.sleep(config.network_retry_delay)
-        return await get_house(house_id, world, tries - 1)
+        return await get_house(house_id, world, tries=tries - 1)
     return house
 
 
@@ -692,11 +682,13 @@ async def populate_worlds():
     print("\tDone")
 
 
-async def get_world_list(tries=3) -> List[ListedWorld]:
-    """Fetch the list of Tibia worlds from TibiaData"""
+async def get_world_list(*, tries=3) -> List[ListedWorld]:
+    """Fetch the list of Tibia worlds from TibiaData.
+
+    :raises NetworkError: If the world list couldn't be fetched after all the attempts.
+    """
     if tries == 0:
-        log.error("get_world_list(): Couldn't fetch TibiaData for the worlds list, network error.")
-        raise NetworkError()
+        raise errors.NetworkError("get_world_list(): Failed to fetch content after all the attempts.")
 
     # Fetch website
     try:
@@ -709,9 +701,9 @@ async def get_world_list(tries=3) -> List[ListedWorld]:
             async with session.get(ListedWorld.get_list_url_tibiadata()) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
                 worlds = ListedWorld.list_from_tibiadata(content)
-    except Exception:
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_world_list(tries - 1)
+        return await get_world_list(tries=tries - 1)
 
     CACHE_WORLD_LIST[0] = worlds
     return worlds

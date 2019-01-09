@@ -4,7 +4,7 @@ import logging
 import pickle
 import re
 import time
-from typing import List, NamedTuple, Union, Tuple
+from typing import List, NamedTuple, Union
 
 import asyncpg
 import discord
@@ -718,13 +718,9 @@ class Tracking(CogUtils):
             if len(params) == 2:
                 await ctx.send(invalid_arguments)
                 return
-            try:
-                char = await get_character(ctx.bot, params[0])
-                if char is None:
-                    await ctx.send("I couldn't find a character with that name.")
-                    return
-            except NetworkError:
-                await ctx.send("I couldn't fetch that character.")
+            char = await get_character(ctx.bot, params[0])
+            if char is None:
+                await ctx.send("I couldn't find a character with that name.")
                 return
             low, high = get_share_range(char.level)
             title = f"Characters in share range with {char.name}({low}-{high}):"
@@ -822,15 +818,10 @@ class Tracking(CogUtils):
         if len(params) > 1:
             reason = params[1]
 
-        try:
-            char = await get_character(ctx.bot, name)
-            if char is None:
-                await ctx.error("A character with that name doesn't exist.")
-                return
-        except NetworkError:
-            await ctx.error(f"I couldn't fetch that character right now, please try again.")
+        char = await get_character(ctx.bot, name)
+        if char is None:
+            await ctx.error("A character with that name doesn't exist.")
             return
-
         world = ctx.world
         if char.world != world:
             await ctx.error(f"This character is not in **{world}**.")
@@ -876,13 +867,9 @@ class Tracking(CogUtils):
             reason = params[1]
 
         world = ctx.world
-        try:
-            guild = await get_guild(name)
-            if guild is None:
-                await ctx.error("There's no guild with that name.")
-                return
-        except NetworkError:
-            await ctx.error("I couldn't fetch that guild right now, please try again.")
+        guild = await get_guild(name)
+        if guild is None:
+            await ctx.error("There's no guild with that name.")
             return
 
         if guild.world != world:

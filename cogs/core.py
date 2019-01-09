@@ -28,7 +28,7 @@ class Core(CogUtils):
 
         A random status is selected every 20 minutes.
         """
-        task_tag = " Task: game_update |"
+        tag = "[game_update]"
         # Entries are prefixed with "Playing "
         # Entries starting with "w:" are prefixed with "Watching "
         # Entries starting with "l:" are prefixed with "Listening to "
@@ -45,7 +45,7 @@ class Core(CogUtils):
             "l:the voices in my head", "l:your breath", "l:the screams", "complaints"
         ]
         await self.bot.wait_until_ready()
-        log.info(f"{self.tag}{task_tag} Started")
+        log.info(f"{tag} Task Started")
         while not self.bot.is_closed():
             try:
                 if random.randint(0, 9) >= 7:
@@ -60,17 +60,17 @@ class Core(CogUtils):
                     elif choice.startswith("l:"):
                         choice = choice[2:]
                         activity_type = discord.ActivityType.listening
-                log.info(f"{self.tag}{task_tag} Updating presence | {activity_type.name} | {choice}")
+                log.info(f"{tag} Updating presence | {activity_type.name} | {choice}")
                 await self.bot.change_presence(activity=discord.Activity(name=choice, type=activity_type))
             except asyncio.CancelledError:
-                log.info(f"{self.tag}{task_tag} Stopped")
+                log.info(f"{tag} Stopped")
                 return
             except discord.DiscordException:
-                log.exception(f"{self.tag} Exception")
+                log.exception(f"{tag} Exception")
                 continue
             await asyncio.sleep(60*20)  # Change game every 20 minutes
 
-    async def on_command_error(self, ctx: context.NabCtx, error):
+    async def on_command_error(self, ctx: context.NabCtx, error: commands.CommandError):
         """Handles command errors"""
         if isinstance(error, commands.errors.CommandNotFound):
             return
@@ -88,9 +88,13 @@ class Core(CogUtils):
                 error = f"Parameter `{param}` must be numeric."
             await ctx.error(f"{error}\nTry `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
         elif isinstance(error, commands.CommandInvokeError):
+            error_name = error.original.__class__.__name__
+            if isinstance(error.original, errors.NetworkError):
+                log.error(f"{error_name} in command {ctx.clean_prefix}{ctx.command.qualified_name}: {error.original}")
+                return await ctx.error("I'm having network issues right now. Please try again in a moment.")
             log.error(f"{self.tag} Exception in command: {ctx.message.clean_content}", exc_info=error.original)
             if isinstance(error.original, discord.HTTPException):
-                await ctx.send("Sorry, the message was too long to send.")
+                await ctx.error("Sorry, the message was too long to send.")
             else:
                 if ctx.bot_permissions.embed_links:
                     embed = discord.Embed(colour=discord.Colour(0xff1414))
@@ -98,11 +102,13 @@ class Core(CogUtils):
                                      icon_url=self.bot.user.avatar_url)
                     embed.set_footer(text="Please report this bug in the support server.")
                     embed.add_field(name=f"{ctx.tick(False)}Command Error",
-                                    value=f"```py\n{error.original.__class__.__name__}: {error.original}```",
+                                    value=f"```py\n{error_name}: {error.original}```",
                                     inline=False)
                     await ctx.send(embed=embed)
                 else:
-                    await ctx.error(f'Command error:\n```py\n{error.original.__class__.__name__}: {error.original}```')
+                    await ctx.error(f'Command error:\n```py\n{error_name}: {error.original}```')
+        else:
+            log.warning(f"Unhandled command error {error.__class__.__name__}: {error}")
 
     async def on_command(self, ctx: commands.Context):
         command = ctx.command.qualified_name
