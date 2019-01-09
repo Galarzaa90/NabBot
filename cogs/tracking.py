@@ -4,26 +4,25 @@ import logging
 import pickle
 import re
 import time
-from typing import List, NamedTuple, Union
+from typing import List, NamedTuple, Union, Tuple
 
 import asyncpg
 import discord
+import tibiapy
 from discord.ext import commands
 from tibiapy import Death, Guild, OnlineCharacter, OtherCharacter, World
 
 from nabbot import NabBot
-from .utils import CogUtils, EMBED_LIMIT, FIELD_VALUE_LIMIT, config, get_user_avatar, is_numeric, join_list, \
+from .utils import CogUtils, EMBED_LIMIT, FIELD_VALUE_LIMIT, checks, config, get_user_avatar, is_numeric, join_list, \
     online_characters, safe_delete_message
-from .utils import checks
 from .utils.context import NabCtx
 from .utils.database import DbChar, DbDeath, DbLevelUp, get_affected_count, get_server_property
 from .utils.errors import CannotPaginate, NetworkError
 from .utils.messages import death_messages_monster, death_messages_player, format_message, level_messages, \
     split_message, weighed_choice
 from .utils.pages import Pages, VocationPages
-from .utils.tibia import ERROR_NETWORK, HIGHSCORE_CATEGORIES, NabChar, get_character, \
-    get_guild, get_highscores, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_emoji, get_world, \
-    tibia_worlds
+from .utils.tibia import HIGHSCORE_CATEGORIES, NabChar, get_character, get_current_server_save_time, get_guild, \
+    get_highscores, get_share_range, get_voc_abb, get_voc_emoji, get_world, tibia_worlds
 
 log = logging.getLogger("nabbot")
 
@@ -100,65 +99,48 @@ class Tracking(CogUtils):
         #             Nezune's cave                     #
         # Do not touch anything, enter at your own risk #
         #################################################
-        task_tag = f"Task: scan_highscores |"
+        tag = f"{self.tag}(scan_highscores)"
         await self.bot.wait_until_ready()
-        log.info(f"{self.tag}{task_tag} Started")
+        log.info(f"{tag} Task started")
         while not self.bot.is_closed():
             if len(self.bot.tracked_worlds_list) == 0:
                 # If no worlds are tracked, just sleep, worlds might get registered later
-                await asyncio.sleep(config.highscores_delay)
+                await asyncio.sleep(10*60)
                 continue
             for world in self.bot.tracked_worlds_list:
+                tag = f"{self.tag}[{world}](scan_highscores)"
+                world_count = 0
                 if world not in tibia_worlds:
+                    log.warning(f"{tag} Tracked world is no longer a valid world.")
                     await asyncio.sleep(0.1)
                 try:
-                    for category in HIGHSCORE_CATEGORIES:
+                    for key, values in HIGHSCORE_CATEGORIES.items():
                         # Check the last scan time, highscores are updated every server save
-                        last_scan: dt.datetime = await self.bot.pool.fetchval(
-                            "SELECT last_scan FROM highscores WHERE world = $1 AND category = $2", world, category)
+                        last_scan = await self.bot.pool.fetchval(
+                            "SELECT last_scan FROM highscores WHERE world = $1 AND category = $2", world, key)
                         if last_scan:
-                            now = dt.datetime.now(dt.timezone.utc)
-                            # Current day's server save, could be in the past or the future, an extra hour is added
-                            # as margin
-                            today_ss = dt.datetime.now(dt.timezone.utc).replace(hour=11 - get_tibia_time_zone())
-                            if not now > today_ss > last_scan:
+                            last_scan_ss = get_current_server_save_time(last_scan)
+                            current_ss = get_current_server_save_time()
+                            # If the saved results are from the current server save, saving is skipped
+                            if last_scan_ss >= current_ss:
+                                log.debug(f"{tag} {values[0].name} | {values[1].name} | Already saved")
+                                await asyncio.sleep(0.1)
                                 continue
-                        highscore_data = []
-                        for pagenum in range(1, 13):
-                            # Special cases (ek/rp mls)
-                            if category == "magic_ek":
-                                scores = await get_highscores(world, "magic", pagenum, 1)
-                            elif category == "magic_rp":
-                                scores = await get_highscores(world, "magic", pagenum, 2)
-                            else:
-                                scores = await get_highscores(world, category, pagenum)
-                            if scores == ERROR_NETWORK:
-                                continue
-                            for entry in scores:
-                                highscore_data.append(
-                                    (entry["rank"], category, world, entry["name"], entry["vocation"], entry["value"]))
-                            await asyncio.sleep(config.highscores_page_delay)
-                        async with self.bot.pool.acquire() as conn:
-                            # Delete old records
-                            await conn.execute("DELETE FROM highscores_entry WHERE category = $1 AND world = $2",
-                                               category,  world)
-                            # Add current entries
-                            await conn.executemany("""INSERT INTO highscores_entry(rank, category, world, name, 
-                                                      vocation, value) 
-                                                      VALUES ($1, $2, $3, $4, $5, $6)""", highscore_data)
-                            # Update scan times
-                            await conn.execute("""INSERT INTO highscores(world, category, last_scan)
-                                                  VALUES($1, $2, $3)
-                                                  ON CONFLICT (world,category)
-                                                  DO UPDATE SET last_scan = EXCLUDED.last_scan""",
-                                               world, category, dt.datetime.now(dt.timezone.utc))
+                        try:
+                            highscores = await get_highscores(world, *values)
+                        except NetworkError:
+                            continue
+                        await self.save_highscores(world, key, highscores)
                 except asyncio.CancelledError:
                     # Task was cancelled, so this is fine
                     break
                 except Exception:
-                    log.exception(f"{self.tag}{task_tag}")
+                    log.exception(f"{tag}")
                     continue
-                await asyncio.sleep(10)
+                if world_count:
+                    log.info(f"{tag} {world_count:,} entries saved.")
+                await asyncio.sleep(5)
+            await asyncio.sleep(60*30)
 
     async def scan_online_chars(self):
         """Scans tibia.com's character lists to store them locally.
@@ -542,15 +524,11 @@ class Tracking(CogUtils):
         If it finds a character owned by another user, the whole process will be stopped.
 
         If a character is already registered to someone else, `claim` can be used."""
-        user = ctx.author
         # List of Tibia worlds tracked in the servers the user is
         if ctx.is_private:
             user_tibia_worlds = [ctx.world]
         else:
             user_tibia_worlds = ctx.bot.get_user_worlds(ctx.author.id)
-
-        if len(user_tibia_worlds) == 0:
-            return
 
         msg = await ctx.send(f"{config.loading_emoji} Fetching character...")
         try:
@@ -1238,7 +1216,7 @@ class Tracking(CogUtils):
             pending_deaths = []
             for death in char.deaths:
                 # Check if we have a death that matches the time
-                exists = await DbDeath.exists(conn, db_char.id, death.level, death.time, death.killer.name)
+                exists = await DbDeath.exists(conn, db_char.id, death.level, death.time)
                 if exists:
                     # We already have this death, we're assuming we already have older deaths
                     break
@@ -1400,6 +1378,27 @@ class Tracking(CogUtils):
         """Checks if a channel is a watchlist channel."""
         exists = await ctx.pool.fetchval("SELECT true FROM watchlist WHERE channel_id = $1", channel.id)
         return bool(exists)
+
+    async def save_highscores(self, world: str, key: str, highscores: tibiapy.Highscores) -> int:
+        """Saves the highscores of a world and category to the database."""
+        if highscores is None:
+            return 0
+        rows = [(e.rank, key, world, e.name, e.vocation.value, e.value) for e in highscores.entries]
+        async with self.bot.pool.acquire() as conn:  # type: asyncpg.Connection
+            async with conn.transaction():
+                # Delete old records
+                await conn.execute("DELETE FROM highscores_entry WHERE category = $1 AND world = $2", key, world)
+                # Add current entries
+                await conn.copy_records_to_table("highscores_entry", records=rows,
+                                                 columns=["rank", "category", "world", "name", "vocation", "value"])
+                log.debug(f"{self.tag}[{world}][save_highscores] {key} | {len(rows)} entries saved")
+                # Update scan times
+                await conn.execute("""INSERT INTO highscores(world, category, last_scan)
+                                      VALUES($1, $2, $3)
+                                      ON CONFLICT (world,category)
+                                      DO UPDATE SET last_scan = EXCLUDED.last_scan""",
+                                   world, key, dt.datetime.now(dt.timezone.utc))
+                return len(rows)
     # endregion
 
     def __unload(self):

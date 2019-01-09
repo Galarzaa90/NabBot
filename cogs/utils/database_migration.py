@@ -197,13 +197,13 @@ tables = [
     """,
     """
     CREATE TABLE highscores_entry (
-        rank text,
+        rank integer,
         category text,
         world text,
         name text,
         vocation text,
         value bigint,
-        PRIMARY KEY(rank,category, world)
+        PRIMARY KEY(rank,category,world)
     );""",
     """
     CREATE TABLE role_auto (
@@ -408,7 +408,7 @@ async def import_characters(conn: asyncpg.Connection, c: sqlite3.Cursor, new_ids
     # This doesn't seem very safe to do, maybe it would be better to import deaths the old way
     for char_id, level, killer, date, byplayer in rows:
         byplayer = byplayer == 1
-        date = datetime.datetime.utcfromtimestamp(date)
+        date = datetime.datetime.fromtimestamp(date, datetime.timezone.utc)
         deaths.append((new_ids[char_id], level, date))
         killers.append((ids, killer, byplayer))
         ids += 1
@@ -427,7 +427,7 @@ async def import_characters(conn: asyncpg.Connection, c: sqlite3.Cursor, new_ids
     rows = c.fetchall()
     levelups = []
     for char_id, level, date in rows:
-        date = datetime.datetime.utcfromtimestamp(date)
+        date = datetime.datetime.fromtimestamp(date, datetime.timezone.utc)
         levelups.append((new_ids[char_id], level, date))
     log.debug(f"Collected {len(levelups):,} records from old database.")
     log.info("Copying records to level ups table.")
@@ -489,7 +489,7 @@ async def import_events(conn: asyncpg.Connection, c: sqlite3.Cursor, new_char_id
     rows = c.fetchall()
     for event_id, creator, name, start, active, status, description, server, joinable, slots in rows:
         new_event_ids[event_id] = i
-        start = datetime.datetime.utcfromtimestamp(start)
+        start = datetime.datetime.fromtimestamp(start, datetime.timezone.utc)
         active = bool(active)
         joinable = bool(joinable)
         status = 4 - status
