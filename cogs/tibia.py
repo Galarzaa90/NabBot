@@ -1291,8 +1291,7 @@ class Tibia(CogUtils):
             await ctx.send("There's no world with that name.")
             return
 
-        url = 'https://www.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
-        embed = discord.Embed(url=url, title=name.capitalize())
+        embed = discord.Embed(url=world.url, title=name.capitalize())
         if world.status != "Online":
             embed.description = "This world is offline."
             embed.colour = discord.Colour.red()
