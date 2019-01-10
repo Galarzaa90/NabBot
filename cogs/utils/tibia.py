@@ -592,6 +592,8 @@ def get_current_server_save_time(current_time: Optional[dt.datetime] = None) -> 
 
 def normalize_vocation(vocation, allow_no_voc=True) -> Optional[str]:
     """Attempts to normalize a vocation string into a base vocation."""
+    if isinstance(vocation, str):
+        vocation = vocation.lower()
     if vocation in PALADIN:
         return "paladin"
     if vocation in DRUID:

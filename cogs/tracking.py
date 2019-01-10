@@ -19,7 +19,7 @@ from .utils.context import NabCtx
 from .utils.database import DbChar, DbDeath, DbLevelUp, get_affected_count, get_server_property
 from .utils.errors import CannotPaginate, NetworkError
 from .utils.messages import death_messages_monster, death_messages_player, format_message, level_messages, \
-    split_message, weighed_choice
+    split_message, weighed_choice, MessageCondition, DeathMessageCondition, LevelCondition
 from .utils.pages import Pages, VocationPages
 from .utils.tibia import HIGHSCORE_CATEGORIES, NabChar, get_character, get_current_server_save_time, get_guild, \
     get_highscores, get_share_range, get_voc_abb, get_voc_emoji, get_world, tibia_worlds
@@ -1133,13 +1133,12 @@ class Tracking(CogUtils):
             if guild.get_member(char.owner_id) is None:
                 log.debug(f"{log_msg} | Guild skipped  {guild_id} | Owner not in server")
                 continue
+            condition = DeathMessageCondition(char=char, death=death, levels_lost=levels_lost, min_level=min_level)
             # Select a message
             if death.by_player:
-                message = weighed_choice(death_messages_player, vocation=char.vocation.value, level=death.level,
-                                         levels_lost=levels_lost, min_level=min_level)
+                message = weighed_choice(death_messages_player, condition)
             else:
-                message = weighed_choice(death_messages_monster, vocation=char.vocation.value, level=death.level,
-                                         levels_lost=levels_lost, killer=death.killer.name, min_level=min_level)
+                message = weighed_choice(death_messages_monster, condition)
             # Format message with death information
             death_info = {'name': char.name, 'level': death.level, 'killer': death.killer.name,
                           'killer_article': killer_article, 'he_she': char.he_she.lower(),
@@ -1176,7 +1175,7 @@ class Tracking(CogUtils):
             channel = self.bot.get_channel_or_top(guild, channel_id)
             try:
                 # Select a message
-                message = weighed_choice(level_messages, vocation=char.vocation.value, level=level, min_level=min_level)
+                message = weighed_choice(level_messages, LevelCondition(char=char, level=level, min_level=min_level))
                 level_info = {'name': char.name, 'level': level, 'he_she': char.he_she.lower(),
                               'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
                 # Format message with level information
