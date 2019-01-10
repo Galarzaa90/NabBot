@@ -9,7 +9,6 @@ from discord.ext import commands
 from nabbot import NabBot
 from .utils.context import NabCtx
 from .utils.converter import Stamina
-from .utils.errors import NetworkError
 from .utils.tibia import get_character, get_stats, normalize_vocation
 
 log = logging.getLogger("nabbot")
@@ -251,13 +250,9 @@ class Calculators:
                 await ctx.send(invalid_arguments)
                 return
             else:
-                try:
-                    char = await get_character(ctx.bot, params[0])
-                    if char is None:
-                        await ctx.send("Sorry, can you try it again?")
-                        return
-                except NetworkError:
-                    await ctx.send("Character **{0}** doesn't exist!".format(params[0]))
+                char = await get_character(ctx.bot, params[0])
+                if char is None:
+                    await ctx.error(f"Character **{params[0]}** doesn't exist!")
                     return
                 level = int(char.level)
                 vocation = char.vocation

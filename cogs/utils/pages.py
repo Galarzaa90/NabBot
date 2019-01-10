@@ -72,6 +72,7 @@ class Pages:
 
         # Added for NabBot
         self.header = kwargs.get("header", "")
+        self.show_numbers = kwargs.get("show_numbers", True)
 
         self.current_page = 1
         if ctx.guild is not None:
@@ -101,7 +102,10 @@ class Pages:
         entries = self.get_page(page)
         p = []
         for index, entry in enumerate(entries, 1 + ((page - 1) * self.per_page)):
-            p.append(f'{index}. {entry}')
+            if self.show_numbers:
+                p.append(f'{index}. {entry}')
+            else:
+                p.append(f'{entry}')
 
         if self.maximum_pages > 1:
             if self.show_entry_count:
@@ -214,7 +218,7 @@ class Pages:
 
 
 class VocationPages(Pages):
-    def __init__(self, ctx: commands.Context, *, entries, vocations, **kwargs):
+    def __init__(self, ctx: NabCtx, *, entries, vocations, **kwargs):
         super().__init__(ctx, entries=entries, **kwargs)
         present_vocations = []
         # Only add vocation filters for the vocations present

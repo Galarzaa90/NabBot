@@ -245,7 +245,7 @@ def is_numeric(s: str) -> bool:
         return False
 
 
-def join_list(_list: List, separator: str = ",", end_separator: str = " and ") -> str:
+def join_list(_list: List, separator: str = ", ", end_separator: str = " and ") -> str:
     """Joins elements in a list, using a different separator for the last item.
 
     :param _list: The list to join.

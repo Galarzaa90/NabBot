@@ -1,9 +1,50 @@
-import datetime as dt
 import random
 import re
 
+from cogs.utils.tibia import normalize_vocation
+
+
+class MessageCondition:
+    def __init__(self, **kwargs):
+        self.char = kwargs.get("char")
+        self.min_level = kwargs.get("min_level")
+
+    @property
+    def vocation(self):
+        return self.char.vocation.value
+
+    @property
+    def sex(self):
+        return self.char.sex
+
+    @property
+    def base_voc(self):
+        return normalize_vocation(self.char.vocation)
+
+
+class LevelCondition(MessageCondition):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.level = kwargs.get("level")
+
+
+class DeathMessageCondition(MessageCondition):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.death = kwargs.get("death")
+        self.levels_lost = kwargs.get("levels_lost")
+
+    @property
+    def level(self):
+        return self.death.level
+
+    @property
+    def killer(self):
+        return self.death.killer.name
+
+
 # We save the last messages so they are not repeated so often
-last_messages = [""]*10
+last_messages = [""]*50
 WAVE_MONSTERS = ["dragon", "dragon lord", "undead dragon", "draken spellweaver", "hellhound", "hellfire fighter",
                  "frost dragon", "medusa", "serpent spawn", "hydra", "grim reaper"]
 
@@ -39,87 +80,87 @@ level_messages = [
     # EK Only
     ####
     [50, "**{name}** has reached level {level}. That's 9 more mana potions you can carry now!",
-     lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
+     lambda c: c.level >= 100 and c.base_voc == "knight"],
     [200, "**{name}** is level {level}. Stick them with the pointy end! 🗡️",
-     lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
+     lambda c: c.level >= 100 and c.base_voc == "knight"],
     [200, "**{name}** is a fat level {level} meatwall now. BLOCK FOR ME SENPAI.",
-     lambda min_level, level, voc, *_: level >= 100 and "Knight" in voc],
+     lambda c: c.level >= 100 and c.base_voc == "knight"],
     ####
     # EK Only - Level specific
     ####
     [20000, "**{name}** is now level {level}! Time to go berserk! 💢",
-     lambda min_level, level, voc, *_: level == 35 and "Knight" in voc],
+     lambda c: c.level == 35 and c.base_voc == "knight"],
     ####
     # RP Only
     ####
     [50, "**{name}** has reached level {level}. But {he_she} still misses arrows...",
-     lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
+     lambda c: c.level >= 100 and c.base_voc == "paladin"],
     [150, "Congrats on level {level}, **{name}**. You can stop running around now.",
-     lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
+     lambda c: c.level >= 100 and c.base_voc == "paladin"],
     [150, "**{name}** is level {level}. Bullseye!🎯",
-     lambda min_level, level, voc, *_: level >= 100 and "Paladin" in voc],
+     lambda c: c.level >= 100 and c.base_voc == "paladin"],
     ####
     # RP Only - Level specific
     ####
     [30000, "**{name}** is level {level}! You can become a ninja now!👤",
-     lambda min_level, level, voc, *_: level == 80 and "Paladin" in voc],
+     lambda c: c.level == 80 and c.base_voc == "paladin"],
     [30000, "**{name}** is level {level}! Time to get some crystalline arrows!🏹",
-     lambda min_level, level, voc, *_: level == 90 and "Paladin" in voc],
+     lambda c: c.level == 90 and c.base_voc == "paladin"],
     ####
     # MS Only
     ####
     [150, "**{name}** got level {level}. If {he_she} only stopped missing beams.",
-     lambda min_level, level, voc, *_: level >= 23 and "Sorcerer" in voc],
+     lambda c: c.level >= 23 and c.base_voc == "sorcerer"],
     [50, "Level {level}, **{name}**? Nice. Don't you wish you were a druid though?",
-     lambda min_level, level, voc, *_: level >= 100 and "Sorcerer" in voc],
+     lambda c: c.level >= 100 and c.base_voc == "sorcerer"],
     [150, "**{name}** is level {level}. 🔥🔥BURN THEM ALL🔥🔥",
-     lambda min_level, level, voc, *_: level >= 100 and "Sorcerer" in voc],
+     lambda c: c.level >= 100 and c.base_voc == "sorcerer"],
     ####
     # MS Only - Level specific
     ####
     [20000, "**{name}** is level {level}. Watch out for {his_her} SDs!",
-     lambda min_level, level, voc, *_: level == 45 and "Sorcerer" in voc],
+     lambda c: c.level == 45 and c.base_voc == "sorcerer"],
     ####
     # ED Only
     ####
     [50, "**{name}** has reached level {level}. Flower power!🌼",
-     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
+     lambda c: c.level >= 100 and c.base_voc == "druid"],
     [150, "Congrats on level {level}, **{name}**. Sio plz.",
-     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
+     lambda c: c.level >= 100 and c.base_voc == "druid"],
     [150, "**{name}** is level {level}. 🔥🔥BURN THEM ALL... Or... Give them frostbite?❄❄",
-     lambda min_level, level, voc, *_: level >= 100 and "Druid" in voc],
+     lambda c: c.level >= 100 and c.base_voc == "druid"],
     ####
     # ED Only - Level specific
     ####
     [20000, "**{name}** is level {level} now! Time to unleash the Wrath of Nature🍃🍃... Just look at that wrath...",
-     lambda min_level, level, voc, *_: level == 55 and "Druid" in voc],
+     lambda c: c.level == 55 and c.base_voc == "druid"],
     [20000, "**{name}** is level {level} now! Eternal Winter is coming!❄",
-     lambda min_level, level, voc, *_: level == 60 and "Druid" in voc],
+     lambda c: c.level == 60 and c.base_voc == "druid"],
     ####
     # Mage - Level specific
     ####
     [20000, "**{name}** is level {level}! UMPs so good 🍷",
-     lambda min_level, level, voc, *_: level == 130 and ("Druid" in voc or "Sorcerer" in voc)],
+     lambda c: c.level == 130 and c.base_voc in ["druid", "sorcerer"]],
     ####
     # No vocation - Level specific
     ####
     [20000, "Level {level}, **{name}**? You're finally important enough for me to notice!",
-     lambda min_level, level, voc, *_: level == min_level],
+     lambda c: c.level == c.min_level],
     [20000, "Congratulations on level {level} **{name}**! Now you're relevant to me. As relevant a human can be anyway",
-     lambda min_level, level, voc, *_: level == min_level],
+     lambda c: c.level == c.min_level],
     [20000, "**{name}** is now level {level}. Don't forget to buy a Gearwheel Chain!📿",
-     lambda min_level, level, voc, *_: level == 75],
+     lambda c: c.level == 75],
     [30000, "**{name}** is level {level}!!!!\r\n Sweet, sweet triple digits!",
-     lambda min_level, level, voc, *_: level == 100],
+     lambda c: c.level == 100],
     [20000, "**{name}** is level {level}!!!!\r\n WOOO",
-     lambda min_level, level, voc, *_: level % 100 == 0],
+     lambda c: c.level % 100 == 0],
     [20000, "**{name}** is level {level}!!!!\r\n Yaaaay milestone!",
-     lambda min_level, level, voc, *_: level % 100 == 0],
+     lambda c: c.level % 100 == 0],
     [20000, "**{name}** is level {level}!!!!\r\n Holy crap!",
-     lambda min_level, level, voc, *_: level % 100 == 0],
+     lambda c: c.level % 100 == 0],
     [20000, "Congratulations on level {level} **{name}**! Now you can become an umbral master, but is your"
      " bank account ready?💸",
-     lambda min_level, level, voc, *_: level == 250]]
+     lambda c: c.level == 250]]
 
 # Message list for announce death.
 # Parameters: ({name},{level},{killer},{killer_article},{he_she}, {his_her},{him_her}
@@ -171,81 +212,77 @@ death_messages_monster = [
     ###
     [150, "Oh look at that, rest in peace **{name}** ({level}),  ^that ^**{killer}** really got you. "
           "Hope you get your level back.",
-     lambda min_level, level, voc, killer, levels_lost: levels_lost > 0],
+     lambda c: c.levels_lost > 0],
     ###
     # Vocation specific
     ###
     [500, "**{name}** ({level}) just died to {killer_article}**{killer}**, why did nobody sio {him_her}!?",
-     lambda min_level, level, voc, killer, levels_lost: "Knight" in voc],
+     lambda c: c.base_voc == "knight"],
     [500, "Poor **{name}** ({level}) has died. Killed by {killer_article}**{killer}**. I bet it was your "
      "blocker's fault though, eh **{name}**?",
-     lambda min_level, level, voc, killer, levels_lost: "Druid" in voc or "Sorcerer" in voc],
+     lambda c: c.base_voc == "druid" or c.base_voc == "sorcerer"],
     [500, "**{name}** ({level}) tried running away from {killer_article}**{killer}**. /{he_she}/ "
      "didn't run fast enough...",
-     lambda min_level, level, voc, killer, levels_lost: "Paladin" in voc],
+     lambda c: c.base_voc == "paladin"],
     [500, "What happened to **{name}** ({level})!? Talk about sudden death! I guess ^that ^**{killer}** was "
      "too much for {him_her}...",
-     lambda min_level, level, voc, killer, levels_lost: "Sorcerer" in voc],
+     lambda c: c.base_voc == "sorcerer"],
     [500, "**{name}** ({level}) was killed by {killer_article}**{killer}**. I guess {he_she} couldn't "
      "sio {him_her}self.",
-     lambda min_level, level, voc, killer, levels_lost: "Druid" in voc],
+     lambda c: c.base_voc == "druid"],
     ###
     # Monster specific
     ###
     [600, "**{name}** ({level}) died to {killer_article}**{killer}**. \"Don't worry\" they said, \"They are weaker\" "
      "they said.",
-     lambda min_level, level, voc, killer, levels_lost: killer in ["weakened frazzlemaw", "enfeebled silencer"]],
+     lambda c: c.killer in ["weakened frazzlemaw", "enfeebled silencer"]],
     [1000, "Damn! The koolaid they drink in that cult must have steroids on it, **{name}** ({level}).",
-     lambda min_level, level, voc, killer, levels_lost: "cult" in killer],
+     lambda c: "cult" in c.killer],
     [2000, "**{name}** ({level}) got killed by ***{killer}***. How spooky is that! 👻",
-     lambda min_level, level, voc, killer, levels_lost: killer == "something evil"],
+     lambda c: c.killer == "something evil"],
     [2000, "**{name}** ({level}) died from **{killer}**. Yeah, no shit.",
-     lambda min_level, level, voc, killer, levels_lost: killer == "death"],
+     lambda c: c.killer == "death"],
     [2000, "They did warn you **{name}** ({level}), you *did* burn 🔥🐲.",
-     lambda min_level, level, voc, killer, levels_lost: killer in ["dragon", "dragon lord"]],
+     lambda c: c.killer in ["dragon", "dragon lord"]],
     [2000, "**{name}** ({level}) died from {killer_article}**{killer}**. Someone forgot the safeword.😏",
-     lambda min_level, level, voc, killer, levels_lost: killer == "choking fear"],
+     lambda c: c.killer == "choking fear"],
     [2000, "That **{killer}** got really up close and personal with **{name}** ({level}). "
            "Maybe he thought you were his Princess Lumelia?😏",
-     lambda min_level, level, voc, killer, levels_lost: killer == "hero"],
+     lambda c: c.killer == "hero"],
     [2000, "Looks like that **{killer}** made **{name}** ({level}) his bride 😉.",
-     lambda min_level, level, voc, killer, levels_lost: "vampire" in killer],
+     lambda c: "vampire" in c.killer],
     [2000, "Yeah, those are a little stronger than regular orcs, **{name}** ({level}).",
-     lambda min_level, level, voc, killer, levels_lost: "orc cult" in killer],
+     lambda c: "orc cult" in c.killer],
     [2000, "Asian chicks are no joke **{name}** ({level}) 🔪💔.",
-     lambda min_level, level, voc, killer, levels_lost: "asura" in killer],
+     lambda c: "asura" in c.killer],
     [2000, "Watch out for that **{killer}**'s wav... Oh😐... Rest in peace **{name}** ({level}).",
-     lambda min_level, level, voc, killer, levels_lost: killer in WAVE_MONSTERS],
+     lambda c: c.killer in WAVE_MONSTERS],
     [2000, "**{name}** ({level}) died to {killer_article}**{killer}**! Don't worry, {he_she} didn't have a soul anyway",
-     lambda min_level, level, voc, killer, levels_lost: killer == "souleater"],
+     lambda c: c.killer == "souleater"],
     [2000, "**{name}** ({level}) met the strong wave of {killer_article}**{killer}**... Pro Tip: next time, stand in "
            "diagonal.",
-     lambda min_level, level, voc, killer, levels_lost: killer in WAVE_MONSTERS],
+     lambda c: c.killer in WAVE_MONSTERS],
     [2000, "**{name}** ({level}) had his life drained by {killer_article}**{killer}**. Garlic plx!",
-     lambda min_level, level, voc, killer, levels_lost: killer in ["vampire", "vampire bride", "vampire viscount",
-                                                                   "grimeleech", "undead dragon", "lich", "lost soul",
-                                                                   "skeleton elite warrior",
-                                                                   "undead elite gladiator"]],
+     lambda c: c.killer in ["vampire", "vampire bride", "vampire viscount", "grimeleech", "undead dragon", "lich",
+                            "lost soul", "skeleton elite warrior", "undead elite gladiator"]],
     [2500, "**{name}** ({level}) met {his_her} demise at the hands of a **{killer}**. That's hot.",
-     lambda min_level, level, voc, killer, levels_lost: killer in ["true dawnfire asura", "dawnfire asura", "fury"]],
+     lambda c: c.killer in ["true dawnfire asura", "dawnfire asura", "fury"]],
     [2500, "Poor **{name}** ({level}) just wanted some love! That cold hearted... Witch.",
-     lambda min_level, level, voc, killer, levels_lost: killer in ["true frost flower asura", "frost flower asura",
-                                                                   "frost giantess", "ice witch"]],
+     lambda c: c.killer in ["true frost flower asura", "frost flower asura", "frost giantess", "ice witch"]],
     [2500, "Asian chicks sure age well, don't you think so, **{name}** ({level})? 😍👵.",
-     lambda min_level, level, voc, killer, levels_lost: "true" in killer and "asura" in killer],
+     lambda c: "true" in c.killer and "asura" in c.killer],
     ###
     # Level and monster specific
     ###
     [2000, "**{name}** ({level}) got destroyed by {killer_article}**{killer}**. I bet {he_she} regrets going down"
            "that hole 🕳️",
-     lambda min_level, level, voc, killer, levels_lost: level < 120 and killer in ["breach brood", "dread intruder",
-                                                                                   "reality reaver",
-                                                                                   "spark of destruction", "sparkion"]],
+     lambda c: c.level < 120 and c.killer in ["breach brood", "dread intruder", "reality reaver",
+                                              "spark of destruction", "sparkion"]],
     ###
     # Vocation and monster specific
     ###
     [2000, "Another paladin bites the dust! **{killer}** strikes again! Rest in peace **{name}** ({level}).",
-     lambda min_level, level, voc, killer, levels_lost: "Paladin" in voc and killer == "Lady Tenebris"]
+     lambda c: c.base_voc == "paladin" and c.killer == "Lady Tenebris"]
 ]
 
 # Deaths by players
@@ -291,8 +328,7 @@ def format_message(message) -> str:
     return message
 
 
-def weighed_choice(choices, level: int, vocation: str = None, min_level=0, killer: str = None,
-                   levels_lost: int = 0) -> str:
+def weighed_choice(choices, condition: MessageCondition) -> str:
     """Makes a weighed choice from a message list.
 
     Each element of the list is a list with the following values:
@@ -305,7 +341,7 @@ def weighed_choice(choices, level: int, vocation: str = None, min_level=0, kille
     weight_range = 0
     _messages = []
     for message in choices:
-        if len(message) == 3 and not message[2](min_level, level, vocation, killer, levels_lost):
+        if len(message) == 3 and not message[2](condition):
             continue
         weight_range = weight_range + (message[0] if not message[1] in last_messages else message[0] / 10)
         _messages.append(message)

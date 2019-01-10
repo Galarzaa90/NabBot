@@ -21,8 +21,6 @@ KEYS = [
     "announce_threshold",
     "online_scan_interval",
     "death_scan_interval",
-    "highscores_delay",
-    "highscores_page_delay",
     "network_retry_delay",
     "extra_cogs",
     "command_prefix",
@@ -86,8 +84,6 @@ class Config:
         self.announce_threshold = 30
         self.online_scan_interval = 90
         self.death_scan_interval = 15
-        self.highscores_delay = 45
-        self.highscores_page_delay = 10
         self.network_retry_delay = 1
         self.online_emoji = "🔹"
         self.true_emoji = "✅"

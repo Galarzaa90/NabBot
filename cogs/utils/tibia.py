@@ -3,6 +3,7 @@ import datetime as dt
 import io
 import json
 import logging
+import math
 import re
 import urllib.parse
 from html.parser import HTMLParser
@@ -13,11 +14,12 @@ import cachetools
 import tibiapy
 from PIL import Image, ImageDraw
 from bs4 import BeautifulSoup
-from tibiapy import Character, Guild, House, ListedWorld, OnlineCharacter, Sex, Vocation, World
+from tibiapy import Category, Character, Guild, Highscores, House, ListedWorld, OnlineCharacter, Sex, Vocation, \
+    VocationFilter, World
 
 from . import config, get_local_timezone, online_characters
-from .database import wiki_db, DbChar
-from .errors import NetworkError
+from .database import DbChar, wiki_db
+from . import errors
 
 log = logging.getLogger("nabbot")
 
@@ -28,7 +30,6 @@ ERROR_NOTINDATABASE = 2
 
 # Tibia.com URLs:
 TIBIA_URL = "https://www.tibia.com/"
-url_highscores = "https://www.tibia.com/community/?subtopic=highscores&world={0}&list={1}&profession={2}&currentpage={3}"
 
 TIBIACOM_ICON = "https://ssl-static-tibia.akamaized.net/images/global/general/apple-touch-icon-72x72.png"
 
@@ -46,24 +47,38 @@ NO_VOCATION = ["no vocation", "no voc", "novoc", "nv", "n v", "none", "no", "n",
 
 invalid_name = re.compile(r"[^\sA-Za-zÀ-ÖØ-öø-ÿ'\-]")
 
-highscore_format = {"achievements": "{0} __achievement points__ are **{1}**, on rank **{2}**",
-                    "axe": "{0} __axe fighting__ level is **{1}**, on rank **{2}**",
-                    "club": "{0} __club fighting__ level is **{1}**, on rank **{2}**",
-                    "distance": "{0} __distance fighting__ level is **{1}**, on rank **{2}**",
-                    "fishing": "{0} __fishing__ level is **{1}**, on rank **{2}**",
-                    "fist": "{0} __fist fighting__ level is **{1}**, on rank **{2}**",
-                    "loyalty": "{0} __loyalty points__ are **{1}**, on rank **{2}**",
-                    "magic": "{0} __magic level__ is **{1}**, on rank **{2}**",
-                    "magic_ek": "{0} __magic level__ is **{1}**, on rank **{2}** (knights)",
-                    "magic_rp": "{0} __magic level__ is **{1}**, on rank **{2}** (paladins)",
-                    "shielding": "{0} __shielding__ level is **{1}**, on rank **{2}**",
-                    "sword": "{0} __sword fighting__ level is **{1}**, on rank **{2}**"}
+
+HIGHSCORE_CATEGORIES = {"experience": (Category.EXPERIENCE, VocationFilter.ALL),
+                        "sword": (Category.SWORD_FIGHTING, VocationFilter.ALL),
+                        "axe": (Category.AXE_FIGHTING, VocationFilter.ALL),
+                        "club": (Category.CLUB_FIGHTING, VocationFilter.ALL),
+                        "distance": (Category.DISTANCE_FIGHTING, VocationFilter.ALL),
+                        "shielding": (Category.SHIELDING, VocationFilter.ALL),
+                        "fist": (Category.FIST_FIGHTING, VocationFilter.ALL),
+                        "fishing": (Category.FISHING, VocationFilter.ALL),
+                        "magic": (Category.MAGIC_LEVEL, VocationFilter.ALL),
+                        "magic_knights": (Category.MAGIC_LEVEL, VocationFilter.KNIGHTS),
+                        "magic_paladins": (Category.MAGIC_LEVEL, VocationFilter.PALADINS),
+                        "loyalty": (Category.LOYALTY_POINTS, VocationFilter.ALL),
+                        "achievements": (Category.ACHIEVEMENTS, VocationFilter.ALL)}
+
+HIGHSCORES_FORMAT = {"achievements": "In __achievement points__, {0} has rank **{2}**, with **{1}**",
+                     "axe": "In __axe fighting__, {0} has rank **{2}**, with level **{1}**",
+                     "club": "In __club fighting__, {0} has rank **{2}**, with level **{1}**",
+                     "experience": "In __experience points__, {0} has rank **{2}**",
+                     "distance": "In __distance fighting__, {0} has rank **{2}**, with level **{1}**",
+                     "fishing": "In __fishing__, {0} has rank **{2}**, with level **{1}**",
+                     "fist": "In __fist fighting__, {0} has rank **{2}**, with level **{1}**",
+                     "loyalty": "In __loyalty points__, {0} has rank **{2}**, with **{1}**",
+                     "magic": "In __magic level__, {0} has rank **{2}**, with level **{1}**",
+                     "magic_knights": "In __magic level__ (knights), {0} has rank **{2}**, with level **{1}**",
+                     "magic_paladins": "In __magic level__ (paladins), {0} has rank **{2}**, with level **{1}**",
+                     "shielding": "In __shielding__, {0} has rank **{2}**, with level **{1}**",
+                     "sword": "In __sword fighting__, {0} has rank **{2}**, with level **{1}**"}
 
 # This is preloaded on startup
 tibia_worlds: List[str] = []
 
-HIGHSCORE_CATEGORIES = ["sword", "axe", "club", "distance", "shielding", "fist", "fishing", "magic",
-                        "magic_ek", "magic_rp", "loyalty", "achievements"]
 
 # Cache storages, the first parameter is the number of entries, the second the amount of seconds to live of each entry
 CACHE_CHARACTERS = cachetools.TTLCache(1000, 30)
@@ -81,7 +96,7 @@ class NabChar(Character):
         super().__init__(name, world, vocation, level, sex, **kwargs)
         self.id = 0
         self.owner_id = 0
-        self.highscores = []
+        self.highscores = {}  # type: Dict[Dict[str, int]]
 
     @classmethod
     def from_online(cls, o_char: OnlineCharacter, sex=None, owner_id=0):
@@ -103,7 +118,7 @@ class NabChar(Character):
         return "Him" if self.sex == Sex.MALE else "Her"
 
 
-async def get_character(bot, name, tries=5) -> Optional[NabChar]:
+async def get_character(bot, name, *, tries=5) -> Optional[NabChar]:
     """Fetches a character from TibiaData, parses and returns a Character object
 
     The character object contains all the information available on Tibia.com
@@ -112,8 +127,7 @@ async def get_character(bot, name, tries=5) -> Optional[NabChar]:
     If the character doesn't exist, None is returned.
     """
     if tries == 0:
-        log.error("get_character: Couldn't fetch {0}, network error.".format(name))
-        raise NetworkError()
+        raise errors.NetworkError(f"get_character({name})")
     try:
         url = Character.get_url_tibiadata(name)
     except UnicodeEncodeError:
@@ -129,9 +143,9 @@ async def get_character(bot, name, tries=5) -> Optional[NabChar]:
             async with bot.session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
                 character = NabChar.from_tibiadata(content)
-        except (aiohttp.ClientError, asyncio.TimeoutError):
+        except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
             await asyncio.sleep(config.network_retry_delay)
-            return await get_character(bot, name, tries - 1)
+            return await get_character(bot, name, tries=tries - 1)
         CACHE_CHARACTERS[name.lower()] = character
     if character is None:
         return None
@@ -160,11 +174,10 @@ async def bind_database_character(bot, character: NabChar):
 
     Compliments information found on the database and performs updating."""
     async with bot.pool.acquire() as conn:
-        # Skills from highscores
+        # Highscore entries
         results = await conn.fetch("SELECT category, rank, value FROM highscores_entry WHERE name = $1",
                                    character.name)
-        if len(results) > 0:
-            character.highscores = results
+        character.highscores = {category: {'rank': rank, 'value': value} for category, rank, value in results}
 
         # Check if this user was recently renamed, and update old reference to this
         for old_name in character.former_names:
@@ -213,84 +226,29 @@ async def bind_database_character(bot, character: NabChar):
             bot.dispatch("character_guild_change", character, db_char.guild)
 
 
-async def get_highscores(world, category, pagenum, profession=0, tries=5):
-    """Gets a specific page of the highscores
-    Each list element is a dictionary with the following keys: rank, name, value.
-    May return ERROR_NETWORK"""
-    url = url_highscores.format(world, category, profession, pagenum)
-
-    if tries == 0:
-        log.error("get_highscores: Couldn't fetch {0}, {1}, page {2}, network error.".format(world, category, pagenum))
-        return ERROR_NETWORK
-
-    # Fetch website
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
-        await asyncio.sleep(config.network_retry_delay)
-        return await get_highscores(world, category, pagenum, profession, tries - 1)
-
-    # Trimming content to reduce load
-    try:
-        start_index = content.index('<td style="width: 20%;" >Vocation</td>')
-        end_index = content.index('<div style="float: left;"><b>&raquo; Pages:')
-        content = content[start_index:end_index]
-    except ValueError:
-        await asyncio.sleep(config.network_retry_delay)
-        return await get_highscores(world, category, pagenum, profession, tries - 1)
-
-    if category == "loyalty":
-        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://www.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td>[^<]+</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
-        pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
-        matches = re.findall(pattern, content)
-        score_list = []
-        for m in matches:
-            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': int(m[3].replace(',', ''))})
-    else:
-        regex_deaths = r'<td>([^<]+)</TD><td><a href="https://www.tibia.com/community/\?subtopic=characters&name=[^"]+" >([^<]+)</a></td><td>([^<]+)</TD><td style="text-align: right;" >([^<]+)</TD></TR>'
-        pattern = re.compile(regex_deaths, re.MULTILINE + re.S)
-        matches = re.findall(pattern, content)
-        score_list = []
-        for m in matches:
-            score_list.append({'rank': m[0], 'name': m[1], 'vocation': m[2], 'value': int(m[3].replace(',', ''))})
-    return score_list
-
-
-async def get_highscores_tibiadata(world, category=None, vocation=None, tries=5):
+# TODO: Add caching
+async def get_highscores(world, category=Category.EXPERIENCE, vocation=VocationFilter.ALL, *, tries=5) \
+        -> Optional[Highscores]:
     """Gets all the highscores entries of a world, category and vocation."""
-    if vocation is None:
-        vocation = "all"
-    if category is None:
-        category = "experience"
-    url = f"https://api.tibiadata.com/v2/highscores/{world}/{category}/{vocation}.json"
+    if tries == 0:
+        raise errors.NetworkError(f"get_highscores_tibiadata({world},{category},{vocation})")
+
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
+            async with session.get(Highscores.get_url_tibiadata(world, category, vocation)) as resp:
+                content = await resp.text()
+                highscores = Highscores.from_tibiadata(content, vocation)
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_highscores_tibiadata(world, category, vocation, tries - 1)
-    content_json = json.loads(content)
-    try:
-        if not isinstance(content_json["highscores"]["data"], list):
-            return None
-    except KeyError:
-        return None
-    entries = content_json["highscores"]["data"]
-    for entry in entries:
-        entry["vocation"] = entry["voc"]
-        del entry["voc"]
-    return entries
+        return await get_highscores(world, category, vocation, tries=tries - 1)
+
+    return highscores
 
 
-async def get_world(name, tries=5) -> Optional[World]:
+async def get_world(name, *, tries=5) -> Optional[World]:
     name = name.strip().title()
     if tries == 0:
-        log.error("get_world: Couldn't fetch {0}, network error.".format(name))
-        raise NetworkError()
-        # Fetch website
+        raise errors.NetworkError(f"get_world({name})")
     try:
         world = CACHE_WORLDS[name]
         return world
@@ -301,24 +259,22 @@ async def get_world(name, tries=5) -> Optional[World]:
             async with session.get(World.get_url_tibiadata(name)) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
                 world = World.from_tibiadata(content)
-    except aiohttp.ClientError:
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_world(name, tries - 1)
+        return await get_world(name, tries=tries - 1)
+    CACHE_WORLDS[name] = world
     return world
 
 
-async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
+async def get_guild(name, title_case=True, *, tries=5) -> Optional[Guild]:
     """Fetches a guild from TibiaData, parses and returns a Guild object
 
     The Guild object contains all the information available on Tibia.com
     Guilds are case sensitive on tibia.com so guildstats.eu is checked for correct case.
     If the guild can't be fetched due to a network error, an NetworkError exception is raised
     If the character doesn't exist, None is returned."""
-    guildstats_url = f"http://guildstats.eu/guild?guild={urllib.parse.quote(name)}"
-
     if tries == 0:
-        log.error("get_guild_online: Couldn't fetch {0}, network error.".format(name))
-        raise NetworkError()
+        raise errors.NetworkError(f"get_guild({name})")
 
     # Fix casing using guildstats.eu if needed
     # Sorry guildstats.eu :D
@@ -329,39 +285,7 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
         pass
 
     if not title_case:
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(guildstats_url) as resp:
-                    content = await resp.text(encoding='ISO-8859-1')
-        except Exception:
-            await asyncio.sleep(config.network_retry_delay)
-            return await get_guild(name, title_case, tries - 1)
-
-        # Make sure we got a healthy fetch
-        try:
-            content.index('<div class="footer">')
-        except ValueError:
-            await asyncio.sleep(config.network_retry_delay)
-            return await get_guild(name, title_case, tries - 1)
-
-        # Check if the guild doesn't exist
-        if "<div>Sorry!" in content:
-            return None
-
-        # Failsafe in case guildstats.eu changes their websites format
-        try:
-            content.index("General info")
-            content.index("Recruitment")
-        except Exception:
-            log.error("get_guild_online: -IMPORTANT- guildstats.eu seems to have changed their websites format.")
-            raise NetworkError
-
-        start_index = content.index("General info")
-        end_index = content.index("Recruitment")
-        content = content[start_index:end_index]
-        m = re.search(r'<a href="set=(.+?)"', content)
-        if m:
-            name = urllib.parse.unquote_plus(m.group(1))
+        name = await get_guild_name_from_guildstats(name, tries=tries)
     else:
         name = name.title()
 
@@ -371,9 +295,9 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
             async with session.get(Guild.get_url_tibiadata(name)) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
                 guild = Guild.from_tibiadata(content)
-    except Exception:
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_guild(name, title_case, tries - 1)
+        return await get_guild(name, title_case, tries=tries - 1)
 
     if guild is None:
         if title_case:
@@ -384,10 +308,48 @@ async def get_guild(name, title_case=True, tries=5) -> Optional[Guild]:
     return guild
 
 
-async def get_recent_news(tries=5):
+async def get_guild_name_from_guildstats(name, title_case=True, tries=5):
     if tries == 0:
-        log.error("get_recent_news: network error.")
-        raise NetworkError()
+        raise errors.NetworkError(f"get_guild_name_from_guildstats({name})")
+    guildstats_url = f"http://guildstats.eu/guild?guild={urllib.parse.quote(name)}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(guildstats_url) as resp:
+                content = await resp.text(encoding='ISO-8859-1')
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
+        await asyncio.sleep(config.network_retry_delay)
+        return await get_guild_name_from_guildstats(name, title_case, tries - 1)
+
+    # Make sure we got a healthy fetch
+    try:
+        content.index('<div class="footer">')
+    except ValueError:
+        await asyncio.sleep(config.network_retry_delay)
+        return await get_guild_name_from_guildstats(name, title_case, tries - 1)
+
+    # Check if the guild doesn't exist
+    if "<div>Sorry!" in content:
+        return None
+
+    # Failsafe in case guildstats.eu changes their websites format
+    try:
+        content.index("General info")
+        content.index("Recruitment")
+    except ValueError:
+        raise errors.NetworkError(f"get_guild_name_from_guildstats({name}): Guildstats.eu format might have changed.")
+
+    start_index = content.index("General info")
+    end_index = content.index("Recruitment")
+    content = content[start_index:end_index]
+    m = re.search(r'<a href="set=(.+?)"', content)
+    if m:
+        return urllib.parse.unquote_plus(m.group(1))
+    raise errors.NetworkError(f"get_guild_name_from_guildstats({name}): Guildstats.eu format might have changed.")
+
+
+async def get_recent_news(*, tries=5):
+    if tries == 0:
+        raise errors.NetworkError(f"get_recent_news()")
     try:
         url = f"https://api.tibiadata.com/v2/latestnews.json"
     except UnicodeEncodeError:
@@ -402,9 +364,9 @@ async def get_recent_news(tries=5):
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_recent_news(tries - 1)
+        return await get_recent_news(tries=tries - 1)
 
     content_json = json.loads(content)
     try:
@@ -417,13 +379,12 @@ async def get_recent_news(tries=5):
     return newslist["data"]
 
 
-async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union[str, dt.date]]]:
+async def get_news_article(article_id: int, *, tries=5) -> Optional[Dict[str, Union[str, dt.date]]]:
     """Returns a news article with the specified id or None if it doesn't exist
 
     If there's a network error, NetworkError exception is raised"""
     if tries == 0:
-        log.error("get_recent_news: network error.")
-        raise NetworkError()
+        raise errors.NetworkError(f"get_news_article({article_id})")
     try:
         url = f"https://api.tibiadata.com/v2/news/{article_id}.json"
     except UnicodeEncodeError:
@@ -439,9 +400,9 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_recent_news(tries - 1)
+        return await get_recent_news(tries=tries - 1)
 
     content_json = json.loads(content)
     try:
@@ -454,6 +415,7 @@ async def get_news_article(article_id: int, tries=5) -> Optional[Dict[str, Union
     article["date"] = parse_tibiadata_time(article["date"]).date()
     CACHE_NEWS[article_id] = article
     return article
+
 
 def parse_tibiadata_time(time_dict: Dict[str, Union[int, str]]) -> Optional[dt.datetime]:
     """Parses the time objects from TibiaData API
@@ -584,13 +546,12 @@ def get_house_id(name) -> Optional[int]:
         return None
 
 
-async def get_house(house_id, world, tries=5) -> House:
+async def get_house(house_id, world, *, tries=5) -> House:
     """Returns a dictionary containing a house's info, a list of possible matches or None.
 
     If world is specified, it will also find the current status of the house in that world."""
     if tries == 0:
-        log.error(f"get_house: Couldn't fetch {house_id}, {world}, network error.")
-        raise NetworkError()
+        raise errors.NetworkError(f"get_house({house_id},{world})")
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(House.get_url_tibiadata(house_id, world)) as resp:
@@ -598,7 +559,7 @@ async def get_house(house_id, world, tries=5) -> House:
                 house = House.from_tibiadata(content)
     except aiohttp.ClientError:
         await asyncio.sleep(config.network_retry_delay)
-        return await get_house(house_id, world, tries - 1)
+        return await get_house(house_id, world, tries=tries - 1)
     return house
 
 
@@ -614,8 +575,25 @@ def get_tibia_time_zone() -> int:
     return 1
 
 
-def normalize_vocation(vocation, allow_no_voc=True) -> str:
+def get_current_server_save_time(current_time: Optional[dt.datetime] = None) -> dt.datetime:
+    """Gets the time of the last server save that occurred.
+
+    :param current_time: The time used to get the current server save time of. By default, datetime.now() is used.
+    :return: The time of the last server save that occurred according to the provided time.
+    """
+    if current_time is None:
+        current_time = dt.datetime.now(dt.timezone.utc)
+
+    current_ss = current_time.replace(hour=10 - get_tibia_time_zone(), minute=0, second=0, microsecond=0)
+    if current_time < current_ss:
+        return current_ss - dt.timedelta(days=1)
+    return current_ss
+
+
+def normalize_vocation(vocation, allow_no_voc=True) -> Optional[str]:
     """Attempts to normalize a vocation string into a base vocation."""
+    if isinstance(vocation, str):
+        vocation = vocation.lower()
     if vocation in PALADIN:
         return "paladin"
     if vocation in DRUID:
@@ -706,11 +684,13 @@ async def populate_worlds():
     print("\tDone")
 
 
-async def get_world_list(tries=3) -> List[ListedWorld]:
-    """Fetch the list of Tibia worlds from TibiaData"""
+async def get_world_list(*, tries=3) -> List[ListedWorld]:
+    """Fetch the list of Tibia worlds from TibiaData.
+
+    :raises NetworkError: If the world list couldn't be fetched after all the attempts.
+    """
     if tries == 0:
-        log.error("get_world_list(): Couldn't fetch TibiaData for the worlds list, network error.")
-        raise NetworkError()
+        raise errors.NetworkError("get_world_list(): Failed to fetch content after all the attempts.")
 
     # Fetch website
     try:
@@ -723,9 +703,9 @@ async def get_world_list(tries=3) -> List[ListedWorld]:
             async with session.get(ListedWorld.get_list_url_tibiadata()) as resp:
                 content = await resp.text(encoding='ISO-8859-1')
                 worlds = ListedWorld.list_from_tibiadata(content)
-    except Exception:
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_world_list(tries - 1)
+        return await get_world_list(tries=tries - 1)
 
     CACHE_WORLD_LIST[0] = worlds
     return worlds
@@ -770,3 +750,19 @@ def get_rashid_city() -> Dict[str, Union[str, int]]:
     info = c.fetchone()
     c.close()
     return info["city"]
+
+
+def get_experience_for_level(level: int) -> int:
+    """Gets experience needed for a specific level.
+    """
+    return int(math.ceil((50 * math.pow(level, 3) / 3) - 100 * math.pow(level, 2) + 850 * level / 3 - 200))
+
+
+# TODO: Solve by math
+def get_level_by_experience(experience: int) -> int:
+    """Gets the level a character would have with the specified experience."""
+    level = 1
+    while True:
+        if get_experience_for_level(level+1) > experience:
+            return level
+        level += 1

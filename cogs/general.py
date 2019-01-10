@@ -776,7 +776,7 @@ class General(CogUtils):
             if confirm is None:
                 await ctx.send(f"Where did you go {ctx.author.mention}? Ok, event making cancelled.")
                 cancel = True
-                break
+                return
             if confirm is False:
                 await msg.delete()
                 msg = await ctx.send(f"Ok, again, tell me when will the event start.\nRemember you "
