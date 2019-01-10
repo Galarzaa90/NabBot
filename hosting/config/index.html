@@ -2,7 +2,7 @@
 
 
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" class="no-js">
   <head>
     
@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-1.0.4, mkdocs-material-3.1.0">
+      <meta name="generator" content="mkdocs-1.0.4, mkdocs-material-3.2.0">
     
     
       
@@ -44,7 +44,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/application.11e41852.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/application.572ca0f0.css">
       
         <link rel="stylesheet" href="../../assets/stylesheets/application-palette.22915126.css">
       
@@ -55,7 +55,7 @@
       
     
     
-      <script src="../../assets/javascripts/modernizr.20ef595d.js"></script>
+      <script src="../../assets/javascripts/modernizr.8c900955.js"></script>
     
     
       
@@ -861,9 +861,9 @@ On every startup, the config file is checked and it notifies via console if any 
 <p>If there's an extra key found, this can mean that a previous configuration entry was removed or a typo was made.</p>
 <p>The correct structure can always be found in <code class="codehilite">config_template.yml</code>.</p>
 <h2 id="channels">Channels<a class="headerlink" href="#channels" title="Permanent link">&para;</a></h2>
-<div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">ask_channel_name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">ask-nabbot</span>
-<span class="l l-Scalar l-Scalar-Plain">ask_channel_delete</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="l l-Scalar l-Scalar-Plain">log_channel_name</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">server-log</span>
+<div class="codehilite"><pre><span></span><span class="nt">ask_channel_name</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">ask-nabbot</span>
+<span class="nt">ask_channel_delete</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="nt">log_channel_name</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">server-log</span>
 </pre></div>
 
 <p>Specifies the names of NabBot's special channels. The ask channel is a special channel where NabBot will give longer replies.
@@ -882,14 +882,14 @@ The bot will announce the following events here:</p>
 <li>The server's region was changed.</li>
 </ul>
 <h2 id="command-prefix">Command prefix<a class="headerlink" href="#command-prefix" title="Permanent link">&para;</a></h2>
-<div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">command_prefix</span><span class="p p-Indicator">:</span>
+<div class="codehilite"><pre><span></span><span class="nt">command_prefix</span><span class="p">:</span>
   <span class="p p-Indicator">-</span> <span class="s">&quot;/&quot;</span>
-<span class="l l-Scalar l-Scalar-Plain">command_mention</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">command_mention</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
 </pre></div>
 
 <p>The prefix for commands that the bot will use. By default, the bot will listen to commands like: <code class="codehilite">/about</code>, <code class="codehilite">/help</code>.
 The prefix <code class="codehilite">/</code> can be changed, or even more prefixes can be added like:</p>
-<div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">command_prefix</span><span class="p p-Indicator">:</span>
+<div class="codehilite"><pre><span></span><span class="nt">command_prefix</span><span class="p">:</span>
   <span class="p p-Indicator">-</span> <span class="s">&quot;/&quot;</span>
   <span class="p p-Indicator">-</span> <span class="s">&quot;$&quot;</span>
 </pre></div>
@@ -901,11 +901,11 @@ Note that the bot will always answering by being mentioned, e.g. <code class="co
 <h2 id="extra-cogs">Extra cogs<a class="headerlink" href="#extra-cogs" title="Permanent link">&para;</a></h2>
 <p>For more information, see <a href="../cogs/">Cogs</a></p>
 <div class="codehilite"><pre><span></span><span class="c1"># Add extra features by adding your own cogs.</span>
-<span class="l l-Scalar l-Scalar-Plain">extra_cogs</span><span class="p p-Indicator">:</span> <span class="p p-Indicator">[]</span>
+<span class="nt">extra_cogs</span><span class="p">:</span> <span class="p p-Indicator">[]</span>
 </pre></div>
 
 <h2 id="owner-ids">Owner IDs<a class="headerlink" href="#owner-ids" title="Permanent link">&para;</a></h2>
-<div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">owner_ids</span><span class="p p-Indicator">:</span>
+<div class="codehilite"><pre><span></span><span class="nt">owner_ids</span><span class="p">:</span>
   <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">162060569803751424</span>
   <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">162070610556616705</span>
 </pre></div>
@@ -914,13 +914,13 @@ Note that the bot will always answering by being mentioned, e.g. <code class="co
 The owner of the bot's application is always considered even if their id is not here.</p>
 <p>This allows them to use sensitive commands like <code class="codehilite">/shutdown</code> and <code class="codehilite">/restart</code> or execute Python code directly.</p>
 <h2 id="announce-threshold">Announce Threshold<a class="headerlink" href="#announce-threshold" title="Permanent link">&para;</a></h2>
-<div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">announce_threshold</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">30</span>
+<div class="codehilite"><pre><span></span><span class="nt">announce_threshold</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">30</span>
 </pre></div>
 
 <p>This is the mininum level for NabBot to announce levels and deaths. Note that even if they are not announced, they are still tracked and stored.</p>
 <p>Checking a character directly using <code class="codehilite">/deaths</code> or <code class="codehilite">/levels</code> will show all entries, but seeing them in overall lists using the commands without parameters will hide such entries.</p>
 <h2 id="online-list-expiration">Online List Expiration<a class="headerlink" href="#online-list-expiration" title="Permanent link">&para;</a></h2>
-<div class="codehilite"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">online_list_expiration</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">300</span>
+<div class="codehilite"><pre><span></span><span class="nt">online_list_expiration</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">300</span>
 </pre></div>
 
 <p>In order to prevent losing level up announcements because NabBot was restarted, the state of online players is saved in a file.
@@ -928,17 +928,17 @@ However, if the data is too old, it must be discarded to prevent errors.</p>
 <p>This is in the interval in seconds to consider the online list still valid.</p>
 <h2 id="scan-intervals">Scan intervals<a class="headerlink" href="#scan-intervals" title="Permanent link">&para;</a></h2>
 <div class="codehilite"><pre><span></span><span class="c1"># Delay inbreed server checks</span>
-<span class="l l-Scalar l-Scalar-Plain">online_scan_interval</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">40</span>
+<span class="nt">online_scan_interval</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">40</span>
 
 <span class="c1"># Delay in between player death checks in seconds</span>
-<span class="l l-Scalar l-Scalar-Plain">death_scan_interval</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">15</span>
+<span class="nt">death_scan_interval</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">15</span>
 
 <span class="c1"># Delay between each tracked world&#39;s highscore check and delay between pages scan</span>
-<span class="l l-Scalar l-Scalar-Plain">highscores_delay</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">45</span>
-<span class="l l-Scalar l-Scalar-Plain">highscores_page_delay</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="nt">highscores_delay</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">45</span>
+<span class="nt">highscores_page_delay</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">10</span>
 
 <span class="c1"># Delay between retries when there&#39;s a network error in seconds</span>
-<span class="l l-Scalar l-Scalar-Plain">network_retry_delay</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="nt">network_retry_delay</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1</span>
 </pre></div>
 
 <p>These are intervals related to fetching operations.
@@ -965,47 +965,47 @@ For animated emojis, you have to add <code class="codehilite">a</code>, example:
 <p>The following are values that always require to have an emoji assigned. These will always default to a unicode emoji.
 <div class="codehilite"><pre><span></span><span class="c1"># Required emojis</span>
 <span class="c1"># These values must always have an emoji to display</span>
-<span class="l l-Scalar l-Scalar-Plain">online_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🔹</span>
-<span class="l l-Scalar l-Scalar-Plain">true_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">✅</span>
-<span class="l l-Scalar l-Scalar-Plain">false_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">❌</span>
-<span class="l l-Scalar l-Scalar-Plain">levelup_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🌟</span>
-<span class="l l-Scalar l-Scalar-Plain">death_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">☠</span>
-<span class="l l-Scalar l-Scalar-Plain">pvpdeath_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">💀</span>
+<span class="nt">online_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">🔹</span>
+<span class="nt">true_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">✅</span>
+<span class="nt">false_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">❌</span>
+<span class="nt">levelup_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">🌟</span>
+<span class="nt">death_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">☠</span>
+<span class="nt">pvpdeath_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">💀</span>
 <span class="c1"># These emojis are also used in vocation filtering</span>
-<span class="l l-Scalar l-Scalar-Plain">novoc_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🐣</span>
-<span class="l l-Scalar l-Scalar-Plain">druid_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">❄</span>
-<span class="l l-Scalar l-Scalar-Plain">sorcerer_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🔥</span>
-<span class="l l-Scalar l-Scalar-Plain">paladin_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🏹</span>
-<span class="l l-Scalar l-Scalar-Plain">knight_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🛡</span>
+<span class="nt">novoc_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">🐣</span>
+<span class="nt">druid_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">❄</span>
+<span class="nt">sorcerer_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">🔥</span>
+<span class="nt">paladin_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">🏹</span>
+<span class="nt">knight_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">🛡</span>
 <span class="c1"># Emojis for bestiary info</span>
-<span class="l l-Scalar l-Scalar-Plain">charms_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">⚜</span>
-<span class="l l-Scalar l-Scalar-Plain">difficulty_on_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">⭐</span>
-<span class="l l-Scalar l-Scalar-Plain">difficulty_off_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">▪</span>
-<span class="l l-Scalar l-Scalar-Plain">occurrence_on_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🔹</span>
-<span class="l l-Scalar l-Scalar-Plain">occurrence_off_emoji</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">▪</span>
+<span class="nt">charms_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">⚜</span>
+<span class="nt">difficulty_on_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">⭐</span>
+<span class="nt">difficulty_off_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">▪</span>
+<span class="nt">occurrence_on_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">🔹</span>
+<span class="nt">occurrence_off_emoji</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">▪</span>
 </pre></div></p>
 <p>The following are optional emojis. By default, these values will show text, for example creature elemental resistances.
 The unicode emojis used by default are only placeholders, and it is advised to use custom emojis that better represent their values.</p>
 <p>The <code class="codehilite">images\emoji</code> folder contains a set of suggested images to use for custom emojis.
 <div class="codehilite"><pre><span></span><span class="c1"># Optional emojis</span>
 <span class="c1"># Whether to use or not emojis to show discord status in serverinfo command.</span>
-<span class="l l-Scalar l-Scalar-Plain">use_status_emojis</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="l l-Scalar l-Scalar-Plain">status_emojis</span><span class="p p-Indicator">:</span>
-  <span class="l l-Scalar l-Scalar-Plain">online</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">💚</span>
-  <span class="l l-Scalar l-Scalar-Plain">dnd</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">♥</span>
-  <span class="l l-Scalar l-Scalar-Plain">idle</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">💛</span>
-  <span class="l l-Scalar l-Scalar-Plain">offline</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🖤</span>
+<span class="nt">use_status_emojis</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">status_emojis</span><span class="p">:</span>
+  <span class="nt">online</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">💚</span>
+  <span class="nt">dnd</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">♥</span>
+  <span class="nt">idle</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">💛</span>
+  <span class="nt">offline</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">🖤</span>
 
 <span class="c1"># Whether to use emojis to represent elemental damage in spells and monsters info</span>
-<span class="l l-Scalar l-Scalar-Plain">use_elemental_emojis</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="l l-Scalar l-Scalar-Plain">elemental_emojis</span><span class="p p-Indicator">:</span>
-  <span class="l l-Scalar l-Scalar-Plain">physical</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">⚔</span>
-  <span class="l l-Scalar l-Scalar-Plain">earth</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🌿</span>
-  <span class="l l-Scalar l-Scalar-Plain">fire</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🔥</span>
-  <span class="l l-Scalar l-Scalar-Plain">energy</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">⚡</span>
-  <span class="l l-Scalar l-Scalar-Plain">ice</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">❄</span>
-  <span class="l l-Scalar l-Scalar-Plain">death</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">💀</span>
-  <span class="l l-Scalar l-Scalar-Plain">holy</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">🔱</span>
+<span class="nt">use_elemental_emojis</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">elemental_emojis</span><span class="p">:</span>
+  <span class="nt">physical</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">⚔</span>
+  <span class="nt">earth</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">🌿</span>
+  <span class="nt">fire</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">🔥</span>
+  <span class="nt">energy</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">⚡</span>
+  <span class="nt">ice</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">❄</span>
+  <span class="nt">death</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">💀</span>
+  <span class="nt">holy</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">🔱</span>
 </pre></div></p>
                 
                   
@@ -1103,14 +1103,15 @@ The unicode emojis used by default are only placeholders, and it is advised to u
       
     </div>
     
-      <script src="../../assets/javascripts/application.9e1f3b71.js"></script>
+      <script src="../../assets/javascripts/application.b41f3d20.js"></script>
       
       <script>app.initialize({version:"1.0.4",url:{base:"../.."}})</script>
       
     
     
       
-        <script>!function(e,a,t,n,o,c,i){e.GoogleAnalyticsObject=o,e.ga=e.ga||function(){(e.ga.q=e.ga.q||[]).push(arguments)},e.ga.l=1*new Date,c=a.createElement(t),i=a.getElementsByTagName(t)[0],c.async=1,c.src="https://www.google-analytics.com/analytics.js",i.parentNode.insertBefore(c,i)}(window,document,"script",0,"ga"),ga("create","UA-111299710-2","auto"),ga("set","anonymizeIp",!0),ga("send","pageview");var links=document.getElementsByTagName("a");if(Array.prototype.map.call(links,function(a){a.host!=document.location.host&&a.addEventListener("click",function(){var e=a.getAttribute("data-md-action")||"follow";ga("send","event","outbound",e,a.href)})}),document.forms.search){var query=document.forms.search.query;query.addEventListener("blur",function(){if(this.value){var e=document.location.pathname;ga("send","pageview",e+"?q="+this.value)}})}</script>
+        <script>window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)},ga.l=+new Date,ga("create","UA-111299710-2","auto"),ga("set","anonymizeIp",!0),ga("send","pageview");var links=document.getElementsByTagName("a");if(Array.prototype.map.call(links,function(a){a.host!=document.location.host&&a.addEventListener("click",function(){var e=a.getAttribute("data-md-action")||"follow";ga("send","event","outbound",e,a.href)})}),document.forms.search){var query=document.forms.search.query;query.addEventListener("blur",function(){if(this.value){var e=document.location.pathname;ga("send","pageview",e+"?q="+this.value)}})}</script>
+<script async src="https://www.google-analytics.com/analytics.js"></script>
       
     
   </body>
