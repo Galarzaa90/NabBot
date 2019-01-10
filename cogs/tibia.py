@@ -2054,6 +2054,8 @@ class Tibia:
                             log.warning("scan_news: Missing permissions.")
                         except discord.HTTPException:
                             log.warning("scan_news: Malformed message.")
+                        except AttributeError:
+                            pass
                 await asyncio.sleep(60 * 30)
             except NetworkError:
                 await asyncio.sleep(30)
