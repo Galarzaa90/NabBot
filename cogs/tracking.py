@@ -23,7 +23,7 @@ from .utils.messages import death_messages_monster, death_messages_player, forma
 from .utils.pages import Pages, VocationPages
 from .utils.tibia import ERROR_NETWORK, HIGHSCORE_CATEGORIES, NabChar, get_character, \
     get_guild, get_highscores, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_emoji, get_world, \
-    tibia_worlds
+    tibia_worlds, normalize_vocation
 
 log = logging.getLogger("nabbot")
 
@@ -141,7 +141,7 @@ class Tracking(CogUtils):
                         async with self.bot.pool.acquire() as conn:
                             # Delete old records
                             await conn.execute("DELETE FROM highscores_entry WHERE category = $1 AND world = $2",
-                                               category,  world)
+                                               category, world)
                             # Add current entries
                             await conn.executemany("""INSERT INTO highscores_entry(rank, category, world, name, 
                                                       vocation, value) 
@@ -338,7 +338,8 @@ class Tracking(CogUtils):
                 watchlist_message = await watchlist_channel.get_message(watchlist_message_id)
             except discord.HTTPException:
                 watchlist_message = None
-            items = [f"\t{x.name} - Level {x.level} {get_voc_emoji(x.vocation)}" for x in currently_online]
+            currently_online.sort(key=self._sort_by_voc_and_level())
+            items = self.get_watchlist_msg_entries(currently_online)
             online_count = len(items)
             if len(items) > 0 or len(guild_online.keys()) > 0:
                 description = ""
@@ -348,9 +349,8 @@ class Tracking(CogUtils):
                     if members is None:
                         content += "\t*Guild was disbanded.*"
                         continue
-                    content += "\n".join(
-                        [f"\t{x['name']} - Level {x['level']} {get_voc_emoji(x['vocation'])}"
-                         for x in members])
+                    members.sort(key=self._sort_by_voc_and_level())
+                    content += "\n".join(self.get_watchlist_msg_entries(members))
                     online_count += len(members)
             else:
                 description = "There are no watched characters online."
@@ -377,6 +377,15 @@ class Tracking(CogUtils):
                 await watchlist_channel.edit(name=f"{watchlist_channel.name.split('·', 1)[0]}·{online_count}")
             except discord.HTTPException:
                 pass
+
+    @staticmethod
+    def _sort_by_voc_and_level():
+        return lambda char: (normalize_vocation(char.vocation), -char.level)
+
+    @staticmethod
+    def get_watchlist_msg_entries(characters):
+        return [f"\t{char.name} - Level {char.level} {get_voc_emoji(char.vocation)}" for char in characters]
+
     # endregion
 
     # region Discord Events
