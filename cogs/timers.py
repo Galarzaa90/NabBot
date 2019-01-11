@@ -2,7 +2,7 @@ import asyncio
 import datetime as dt
 import logging
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 import asyncpg
 import discord
@@ -10,6 +10,7 @@ import tibiawikisql
 from discord.ext import commands
 from discord.ext.commands import clean_content
 
+from cogs.utils.time import HumanDelta
 from nabbot import NabBot
 from .utils import CogUtils, checks, clean_string, config, get_user_avatar, single_line
 from .utils.context import NabCtx
@@ -181,19 +182,32 @@ class Event:
         self.modified = kwargs.get("modified")
         self.created = kwargs.get("created")
         # Populated
-        self.subscribers = kwargs.get("subscribers", [])
-        self.participants = kwargs.get("participants")
+        self.subscribers:  List[int] = kwargs.get("subscribers", [])
+        self.participants: List[DbChar] = kwargs.get("participants")
 
     def __repr__(self):
         return f'<{self.__class__.__name__} id={self.id} name={self.name!r} user_id={self.user_id} ' \
             f'server_id={self.server_id} start={self.start!r}>'
 
+    @property
+    def participant_users(self):
+        return [c.user_id for c in self.participants]
+
+    async def add_participant(self, conn, char):
+        await conn.execute("INSERT INTO event_participant(event_id, character_id) VALUES($1,$2)",
+                           self.id, char.id)
+
+    async def edit_description(self, conn, description):
+        await conn.execute("UPDATE event SET description = $1 WHERE id = $2", description, self.id)
+
     @classmethod
-    async def get_by_id(cls, conn: PoolConn, event_id: int):
+    async def get_by_id(cls, conn: PoolConn, event_id: int, only_active = False):
         row = await conn.fetchrow("SELECT * FROM event WHERE id = $1", event_id)
         if row is None:
             return None
         event = cls(**row)
+        if only_active and not event.active:
+            return None
         rows = await conn.fetch('SELECT character_id FROM event_participant WHERE event_id = $1', event_id)
         for row in rows:
             event.participants.append(DbChar.get_by_id(conn, row[0]))
@@ -208,6 +222,26 @@ class Event:
                                      VALUES($1, $2, $3, $4, $5) RETURNING *""",
                                   user_id, server_id, start, name, description)
         return cls(**row)
+
+    @classmethod
+    async def get_recent_by_server_id(cls, conn, server_id):
+        rows = await conn.fetch("""SELECT * FROM event
+                                   WHERE active AND server_id = $1 AND start < now() AND now()-start < $2
+                                   ORDER BY start ASC""", server_id, RECENT_THRESHOLD)
+        events = []
+        for row in rows:
+            events.append(cls(**row))
+        return events
+
+    @classmethod
+    async def get_upcoming_by_server_id(cls, conn, server_id):
+        rows = await conn.fetch("""SELECT * FROM event
+                                   WHERE active AND server_id = $1 AND start > now()
+                                   ORDER BY start ASC""", server_id)
+        events = []
+        for row in rows:
+            events.append(cls(**row))
+        return events
 
 
 class Timer:
@@ -569,48 +603,29 @@ class Timers(CogUtils):
         embed = discord.Embed(description="For more info about an event, use `/event info (id)`"
                                           "\nTo receive notifications for an event, use `/event sub (id)`")
         async with ctx.pool.acquire() as conn:
-            recent_events = await conn.fetch("""SELECT user_id, start, name, id FROM event
-                                                    WHERE active AND server_id = $1 AND start < now() AND
-                                                    now()-start < $2
-                                                    ORDER BY start ASC""", ctx.guild.id, RECENT_THRESHOLD)
-            upcoming_events = await conn.fetch("""SELECT user_id, start, name, id FROM event
-                                                      WHERE active AND server_id = $1 AND start > now()
-                                                      ORDER BY start ASC""", ctx.guild.id)
+            recent_events = await Event.get_recent_by_server_id(conn, ctx.guild.id)
+            upcoming_events = await Event.get_upcoming_by_server_id(conn, ctx.guild.id)
         if len(recent_events) + len(upcoming_events) == 0:
             await ctx.send("There are no upcoming events.")
             return
         # Recent events
         if recent_events:
-            field_name = "Recent events"
             value = ""
             for event in recent_events:
-                user_id, start, name, event_id = event
-                user = ctx.guild.get_member(user_id)
+                user = ctx.guild.get_member(event.user_id)
                 author = "unknown" if user is None else user.display_name
-                time_diff = dt.datetime.now(tz=dt.timezone.utc) - event["start"]
-                starts_in = f"Started {round((time_diff.seconds / 60) % 60)} minutes ago"
-                value += f"\n**{name}** (*ID: {event_id}*) - by **@{author}** - {starts_in}"
-            embed.add_field(name=field_name, value=value, inline=False)
+                starts_in = HumanDelta.from_date(event.start)
+                value += f"\n**{event.name}** (*ID: {event.id}*) - by **@{author}** - Started {starts_in.long()} ago"
+            embed.add_field(name="Recent events", value=value, inline=False)
         # Upcoming events
         if upcoming_events:
-            field_name = "Upcoming events"
             value = ""
             for event in upcoming_events:
-                user_id, start, name, event_id = event
-                user = ctx.guild.get_member(user_id)
+                user = ctx.guild.get_member(event.user_id)
                 author = "unknown" if user is None else user.display_name
-                time_diff = event["start"] - dt.datetime.now(tz=dt.timezone.utc)
-                days, hours, minutes = time_diff.days, time_diff.seconds // 3600, (time_diff.seconds // 60) % 60
-                if days:
-                    starts_in = f'In {days} days, {hours} hours and {minutes} minutes'
-                elif hours:
-                    starts_in = f'In {hours} hours and {minutes} minutes'
-                elif minutes > 0:
-                    starts_in = f'In {minutes} minutes'
-                else:
-                    starts_in = 'Starting now!'
-                value += f"\n**{name}** (*ID:{event_id}*) -  by **@{author}** - {starts_in}"
-            embed.add_field(name=field_name, value=value, inline=False)
+                start_time = HumanDelta.from_date(event.start)
+                value += f"\n**{event.name}** (*ID:{event.id}*) -  by **@{author}** - {start_time.long()}"
+            embed.add_field(name="Upcoming events", value=value, inline=False)
         await ctx.send(embed=embed)
 
     @commands.guild_only()
@@ -670,51 +685,37 @@ class Timers(CogUtils):
 
         Only the creator can add characters to an event.
         If the event is joinable, anyone can join an event using `event join`"""
-        event = await self.get_event(ctx, event_id)
-        if event is None:
+        event = await Event.get_by_id(ctx.pool, event_id, True)
+        if event is None or event.server_id:
             await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
             return
-        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
+        if event.user_id != ctx.author.id and ctx.author.id not in config.owner_ids:
             await ctx.send(f"{ctx.tick(False)} You can only add people to your own events.")
             return
-        char = await ctx.pool.fetchrow(
-            'SELECT id, user_id, name, world FROM "character" WHERE lower(name) = $1 AND user_id != 0',
-            character.lower())
 
-        if event["slots"] != 0 and len(event["participants"]) >= event["slots"]:
-            await ctx.send(f"{ctx.tick(False)} All the slots for this event has been filled. "
-                           f"You can change them by using `/event edit slots {event_id} newSlots`.")
-            return
+        char = await DbChar.get_by_name(ctx.pool, character)
+        if char is None or ctx.guild.get_member(char.user_id) is None:
+            return await ctx.error(f"Character not registered to anyone in this server..")
+        if char.world != ctx.world:
+            return await ctx.error("You can't add characters from another world.")
+        owner = ctx.guild.get_member(char.user_id)
+        if char.user_id in event.participant_users:
+            return await ctx.error(f"A character of @{owner.display_name} is already participating.")
 
-        if char is None:
-            await ctx.send(f"{ctx.tick(False)} That character is not registered.")
-            return
-        owner = ctx.guild.get_member(char["user_id"])
-        if owner is None:
-            await ctx.send(f"{ctx.tick(False)} That character is not registered.")
-            return
-        if ctx.world != char["world"]:
-            await ctx.send(f"{ctx.tick(False)} You can't add a character from another world.")
-            return
-        if any(owner.id == participant["user_id"] for participant in event["participants"]):
-            await ctx.send(f"{ctx.tick(False)} A character of @{owner.display_name} is already participating.")
-            return
+        if event.slots != 0 and len(event.participants) >= event.slots:
+            return await ctx.error(f"All the slots for this event has been filled. "
+                                   f"You can change them by using `/event edit slots {event.id} newSlots`.")
 
-        message = await ctx.send(f"Do you want to add **{char['name']}** (@{owner.display_name}) "
-                                 f"to **{event['name']}**?")
+        message = await ctx.send(f"Do you want to add **{char.name}** (@{owner.display_name}) "
+                                 f"to **{event.name}**?")
         confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
-            await ctx.send("You took too long!")
-            return
+            return await ctx.error("You took too long!")
         if not confirm:
-            await ctx.send("Nevermind then.")
-            return
+            return await ctx.send("Nevermind then.")
 
-        async with ctx.pool.acquire() as conn:
-            await conn.execute("INSERT INTO event_participant(event_id, character_id) VALUES($1,$2)",
-                               event_id, char["id"])
-            await ctx.send(f"{ctx.tick()} You successfully added **{char['name']}** to this event.")
-            return
+        await event.add_participant(ctx.pool, char)
+        await ctx.success(f"You successfully added **{char.name}** to this event.")
 
     @commands.guild_only()
     @events.group(name="edit", invoke_without_command=True, case_insensitive=True)
@@ -738,16 +739,14 @@ class Timers(CogUtils):
 
         If no new description is provided initially, the bot will ask for one.
         To remove the description, say `blank`."""
-        event = await self.get_event(ctx, event_id)
+        event = await Event.get_by_id(ctx.pool, event_id, True)
         if event is None:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-            return
-        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
-            return
+            return await ctx.error("There's no active event with that id.")
+        if event.user_id != ctx.author.id and ctx.author.id not in config.owner_ids:
+            return await ctx.error("You can only edit your own events.")
 
         if new_description is None:
-            msg = await ctx.send(f"What would you like to be the new description of **{event['name']}**?"
+            msg = await ctx.send(f"What would you like to be the new description of **{event.name}**?"
                                  f"You can `cancel` this or set a `blank` description.")
             new_description = await ctx.input(timeout=120, delete_response=True)
             await msg.delete()
@@ -762,7 +761,7 @@ class Timers(CogUtils):
             new_description = ""
         new_description = clean_string(ctx, new_description)
 
-        embed = discord.Embed(title=event["name"], description=new_description, timestamp=event["start"])
+        embed = discord.Embed(title=event.name, description=new_description, timestamp=event.start)
         embed.set_footer(text="Start time")
         embed.set_author(name=ctx.author.display_name, icon_url=get_user_avatar(ctx.author))
 
@@ -775,17 +774,20 @@ class Timers(CogUtils):
             await ctx.send("Alright, no changes will be done.")
             return
 
-        await ctx.pool.execute("UPDATE event SET description = $1 WHERE id = $2", new_description, event_id)
+        await event.edit_description(ctx.pool, new_description)
 
-        if event["user_id"] == ctx.author.id:
-            await ctx.send(f"{ctx.tick()} Your event's description was changed successfully.")
+        if event.user_id == ctx.author.id:
+            await ctx.success("Your event's description was changed successfully.")
         else:
-            await ctx.send(f"{ctx.tick()} Event's description changed successfully.")
-            creator = self.bot.get_member(event["user_id"])
+            await ctx.success(f"Event's description changed successfully.")
+            creator = ctx.guild.get_member(event.user_id)
             if creator is not None:
-                await creator.send(f"Your event **{event['name']}** had its description changed by "
-                                   f"{ctx.author.mention}", embed=embed)
-        await self.notify_subscribers(event_id, f"The description of event **{event['name']}** was changed.",
+                try:
+                    await creator.send(f"Your event **{event.name}** had its description changed by "
+                                       f"{ctx.author.mention}", embed=embed)
+                except discord.HTTPException:
+                    pass
+        await self.notify_subscribers(event.id, f"The description of event **{event.name}** was changed.",
                                       embed=embed, skip_creator=True)
 
     @commands.guild_only()

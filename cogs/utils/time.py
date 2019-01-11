@@ -30,13 +30,13 @@ class HumanDelta:
                 continue
 
             if elem > 1:
-                output.append(f'{elem}{attr}')
+                output.append(f'{elem} {attr}')
             else:
-                output.append(f'{elem}{attr[:-1]}')
+                output.append(f'{elem} {attr[:-1]}')
 
         if not output:
             return "now"
-        return join_list(output[:min(max_attributes, len(output))], ", ", " and ")
+        return join_list(output[:min(max_attributes, len(output))])
 
     def short(self, max_attributes=0):
         if not max_attributes:
