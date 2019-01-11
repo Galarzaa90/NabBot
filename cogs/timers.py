@@ -174,7 +174,7 @@ class Event:
         self.server_id = kwargs.get("server_id")
         self.name = kwargs.get("name")
         self.description = kwargs.get("description")
-        self.start = kwargs.get("start")
+        self.start: dt.datetime = kwargs.get("start")
         self.active = kwargs.get("active")
         self.reminder = kwargs.get("reminder")
         self.joinable = kwargs.get("joinable")
@@ -200,13 +200,16 @@ class Event:
     async def edit_description(self, conn, description):
         await conn.execute("UPDATE event SET description = $1 WHERE id = $2", description, self.id)
 
+    async def edit_joinable(self, conn, joinable):
+        await conn.execute("UPDATE event SET joinable = $1 WHERE id = $2", joinable, self.id)
+
     @classmethod
-    async def get_by_id(cls, conn: PoolConn, event_id: int, only_active = False):
+    async def get_by_id(cls, conn: PoolConn, event_id: int, only_active=False):
         row = await conn.fetchrow("SELECT * FROM event WHERE id = $1", event_id)
         if row is None:
             return None
         event = cls(**row)
-        if only_active and not event.active:
+        if only_active and (not event.active or event.start > dt.datetime.now(event.start.tzinfo)):
             return None
         rows = await conn.fetch('SELECT character_id FROM event_participant WHERE event_id = $1', event_id)
         for row in rows:
@@ -798,16 +801,14 @@ class Timers(CogUtils):
         If an event is joinable, anyone can join using `event join id`  .
         Otherwise, the event creator has to add people with `event addplayer id`.
         """
-        event = await self.get_event(ctx, event_id)
+        event = await Event.get_by_id(ctx.pool, event_id, True)
         if event is None:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-            return
-        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
-            return
+            return await ctx.error("There's no active event with that id.")
+        if event.user_id != ctx.author.id and ctx.author.id not in config.owner_ids:
+            return await ctx.error("You can only edit your own events.")
 
         if yes_no is None:
-            msg = await ctx.send(f"Do you want **{event['name']}** to be joinable? `yes/no/cancel`")
+            msg = await ctx.send(f"Do you want **{event.name}** to be joinable? `yes/no/cancel`")
             new_joinable = await ctx.input(timeout=120, delete_response=True)
             await msg.delete()
             if new_joinable is None:
@@ -821,16 +822,19 @@ class Timers(CogUtils):
             joinable = yes_no.lower() in ["yes", "yeah"]
         joinable_string = "joinable" if joinable else "not joinable"
 
-        await ctx.pool.execute("UPDATE event SET joinable = $1 WHERE id = $2", joinable, event_id)
+        await event.edit_joinable(ctx.pool, joinable)
 
-        if event["user_id"] == ctx.author.id:
-            await ctx.send(f"{ctx.tick()}Your event's was changed succesfully to **{joinable_string}**.")
+        if event.user_id == ctx.author.id:
+            await ctx.success(f"Your event's was changed succesfully to **{joinable_string}**.")
         else:
-            await ctx.send(f"{ctx.tick} Event is now **{joinable_string}**.")
-            creator = self.bot.get_member(event["user_id"])
+            await ctx.success(f"Event is now **{joinable_string}**.")
+            creator = ctx.guild.get_member(event.user_id)
             if creator is not None:
-                await creator.send(f"Your event **{event['name']}** was changed to **{joinable_string}** "
-                                   f"by {ctx.author.mention}.")
+                try:
+                    await creator.send(f"Your event **{event.name}** was changed to **{joinable_string}** "
+                                       f"by {ctx.author.mention}.")
+                except discord.HTTPException:
+                    pass
 
     @commands.guild_only()
     @event_edit.command(name="name", aliases=["title"], usage="<id> [new name]")
