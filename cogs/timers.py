@@ -10,6 +10,7 @@ import tibiawikisql
 from discord.ext import commands
 from discord.ext.commands import clean_content
 
+from cogs.utils import errors
 from cogs.utils.time import HumanDelta
 from nabbot import NabBot
 from .utils import CogUtils, checks, clean_string, config, get_user_avatar, single_line
@@ -193,15 +194,34 @@ class Event:
     def participant_users(self):
         return [c.user_id for c in self.participants]
 
-    async def add_participant(self, conn, char):
+    async def add_participant(self, conn, char: DbChar):
         await conn.execute("INSERT INTO event_participant(event_id, character_id) VALUES($1,$2)",
                            self.id, char.id)
 
+    async def remove_participant(self, conn, char: DbChar):
+        await conn.execute("DELETE FROM event_participant WHERE event_id = $1 AND character_id = $2",
+                           self.id, char.id)
+
+    async def add_subscriber(self, conn, user_id: int):
+        await conn.execute("INSERT INTO event_subscriber(event_id, user_id) VALUES($1,$2)",
+                           self.id, user_id)
+
+    async def remove_subscriber(self, conn, user_id: int):
+        await conn.execute("DELETE FROM event_subscriber WHERE event_id = $1 AND user_id = $2",
+                           self.id, user_id)
+
+    async def edit_name(self, conn, name):
+        await conn.execute("UPDATE event SET name = $1 WHERE id = $2", name, self.id)
+        
     async def edit_description(self, conn, description):
         await conn.execute("UPDATE event SET description = $1 WHERE id = $2", description, self.id)
 
-    async def edit_joinable(self, conn, joinable):
-        await conn.execute("UPDATE event SET joinable = $1 WHERE id = $2", joinable, self.id)
+    async def edit_active(self, conn, active):
+        await conn.execute("UPDATE event SET active = $1 WHERE id = $2", active, self.id)
+
+    async def save(self, conn):
+        event = await self.insert(conn, self.user_id, self.server_id, self.start, self.name, self.description)
+        self.id = event.id
 
     @classmethod
     async def get_by_id(cls, conn: PoolConn, event_id: int, only_active=False):
@@ -213,7 +233,7 @@ class Event:
             return None
         rows = await conn.fetch('SELECT character_id FROM event_participant WHERE event_id = $1', event_id)
         for row in rows:
-            event.participants.append(DbChar.get_by_id(conn, row[0]))
+            event.participants.append(await DbChar.get_by_id(conn, row[0]))
         rows = await conn.fetch('SELECT user_id FROM event_subscriber WHERE event_id = $1', event_id)
         for row in rows:
             event.subscribers.append(row[0])
@@ -653,7 +673,7 @@ class Timers(CogUtils):
         params = params.split(",", 1)
         name = single_line(clean_string(ctx, params[0]))
         if len(name) > EVENT_NAME_LIMIT:
-            await ctx.send(f"{ctx.tick(False)} The event's name can't be longer than {EVENT_NAME_LIMIT} characters.")
+            await ctx.error(f"The event's name can't be longer than {EVENT_NAME_LIMIT} characters.")
             return
 
         event_description = ""
@@ -664,8 +684,8 @@ class Timers(CogUtils):
                                                      WHERE user_id = $1 AND start > now() AND active""", creator)
 
         if event_count >= MAX_EVENTS and not await checks.check_guild_permissions(ctx, {'manage_guild': True}):
-            return await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
-                                  f"Delete or edit an active event.")
+            return await ctx.error(f"You can only have {MAX_EVENTS} active events simultaneously."
+                                   f"Delete or edit an active event.")
 
         embed = discord.Embed(title=name, description=event_description, timestamp=start)
         embed.set_footer(text="Start time")
@@ -678,8 +698,9 @@ class Timers(CogUtils):
             return await ctx.send("Alright, no event for you.")
         event = await Event.insert(ctx.pool, ctx.author.id, ctx.guild.id, start, name, event_description)
         log.debug(f"{self.tag} Event created: {event!r}")
-        await ctx.send(f"{ctx.tick()} Event created successfully.\n\t**{name}** in *{starts_in.original}*.\n"
-                       f"*To edit this event use ID {event.id}*")
+        await ctx.success(f"Event created successfully."
+                          f"\n\t**{name}** in *{starts_in.original}*.\n"
+                          f"*To edit this event use ID {event.id}*")
 
     @commands.guild_only()
     @events.command(name="addplayer", aliases=["addchar"])
@@ -688,13 +709,10 @@ class Timers(CogUtils):
 
         Only the creator can add characters to an event.
         If the event is joinable, anyone can join an event using `event join`"""
-        event = await Event.get_by_id(ctx.pool, event_id, True)
-        if event is None or event.server_id:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-            return
-        if event.user_id != ctx.author.id and ctx.author.id not in config.owner_ids:
-            await ctx.send(f"{ctx.tick(False)} You can only add people to your own events.")
-            return
+        try:
+            event = await self.get_editable_event(ctx, event_id)
+        except errors.NabError as e:
+            return await ctx.error(e)
 
         char = await DbChar.get_by_name(ctx.pool, character)
         if char is None or ctx.guild.get_member(char.user_id) is None:
@@ -742,11 +760,10 @@ class Timers(CogUtils):
 
         If no new description is provided initially, the bot will ask for one.
         To remove the description, say `blank`."""
-        event = await Event.get_by_id(ctx.pool, event_id, True)
-        if event is None:
-            return await ctx.error("There's no active event with that id.")
-        if event.user_id != ctx.author.id and ctx.author.id not in config.owner_ids:
-            return await ctx.error("You can only edit your own events.")
+        try:
+            event = await self.get_editable_event(ctx, event_id)
+        except errors.NabError as e:
+            return await ctx.error(e)
 
         if new_description is None:
             msg = await ctx.send(f"What would you like to be the new description of **{event.name}**?"
@@ -801,11 +818,10 @@ class Timers(CogUtils):
         If an event is joinable, anyone can join using `event join id`  .
         Otherwise, the event creator has to add people with `event addplayer id`.
         """
-        event = await Event.get_by_id(ctx.pool, event_id, True)
-        if event is None:
-            return await ctx.error("There's no active event with that id.")
-        if event.user_id != ctx.author.id and ctx.author.id not in config.owner_ids:
-            return await ctx.error("You can only edit your own events.")
+        try:
+            event = await self.get_editable_event(ctx, event_id)
+        except errors.NabError as e:
+            return await ctx.error(e)
 
         if yes_no is None:
             msg = await ctx.send(f"Do you want **{event.name}** to be joinable? `yes/no/cancel`")
@@ -842,16 +858,13 @@ class Timers(CogUtils):
         """Edits an event's name.
 
         If no new name is provided initially, the bot will ask for one."""
-        event = await self.get_event(ctx, event_id)
-        if event is None:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-            return
-        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
-            return
+        try:
+            event = await self.get_editable_event(ctx, event_id)
+        except errors.NabError as e:
+            return await ctx.error(e)
 
         if new_name is None:
-            msg = await ctx.send(f"What would you like to be the new name of **{event['name']}**?"
+            msg = await ctx.send(f"What would you like to be the new name of **{event.name}**?"
                                  f"You can `cancel` this.")
             new_name = await ctx.input(timeout=120, delete_response=True)
             await msg.delete()
@@ -864,9 +877,9 @@ class Timers(CogUtils):
 
         new_name = single_line(clean_string(ctx, new_name))
         if len(new_name) > EVENT_NAME_LIMIT:
-            await ctx.send(f"{ctx.tick(False)} The name can't be longer than {EVENT_NAME_LIMIT} characters.")
+            await ctx.error(f"The name can't be longer than {EVENT_NAME_LIMIT} characters.")
             return
-        message = await ctx.send(f"Do you want to change the name of **{event['name']}** to **{new_name}**?")
+        message = await ctx.send(f"Do you want to change the name of **{event.name}** to **{new_name}**?")
         confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -875,17 +888,17 @@ class Timers(CogUtils):
             await ctx.send("Alright, name remains the same.")
             return
 
-        await ctx.pool.execute("UPDATE event SET name = $1 WHERE id = $2", new_name, event_id)
+        await event.edit_name(ctx.pool, new_name)
 
-        if event["user_id"] == ctx.author.id:
-            await ctx.send(f"{ctx.tick()} Your event was renamed successfully to **{new_name}**.")
+        if event.user_id == ctx.author.id:
+            await ctx.success(f"Your event was renamed successfully to **{new_name}**.")
         else:
-            await ctx.send(f"{ctx.tick()} Event renamed successfully to **{new_name}**.")
-            creator = self.bot.get_member(event["user_id"])
+            await ctx.success(f"Event renamed successfully to **{new_name}**.")
+            creator = self.bot.get_member(event.user_id)
             if creator is not None:
-                await creator.send(f"Your event **{event['name']}** was renamed to **{new_name}** by "
+                await creator.send(f"Your event **{event.name}** was renamed to **{new_name}** by "
                                    f"{ctx.author.mention}")
-        await self.notify_subscribers(event_id, f"The event **{event['name']}** was renamed to **{new_name}**.",
+        await self.notify_subscribers(event_id, f"The event **{event.name}** was renamed to **{new_name}**.",
                                       skip_creator=True)
 
     @commands.guild_only()
@@ -894,16 +907,13 @@ class Timers(CogUtils):
         """Edits an event's number of slots
 
         Slots is the number of characters an event can have. By default this is 0, which means no limit."""
-        event = await self.get_event(ctx, event_id)
-        if event is None:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-            return
-        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
-            return
+        try:
+            event = await self.get_editable_event(ctx, event_id)
+        except errors.NabError as e:
+            return await ctx.error(e)
 
         if slots is None:
-            msg = await ctx.send(f"What would you like to be the new number of slots for  **{event['name']}**? "
+            msg = await ctx.send(f"What would you like to be the new number of slots for  **{event.name}**? "
                                  f"You can `cancel` this.\n Note that `0` means no slot limit.")
             slots = await ctx.input(timeout=120, delete_response=True)
             await msg.delete()
@@ -916,12 +926,12 @@ class Timers(CogUtils):
         try:
             slots = int(slots)
             if slots < 0:
-                await ctx.send(f"{ctx.tick(False)} You can't have negative slots!")
+                await ctx.error(f"You can't have negative slots!")
                 return
         except ValueError:
-            await ctx.send(f"{ctx.tick(False)}That's not a number...")
+            await ctx.error("That's not a number...")
             return
-        message = await ctx.send(f"Do you want the number of slots of **{event['name']}** to **{slots}**?")
+        message = await ctx.send(f"Do you want the number of slots of **{event.name}** to **{slots}**?")
         confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -932,13 +942,13 @@ class Timers(CogUtils):
 
         await ctx.pool.execute("UPDATE event SET slots = $1 WHERE id = $2", slots, event_id)
 
-        if event["user_id"] == ctx.author.id:
-            await ctx.send(f"{ctx.tick()} Your event slots were changed to **{slots}**.")
+        if event.user_id == ctx.author.id:
+            await ctx.success(f"Your event slots were changed to **{slots}**.")
         else:
-            await ctx.send(f"{ctx.tick()} Event slots changed to **{slots}**.")
-            creator = self.bot.get_member(event["user_id"])
+            await ctx.success(f"Event slots changed to **{slots}**.")
+            creator = self.bot.get_member(event.user_id)
             if creator is not None:
-                await creator.send(f"Your event **{event['name']}** slots were changed to **{slots}** by "
+                await creator.send(f"Your event **{event.name}** slots were changed to **{slots}** by "
                                    f"{ctx.author.mention}")
 
     @commands.guild_only()
@@ -949,16 +959,13 @@ class Timers(CogUtils):
 
         If no new time is provided initially, the bot will ask for one."""
         now = dt.datetime.now(dt.timezone.utc)
-        event = await self.get_event(ctx, event_id)
-        if event is None:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-            return
-        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send(f"{ctx.tick(False)} You can only edit your own events.")
-            return
+        try:
+            event = await self.get_editable_event(ctx, event_id)
+        except errors.NabError as e:
+            return await ctx.error(e)
 
         if starts_in is None:
-            msg = await ctx.send(f"When would you like the new start time of **{event['name']}** be?"
+            msg = await ctx.send(f"When would you like the new start time of **{event.name}** be?"
                                  f"You can `cancel` this.\n Examples: `1h20m`, `2d10m`")
 
             new_time = await ctx.input(timeout=120, delete_response=True)
@@ -976,7 +983,7 @@ class Timers(CogUtils):
                 await ctx.send(str(e))
                 return
         new_time = now + dt.timedelta(seconds=starts_in.seconds)
-        embed = discord.Embed(title=event["name"], timestamp=new_time)
+        embed = discord.Embed(title=event.name, timestamp=new_time)
         embed.set_footer(text="Start time")
         message = await ctx.send(f"This will be the new time of your event in your local time. Is this correct?",
                                  embed=embed)
@@ -990,15 +997,15 @@ class Timers(CogUtils):
 
         await ctx.pool.execute("UPDATE event SET start = $1 WHERE id = $2", new_time, event_id)
 
-        if event["user_id"] == ctx.author.id:
-            await ctx.send(f"{ctx.tick()}Your event's start time was changed successfully to **{starts_in.original}**.")
+        if event.user_id == ctx.author.id:
+            await ctx.success(f"Your event's start time was changed successfully to **{starts_in.original}**.")
         else:
-            await ctx.send(f"{ctx.tick()}Event's time changed successfully.")
-            creator = self.bot.get_member(event["user_id"])
+            await ctx.success("Event's time changed successfully.")
+            creator = self.bot.get_member(event.user_id)
             if creator is not None:
-                await creator.send(f"The start time of your event **{event['name']}** was changed to "
+                await creator.send(f"The start time of your event **{event.name}** was changed to "
                                    f"**{starts_in.original}** by {ctx.author.mention}.")
-        await self.notify_subscribers(event_id, f"The start time of **{event['name']}** was changed:", embed=embed,
+        await self.notify_subscribers(event_id, f"The start time of **{event.name}** was changed:", embed=embed,
                                       skip_creator=True)
 
     @commands.guild_only()
@@ -1026,67 +1033,55 @@ class Timers(CogUtils):
 
     @commands.guild_only()
     @events.command(name="join")
-    async def event_join(self, ctx, event_id: int, *, character: str):
+    async def event_join(self, ctx: NabCtx, event_id: int, *, character: str):
         """Join an event with a specific character
 
         You can only join an event with a character at a time.
         Some events may not be joinable and require the creator to add characters themselves."""
-        event = await self.get_event(ctx, event_id)
-        if event is None:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-            return
-        async with ctx.pool.acquire() as conn:
-            char = await conn.fetchrow('SELECT id, user_id, name, world FROM "character" WHERE lower(name) = $1',
-                                       character.lower())
-        if event["joinable"] != 1:
-            await ctx.send(f"{ctx.tick(False)} You can't join this event."
-                           f"Maybe you meant to subscribe? Try `/event sub {event_id}`.")
-            return
-        if event["slots"] != 0 and len(event["participants"]) >= event["slots"]:
-            await ctx.send(f"{ctx.tick(False)} All the slots for this event has been filled.")
-            return
+        event = await Event.get_by_id(ctx.pool, event_id, True)
+        if event is None or event.server_id != ctx.guild.id:
+            return await ctx.error("There's no active event with that id.")
+        char = await DbChar.get_by_name(ctx.pool, character)
         if char is None:
-            await ctx.send(f"{ctx.tick(False)} That character is not registered.")
+            return await ctx.error("That character is not registered.")
+        if not event.joinable:
+            await ctx.error(f"You can't join this event."
+                            f"Maybe you meant to subscribe? Try `/event sub {event_id}`.")
             return
-        if char["user_id"] != ctx.author.id:
-            await ctx.send(f"{ctx.tick(False)} You can only join with characters registered to you.")
-            return
-        world = self.bot.tracked_worlds.get(event["server_id"])
-        if world != char["world"]:
-            await ctx.send(f"{ctx.tick(False)} You can't join with a character from another world.")
-            return
-        if any(ctx.author.id == participant["user_id"] for participant in event["participants"]):
-            await ctx.send(f"{ctx.tick(False)} A character of yours is already in this event.")
-            return
+        if event.slots != 0 and len(event.participants) >= event.slots:
+            return await ctx.error(f"All the slots for this event has been filled.")
 
-        message = await ctx.send(f"Do you want to join the event '**{event['name']}**' as **{char['name']}**?")
+        if char.user_id != ctx.author.id:
+            return await ctx.error("You can only join with characters registered to you.")
+        if ctx.world != char.world:
+            return await ctx.error("You can't join with a character from another world.")
+        if ctx.author.id in event.participant_users:
+            return await ctx.error(f"A character of yours is already in this event.")
+
+        message = await ctx.send(f"Do you want to join the event '**{event.name}**' as **{char.name}**?")
         confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
-            await ctx.send("You took too long!")
-            return
+            return await ctx.send("You took too long!")
         if not confirm:
-            await ctx.send("Nevermind then.")
-            return
+            return await ctx.send("Nevermind then.")
 
-        await ctx.pool.execute("""INSERT INTO event_participant(event_id, character_id) VALUES($1, $2)
-                                      ON CONFLICT(event_id, character_id) DO NOTHING""", event_id, char["id"])
-        await ctx.send(f"{ctx.tick()} You successfully joined this event.")
+        await event.add_participant(ctx.pool, char)
+        await ctx.success(f"You successfully joined this event.")
 
     @commands.guild_only()
     @events.command(name="leave")
-    async def event_leave(self, ctx, event_id: int):
+    async def event_leave(self, ctx: NabCtx, event_id: int):
         """Leave an event you were participating in."""
-        event = await self.get_event(ctx, event_id)
-        if event is None:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-            return
-        joined_char = next((participant["character_id"] for participant in event["participants"]
-                            if ctx.author.id == participant["user_id"]), None)
+        event = await Event.get_by_id(ctx.pool, event_id, True)
+        if event is None or event.server_id != ctx.guild.id:
+            return await ctx.error("There's no active event with that id.")
+        joined_char = next((participant for participant in event.participants
+                            if ctx.author.id == participant.user_id), None)
         if joined_char is None:
-            await ctx.send(f"{ctx.tick(False)} You haven't joined this event.")
+            await ctx.error(f"You haven't joined this event.")
             return
 
-        message = await ctx.send(f"Do you want to leave **{event['name']}**?")
+        message = await ctx.send(f"Do you want to leave **{event.name}**?")
         confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -1095,9 +1090,8 @@ class Timers(CogUtils):
             await ctx.send("Nevermind then.")
             return
 
-        await ctx.pool.execute("DELETE FROM event_participant WHERE event_id = $1 AND character_id = $2",
-                               event_id, joined_char)
-        await ctx.send(f"{ctx.tick()} You successfully left this event.")
+        await event.remove_participant(ctx.pool, joined_char)
+        await ctx.success("You successfully left this event.")
 
     @commands.guild_only()
     @checks.can_embed()
@@ -1108,10 +1102,10 @@ class Timers(CogUtils):
         Instead of using confusing parameters, commas and spaces, this commands has the bot ask you step by step."""
 
         event_count = await ctx.pool.fetchval("""SELECT count(*) FROM event
-                                                     WHERE user_id = $1 AND start > now() AND active""", ctx.author.id)
+                                                 WHERE user_id = $1 AND start > now() AND active""", ctx.author.id)
         if event_count >= MAX_EVENTS and not await checks.check_guild_permissions(ctx, {'manage_guild': True}):
-            await ctx.send(f"{ctx.tick(False)} You can only have {MAX_EVENTS} active events simultaneously."
-                           f"Delete or edit an active event.")
+            await ctx.error(f"You can only have {MAX_EVENTS} active events simultaneously."
+                            f"Delete or edit an active event.")
             return
         msg = await ctx.send("Let's create an event. What would you like the name to be? You can `cancel` at any time.")
         cancel = False
@@ -1174,6 +1168,7 @@ class Timers(CogUtils):
 
         msg = await ctx.send(f"Alright, now tell me in how many time will the event start from now. `e.g. 2d1h20m, 4h`"
                              f"\nThis is your event so far:", embed=embed)
+        starts_in = None
         while True:
             start_time = dt.datetime.now(dt.timezone.utc)
             start_str = await ctx.input(timeout=60, delete_response=True)
@@ -1219,45 +1214,41 @@ class Timers(CogUtils):
             await ctx.send("Alright, guess all this was for nothing. Goodbye!")
             return
 
-        event_id = await ctx.pool.fetchval("""INSERT INTO event(user_id, server_id, start, name, description)
-                                                  VALUES($1, $2, $3, $4, $5)""",
-                                           ctx.author.id, ctx.guild.id, start_time, name, description)
-        await ctx.send(f"{ctx.tick()} Event registered successfully.\n\t**{name}** in *{starts_in.original}*.\n"
-                       f"*To edit this event use ID {event_id}*")
+        event = await Event.insert(ctx.pool, ctx.author.id, ctx.guild.id, start_time, name, description)
+        await ctx.success(f"Event registered successfully.\n\t**{name}** in *{starts_in.original}*.\n"
+                          f"*To edit this event use ID {event.id}*")
 
     @commands.guild_only()
     @checks.can_embed()
     @events.command(name="participants")
     async def event_participants(self, ctx: NabCtx, event_id: int):
         """Shows the list of characters participating in this event."""
-        event = await self.get_event(ctx, event_id)
+        event = await Event.get_by_id(ctx.pool, event_id)
         if event is None:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-            return
-        if len(event["participants"]) == 0:
+            return await ctx.error("There's no active event with that id.")
+        if not event.participants:
             join_prompt = ""
-            if event["joinable"] != 0:
+            if event.joinable:
                 join_prompt = f" To join, use `/event join {event_id} characterName`."
-            await ctx.send(f"{ctx.tick(False)} There are no participants in this event.{join_prompt}")
-            return
+            return await ctx.error(f"There are no participants in this event.{join_prompt}")
         entries = []
         vocations = []
-        for char in event["participants"]:  # type: Dict[str, Any]
-            char["level"] = abs(char["level"])
-            char["emoji"] = get_voc_emoji(char["vocation"])
-            vocations.append(char["vocation"])
-            char["vocation"] = get_voc_abb(char["vocation"])
-            owner = ctx.guild.get_member(int(char["user_id"]))
-            char["owner"] = "unknown" if owner is None else owner.display_name
-            entries.append("**{name}** - {level} {vocation}{emoji} - **@{owner}**".format(**char))
-        author = ctx.guild.get_member(int(event["user_id"]))
+        for char in event.participants:
+            level = abs(char.level)
+            emoji = get_voc_emoji(char.vocation)
+            vocations.append(char.vocation)
+            vocation = get_voc_abb(char.vocation)
+            owner = ctx.guild.get_member(char.user_id)
+            user = "unknown" if owner is None else owner.display_name
+            entries.append(f"**{char.name}** - {level} {vocation}{emoji} - **@{user}**")
+        author = ctx.guild.get_member(event.user_id)
         author_name = None
         author_icon = None
         if author is not None:
             author_name = author.display_name
             author_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
         pages = VocationPages(ctx, entries=entries, per_page=15, vocations=vocations)
-        pages.embed.title = event["name"]
+        pages.embed.title = event.name
         pages.embed.set_author(name=author_name, icon_url=author_icon)
         try:
             await pages.paginate()
@@ -1268,15 +1259,12 @@ class Timers(CogUtils):
     @events.command(name="remove", aliases=["delete", "cancel"])
     async def event_remove(self, ctx: NabCtx, event_id: int):
         """Deletes or cancels an event."""
-        event = await self.get_event(ctx, event_id)
-        if event is None:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-            return
-        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send(f"{ctx.tick(False)} You can only delete your own events.")
-            return
+        try:
+            event = await self.get_editable_event(ctx, event_id)
+        except errors.NabError as e:
+            return await ctx.error(e)
 
-        message = await ctx.send("Do you want to delete the event **{0}**?".format(event["name"]))
+        message = await ctx.send(f"Do you want to delete the event **{event.name}**?")
         confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -1285,15 +1273,18 @@ class Timers(CogUtils):
             await ctx.send("Alright, event remains active.")
             return
 
-        await ctx.pool.execute("UPDATE event SET active = false WHERE id = $1", event_id)
-        if event["user_id"] == ctx.author.id:
-            await ctx.send(f"{ctx.tick()} Your event was deleted successfully.")
+        await event.edit_active(ctx.pool, False)
+        if event.user_id == ctx.author.id:
+            await ctx.success(f"Your event was deleted successfully.")
         else:
-            await ctx.send(f"{ctx.tick()} Event deleted successfully.")
-            creator = ctx.guild.get_member(event["user_id"])
+            await ctx.success(f"Event deleted successfully.")
+            creator = ctx.guild.get_member(event.user_id)
             if creator is not None:
-                await creator.send(f"Your event **{event['name']}** was deleted by {ctx.author.mention}.")
-        await self.notify_subscribers(event_id, f"The event **{event['name']}** was deleted by {ctx.author.mention}.",
+                try:
+                    await creator.send(f"Your event **{event.name}** was deleted by {ctx.author.mention}.")
+                except discord.HTTPException:
+                    pass
+        await self.notify_subscribers(event_id, f"The event **{event.name}** was deleted by {ctx.author.mention}.",
                                       skip_creator=True)
 
     @commands.guild_only()
@@ -1301,27 +1292,21 @@ class Timers(CogUtils):
     async def event_removeplayer(self, ctx: NabCtx, event_id: int, *, character):
         """Removes a player from an event.
 
+        Only the event's creator can remove players through this command.
         Players can remove themselves using `event leave`"""
-        event = await self.get_event(ctx, event_id)
-        if event is None:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-            return
-        if event["user_id"] != int(ctx.author.id) and ctx.author.id not in config.owner_ids:
-            await ctx.send(f"{ctx.tick(False)} You can only add people to your own events.")
-            return
-        char = await ctx.pool.fetchrow('SELECT id, user_id, name FROM "character" WHERE lower(name) = $1',
-                                       character.lower())
+        try:
+            event = await self.get_editable_event(ctx, event_id)
+        except errors.NabError as e:
+            return await ctx.error(e)
+        char = await DbChar.get_by_name(ctx.pool, character)
         if char is None:
-            return await ctx.send(f"{ctx.tick(False)} This character doesn't exist.")
-        joined_char = next((participant["character_id"] for participant in event["participants"]
-                            if char["id"] == participant["character_id"]), None)
-        if joined_char is None:
-            await ctx.send(f"{ctx.tick(False)} This character is not in this event.")
-            return
-        owner = ctx.guild.get_member(char["user_id"])
+            return await ctx.error("This character doesn't exist.")
+        if char not in event.participants:
+            return await ctx.error("This character is not in this event.")
+        owner = ctx.guild.get_member(char.user_id)
         owner_name = "unknown" if owner is None else owner.display_name
-        message = await ctx.send(f"Do you want to remove **{char['name']}** (@**{owner_name}**) "
-                                 f"from **{event['name']}**?")
+        message = await ctx.send(f"Do you want to remove **{char.name}** (@**{owner_name}**) "
+                                 f"from **{event.name}**?")
         confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -1330,22 +1315,20 @@ class Timers(CogUtils):
             await ctx.send("Nevermind then.")
             return
 
-        await ctx.pool.execute("DELETE FROM event_participant WHERE event_id = $1 AND character_id = $2",
-                               event_id, char["id"])
-        await ctx.send(f"{ctx.tick()} You successfully left this event.")
+        await event.remove_participant(ctx.pool, char)
+        await ctx.success("Character removed from event.")
 
     @commands.guild_only()
     @checks.can_embed()
     @events.command(name="subscribe", aliases=["sub"])
     async def event_subscribe(self, ctx, event_id: int):
         """Subscribe to receive a PM when an event is happening."""
-        author = ctx.author
-        event = await self.get_event(ctx, event_id)
+        event = await Event.get_by_id(ctx.pool, event_id, True)
         if event is None:
-            return await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
-        if ctx.author.id in event["subscribers"]:
-            return await ctx.send(f"{ctx.tick(False)} You're already subscribed to this event.")
-        message = await ctx.send(f"Do you want to subscribe to **{event['name']}**")
+            return await ctx.error(f"There's no active event with that id.")
+        if ctx.author.id in event.subscribers:
+            return await ctx.error(f"You're already subscribed to this event.")
+        message = await ctx.send(f"Do you want to subscribe to **{event.name}**")
         confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -1354,23 +1337,21 @@ class Timers(CogUtils):
             await ctx.send("Ok then.")
             return
 
-        await ctx.pool.execute("INSERT INTO event_subscriber(event_id, user_id) VALUES($1, $2)", event_id, author.id)
-        await ctx.send(f"{ctx.tick()} You have subscribed successfully to this event. "
-                       f"I'll let you know when it's happening.")
+        await event.add_subscriber(ctx.pool, ctx.author)
+        await ctx.success("You have subscribed successfully to this event. "
+                          "I'll let you know when it's happening.")
 
     @commands.guild_only()
     @events.command(name="unsubscribe", aliases=["unsub"])
     async def event_unsubscribe(self, ctx, event_id: int):
         """Unsubscribe to an event."""
-        author = ctx.author
-        event = await self.get_event(ctx, event_id)
+        event = await Event.get_by_id(ctx.pool, event_id, True)
         if event is None:
-            await ctx.send(f"{ctx.tick(False)} There's no active event with that id.")
+            await ctx.error(f"There's no active event with that id.")
             return
-        print(ctx.author.id, event["subscribers"])
-        if ctx.author.id not in event["subscribers"]:
-            return await ctx.send(f"{ctx.tick(False)} You are not subscribed to this event.")
-        message = await ctx.send(f"Do you want to unsubscribe to **{event['name']}**")
+        if ctx.author.id not in event.subscribers:
+            return await ctx.error("You are not subscribed to this event.")
+        message = await ctx.send(f"Do you want to unsubscribe to **{event.name}**")
         confirm = await ctx.react_confirm(message)
         if confirm is None:
             await ctx.send("You took too long!")
@@ -1379,8 +1360,8 @@ class Timers(CogUtils):
             await ctx.send("Ok then.")
             return
 
-        await ctx.pool.execute("DELETE FROM event_subscriber WHERE event_id = $1 AND user_id = $2", event_id, author.id)
-        await ctx.send(f"{ctx.tick()} You have unsubscribed from this event.")
+        await event.remove_subscriber(ctx.pool, ctx.author)
+        await ctx.success(f"You have unsubscribed from this event.")
 
     @commands.command()
     async def remindme(self, ctx: NabCtx, when: TimeString, *, what: clean_content):
@@ -1502,6 +1483,17 @@ class Timers(CogUtils):
             if member is None:
                 continue
             await member.send(content, embed=embed)
+
+    @classmethod
+    async def get_editable_event(cls, ctx: NabCtx, event_id) -> Event:
+        event = await Event.get_by_id(ctx.pool, event_id, True)
+        if event is None:
+            raise errors.NabError("There's no active event with that id.")
+        if event.user_id != ctx.author.id and not checks.is_owner(ctx):
+            raise errors.NabError("You can only edit your own events.")
+        if event.server_id != ctx.guild.id:
+            raise errors.NabError("That event is not from this server.")
+        return event
 
     def __unload(self):
         log.info(f"{self.tag} Unloading cog")

@@ -102,7 +102,7 @@ class DbChar(tibiapy.abc.BaseCharacter):
     """Represents a character from the database."""
 
     def __init__(self, **kwargs):
-        self.id: int = kwargs.get("id")
+        self.id: int = kwargs.get("id", 0)
         """The unique id of the character in the database."""
         self.name: str = kwargs.get("name")
         """The name of the character."""
@@ -121,6 +121,15 @@ class DbChar(tibiapy.abc.BaseCharacter):
 
     def __repr__(self):
         return f"<{self.__class__.__name__} id={self.id} user_id={self.user_id} name={self.name!r}, level={self.level}>"
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            # If any of them don't have an ID, we compare by name:
+            if not self.id or not other.id:
+                return self.name == other.name
+            return self.id == other.id
+        return False
+
 
     # region Instance methods
     async def get_deaths(self, conn: PoolConn):
