@@ -14,7 +14,7 @@ from nabbot import NabBot
 from .utils import CogUtils, checks, clean_string, config, get_user_avatar, single_line
 from .utils.context import NabCtx
 from .utils.converter import BadTime, TimeString
-from .utils.database import get_server_property, wiki_db
+from .utils.database import get_server_property, wiki_db, PoolConn, DbChar
 from .utils.errors import CannotPaginate
 from .utils.pages import Pages, VocationPages
 from .utils.tibia import get_voc_abb, get_voc_emoji
@@ -163,24 +163,69 @@ class ReminderType(Enum):
     CUSTOM = 0
     BOSS = 1
     TASK = 2
+    EVENT = 3
+
+
+class Event:
+    def __init__(self, **kwargs):
+        self.id = kwargs.get("id")
+        self.user_id = kwargs.get("user_id")
+        self.server_id = kwargs.get("server_id")
+        self.name = kwargs.get("name")
+        self.description = kwargs.get("description")
+        self.start = kwargs.get("start")
+        self.active = kwargs.get("active")
+        self.reminder = kwargs.get("reminder")
+        self.joinable = kwargs.get("joinable")
+        self.slots = kwargs.get("slots")
+        self.modified = kwargs.get("modified")
+        self.created = kwargs.get("created")
+        # Populated
+        self.subscribers = kwargs.get("subscribers", [])
+        self.participants = kwargs.get("participants")
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} id={self.id} name={self.name!r} user_id={self.user_id} ' \
+            f'server_id={self.server_id} start={self.start!r}>'
+
+    @classmethod
+    async def get_by_id(cls, conn: PoolConn, event_id: int):
+        row = await conn.fetchrow("SELECT * FROM event WHERE id = $1", event_id)
+        if row is None:
+            return None
+        event = cls(**row)
+        rows = await conn.fetch('SELECT character_id FROM event_participant WHERE event_id = $1', event_id)
+        for row in rows:
+            event.participants.append(DbChar.get_by_id(conn, row[0]))
+        rows = await conn.fetch('SELECT user_id FROM event_subscriber WHERE event_id = $1', event_id)
+        for row in rows:
+            event.subscribers.append(row[0])
+        return event
+
+    @classmethod
+    async def insert(cls, conn: PoolConn, user_id, server_id, start, name, description=None):
+        row = await conn.fetchrow("""INSERT INTO event(user_id, server_id, start, name, description)
+                                     VALUES($1, $2, $3, $4, $5) RETURNING *""",
+                                  user_id, server_id, start, name, description)
+        return cls(**row)
 
 
 class Timer:
-    def __init__(self, record):
-        self.id = record["id"]
-        self.name = record["name"]
-        self.type = record["type"]
-        self.user_id = record["user_id"]
+    def __init__(self, **kwargs):
+        self.id = kwargs.get("id")
+        self.name = kwargs.get("name")
+        self.type = kwargs.get("type")
+        self.user_id = kwargs.get("user_id")
         if isinstance(self.type, int):
             self.type = ReminderType(self.type)
-        self.extra = record["extra"]
-        self.expires = record["expires"]
-        self.created = record["created"]
+        self.extra = kwargs.get("extra")
+        self.expires = kwargs.get("expires")
+        self.created = kwargs.get("created")
 
     @classmethod
     def build(cls, **kwargs):
         kwargs["id"] = None
-        return cls(kwargs)
+        return cls(**kwargs)
 
     def __eq__(self, other):
         try:
@@ -295,7 +340,6 @@ class Timers(CogUtils):
             await asyncio.sleep(20)
 # endregion
 
-
     async def __error(self, ctx: NabCtx, error):
         if isinstance(error, BadTime):
             await ctx.send(error)
@@ -381,7 +425,7 @@ class Timers(CogUtils):
                                              ReminderType.BOSS.value, name, ctx.author.id, str(db_char["id"]))
             if not record:
                 return await ctx.send(f"**{db_char['name']}** doesn't have any active cooldowns for **{name}**.")
-            timer = Timer(record)
+            timer = Timer(**record)
             return await ctx.send(f"Your cooldown for **{name}** will be over in {timer.expires-now}.")
         rows = await ctx.pool.fetch("""SELECT timer.*, "character".name AS char_name, "character".world FROM timer
                                        JOIN "character" ON "character".id = (extra->>'char_id')::int
@@ -614,11 +658,10 @@ class Timers(CogUtils):
             return await ctx.send("You took too long!")
         if not confirm:
             return await ctx.send("Alright, no event for you.")
-        event_id = await ctx.pool.fetchval("""INSERT INTO event(user_id, server_id, start, name, description)
-                                                  VALUES($1, $2, $3, $4, $5)""",
-                                           creator, ctx.guild.id, start, name, event_description)
+        event = await Event.insert(ctx.pool, ctx.author.id, ctx.guild.id, start, name, event_description)
+        log.debug(f"{self.tag} Event created: {event!r}")
         await ctx.send(f"{ctx.tick()} Event created successfully.\n\t**{name}** in *{starts_in.original}*.\n"
-                       f"*To edit this event use ID {event_id}*")
+                       f"*To edit this event use ID {event.id}*")
 
     @commands.guild_only()
     @events.command(name="addplayer", aliases=["addchar"])
@@ -959,27 +1002,20 @@ class Timers(CogUtils):
         """Displays an event's info.
 
         The start time shown in the footer is always displayed in your device's timezone."""
-        event = await self.get_event(ctx, event_id)
-        if not event:
-            await ctx.send(f"{ctx.tick(False)} There's no event with that id.")
+        event = await Event.get_by_id(ctx.pool, event_id)
+        if not event or event.server_id != ctx.guild.id:
+            await ctx.error("There's no event with that id.")
             return
-        guild = self.bot.get_guild(event["server_id"])
-        author = self.bot.get_member(event["user_id"], guild)
-        embed = discord.Embed(title=event["name"], description=event["description"], timestamp=event["start"])
-        if author is not None:
-            if guild is None:
-                author_name = author.name
-            else:
-                author_name = author.display_name
-            author_icon = author.avatar_url if author.avatar_url else author.default_avatar_url
-            embed.set_author(name=author_name, icon_url=author_icon)
+        author = ctx.guild.get_member(event.user_id)
+        embed = discord.Embed(title=event.name, description=event.description, timestamp=event.start)
+        if author:
+            embed.set_author(name=author.display_name, icon_url=get_user_avatar(author))
         embed.set_footer(text="Start time")
-        if len(event["participants"]) > 0:
+        if event.participants and event.joinable:
             slots = ""
-            if event["slots"] > 0:
-                slots = f"/{event['slots']}"
-            embed.add_field(name="Participants", value=f"{len(event['participants'])}{slots}")
-
+            if event.slots:
+                slots = f"/{event.slots}"
+            embed.add_field(name="Participants", value=f"{len(event.participants)}{slots}")
         await ctx.send(embed=embed)
 
     @commands.guild_only()
@@ -1415,7 +1451,7 @@ class Timers(CogUtils):
         record = await conn.fetchrow(query, dt.timedelta(days=days))
         if record is None:
             return None
-        timer = Timer(record)
+        timer = Timer(**record)
         return timer
 
     async def get_event(self, ctx: NabCtx, event_id: int) -> Optional[Dict[str, Any]]:

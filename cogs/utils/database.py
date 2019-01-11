@@ -281,10 +281,10 @@ class DbChar(tibiapy.abc.BaseCharacter):
         :param guild: The name of the guild the character belongs to.
         :return: The inserted entry.
         """
-        row_id = await conn.fetchval("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
-                                        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id""",
-                                     name, level*-1, vocation, user_id, world, guild)
-        return cls(id=row_id, name=name, level=level, vocation=vocation, user_id=user_id, world=world, guild=guild)
+        row = await conn.fetchrow("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
+                                     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id""",
+                                  name, level*-1, vocation, user_id, world, guild)
+        return cls(**row)
 
     @classmethod
     async def get_by_id(cls, conn: PoolConn, char_id: int) -> Optional['DbChar']:
