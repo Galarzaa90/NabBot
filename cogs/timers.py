@@ -2,7 +2,7 @@ import asyncio
 import datetime as dt
 import logging
 from enum import Enum
-from typing import Any, Dict, Optional, List
+from typing import List, Optional
 
 import asyncpg
 import discord
@@ -13,10 +13,10 @@ from discord.ext.commands import clean_content
 from cogs.utils import errors
 from cogs.utils.time import HumanDelta
 from nabbot import NabBot
-from .utils import CogUtils, checks, clean_string, config, get_user_avatar, single_line
+from .utils import CogUtils, checks, clean_string, get_user_avatar, single_line
 from .utils.context import NabCtx
-from .utils.converter import BadTime, TimeString
-from .utils.database import get_server_property, wiki_db, PoolConn, DbChar
+from .utils.converter import TimeString
+from .utils.database import DbChar, PoolConn, get_server_property, wiki_db
 from .utils.errors import CannotPaginate
 from .utils.pages import Pages, VocationPages
 from .utils.tibia import get_voc_abb, get_voc_emoji
@@ -196,8 +196,8 @@ class Event:
         self.notification: dt.datetime = kwargs.get("notification")
 
     def __repr__(self):
-        return f'<{self.__class__.__name__} id={self.id} name={self.name!r} user_id={self.user_id} ' \
-            f'server_id={self.server_id} start={self.start!r}>'
+        return f"<{self.__class__.__name__} id={self.id} name={self.name!r} user_id={self.user_id} " \
+            f"server_id={self.server_id} reminder={self.reminder} start='{self.start}'>"
 
     @property
     def participant_users(self) -> List[int]:
@@ -244,10 +244,15 @@ class Event:
         await conn.execute("UPDATE event SET description = $1 WHERE id = $2", description, self.id)
         self.description = description
 
-    async def edit_joinable(self, conn: PoolConn, joinable: Optional[str]):
+    async def edit_joinable(self, conn: PoolConn, joinable: bool):
         """Edits the event's joinable in the database."""
         await conn.execute("UPDATE event SET joinable = $1 WHERE id = $2", joinable, self.id)
         self.joinable = joinable
+
+    async def edit_slots(self, conn: PoolConn, slots: int):
+        """Edits the event's slots in the database."""
+        await conn.execute("UPDATE event SET slots = $1 WHERE id = $2", slots, self.id)
+        self.slots = slots
 
     async def edit_active(self, conn: PoolConn, active: bool):
         """Edits the event's active status in the database."""
@@ -259,10 +264,26 @@ class Event:
         await conn.execute("UPDATE event SET reminder = $1 WHERE id = $2", reminder, self.id)
         self.reminder = reminder
 
+    async def edit_start(self, conn: PoolConn, start: dt.datetime):
+        """Edits the event's start time in the database."""
+        new_reminder = self._get_reminder(start)
+        await conn.execute("UPDATE event SET start = $1 reminder = $3 WHERE id = $2", start, self.id, new_reminder)
+        self.start = start
+
     async def save(self, conn: PoolConn):
         """Saves the current event to the database."""
         event = await self.insert(conn, self.user_id, self.server_id, self.start, self.name, self.description)
         self.id = event.id
+
+    @classmethod
+    def _get_reminder(cls, start: dt.datetime):
+        now = dt.datetime.now(dt.timezone.utc)
+        reminder = 0
+        for i, notification in enumerate(NOTIFICATIONS, 1):
+            if (start-now) > notification:
+                return reminder
+            reminder = i
+        return reminder
 
     @classmethod
     async def get_by_id(cls, conn: PoolConn, event_id: int, only_active=False) -> Optional['Event']:
@@ -289,9 +310,10 @@ class Event:
 
     @classmethod
     async def insert(cls, conn: PoolConn, user_id, server_id, start, name, description=None):
-        row = await conn.fetchrow("""INSERT INTO event(user_id, server_id, start, name, description)
-                                     VALUES($1, $2, $3, $4, $5) RETURNING *""",
-                                  user_id, server_id, start, name, description)
+        reminder = cls._get_reminder(start)
+        row = await conn.fetchrow("""INSERT INTO event(user_id, server_id, start, name, description, reminder)
+                                     VALUES($1, $2, $3, $4, $5, $6) RETURNING *""",
+                                  user_id, server_id, start, name, description, reminder)
         return cls(**row)
 
     @classmethod
@@ -354,10 +376,12 @@ class Timers(CogUtils):
         self._next_timer = None
         # Events
         self._event_available = asyncio.Event(loop=bot.loop)
-        self.events_announce_task = self.bot.loop.create_task(self.check_events())
+        self.events_announce_task = None  # This task is created after clean_events
         self._next_event = None
 
-# region Tasks
+        self.bot.loop.create_task(self.clean_events())
+
+    # region Tasks
     async def check_timers(self):
         """Checks the first upcoming time and waits for it."""
         tag = f"{self.tag}[check_timers]"
@@ -395,7 +419,7 @@ class Timers(CogUtils):
                     wait_time = (event.notification-now)
                     log.debug(f"{tag} Sleeping for {wait_time}")
                     await asyncio.sleep(wait_time.total_seconds())
-                await self.run_event_notification(event)
+                await self.run_event(event)
         except asyncio.CancelledError:
             pass
         except(OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError):
@@ -403,17 +427,40 @@ class Timers(CogUtils):
             self.events_announce_task = self.bot.loop.create_task(self.check_events())
         except Exception as e:
             log.exception(f"{tag} {e}")
-# endregion
 
-    async def run_event_notification(self, event: Event):
-        log.debug(f"run_event_notification {event.reminder}")
-        reminder = event.reminder
-        await event.edit_reminder(self.bot.pool, event.reminder + 1)
-        self.bot.dispatch("event_notification", event, reminder)
+    async def clean_events(self):
+        """Checks upcoming events and waits for notifications."""
+        tag = f"{self.tag}[clean_events]"
+        try:
+            await self.bot.wait_until_ready()
+            log.debug(f"{tag} Started")
+            async with self.bot.pool.acquire() as conn:
+                res = await conn.execute("UPDATE event SET reminder = 1 "
+                                         "WHERE (start-($1::interval))-($2::interval) < now() AND reminder < 1",
+                                         FIRST_NOTIFICATION, TIME_MARGIN)
+                log.debug(res)
+                res = await conn.execute("UPDATE event SET reminder = 2 "
+                                         "WHERE (start-($1::interval))-($2::interval) < now() AND reminder < 2",
+                                         SECOND_NOTIFICATION, TIME_MARGIN)
+                log.debug(res)
+                res = await conn.execute("UPDATE event SET reminder = 3 "
+                                         "WHERE (start-($1::interval))-($2::interval) < now() AND reminder < 3",
+                                         THIRD_NOTIFICATION, TIME_MARGIN)
+                log.debug(res)
+                res = await conn.execute("UPDATE event SET reminder = 4 "
+                                         "WHERE (start-($1::interval)) < now()  AND reminder < 4", TIME_MARGIN)
+                log.debug(res)
+            self.events_announce_task = self.bot.loop.create_task(self.check_events())
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            log.exception(f"{tag} {e}")
+    # endregion
 
+    # task Custom Events
     async def on_event_notification(self, event: Event, reminder):
         """Announces upcoming events"""
-        log.debug(f"announce_event: {event}, {event.reminder}")
+        log.info(f"{self.tag} Sending event notification | Event '{event.name}' | ID: {event.id}")
         guild: Optional[discord.Guild] = self.bot.get_guild(event.server_id)
         if guild is None:
             return
@@ -426,23 +473,12 @@ class Timers(CogUtils):
             return
         announce_channel = self.bot.get_channel_or_top(guild, announce_channel_id)
         if announce_channel is not None:
-            await announce_channel.send(message)
+            try:
+                await announce_channel.send(message)
+            except discord.HTTPException as e:
+                log.debug(f"{self.tag} Could not send event event notification "
+                          f"| Channel {announce_channel.id} | Server {announce_channel.guild.id}")
         await self.notify_subscribers(event, message)
-
-    async def run_timer(self, timer, short=False):
-        """Dispatches an event for the timer."""
-        if not short:
-            query = "DELETE FROM timer WHERE id=$1;"
-            await self.bot.pool.execute(query, timer.id)
-        log.debug(f"{self.tag} Executing timer {timer}")
-        if timer.type == ReminderType.CUSTOM:
-            self.bot.dispatch("custom_timer_complete", timer)
-        if timer.type == ReminderType.BOSS:
-            self.bot.dispatch("boss_timer_complete", timer)
-
-    async def run_short_timer(self, seconds, timer: Timer):
-        await asyncio.sleep(seconds)
-        await self.run_timer(timer, True)
 
     async def on_custom_timer_complete(self, timer: Timer):
         try:
@@ -481,6 +517,10 @@ class Timers(CogUtils):
                 await author.send(embed=embed)
         except discord.Forbidden:
             log.debug(f"{self.tag} Couldn't send boss timer to user {author} due to privacy settings.")
+
+    # endregion
+
+    # region Commands
 
     @commands.group(invoke_without_command=True, case_insensitive=True, usage="<boss>[,character]")
     async def boss(self, ctx: NabCtx, *, params: str=None):
@@ -926,8 +966,7 @@ class Timers(CogUtils):
             if creator is not None:
                 await creator.send(f"Your event **{event.name}** was renamed to **{new_name}** by "
                                    f"{ctx.author.mention}")
-        await self.notify_subscribers(event, f"The event **{event.name}** was renamed to **{new_name}**.",
-                                      skip_creator=True)
+        await self.notify_subscribers(event, f"The event **{event.name}** was renamed to **{new_name}**.")
 
     @commands.guild_only()
     @event_edit.command(name="slots", aliases=["size"], usage="<id> [new slots]")
@@ -968,7 +1007,7 @@ class Timers(CogUtils):
             await ctx.send("Alright, slots remain unchanged.")
             return
 
-        await ctx.pool.execute("UPDATE event SET slots = $1 WHERE id = $2", slots, event_id)
+        await event.edit_slots(slots)
 
         if event.user_id == ctx.author.id:
             await ctx.success(f"Your event slots were changed to **{slots}**.")
@@ -1023,7 +1062,7 @@ class Timers(CogUtils):
             await ctx.send("Alright, event remains the same.")
             return
 
-        await ctx.pool.execute("UPDATE event SET start = $1 WHERE id = $2", new_time, event_id)
+        await Event.edit_start(ctx.pool, new_time)
 
         if event.user_id == ctx.author.id:
             await ctx.success(f"Your event's start time was changed successfully to **{starts_in.original}**.")
@@ -1404,6 +1443,10 @@ class Timers(CogUtils):
                                                                                          "channel": ctx.channel.id})
         await ctx.success(f"Ok, I will remind you in {when.original} about: {what}")
 
+    # endregion
+
+    # Auxiliary functions
+
     async def await_next_timer(self, connection=None, days=7) -> Timer:
         """Finds the next upcoming timer
 
@@ -1420,10 +1463,10 @@ class Timers(CogUtils):
         return await self.get_next_timer(connection=connection, days=7)
 
     async def await_next_event(self, connection=None, days=7) -> Event:
-        """Finds the next upcoming timer
+        """Finds the next upcoming event notification
 
-        If there's no upcoming timer in the specified days, it will keep waiting until there's one.
-        It returns the timer when found."""
+        If there's no upcoming notification in the specified days, it will keep waiting until there's one.
+        It returns the event when found."""
         event = await self.get_next_event_notification(connection=connection, days=days)
         if event is not None:
             self._event_available.set()
@@ -1463,6 +1506,16 @@ class Timers(CogUtils):
             self.timers_task = self.bot.loop.create_task(self.check_timers())
         return timer
 
+    def event_time_changed(self, event: Event):
+        """When an event's time changes, it checks if the tasks should be restarted or not."""
+        if (event.start-dt.datetime.now(event.start.tzinfo)) <= dt.timedelta(days=40):  # 40 days
+            self._event_available.set()
+
+        if self._next_event and event.start - FIRST_NOTIFICATION < self._next_event.notification:
+            log.debug(f"{self.tag} New event's newer than current one, restarting task.")
+            self.events_announce_task.cancel()
+            self.events_announce_task = self.bot.loop.create_task(self.check_events())
+
     async def delete_timer(self, timer_id: int, connection=None):
         """Deletes a timer.
 
@@ -1474,15 +1527,6 @@ class Timers(CogUtils):
             log.debug(f"{self.tag} Next timer was deleted, restarting task.")
             self.timers_task.cancel()
             self.timers_task = self.bot.loop.create_task(self.check_timers())
-
-    def event_time_changed(self, event: Event):
-        if (event.start-dt.datetime.now(event.start.tzinfo)) <= dt.timedelta(days=40):  # 40 days
-            self._event_available.set()
-
-        if self._next_event and event.start - FIRST_NOTIFICATION < self._next_event.notification:
-            log.debug(f"{self.tag} New event's newer than current one, restarting task.")
-            self.events_announce_task.cancel()
-            self.events_announce_task = self.bot.loop.create_task(self.check_events())
 
     async def get_next_timer(self, connection=None, days=7) -> Optional[Timer]:
         """Gets the first upcoming timer, if any."""
@@ -1496,7 +1540,7 @@ class Timers(CogUtils):
         return timer
 
     async def get_next_event_notification(self, connection=None, days=7) -> Optional[Event]:
-        """Gets the first upcoming timer, if any."""
+        """Gets the first upcoming event, if any."""
         query = """SELECT *, 
                        CASE
                            WHEN reminder = 0 THEN start-$1::interval
@@ -1517,11 +1561,24 @@ class Timers(CogUtils):
             return event
         return None
 
-    async def notify_subscribers(self, event: Event, content, *, embed: discord.Embed = None, skip_creator=False):
+    @classmethod
+    async def get_editable_event(cls, ctx: NabCtx, event_id) -> Event:
+        """Gets an events by its ID and checks if the event can be edited by the author."""
+        event = await Event.get_by_id(ctx.pool, event_id, True)
+        if event is None:
+            raise errors.NabError("There's no active event with that id.")
+        if event.user_id != ctx.author.id and not checks.is_owner(ctx):
+            raise errors.NabError("You can only edit your own events.")
+        if event.server_id != ctx.guild.id:
+            raise errors.NabError("That event is not from this server.")
+        return event
+
+    async def notify_subscribers(self, event: Event, content, *, embed: discord.Embed = None, include_owner=False):
         """Sends a message to all users subscribed to an event"""
-        for subscriber in event.subscribers:
-            if subscriber == event.user_id and skip_creator:
-                continue
+        subscribers = event.subscribers[:]
+        if include_owner:
+            subscribers.append(event.user_id)
+        for subscriber in subscribers:
             member = self.bot.get_user(subscriber)
             if member is None:
                 continue
@@ -1531,16 +1588,32 @@ class Timers(CogUtils):
             except discord.HTTPException:
                 log.debug(f"{self.tag} Could not send event notification | Event: {event.id} | User: {member.id}")
 
-    @classmethod
-    async def get_editable_event(cls, ctx: NabCtx, event_id) -> Event:
-        event = await Event.get_by_id(ctx.pool, event_id, True)
-        if event is None:
-            raise errors.NabError("There's no active event with that id.")
-        if event.user_id != ctx.author.id and not checks.is_owner(ctx):
-            raise errors.NabError("You can only edit your own events.")
-        if event.server_id != ctx.guild.id:
-            raise errors.NabError("That event is not from this server.")
-        return event
+    async def run_event(self, event: Event):
+        """Runs an event notification.
+
+        The announcing of the event is dispatched to make this as quick as possible and avoid delaying the task"""
+        log.debug(f"{self.tag} Running event notification: {event}")
+        reminder = event.reminder
+        await event.edit_reminder(self.bot.pool, event.reminder + 1)
+        self.bot.dispatch("event_notification", event, reminder)
+
+    async def run_timer(self, timer, short=False):
+        """Dispatches an event for the timer."""
+        if not short:
+            query = "DELETE FROM timer WHERE id=$1;"
+            await self.bot.pool.execute(query, timer.id)
+        log.debug(f"{self.tag} Executing timer {timer}")
+        if timer.type == ReminderType.CUSTOM:
+            self.bot.dispatch("custom_timer_complete", timer)
+        if timer.type == ReminderType.BOSS:
+            self.bot.dispatch("boss_timer_complete", timer)
+
+    async def run_short_timer(self, seconds, timer: Timer):
+        """For short timers, waits for the timer to be ready."""
+        await asyncio.sleep(seconds)
+        await self.run_timer(timer, True)
+
+    # endregion
 
     def __unload(self):
         log.info(f"{self.tag} Unloading cog")

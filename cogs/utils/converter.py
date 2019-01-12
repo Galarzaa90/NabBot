@@ -65,8 +65,8 @@ class TimeString:
         if self.seconds < 0:
             raise BadTime("I can't go back in time.")
 
-        if self.seconds > (60*60*24*30):
-            raise BadTime("That's a bit too far in the future... Try less than 30 days.")
+        if self.seconds > (60*60*24*60):
+            raise BadTime("That's a bit too far in the future... Try less than 60 days.")
 
 
 stamina_pattern = re.compile(r"(\d{1,2}):(\d{1,2})")
