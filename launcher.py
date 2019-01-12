@@ -15,11 +15,9 @@ logging.logThreads = 0
 logging.logProcesses = 0
 logging._srcfile = None
 logging_formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s')
-# Save log to file (info level)
 file_handler = TimedRotatingFileHandler('logs/nabbot', when='midnight')
 file_handler.suffix = "%Y_%m_%d.log"
 file_handler.setFormatter(logging_formatter)
-# Print output to console too (debug level)
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(logging_formatter)
 
@@ -104,11 +102,15 @@ def run_bot():
 
 @click.group(invoke_without_command=True, options_metavar='[options]')
 @click.option('--debug/--no-debug', default=False)
+@click.option('--quiet/--no-quiet', default=False)
 @click.pass_context
-def main(ctx, debug):
+def main(ctx, debug, quiet):
     """Launches the bot."""
     if debug:
         log.setLevel(logging.DEBUG)
+    if quiet:
+        console_handler.setLevel(logging.WARNING)
+        print("Quiet mode enabled, only warnings and errors will be shown on console.")
     log.debug("Debug mode enabled.")
     if ctx.invoked_subcommand is None:
         run_bot()
