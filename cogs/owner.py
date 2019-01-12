@@ -117,20 +117,25 @@ class Owner(CogUtils):
             except discord.HTTPException:
                 pass
 
-            embed = discord.Embed(title="Evaluation Result")
-            embed.set_footer(text=f"Executed in {run_time*1000:,.2f} ms")
+            embed = discord.Embed(colour=discord.Colour.teal())
+            embed.set_footer(text=f"Executed in {run_time*1000:,.4f} ms")
             embed.set_author(name=ctx.author.name, icon_url=get_user_avatar(ctx.author))
-
-            if ret is None:
-                if value:
-                    embed.colour = discord.Colour.teal()
-                    embed.description = f'```py\n{value}\n```'
-                    await ctx.send(embed=embed)
-            else:
+            if ret is not None:
                 self._last_result = ret
-                embed.colour = discord.Colour.dark_teal()
-                embed.description = f'```py\n{value}{ret}\n```'
-                await ctx.send(embed=embed)
+
+            if ret is None and value:
+                embed.title = "Output"
+                embed.description = f'```py\n{value}\n```'
+            elif ret and value:
+                embed.title = "Output"
+                embed.description = f'```py\n{value}\n```'
+                embed.add_field(name=f"Result (Type: {type(ret).__name__})", value=f'```py\n{ret}\n```', inline=False)
+            elif ret and not value:
+                embed.title = f"Result (Type: {type(ret).__name__})"
+                embed.description = f'```py\n{ret}\n```'
+            else:
+                return
+            await ctx.send(embed=embed)
 
     @checks.owner_only()
     @commands.command(name="invalidworlds")

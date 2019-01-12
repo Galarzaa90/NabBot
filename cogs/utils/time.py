@@ -30,13 +30,17 @@ class HumanDelta:
                 continue
 
             if elem > 1:
-                output.append(f'{elem}{attr}')
+                output.append(f'{elem} {attr}')
             else:
-                output.append(f'{elem}{attr[:-1]}')
+                output.append(f'{elem} {attr[:-1]}')
 
         if not output:
             return "now"
-        return join_list(output[:min(max_attributes, len(output))], ", ", " and ")
+        content = join_list(output[:min(max_attributes, len(output))])
+        if self.negative:
+            return content + " ago"
+        else:
+            return "in " + content
 
     def short(self, max_attributes=0):
         if not max_attributes:
@@ -51,7 +55,11 @@ class HumanDelta:
 
         if not output:
             return "now"
-        return " ".join(output[:min(max_attributes, len(output))])
+        content = join_list(output[:min(max_attributes, len(output))])
+        if self.negative:
+            return content + " ago"
+        else:
+            return "in " + content
 
     @classmethod
     def from_seconds(cls, seconds: int):

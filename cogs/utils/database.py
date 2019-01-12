@@ -102,7 +102,7 @@ class DbChar(tibiapy.abc.BaseCharacter):
     """Represents a character from the database."""
 
     def __init__(self, **kwargs):
-        self.id: int = kwargs.get("id")
+        self.id: int = kwargs.get("id", 0)
         """The unique id of the character in the database."""
         self.name: str = kwargs.get("name")
         """The name of the character."""
@@ -121,6 +121,15 @@ class DbChar(tibiapy.abc.BaseCharacter):
 
     def __repr__(self):
         return f"<{self.__class__.__name__} id={self.id} user_id={self.user_id} name={self.name!r}, level={self.level}>"
+
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            # If any of them don't have an ID, we compare by name:
+            if not self.id or not other.id:
+                return self.name == other.name
+            return self.id == other.id
+        return False
+
 
     # region Instance methods
     async def get_deaths(self, conn: PoolConn):
@@ -281,10 +290,10 @@ class DbChar(tibiapy.abc.BaseCharacter):
         :param guild: The name of the guild the character belongs to.
         :return: The inserted entry.
         """
-        row_id = await conn.fetchval("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
-                                        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id""",
-                                     name, level*-1, vocation, user_id, world, guild)
-        return cls(id=row_id, name=name, level=level, vocation=vocation, user_id=user_id, world=world, guild=guild)
+        row = await conn.fetchrow("""INSERT INTO "character"(name, level, vocation, user_id, world, guild)
+                                     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id""",
+                                  name, level*-1, vocation, user_id, world, guild)
+        return cls(**row)
 
     @classmethod
     async def get_by_id(cls, conn: PoolConn, char_id: int) -> Optional['DbChar']:

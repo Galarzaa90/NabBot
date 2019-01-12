@@ -1,15 +1,16 @@
 import datetime as dt
 import logging
 import math
-import re
 
 import discord
 from discord.ext import commands
 
+from cogs.utils import config
 from nabbot import NabBot
+from .utils import tibia
 from .utils.context import NabCtx
 from .utils.converter import Stamina
-from .utils.tibia import get_character, get_stats, normalize_vocation
+from .utils.tibia import get_character, normalize_vocation
 
 log = logging.getLogger("nabbot")
 
@@ -39,6 +40,13 @@ UMP_PER_WEAPON = 610
 MANA_PER_WEAPON = UMP_PER_WEAPON*MANA_PER_UMP
 EXERCISE_WEAPON_GP = 262500
 EXERCISE_WEAPON_COIN = 25
+
+
+VOC_ITER = (
+    ("knight", config.knight_emoji),
+    ("paladin", config.paladin_emoji),
+    ("druid", config.druid_emoji+config.sorcerer_emoji)
+)
 
 
 class Calculators:
@@ -228,7 +236,7 @@ class Calculators:
         embed.timestamp = dt.datetime.utcnow() + dt.timedelta(seconds=resting_time)
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.group(usage="<level>,<vocation> | <character>", invoke_without_command=True, case_insensitive=True)
     async def stats(self, ctx: NabCtx, *, params: str):
         """Calculates character stats based on vocation and level.
 
@@ -245,17 +253,11 @@ class Calculators:
         params = params.split(",")
         char = None
         if len(params) == 1:
-            _digits = re.compile(r'\d')
-            if _digits.search(params[0]) is not None:
-                await ctx.send(invalid_arguments)
-                return
-            else:
-                char = await get_character(ctx.bot, params[0])
-                if char is None:
-                    await ctx.error(f"Character **{params[0]}** doesn't exist!")
-                    return
-                level = int(char.level)
-                vocation = char.vocation
+            char = await get_character(ctx.bot, params[0])
+            if char is None:
+                return await ctx.error(f"Character **{params[0]}** doesn't exist!")
+            level = char.level
+            vocation = char.vocation.value
         elif len(params) == 2:
             try:
                 level = int(params[0])
@@ -268,40 +270,59 @@ class Calculators:
                     await ctx.send(invalid_arguments)
                     return
         else:
-            await ctx.send(invalid_arguments)
-            return
+            return await ctx.error(invalid_arguments)
         if level <= 0:
-            await ctx.send("Not even *you* can go down so low!")
-            return
-        if level >= 2000:
-            await ctx.send("Why do you care? You will __**never**__ reach this level " + str(chr(0x1f644)))
-            return
-        try:
-            stats = get_stats(level, vocation)
-        except ValueError as e:
-            await ctx.send(e)
-            return
+            return await ctx.error("There's no level lower than 1, it doesn't matter how bad you are at Tibia.")
+        if level >= 5000:
+            return await ctx.error("Why do you care? You will __**never**__ reach this level 🙄")
 
-        if stats["vocation"] == "no vocation":
-            stats["vocation"] = "with no vocation"
+        _vocation = normalize_vocation(vocation)
+        if _vocation is None:
+            return await ctx.error(f"That's not a valid vocation.")
+        vocation = _vocation
+
+        hp = tibia.get_hitpoints(level, vocation)
+        mp = tibia.get_mana(level, vocation)
+        cap = tibia.get_capacity(level, vocation)
+        exp = tibia.get_experience_for_level(level)
+        exp_tnl = tibia.get_experience_for_next_level(level)
+
+        if vocation == "none":
+            vocation = "with no vocation"
         if char:
-            await ctx.send("**{5}** is a level **{0}** {1}, {6} has:"
-                           "\n\t**{2:,}** HP"
-                           "\n\t**{3:,}** MP"
-                           "\n\t**{4:,}** Capacity"
-                           "\n\t**{7:,}** Total experience"
-                           "\n\t**{8:,}** to next level"
-                           .format(level, char.vocation.lower(), stats["hp"], stats["mp"], stats["cap"],
-                                   char.name, char.he_she.lower(), stats["exp"], stats["exp_tnl"]))
+            content = f"**{char.name}** is a level **{char.level}** {vocation.lower()}, {char.he_she.lower()} has:"
         else:
-            await ctx.send("A level **{0}** {1} has:"
-                           "\n\t**{2:,}** HP"
-                           "\n\t**{3:,}** MP"
-                           "\n\t**{4:,}** Capacity"
-                           "\n\t**{5:,}** Experience"
-                           "\n\t**{6:,}** to next level"
-                           .format(level, stats["vocation"], stats["hp"], stats["mp"], stats["cap"],
-                                   stats["exp"], stats["exp_tnl"]))
+            content = f"A level **{level}** {normalize_vocation(vocation)}, has:"
+        content += f"\n\t🔴 **{hp:,}** HP | 🔵 **{mp:,}** MP | ⚖ **{cap:,}** Capacity\n\t" \
+            f"**{exp:,}** Experience\n\t**{exp_tnl:,}** to next level"
+        await ctx.send(content)
+
+    @stats.command(name="hitpoints", aliases=["hp"])
+    async def stats_hitpoints(self, ctx: NabCtx, hitpoints: int):
+        """Calculates the level required to reach the specified hitpoints.
+
+        The levels needed for each vocation are shown."""
+        content = f"To reach **{hitpoints:,}** hitpoints, you need at least the following levels per vocation:\n\t"
+        content += " | ".join(f"**{tibia.get_level_by_hitpoints(hitpoints,voc)}** {emoji}" for (voc, emoji) in VOC_ITER)
+        await ctx.send(content)
+
+    @stats.command(name="capacity", aliases=["cap"])
+    async def stats_capacity(self, ctx: NabCtx, capacity: int):
+        """Calculates the level required to reach the specified capacity.
+
+        The levels needed for each vocation are shown."""
+        content = f"To reach **{capacity:,}** oz. capacity, you need at least the following levels per vocation:\n\t"
+        content += " | ".join(f"**{tibia.get_level_by_capacity(capacity,voc)}** {emoji}" for (voc, emoji) in VOC_ITER)
+        await ctx.send(content)
+
+    @stats.command(name="mana", aliases=["mp"])
+    async def stats_mana(self, ctx: NabCtx, mana: int):
+        """Calculates the level required to reach the specified mana points.
+
+        The levels needed for each vocation are shown."""
+        content = f"To reach **{mana:,}** mana points, you need at least the following levels per vocation:\n\t"
+        content += " | ".join(f"**{tibia.get_level_by_mana(mana,voc)}** {emoji}" for (voc, emoji) in VOC_ITER)
+        await ctx.send(content)
 
     @classmethod
     def magic_formula(cls, factor, skill):

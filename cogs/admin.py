@@ -89,8 +89,7 @@ class Admin:
                 ok = False
                 perm_name = k.replace("_", " ").title()
                 icon = ctx.tick(False) if level == "error" else config.warn_emoji
-                content += f"\nMissing `{perm_name}` permission"
-                content += f"\n\t{icon} {explain}"
+                content += f"\nMissing `{perm_name}` permission\n\t{icon} {explain}"
         if ok:
             content += f"\n{ctx.tick(True)} All permissions are correct!"
         await ctx.send(content)
