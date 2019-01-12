@@ -19,7 +19,7 @@ from .utils.context import NabCtx
 from .utils.database import DbChar, DbDeath, DbLevelUp, get_affected_count, get_server_property
 from .utils.errors import CannotPaginate, NetworkError
 from .utils.messages import death_messages_monster, death_messages_player, format_message, level_messages, \
-    split_message, weighed_choice, MessageCondition, DeathMessageCondition, LevelCondition
+    split_message, weighed_choice, DeathMessageCondition, LevelCondition
 from .utils.pages import Pages, VocationPages
 from .utils.tibia import HIGHSCORE_CATEGORIES, NabChar, get_character, get_current_server_save_time, get_guild, \
     get_highscores, get_share_range, get_voc_abb, get_voc_emoji, get_world, tibia_worlds, normalize_vocation
@@ -34,6 +34,19 @@ class CharactersResult(NamedTuple):
     different_user: List[DbChar]
     new: List[NabChar]
     all_skipped: bool
+
+
+class Watchlist:
+    def __init__(self):
+        self.content = ""
+        self.online_characters = []
+        self.online_guild_members = dict()
+        self.online_count = 0
+        self.description = ""
+
+    @staticmethod
+    def sort_by_voc_and_level():
+        return lambda char: (normalize_vocation(char.vocation), -char.level)
 
 
 class Tracking(CogUtils):
@@ -272,101 +285,122 @@ class Tracking(CogUtils):
         # Schedule Scan Deaths task for this world
         if scanned_world.name not in self.world_tasks:
             self.world_tasks[scanned_world.name] = self.bot.loop.create_task(self.scan_deaths(scanned_world.name))
+
+        await self._run_watchlist(_get_guild, scanned_world)
+
+    async def _run_watchlist(self, _get_guild, scanned_world):
         query = """SELECT t0.server_id, channel_id, message_id FROM watchlist t0
                    LEFT JOIN server_property t1 ON t1.server_id = t0.server_id AND key = 'world'
                    WHERE value ? $1"""
         rows = await self.bot.pool.fetch(query, scanned_world.name)
-        for guild_id, watchlist_channel_id, watchlist_message_id in rows:
+        for guild_id, watchlist_channel_id, watchlist_msg_id in rows:
             log.debug(f"{self.tag}[{scanned_world.name}] Checking entries for watchlist"
                       f" (Guild ID: {guild_id}, Channel ID: {watchlist_channel_id}, World: {scanned_world.name})")
             guild: discord.Guild = self.bot.get_guild(guild_id)
             if guild is None:
                 await asyncio.sleep(0.01)
                 continue
-            watchlist_channel: discord.TextChannel = guild.get_channel(watchlist_channel_id)
-            if watchlist_channel is None:
+            discord_channel: discord.TextChannel = guild.get_channel(watchlist_channel_id)
+            if discord_channel is None:
                 await asyncio.sleep(0.1)
                 continue
-            entries = await self.bot.pool.fetch("""SELECT name, is_guild FROM watchlist_entry WHERE channel_id = $1
-                                                   ORDER BY is_guild, name""", watchlist_channel_id)
-            if not entries:
+            watched_entries = await self.bot.pool.fetch("""SELECT name, is_guild FROM watchlist_entry 
+                                                WHERE channel_id = $1 ORDER BY is_guild, name""", watchlist_channel_id)
+            if not watched_entries:
                 await asyncio.sleep(0.1)
                 continue
-            # Online watched characters
-            currently_online = []
-            # Watched guilds
-            guild_online = dict()
-            for watched in entries:
-                if watched["is_guild"]:
-                    try:
-                        tibia_guild = await _get_guild(watched["name"])
-                    except NetworkError:
-                        continue
-                    # If the guild doesn't exist, add it as empty to show it was disbanded
-                    if tibia_guild is None:
-                        guild_online[watched["name"]] = None
-                        continue
-                    # If there's at least one member online, add guild to list
-                    if tibia_guild.online_count:
-                        guild_online[tibia_guild.name] = tibia_guild.online_members
-                # If it is a character, check if he's in the online list
-                for online_char in scanned_world.online_players:
-                    if online_char.name == watched["name"]:
-                        # Add to online list
-                        currently_online.append(online_char)
-            # We try to get the watched message, if the bot can't find it, we just create a new one
-            # This may be because the old message was deleted or this is the first time the list is checked
-            try:
-                watchlist_message = await watchlist_channel.get_message(watchlist_message_id)
-            except discord.HTTPException:
-                watchlist_message = None
-            currently_online.sort(key=self._sort_by_voc_and_level())
-            items = self.get_watchlist_msg_entries(currently_online)
-            online_count = len(items)
-            if len(items) > 0 or len(guild_online.keys()) > 0:
-                description = ""
-                content = "\n".join(items)
-                for tibia_guild, members in guild_online.items():
-                    content += f"\nGuild: **{tibia_guild}**\n"
-                    if members is None:
-                        content += "\t*Guild was disbanded.*"
-                        continue
-                    members.sort(key=self._sort_by_voc_and_level())
-                    content += "\n".join(self.get_watchlist_msg_entries(members))
-                    online_count += len(members)
+            watchlist = Watchlist()
+            await self._watchlist_scan_entries(_get_guild, watchlist, scanned_world, watched_entries)
+            msg_entries = self._watchlist_get_msg_entries(watchlist.online_characters)
+            watchlist.online_count = len(msg_entries)
+            await self._watchlist_build_content(msg_entries, watchlist)
+            await self._watchlist_send_embed_msg(watchlist, discord_channel, watchlist_channel_id, watchlist_msg_id)
+
+    async def _watchlist_scan_entries(self, _get_guild, watchlist, scanned_world, watched_entries):
+        for watched in watched_entries:
+            if watched["is_guild"]:
+                await self._watchlist_add_guild(_get_guild, watchlist, watched)
+            # If it is a character, check if he's in the online list
             else:
-                description = "There are no watched characters online."
-                content = ""
-            # Send new watched message or edit last one
-            embed = discord.Embed(description=description)
-            embed.set_footer(text="Last updated")
-            embed.timestamp = dt.datetime.utcnow()
-            if content:
-                if len(content) >= EMBED_LIMIT - 50:
-                    content = split_message(content, EMBED_LIMIT - 50)[0]
-                    content += "\n*And more...*"
-                fields = split_message(content, FIELD_VALUE_LIMIT)
-                for s, split_field in enumerate(fields):
-                    name = "Watched List" if s == 0 else "\u200F"
-                    embed.add_field(name=name, value=split_field, inline=False)
-            try:
-                if watchlist_message is None:
-                    new_message = await watchlist_channel.send(embed=embed)
-                    await self.bot.pool.execute("""UPDATE watchlist SET message_id = $1 WHERE channel_id = $2""",
-                                                new_message.id, watchlist_channel_id)
-                else:
-                    await watchlist_message.edit(embed=embed)
-                await watchlist_channel.edit(name=f"{watchlist_channel.name.split('·', 1)[0]}·{online_count}")
-            except discord.HTTPException:
-                pass
+                self._watchlist_add_characters(watchlist, scanned_world, watched)
+        watchlist.online_characters.sort(key=Watchlist.sort_by_voc_and_level())
 
     @staticmethod
-    def _sort_by_voc_and_level():
-        return lambda char: (normalize_vocation(char.vocation), -char.level)
+    async def _watchlist_add_guild(_get_guild, watchlist, watched):
+        try:
+            tibia_guild = await _get_guild(watched["name"])
+        except NetworkError:
+            return
+        # If the guild doesn't exist, add it as empty to show it was disbanded
+        if tibia_guild is None:
+            watchlist.online_guild_members[watched["name"]] = None
+            return
+        # If there's at least one member online, add guild to list
+        if tibia_guild.online_count:
+            watchlist.online_guild_members[tibia_guild.name] = tibia_guild.online_members
 
     @staticmethod
-    def get_watchlist_msg_entries(characters):
+    def _watchlist_add_characters(watchlist, scanned_world, watched):
+        for online_char in scanned_world.online_players:
+            if online_char.name == watched["name"]:
+                # Add to online list
+                watchlist.online_characters.append(online_char)
+
+    @staticmethod
+    def _watchlist_get_msg_entries(characters):
         return [f"\t{char.name} - Level {char.level} {get_voc_emoji(char.vocation)}" for char in characters]
+
+    async def _watchlist_build_content(self, msg_entries, watchlist):
+        if watchlist.online_count > 0 or len(watchlist.online_guild_members.keys()) > 0:
+            watchlist.content = "\n".join(msg_entries)
+            self._watchlist_build_guild_content(watchlist)
+        else:
+            watchlist.description = "There are no watched characters online."
+
+    def _watchlist_build_guild_content(self, watchlist):
+        for tibia_guild, members in watchlist.online_guild_members.items():
+            watchlist.content += f"\nGuild: **{tibia_guild}**\n"
+            if members is None:
+                watchlist += "\t*Guild was disbanded.*"
+                continue
+            members.sort(key=Watchlist.sort_by_voc_and_level())
+            watchlist.content += "\n".join(self._watchlist_get_msg_entries(members))
+            watchlist.online_count += len(members)
+
+    async def _watchlist_send_embed_msg(self, watchlist, discord_channel, watchlist_channel_id, watchlist_msg_id):
+        # Send new watched message or edit last one
+        embed = discord.Embed(description=watchlist.description)
+        embed.set_footer(text="Last updated")
+        embed.timestamp = dt.datetime.utcnow()
+        if watchlist.content:
+            if len(watchlist.content) >= EMBED_LIMIT - 50:
+                content = split_message(watchlist.content, EMBED_LIMIT - 50)[0]
+                content += "\n*And more...*"
+            fields = split_message(watchlist.content, FIELD_VALUE_LIMIT)
+            for s, split_field in enumerate(fields):
+                name = "Watched List" if s == 0 else "\u200F"
+                embed.add_field(name=name, value=split_field, inline=False)
+        discord_message = await self._watchlist_get_discord_message(discord_channel, watchlist_msg_id)
+        try:
+            if discord_message is None:
+                new_message = await discord_channel.send(embed=embed)
+                await self.bot.pool.execute("""UPDATE watchlist SET message_id = $1 WHERE channel_id = $2""",
+                                            new_message.id, watchlist_channel_id)
+            else:
+                await discord_message.edit(embed=embed)
+            await discord_channel.edit(name=f"{discord_channel.name.split('·', 1)[0]}·{watchlist.online_count}")
+        except discord.HTTPException:
+            pass
+
+    @staticmethod
+    async def _watchlist_get_discord_message(watchlist_channel, watchlist_message_id):
+        # We try to get the watched message, if the bot can't find it, we just create a new one
+        # This may be because the old message was deleted or this is the first time the list is checked
+        try:
+            watchlist_message = await watchlist_channel.get_message(watchlist_message_id)
+        except discord.HTTPException:
+            watchlist_message = None
+        return watchlist_message
 
     # endregion
 
