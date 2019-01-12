@@ -36,7 +36,11 @@ class HumanDelta:
 
         if not output:
             return "now"
-        return join_list(output[:min(max_attributes, len(output))])
+        content = join_list(output[:min(max_attributes, len(output))])
+        if self.negative:
+            return content + " ago"
+        else:
+            return "in " + content
 
     def short(self, max_attributes=0):
         if not max_attributes:
@@ -51,7 +55,11 @@ class HumanDelta:
 
         if not output:
             return "now"
-        return " ".join(output[:min(max_attributes, len(output))])
+        content = join_list(output[:min(max_attributes, len(output))])
+        if self.negative:
+            return content + " ago"
+        else:
+            return "in " + content
 
     @classmethod
     def from_seconds(cls, seconds: int):
