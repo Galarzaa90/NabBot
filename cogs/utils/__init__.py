@@ -1,8 +1,6 @@
 import datetime as dt
 import io
 import re
-import time
-from calendar import timegm
 from typing import List, Optional, Tuple, Union, Dict
 
 import discord
@@ -100,18 +98,6 @@ def get_region_string(region: discord.VoiceRegion) -> str:
                "vip-amsterdam": "🇳🇱Amsterdam (VIP)",
                }
     return regions.get(str(region), str(region))
-
-
-def get_local_timezone() -> int:
-    """Returns the server's local time zone
-
-    :return: The UTC offset of the host's timezone.
-    """
-    # Getting local time and GMT
-    t = time.localtime()
-    u = time.gmtime(time.mktime(t))
-    # UTC Offset
-    return (timegm(t) - timegm(u)) / 60 / 60
 
 
 def most_frequent_color(image: Union[Image.Image, bytes]) -> Tuple[int, int, int]:

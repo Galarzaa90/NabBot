@@ -1,4 +1,6 @@
 import datetime as dt
+import time
+from calendar import timegm
 
 from cogs.utils import join_list
 
@@ -81,3 +83,14 @@ class HumanDelta:
         return f"{sign}<{self.__class__.__name__ } {', '.join(attrs)}>"
 
 
+
+def get_local_timezone() -> int:
+    """Returns the server's local time zone
+
+    :return: The UTC offset of the host's timezone.
+    """
+    # Getting local time and GMT
+    t = time.localtime()
+    u = time.gmtime(time.mktime(t))
+    # UTC Offset
+    return (timegm(t) - timegm(u)) / 60 / 60

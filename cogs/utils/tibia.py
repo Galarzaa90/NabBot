@@ -9,15 +9,16 @@ import urllib.parse
 from html.parser import HTMLParser
 from typing import Dict, List, Optional, Union
 
-import PIL
 import aiohttp
 import bs4
 import cachetools
 import tibiapy
+from PIL import Image, ImageDraw
 from tibiapy import Category, Character, Guild, Highscores, House, ListedWorld, OnlineCharacter, Sex, Vocation, \
     VocationFilter, World
 
-from . import config, errors, get_local_timezone, online_characters
+from cogs.utils.time import get_local_timezone
+from . import config, errors, online_characters
 from .database import DbChar, wiki_db
 
 log = logging.getLogger("nabbot")
@@ -807,11 +808,11 @@ def get_map_area(x, y, z, size=15, scale=8, crosshair=True, client_coordinates=T
     c.execute("SELECT * FROM m"
               "ap WHERE z LIKE ?", (z,))
     result = c.fetchone()
-    im = PIL.Image.open(io.BytesIO(bytearray(result['image'])))
+    im = Image.open(io.BytesIO(bytearray(result['image'])))
     im = im.crop((x - size, y - size, x + size, y + size))
     im = im.resize((size * scale, size * scale))
     if crosshair:
-        draw = PIL.ImageDraw.Draw(im)
+        draw = ImageDraw.Draw(im)
         width, height = im.size
         draw.line((0, height / 2, width, height / 2), fill=128)
         draw.line((width / 2, 0, width / 2, height), fill=128)
