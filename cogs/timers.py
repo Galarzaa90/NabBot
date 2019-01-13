@@ -1353,8 +1353,7 @@ class Timers(CogUtils):
                     await creator.send(f"Your event **{event.name}** was deleted by {ctx.author.mention}.")
                 except discord.HTTPException:
                     pass
-        await self.notify_subscribers(event, f"The event **{event.name}** was deleted by {ctx.author.mention}.",
-                                      skip_creator=True)
+        await self.notify_subscribers(event, f"The event **{event.name}** was deleted by {ctx.author.mention}.")
 
     @commands.guild_only()
     @events.command(name="removeplayer", aliases=["removechar"])
@@ -1395,7 +1394,7 @@ class Timers(CogUtils):
         event = await Event.get_by_id(ctx.pool, event_id, True)
         if event is None:
             return await ctx.error(f"There's no active event with that id.")
-        if ctx.author.id in event.subscribers:
+        if ctx.author.id in event.subscribers or ctx.author.id == event.user_id:
             return await ctx.error(f"You're already subscribed to this event.")
         message = await ctx.send(f"Do you want to subscribe to **{event.name}**")
         confirm = await ctx.react_confirm(message)
@@ -1416,18 +1415,17 @@ class Timers(CogUtils):
         """Unsubscribe to an event."""
         event = await Event.get_by_id(ctx.pool, event_id, True)
         if event is None:
-            await ctx.error(f"There's no active event with that id.")
-            return
+            return await ctx.error("There's no active event with that id.")
+        if ctx.author.id == event.user_id:
+            return await ctx.error("You can't unsubscribe from your own event.")
         if ctx.author.id not in event.subscribers:
             return await ctx.error("You are not subscribed to this event.")
         message = await ctx.send(f"Do you want to unsubscribe to **{event.name}**")
         confirm = await ctx.react_confirm(message)
         if confirm is None:
-            await ctx.send("You took too long!")
-            return
+            return await ctx.send("You took too long!")
         if not confirm:
-            await ctx.send("Ok then.")
-            return
+            return await ctx.send("Ok then.")
 
         await event.remove_subscriber(ctx.pool, ctx.author)
         await ctx.success(f"You have unsubscribed from this event.")

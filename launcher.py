@@ -153,7 +153,7 @@ def migrate(path):
     This is a time consuming operation and caution must be taken.
     The original SQLite file is not affected."""
     loop = asyncio.get_event_loop()
-    pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
+    pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=240))
     if pool is None:
         log.error('Could not set up PostgreSQL. Exiting.')
         return
