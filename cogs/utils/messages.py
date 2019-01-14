@@ -360,7 +360,7 @@ def weighed_choice(choices, condition: MessageCondition) -> str:
     return _messages[0][1]
 
 
-def split_message(message: str, limit: int=2000):
+def split_message(message: str, limit: int = 2000):
     """Splits a message into a list of messages if it exceeds limit.
 
     Messages are only split at new lines.

@@ -107,7 +107,8 @@ class Calculators:
         await ctx.send(embed=embed)
 
     @commands.command(usage="<current> <percentage> <target> <vocation> [loyalty]")
-    async def magiclevel(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str, loyalty: int = 0):
+    async def magiclevel(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str,
+                         loyalty: int = 0):
         """Calculates the training time required to reach a target skill level.
 
         This only applies to axe, club and sword fighting."""

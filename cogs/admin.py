@@ -602,8 +602,8 @@ class Admin:
         embed.add_field(name="📝 Edit", inline=False,
                         value=f"`{ctx.clean_prefix}{ctx.command.full_parent_name} {ctx.invoked_with} [{edit_params}]`")
         embed.add_field(name="☑ Accepted values", value=accepted_values, inline=False)
-        embed.set_footer(text=f'Use "{ctx.clean_prefix}help {ctx.command.full_parent_name} {ctx.invoked_with}" '
-            f'for more info')
+        embed.set_footer(text=f'Use "{ctx.clean_prefix}help {ctx.command.full_parent_name} {ctx.invoked_with} '
+             f'for more info')
         await ctx.send(embed=embed)
 
 

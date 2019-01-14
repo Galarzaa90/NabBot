@@ -10,7 +10,7 @@ from nabbot import NabBot
 from . import config
 from .context import NabCtx
 from .errors import CannotPaginate
-from .tibia import DRUID, KNIGHT, PALADIN, SORCERER, normalize_vocation
+from .tibia import normalize_vocation
 
 
 class Pages:
@@ -312,6 +312,7 @@ class HelpPaginator(Pages):
         super().__init__(ctx, entries=entries, per_page=per_page)
         self.reaction_emojis.append(('\N{WHITE QUESTION MARK ORNAMENT}', self.show_bot_help))
         self.total = len(entries)
+        self.prefix = None
 
     @classmethod
     async def from_cog(cls, ctx, cog):

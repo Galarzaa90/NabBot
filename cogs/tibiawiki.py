@@ -67,7 +67,7 @@ class TibiaWiki:
 
     @checks.can_embed()
     @commands.command(usage="[class]")
-    async def bestiary(self, ctx: NabCtx, *, _class: str=None):
+    async def bestiary(self, ctx: NabCtx, *, _class: str = None):
         """Displays a category's creatures or all the categories.
 
         If a category is specified, it will list all the creatures that belong to the category and their level.
@@ -95,7 +95,7 @@ class TibiaWiki:
 
     @checks.can_embed()
     @commands.command(aliases=["charms"])
-    async def charm(self, ctx: NabCtx, name: str=None):
+    async def charm(self, ctx: NabCtx, name: str = None):
         """If no name is specified, displays a list of all charms for the user to choose from.
         If name is given and valid, or if one is chosen from the list, displays detailed information about it."""
         if name is None:
@@ -523,7 +523,6 @@ class TibiaWiki:
         """Gets the item embed to show in /item command"""
         embed = cls.get_base_embed(imbuement)
         embed.add_field(name="Effect", value=imbuement.effect)
-        materials = ""
         if not prices:
             embed.set_footer(text=f"Provide material prices to calculate costs."
                                   f" More info: {ctx.clean_prefix}help {ctx.invoked_with}")
@@ -1001,8 +1000,6 @@ class TibiaWiki:
 
     # endregion
 
-
-
     @classmethod
     async def get_spell_embed(cls, ctx: NabCtx, spell: models.Spell, long):
         """Gets the embed to show in /spell command"""
@@ -1066,7 +1063,8 @@ class TibiaWiki:
         return embed
 
     @classmethod
-    async def get_spell_embed_parse_teachers(cls, embed, teachers: List[models.NpcSpell], long, short_limit, voc_list, vocs):
+    async def get_spell_embed_parse_teachers(cls, embed, teachers: List[models.NpcSpell], long, short_limit, voc_list,
+                                             vocs):
         if not teachers:
             return False
         too_long = False

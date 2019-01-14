@@ -38,7 +38,7 @@ class Owner(CogUtils):
     # region Commands
     @commands.command(aliases=["notifyadmins"])
     @checks.owner_only()
-    async def admins_message(self, ctx: NabCtx, *, content: str=None):
+    async def admins_message(self, ctx: NabCtx, *, content: str = None):
         """Sends a private message to all server owners.
 
         Notifies all the owners of the servers where the bot is in.
@@ -441,6 +441,7 @@ class Owner(CogUtils):
             except asyncio.TimeoutError:
                 await ctx.send('Exiting REPL session.')
                 self.sessions.remove(ctx.channel.id)
+                break
 
             cleaned = self.cleanup_code(response.content)
 
@@ -516,12 +517,12 @@ class Owner(CogUtils):
             try:
                 start = time.perf_counter()
                 results = await conn.fetch(query)
-                dt = (time.perf_counter() - start) * 1000.0
+                delta = (time.perf_counter() - start) * 1000.0
             except asyncpg.PostgresError as e:
                 return await ctx.send(f'```py\n{e.__class__.__name__}: {e}\n```')
         rows = len(results)
         if rows == 0:
-            return await ctx.send(f'`{dt:.2f}ms: {results}`')
+            return await ctx.send(f'`{delta:.2f}ms: {results}`')
 
         headers = list(results[0].keys())
         table = TabularData()

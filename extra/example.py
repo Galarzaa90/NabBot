@@ -39,9 +39,9 @@ class Example:
         output += f"\n```py\nself.bot.get_member({ctx.author.id})\n> {member}```"
 
         output += "\nUsing methods from `utils/tibia.py`:"
-        range = get_share_range(300)
+        share_range = get_share_range(300)
         output += f"\n```py\nfrom utils.tibia import get_share_range\nget_share_range(300)" \
-                  f"\n> {range!r}```"
+                  f"\n> {share_range!r}```"
 
         output += "\nUsing values from `utils/config.py` (values in `config.yml`):"
         prefixes = config.command_prefix

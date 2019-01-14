@@ -476,7 +476,7 @@ class Timers(CogUtils):
         if announce_channel is not None:
             try:
                 await announce_channel.send(message)
-            except discord.HTTPException as e:
+            except discord.HTTPException:
                 log.debug(f"{self.tag} Could not send event event notification "
                           f"| Channel {announce_channel.id} | Server {announce_channel.guild.id}")
         await self.notify_subscribers(event, message)
@@ -873,7 +873,7 @@ class Timers(CogUtils):
                 except discord.HTTPException:
                     pass
         await self.notify_subscribers(event, f"The description of event **{event.name}** was changed.",
-                                      embed=embed, skip_creator=True)
+                                      embed=embed)
 
     @commands.guild_only()
     @event_edit.command(name="joinable", aliases=["open"], usage="<id> [yes/no]")
@@ -1004,7 +1004,7 @@ class Timers(CogUtils):
             await ctx.send("Alright, slots remain unchanged.")
             return
 
-        await event.edit_slots(slots)
+        await event.edit_slots(ctx.pool, slots)
 
         if event.user_id == ctx.author.id:
             await ctx.success(f"Your event slots were changed to **{slots}**.")
@@ -1059,7 +1059,7 @@ class Timers(CogUtils):
             await ctx.send("Alright, event remains the same.")
             return
 
-        await Event.edit_start(ctx.pool, new_time)
+        await event.edit_start(ctx.pool, new_time)
 
         if event.user_id == ctx.author.id:
             await ctx.success(f"Your event's start time was changed successfully to **{starts_in.original}**.")
@@ -1069,8 +1069,7 @@ class Timers(CogUtils):
             if creator is not None:
                 await creator.send(f"The start time of your event **{event.name}** was changed to "
                                    f"**{starts_in.original}** by {ctx.author.mention}.")
-        await self.notify_subscribers(event, f"The start time of **{event.name}** was changed:", embed=embed,
-                                      skip_creator=True)
+        await self.notify_subscribers(event, f"The start time of **{event.name}** was changed:", embed=embed)
         self.event_time_changed(event)
 
     @commands.guild_only()
@@ -1258,7 +1257,6 @@ class Timers(CogUtils):
             confirm = await ctx.react_confirm(msg, timeout=60, )
             if confirm is None:
                 await ctx.send(f"Where did you go {ctx.author.mention}? Ok, event making cancelled.")
-                cancel = True
                 return
             if confirm is False:
                 await msg.delete()

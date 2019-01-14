@@ -29,7 +29,7 @@ class Core(CogUtils):
 
         A random status is selected every 20 minutes.
         """
-        tag = "[game_update]"
+        tag = f"{self.tag}[game_update]"
         # Entries are prefixed with "Playing "
         # Entries starting with "w:" are prefixed with "Watching "
         # Entries starting with "l:" are prefixed with "Listening to "
@@ -46,7 +46,7 @@ class Core(CogUtils):
             "l:the voices in my head", "l:your breath", "l:the screams", "complaints"
         ]
         await self.bot.wait_until_ready()
-        log.info(f"{tag} Task Started")
+        log.info(f"{tag} Task started")
         while not self.bot.is_closed():
             try:
                 if random.randint(0, 9) >= 7:
@@ -125,15 +125,16 @@ class Core(CogUtils):
         """Called when the bot joins a guild (server)."""
         log.info(f"{self.tag} Bot added | Guild {guild} ({guild.id})")
         message = f"**I've been added to this server.**\n" \
-                  f"Some things you should know:\n" \
-                  f"‣ My command prefix is: `{config.command_prefix[0]}` (it is customizable)\n" \
-                  f"‣ You can see all my commands with: `{config.command_prefix[0]}help` or " \
-                  f"`{config.command_prefix[0]}commands`\n" \
-                  f"‣ You can configure me using: `{config.command_prefix[0]}settings`\n" \
-                  f"‣ You can set a world for me to track by using `{config.command_prefix[0]}settings world`\n" \
-                  f"‣ If you want a logging channel, create a channel named `{config.log_channel_name}`\n" \
-                  f"‣ If you need help, join my support server: **<https://support.nabbot.xyz>**\n" \
-                  f"‣ For more information and links in: `{config.command_prefix[0]}about`"
+            f"Some things you should know:\n" \
+            f"‣ My command prefix is: `{config.command_prefix[0]}` (it is customizable)\n" \
+            f"‣ You can see all my commands with: `{config.command_prefix[0]}help` or " \
+            f"`{config.command_prefix[0]}commands`\n" \
+            f"‣ You can configure me using: `{config.command_prefix[0]}settings`\n" \
+            f"‣ You can set a world for me to track by using `{config.command_prefix[0]}settings world`\n" \
+            f"‣ If you want a logging channel, create a channel named `{config.log_channel_name}`\n" \
+            f"‣ If you need help, join my support server: **<https://support.nabbot.xyz>**\n" \
+            f"‣ If you need help, join my support server: **<https://support.nabbot.xyz>**\n" \
+            f"‣ For more information and links in: `{config.command_prefix[0]}about`"
         async with self.bot.pool.acquire() as conn:
             for member in guild.members:
                 if member.id in self.bot.members:
@@ -150,7 +151,7 @@ class Core(CogUtils):
                             f"No allowed channel found.")
                 return
             await channel.send(message)
-        except discord.HTTPException as e:
+        except discord.HTTPException:
             log.exception(f"{self.tag} Could not send join message on server: {guild.name}.")
 
     async def on_guild_remove(self, guild: discord.Guild):

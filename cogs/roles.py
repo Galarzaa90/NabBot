@@ -455,7 +455,7 @@ class Roles(CogUtils):
     @commands.guild_only()
     @checks.can_embed()
     @commands.command()
-    async def roles(self, ctx: NabCtx, *, user: str=None):
+    async def roles(self, ctx: NabCtx, *, user: str = None):
         """Shows a user's roles or a list of server roles.
 
         If a user is specified, it will list their roles.

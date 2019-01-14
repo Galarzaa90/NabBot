@@ -30,7 +30,7 @@ class Mod:
     @commands.guild_only()
     @checks.channel_mod_only()
     @commands.command()
-    async def cleanup(self, ctx: NabCtx, limit: int=50):
+    async def cleanup(self, ctx: NabCtx, limit: int = 50):
         """Cleans the channel from bot commands.
 
         If the bot has `Manage Messages` permission, it will also delete command invocation messages."""

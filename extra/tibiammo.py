@@ -35,7 +35,7 @@ class TibiaMMO:
         return role is not None
 
     @commands.command()
-    async def postguild(self, ctx: NabCtx, guild, invite=None, reddit=None, *, member: discord.Member=None):
+    async def postguild(self, ctx: NabCtx, guild, invite=None, reddit=None, *, member: discord.Member = None):
         """Creates an advertisement post on the reddit guilds channel
 
         Parameters:

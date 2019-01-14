@@ -290,9 +290,10 @@ class NabBot(commands.Bot):
                 print(f"Cog {cog} loaded successfully.")
             except ModuleNotFoundError:
                 print(f"Could not find cog: {cog}")
-            except Exception as e:
+            except Exception:
                 print(f'Cog {cog} failed to load:')
                 traceback.print_exc(limit=-1)
+                log.exception(f'Cog {cog} failed to load')
 
         for extra in config.extra_cogs:
             try:
@@ -300,9 +301,10 @@ class NabBot(commands.Bot):
                 print(f"Extra cog {extra} loaded successfully.")
             except ModuleNotFoundError:
                 print(f"Could not find extra cog: {extra}")
-            except Exception as e:
-                print(f'Extra og {extra} failed to load:')
+            except Exception:
+                print(f'Extra cog {extra} failed to load:')
                 traceback.print_exc(limit=-1)
+                log.exception(f'Extra cog {extra} failed to load:')
 
         try:
             print("Attempting login...")

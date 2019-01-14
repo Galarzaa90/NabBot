@@ -130,7 +130,6 @@ class DbChar(tibiapy.abc.BaseCharacter):
             return self.id == other.id
         return False
 
-
     # region Instance methods
     async def get_deaths(self, conn: PoolConn):
         """An async generator of the character's deaths, from newest to oldest.
@@ -402,7 +401,7 @@ class DbLevelUp:
             f"date={self.date!r}>"
 
     @classmethod
-    async def insert(cls, conn: PoolConn, char_id, level, date:datetime.datetime = None) -> 'DbLevelUp':
+    async def insert(cls, conn: PoolConn, char_id, level, date: datetime.datetime = None) -> 'DbLevelUp':
         """Inserts a new level up into the database.
 
         :param conn: The connection to the database.

@@ -6,6 +6,7 @@ from discord.ext import commands
 
 TIBIA_CASH_PATTERN = re.compile(r'(\d*\.?\d*)k*$')
 
+
 class InsensitiveRole(commands.IDConverter):
     """Convert to a :class:`discord.Role`. object.
 

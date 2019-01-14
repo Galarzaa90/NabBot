@@ -83,7 +83,6 @@ class HumanDelta:
         return f"{sign}<{self.__class__.__name__ } {', '.join(attrs)}>"
 
 
-
 def get_local_timezone() -> int:
     """Returns the server's local time zone
 

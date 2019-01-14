@@ -44,6 +44,10 @@ NO_VOCATION = ["no vocation", "no voc", "novoc", "nv", "n v", "none", "no", "n",
 invalid_name = re.compile(r"[^\sA-Za-zÀ-ÖØ-öø-ÿ'\-]")
 """Regex used to validate names to avoid doing unnecessary fetches"""
 
+boss_pattern = re.compile(r'<i style=\"color:\w+;\">(?:<br\s*/>)?\s*([^<]+)\s*</i>\s*<a href=\"([^\"]+)\">'
+                          r'<img src=\"([^\"]+)\"\s*/></a>[\n\s]+(Expect in|Last seen)\s:\s(\d+)')
+unpredicted_pattern = re.compile(r'<a href="([^"]+)"><img src="([^"]+)"/></a>[\n\s]+(Expect in|Last seen)\s:\s(\d+)')
+
 
 HIGHSCORE_CATEGORIES = {"experience": (Category.EXPERIENCE, VocationFilter.ALL),
                         "sword": (Category.SWORD_FIGHTING, VocationFilter.ALL),
@@ -437,9 +441,6 @@ async def get_world_bosses(world):
     if sections is None:
         return
     bosses = {}
-    boss_pattern = re.compile(r'<i style=\"color:\w+;\">(?:<br\s*/>)?\s*([^<]+)\s*</i>\s*<a href=\"([^\"]+)\">'
-                              r'<img src=\"([^\"]+)\"\s*/></a>[\n\s]+(Expect in|Last seen)\s:\s(\d+)')
-    unpredicted_pattern = re.compile(r'<a href="([^"]+)"><img src="([^"]+)"/></a>[\n\s]+(Expect in|Last seen)\s:\s(\d+)')
     for section in sections:
         m = boss_pattern.findall(str(section))
         if m:

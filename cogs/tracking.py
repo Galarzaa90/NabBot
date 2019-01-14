@@ -485,7 +485,8 @@ class Tracking(CogUtils):
         In order for this to work, you have to put a special code in the character's comment.
         You can see this code by using the command with no parameters. The code looks like this: `/NB-23FC13AC7400000/`
 
-        Once you had set the code, you can use the command with that character, if the code matches, it will be reassigned to you.
+        Once you had set the code, you can use the command with that character, if the code matches,
+        it will be reassigned to you.
         Note that it may take some time for the code to be visible to NabBot because of caching.
 
         This code is unique for your discord user, so the code will only work for your discord account and no one else.
@@ -1270,7 +1271,8 @@ class Tracking(CogUtils):
         return time.time() - death.time.timestamp() >= (30 * 60)
 
     @classmethod
-    async def check_char_availability(cls, ctx: NabCtx, user_id: int, char: NabChar, worlds: List[str], check_other=False):
+    async def check_char_availability(cls, ctx: NabCtx, user_id: int, char: NabChar, worlds: List[str],
+                                      check_other=False):
         """Checks the availability of a character and other visible characters optionally.
 
         :param ctx: The command context where this is called.
