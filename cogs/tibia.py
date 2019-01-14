@@ -19,7 +19,7 @@ from tibiawikisql import models
 
 from nabbot import NabBot
 from .utils import CogUtils, checks, config, errors, get_time_diff, get_user_avatar, is_numeric, \
-    join_list, online_characters, time
+    join_list, online_characters, timing
 from .utils.context import NabCtx
 from .utils.database import DbChar, DbDeath, DbLevelUp, get_global_property, get_recent_timeline, get_server_property, \
     set_global_property
@@ -1077,7 +1077,7 @@ class Tibia(CogUtils):
         tibia_timezone = get_tibia_time_zone()
         timezone_name = "CET" if tibia_timezone == 1 else "CEST"
 
-        offset = tibia_timezone - time.get_local_timezone()
+        offset = tibia_timezone - timing.get_local_timezone()
         tibia_time = now+dt.timedelta(hours=offset)
         server_save = tibia_time
         if tibia_time.hour >= 10:

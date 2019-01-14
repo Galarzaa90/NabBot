@@ -11,7 +11,7 @@ from discord.ext import commands
 from discord.ext.commands import clean_content
 
 from cogs.utils import errors
-from cogs.utils.time import HumanDelta
+from cogs.utils.timing import HumanDelta
 from nabbot import NabBot
 from .utils import CogUtils, checks, clean_string, get_user_avatar, single_line
 from .utils.context import NabCtx

@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw
 from tibiapy import Category, Character, Guild, Highscores, House, ListedWorld, OnlineCharacter, Sex, Vocation, \
     VocationFilter, World
 
-from cogs.utils.time import get_local_timezone
+from cogs.utils.timing import get_local_timezone
 from . import config, errors, online_characters
 from .database import DbChar, wiki_db
 
@@ -38,7 +38,7 @@ DRUID = ["druid", "elder druid", "ed", "d", "elderdruid", "elder",
 SORCERER = ["sorcerer", "master sorcerer", "ms", "s", "sorc", "mastersorcerer", "master",
             Vocation.SORCERER, Vocation.MASTER_SORCERER]
 MAGE = DRUID + SORCERER + ["mage"]
-NO_VOCATION = ["no vocation", "no voc", "novoc", "nv", "n v", "none", "no", "n", "noob", "noobie", "rook", "rookie",
+NO_VOCATION = ["no vocation", "no voc", "novoc", "nv", "n v", "none", "no", "n", "noob", "noobñie", "rook", "rookie",
                Vocation.NONE]
 
 invalid_name = re.compile(r"[^\sA-Za-zÀ-ÖØ-öø-ÿ'\-]")
