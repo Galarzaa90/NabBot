@@ -10,7 +10,7 @@ from nabbot import NabBot
 from . import config
 from .context import NabCtx
 from .errors import CannotPaginate
-from .tibia import DRUID, KNIGHT, PALADIN, SORCERER
+from .tibia import DRUID, KNIGHT, PALADIN, SORCERER, normalize_vocation
 
 
 class Pages:
@@ -222,13 +222,13 @@ class VocationPages(Pages):
         super().__init__(ctx, entries=entries, **kwargs)
         present_vocations = []
         # Only add vocation filters for the vocations present
-        if any(v.lower() in DRUID for v in vocations):
+        if any(normalize_vocation(v) == "druid" for v in vocations):
             present_vocations.append((config.druid_emoji, self.filter_druids))
-        if any(v.lower() in SORCERER for v in vocations):
+        if any(normalize_vocation(v) == "sorcerer" for v in vocations):
             present_vocations.append((config.sorcerer_emoji, self.filter_sorcerers))
-        if any(v.lower() in PALADIN for v in vocations):
+        if any(normalize_vocation(v) == "paladin" for v in vocations):
             present_vocations.append((config.paladin_emoji, self.filter_paladins))
-        if any(v.lower() in KNIGHT for v in vocations):
+        if any(normalize_vocation(v) == "knight" for v in vocations):
             present_vocations.append((config.knight_emoji, self.filter_knights))
 
         # Only add filters if there's more than one different vocation
