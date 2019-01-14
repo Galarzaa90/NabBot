@@ -21,7 +21,7 @@ class General(CogUtils):
     async def checkpm(self, ctx: NabCtx):
         """Checks if you can receive PMs from the bot.
 
-        If you can't receive PMs, you need to enable 'Allow direct messages from server members.' in the Privay Settings
+        If you can't receive PMs, you need to enable 'Allow direct messages from server members.' in the Privacy Settings
          of any server where NabBot is in."""
         if ctx.guild is None:
             return await ctx.success("This is a private message, so yes... PMs are working.")

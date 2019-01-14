@@ -238,7 +238,7 @@ class VocationPages(Pages):
         # Copies the entry list without reference
         self.original_entries = entries[:]
         self.vocations = vocations
-        self.filters = [DRUID, SORCERER, PALADIN, KNIGHT]
+        self.filters = ["druid", "sorcerer", "paladin", "knight"]
         self.current_filter = -1
 
     async def filter_druids(self):
@@ -256,7 +256,7 @@ class VocationPages(Pages):
     async def filter_vocation(self, vocation):
         if vocation != self.current_filter:
             self.current_filter = vocation
-            self.entries = [c for c, v in zip(self.original_entries, self.vocations) if v.lower() in self.filters[vocation]]
+            self.entries = [c for c, v in zip(self.original_entries, self.vocations) if normalize_vocation(v) in self.filters[vocation]]
         else:
             self.current_filter = -1
             self.entries = self.original_entries[:]

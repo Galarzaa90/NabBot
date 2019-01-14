@@ -8,6 +8,7 @@ from typing import Tuple
 import discord
 from discord.ext import commands
 
+from cogs.utils.database import DbChar
 from nabbot import NabBot
 from .utils import CogUtils, config, context, errors, join_list, database
 
@@ -183,10 +184,9 @@ class Core(CogUtils):
         previously_registered = ""
         # If server is not tracking worlds, we don't check the database
         if member.guild.id not in self.bot.config.lite_servers and world is not None:
-            rows = await self.bot.pool.fetch("""SELECT name, vocation, abs(level) as level, guild
-                                                FROM "character" WHERE user_id = $1 AND world = $2""", member.id, world)
-            if rows:
-                characters = join_list([r['name'] for r in rows], ', ', ' and ')
+            chars = await DbChar.get_chars_by_user(self.bot.pool, member.id, worlds=world)
+            if chars:
+                characters = join_list([c.name for c in chars], ', ', ' and ')
                 previously_registered = f"\n\nYou already have these characters in {world} registered: *{characters}*"
 
         welcome_message = await database.get_server_property(self.bot.pool, member.guild.id, "welcome")

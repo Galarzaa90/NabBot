@@ -315,7 +315,7 @@ class DbChar(tibiapy.abc.BaseCharacter):
         :param name: The name of the character to look for.
         :return: The found character or None.
         """
-        row = await conn.fetchrow('SELECT * FROM "character" WHERE lower(name) = $1 ORDER BY id', name.lower())
+        row = await conn.fetchrow('SELECT * FROM "character" WHERE lower(name) = $1 ORDER BY id', name.strip().lower())
         if row:
             return cls(**row)
 

@@ -119,6 +119,7 @@ BOSS_ALIASES = {
     "wz6": "Ancient Spawn of Morgathla",
 }
 
+# TODO: Replace with timedelta
 BOSS_COOLDOWNS = {
     "Lloyd": 20*60*60,
     "Lady Tenebris": 20*60*60,
@@ -502,11 +503,11 @@ class Timers(CogUtils):
 
     async def on_boss_timer_complete(self, timer: Timer):
         author: discord.User = self.bot.get_user(timer.user_id)
-        char = await self.bot.pool.fetchrow('SELECT name FROM "character" WHERE id = $1', timer.extra["char_id"])
+        char = await DbChar.get_by_id(self.bot.pool, timer.extra["char_id"])
         if author is None or char is None:
             return
         embed = discord.Embed(title=timer.name, colour=discord.Colour.green(),
-                              description=f"The cooldown for **{timer.name}** is over now for **{char['name']}**.")
+                              description=f"The cooldown for **{timer.name}** is over now for **{char.name}**.")
         monster = tibiawikisql.models.Creature.get_by_field(wiki_db, "name", timer.name)
         try:
             if monster:
@@ -523,7 +524,7 @@ class Timers(CogUtils):
     # region Commands
 
     @commands.group(invoke_without_command=True, case_insensitive=True, usage="<boss>[,character]")
-    async def boss(self, ctx: NabCtx, *, params: str=None):
+    async def boss(self, ctx: NabCtx, *, params: str = None):
         """Shows the remaining cooldown time for a specific boss."""
         if not params:
             await ctx.error(f"Tell me the name of the boss you want to check.\n"
@@ -539,16 +540,14 @@ class Timers(CogUtils):
                                    f"try: `{ctx.clean_prefix}{ctx.invoked_with} bosslist`")
         if len(param) > 1:
             char = param[1]
-            db_char = await ctx.pool.fetchrow("""SELECT id, world, name FROM "character"
-                                                 WHERE lower(name) = $1 AND user_id = $2""",
-                                              char.lower(), ctx.author.id)
-            if db_char is None:
+            db_char = await DbChar.get_by_name(ctx.pool, char)
+            if db_char is None or db_char.user_id != ctx.author.id:
                 return await ctx.error(f"You don't have any registered character named `{char}`.")
             record = await ctx.pool.fetchrow("""SELECT * FROM timer WHERE type = $1 AND name = $2 AND user_id = $3
                                                AND extra->>'char_id' = $4""",
-                                             ReminderType.BOSS.value, name, ctx.author.id, str(db_char["id"]))
+                                             ReminderType.BOSS.value, name, ctx.author.id, str(db_char.id))
             if not record:
-                return await ctx.send(f"**{db_char['name']}** doesn't have any active cooldowns for **{name}**.")
+                return await ctx.send(f"**{db_char.name}** doesn't have any active cooldowns for **{name}**.")
             timer = Timer(**record)
             return await ctx.send(f"Your cooldown for **{name}** will be over in {timer.expires-now}.")
         rows = await ctx.pool.fetch("""SELECT timer.*, "character".name AS char_name, "character".world FROM timer
@@ -630,22 +629,21 @@ class Timers(CogUtils):
             return await ctx.error(f"There's no boss with that name.\nFor a list of supported bosses, "
                                    f"try: `{ctx.clean_prefix}{ctx.invoked_with} bosslist`")
 
-        db_char = await ctx.pool.fetchrow("""SELECT id, user_id, name FROM "character" WHERE lower(name) = $1""",
-                                          char.lower())
+        db_char = await DbChar.get_by_name(ctx.pool, char)
         if db_char is None:
             return await ctx.error("There's no character registered with that name.")
-        if db_char["user_id"] != ctx.author.id:
+        if db_char.user_id != ctx.author.id:
             return await ctx.error("That character is not registered to you.")
         now = dt.datetime.now(tz=dt.timezone.utc)
         expires = now + dt.timedelta(seconds=cooldown)
         # Check if this char already has a pending cooldown
         exists = await ctx.pool.fetchval("SELECT true FROM timer WHERE extra->>'char_id' = $1 AND name = $2",
-                                         str(db_char["id"]), name)
+                                         str(db_char.id), name)
         if exists:
             return await ctx.error(f"This character already has a running timer for this boss.\n"
                                    f"You can delete it using `{ctx.clean_prefix}{ctx.command.full_parent_name} clear "
-                                   f"{name},{db_char['name']}`")
-        await self.create_timer(now, expires, name, ReminderType.BOSS, ctx.author.id, {"char_id": db_char["id"]})
+                                   f"{name},{db_char.name}`")
+        await self.create_timer(now, expires, name, ReminderType.BOSS, ctx.author.id, {"char_id": db_char.id})
         await ctx.success(f"Timer saved for `{name}`, I will let you know when the cooldown is over via pm.\n"
                           f"Use `{ctx.clean_prefix}checkdm` to make sure you can receive PMs by me.")
 
@@ -665,17 +663,16 @@ class Timers(CogUtils):
             return await ctx.error(f"There's no boss with that name.\nFor a list of supported bosses, "
                                    f"try: `{ctx.clean_prefix}{ctx.invoked_with} bosslist`")
 
-        db_char = await ctx.pool.fetchrow("""SELECT id, user_id, name FROM "character" WHERE lower(name) = $1""",
-                                          char.lower())
+        db_char = await DbChar.get_by_name(ctx.pool, char)
         if db_char is None:
             return await ctx.error("There's no character registered with that name.")
-        if db_char["user_id"] != ctx.author.id:
+        if db_char.user_id != ctx.author.id:
             return await ctx.error("That character is not registered to you.")
         # Check if this char already has a pending cooldown
         timer_id = await ctx.pool.fetchval("SELECT id FROM timer WHERE extra->>'char_id' = $1 AND name = $2",
-                                           str(db_char["id"]), name)
+                                           str(db_char.id), name)
         if timer_id is None:
-            return await ctx.error(f"There's no active timer for boss {name} for {db_char['name']}")
+            return await ctx.error(f"There's no active timer for boss {name} for {db_char.name}")
 
         await self.delete_timer(timer_id)
         await ctx.success("Boss timer deleted.")
