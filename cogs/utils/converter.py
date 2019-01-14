@@ -3,10 +3,10 @@ import re
 
 import discord
 from discord.ext import commands
-from discord.ext.commands import BadArgument, IDConverter, NoPrivateMessage
 
+TIBIA_CASH_PATTERN = re.compile(r'(\d*\.?\d*)k*$')
 
-class InsensitiveRole(IDConverter):
+class InsensitiveRole(commands.IDConverter):
     """Convert to a :class:`discord.Role`. object.
 
     This class replicates :class:`discord.ext.commands.RoleConverter`, but the lookup is case insensitive.
@@ -20,7 +20,7 @@ class InsensitiveRole(IDConverter):
         argument = argument.replace("\"", "")
         guild = ctx.guild
         if not guild:
-            raise NoPrivateMessage()
+            raise commands.NoPrivateMessage()
 
         match = self._get_id_match(argument) or re.match(r'<@&([0-9]+)>$', argument)
         if match:
@@ -28,7 +28,7 @@ class InsensitiveRole(IDConverter):
         else:
             result = discord.utils.find(lambda r: r.name.lower() == argument.lower(), guild.roles)
         if result is None:
-            raise BadArgument('Role "{}" not found.'.format(argument))
+            raise commands.BadArgument('Role "{}" not found.'.format(argument))
         return result
 
 
@@ -96,3 +96,28 @@ class Stamina:
 
     def __lt__(self, other):
         return self.seconds < other.seconds
+
+
+class TibiaNumber(int):
+    """Parses numbers allowing the use of 'k' as a thousand suffix.
+
+    The output is an integer, so decimals will be truncated after multiplying.
+
+    Examples:
+        24k -> 24000
+        1.2kk -> 1200000
+        3435k -> 3435000
+        1.4 -> 1
+    """
+    def __new__(cls, argument):
+        try:
+            return super().__new__(int, argument)
+        except ValueError:
+            argument = argument.replace(",", "").strip().lower()
+            m = TIBIA_CASH_PATTERN.match(argument)
+            if not m or not m.group(1):
+                raise commands.BadArgument(f"`{argument}` is not a valid number.")
+            num = float(m.group(1))
+            k_count = argument.count("k")
+            num *= pow(1000, k_count)
+            return int(num)

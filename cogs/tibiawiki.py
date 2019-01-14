@@ -12,6 +12,7 @@ import tibiawikisql
 from discord.ext import commands
 from tibiawikisql import models
 
+from cogs.utils.converter import TibiaNumber
 from nabbot import NabBot
 from .utils import FIELD_VALUE_LIMIT, average_color, checks, config, join_list
 from .utils.context import NabCtx
@@ -122,8 +123,8 @@ class TibiaWiki:
             return
 
         try:
-            prices = [int(p) for p in params[1:]]
-        except ValueError:
+            prices = [TibiaNumber(p) for p in params[1:]]
+        except commands.BadArgument:
             await ctx.send(f"{ctx.tick(False)} Invalid syntax. The correct syntax is: `{ctx.usage}`.")
             return
 
@@ -354,9 +355,11 @@ class TibiaWiki:
                 await ctx.send("I couldn't find a spell with that name or words.")
                 return
             if len(entries) > 1:
-                title = await ctx.choose(["{title} ({words})".format(**e) for e in entries])
+                titles = ["{title} ({words})".format(**e) for e in entries]
+                title = await ctx.choose(titles)
                 if title is None:
                     return
+                title = entries[titles.index(title)]["title"]
             else:
                 title = entries[0]["title"]
             spell: models.Spell = self.get_entry(title, models.Spell)
@@ -1040,7 +1043,7 @@ class TibiaWiki:
             "Earth": discord.Colour(0x00FF00),
             "Holy": discord.Colour(0xFFFF00),
             "Death": discord.Colour(0x990000),
-            "Phyiscal": discord.Colour(0xF70000),
+            "Physical": discord.Colour(0xF70000),
             "Bleed": discord.Colour(0xF70000),
         }
         elemental_emoji = ""
