@@ -17,6 +17,7 @@ from .utils import checks
 from .utils.context import NabCtx
 from .utils.messages import *
 from .utils.errors import *
+from .utils.timing import *
 from .utils.pages import Pages
 from .utils.errors import CannotPaginate
 from .utils.tibia import *
