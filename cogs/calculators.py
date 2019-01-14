@@ -71,7 +71,7 @@ class Calculators:
                        f"\nMountain blessings cost **{mountain_bless_price:,}** each, for a total of "
                        f"**{int(mountain_bless_price*2):,}**.")
 
-    @commands.command()
+    @commands.command("<current> <percentage> <target> <vocation> [loyalty]")
     async def distanceskill(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str,
                             loyalty: int = 0):
         """Calculates the training time required to reach a target distance skill level.
@@ -106,7 +106,7 @@ class Calculators:
             embed.add_field(name="Expert Exercise Dummies", value=self.get_weapon_usage_string(weapons))
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.command("<current> <percentage> <target> <vocation> [loyalty]")
     async def magiclevel(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str, loyalty: int = 0):
         """Calculates the training time required to reach a target skill level.
 
@@ -148,7 +148,7 @@ class Calculators:
         embed.description = f"You need to spend **{mana:,}** mana to reach magic level {target}"
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.command(usage="<current> <percentage> <target> <vocation> [loyalty]")
     async def meleeskill(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str,
                          loyalty: int = 0):
         """Calculates the training time required to reach a target skill level.

@@ -610,7 +610,7 @@ class TibiaWiki:
         too_long |= self.get_item_embed_parse_rewards(embed, item.awarded_in, long, short_limit)
         too_long |= self.get_item_embed_parse_loot(embed, item.dropped_by, long, long_limit, short_limit)
 
-        if too_long:
+        if too_long and not long:
             ask_channel = await ctx.ask_channel_name()
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel
