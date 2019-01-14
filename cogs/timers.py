@@ -623,7 +623,7 @@ class Timers(CogUtils):
                                    f"e.g. `{ctx.clean_prefix}{ctx.invoked_with} set Kroazur,Bubble`")
         name, char = param
         if name.lower() in BOSS_ALIASES:
-            name = BOSS_ALIASES[name]
+            name = BOSS_ALIASES[name.lower()]
         if name in BOSS_COOLDOWNS:
             cooldown = BOSS_COOLDOWNS[name]
         else:
