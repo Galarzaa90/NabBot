@@ -224,7 +224,8 @@ async def get_guild(name, title_case=True, *, tries=5) -> Optional[Guild]:
         pass
 
     if not title_case:
-        name = await get_guild_name_from_guildstats(name, tries=tries)
+        guild_name = await get_guild_name_from_guildstats(name, tries=tries)
+        name = guild_name if guild_name else name
     else:
         name = name.title()
 
