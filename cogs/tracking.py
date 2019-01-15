@@ -55,12 +55,10 @@ class Watchlist:
             .format(self)
 
     async def get_character_entries(self, conn):
-        rows = await conn.fetch("SELECT * FROM watchlist_entry WHERE channel_id = $1 AND NOT is_guild", self.channel_id)
-        return [WatchlistEntry(**row) for row in rows]
+        await WatchlistEntry.get_character_entries_by_channel(conn, self.channel_id)
 
     async def get_guild_entries(self, conn):
-        rows = await conn.fetch("SELECT * FROM watchlist_entry WHERE channel_id = $1 AND is_guild", self.channel_id)
-        return [WatchlistEntry(**row) for row in rows]
+        await WatchlistEntry.get_guild_entries_by_channel(conn, self.channel_id)
 
     @staticmethod
     def sort_by_voc_and_level():
@@ -74,6 +72,11 @@ class Watchlist:
         rows = await conn.fetch(query, world)
         return [cls(**row) for row in rows]
 
+    @classmethod
+    async def get_by_channel_id(cls, conn, channel_id):
+        row = await conn.fetchrow("SELECT * FROM watchlist WHERE channel_id = $1", channel_id)
+        return cls(**row)
+
 
 class WatchlistEntry:
     def __init__(self, **kwargs):
@@ -83,6 +86,16 @@ class WatchlistEntry:
         self.reason = kwargs.get("reason")
         self.user_id = kwargs.get("user_id")
         self.created = kwargs.get("created")
+
+    @classmethod
+    async def get_character_entries_by_channel(cls, conn, channel_id):
+        rows = await conn.fetch("SELECT * FROM watchlist_entry WHERE channel_id = $1 AND NOT is_guild", channel_id)
+        return [cls(**row) for row in rows]
+
+    @classmethod
+    async def get_guild_entries_by_channel(cls, conn, channel_id):
+        rows = await conn.fetch("SELECT * FROM watchlist_entry WHERE channel_id = $1 AND is_guild", channel_id)
+        return [cls(**row) for row in rows]
 
 
 class Tracking(CogUtils):

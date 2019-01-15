@@ -133,7 +133,6 @@ class Core(CogUtils):
             f"‣ You can set a world for me to track by using `{config.command_prefix[0]}settings world`\n" \
             f"‣ If you want a logging channel, create a channel named `{config.log_channel_name}`\n" \
             f"‣ If you need help, join my support server: **<https://support.nabbot.xyz>**\n" \
-            f"‣ If you need help, join my support server: **<https://support.nabbot.xyz>**\n" \
             f"‣ For more information and links in: `{config.command_prefix[0]}about`"
         async with self.bot.pool.acquire() as conn:
             for member in guild.members:
