@@ -37,16 +37,52 @@ class CharactersResult(NamedTuple):
 
 
 class Watchlist:
-    def __init__(self):
+    def __init__(self, **kwargs):
+        self.server_id = kwargs.get("server_id")
+        self.channel_id = kwargs.get("channel_id")
+        self.message_id = kwargs.get("message_id")
+        self.show_count = kwargs.get("show_count", True)
+        self.created = kwargs.get("created")
+        # Not columns
         self.content = ""
         self.online_characters = []
         self.online_guild_members = dict()
         self.online_count = 0
         self.description = ""
 
+    def __repr__(self):
+        return "<{0.__class__.__name__} server_id={0.server_id} channel_id={0.channel_id} message_id={0.message_id}>"\
+            .format(self)
+
+    async def get_character_entries(self, conn):
+        rows = await conn.fetch("SELECT * FROM watchlist_entry WHERE channel_id = $1 AND NOT is_guild", self.channel_id)
+        return [WatchlistEntry(**row) for row in rows]
+
+    async def get_guild_entries(self, conn):
+        rows = await conn.fetch("SELECT * FROM watchlist_entry WHERE channel_id = $1 AND is_guild", self.channel_id)
+        return [WatchlistEntry(**row) for row in rows]
+
     @staticmethod
     def sort_by_voc_and_level():
         return lambda char: (normalize_vocation(char.vocation), -char.level)
+
+    @classmethod
+    async def get_by_world(cls, conn, world):
+        query = """SELECT t0.* FROM watchlist t0
+                   LEFT JOIN server_property t1 ON t1.server_id = t0.server_id AND key = 'world'
+                   WHERE value ? $1"""
+        rows = await conn.fetch(query, world)
+        return [cls(**row) for row in rows]
+
+
+class WatchlistEntry:
+    def __init__(self, **kwargs):
+        self.channel_id = kwargs.get("channel_id")
+        self.name = kwargs.get("name")
+        self.is_guild = kwargs.get("is_guild", False)
+        self.reason = kwargs.get("reason")
+        self.user_id = kwargs.get("user_id")
+        self.created = kwargs.get("created")
 
 
 class Tracking(CogUtils):
@@ -289,32 +325,29 @@ class Tracking(CogUtils):
         await self._run_watchlist(_get_guild, scanned_world)
 
     async def _run_watchlist(self, _get_guild, scanned_world):
-        query = """SELECT t0.server_id, channel_id, message_id FROM watchlist t0
-                   LEFT JOIN server_property t1 ON t1.server_id = t0.server_id AND key = 'world'
-                   WHERE value ? $1"""
-        rows = await self.bot.pool.fetch(query, scanned_world.name)
-        for guild_id, watchlist_channel_id, watchlist_msg_id in rows:
-            log.debug(f"{self.tag}[{scanned_world.name}] Checking entries for watchlist"
-                      f" (Guild ID: {guild_id}, Channel ID: {watchlist_channel_id}, World: {scanned_world.name})")
-            guild: discord.Guild = self.bot.get_guild(guild_id)
+        watchlists = await Watchlist.get_by_world(self.bot.pool, scanned_world.name)
+        for watchlist in watchlists:
+            log.debug(f"{self.tag}[{scanned_world.name}] Checking entries for watchlist | "
+                      f"Guild ID: {watchlist.server_id} | Channel ID: {watchlist.channel_id} "
+                      f"| World: {scanned_world.name})")
+            guild: discord.Guild = self.bot.get_guild(watchlist.server_id)
             if guild is None:
                 await asyncio.sleep(0.01)
                 continue
-            discord_channel: discord.TextChannel = guild.get_channel(watchlist_channel_id)
+            discord_channel: discord.TextChannel = guild.get_channel(watchlist.channel_id)
             if discord_channel is None:
                 await asyncio.sleep(0.1)
                 continue
             watched_entries = await self.bot.pool.fetch("""SELECT name, is_guild FROM watchlist_entry 
-                                                WHERE channel_id = $1 ORDER BY is_guild, name""", watchlist_channel_id)
+                                                WHERE channel_id = $1 ORDER BY is_guild, name""", watchlist.channel_id)
             if not watched_entries:
                 await asyncio.sleep(0.1)
                 continue
-            watchlist = Watchlist()
             await self._watchlist_scan_entries(_get_guild, watchlist, scanned_world, watched_entries)
             msg_entries = self._watchlist_get_msg_entries(watchlist.online_characters)
             watchlist.online_count = len(msg_entries)
             await self._watchlist_build_content(msg_entries, watchlist)
-            await self._watchlist_send_embed_msg(watchlist, discord_channel, watchlist_channel_id, watchlist_msg_id)
+            await self._watchlist_send_embed_msg(watchlist, discord_channel, watchlist.channel_id, watchlist.message_id)
 
     async def _watchlist_scan_entries(self, _get_guild, watchlist, scanned_world, watched_entries):
         for watched in watched_entries:
@@ -965,7 +998,7 @@ class Tracking(CogUtils):
                 ctx.guild.default_role: discord.PermissionOverwrite(send_messages=False, read_messages=True),
                 ctx.guild.me: discord.PermissionOverwrite(send_messages=True, read_messages=True)
             }
-            channel = await ctx.guild.create_text_channel(name, overwrites=overwrites)
+            channel = await ctx.guild.create_text_channel(name, overwrites=overwrites, category=ctx.channel.category)
         except discord.Forbidden:
             await ctx.error(f"Sorry, I don't have permissions to create channels.")
         except discord.HTTPException:
