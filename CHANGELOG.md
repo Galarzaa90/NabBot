@@ -1,4 +1,7 @@
 # Changelog
+## Version 2.0.0 (Unreleased)
+- Reduced new tracking interval
+
 ## Version 1.7.2 (2018-10-23)
 - Deaths caused by arena creatuers are no longer announced.
 
