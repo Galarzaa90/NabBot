@@ -233,7 +233,9 @@ class WatchlistEntry:
         :return: The inserted entry.
         """
         row = await conn.fetchrow("INSERT INTO watchlist_entry(channel_id, name, is_guild, reason, user_id) "
-                                  "VALUES($1, $2, $3, $4, $5)", channel_id, name, is_guild, user_id, reason)
+                                  "VALUES($1, $2, $3, $4, $5) RETURNING *", channel_id, name, is_guild, reason, user_id)
+        if row is None:
+            return None
         return cls(**row)
 
 # endregion
@@ -1070,6 +1072,57 @@ class Tracking(CogUtils):
 
     @checks.tracking_world_only()
     @checks.channel_mod_somewhere()
+    @watchlist.command(name="adduser", usage="<channel> <user>[,reason]")
+    async def watchlist_adduser(self, ctx: NabCtx, channel: discord.TextChannel, *, params):
+        """Adds the currently registered characters of a user to the watchlist.
+
+        A reason can be specified by adding it after the character's name, separated by a comma."""
+        watchlist = await Watchlist.get_by_channel_id(ctx.pool, channel.id)
+
+        if not watchlist:
+            return await ctx.error(f"{channel.mention} is not a watchlist channel.")
+
+        if not channel.permissions_for(ctx.author).manage_channels:
+            return await ctx.error(
+                f"You need `Manage Channel` permissions in {channel.mention} to add entries.")
+
+        params = params.split(",", 1)
+        name = params[0]
+        reason = None
+        if len(params) > 1:
+            reason = params[1]
+
+        user = ctx.bot.get_member(name, ctx.guild)
+        if user is None:
+            await ctx.error("I don't see any users with that name.")
+        characters = await DbChar.get_chars_by_user(ctx.pool, user.id, worlds=ctx.world)
+        if not characters:
+            await ctx.error(f"This user doesn't have any registered characters in {ctx.world}.")
+            return
+
+        char_list = "\n".join(f"• {c.name}" for c in characters)
+        message = await ctx.send(f"Do you want to add currently registered characters of `{user}` to this watchlist?\n"
+                                 f"{char_list}")
+        confirm = await ctx.react_confirm(message)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
+        if not confirm:
+            await ctx.send("Ok then, guess you changed your mind.")
+            return
+
+        results = ""
+        for char in characters:
+            entry = await watchlist.add_entry(ctx.pool, char.name, False, ctx.author.id, reason)
+            if entry:
+                results += f"\n• {char.name}"
+        if results:
+            await ctx.success(f"I added the following characters to the list, duplicates where skipped:{results}")
+        else:
+            await ctx.error("No characters where added, as they were all duplicates.")
+
+    @checks.tracking_world_only()
+    @checks.channel_mod_somewhere()
     @watchlist.command(name="addguild", usage="<channel> <name>[,reason]")
     async def watchlist_addguild(self, ctx: NabCtx, channel: discord.TextChannel, *, params):
         """Adds an entire guild to a watchlist.
@@ -1216,7 +1269,8 @@ class Tracking(CogUtils):
         if not await Watchlist.get_by_channel_id(ctx.pool, channel.id):
             return await ctx.error(f"{channel.mention} is not a watchlist.")
 
-        entries = await WatchlistEntry.get_character_entries_by_channel(ctx.pool, channel.id)
+        entries = await WatchlistEntry.get_entries_by_channel(ctx.pool, channel.id)
+        entries = [entry for entry in entries if not entry.is_guild]
 
         if not entries:
             return await ctx.error(f"This watchlist has no registered characters.")
@@ -1238,7 +1292,8 @@ class Tracking(CogUtils):
         if not await Watchlist.get_by_channel_id(ctx.pool, channel.id):
             return await ctx.error(f"{channel.mention} is not a watchlist.")
 
-        entries = await WatchlistEntry.get_guild_entries_by_channel(ctx.pool, channel.id)
+        entries = await WatchlistEntry.get_entries_by_channel(ctx.pool, channel.id)
+        entries = [entry for entry in entries if entry.is_guild]
 
         if not entries:
             return await ctx.error(f"This watchlist has no registered characters.")

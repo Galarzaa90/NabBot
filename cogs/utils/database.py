@@ -319,7 +319,7 @@ class DbChar(tibiapy.abc.BaseCharacter):
             return cls(**row)
 
     @classmethod
-    async def get_chars_by_user(cls, conn: PoolConn, user_id=0, *, worlds: Union[List[str], str] = None) \
+    async def get_chars_by_user(cls, conn: PoolConn, user_id, *, worlds: Union[List[str], str] = None) \
             -> List['DbChar']:
         """Gets a list of characters registered to a user
 
