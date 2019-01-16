@@ -584,7 +584,7 @@ class Tracking(CogUtils):
             message = None
         if message is None:
             new_message = await channel.send(embed=embed)
-            watchlist.update_message_id(conn, new_message.id)
+            await watchlist.update_message_id(conn, new_message.id)
         else:
             await message.edit(embed=embed)
 
