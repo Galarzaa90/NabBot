@@ -4,7 +4,7 @@ import datetime as dt
 import logging
 import random
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from operator import attrgetter
 from typing import Optional
 
@@ -45,7 +45,64 @@ class Tibia(CogUtils):
         self.bot = bot
         self.news_announcements_task = self.bot.loop.create_task(self.scan_news())
 
-    # Commands
+    # region Events
+
+    async def scan_news(self):
+        tag = f"{self.tag}[scan_news]"
+        await self.bot.wait_until_ready()
+        log.info(f"{tag} Task started")
+        while not self.bot.is_closed():
+            try:
+                recent_news = await get_recent_news()
+                if recent_news is None:
+                    await asyncio.sleep(30)
+                    continue
+                log.debug(f"{tag} Checking recent news")
+                last_article = recent_news[0]["id"]
+                last_id = await get_global_property(self.bot.pool, "last_article")
+                await set_global_property(self.bot.pool, "last_article", last_article)
+                # Do not announce anything if this is the first time the task is executed.
+                if last_id is None:
+                    break
+                new_articles = []
+                for article in recent_news:
+                    # Do not post articles older than a week (in case bot was offline)
+                    if int(article["id"]) == last_id or (dt.date.today() - article["date"]).days > 7:
+                        break
+                    fetched_article = await get_news_article(int(article["id"]))
+                    if fetched_article is not None:
+                        new_articles.insert(0, fetched_article)
+                for article in new_articles:
+                    log.info(f"{tag} New article: {article['id']} - {article['title']}")
+                    for guild in self.bot.guilds:
+                        news_channel_id = await get_server_property(self.bot.pool, guild.id, "news_channel", default=0)
+                        if news_channel_id == 0:
+                            continue
+                        channel = self.bot.get_channel_or_top(guild, news_channel_id)
+                        try:
+                            await channel.send("New article posted on Tibia.com",
+                                               embed=self.get_article_embed(article, 1000))
+                        except discord.Forbidden:
+                            log.warning(f"{tag} Missing permissions.")
+                        except discord.HTTPException:
+                            log.warning(f"{tag} Malformed message.")
+                await asyncio.sleep(60 * 60 * 2)
+            except (IndexError, KeyError):
+                log.warning(f"{tag} Error getting recent news")
+                await asyncio.sleep(60*30)
+                continue
+            except errors.NetworkError:
+                await asyncio.sleep(30)
+                continue
+            except asyncio.CancelledError:
+                # Task was cancelled, so this is fine
+                break
+            except Exception as e:
+                log.exception(f"{tag} Exception: {e}")
+
+    # endregion
+
+    # region Commands
     # TODO: Needs a revision
     @checks.can_embed()
     @commands.command()
@@ -112,110 +169,52 @@ class Tibia(CogUtils):
             user_worlds = [ctx.world]
 
         entries = []
-        author = None
-        author_icon = discord.Embed.Empty
-        author_url = discord.Embed.Empty
-        embed_url = None
-        now = dt.datetime.now(dt.timezone.utc)
-        show_links = not await ctx.is_long()
+        embed_info = defaultdict(lambda: discord.Embed.Empty)
         per_page = 20 if await ctx.is_long() else 5
         if name is None:
-            title = "☠ Recent deaths"
+            embed_info["title"] = "☠ Recent deaths"
             entries = await self.get_recent_deaths(ctx, user_worlds, user_servers)
         else:
             char = await get_character(self.bot, name)
             if char is None:
                 return await ctx.error("That character doesn't exist.")
-            author = "Tibia.com"
-            author_url = TIBIA_URL
-            author_icon = TIBIACOM_ICON
-            embed_url = char.url
-            last_time = dt.datetime.now(dt.timezone.utc) if not char.deaths else char.deaths[-1].time
-            title = f"{get_voc_emoji(char.vocation)} {char.name} latest deaths"
-            for death in char.deaths:
-                death_time = get_time_diff(dt.datetime.now(tz=dt.timezone.utc) - death.time)
-                if death.by_player and show_links:
-                    killer = f"[{death.killer}]({NabChar.get_url(death.killer.name)})"
-                elif death.by_player:
-                    killer = f"**{death.killer.name}**"
-                else:
-                    killer = f"{death.killer.name}"
-                entries.append("At level **{0.level}** by {name} - *{time} ago*".format(death, time=death_time,
-                                                                                        name=killer))
-            db_char = await DbChar.get_by_name(ctx.pool, name)
-            if db_char is not None and not ctx.is_lite:
-                async with ctx.pool.acquire() as conn:
-                    async for death in db_char.get_deaths(conn):
-                        # Do not show deaths that are already displayed from Tibia.com
-                        if death.date > last_time:
-                            continue
-                        death_time = get_time_diff(now-death.date)
-                        entries.append(f"At level **{death.level}** by {death.killer.name} - *{death_time} ago*")
-                        if len(entries) >= 100:
-                            break
+            last_time = await self.get_recent_deaths_from_tibiacom(ctx, char, embed_info, entries)
+            await self.get_recent_deaths_from_database(ctx, name, embed_info, entries, last_time, user_servers)
         if not entries:
-            await ctx.send("There are no registered deaths.")
+            await ctx.send("There are no recent deaths.")
             return
 
         pages = Pages(ctx, entries=entries, per_page=per_page)
-        pages.embed.title = title
-        pages.embed.url = embed_url
-        if author is not None:
-            pages.embed.set_author(name=author, icon_url=author_icon, url=author_url)
+        pages.embed.title = embed_info["title"]
+        pages.embed.url = embed_info["url"]
+        if embed_info["author"]:
+            pages.embed.set_author(name=embed_info["author"], icon_url=embed_info["author_icon"], url=embed_info["author_url"])
         try:
             await pages.paginate()
         except errors.CannotPaginate as e:
             await ctx.error(e)
-
-    async def get_recent_deaths(self, ctx: NabCtx, user_worlds, user_servers):
-        now = dt.datetime.now(dt.timezone.utc)
-        entries = []
-        cache = dict()
-        min_level = config.announce_threshold
-        async with ctx.pool.acquire() as conn:
-            if ctx.guild:
-                min_level = get_server_property(conn, ctx.guild.id, "announce_level", min_level)
-            async for death in DbDeath.get_latest(conn, min_level, worlds=user_worlds):
-                if ctx.is_private:
-                    user = self._get_cached_user_(death.char.user_id, cache, user_servers)
-                else:
-                    user = ctx.guild.get_member(death.char.user_id)
-                if user is None:
-                    continue
-                user_name = user.name if ctx.is_private else user.display_name
-                if death.char.world not in user_worlds:
-                    continue
-                time_diff = get_time_diff(now - death.date)
-                emoji = get_voc_emoji(death.char.vocation)
-                entries.append(f"{emoji} {death.char.name} (**@{user_name}**) - "
-                               f"At level **{death.char.level}** by {death.killer.name} - *{time_diff} ago*")
-                if len(entries) >= 100:
-                    break
-        return entries
 
     @checks.tracking_world_only()
     @checks.can_embed()
     @deaths.command(name="monster", aliases=["mob", "killer"])
     async def deaths_monsters(self, ctx: NabCtx, *, name: str):
         """Shows the latest deaths caused by a specific monster."""
-        count = 0
         entries = []
         now = dt.datetime.now(dt.timezone.utc)
         per_page = 20 if await ctx.is_long() else 5
         async with ctx.pool.acquire() as conn:
             async for death in DbDeath.get_by_killer(conn, name, worlds=ctx.world):
-                    user = self.bot.get_member(death.char.user_id, ctx.guild)
-                    if user is None:
-                        continue
-                    count += 1
-                    death_time = get_time_diff(now-death.date)
-                    user_name = user.display_name
-                    emoji = get_voc_emoji(death.char.vocation)
-                    entries.append(f"{emoji} {death.char.name} (**@{user_name}**) - At level **{death.level}** - "
-                                   f"*{death_time} ago*")
-                    if count >= 100:
-                        break
-        if count == 0:
+                user = ctx.guild.get_member(death.char.user_id)
+                if user is None:
+                    continue
+                death_time = get_time_diff(now-death.date)
+                user_name = user.display_name
+                emoji = get_voc_emoji(death.char.vocation)
+                entries.append(f"{emoji} {death.char.name} (**@{user_name}**) - At level **{death.level}** - "
+                               f"*{death_time} ago*")
+                if len(entries) >= 100:
+                    break
+        if not entries:
             await ctx.send("There are no registered deaths by that killer.")
             return
 
@@ -236,25 +235,22 @@ class Tibia(CogUtils):
         if user is None:
             await ctx.send("I don't see any users with that name.")
             return
-
-        count = 0
         entries = []
         now = dt.datetime.now(dt.timezone.utc)
         per_page = 20 if await ctx.is_long() else 5
         async with ctx.pool.acquire() as conn:
             async for death in DbDeath.get_latest(conn, config.announce_threshold, user_id=user.id, worlds=ctx.world):
-                count += 1
                 death_time = get_time_diff(now - death.date)
                 emoji = get_voc_emoji(death.char.vocation)
                 entries.append(f"{emoji} {death.char.name} - At level **{death.level}** by {death.killer.name} - "
                                f"*{death_time} ago*")
-                if count >= 100:
+                if len(entries) >= 100:
                     break
-        if count == 0:
+        if not entries:
             await ctx.send("There are not registered deaths by this user.")
             return
 
-        title = "{0} latest deaths".format(user.display_name)
+        title = f"{user.display_name} latest deaths"
         icon_url = user.avatar_url
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.set_author(name=title, icon_url=icon_url)
@@ -351,8 +347,7 @@ class Tibia(CogUtils):
         if guild is None:
             return await ctx.error("The guild {0} doesn't exist.".format(name))
 
-        embed = discord.Embed()
-        embed.set_author(name="{0.name} ({0.world})".format(guild), url=guild.url, icon_url=TIBIACOM_ICON)
+        embed = self._get_tibia_embed(f"{guild.name} ({guild.world})", guild.url)
         embed.description = ""
         embed.set_thumbnail(url=guild.logo_url)
         if guild.guildhall is not None:
@@ -396,7 +391,7 @@ class Tibia(CogUtils):
         guild = await get_guild(name)
         if guild is None:
             return await ctx.send("The guild {0} doesn't exist.".format(name))
-        embed = discord.Embed(title=f"{guild.name} ({guild.world})", description=guild.description, url=guild.url)
+        embed = self._get_tibia_embed(f"{guild.name} ({guild.world})", guild.url)
         embed.set_thumbnail(url=guild.logo_url)
         embed.set_footer(text=f"The guild was founded on {guild.founded}")
         if guild.guildhall is not None:
@@ -642,7 +637,6 @@ class Tibia(CogUtils):
         entries = []
         author = None
         author_icon = discord.Embed.Empty
-        count = 0
         now = dt.datetime.now(dt.timezone.utc)
         per_page = 20 if await ctx.is_long() else 5
         user_cache = dict()
@@ -653,12 +647,11 @@ class Tibia(CogUtils):
                     user = self._get_cached_user_(lvl.char.user_id, user_cache, ctx.guild)
                     if user is None:
                         continue
-                    count += 1
                     diff = get_time_diff(now - lvl.date)
                     emoji = get_voc_emoji(lvl.char.vocation)
                     entries.append(f"{emoji} {lvl.char.name} - Level **{lvl.level}** - **@{user.display_name}** - "
                                    f"*{diff} ago*")
-                    if count >= 100:
+                    if len(entries) >= 100:
                         break
         else:
             async with ctx.pool.acquire() as conn:
@@ -674,19 +667,17 @@ class Tibia(CogUtils):
                 emoji = get_voc_emoji(db_char.vocation)
                 title = f"{emoji} {name} latest level ups"
                 async for lvl in db_char.get_level_ups(conn):
-                    count += 1
                     diff = get_time_diff(now - lvl.date)
                     entries.append(f"Level **{lvl.level}** - *{diff} ago*")
-                    if count >= 100:
+                    if len(entries) >= 100:
                         break
-        if count == 0:
+        if not entries:
             await ctx.send("There are no registered levels.")
             return
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
         if author is not None:
             pages.embed.set_author(name=author, icon_url=author_icon)
-
         try:
             await pages.paginate()
         except errors.CannotPaginate as e:
@@ -1397,7 +1388,9 @@ class Tibia(CogUtils):
         except errors.CannotPaginate as e:
             await ctx.send(e)
 
-    # Utilities
+    # endregion
+
+    # region Auxiliary methods
     @staticmethod
     def get_article_embed(article, limit):
         url = f"http://www.tibia.com/news/?subtopic=newsarchive&id={article['id']}"
@@ -1543,58 +1536,72 @@ class Tibia(CogUtils):
         embed.description = description
         return embed
 
-    async def scan_news(self):
-        tag = f"{self.tag}[scan_news]"
-        await self.bot.wait_until_ready()
-        log.info(f"{tag} Task started")
-        while not self.bot.is_closed():
-            try:
-                recent_news = await get_recent_news()
-                if recent_news is None:
-                    await asyncio.sleep(30)
-                    continue
-                log.debug(f"{tag} Checking recent news")
-                last_article = recent_news[0]["id"]
-                last_id = await get_global_property(self.bot.pool, "last_article")
-                await set_global_property(self.bot.pool, "last_article", last_article)
-                # Do not announce anything if this is the first time the task is executed.
-                if last_id is None:
-                    break
-                new_articles = []
-                for article in recent_news:
-                    # Do not post articles older than a week (in case bot was offline)
-                    if int(article["id"]) == last_id or (dt.date.today() - article["date"]).days > 7:
+    @classmethod
+    async def get_recent_deaths_from_database(cls, ctx, name, embed_info, entries, last_time, user_servers):
+        now = dt.datetime.now(dt.timezone.utc)
+        db_char = await DbChar.get_by_name(ctx.pool, name)
+        owner = ctx.bot.get_member(db_char.user_id, user_servers) if db_char else None
+        if db_char is not None and not ctx.is_lite and owner:
+            embed_info["author"] = f"{owner if ctx.is_private else owner.display_name}"
+            embed_info["author_url"] = discord.Embed.Empty
+            embed_info["author_icon"] = get_user_avatar(owner)
+            embed_info["embed_url"] = discord.Embed.Empty
+            async with ctx.pool.acquire() as conn:
+                async for death in db_char.get_deaths(conn):
+                    # Do not show deaths that are already displayed from Tibia.com
+                    if death.date > last_time:
+                        continue
+                    death_time = get_time_diff(now - death.date)
+                    entries.append(f"At level **{death.level}** by {death.killer.name} - *{death_time} ago*")
+                    if len(entries) >= 100:
                         break
-                    fetched_article = await get_news_article(int(article["id"]))
-                    if fetched_article is not None:
-                        new_articles.insert(0, fetched_article)
-                for article in new_articles:
-                    log.info(f"{tag} New article: {article['id']} - {article['title']}")
-                    for guild in self.bot.guilds:
-                        news_channel_id = await get_server_property(self.bot.pool, guild.id, "news_channel", default=0)
-                        if news_channel_id == 0:
-                            continue
-                        channel = self.bot.get_channel_or_top(guild, news_channel_id)
-                        try:
-                            await channel.send("New article posted on Tibia.com",
-                                               embed=self.get_article_embed(article, 1000))
-                        except discord.Forbidden:
-                            log.warning(f"{tag} Missing permissions.")
-                        except discord.HTTPException:
-                            log.warning(f"{tag} Malformed message.")
-                await asyncio.sleep(60 * 60 * 2)
-            except (IndexError, KeyError):
-                log.warning(f"{tag} Error getting recent news")
-                await asyncio.sleep(60*30)
-                continue
-            except errors.NetworkError:
-                await asyncio.sleep(30)
-                continue
-            except asyncio.CancelledError:
-                # Task was cancelled, so this is fine
-                break
-            except Exception as e:
-                log.exception(f"{tag} Exception: {e}")
+
+    @classmethod
+    async def get_recent_deaths_from_tibiacom(cls, ctx, char, embed_info, entries):
+        show_links = not await ctx.is_long()
+        embed_info["author"] = "Tibia.com"
+        embed_info["author_url"] = TIBIA_URL
+        embed_info["author_icon"] = TIBIACOM_ICON
+        embed_info["url"] = char.url
+        last_time = dt.datetime.now(dt.timezone.utc) if not char.deaths else char.deaths[-1].time
+        embed_info["title"] = f"{get_voc_emoji(char.vocation)} {char.name} latest deaths"
+        for death in char.deaths:
+            death_time = get_time_diff(dt.datetime.now(tz=dt.timezone.utc) - death.time)
+            if death.by_player and show_links:
+                killer = f"[{death.killer}]({NabChar.get_url(death.killer.name)})"
+            elif death.by_player:
+                killer = f"**{death.killer.name}**"
+            else:
+                killer = f"{death.killer.name}"
+            entries.append("At level **{0.level}** by {name} - *{time} ago*".format(death, time=death_time,
+                                                                                    name=killer))
+        return last_time
+
+    async def get_recent_deaths(self, ctx: NabCtx, user_worlds, user_servers):
+        now = dt.datetime.now(dt.timezone.utc)
+        entries = []
+        cache = dict()
+        min_level = config.announce_threshold
+        async with ctx.pool.acquire() as conn:
+            if ctx.guild:
+                min_level = get_server_property(conn, ctx.guild.id, "announce_level", min_level)
+            async for death in DbDeath.get_latest(conn, min_level, worlds=user_worlds):
+                if ctx.is_private:
+                    user = self._get_cached_user_(death.char.user_id, cache, user_servers)
+                else:
+                    user = ctx.guild.get_member(death.char.user_id)
+                if user is None:
+                    continue
+                user_name = user.name if ctx.is_private else user.display_name
+                if death.char.world not in user_worlds:
+                    continue
+                time_diff = get_time_diff(now - death.date)
+                emoji = get_voc_emoji(death.char.vocation)
+                entries.append(f"{emoji} {death.char.name} (**@{user_name}**) - "
+                               f"At level **{death.char.level}** by {death.killer.name} - *{time_diff} ago*")
+                if len(entries) >= 100:
+                    break
+        return entries
 
     @classmethod
     def _get_tibia_embed(cls, title=None, url=None):
@@ -1614,6 +1621,8 @@ class Tibia(CogUtils):
         async with self.bot.pool.acquire() as conn:
             results = await conn.fetch("SELECT zone, name FROM server_timezone WHERE server_id = $1", server_id)
             return results
+
+    # endregion
 
     def __unload(self):
         log.info(f"{self.tag} Unloading cog")
