@@ -49,13 +49,14 @@ def setting_command():
 
 
 class Admin:
-    """Commands for server owners and admins.
+    """Commands for server administrators and mods.
 
-    Admins are members with the `Administrator` permission."""
+    `Manage Server` permission is needed to use these commands."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    @checks.server_admin_only()
+    # region Commands
+    @checks.server_mod_only()
     @commands.command()
     async def checkchannel(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
         """Checks the channel's permissions.
@@ -384,7 +385,11 @@ class Admin:
     @checks.server_mod_only()
     @settings.command(name="serverlog")
     async def settings_serverlog(self, ctx: NabCtx, channel: str = None):
-        """Changes the channel used as the server log."""
+        """Changes the channel used as the server log.
+
+        By default, a channel named server-log will be used.
+
+        In this channel, character registrations and server changes are announced."""
         current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "serverlog")
         if channel is None:
             current_value = self.get_current_channel(ctx, current_channel_id, default_name=config.log_channel_name)
@@ -552,6 +557,8 @@ class Admin:
             await ctx.send(f"{ctx.tick(True)} This server is no longer tracking any world.")
         else:
             await ctx.send(f"{ctx.tick(True)} This server is now tracking **{world}**")
+
+    # endregion
 
     @staticmethod
     def get_current_channel(ctx: NabCtx, current_channel_id, *, pm_fallback=False, default_name=None):

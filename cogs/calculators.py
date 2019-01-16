@@ -54,6 +54,7 @@ class Calculators:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
+    # region Commands
     @commands.command(aliases=['bless'])
     async def blessings(self, ctx: NabCtx, level: int):
         """Calculates the price of blessings for a specific level.
@@ -325,13 +326,9 @@ class Calculators:
         content += " | ".join(f"**{tibia.get_level_by_mana(mana,voc)}** {emoji}" for (voc, emoji) in VOC_ITER)
         await ctx.send(content)
 
-    @classmethod
-    def magic_formula(cls, factor, skill):
-        return int(1600 * factor ** skill)
+    # endregion
 
-    @classmethod
-    def melee_formula(cls, factor, skill):
-        return int((50 * factor**(skill-10)))
+    # region Auxiliary methods
 
     @classmethod
     def get_hits(cls, current, percentage, target, factor, loyalty=0):
@@ -361,6 +358,16 @@ class Calculators:
         except OverflowError:
             content += "You will be dead before you can use them all."
         return content
+
+    @classmethod
+    def magic_formula(cls, factor, skill):
+        return int(1600 * factor ** skill)
+
+    @classmethod
+    def melee_formula(cls, factor, skill):
+        return int((50 * factor**(skill-10)))
+
+    # endregion
 
 
 def setup(bot):

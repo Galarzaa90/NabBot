@@ -57,7 +57,7 @@ Note that the bot will always answering by being mentioned, e.g. `@NabBot help`,
 
 It's recommended to keep this list as short as possible, and to make sure it does not overlap with the command prefix of other bots.
 
-This setting can be overriden on a per-server basis by using the command [settings](../commands/settings.md#settings-prefix)
+This setting can be overriden on a per-server basis by using the command [settings](../commands/admin.md#settings-prefix)
     
 ## Extra cogs
 For more information, see [Cogs](cogs.md)

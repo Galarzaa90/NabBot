@@ -2,7 +2,7 @@
 One of the main features of discord bots is being able to respond to commands.
 All commands require a prefix in order to be recognized and to avoid command triggering accidentally.
 
-By default, the command prefix is `/` and `@NabBot `, this can be changed in the main file by changing `command_prefix`, or per server using the command [settings prefix](settings.md#settings-prefix).
+By default, the command prefix is `/` and `@NabBot `, this can be changed in the main file by changing `command_prefix`, or per server using the command [settings prefix](admin.md#settings-prefix).
 
 Commands can be used on any channel where the bot can read and write.
 Some commands may require extra permissions such as `Embed Links` or `Attach Files`, or might not be allowed in private messages.

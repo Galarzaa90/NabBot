@@ -1233,7 +1233,10 @@ class Tibia(CogUtils):
                 char_embed = self.get_char_embed(char)
                 # If it's owned by the user, we append it to the same embed.
                 if char.owner_id == int(user.id):
-                    char_embed.add_field(name="Character", value=char_embed.description, inline=False)
+                    if char_embed.fields:
+                        highscores = char_embed.fields[0]
+                        char_embed.add_field(name=highscores.name, value=highscores.value, inline=False)
+                    char_embed.set_field_at(0, name="Character", value=char_embed.description, inline=False)
                     char_embed.description = user_embed.description
                     char_embed.set_thumbnail(url=user_embed.thumbnail.url)
                     log.debug(f"{self.tag} Matches user and char, same name.")
@@ -1268,7 +1271,10 @@ class Tibia(CogUtils):
             # Char is owned by a discord user
             user_embed = await self.get_user_embed(ctx, owner)
             char_embed = self.get_char_embed(char)
-            char_embed.add_field(name="Character", value=char_embed.description, inline=False)
+            if char_embed.fields:
+                highscores = char_embed.fields[0]
+                char_embed.add_field(name=highscores.name, value=highscores.value, inline=False)
+            char_embed.set_field_at(0, name="Character", value=char_embed.description, inline=False)
             char_embed.description = user_embed.description
             char_embed.set_thumbnail(url=user_embed.thumbnail.url)
             log.debug(f"{self.tag} Found char only, owner is in same server")

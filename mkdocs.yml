@@ -60,13 +60,13 @@ nav:
     - Commands:
       - Overview: commands/index.md
       - Admin commands: commands/admin.md
+      - Calculators commands: commands/calculators.md
       - General commands: commands/general.md
       - Info commands: commands/info.md
       - Loot commands: commands/loot.md
       - Mod commands: commands/mod.md
       - Owner commands: commands/owner.md
       - Roles commands: commands/roles.md
-      - Settings commands: commands/settings.md
       - Tibia commands: commands/tibia.md
       - TibiaWiki commands: commands/tibiawiki.md
       - Tracking commands: commands/tracking.md
