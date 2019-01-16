@@ -10,7 +10,7 @@ from discord.ext import commands
 
 from cogs.utils.database import DbChar
 from nabbot import NabBot
-from .utils import CogUtils, config, context, errors, join_list, database
+from .utils import CogUtils, config, context, errors, join_list, database, timing
 
 log = logging.getLogger("nabbot")
 
@@ -75,39 +75,15 @@ class Core(CogUtils):
         """Handles command errors"""
         if isinstance(error, commands.errors.CommandNotFound):
             return
-        elif isinstance(error, (commands.NoPrivateMessage, errors.NotTracking)):
-            await ctx.error(error)
-        elif isinstance(error, errors.CannotEmbed):
-            await ctx.error(f"Sorry, `Embed Links` permission is required for this command.")
-        elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.error(f"The correct syntax is: `{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
-                            f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
-        elif isinstance(error, commands.BadArgument):
-            _type, param = self.parse_bad_argument(str(error))
-            # Making these errors more understandable.
-            if _type == "int":
-                error = f"Parameter `{param}` must be numeric."
-            await ctx.error(f"{error}\nTry `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
+        elif isinstance(error, commands.CommandOnCooldown):
+            await ctx.error(f"You're using this too much! "
+                            f"Try again {timing.HumanDelta.from_seconds(error.retry_after).long(1)}.")
+        elif isinstance(error, commands.CheckFailure):
+            await self.process_check_failure(ctx, error)
+        elif isinstance(error, commands.UserInputError):
+            await self.process_user_input_error(ctx, error)
         elif isinstance(error, commands.CommandInvokeError):
-            error_name = error.original.__class__.__name__
-            if isinstance(error.original, errors.NetworkError):
-                log.error(f"{error_name} in command {ctx.clean_prefix}{ctx.command.qualified_name}: {error.original}")
-                return await ctx.error("I'm having network issues right now. Please try again in a moment.")
-            log.error(f"{self.tag} Exception in command: {ctx.message.clean_content}", exc_info=error.original)
-            if isinstance(error.original, discord.HTTPException):
-                await ctx.error("Sorry, the message was too long to send.")
-            else:
-                if ctx.bot_permissions.embed_links:
-                    embed = discord.Embed(colour=discord.Colour(0xff1414))
-                    embed.set_author(name="Support Server", url="https://discord.gg/NmDvhpY",
-                                     icon_url=self.bot.user.avatar_url)
-                    embed.set_footer(text="Please report this bug in the support server.")
-                    embed.add_field(name=f"{ctx.tick(False)}Command Error",
-                                    value=f"```py\n{error_name}: {error.original}```",
-                                    inline=False)
-                    await ctx.send(embed=embed)
-                else:
-                    await ctx.error(f'Command error:\n```py\n{error_name}: {error.original}```')
+            await self.process_command_invoke_error(ctx, error)
         else:
             log.warning(f"Unhandled command error {error.__class__.__name__}: {error}")
 
@@ -232,6 +208,44 @@ class Core(CogUtils):
     def __unload(self):
         log.info(f"{self.tag} Unloading cog")
         self.game_update_task.cancel()
+
+    async def process_check_failure(self, ctx: context.NabCtx, error: commands.CheckFailure):
+        if isinstance(error, (commands.NoPrivateMessage, errors.NotTracking)):
+            await ctx.error(error)
+        elif isinstance(error, errors.CannotEmbed):
+            await ctx.error(f"Sorry, `Embed Links` permission is required for this command.")
+
+    async def process_user_input_error(self, ctx: context.NabCtx, error: commands.UserInputError):
+        if isinstance(error, commands.MissingRequiredArgument):
+            await ctx.error(f"The correct syntax is: `{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
+                            f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
+        elif isinstance(error, commands.BadArgument):
+            _type, param = self.parse_bad_argument(str(error))
+            # Making these errors more understandable.
+            if _type == "int":
+                error = f"Parameter `{param}` must be numeric."
+            await ctx.error(f"{error}\nTry `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
+
+    async def process_command_invoke_error(self, ctx: context.NabCtx, error: commands.CommandInvokeError):
+        error_name = error.original.__class__.__name__
+        if isinstance(error.original, errors.NetworkError):
+            log.error(f"{error_name} in command {ctx.clean_prefix}{ctx.command.qualified_name}: {error.original}")
+            return await ctx.error("I'm having network issues right now. Please try again in a moment.")
+        log.error(f"{self.tag} Exception in command: {ctx.message.clean_content}", exc_info=error.original)
+        if isinstance(error.original, discord.HTTPException):
+            await ctx.error("Sorry, the message was too long to send.")
+        else:
+            if ctx.bot_permissions.embed_links:
+                embed = discord.Embed(colour=discord.Colour(0xff1414))
+                embed.set_author(name="Support Server", url="https://discord.gg/NmDvhpY",
+                                 icon_url=self.bot.user.avatar_url)
+                embed.set_footer(text="Please report this bug in the support server.")
+                embed.add_field(name=f"{ctx.tick(False)}Command Error",
+                                value=f"```py\n{error_name}: {error.original}```",
+                                inline=False)
+                await ctx.send(embed=embed)
+            else:
+                await ctx.error(f'Command error:\n```py\n{error_name}: {error.original}```')
 
 
 def setup(bot):

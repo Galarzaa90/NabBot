@@ -22,13 +22,6 @@ class Roles(CogUtils):
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    async def __error(self, ctx, error):
-        if isinstance(error, commands.BadArgument):
-            await ctx.send(error)
-        if isinstance(error, commands.CommandOnCooldown):
-
-            await ctx.send(f"You're using this too much! Try again in {error.retry_after:.0f} seconds.")
-
     # region Discord Events
     async def on_guild_role_delete(self, role: discord.Role):
         """Called when a role is deleted.
@@ -200,7 +193,7 @@ class Roles(CogUtils):
 
     @checks.has_guild_permissions(manage_roles=True)
     @commands.guild_only()
-    @commands.cooldown(1, 3600, commands.BucketType.guild)
+    @commands.cooldown(1, 60*60*24, commands.BucketType.guild)
     @autorole.command(name="refresh")
     async def autorole_refresh(self, ctx: NabCtx):
         """Triggers a refresh on all members.
@@ -209,7 +202,7 @@ class Roles(CogUtils):
         Note that guild changes from members that haven't been online won't be detected.
         Deleted rules won't have any effect.
 
-        This command can only be used once per server every hour.
+        This command can only be used once per server every day.
         """
         msg = await ctx.send("This will make me check the guilds of all registered characters to apply existing rules."
                              "\nNote that character with outdated information won't be updated until they are online "
