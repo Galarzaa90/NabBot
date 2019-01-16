@@ -1,6 +1,7 @@
 import datetime as dt
 import time
 from calendar import timegm
+from typing import Union
 
 from cogs.utils import join_list
 
@@ -10,12 +11,12 @@ class HumanDelta:
     time_attributes = ("years", "months", "days", "hours", "minutes", "seconds")
     short_attributes = ("y", "mo", "d", "h", "m", "s")
 
-    def __init__(self, delta):
+    def __init__(self, delta, duration=False):
         if not isinstance(delta, dt.timedelta):
             raise ValueError("Parameter is not a datetime.timedelta instance.")
         self.negative = delta.total_seconds() < 0
         delta = abs(delta)
-
+        self.duration = duration
         self.hours, remainder = divmod(int(delta.total_seconds()), 3600)
         self.minutes, self.seconds = divmod(remainder, 60)
         self.days, self.hours = divmod(self.hours, 24)
@@ -39,10 +40,12 @@ class HumanDelta:
         if not output:
             return "now"
         content = join_list(output[:min(max_attributes, len(output))])
-        if self.negative:
-            return content + " ago"
-        else:
-            return "in " + content
+        if not self.duration:
+            if self.negative:
+                content += " ago"
+            else:
+                content = "in " + content
+        return content
 
     def short(self, max_attributes=0):
         if not max_attributes:
@@ -53,19 +56,21 @@ class HumanDelta:
             if not elem:
                 continue
 
-            output.append(f'{elem} {short}')
+            output.append(f'{elem}{short}')
 
         if not output:
             return "now"
-        content = join_list(output[:min(max_attributes, len(output))])
-        if self.negative:
-            return content + " ago"
-        else:
-            return "in " + content
+        content = " ".join(output[:min(max_attributes, len(output))])
+        if not self.duration:
+            if self.negative:
+                content += " ago"
+            else:
+                content = "in " + content
+        return content
 
     @classmethod
-    def from_seconds(cls, seconds: int):
-        return cls(dt.timedelta(seconds=seconds))
+    def from_seconds(cls, seconds: Union[int, float], duration=False):
+        return cls(dt.timedelta(seconds=seconds), duration)
 
     @classmethod
     def from_date(cls, date: dt.datetime, source=None):

@@ -5,7 +5,7 @@ import math
 import discord
 from discord.ext import commands
 
-from cogs.utils import config
+from cogs.utils import config, timing
 from nabbot import NabBot
 from .utils import tibia
 from .utils.context import NabCtx
@@ -91,7 +91,7 @@ class Calculators:
             return await ctx.error("Your target skill can't be greater than 200.")
         if 0 > percentage >= 100:
             return await ctx.error("Percentage must be between 0 and 99.")
-        if 0 > loyalty > 50 or loyalty % 5:
+        if loyalty < 0 or loyalty > 50 or loyalty % 5:
             return await ctx.error("Loyalty must be between 0 and 50, and a multiple of 5.")
 
         loyalty_str = f" with a loyalty bonus of {loyalty}%." if loyalty else "."
@@ -110,9 +110,9 @@ class Calculators:
     @commands.command(usage="<current> <percentage> <target> <vocation> [loyalty]")
     async def magiclevel(self, ctx: NabCtx, current: int, percentage: int, target: int, vocation: str,
                          loyalty: int = 0):
-        """Calculates the training time required to reach a target skill level.
+        """Calculates the training time required to reach a target magic level.
 
-        This only applies to axe, club and sword fighting."""
+        It shows the needed mana, offline training time and exercise weapons needed."""
         voc = normalize_vocation(vocation, allow_no_voc=False)
         if not voc:
             return await ctx.error("Unknown vocation.")
@@ -128,7 +128,7 @@ class Calculators:
             return await ctx.error("Your target level can't be greater than 60 for paladins.")
         if 0 > percentage >= 100:
             return await ctx.error("Percentage must be between 0 and 99.")
-        if 0 > loyalty > 50 or loyalty % 5:
+        if loyalty < 0 or loyalty > 50 or loyalty % 5:
             return await ctx.error("Loyalty must be between 0 and 50, and a multiple of 5.")
 
         factor = MAGIC_FACTOR[voc]
@@ -140,7 +140,8 @@ class Calculators:
         embed = discord.Embed(title="🔮 Magic Level Calculator", colour=discord.Colour.teal())
         embed.set_footer(text=f"From magic level {current} ({percentage}%) to {target} as a {voc}{loyalty_str}")
         try:
-            embed.add_field(name="Offline training time", value=f"{dt.timedelta(seconds=regen_seconds*2)}")
+            embed.add_field(name="Offline training time",
+                            value=f"{timing.HumanDelta.from_seconds(regen_seconds*2, True).long()}")
         except OverflowError:
             embed.add_field(name="Offline training time", value="Longer than what you will live.")
         embed.add_field(name="Exercise Dummies", value=self.get_weapon_usage_string(weapons))
@@ -155,6 +156,9 @@ class Calculators:
                          loyalty: int = 0):
         """Calculates the training time required to reach a target skill level.
 
+        It shows the needed hits, online training time and offline training time.
+        For knights, it also shows exercise weapons needed.
+
         This only applies to axe, club and sword fighting."""
         if current >= target:
             return await ctx.error("Target skill must be greater than current skill.")
@@ -164,7 +168,7 @@ class Calculators:
             return await ctx.error("Your target skill can't be greater than 200.")
         if 0 > percentage >= 100:
             return await ctx.error("Percentage must be between 0 and 99.")
-        if 0 > loyalty > 50 or loyalty % 5:
+        if loyalty < 0 or loyalty > 50 or loyalty % 5:
             return await ctx.error("Loyalty must be between 0 and 50, and a multiple of 5.")
         voc = normalize_vocation(vocation, allow_no_voc=False)
         if not voc:
@@ -178,8 +182,10 @@ class Calculators:
         embed.set_footer(text=f"From skill level {current} ({percentage}%) to {target} as a {voc}{loyalty_str}")
         embed.description = f"You need **{hits:,}** hits to reach the target level."
         try:
-            embed.add_field(name="Online training time", value=f"{dt.timedelta(seconds=hits*2)}")
-            embed.add_field(name="Offline training time", value=f"{dt.timedelta(seconds=hits*4)}")
+            embed.add_field(name="Online training time",
+                            value=f"{timing.HumanDelta.from_seconds(hits*2, True).long()}")
+            embed.add_field(name="Offline training time",
+                            value=f"{timing.HumanDelta.from_seconds(hits*4, True).long()}")
         except OverflowError:
             embed.add_field(name="Online training time", value="Longer than what you will live.")
             embed.add_field(name="Offline training time", value="Longer than what you will live.")
@@ -201,7 +207,7 @@ class Calculators:
 
         Optionally, you can provide the target stamina you want.
 
-        The footer text shows the time in your timezone where your stamina would be full."""
+        The footer text shows the time in your timezone where your stamina would be at the target stamina."""
         if target is None:
             target = Stamina("42:00")
         if current > target:
@@ -226,7 +232,8 @@ class Calculators:
         else:
             remaining = f'{current_minutes} minutes'
 
-        reply = f"You need to rest **{remaining}** to get back to full stamina."
+        target_str = "full" if target.hours == 42 else f"**{target.hours}:{target.minutes:02}**"
+        reply = f"You need to rest **{remaining}** to get back to {target_str} stamina."
         permissions = ctx.bot_permissions
         if not permissions.embed_links:
             await ctx.send(reply)
@@ -299,22 +306,27 @@ class Calculators:
             f"**{exp:,}** Experience\n\t**{exp_tnl:,}** to next level"
         await ctx.send(content)
 
-    @stats.command(name="hitpoints", aliases=["hp"])
-    async def stats_hitpoints(self, ctx: NabCtx, hitpoints: int):
-        """Calculates the level required to reach the specified hitpoints.
-
-        The levels needed for each vocation are shown."""
-        content = f"To reach **{hitpoints:,}** hitpoints, you need at least the following levels per vocation:\n\t"
-        content += " | ".join(f"**{tibia.get_level_by_hitpoints(hitpoints,voc)}** {emoji}" for (voc, emoji) in VOC_ITER)
-        await ctx.send(content)
-
     @stats.command(name="capacity", aliases=["cap"])
     async def stats_capacity(self, ctx: NabCtx, capacity: int):
         """Calculates the level required to reach the specified capacity.
 
         The levels needed for each vocation are shown."""
+        if capacity <= 400:
+            return await ctx.error("Capacity can't be lower than 400.")
+
         content = f"To reach **{capacity:,}** oz. capacity, you need at least the following levels per vocation:\n\t"
         content += " | ".join(f"**{tibia.get_level_by_capacity(capacity,voc)}** {emoji}" for (voc, emoji) in VOC_ITER)
+        await ctx.send(content)
+
+    @stats.command(name="hitpoints", aliases=["hp"])
+    async def stats_hitpoints(self, ctx: NabCtx, hitpoints: int):
+        """Calculates the level required to reach the specified hitpoints.
+
+        The levels needed for each vocation are shown."""
+        if hitpoints <= 150:
+            return await ctx.error("Hitpoints can't be lower than 400.")
+        content = f"To reach **{hitpoints:,}** hitpoints, you need at least the following levels per vocation:\n\t"
+        content += " | ".join(f"**{tibia.get_level_by_hitpoints(hitpoints,voc)}** {emoji}" for (voc, emoji) in VOC_ITER)
         await ctx.send(content)
 
     @stats.command(name="mana", aliases=["mp"])
@@ -322,6 +334,8 @@ class Calculators:
         """Calculates the level required to reach the specified mana points.
 
         The levels needed for each vocation are shown."""
+        if mana <= 55:
+            return await ctx.error("Capacity can't be lower than 400.")
         content = f"To reach **{mana:,}** mana points, you need at least the following levels per vocation:\n\t"
         content += " | ".join(f"**{tibia.get_level_by_mana(mana,voc)}** {emoji}" for (voc, emoji) in VOC_ITER)
         await ctx.send(content)
@@ -354,7 +368,8 @@ class Calculators:
             f"Costing **{EXERCISE_WEAPON_GP * weapons:,}** gold coins " \
             f"or **{EXERCISE_WEAPON_COIN * weapons:,}** tibia coins.\n"
         try:
-            content += f"Using them would take {dt.timedelta(seconds=weapons * 500 * 2)}."
+            training_time = timing.HumanDelta.from_seconds(weapons * 500 * 2, True)
+            content += f"Using them would take *{training_time.long()}*."
         except OverflowError:
             content += "You will be dead before you can use them all."
         return content

@@ -241,44 +241,6 @@ This command can be used in three ways:
 
 ----
 
-## stamina
-**Syntax:** `stamina <current stamina>`
-
-Tells you the time you have to wait to restore stamina.
-
-To use it, you must provide your current stamina, in this format: `hh:mm`.
-The bot will show the time needed to reach full stamina if you were to start sleeping now.
-
-The footer text shows the time in your timezone where your stamina would be full.
-
-??? Summary "Examples"
-    **/stamina 39:00**  
-    ![image](../assets/images/commands/stamina_1.png)  
-    **/stamina 28:32**  
-    ![image](../assets/images/commands/stamina_2.png)
-
-----
-
-## stats
-**Syntax:** `stats <level>,<vocation` or `stats <character>`
-
-Calculates character stats based on vocation and level.
-        
-Shows hitpoints, mana, capacity, total experience and experience to next level.
-
-This command can be used in two ways:
-
-1. To calculate the stats for a certain level and vocation. (`stats <level>,<vocation>`)
-2. To calculate the stats of a character. (`stats <character>`)
-
-??? Summary "Examples"
-    **/stats 543,elder druid**  
-    ![image](../assets/images/commands/stats_1.png)  
-    **/stats Galarzaa Fidera**  
-    ![image](../assets/images/commands/stats_2.png)
-
-----
-
 ## timeline
 **Syntax:** `timeline [character]`  
 **Other aliases:** `story`
@@ -405,7 +367,7 @@ Shows information like PvP type, online count, server location, vocation distrib
     ![image](../assets/images/commands/world_1.png)  
     **/world Ferobra**  
     ![image](../assets/images/commands/world_2.png)
- 
+
 ----
 
 ## worlds
