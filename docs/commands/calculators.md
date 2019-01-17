@@ -29,7 +29,7 @@ For the moment, online and offline training calculation is unavailable.
 
 ??? Summary "Examples"
     **/distanceskill 56 3 70 rp 10**  
-    ![image](../assets/images/commands/calculators/distanceskill.png
+    ![image](../assets/images/commands/calculators/distanceskill.png)
 
 ----
 ## magiclevel
