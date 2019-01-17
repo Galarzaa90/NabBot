@@ -70,6 +70,7 @@ nav:
       - Tibia commands: commands/tibia.md
       - TibiaWiki commands: commands/tibiawiki.md
       - Tracking commands: commands/tracking.md
+      - Timers commands: commands/timers.md
     - Hosting:
       - Configuration: hosting/config.md
       - Messages: hosting/messages.md

@@ -28,6 +28,11 @@
     - ✔ New command: `/meleeskill`, calculates online and offline training time and exercise weapons. 
     - ✔ New command: `/magicslevel`, calculates mana needed, offline training time and exercise weapons needed.
 - 🔧 Moved `/settings` command and subcommands to Admin cog, removed Settings cog.
+- ✔ New Timers cog:
+    - 🔧 Moved `/event` and subcommands here.
+    - ✔ New `remindme` command, creates a custom reminder.
+    - ✔ New `bosstimer` command, keep track of boss cooldowns and get notified when they are over.
+- ✔ New `/checkpm` command, to check if you can receive PMs from the bot.
 - ✔ New charm command.
 - ✔ Name changes for registered characters are now shown in server-log
 - ✔ World transfers for registered characters are now shown in server-log

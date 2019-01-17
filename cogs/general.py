@@ -13,6 +13,7 @@ log = logging.getLogger("nabbot")
 
 
 class General(CogUtils):
+    """General use commands."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
