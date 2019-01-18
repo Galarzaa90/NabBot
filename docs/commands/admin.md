@@ -17,14 +17,14 @@ If no channel is specified, the current one is checked.
 
 ??? Summary "Examples"
     **/checkchannel**  
-    ![image](../assets/images/commands/checkchannel.png)
+    ![image](../assets/images/commands/admin/checkchannel.png)
 
 ## settings
 Shows the available server-specific settings that can be modified.
 
 ??? Summary "Examples"
     **/settings**  
-    ![image](../assets/images/commands/settings.png)
+    ![image](../assets/images/commands/admin/settings.png)
     
 ----
 

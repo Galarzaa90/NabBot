@@ -61,7 +61,7 @@ class TibiaWiki:
         embed.description = achievement.description
         embed.add_field(name="Grade", value="⭐" * int(achievement.grade))
         embed.add_field(name="Points", value=achievement.points)
-        embed.add_field(name="Spoiler", value=achievement.spoiler, inline=True)
+        embed.add_field(name="Spoiler", value=f"||{achievement.spoiler}||", inline=True)
 
         await ctx.send(embed=embed)
 

@@ -5,20 +5,27 @@
 - ❌ Removed feature
 
 ## Version 2.0.0 (Unreleased)
-- ✔ Users can now be ignored, so the bot doesn't respond to them.
 - ✔ Migrated user database from SQLite to PostgreSQL (Database migration available)
-- 🔧 Death and level up tracking has been optimized, reducing unnecessary tibia.com calls and improving speed.
-- 🔧 Improved watchlist task
-- 🔧 Bots get a different embed color when joining.
-- 🔧 Watched list renamed to Watchlist
-- 🔧 Move server timezones to their own table.
-- 🔧 Optimize/cleanup TibiaWiki commands.
-- ✔ `/spell` command now shows spell effect.
-- 🔧 Improve internal logging system.
-- 🔧 Created classes to handle database data.
-- 🔧 Many improvements to the character tracking system.
-- 🔧 Reduced new tracking interval
+- ✔ Users can now be ignored, so the bot doesn't respond to them.
+- ✔ Command usage is now saved.
+- ✔ New `/commandstats` command to see command usage stats. Yes commands x4.
+- ✔ Save character name history.
+- ✔ Save character world history.
+- ✔ Save character owner history.
+- ✔ Multiple watchlists per server (e.g. one for friends, one for enemies).
+- ✔ New subcommand /`watchlist create`.
+- ✔ Server growth stats
+- ✔ `/remindme` command, makes the bot remind you something, e.g remindme 1d conquer the world
+- ✔ `/boss` command to set boss cooldown timers, e.g.`/boss set heart of destruction,galarzaa fidera`
+- ✔ New `/channelinfo` command.
+- 🔧 Improved and optimized TibiaWiki cog:
+    - ✔ Now uses [tibiawiki-sql](https://github.com/galarzaa90/tibiawiki-sql/)'s API.
+    - 🔧 Improved the display of all commands.
+    - ✔ New `/charms` command
+    - 🔧 `/spell` now shows the spell's effect.
+    - 🔧 `/achievement` now uses new discord spoiler feature.
 - ✔ Server log channel can now be configured (`/settings serverlog`)
+- ✔ New `/highscores global` subcommand, shows combined highscores from worlds.
 - ✔ New Calculators cog:
     - 🔧 Moved `/blessings`, `/stamina` and `/stats` here
     - 🔧 Improved command output of `/stats`.
@@ -28,28 +35,27 @@
     - ✔ New command: `/distanceskill`, calculates the exercise weapons needed to reach a target.
     - ✔ New command: `/meleeskill`, calculates online and offline training time and exercise weapons. 
     - ✔ New command: `/magicslevel`, calculates mana needed, offline training time and exercise weapons needed.
-- 🔧 Moved `/settings` command and subcommands to Admin cog, removed Settings cog.
 - ✔ New Timers cog:
     - 🔧 Moved `/event` and subcommands here.
     - ✔ New `remindme` command, creates a custom reminder.
     - ✔ New `bosstimer` command, keep track of boss cooldowns and get notified when they are over.
 - ✔ New `/checkpm` command, to check if you can receive PMs from the bot.
-- ✔ New charm command.
 - ✔ Name changes for registered characters are now shown in server-log
 - ✔ World transfers for registered characters are now shown in server-log
+- 🔧 `/whois` now shows Account Status, Loyalty Title and Position if any.
+- 🔧 Improved performance of `/deaths`, `/levelups` and `/timeline` commands and their subcommands
+- 🔧 Death and level up tracking has been optimized, reducing unnecessary tibia.com calls and improving speed.
+- 🔧 Improved watchlist task
+- 🔧 Bots get a different embed color when joining.
+- 🔧 Watched list renamed to Watchlist
+- 🔧 Move server timezones to their own table.
+- 🔧 Improve internal logging system.
+- 🔧 Created classes to handle database data.
+- 🔧 Many improvements to the character tracking system.
+- 🔧 Reduced new tracking interval
+- 🔧 Moved `/settings` command and subcommands to Admin cog, removed Settings cog.
 - 🔧 When a member leaves or is kicked from the server, their registered characters are shown on server-log.
-- ✔ Command usage is now saved.
-- ✔ New commandstats command to see command usage stats. Yes commands x4.
-- ✔ Save character name history.
-- ✔ Save character world history.
-- ✔ Save character owner history.
-- ✔ Multiple watchlists per server (e.g. one for friends, one for enemies).
-- ✔ New subcommand watchlist create.
-- ✔ Server growth stats
-- ✔ New channelinfo command.
 - 🔧 Configurable server-log channel.
-- ✔ remindme command, makes the bot remind you something, e.g remindme 1d conquer the world
-- ✔ boss command to set boss cooldown timers, e.g. boss set heart of destruction,galarzaa fidera
 - 🔧 Support for multiple killers (pvp deaths).
 - 🔧 Rework highscores tracking.
 - 🐛 Autorole * rule only applies to characters in the same world. This means members wont get a role for characters in a different world.

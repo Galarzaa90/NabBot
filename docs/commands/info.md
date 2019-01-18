@@ -37,6 +37,18 @@ For more details, use `help`.
 
 ---
 
+## commandstats
+
+Shows command statistics.
+
+---
+
+### commandsats global
+
+Shows command statistics of all servers.
+
+---
+
 ## channelinfo
 **Syntax:** `channelinfo [channel]`
 

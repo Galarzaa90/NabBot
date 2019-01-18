@@ -236,92 +236,12 @@ class Loot(CogUtils):
             else:
                 await ctx.send(short_message)
 
-    @checks.owner_only()
-    @loot.command(name="add")
-    async def loot_add(self, ctx: NabCtx, *, item: str):
-        """Adds an image to an existing loot item in the database.
-
-        This will make the bot start recognizing the image as this item.
-
-        This command can only be used by bot owners."""
-        if len(ctx.message.attachments) == 0:
-            return await ctx.error("You need to upload the image you want to add to this item.")
-
-        attachment = ctx.message.attachments[0]
-        if attachment.width != 32 or attachment.height != 32:
-            return await ctx.error("Image size has to be 32x32.")
-
-        try:
-            async with ctx.bot.session.get(attachment.url) as resp:
-                original_image = await resp.read()
-            frame_image = Image.open(io.BytesIO(bytearray(original_image))).convert("RGBA")
-        except Exception:
-            await ctx.error("Either that wasn't an image or I failed to load it, please try again.")
-            return
-
-        result = await self.item_add(item, frame_image)
-        if result is None:
-            return await ctx.error("Couldn't find an item with that name.")
-        _, item = await self.item_show(item)
-        item, *_ = item
-        await ctx.success("Image added to **{name}**"
-                          "\nGroup: {group} | Buy value: {value_buy:,} | Sell value: {value_sell:,}".format(**item),
-                          file=discord.File(result, "results.png"))
-        return
-
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
     async def loot_legend(self, ctx: NabCtx):
         """Shows the meaning of the overlayed icons."""
         with open("./images/legend.png", "r+b") as f:
             await ctx.send(file=discord.File(f))
             f.close()
-
-    @checks.owner_only()
-    @loot.command(name="new", usage="<item>,<group>,<id>")
-    async def loot_new(self, ctx: NabCtx, *, params):
-        """Adds a new item to the loot database."""
-        if len(ctx.message.attachments) == 0:
-            return await ctx.error("You need to upload the image you want to add to this item.")
-        params = params.split(",")
-        if not len(params) == 3:
-            return await ctx.error(f"The correct syntax is: `/loot new {ctx.usage}`")
-        item, group, id = params
-        item: tibiawikisql.models.Item = tibiawikisql.models.Item.get_by_field(wiki_db, "title", item, True)
-        if item is None:
-            return await ctx.error("No item found with that name.")
-        if item.value_buy is None:
-            item.value_buy = 0
-
-        attachment = ctx.message.attachments[0]
-        if attachment.width != 32 or attachment.height != 32:
-            return await ctx.error("Image size has to be 32x32.")
-
-        try:
-            with aiohttp.ClientSession() as session:
-                async with session.get(attachment.url) as resp:
-                    original_image = await resp.read()
-            frame_image = Image.open(io.BytesIO(bytearray(original_image))).convert("RGBA")
-        except Exception:
-            return await ctx.error("Either that wasn't an image or I failed to load it, please try again.")
-
-        result = await self.item_new(item.title, frame_image, group, item.value_buy, 0, id)
-        if result is None:
-            return await ctx.error("Could not add new item.")
-        else:
-            await ctx.success("Image added to item.", file=discord.File(result, "results.png"))
-            result, saved_item = await self.item_show(item.title)
-            if result is not None:
-                await ctx.send("Name: {name}, Group: {group}, Value: {value}, ID: {id}".format(**saved_item[0]),
-                               file=discord.File(result, "results.png"))
-
-    @checks.owner_only()
-    @loot.command(name="remove", aliases=["delete", "del"])
-    async def loot_remove(self, ctx: NabCtx, *, item: str):
-        """Removes an item from the loot database."""
-        result = await self.item_remove(item)
-        if result is None:
-            return await ctx.error("Couldn't find an item with that name.")
-        await ctx.send("Item \"" + result + "\" removed from loot database.")
 
     @checks.owner_only()
     @loot.command(name="show")
@@ -884,93 +804,6 @@ class Loot(CogUtils):
         output_image.save(img_byte_arr, format='png')
         img_byte_arr = img_byte_arr.getvalue()
         return img_byte_arr, item_list
-
-    async def item_remove(self, item):
-        c = self.loot_conn.execute("SELECT * FROM Items WHERE name LIKE ?", (item,))
-        item_list = c.fetchall()
-        if len(item_list) == 0:
-            return None
-        c.execute("DELETE FROM Items WHERE name LIKE ?", (item,))
-        return item_list[0]["name"]
-
-    async def item_add(self, item, frame):
-        c = self.loot_conn.execute("SELECT * FROM Items WHERE name LIKE ?", (item,))
-        item_list = c.fetchall()
-        if len(item_list) == 0:
-            return None
-        frame_crop = self.crop_item(frame)
-        frame_color = self.get_item_color(frame)
-        frame_size = self.get_item_size(frame_crop)
-        frame__byte_arr = io.BytesIO()
-        frame.save(frame__byte_arr, format='PNG')
-        frame__byte_arr = frame__byte_arr.getvalue()
-        frame_str = pickle.dumps(frame__byte_arr)
-        with self.loot_conn as conn:
-            conn.execute("INSERT INTO Items(name,`group`,id,\
-                                            value_sell,value_buy,frame,\
-                                            sizeX,sizeY,size,\
-                                            red,green,blue) "
-                         "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-                         (item_list[0]["name"], item_list[0]["group"], item_list[0]["id"],
-                          item_list[0]["value_sell"], item_list[0]["value_buy"], frame_str,
-                          frame_crop.size[0], frame_crop.size[1], frame_size,
-                          frame_color[0], frame_color[1], frame_color[2]))
-
-        c.execute("SELECT * FROM Items  WHERE name LIKE ?", (item,))
-        item_list = c.fetchall()
-        output_image = Image.new("RGBA", (33 * len(item_list) - 1, 32), (255, 255, 255, 255))
-        x = 0
-        for i in item_list:
-            i_image = pickle.loads(i['frame'])
-            i_image = Image.open(io.BytesIO(bytearray(i_image)))
-            output_image.paste(i_image, (x * 33, 0))
-            x += 1
-        img_byte_arr = io.BytesIO()
-        output_image.save(img_byte_arr, format='png')
-        img_byte_arr = img_byte_arr.getvalue()
-        return img_byte_arr
-
-    async def item_new(self, item, frame, group, value_sell, value_buy, item_id):
-        if item is None or group is None:
-            return None
-
-        c = self.loot_conn.execute("SELECT * FROM Items  WHERE name LIKE ?", (item,))
-        item_list = c.fetchall()
-        if not len(item_list) == 0:
-            return None
-
-        frame_crop = self.crop_item(frame)
-        frame_color = self.get_item_color(frame)
-        frame_size = self.get_item_size(frame_crop)
-        frame__byte_arr = io.BytesIO()
-        frame.save(frame__byte_arr, format='PNG')
-        frame__byte_arr = frame__byte_arr.getvalue()
-        frame_str = pickle.dumps(frame__byte_arr)
-        with self.loot_conn as conn:
-            conn.execute("INSERT INTO Items(name,`group`,id,\
-                                            value_sell,value_buy,frame,\
-                                            sizeX,sizeY,size,\
-                                            red,green,blue) "
-                         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                         (item, group, item_id,
-                          value_sell, value_buy, frame_str,
-                          frame_crop.size[0], frame_crop.size[1], frame_size,
-                          frame_color[0], frame_color[1], frame_color[2]))
-
-        c.execute("SELECT * FROM Items WHERE name LIKE ?", (item,))
-        item_list = c.fetchall()
-        output_image = Image.new("RGBA", (33 * len(item_list) - 1, 32), (255, 255, 255, 255))
-        x = 0
-        for i in item_list:
-            i_image = pickle.loads(i['frame'])
-            i_image = Image.open(io.BytesIO(bytearray(i_image)))
-            output_image.paste(i_image, (x * 33, 0))
-            x += 1
-        img_byte_arr = io.BytesIO()
-        output_image.save(img_byte_arr, format='png')
-        img_byte_arr = img_byte_arr.getvalue()
-        c.close()
-        return img_byte_arr
 
 
 def setup(bot):

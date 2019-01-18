@@ -342,7 +342,7 @@ class Tibia(CogUtils):
         if guild is None:
             return await ctx.error("The guild {0} doesn't exist.".format(name))
 
-        embed = self._get_tibia_embed(f"{guild.name} ({guild.world})", guild.url)
+        embed = self.get_tibia_embed(f"{guild.name} ({guild.world})", guild.url)
         embed.description = ""
         embed.set_thumbnail(url=guild.logo_url)
         if guild.guildhall is not None:
@@ -386,7 +386,7 @@ class Tibia(CogUtils):
         guild = await get_guild(name)
         if guild is None:
             return await ctx.send("The guild {0} doesn't exist.".format(name))
-        embed = self._get_tibia_embed(f"{guild.name} ({guild.world})", guild.url)
+        embed = self.get_tibia_embed(f"{guild.name} ({guild.world})", guild.url)
         embed.description = ""
         embed.set_thumbnail(url=guild.logo_url)
         embed.set_footer(text=f"The guild was founded on {guild.founded}")
@@ -648,7 +648,7 @@ class Tibia(CogUtils):
             title = "Latest level ups"
             async with ctx.pool.acquire() as conn:
                 async for lvl in DbLevelUp.get_latest(conn, minimum_level=config.announce_threshold, worlds=ctx.world):
-                    user = self._get_cached_user_(lvl.char.user_id, user_cache, ctx.guild)
+                    user = self.get_cached_user_(lvl.char.user_id, user_cache, ctx.guild)
                     if user is None:
                         continue
                     diff = get_time_diff(now - lvl.date)
@@ -731,7 +731,7 @@ class Tibia(CogUtils):
             recent_news = await get_recent_news()
             if recent_news is None:
                 await ctx.error("Something went wrong getting recent news.")
-            embed = discord.Embed(title="Recent news")
+            embed = self.get_tibia_embed("Recent news", "https://www.tibia.com/news/?subtopic=latestnews")
             embed.set_footer(text="To see a specific article, use the command /news <id>")
             news_format = "{emoji} `{id}`\t[{news}]({tibiaurl})"
             type_emojis = {
@@ -908,22 +908,18 @@ class Tibia(CogUtils):
                     name = char.name
                     level = char.level
                     low, high = get_share_range(char.level)
-                    await ctx.success(f"**{name}** ({level}) can share experience with levels **{low}** to **{high}**.")
+                    await ctx.send(f"**{name}** ({level}) can share experience with levels **{low}** to **{high}**.")
                     return
             char_data = []
             # Check if all characters are the same.
             if all(x.lower() == chars[0].lower() for x in chars):
-                await ctx.send("I'm not sure if sharing with yourself counts as sharing, but yes, you can share.")
+                await ctx.success("I'm not sure if sharing with yourself counts as sharing, but yes, you can share.")
                 return
             with ctx.typing():
                 for char in chars:
-                    try:
-                        fetched_char = await get_character(ctx.bot, char)
-                        if fetched_char is None:
-                            await ctx.send(f"There is no character named **{char}**.")
-                            return
-                    except errors.NetworkError:
-                        await ctx.send("I'm having connection issues, please try again in a bit.")
+                    fetched_char = await get_character(ctx.bot, char)
+                    if fetched_char is None:
+                        await ctx.error(f"There is no character named **{char}**.")
                         return
                     char_data.append(fetched_char)
                 # Sort character list by level ascending
@@ -972,7 +968,7 @@ class Tibia(CogUtils):
             title = "Timeline"
             async with ctx.pool.acquire() as conn:
                 async for entry in get_recent_timeline(conn, minimum_level=config.announce_threshold, worlds=ctx.world):
-                    user = self._get_cached_user_(entry.char.user_id, user_cache, ctx.guild)
+                    user = self.get_cached_user_(entry.char.user_id, user_cache, ctx.guild)
                     if user is None:
                         continue
                     count += 1
@@ -1090,7 +1086,7 @@ class Tibia(CogUtils):
         server_save_str = '{h} hours and {m} minutes'.format(h=hours, m=minutes)
 
         reply = f"It's currently **{tibia_time.strftime('%H:%M')}** in Tibia's website ({timezone_name}).\n" \
-                f"Server save is in {server_save_str}.\n" \
+                f"Server save is in **{server_save_str}**.\n" \
                 f"Rashid is in **{get_rashid_city()}** today."
         if ctx.is_private:
             return await ctx.send(reply)
@@ -1106,7 +1102,6 @@ class Tibia(CogUtils):
         await ctx.send(reply)
 
     @checks.server_mod_only()
-    @commands.guild_only()
     @time.command(name="add", usage="<timezone>")
     async def time_add(self, ctx: NabCtx, *, _timezone):
         """Adds a new timezone to display.
@@ -1148,7 +1143,6 @@ class Tibia(CogUtils):
 
     @checks.server_mod_only()
     @checks.can_embed()
-    @commands.guild_only()
     @time.command(name="list")
     async def time_list(self, ctx: NabCtx):
         """Shows a list of all the currently added timezones.
@@ -1166,7 +1160,6 @@ class Tibia(CogUtils):
             await ctx.error(e)
 
     @checks.server_mod_only()
-    @commands.guild_only()
     @time.command(name="remove", aliases=["delete"], usage="<timezone>")
     async def time_remove(self, ctx: NabCtx, *, _timezone):
         """Removes a timezone from the list.
@@ -1240,8 +1233,11 @@ class Tibia(CogUtils):
                     if char_embed.fields:
                         highscores = char_embed.fields[0]
                         char_embed.add_field(name=highscores.name, value=highscores.value, inline=False)
-                    char_embed.set_field_at(0, name="Character", value=char_embed.description, inline=False)
+                        char_embed.set_field_at(0, name="Character", value=char_embed.description, inline=False)
+                    else:
+                        char_embed.add_field(name="Character", value=char_embed.description, inline=False)
                     char_embed.description = user_embed.description
+                    char_embed.colour = user_embed.colour
                     char_embed.set_thumbnail(url=user_embed.thumbnail.url)
                     log.debug(f"{self.tag} Matches user and char, same name.")
                     return await ctx.send(embed=char_embed)
@@ -1278,7 +1274,9 @@ class Tibia(CogUtils):
             if char_embed.fields:
                 highscores = char_embed.fields[0]
                 char_embed.add_field(name=highscores.name, value=highscores.value, inline=False)
-            char_embed.set_field_at(0, name="Character", value=char_embed.description, inline=False)
+                char_embed.set_field_at(0, name="Character", value=char_embed.description, inline=False)
+            else:
+                char_embed.add_field(name="Character", value=char_embed.description, inline=False)
             char_embed.description = user_embed.description
             char_embed.set_thumbnail(url=user_embed.thumbnail.url)
             log.debug(f"{self.tag} Found char only, owner is in same server")
@@ -1297,7 +1295,7 @@ class Tibia(CogUtils):
             await ctx.send("There's no world with that name.")
             return
 
-        embed = discord.Embed(url=world.url, title=name.capitalize())
+        embed = self.get_tibia_embed(world.name, url=world.url)
         if world.status != "Online":
             embed.description = "This world is offline."
             embed.colour = discord.Colour.red()
@@ -1393,6 +1391,8 @@ class Tibia(CogUtils):
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
         pages.embed.colour = discord.Colour.blurple()
+        pages.embed.set_author(name="Tibia.com", icon_url=TIBIACOM_ICON, url=TIBIA_URL)
+        pages.embed.url = tibiapy.WorldOverview.get_url()
         try:
             await pages.paginate()
         except errors.CannotPaginate as e:
@@ -1401,10 +1401,10 @@ class Tibia(CogUtils):
     # endregion
 
     # region Auxiliary methods
-    @staticmethod
-    def get_article_embed(article, limit):
+    @classmethod
+    def get_article_embed(cls, article, limit):
         url = f"http://www.tibia.com/news/?subtopic=newsarchive&id={article['id']}"
-        embed = discord.Embed(title=article["title"], url=url)
+        embed = cls.get_tibia_embed(article["title"], url=url)
         content = html_to_markdown(article["content"])
         thumbnail = get_first_image(article["content"])
         if thumbnail is not None:
@@ -1412,7 +1412,6 @@ class Tibia(CogUtils):
 
         messages = split_message(content, limit)
         embed.description = messages[0]
-        embed.set_author(name="Tibia.com", url="http://www.tibia.com/news/?subtopic=latestnews", icon_url=TIBIACOM_ICON)
         embed.set_footer(text=f"ID: {article['id']} | Posted on {article['date']:%A, %B %d, %Y}")
         if len(messages) > 1:
             embed.description += f"\n*[Read more...]({url})*"
@@ -1421,7 +1420,7 @@ class Tibia(CogUtils):
     @classmethod
     def get_char_embed(cls, char: NabChar) -> discord.Embed:
         """Returns a formatted string containing a character's info."""
-        embed = cls._get_tibia_embed()
+        embed = cls.get_tibia_embed()
 
         description = f"[{char.name}]({char.url}) is a level {char.level} __{char.vocation}__." \
                       f" {char.he_she} resides in __{char.residence}__ in the world of __{char.world}__"
@@ -1492,7 +1491,7 @@ class Tibia(CogUtils):
             else:
                 char_list.append(f"**{char.name}**{online} (Lvl {abs(char.level)} {voc_abb})")
             plural = "s are" if len(char_list) > 1 else " is"
-            embed.description = f"**{display_name}**' character{plural}: {join_list(char_list, ', ', ' and ')}"
+            embed.description = f"**{display_name}**'s character{plural}: {join_list(char_list, ', ', ' and ')}"
         return embed
 
     @classmethod
@@ -1611,7 +1610,7 @@ class Tibia(CogUtils):
                 min_level = await get_server_property(conn, ctx.guild.id, "announce_level", min_level)
             async for death in DbDeath.get_latest(conn, min_level, worlds=user_worlds):
                 if ctx.is_private:
-                    user = self._get_cached_user_(death.char.user_id, cache, user_servers)
+                    user = self.get_cached_user_(death.char.user_id, cache, user_servers)
                 else:
                     user = ctx.guild.get_member(death.char.user_id)
                 if user is None:
@@ -1628,12 +1627,12 @@ class Tibia(CogUtils):
         return entries
 
     @classmethod
-    def _get_tibia_embed(cls, title=None, url=None):
+    def get_tibia_embed(cls, title=None, url=None):
         embed = discord.Embed(title=title, url=url)
         embed.set_author(name="Tibia.com", url=TIBIA_URL, icon_url=TIBIACOM_ICON)
         return embed
 
-    def _get_cached_user_(self, user_id, users_cache, user_servers):
+    def get_cached_user_(self, user_id, users_cache, user_servers):
         if user_id in users_cache:
             return users_cache.get(user_id)
         else:

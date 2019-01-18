@@ -5,6 +5,7 @@ import random
 import re
 from typing import Tuple
 
+import asyncpg
 import discord
 from discord.ext import commands
 
@@ -90,7 +91,7 @@ class Core(CogUtils):
     async def on_command(self, ctx: commands.Context):
         command = ctx.command.qualified_name
         guild_id = ctx.guild.id if ctx.guild is not None else None
-        query = """INSERT INTO command(server_id, channel_id, user_id, date, prefix, command)
+        query = """INSERT INTO command_use(server_id, channel_id, user_id, date, prefix, command)
                    VALUES ($1, $2, $3, $4, $5, $6)
                 """
         log.info(f"{self.tag} Invoked command: {ctx.message.clean_content}")
@@ -110,15 +111,19 @@ class Core(CogUtils):
             f"‣ If you want a logging channel, create a channel named `{config.log_channel_name}`\n" \
             f"‣ If you need help, join my support server: **<https://support.nabbot.xyz>**\n" \
             f"‣ For more information and links in: `{config.command_prefix[0]}about`"
+        for member in guild.members:
+            if member.id in self.bot.users_servers:
+                self.bot.users_servers[member.id].append(guild.id)
+            else:
+                self.bot.users_servers[member.id] = [guild.id]
         async with self.bot.pool.acquire() as conn:
-            for member in guild.members:
-                if member.id in self.bot.members:
-                    self.bot.members[member.id].append(guild.id)
-                else:
-                    self.bot.members[member.id] = [guild.id]
-                await conn.execute("INSERT INTO user_server(user_id, server_id) VALUES($1, $2)", member.id, guild.id)
-            await conn.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1, $2, $3)",
-                               guild.id, len(self.bot.guilds), "add")
+            async with conn.transaction():
+                # Make sure there's no leftover data that will make the copy query fail
+                await conn.execute("DELETE FROM user_server WHERE server_id = $1", guild.id)
+                records = [(user.id, guild.id) for user in guild.members]
+                await conn.copy_records_to_table("user_server", columns=["user_id", "server_id"], records=records)
+                await conn.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1, $2, $3)",
+                                   guild.id, len(self.bot.guilds), "add")
         try:
             channel = self.bot.get_top_channel(guild)
             if channel is None:
@@ -133,8 +138,8 @@ class Core(CogUtils):
         """Called when the bot leaves a guild (server)."""
         log.info(f"{self.tag} Bot removed | Guild {guild} ({guild.id})")
         for member in guild.members:
-            if member.id in self.bot.members:
-                self.bot.members[member.id].remove(guild.id)
+            if member.id in self.bot.users_servers:
+                self.bot.users_servers[member.id].remove(guild.id)
         await self.bot.pool.execute("DELETE FROM user_server WHERE server_id = $1 ", guild.id)
         await self.bot.pool.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1,$2,$3)",
                                     guild.id, len(self.bot.guilds), "remove")
@@ -147,10 +152,10 @@ class Core(CogUtils):
         """Called when a member joins a guild (server) the bot is in."""
         log.info(f"{self.tag} Member joined | Member {member} ({member.id}) | Guild {member.guild.id}")
         # Updating member list
-        if member.id in self.bot.members:
-            self.bot.members[member.id].append(member.guild.id)
+        if member.id in self.bot.users_servers:
+            self.bot.users_servers[member.id].append(member.guild.id)
         else:
-            self.bot.members[member.id] = [member.guild.id]
+            self.bot.users_servers[member.id] = [member.guild.id]
         await self.bot.pool.execute("INSERT INTO user_server(user_id, server_id) VALUES($1, $2)",
                                     member.id, member.guild.id)
 
@@ -190,7 +195,7 @@ class Core(CogUtils):
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
         log.info(f"{self.tag} Member left/kicked | Member {member} ({member.id}) | Guild {member.guild.id}")
-        self.bot.members[member.id].remove(member.guild.id)
+        self.bot.users_servers[member.id].remove(member.guild.id)
         await self.bot.pool.execute("DELETE FROM user_server WHERE user_id = $1 AND server_id = $2",
                                     member.id, member.guild.id)
 

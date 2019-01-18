@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import traceback
+from collections import defaultdict
 from typing import List, Optional, Union
 
 import aiohttp
@@ -53,7 +54,7 @@ class NabBot(commands.Bot):
         super().__init__(command_prefix=_prefix_callable, case_insensitive=True,
                          description="Discord bot with functions for the MMORPG Tibia.")
         self.remove_command("help")
-        self.members = {}
+        self.users_servers = {}
         self.config = None  # type: config.Config
         self.pool = None  # type: asyncpg.pool.Pool
         self.start_time = dt.datetime.utcnow()
@@ -73,20 +74,16 @@ class NabBot(commands.Bot):
         print(self.user.id)
         print(f"Version {self.__version__}")
         print('------')
-
         # Populating members's guild list
-        self.members = {}
+        self.users_servers = defaultdict(list)
+        for guild in self.guilds:
+            for member in guild.members:
+                self.users_servers[member.id].append(guild.id)
         async with self.pool.acquire() as conn:
-            await conn.execute("TRUNCATE user_server")
-            for guild in self.guilds:
-                for member in guild.members:
-                    if member.id in self.members:
-                        self.members[member.id].append(guild.id)
-                    else:
-                        self.members[member.id] = [guild.id]
-                    await conn.execute("INSERT INTO user_server(user_id, server_id) VALUES($1, $2)",
-                                       member.id, guild.id)
-
+            async with conn.transaction():
+                records = [(user.id, guild.id) for guild in self.guilds for user in guild.members]
+                await conn.execute("TRUNCATE user_server")
+                await conn.copy_records_to_table("user_server", columns=["user_id", "server_id"], records=records)
         log.info("Bot is online and ready")
 
     async def on_message(self, message: discord.Message):
@@ -175,7 +172,7 @@ class NabBot(commands.Bot):
     def get_user_guilds(self, user_id: int) -> List[discord.Guild]:
         """Returns a list of the user's shared guilds with the bot"""
         try:
-            return [self.get_guild(gid) for gid in self.members[user_id]]
+            return [self.get_guild(gid) for gid in self.users_servers[user_id]]
         except KeyError:
             return []
 

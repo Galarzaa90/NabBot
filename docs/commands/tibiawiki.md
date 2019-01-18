@@ -18,7 +18,7 @@ Shows the achievement's grade, points, description, and instructions on how to u
 
 ??? summary "Examples"
     **/achievement demonic barkeeper**  
-    ![image](../assets/images/commands/achievement.png)
+    ![image](../assets/images/commands/tibiawiki/achievement.png)
 
 ----
 

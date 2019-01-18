@@ -151,14 +151,14 @@ class Info:
         """Shows command statistics."""
         async with ctx.pool.acquire() as conn:
             stats = await conn.fetchrow("""SELECT COUNT(*) as count, MIN(date) as start
-                                           FROM command WHERE server_id = $1""", ctx.guild.id)
+                                           FROM command_use WHERE server_id = $1""", ctx.guild.id)
 
             _commands = await conn.fetch("""SELECT COUNT(*) as count, command 
-                                            FROM command WHERE server_id = $1
+                                            FROM command_use WHERE server_id = $1
                                             GROUP BY command ORDER BY count DESC LIMIT 5""", ctx.guild.id)
 
             users = await conn.fetch("""SELECT COUNT(*) as count, user_id 
-                                        FROM command WHERE server_id = $1
+                                        FROM command_use WHERE server_id = $1
                                         GROUP BY user_id ORDER BY count DESC LIMIT 5""", ctx.guild.id)
 
         embed = discord.Embed(colour=discord.Colour.blurple(), title="Command Stats",
@@ -185,15 +185,15 @@ class Info:
     async def commandstats_global(self, ctx: NabCtx):
         """Shows command statistics of all servers."""
         async with ctx.pool.acquire() as conn:
-            stats = await conn.fetchrow("SELECT COUNT(*) as count, MIN(date) as start FROM command")
+            stats = await conn.fetchrow("SELECT COUNT(*) as count, MIN(date) as start FROM command_use")
 
-            _commands = await conn.fetch("""SELECT COUNT(*) as count, command FROM command
+            _commands = await conn.fetch("""SELECT COUNT(*) as count, command FROM command_use 
                                             GROUP BY command ORDER BY count DESC LIMIT 5""")
 
-            users = await conn.fetch("""SELECT COUNT(*) as count, user_id FROM command
+            users = await conn.fetch("""SELECT COUNT(*) as count, user_id FROM command_use 
                                         GROUP BY user_id ORDER BY count DESC LIMIT 5""")
 
-            guilds = await conn.fetch("""SELECT COUNT(*) as count, server_id FROM command
+            guilds = await conn.fetch("""SELECT COUNT(*) as count, server_id FROM command_use 
                                         GROUP BY server_id ORDER BY count DESC LIMIT 5""")
 
         embed = discord.Embed(colour=discord.Colour.blurple(), title="Global Command Stats",

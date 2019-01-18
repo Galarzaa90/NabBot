@@ -272,7 +272,7 @@ class Mod:
                 records = [(ctx.guild.id, e.id) for e in entries if e.id not in current_entries]
 
                 # do a bulk COPY
-                await conn.copy_records_to_table('ignored_entry', columns=('server_id', 'entry_id'), records=records)
+                await conn.copy_records_to_table('ignored_entry', columns=['server_id', 'entry_id'], records=records)
                 return len(records)
 
 
