@@ -179,7 +179,7 @@ class NabBot(commands.Bot):
         except KeyError:
             return []
 
-    def get_guild_worlds(self, guild_list: List[discord.Guild]) -> List[str]:
+    def get_guilds_worlds(self, guild_list: List[discord.Guild]) -> List[str]:
         """Returns a list of all tracked worlds found in a list of guilds."""
         return list(set([world for guild, world in self.tracked_worlds.items() if guild in [g.id for g in guild_list]]))
 
@@ -189,7 +189,7 @@ class NabBot(commands.Bot):
         This is based on the tracked world of each guild the user belongs to.
         guild_list can be passed to search in a specific set of guilds. Note that the user may not belong to them."""
         guild_list = self.get_user_guilds(user_id)
-        return self.get_guild_worlds(guild_list)
+        return self.get_guilds_worlds(guild_list)
 
     def get_channel_or_top(self, guild: discord.Guild, channel_id: int) -> discord.TextChannel:
         """Returns a guild's channel by id, returns none if channel doesn't exist

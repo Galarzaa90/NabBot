@@ -594,7 +594,7 @@ class Owner(CogUtils):
         An X is displayed if the minimum required version is not met, this is likely to cause problems.
         A warning sign is displayed when the version installed exceeds the highest version supported
            This means there might be breaking changes, causing the bot to malfunction. This is not always the case.
-        A checkmark indicates that the dependency is inside the allowed range."""
+        A checkmark indicates that the dependency is inside the recommended range."""
         def comp(operator, object1, object2):
             if operator == ">=":
                 return object1 >= object2

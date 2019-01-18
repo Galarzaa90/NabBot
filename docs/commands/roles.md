@@ -28,9 +28,20 @@ Note that current members will be updated until their characters or guilds chang
 
 ??? Summary "Examples"
     **/autorole add Allies Academy Junior**  
-    ![image](../assets/images/commands/autorole_add_1.png)  
+    ![image](../assets/images/commands/roles/autorole_add_1.png)  
     **/autorole add Identified ***  
-    ![image](../assets/images/commands/autorole_add_2.png)
+    ![image](../assets/images/commands/roles/autorole_add_2.png)
+
+----
+
+### autorole list
+**Other aliases:** `autorole rules`
+
+Shows a list of autorole rules.
+
+??? Summary "Examples"
+    **/autorole list**  
+    ![image](../assets/images/commands/roles/autorole_list.png)
 
 ----
 
@@ -42,18 +53,7 @@ This will apply existing rules to all members.
 Note that guild changes from members that haven't been online won't be detected.
 Deleted rules won't have any effect.
 
-This command can only be used once per server every hour.
-
-----
-
-### autorole list
-**Other aliases:** `autorole rules`
-
-Shows a list of autorole rules.
-
-??? Summary "Examples"
-    **/autorole list**  
-    ![image](../assets/images/commands/autorole_list.png)
+This command can only be used once per server every day.
 
 ----
 
@@ -69,7 +69,7 @@ Note that members that currently have the role won't be affected.
 
 ??? Summary "Examples"
     **/autorole remove "Redd Alliance" Redd Alliance**  
-    ![image](../assets/images/commands/autorole_remove.png)
+    ![image](../assets/images/commands/roles/autorole_remove.png)
 
 ----
 
@@ -85,9 +85,9 @@ To see a list of joinable groups, use `group list`
 
 ??? Summary "Examples"
     **/group dev**  
-    ![image](../assets/images/commands/group_1.png)  
+    ![image](../assets/images/commands/roles/group_1.png)  
     **/group dev**  
-    ![image](../assets/images/commands/group_2.png)
+    ![image](../assets/images/commands/roles/group_2.png)
 
 ----
 
@@ -103,7 +103,7 @@ You need `Manage Roles` permissions to use this command.
 
 ??? Summary "Examples"
     **/group add dev**  
-    ![image](../assets/images/commands/group_add.png)  
+    ![image](../assets/images/commands/roles/group_add.png)  
 
 ----
 
@@ -113,7 +113,7 @@ Shows a list of available groups.
 
 ??? Summary "Examples"
     **/group list**  
-    ![image](../assets/images/commands/group_list.png)
+    ![image](../assets/images/commands/roles/group_list.png)
 
 ----
 
@@ -135,7 +135,7 @@ Shows a list of members that have no roles.
 
 ??? Summary "Examples"
     **/noroles**  
-    ![image](../assets/images/commands/noroles.png)
+    ![image](../assets/images/commands/roles/noroles.png)
 
 ----
 
@@ -146,7 +146,7 @@ Shows details about a role.
 
 ??? Summary "Examples"
     **/roleinfo Redd Alliance**
-    ![image](../assets/images/commands/roleinfo.png)
+    ![image](../assets/images/commands/roles/roleinfo.png)
 
 ----
 
@@ -157,7 +157,7 @@ Shows a list of members with that role.
 
 ??? Summary "Examples"
     **/rolemembers Vice Leader**  
-    ![image](../assets/images/commands/rolemembers.png)
+    ![image](../assets/images/commands/roles/rolemembers.png)
 
 ----
 
@@ -171,8 +171,8 @@ If user is blank, I will list all the server's roles.
 
 ??? Summary "Examples"
     **/roles**  
-    ![image](../assets/images/commands/roles_1.png)  
+    ![image](../assets/images/commands/roles/roles_1.png)  
     **/roles Galarzaa**  
-    ![image](../assets/images/commands/roles_2.png)
+    ![image](../assets/images/commands/roles/roles_2.png)
 
 ----

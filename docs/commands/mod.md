@@ -42,7 +42,7 @@ Shows a list of ignored channels and users.
 
 ??? Summary "Example"
     **/ignore list**  
-    ![image](../assets/images/commands/mod/unregistered.png)
+    ![image](../assets/images/commands/mod/ignore list.png)
 
 ----
 

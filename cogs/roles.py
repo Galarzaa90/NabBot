@@ -107,7 +107,6 @@ class Roles(CogUtils):
     # region Commands
 
     @checks.has_guild_permissions(manage_roles=True)
-    @commands.guild_only()
     @commands.group(case_insensitive=True)
     async def autorole(self, ctx: NabCtx):
         """Autorole commands.
@@ -117,7 +116,6 @@ class Roles(CogUtils):
             await ctx.show_help('autorole')
 
     @checks.has_guild_permissions(manage_roles=True)
-    @commands.guild_only()
     @autorole.command(name="add", usage="<role> <guild>")
     async def autorole_add(self, ctx: NabCtx, _role: InsensitiveRole, *, guild: str):
         """Creates a new autorole rule.
@@ -164,7 +162,6 @@ class Roles(CogUtils):
         await ctx.success("Autorole rule created.")
 
     @checks.has_guild_permissions(manage_roles=True)
-    @commands.guild_only()
     @checks.can_embed()
     @autorole.command(name="list", aliases=["rules"])
     async def autorole_list(self, ctx: NabCtx):
@@ -192,7 +189,6 @@ class Roles(CogUtils):
             await ctx.error(e)
 
     @checks.has_guild_permissions(manage_roles=True)
-    @commands.guild_only()
     @commands.cooldown(1, 60*60*24, commands.BucketType.guild)
     @autorole.command(name="refresh")
     async def autorole_refresh(self, ctx: NabCtx):

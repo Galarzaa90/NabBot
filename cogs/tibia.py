@@ -154,32 +154,27 @@ class Tibia(CogUtils):
     async def deaths(self, ctx: NabCtx, *, name: str = None):
         """Shows a character's recent deaths.
 
-        If this discord server is tracking a tibia world, it will show deaths registered to the character.
-        Additionally, if no name is provided, all recent deaths will be shown."""
-        if name is None and ctx.is_lite:
-            return
+        If this discord server is tracking a tibia world, it will also show previous registered deaths.
 
-        if ctx.is_private:
-            user_servers = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_servers = [ctx.guild]
-            if ctx.world is None and name is None:
-                return await ctx.error("This server is not tracking any tibia worlds.")
-            user_worlds = [ctx.world]
+        Additionally, if no name is provided, relevant recent deaths will be shown."""
+        if name is None and ctx.is_lite:
+            return await ctx.error("You must tell me the name of a character.")
+
+        if ctx.world is None and name is None and not ctx.is_private:
+            return await ctx.error("This server is not tracking any tibia worlds.")
 
         entries = []
         embed_info = defaultdict(lambda: discord.Embed.Empty)
         per_page = 20 if await ctx.is_long() else 5
         if name is None:
             embed_info["title"] = "☠ Recent deaths"
-            entries = await self.get_recent_deaths(ctx, user_worlds, user_servers)
+            entries = await self.get_recent_deaths(ctx)
         else:
             char = await get_character(self.bot, name)
             if char is None:
                 return await ctx.error("That character doesn't exist.")
             last_time = await self.get_recent_deaths_from_tibiacom(ctx, char, embed_info, entries)
-            await self.get_recent_deaths_from_database(ctx, name, embed_info, entries, last_time, user_servers)
+            await self.get_recent_deaths_from_database(ctx, name, embed_info, entries, last_time)
         if not entries:
             await ctx.send("There are no recent deaths.")
             return
@@ -392,8 +387,11 @@ class Tibia(CogUtils):
         if guild is None:
             return await ctx.send("The guild {0} doesn't exist.".format(name))
         embed = self._get_tibia_embed(f"{guild.name} ({guild.world})", guild.url)
+        embed.description = ""
         embed.set_thumbnail(url=guild.logo_url)
         embed.set_footer(text=f"The guild was founded on {guild.founded}")
+        if guild.description:
+            embed.description = guild.description
         if guild.guildhall is not None:
             url = GuildHouse.get_url(get_house_id(guild.guildhall.name), guild.world)
             embed.description += f"\nThey own the guildhall [{guild.guildhall.name}]({url}).\n"
@@ -464,13 +462,14 @@ class Tibia(CogUtils):
             await ctx.error(e)
 
     @checks.can_embed()
-    @commands.group(usage="[world,category[,vocation]]", invoke_without_command=True, case_insensitive=True)
+    @commands.group(usage="[world,][category][,vocation]", invoke_without_command=True, case_insensitive=True)
     async def highscores(self, ctx: NabCtx, *, params=None):
         """Shows the entries in the highscores.
 
-        If the server is already tracking a world, there's no need to specify a world.
+        If the server is already tracking a world, the tracked world will be used if no world is specified.
 
-        Available categories are: experience, magic, shielding, distance, sword, club, axe, fist and fishing.
+        Available categories are: experience, magic, shielding, distance, sword, club, axe, fist, fishing,
+        achievements and loyalty.
         Available vocations are: all, paladin, druid, sorcerer, knight."""
         if params is None:
             params = []
@@ -532,7 +531,11 @@ class Tibia(CogUtils):
     async def highscores_global(self, ctx: NabCtx, category="experience"):
         """Shows the combined highscores of all worlds.
 
-        Only certain categories are available."""
+        Ties are grouped under the same rank and ordered alphabetically.
+
+        Only the following categories are available: experience, sword, axe, club, distance, shielding, fist, fishing,
+        magic, magic_knights, magic_paladins, loyalty, achievements.
+        """
         if category not in HIGHSCORE_CATEGORIES:
             return await ctx.error(f"Invalid category, valid categories are: "
                                    f"{join_list([f'`{k}`' for k,v in HIGHSCORE_CATEGORIES.items()])}")
@@ -578,6 +581,7 @@ class Tibia(CogUtils):
         """
         house = None
         params = name.split(",")
+        footer = ""
         if len(params) > 1:
             name = ",".join(params[:-1])
             world = params[-1]
@@ -1502,9 +1506,11 @@ class Tibia(CogUtils):
         beds = "bed" if wiki_house.beds == 1 else "beds"
         description = f"This {house_type} has **{wiki_house.beds}** {beds} and a size of **{wiki_house.size}** sqm." \
             f" This {house_type} is in **{wiki_house.city}**. The rent is **{wiki_house.rent:,}** gold per month."
-        # House was fetched correctly
+        # Only TibiaWiki Information
         if not house:
             embed.description = description
+            embed.set_footer(text=f"To check a specific world, try: '{ctx.clean_prefix}{ctx.invoked_with} "
+                                  f"{wiki_house.name},{random.choice(tibia_worlds)}'")
             return embed
         # Update embed
         embed.url = house.url
@@ -1536,31 +1542,42 @@ class Tibia(CogUtils):
             # House is on auction, auction hasn't started
             else:
                 description += " The auction has not started yet."
-        embed.set_footer(text=f"To check a specific world, try: '{ctx.clean_prefix}{ctx.invoked_with} "
-                              f"{wiki_house.name},{random.choice(tibia_worlds)}'")
         description += f"\n*🌐[TibiaWiki article]({wiki_house.url})*"
         embed.description = description
         return embed
 
     @classmethod
-    async def get_recent_deaths_from_database(cls, ctx, name, embed_info, entries, last_time, user_servers):
+    async def get_recent_deaths_from_database(cls, ctx: NabCtx, name, embed_info, entries, last_time):
+        # Do not show database deaths if author is not in any servers tracking worlds.
+        if ctx.is_lite:
+            return None
+        user_servers = ctx.bot.get_user_guilds(ctx.author.id) if ctx.is_private else [ctx.guild]
+        user_worlds = ctx.bot.get_guilds_worlds(user_servers) if ctx.is_private else [ctx.world]
         now = dt.datetime.now(dt.timezone.utc)
-        db_char = await DbChar.get_by_name(ctx.pool, name)
-        owner = ctx.bot.get_member(db_char.user_id, user_servers) if db_char else None
-        if db_char is not None and not ctx.is_lite and owner:
-            embed_info["author"] = f"{owner if ctx.is_private else owner.display_name}"
-            embed_info["author_url"] = discord.Embed.Empty
-            embed_info["author_icon"] = get_user_avatar(owner)
-            embed_info["embed_url"] = discord.Embed.Empty
-            async with ctx.pool.acquire() as conn:
-                async for death in db_char.get_deaths(conn):
-                    # Do not show deaths that are already displayed from Tibia.com
-                    if death.date > last_time:
-                        continue
-                    death_time = get_time_diff(now - death.date)
-                    entries.append(f"At level **{death.level}** by {death.killer.name} - *{death_time} ago*")
-                    if len(entries) >= 100:
-                        break
+        async with ctx.pool.acquire() as conn:
+            db_char = await DbChar.get_by_name(conn, name)
+            # Character is not registered
+            if db_char is None:
+                return None
+            owner = ctx.bot.get_member(db_char.user_id, user_servers)
+            # Owner is not visible to the command caller
+            if owner is None:
+                return None
+            # Character is not in a world visible by the command caller
+            if db_char.world not in user_worlds:
+                return None
+            async for death in db_char.get_deaths(conn):
+                # Do not show deaths that are already displayed from Tibia.com
+                if death.date > last_time:
+                    continue
+                death_time = get_time_diff(now - death.date)
+                entries.append(f"At level **{death.level}** by {death.killer.name} - *{death_time} ago*")
+                if len(entries) >= 100:
+                    break
+        embed_info["author"] = f"{owner if ctx.is_private else owner.display_name}"
+        embed_info["author_url"] = discord.Embed.Empty
+        embed_info["author_icon"] = get_user_avatar(owner)
+        embed_info["embed_url"] = discord.Embed.Empty
 
     @classmethod
     async def get_recent_deaths_from_tibiacom(cls, ctx, char, embed_info, entries):
@@ -1574,23 +1591,24 @@ class Tibia(CogUtils):
         for death in char.deaths:
             death_time = get_time_diff(dt.datetime.now(tz=dt.timezone.utc) - death.time)
             if death.by_player and show_links:
-                killer = f"[{death.killer}]({NabChar.get_url(death.killer.name)})"
+                killer = f"[{death.killer.name}]({NabChar.get_url(death.killer.name)})"
             elif death.by_player:
                 killer = f"**{death.killer.name}**"
             else:
                 killer = f"{death.killer.name}"
-            entries.append("At level **{0.level}** by {name} - *{time} ago*".format(death, time=death_time,
-                                                                                    name=killer))
+            entries.append(f"At level **{death.level}** by {killer} - *{death_time} ago*")
         return last_time
 
-    async def get_recent_deaths(self, ctx: NabCtx, user_worlds, user_servers):
+    async def get_recent_deaths(self, ctx: NabCtx):
         now = dt.datetime.now(dt.timezone.utc)
         entries = []
         cache = dict()
         min_level = config.announce_threshold
+        user_servers = self.bot.get_user_guilds(ctx.author.id) if ctx.is_private else [ctx.guild]
+        user_worlds = self.bot.get_user_worlds(ctx.author.id) if ctx.is_private else [ctx.world]
         async with ctx.pool.acquire() as conn:
             if ctx.guild:
-                min_level = get_server_property(conn, ctx.guild.id, "announce_level", min_level)
+                min_level = await get_server_property(conn, ctx.guild.id, "announce_level", min_level)
             async for death in DbDeath.get_latest(conn, min_level, worlds=user_worlds):
                 if ctx.is_private:
                     user = self._get_cached_user_(death.char.user_id, cache, user_servers)
