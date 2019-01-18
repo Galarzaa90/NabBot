@@ -86,12 +86,12 @@ class Mod:
     async def ignore(self, ctx: NabCtx, *entries: converter.ChannelOrMember):
         """Makes the bot ignore a channel or user.
 
-        Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
-        Ignored users will never get a reply from NabBot.
+        Commands cannot be used in ignored channels or by ignored users.
 
+        The command accepts a list of names, ids or mentions of users or channels.
         If the command is used with no parameters, it ignores the current channel.
 
-        Ignore restrictions can be bypassed with the `Manage Guild` permission"""
+        Ignores are bypassed by users with the `Manage Server` permission."""
         if len(entries) == 0:
             entries = [ctx.channel]
         if len(entries) == 1:
@@ -204,11 +204,9 @@ class Mod:
     @checks.channel_mod_only()
     @commands.command()
     async def unignore(self, ctx: NabCtx, *entries: converter.ChannelOrMember):
-        """Unignores a channel or user..
+        """Removes a channel or user from the ignored list.
 
         If no parameter is provided, the current channel will be unignored.
-
-        Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
 
         If the command is used with no parameters, it unignores the current channel."""
         if len(entries) == 0:
@@ -257,6 +255,9 @@ class Mod:
     # endregion
 
     async def is_ignored(self, conn, ctx: NabCtx):
+        """Checks if the current context is ignored.
+
+        A context could be ignored because either the channel or the user are in the ignored list."""
         query = "SELECT True FROM ingored_entry WHERE guild_id=$1 AND (entry_id=$2 OR entry_id=$3);"
         return await conn.fetchrow(query, ctx.guild.id, ctx.channel.id, ctx.author.id)
 
