@@ -15,15 +15,14 @@ def owner_only():
 def server_admin_only():
     """Command can only be executed by a server administrator."""
     async def predicate(ctx):
-        return await is_owner(ctx) or await check_guild_permissions(ctx, {'administrator': True})
+        return await check_guild_permissions(ctx, {'administrator': True}) or await is_owner(ctx)
     return commands.check(predicate)
 
 
 def server_mod_only():
     """Command can only be used by users with manage guild permissions."""
     async def predicate(ctx):
-        return await is_owner(ctx) or (await check_guild_permissions(ctx, {'manage_guild': True}) and
-                                       ctx.guild is not None)
+        return await check_guild_permissions(ctx, {'manage_guild': True}) or await is_owner(ctx)
     return commands.check(predicate)
 
 
@@ -117,6 +116,13 @@ def not_lite_only():
     return commands.check(predicate)
 
 
+def has_permissions(*, check=all, **perms):
+    """Command can only be used if both the user and bot have the permissions."""
+    async def pred(ctx):
+        return await check_permissions(ctx, perms, check=check)
+    return commands.check(pred)
+
+
 def has_guild_permissions(**perms):
     """Command can only be used if the user has the provided guild permissions."""
     def predicate(ctx):
@@ -148,11 +154,11 @@ async def check_permissions(ctx, perms, *, check=all):
 
 async def check_guild_permissions(ctx, perms, *, check=all):
     """Checks if the user has the specified permissions in the current guild."""
+    if not ctx.guild:
+        raise commands.NoPrivateMessage("This command cannot be used in private messages.")
+
     if await ctx.bot.is_owner(ctx.author):
         return True
-
-    if ctx.guild is None:
-        return False
 
     permissions = ctx.author.guild_permissions
     return check(getattr(permissions, name, None) == value for name, value in perms.items())

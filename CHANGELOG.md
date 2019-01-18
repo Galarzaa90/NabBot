@@ -5,6 +5,7 @@
 - ❌ Removed feature
 
 ## Version 2.0.0 (Unreleased)
+- ✔ Users can now be ignored, so the bot doesn't respond to them.
 - ✔ Migrated user database from SQLite to PostgreSQL (Database migration available)
 - 🔧 Death and level up tracking has been optimized, reducing unnecessary tibia.com calls and improving speed.
 - 🔧 Improved watchlist task

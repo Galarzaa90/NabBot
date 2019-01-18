@@ -139,7 +139,9 @@ class NabBot(commands.Bot):
             user_id = int(match.group(1))
             if guild is None:
                 return self.get_user(user_id)
-            if type(guild) is list and len(guild) > 0:
+            if isinstance(guild, list) and len(guild) == 1:
+                guild = guild[0]
+            if isinstance(guild, list) and len(guild) > 0:
                 members = [m for ml in [g.members for g in guild] for m in ml]
                 return discord.utils.find(lambda m: m.id == user_id, members)
             return guild.get_member(user_id)
@@ -156,11 +158,12 @@ class NabBot(commands.Bot):
         """
         name = str(name)
         members = self.get_all_members()
+        if isinstance(guild, list) and len(guild) == 1:
+            guild = guild[0]
         if type(guild) is discord.Guild:
             members = guild.members
-        if type(guild) is list and len(guild) > 0:
+        if isinstance(guild, list) and len(guild) > 0:
             members = [m for ml in [g.members for g in guild] for m in ml]
-
         if len(name) > 5 and name[-5] == '#':
             potential_discriminator = name[-4:]
             result = discord.utils.get(members, name=name[:-5], discriminator=potential_discriminator)

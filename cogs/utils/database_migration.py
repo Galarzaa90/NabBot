@@ -276,10 +276,10 @@ tables = [
     );
     """,
     """
-    CREATE TABLE channel_ignored (
+    CREATE TABLE ignored_entry (
         server_id bigint NOT NULL,
-        channel_id bigint NOT NULL,
-        PRIMARY KEY(server_id, channel_id)
+        entry_id bigint NOT NULL,
+        PRIMARY KEY(server_id, entry_id)
     );
     """,
     """
@@ -563,7 +563,7 @@ async def import_ignored_channels(conn: asyncpg.Connection, c: sqlite3.Cursor):
         channels.append((server_id, channel_id))
     log.debug(f"Collected {len(channels):,} records from old database.")
     log.info("Copying records to ignored channels table")
-    res = await conn.copy_records_to_table("channel_ignored", records=channels, columns=["server_id", "channel_id"])
+    res = await conn.copy_records_to_table("ignored_entry", records=channels, columns=["server_id", "entry_id"])
     log.info(f"Copied {get_affected_count(res):,} records successfully.")
     log.info("Finished importing channels.")
 

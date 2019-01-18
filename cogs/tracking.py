@@ -819,7 +819,7 @@ class Tracking(CogUtils):
         self.bot.dispatch("character_change", ctx.author.id)
         self.bot.dispatch("character_unregistered", ctx.author, db_char)
 
-    @checks.server_admin_only()
+    @checks.server_mod_only()
     @checks.tracking_world_only()
     @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
     async def remove_char(self, ctx: NabCtx, *, name):

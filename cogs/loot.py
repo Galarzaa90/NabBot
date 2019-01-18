@@ -143,6 +143,7 @@ class Loot(CogUtils):
             scan_time = time.time() - start_time
         except LootScanException as e:
             await ctx.error(e)
+            log.exception("loot")
             return
         finally:
             self.processing_users.remove(ctx.author.id)
@@ -238,18 +239,21 @@ class Loot(CogUtils):
     @checks.owner_only()
     @loot.command(name="add")
     async def loot_add(self, ctx: NabCtx, *, item: str):
-        """Adds an image to an existing loot item in the database."""
+        """Adds an image to an existing loot item in the database.
+
+        This will make the bot start recognizing the image as this item.
+
+        This command can only be used by bot owners."""
         if len(ctx.message.attachments) == 0:
             return await ctx.error("You need to upload the image you want to add to this item.")
 
         attachment = ctx.message.attachments[0]
         if attachment.width != 32 or attachment.height != 32:
-            return await ctx.send("Image size has to be 32x32.")
+            return await ctx.error("Image size has to be 32x32.")
 
         try:
-            with aiohttp.ClientSession() as session:
-                async with session.get(attachment.url) as resp:
-                    original_image = await resp.read()
+            async with ctx.bot.session.get(attachment.url) as resp:
+                original_image = await resp.read()
             frame_image = Image.open(io.BytesIO(bytearray(original_image))).convert("RGBA")
         except Exception:
             await ctx.error("Either that wasn't an image or I failed to load it, please try again.")
@@ -257,15 +261,13 @@ class Loot(CogUtils):
 
         result = await self.item_add(item, frame_image)
         if result is None:
-            await ctx.error("Couldn't find an item with that name.")
-            return
-        else:
-            await ctx.error("Image added to item.", file=discord.File(result, "results.png"))
-            result, item = await self.item_show(item)
-            if result is not None:
-                await ctx.send("Name: {name}, Group: {group}, Value: {value:,}".format(**item[0]),
-                               file=discord.File(result, "results.png"))
-            return
+            return await ctx.error("Couldn't find an item with that name.")
+        _, item = await self.item_show(item)
+        item, *_ = item
+        await ctx.success("Image added to **{name}**"
+                          "\nGroup: {group} | Buy value: {value_buy:,} | Sell value: {value_sell:,}".format(**item),
+                          file=discord.File(result, "results.png"))
+        return
 
     @loot.command(name="legend", aliases=["help", "symbols", "symbol"])
     async def loot_legend(self, ctx: NabCtx):
@@ -275,16 +277,14 @@ class Loot(CogUtils):
             f.close()
 
     @checks.owner_only()
-    @loot.command(name="new", usage="[item],[group],[id]")
-    async def loot_new(self, ctx: NabCtx, *, params=None):
+    @loot.command(name="new", usage="<item>,<group>,<id>")
+    async def loot_new(self, ctx: NabCtx, *, params):
         """Adds a new item to the loot database."""
         if len(ctx.message.attachments) == 0:
             return await ctx.error("You need to upload the image you want to add to this item.")
-        if params is None:
-            return await ctx.error("Missing parameters (item name,group,id)")
         params = params.split(",")
         if not len(params) == 3:
-            return await ctx.error("Wrong parameters (item name,group,id)")
+            return await ctx.error(f"The correct syntax is: `/loot new {ctx.usage}`")
         item, group, id = params
         item: tibiawikisql.models.Item = tibiawikisql.models.Item.get_by_field(wiki_db, "title", item, True)
         if item is None:
@@ -332,11 +332,12 @@ class Loot(CogUtils):
         if not item_list:
             return await ctx.error("There's no item with that name.")
         item = item_list[0]
-        embed = discord.Embed(title=item["name"], description=f"Group: {item['group']}")
+        embed = discord.Embed(title=item["name"], description=f"Group: {item['group']}",
+                              colour=discord.Colour.from_rgb(item["red"], item["green"], item["blue"]))
         content = ""
         for item in item_list:
             content += "ID: {id} | Size: {sizeX}x{sizeY} | {size}px | rgb: {red},{green},{blue} | " \
-                       "sell: {value_sell:,} | value_buy: {value_buy:,}\n".format(**item)
+                       "sell: {value_sell:,} | buy: {value_buy:,}\n".format(**item)
         fields = split_message(content, FIELD_VALUE_LIMIT)
         name = "Frame info"
         for i, field in enumerate(fields[:5]):

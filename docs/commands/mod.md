@@ -15,8 +15,8 @@ If the bot has `Manage Messages` permission, it will also delete command invocat
 
 ??? summary "Examples"
     **/cleanup**  
-    ![image](../assets/images/commands/cleanup.png)
-    
+    ![image](../assets/images/commands/mod/cleanup.png)
+
 ----
 
 ## ignore
@@ -68,6 +68,6 @@ Shows a list of users with no registered characters.
 
 ??? Summary "Example"
     **/unregistered**  
-    ![image](../assets/images/commands/unregistered.png)
+    ![image](../assets/images/commands/mod/unregistered.png)
 
 ----

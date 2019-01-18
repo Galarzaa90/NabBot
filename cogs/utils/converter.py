@@ -4,7 +4,25 @@ import re
 import discord
 from discord.ext import commands
 
+from cogs.utils.context import NabCtx
+
 TIBIA_CASH_PATTERN = re.compile(r'(\d*\.?\d*)k*$')
+
+
+class InsensitiveMember(commands.IDConverter):
+    async def convert(self, ctx: NabCtx, argument):
+        member = ctx.bot.get_member(argument, ctx.guild)
+        if member is None:
+            raise commands.BadArgument('Member "{}" not found.'.format(argument))
+        return member
+
+
+class ChannelOrMember(commands.Converter):
+    async def convert(self, ctx, argument):
+        try:
+            return await commands.TextChannelConverter().convert(ctx, argument)
+        except commands.BadArgument:
+            return await InsensitiveMember().convert(ctx, argument)
 
 
 class InsensitiveRole(commands.IDConverter):
