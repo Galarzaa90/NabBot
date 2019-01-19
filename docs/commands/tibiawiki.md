@@ -22,6 +22,21 @@ Shows the achievement's grade, points, description, and instructions on how to u
 
 ----
 
+## charm
+**Syntax:** `charm [name]`
+
+Displays information about a charm.
+
+If no name is specified, displays a list of all charms for the user to choose from.
+
+??? summary "Examples"
+    **/charm**  
+    ![image](../assets/images/commands/tibiawiki/charm_1.png)  
+    **/charm zap**  
+    ![image](../assets/images/commands/tibiawiki/charm_2.png)
+
+----
+
 ## imbuement
 **Syntax:** `imbuement <name>[,price1[,price2[,price3]]][,tokenprice]`  
 **Other aliases:** `imbue`
@@ -34,12 +49,13 @@ Additionally, for Vampirism, Void and Strike imbuements, you can provide the pri
 The total cost will be calculated, as well as the hourly cost.
 If applicable, it will show the cheapest way to get it using gold tokens.
 
+It can also accept prices using the 'k' suffix, e.g. 1.5k
 
 ??? summary "Examples"
-    **/imbuement powerful void,2200,3790,2995,35800**  
-    ![image](../assets/images/commands/imbuement_1.png)  
+    **/imbuement powerful void,2.2k,3790,2995,35.8k**  
+    ![image](../assets/images/commands/tibiawiki/imbuement_1.png)  
     **/imbuement intricate slash**  
-    ![image](../assets/images/commands/imbuement_2.png)
+    ![image](../assets/images/commands/tibiawiki/imbuement_2.png)
 
 ----
 
@@ -53,9 +69,9 @@ If no category is specified, it will list all the bestiary categories.
 
 ??? summary "Examples"
     **/bestiary**  
-    ![image](../assets/images/commands/bestiary_1.png)  
+    ![image](../assets/images/commands/tibiawiki/bestiary_1.png)  
     **/bestiary dragon**  
-    ![image](../assets/images/commands/bestiary_2.png)
+    ![image](../assets/images/commands/tibiawiki/bestiary_2.png)
 
 ----
 
@@ -74,10 +90,10 @@ More information is shown if used in private messages or in the command channel.
 
 ??? summary "Examples"
     **/item dragon scale mail**  
-    ![image](../assets/images/commands/item_1.png)  
+    ![image](../assets/images/commands/tibiawiki/item_1.png)  
     *When used on the ask-channel or private message*  
     **/item dragon scale mail**  
-    ![image](../assets/images/commands/item_2.png)
+    ![image](../assets/images/commands/tibiawiki/item_2.png)
 
 ----
 
@@ -90,7 +106,7 @@ Shows the key's known names, how to obtain it and its uses.
 
 ??? summary "Examples"
     **/key 3940**  
-    ![image](../assets/images/commands/key.png)
+    ![image](../assets/images/commands/tibiawiki/key.png)
 
 ----
 
@@ -106,9 +122,9 @@ If only one matches, the key's information is shwon directly.
 
 ??? summary "Examples"
     **/key search hellgate** *(only one match)*  
-    ![image](../assets/images/commands/key_search_1.png)  
+    ![image](../assets/images/commands/tibiawiki/key_search_1.png)  
     **/key search fibula** *(multiple matches)*  
-    ![image](../assets/images/commands/key_search_2.png)
+    ![image](../assets/images/commands/tibiawiki/key_search_2.png)
 
 ----
     
@@ -124,9 +140,9 @@ More information is displayed if used on a private message or in the command cha
 
 ??? summary "Examples"
     **/monster Demon** *(On a regular channel)*  
-    ![image](../assets/images/commands/monster_1.png)  
+    ![image](../assets/images/commands/tibiawiki/monster_1.png)  
     **/monster Demon** *(On an ask channel or private message)*  
-    ![image](../assets/images/commands/monster_2.png)  
+    ![image](../assets/images/commands/tibiawiki/monster_2.png)  
     (*The bottom of the image has been cropped*)
 
 ----
@@ -142,9 +158,9 @@ More information is displayed if used on private messages or the command channel
 
 ??? summary "Examples"
     **/npc rashid** *(On a regular channel)*  
-    ![image](../assets/images/commands/npc_1.png)  
+    ![image](../assets/images/commands/tibiawiki/npc_1.png)  
     **/npc captain fearless**  *(On an ask channel or private message)*  
-    ![image](../assets/images/commands/npc_2.png)
+    ![image](../assets/images/commands/tibiawiki/npc_2.png)
 
 ----
 
@@ -155,7 +171,7 @@ For more information, use `npc Rashid`.
 
 ??? summary "Examples"
     **/rashid**  
-    ![image](../assets/images/commands/rashid.png)
+    ![image](../assets/images/commands/tibiawiki/rashid.png)
 
 ----
 
@@ -170,9 +186,11 @@ More information is displayed if used on private messages or the command channel
 
 ??? summary "Examples"
     **/spell exori gran**  
-    ![image](../assets/images/commands/spell_1.png)  
+    ![image](../assets/images/commands/tibiawiki/spell_1.png)  
     **/spell emberwing**  
-    ![image](../assets/images/commands/spell_2.png)
+    ![image](../assets/images/commands/tibiawiki/spell_2.png)
+
+----
 
 ## wikistats
 **Other aliases:** `wikiinfo`
@@ -181,4 +199,4 @@ Shows information about the TibiaWiki database.
 
 ??? summary "Examples"
     **/wikinfo**  
-    ![image](../assets/images/commands/wikistats.png)
+    ![image](../assets/images/commands/tibiawiki/wikistats.png)

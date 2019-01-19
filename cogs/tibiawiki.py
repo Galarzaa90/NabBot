@@ -80,7 +80,7 @@ class TibiaWiki:
         else:
             creatures = self.get_bestiary_creatures(_class)
             if not creatures:
-                await ctx.send("There's no class with that name.")
+                await ctx.error("There's no class with that name.")
                 return
             entries = [f"**{name}** - {level}" for name, level in creatures.items()]
             description = f"Use `{ctx.clean_prefix} monster <name>` to see more info"
@@ -88,6 +88,8 @@ class TibiaWiki:
 
         pages = Pages(ctx, entries=entries, per_page=20 if await ctx.is_long() else 10, header=description)
         pages.embed.title = title
+        pages.embed.set_author(name="TibiaWiki", icon_url=WIKI_ICON, url=tibiawikisql.api.BASE_URL)
+        pages.embed.url = "https://tibia.fandom.com/wiki/Bestiary_Creature_Classes"
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -96,13 +98,17 @@ class TibiaWiki:
     @checks.can_embed()
     @commands.command(aliases=["charms"])
     async def charm(self, ctx: NabCtx, name: str = None):
-        """If no name is specified, displays a list of all charms for the user to choose from.
-        If name is given and valid, or if one is chosen from the list, displays detailed information about it."""
+        """Displays information about a charm.
+
+        If no name is specified, displays a list of all charms for the user to choose from."""
         if name is None:
             embed = self.get_charms_embed(ctx)
             return await ctx.send(embed=embed)
 
         charm = models.Charm.get_by_field(wiki_db, "name", name, True)
+        if charm is None:
+            embed = self.get_charms_embed(ctx)
+            return await ctx.error("There's no charm with that name, try one of these:", embed=embed)
         embed = await self.get_charm_embed(charm)
         await self.send_embed_with_image(charm, ctx, embed, True, extension="png")
 
@@ -116,6 +122,8 @@ class TibiaWiki:
 
         The total cost will be calculated, as well as the hourly cost.
         If applicable, it will show the cheapest way to get it using gold tokens.
+
+        It can also accept prices using the 'k' suffix, e.g. 1.5k
         """
         params = params.split(",")
         if len(params) > 5:
@@ -217,6 +225,7 @@ class TibiaWiki:
 
         if len(keys) > 1:
             embed = discord.Embed(title="Possible keys")
+            embed.set_author(name="TibiaWiki", url=tibiawikisql.api.BASE_URL, icon_url=WIKI_ICON)
             embed.description = ""
             for key in keys:
                 name = f" - {key['name']}" if key["name"] else ""
@@ -345,7 +354,6 @@ class TibiaWiki:
         Shows the spell's attributes, NPCs that teach it and more.
 
         More information is displayed if used on private messages or the command channel."""
-
         spell = models.Spell.get_by_field(wiki_db, "title", name, True)
         if spell is None:
             spell = models.Spell.get_by_field(wiki_db, "words", name, True)
@@ -381,20 +389,21 @@ class TibiaWiki:
                     version = f" v{entry['value']}"
                 if entry['key'] == "timestamp":
                     gen_date = float(entry['value'])
+            nb_space = '\u00a0'
             embed.description += f"**‣ Achievements:** {self.count_table('achievement'):,}"
             embed.description += f"\n**‣ Charms:** {self.count_table('charm'):,}"
             embed.description += f"\n**‣ Creatures:** {self.count_table('creature'):,}"
-            embed.description += f"\n\t**‣ Drops:** {self.count_table('creature_drop'):,}"
+            embed.description += f"\n**{nb_space*8}‣ Drops:** {self.count_table('creature_drop'):,}"
             embed.description += f"\n**‣ Houses:** {self.count_table('house'):,}"
             embed.description += f"\n**‣ Imbuements:** {self.count_table('imbuement'):,}"
             embed.description += f"\n**‣ Items:** {self.count_table('item'):,}"
-            embed.description += f"\n\t**‣ Attributes:** {self.count_table('item_attribute'):,}"
-            embed.description += f"\n\t**‣ Keys:** {self.count_table('item_key'):,}"
+            embed.description += f"\n**{nb_space*8}‣ Attributes:** {self.count_table('item_attribute'):,}"
+            embed.description += f"\n**‣ Keys:** {self.count_table('item_key'):,}"
             embed.description += f"\n**‣ NPCs:** {self.count_table('npc'):,}"
-            embed.description += f"\n\t**‣ Buy offers:** {self.count_table('npc_offer_buy'):,}"
-            embed.description += f"\n\t**‣ Sell offers:** {self.count_table('npc_offer_sell'):,}"
-            embed.description += f"\n\t**‣ Destinations:** {self.count_table('npc_destination'):,}"
-            embed.description += f"\n\t**‣ Spell offers:** {self.count_table('npc_spell'):,}"
+            embed.description += f"\n**{nb_space*8}‣ Buy offers:** {self.count_table('npc_offer_buy'):,}"
+            embed.description += f"\n**{nb_space*8}‣ Sell offers:** {self.count_table('npc_offer_sell'):,}"
+            embed.description += f"\n**{nb_space*8}‣ Destinations:** {self.count_table('npc_destination'):,}"
+            embed.description += f"\n**{nb_space*8}‣ Spell offers:** {self.count_table('npc_spell'):,}"
             embed.description += f"\n**‣ Quests:** {self.count_table('quest'):,}"
             embed.description += f"\n**‣ Spells:** {self.count_table('spell'):,}"
         embed.set_footer(text=f"Database generation date")
@@ -448,7 +457,7 @@ class TibiaWiki:
     async def get_charm_embed(cls, charm: models.Charm):
         charms_url = f"{tibiawikisql.api.BASE_URL}/wiki/{WIKI_CHARMS_ARTICLE}"
         embed = discord.Embed(title=charm.name, url=charms_url)
-        embed.set_author(name="TibiaWiki", url=charms_url, icon_url=tibiawikisql.api.BASE_URL)
+        embed.set_author(name="TibiaWiki", url=charms_url, icon_url=WIKI_ICON)
         embed.description = f"**Type**: {charm.type} | **Cost**: {charm.points:,} points"
         embed.add_field(name="Description", value=charm.description)
         return embed
