@@ -119,49 +119,48 @@ BOSS_ALIASES = {
     "wz6": "Ancient Spawn of Morgathla",
 }
 
-# TODO: Replace with timedelta
 BOSS_COOLDOWNS = {
-    "Lloyd": 20*60*60,
-    "Lady Tenebris": 20*60*60,
-    "Melting Frozen Horror": 20*60*60,
-    "The Enraged Thorn Knight": 20*60*60,
-    "Dragonking Zyrtarch": 20*60*60,
-    "The Time Guardian": 20*60*60,
-    "The Last Lore Keeper": 24*60*60*14,
-    "Anomaly": 20*60*60,
-    "Rupture": 20*60*60,
-    "Realityquake": 20*60*60,
-    "Eradicator": 20*60*60,
-    "Outburst": 20*60*60,
-    "World Devourer": 24*60*60*14,
-    "Ravennous Hunger": 20*60*60,
-    "The Souldespoiler": 20*60*60,
-    "The Armored Voidborn": 20*60*60,
-    "The Sandking": 20*60*60,
-    "The False God": 20*60*60,
-    "Essence of Malice": 20*60*60,
-    "The Source of Corruption": 20*60*60,
-    "Kroazur": 2*60*60,
-    "Bloodback": 20*60*60,
-    "Darkfang": 20*60*60,
-    "Sharpclaw": 20*60*60,
-    "Black Vixen": 20*60*60,
-    "Shadowpelt": 20*60*60,
-    "Plagirath": 2*24*60*60,
-    "Zamulosh": 2*24*60*60,
-    "Mazoran": 2*24*60*60,
-    "Razzagorn": 2*24*60*60,
-    "Shulgrax": 2*24*60*60,
-    "Tarbaz": 2*24*60*60,
-    "Ragiaz": 2*24*60*60,
-    "Ferumbras Mortal Shell": 14*24*60*60,
-    "Grand Master Oberon": 20*60*60,
-    "Deathstrike": 20*60*60,
-    "Gnomevil": 20*60*60,
-    "Versperoth": 20*60*60,
-    "The Baron from Below": 4*60*60,
-    "The Count of The Core": 4*60*60,
-    "Ancient Spawn Of Morgathla": 4*60*60
+    "Lloyd": dt.timedelta(hours=20),
+    "Lady Tenebris": dt.timedelta(hours=20),
+    "Melting Frozen Horror": dt.timedelta(hours=20),
+    "The Enraged Thorn Knight": dt.timedelta(hours=20),
+    "Dragonking Zyrtarch": dt.timedelta(hours=20),
+    "The Time Guardian": dt.timedelta(hours=20),
+    "The Last Lore Keeper": dt.timedelta(days=14),
+    "Anomaly": dt.timedelta(hours=20),
+    "Rupture": dt.timedelta(hours=20),
+    "Realityquake": dt.timedelta(hours=20),
+    "Eradicator": dt.timedelta(hours=20),
+    "Outburst": dt.timedelta(hours=20),
+    "World Devourer": dt.timedelta(days=14),
+    "Ravennous Hunger": dt.timedelta(hours=20),
+    "The Souldespoiler": dt.timedelta(hours=20),
+    "The Armored Voidborn": dt.timedelta(hours=20),
+    "The Sandking": dt.timedelta(hours=20),
+    "The False God": dt.timedelta(hours=20),
+    "Essence of Malice": dt.timedelta(hours=20),
+    "The Source of Corruption": dt.timedelta(hours=20),
+    "Kroazur": dt.timedelta(hours=2),
+    "Bloodback": dt.timedelta(hours=20),
+    "Darkfang": dt.timedelta(hours=20),
+    "Sharpclaw": dt.timedelta(hours=20),
+    "Black Vixen": dt.timedelta(hours=20),
+    "Shadowpelt": dt.timedelta(hours=20),
+    "Plagirath": dt.timedelta(days=2),
+    "Zamulosh": dt.timedelta(days=2),
+    "Mazoran": dt.timedelta(days=2),
+    "Razzagorn": dt.timedelta(days=2),
+    "Shulgrax": dt.timedelta(days=2),
+    "Tarbaz": dt.timedelta(days=2),
+    "Ragiaz": dt.timedelta(days=2),
+    "Ferumbras Mortal Shell": dt.timedelta(days=14),
+    "Grand Master Oberon": dt.timedelta(hours=20),
+    "Deathstrike": dt.timedelta(hours=20),
+    "Gnomevil": dt.timedelta(hours=20),
+    "Versperoth": dt.timedelta(hours=20),
+    "The Baron from Below": dt.timedelta(hours=4),
+    "The Count of The Core": dt.timedelta(hours=4),
+    "Ancient Spawn Of Morgathla": dt.timedelta(hours=4)
 }
 
 
@@ -561,7 +560,7 @@ class Timers(CogUtils):
             if ctx.world and ctx.world != row["world"]:
                 world_skipped = True
                 continue
-            entries.append(f"**{row['char_name']}** - {row['expires']-now}")
+            entries.append(f"**{row['char_name']}** - Expires {HumanDelta(row['expires']-now).long(2)}")
         if not entries:
             return await ctx.send(f"You don't have any active cooldowns for **{name}**.")
         header = f"Only characters in {ctx.world} are show. Use on PM to see more." if world_skipped else ""
@@ -575,7 +574,7 @@ class Timers(CogUtils):
     @boss.command(name="bosslist")
     async def boss_bosslist(self, ctx: NabCtx):
         """Shows a list of supported boss cooldowns."""
-        entries = [f"**{k}** - {dt.timedelta(seconds=v)}" for k, v in BOSS_COOLDOWNS.items()]
+        entries = [f"**{k}** - {HumanDelta(v, True).long(1)}" for k, v in BOSS_COOLDOWNS.items()]
         pages = Pages(ctx, entries=entries)
         pages.embed.title = "Supported Boss Cooldowns"
         try:
@@ -594,13 +593,13 @@ class Timers(CogUtils):
                                        WHERE type = $1 AND timer.user_id = $2
                                        ORDER BY expires ASC""", ReminderType.BOSS.value, ctx.author.id)
         entries = []
-        now = dt.datetime.now(dt.timezone.utc)
         world_skipped = False
         for row in rows:
             if ctx.world and ctx.world != row["world"]:
                 world_skipped = True
                 continue
-            entries.append(f"**{row['name']}** - **{row['char_name']}** - {row['expires']-now}")
+            entries.append(f"**{row['name']}** - **{row['char_name']}** "
+                           f"- Expires {HumanDelta.from_date(row['expires']).long(2)}")
         if not entries:
             return await ctx.send(f"You don't have any active cooldowns.")
         header = f"Only characters in {ctx.world} are show. Use on PM to see more." if world_skipped else ""
@@ -635,7 +634,7 @@ class Timers(CogUtils):
         if db_char.user_id != ctx.author.id:
             return await ctx.error("That character is not registered to you.")
         now = dt.datetime.now(tz=dt.timezone.utc)
-        expires = now + dt.timedelta(seconds=cooldown)
+        expires = now + cooldown
         # Check if this char already has a pending cooldown
         exists = await ctx.pool.fetchval("SELECT true FROM timer WHERE extra->>'char_id' = $1 AND name = $2",
                                          str(db_char.id), name)
