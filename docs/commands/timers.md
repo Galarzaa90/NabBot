@@ -281,4 +281,6 @@ You will be notified in the same channel when the time is over.
 
 ??? Summary "Examples"
     **/event remindme 2h check old fortress**  
-    ![image](../assets/images/commands/timers/remindme.png)
+    ![image](../assets/images/commands/timers/remindme.png)  
+    *Once the time has passed*  
+    ![image](../assets/images/commands/timers/remindme_response.png)  
