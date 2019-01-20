@@ -9,10 +9,8 @@
 - ✔ Users can now be ignored, so the bot doesn't respond to them.
 - ✔ Command usage is now saved.
 - ✔ New `/commandstats` command to see command usage stats. Yes commands x4.
-- ✔ Save character name history.
-- ✔ Save character world history.
-- ✔ Save character owner history.
-- ✔ Server growth stats
+- ✔ Character name, world and owner history is now saved.
+- ✔ Server growth stats are now saved.
 - ✔ `/remindme` command, makes the bot remind you something, e.g remindme 1d conquer the world
 - ✔ `/boss` command to set boss cooldown timers, e.g.`/boss set heart of destruction,galarzaa fidera`
 - ✔ New `/channelinfo` command.
@@ -22,7 +20,6 @@
     - ✔ New `/charms` command
     - 🔧 `/spell` now shows the spell's effect.
     - 🔧 `/achievement` now uses new discord spoiler feature.
-- ✔ Server log channel can now be configured (`/settings serverlog`)
 - ✔ New `/highscores global` subcommand, shows combined highscores from worlds.
 - ✔ New Calculators cog:
     - 🔧 Moved `/blessings`, `/stamina` and `/stats` here
@@ -45,24 +42,25 @@
     - ✔ New subcommand `/watchlist adduser`, adds a user's character to a list.
     - 🔧 Improved watchlist task.
     - 🔧 Better permission management. If you have `Manage Channel` permission on the list, you can add and remove entries.
+- 🔧 Server Log improvements
+    - 🔧 Server log channel can no be configured (`/settings serverlog`).
+    - ✔ Name changes for registered characters are now shown.
+    - ✔ World transfers for registered characters are now shown.
+    - 🔧 Bots get a different embed color when joining.
+    - 🔧 When a member leaves or is kicked from the server, their registered characters are shown. 
 - 🔧 Moved `/addchar` and `/removechar` from Admin cog to Settings cog. Merged `/addaccount` and `/addchar`. 
 - ✔ New `/checkpm` command, to check if you can receive PMs from the bot.
-- ✔ Name changes for registered characters are now shown in server-log
-- ✔ World transfers for registered characters are now shown in server-log
 - 🔧 `/whois` now shows Account Status, Loyalty Title and Position if any.
-- 🔧 Improved performance of `/deaths`, `/levelups` and `/timeline` commands and their subcommands
+- 🔧 Improved performance of `/deaths`, `/levelups` and `/timeline` commands and their subcommands.
 - 🔧 Death and level up tracking has been optimized, reducing unnecessary tibia.com calls and improving speed.
-- 🔧 Bots get a different embed color when joining.
 - 🔧 Move server timezones to their own table.
 - 🔧 Improve internal logging system.
 - 🔧 Created classes to handle database data.
 - 🔧 Many improvements to the character tracking system.
-- 🔧 Reduced new tracking interval
+- 🔧 Reduced news tracking interval
 - 🔧 Moved `/settings` command and subcommands to Admin cog, removed Settings cog.
-- 🔧 When a member leaves or is kicked from the server, their registered characters are shown on server-log.
-- 🔧 Configurable server-log channel.
 - 🔧 Support for multiple killers (pvp deaths).
-- 🔧 Rework highscores tracking.
+- 🔧 Highscores task has been optimized.
 - 🐛 Autorole * rule only applies to characters in the same world. This means members wont get a role for characters in a different world.
 - 🐛 Bots no longer receive welcome messages.
 

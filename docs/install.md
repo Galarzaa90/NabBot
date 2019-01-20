@@ -1,4 +1,9 @@
 # Installation Guide
+
+!!! info
+    This information is only for users hosting NabBot on their own.
+    If you just invited NabBot to your server, you don't need to read this.
+
 ## Installing requirements
 In order to run NabBot, you need to install two things: [git](https://git-scm.com/) and [Python 3.6](https://www.python.org/).
 
@@ -11,6 +16,20 @@ Once the correct command has been found, open a terminal window on NabBot's root
 ```shell
 python -m pip install -U -r requirements.txt
 ```
+
+## Installing PostgreSQL
+Since v2.0.0, NabBot uses PostgreSQL instead of SQLite for data storage. This means you must be running a [PostgreSQL](https://www.postgresql.org/) service.
+It is recommended to run it on the same machine.
+
+Once it is installed and running, you must create a database and users for NabBot.
+You can use the default `root` user, but this is not recommended.
+
+You can create them using any tool you want. Here's an example using `psql`:
+
+```sql
+CREATE ROLE nabbot WITH LOGIN PASSWORD 'hunter2';
+CREATE DATABASE nabbot OWNER nabbot;
+``` 
 
 ## Creating an Application
 In order to run a Discord bot, you need to create a new application.
@@ -27,9 +46,32 @@ In order to run a Discord bot, you need to create a new application.
     compromising your account if they break discord's Terms of Service
 
 ## Running your bot
-The first time you run `nabbot.py`, you will be asked for a token. Here's where you will use the token given on the App page.
+To run your but, you need to execute `launcher.py`.
+The first time you run NabBot, you will be asked for your connection credentials to PostgreSQL.
+Here's where you will provide the information created early.
+
+After that, you will be asked for your token. Here's where you will use the token given on the App page.
 
 Once you entered the token, the bot will log in. You should see a dialog showing that the bot is now online.
+
+## Migrating from v1.x.x
+If you were running a previous version of NabBot before and you want to migrate your data, you need to run the migrate console command.
+
+```cmd
+python launcher.py migrate
+```
+
+By default, it will look for the database in the path `data/users.db`, but you can provide a different path using the `--path` argument:
+
+```cmd
+python launcher.py migrate --path data/database-backup.db
+```
+
+Depending on the size of your previous database, this may take a couple minutes.
+
+!!! warning
+    Doing this will delete all the data currently found in your **PostgreSQL** database.  
+    Your **SQLite** data will be unaffected by this operation.
 
 ## Inviting your bot
 To invite your bot to your server, you need to use the authentication URL. Here's where your **Client ID** is used.

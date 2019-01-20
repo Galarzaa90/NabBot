@@ -10,7 +10,7 @@ Some commands can show longer responses if used in `ask-channel` (by default, #a
 
 For descriptions of each command check the different commands sections in the sidebar.
 
-In discord, you can use the command [help](general.md#help) to see a list of commands. Only commands that you are allowed to use will be shown.
+In discord, you can use the command [help](info.md#help) to see a list of commands. Only commands that you are allowed to use will be shown.
 
 ## Paginator
 
@@ -41,4 +41,3 @@ When a vocation is filtered, the list is updated to only show those. Clicking an
 that vocation. Clicking the current filtered vocation again will show all vocations again.
 
 ![Command with vocation filter](../assets/images/commands/tracking/searchteam_1.png)
-
