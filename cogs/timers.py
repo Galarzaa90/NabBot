@@ -601,7 +601,10 @@ class Timers(CogUtils):
             entries.append(f"**{row['name']}** - **{row['char_name']}** "
                            f"- Expires {HumanDelta.from_date(row['expires']).long(2)}")
         if not entries:
-            return await ctx.send(f"You don't have any active cooldowns.")
+            if world_skipped:
+                return await ctx.send(f"You don't have any active cooldowns on characters in {ctx.world}.\n"
+                                      f"Try on PM to see all your characters.")
+            return await ctx.error(f"You don't have any active cooldowns.")
         header = f"Only characters in {ctx.world} are show. Use on PM to see more." if world_skipped else ""
         pages = Pages(ctx, entries=entries, header=header)
         pages.embed.title = "Your active cooldowns"
@@ -648,9 +651,7 @@ class Timers(CogUtils):
 
     @boss.command(name="remove", aliases=["unset", "clear"], usage="<boss>,<character>")
     async def boss_remove(self, ctx: NabCtx, *, params):
-        """Sets the cooldown for a boss.
-
-        The cooldown is set as if you had just killed the boss."""
+        """Removes an active boss cooldown."""
         param = params.split(",", 2)
         if len(param) < 2:
             return await ctx.error("You must specify for which of your character is the cooldown for.\n"

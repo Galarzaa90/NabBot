@@ -1,6 +1,32 @@
 # Timers commands
 
 ----
+## boss
+**Syntax:** `boss <name>` 
+
+Shows the remaining cooldown time for a specific boss.
+
+??? Summary "Examples"
+    **/boss lloyd**  
+    ![image](../assets/images/commands/timers/boss.png)
+
+----
+
+### boss bosslist
+Shows a list of supported boss cooldowns.
+
+??? Summary "Examples"
+    **/boss bosslist**  
+    ![image](../assets/images/commands/timers/boss_bosslist.png)
+
+----
+
+### boss list
+Shows a list of all your active cooldowns.
+
+For privacy reasons, only characters matching the tracked world of the current server will be shown.
+To see all your characters, try it on a private message.
+    
 
 ## events
 **Other aliases:** `event` 
@@ -9,7 +35,7 @@ Shows a list of upcoming and recent events.
 
 ??? Summary "Examples"
     **/event**  
-    ![image](../assets/images/commands/event.png)
+    ![image](../assets/images/commands/timers/event.png)
 
 ----
    
@@ -32,7 +58,7 @@ Once the event is created, the id of the event will be returned. This is used fo
 ??? Summary "Example"
     **/event add 5h Inquisition Quest,Remember to bring holy water!**  
     **`[TibiaWiki link](http://tibia.wikia.com/wiki/Inquisition_quest)`**  
-    ![image](../assets/images/commands/event_add.png)
+    ![image](../assets/images/commands/timers/event_add.png)
 
 ----
 
@@ -47,7 +73,7 @@ If the event is joinable, anyone can join an event using `event join`
 
 ??? Summary "Examples"
     **/event addplayer 136 Nezune**  
-    ![image](../assets/images/commands/event_addchar.png)
+    ![image](../assets/images/commands/timers/event_addchar.png)
 
 ----
 
@@ -119,7 +145,7 @@ The start time shown in the footer is always displayed in your device's timezone
   
 ??? Summary "Examples"
     **/event info 136**  
-    ![image](../assets/images/commands/event_info.png)
+    ![image](../assets/images/commands/timers/event_info.png)
 
 ----
     
@@ -133,7 +159,7 @@ Some events may not be joinable and require the creator to add characters themse
 
 ??? Summary "Examples"
     **/event join 136 Galarzaa Fidera**  
-    ![image](../assets/images/commands/event_join.png)
+    ![image](../assets/images/commands/timers/event_join.png)
 
 ----
     
@@ -144,7 +170,7 @@ Leave an event you were participating in.
 
 ??? Summary "Examples"
     **/event leave 136**  
-    ![image](../assets/images/commands/event_leave.png)
+    ![image](../assets/images/commands/timers/event_leave.png)
 
 ----
 
@@ -163,7 +189,7 @@ Shows the list of characters participating in this event.
 
 ??? Summary "Examples"
     **/event participants 190**  
-    ![image](../assets/images/commands/event_participants.png)
+    ![image](../assets/images/commands/timers/event_participants.png)
 
 ----
 
@@ -175,7 +201,7 @@ Deletes or cancels an event.
 
 ??? Summary "Examples"
     **/event delete 136**  
-    ![image](../assets/images/commands/event_remove.png)
+    ![image](../assets/images/commands/timers/event_remove.png)
 
 ----
 
@@ -189,7 +215,7 @@ Players can remove themselves using `event leave`
 
 ??? Summary "Examples"
     **/event addplayer 136 Nezune**  
-    ![image](../assets/images/commands/event_removechar.png)
+    ![image](../assets/images/commands/timers/event_removechar.png)
 
 ----
 
@@ -201,7 +227,7 @@ Subscribe to receive a PM when an event is happening.
 
 ??? Summary "Examples"
     **/event sub 136**  
-    ![image](../assets/images/commands/event_sub.png)
+    ![image](../assets/images/commands/timers/event_sub.png)
 
 ----
 
@@ -213,4 +239,4 @@ Unsubscribes you from an event.
 
 ??? Summary "Examples"
     **/event unsub 136**  
-    ![image](../assets/images/commands/event_unsub.png)
+    ![image](../assets/images/commands/timers/event_unsub.png)
