@@ -6,6 +6,19 @@ Commands related to NabBot's tracking functions.
     Parameters are enclosed with `< >`.   
     Optional parameters are enclosed in brackets `[]`.
 
+----
+
+## addchar
+**Syntax:** `addchar <user>,<character>`
+
+Register a character and optionally all other visible characters to a discord user.
+        
+This command can only be used by server moderators.
+
+If a character is hidden, only that character will be added. Characters in other worlds are skipped.
+
+----
+
 ## claim
 **Syntax:** `claim <name>`
 
@@ -38,7 +51,7 @@ If a character is already registered to someone else, [/claim](#claim) can be us
 
 ??? Summary "Example"
     **/im Elf**  
-    ![image](../assets/images/commands/im.png)
+    ![image](../assets/images/commands/tracking/im.png)
 
 ----
 
@@ -52,7 +65,7 @@ All registered level ups and deaths will be lost forever.
 
 ??? Summary "Example"
     **/imnot tomas haake**  
-    ![image](../assets/images/commands/imnot.png)
+    ![image](../assets/images/commands/tracking/imnot.png)
 
 ----
 
@@ -64,7 +77,19 @@ This list gets updated based on Tibia.com online list, so it takes a couple minu
 
 ??? Summary "Example"
     **/online**  
-    ![image](../assets/images/commands/online.png)
+    ![image](../assets/images/commands/tracking/online.png)
+
+----
+
+## removechar
+**Syntax:** `removechar <character>`
+
+Removes a registered character from someone.
+        
+This can only be used by server moderators.
+
+Note that you can only remove chars if they are from users exclusively in your server.
+You can't remove any characters that would alter other servers NabBot is in.
 
 ----
 
@@ -84,134 +109,160 @@ Online characters are shown first on the list, they also have an icon next to th
 
 ??? Summary "Examples"
     **/searchteam Galarzaa Fidera**  
-    ![image](../assets/images/commands/searchteam_1.png)  
+    ![image](../assets/images/commands/tracking/searchteam_1.png)  
     **/searchteam 234**  
-    ![image](../assets/images/commands/searchteam_2.png)  
+    ![image](../assets/images/commands/tracking/searchteam_2.png)  
     **/searchteam 100,120**  
-    ![image](../assets/images/commands/searchteam_3.png)
+    ![image](../assets/images/commands/tracking/searchteam_3.png)
 
 ----
 
-## watched
-**Syntax:** `watched  [name]`  
-**Other aliases:** `watchlist`, `huntedlist`
+## watchlist
+**Other aliases:** `huntedlist`
 
-Sets the watched list channel for this server
+Create or manage watchlists.
 
-Creates a new text channel for the watched list to be posted.
+Watchlists are channels where the online status of selected characters are shown.
+You can create multiple watchlists and characters and guilds to each one separately.
 
-The watch list shows which characters from it are online. Entire guilds can be added too.
-
-If no name is specified, the default name "watched-list" is used.
-
-When the channel is created, only the bot and people with `Administrator` role can read it.  
-The permissions can be adjusted afterwards.
-
-The channel can be renamed at anytime without problems.
-
-
-??? Summary "Examples"
-    **/watched**  
-    ![image](../assets/images/commands/watched.png)  
-    **Initial message shown in the channel**
-    ![image](../assets/images/commands/watched_message_1.png)  
-    **Message once characters and/or guilds have been added**  
-    ![image](../assets/images/commands/watched_message_2.png)
+Try the subcommands.
 
 ----
 
-### watched add
-**Syntax:** `watched add <name>[,reason]` 
-**Other aliases:** `watched addplayer`, `watched addchar`
+### watchlist add
+**Syntax:** `watchlist add <channel> <name>[,reason]` 
+**Other aliases:** `watchlist addplayer`, `watchlist addchar`
 
-Adds a character to the watched list.
+Adds a character to a watchlist.
 
 A reason can be specified by adding it after the character's name, separated by a comma.
 
 ??? Summary "Examples"
-    **/watched add Galarzaa Fidera**  
-    ![image](../assets/images/commands/watched_add.png)
+    **/watchlist add #friends Galarzaa Fidera**  
+    ![image](../assets/images/commands/tracking/watchlist_add_1.png)  
+    ![image](../assets/images/commands/tracking/watchlist_add_2.png)
 
 ----
     
-### watched addguild
-**Syntax:** `watched addguild <name>[,reason]`
+### watchlist addguild
+**Syntax:** `watchlist addguild <channel> <name>[,reason]`
 
-Adds an entire guild to the watched list.
+Adds an entire guild to the watchlist.
 
-Guilds are displayed in the watched list as a group.
+Guilds are displayed in the watchlist as a group.
 
 ??? Summary "Examples"
-    **/watched addguild Redd Alliance**  
-    ![image](../assets/images/commands/watched_addguild.png)
+    **/watchlist addguild #friends Bald Dwarfs**  
+    ![image](../assets/images/commands/tracking/watchlist_addguild_1.png)  
+    ![image](../assets/images/commands/tracking/watchlist_addguild_2.png)
+
+----    
+
+### watchlist adduser
+**Syntax:** `watchlist adduser <channel> <user>[,reason]`
+
+Adds the currently registered characters of a user to the watchlist.
+
+A reason can be specified by adding it after the character's name, separated by a comma.
+
+??? Summary "Examples"
+    **/watchlist adduser #friends Deadwalking**  
+    ![image](../assets/images/commands/tracking/watchlist_adduser.png)
 
 ----
 
-### watched info
-**Syntax:** `watched info <name>`  
-**Other aliases:** `watched details`, `watched reason`
+### watchlist create
+**Syntax:** `watchlist create <name>`  
 
-Shows information about a watched list entry.
+Creates a watchlist channel.
+
+Creates a new text channel for the watchlist to be posted.
+
+The watch list shows which characters from it are online. Entire guilds can be added too.
+
+The channel can be renamed at anytime. If the channel is deleted, all its entries are deleted too.
+
+
+??? Summary "Examples"
+    **/watchlist create friends**  
+    ![image](../assets/images/commands/tracking/watchlist_create.png)  
+    **Initial message shown in the channel**  
+    ![image](../assets/images/commands/tracking/watchlist_message_1.png)  
+    **Message once characters and/or guilds have been added**  
+    ![image](../assets/images/commands/tracking/watchlist_message_2.png)
+
+----
+
+### watchlist info
+**Syntax:** `watchlist info <channel> <name>`  
+**Other aliases:** `watchlist details`, `watchlist reason`
+
+Shows information about a watchlist entry.
 
 This shows who added the player, when, and if there's a reason why they were added.
 
 ??? Summary "Examples"
-    **/watched info Nezune**  
-    ![image](../assets/images/commands/watched_info.png)
+    **/watchlist info #enemies Nezune**  
+    ![image](../assets/images/commands/tracking/watchlist_info.png)
 
 ----
 
-### watched infoguild
-**Syntax:** `watched info <name>`  
-**Other aliases:** `watched detailsguild`, `watched reasonguild`
+### watchlist infoguild
+**Syntax:** `watchlist info <channel> <name>`  
+**Other aliases:** `watchlist detailsguild`, `watchlist reasonguild`
 
-Shows details about a guild entry in the watched list.
+Shows details about a guild entry in a watchlist.
         
 This shows who added the player, when, and if there's a reason why they were added.
 
+??? Summary "Examples"
+    **/watchlist #enemies info Nezune**  
+    ![image](../assets/images/commands/tracking/watchlist_info.png)
+
 ----
 
-### watched list
+### watchlist list
+**Syntax:** `watchlist list <channel>`
 
-Shows a list of all watched characters
+Shows characters belonging to that watchlist.
 
 Note that this lists all characters, not just online characters.
 
 ??? Summary "Examples"
-    **/watched list**  
-    ![image](../assets/images/commands/watched_list.png)
+    **/watchlist #friends list**  
+    ![image](../assets/images/commands/tracking/watchlist_list.png)
 
 ----
 
-### watched listguilds
-**Other aliases:** `watched guilds`, `watched guildlist`
+### watchlist listguilds
+**Syntax:** `watchlist listguilds <channel>`  
+**Other aliases:** `watchlist guilds`, `watchlist guildlist`
 
-Shows a list of all guilds currently in the list.
+Shows a list of guilds in the watchlist.
 
 ??? Summary "Examples"
-    **/watched guildlist**  
-    ![image](../assets/images/commands/watched_guilds.png)
+    **/watchlist guildlist**  
+    ![image](../assets/images/commands/tracking/watchlist_listguilds.png)
 
 ----
 
-### watched remove
-**Syntax:** `watched remove <name>`  
-**Other aliases:** `watched removeplayer`, `watched removechar`
+### watchlist remove
+**Syntax:** `watchlist remove <channel> <name>`  
+**Other aliases:** `watchlist removeplayer`, `watchlist removechar`
 
-Removes a character from the watched list.
+Removes a character from the watchlist.
 
-??? Summary "Examples"
-    **/watched remove Kaiizokuo**  
-    ![image](../assets/images/commands/watched_remove.png)
 
 ----  
 
-### watched removeguild
-**Syntax:**  `watched removeguild <name>`
+### watchlist removeguild
+**Syntax:**  `watchlist removeguild <channel> <name>`
 
-Removes a guild from the watched list.
+Removes a guild from the watchlist.
 
-??? Summary "Examples"
-    **/watched removeguild Redd Alliance**  
-    ![image](../assets/images/commands/watched_removeguild.png)
+----
 
+### watchlist showcount
+**Syntax:** `watchlist <channel> <yes|no>`
+
+Changes whether the online count will be displayed in the watchlist's channel's name or not.

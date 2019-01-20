@@ -617,7 +617,8 @@ class Timers(CogUtils):
     async def boss_set(self, ctx: NabCtx, *, params):
         """Sets the cooldown for a boss.
 
-        The cooldown is set as if you had just killed the boss."""
+        The cooldown is set as if you had just killed the boss.
+        You will receive a private message when the cooldown is over."""
         param = params.split(",", 2)
         if len(param) < 2:
             return await ctx.error("You must specify for which of your character is the cooldown for.\n"

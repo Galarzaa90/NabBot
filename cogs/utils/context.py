@@ -9,7 +9,7 @@ import discord
 from discord.ext import commands
 
 import nabbot
-from . import config
+from . import config, safe_delete_message
 from .database import get_server_property
 
 _mention = re.compile(r'<@!?([0-9]{1,19})>')
@@ -272,7 +272,7 @@ class NabCtx(commands.Context):
             return None
         finally:
             if delete_after:
-                await message.delete()
+                await safe_delete_message(message)
             elif self.guild is not None:
                 try:
                     await message.clear_reactions()

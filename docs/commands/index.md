@@ -18,7 +18,7 @@ Some commands responses feature a *paginator* ([based on RoboDany's paginator cl
 These can be easily spotted by the reactions automatically added to the reply (◀️▶️⏹️).
 These reactions act as buttons, letting you scroll through the results.
 
-![Command with pagination](https://cloud.githubusercontent.com/assets/12865379/25454641/12eeba9a-2a82-11e7-8338-6a58d923b6c5.png)
+![Command with pagination](../assets/images/commands/tibia/deaths_1.png)
 
 When you click on one of the arrow reactions, the page is scrolled in that direction and your reaction is removed so you can use it again.
 Using the stop reaction removes the paginating interface. 
@@ -40,5 +40,5 @@ Additionally, they may have up to 4 vocation emojis to filter:
 When a vocation is filtered, the list is updated to only show those. Clicking another vocation filter will now show only
 that vocation. Clicking the current filtered vocation again will show all vocations again.
 
-![Command with vocation filter](../assets/images/commands/searchteam_1.png)
+![Command with vocation filter](../assets/images/commands/tracking/searchteam_1.png)
 

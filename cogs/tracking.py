@@ -609,11 +609,13 @@ class Tracking(CogUtils):
     # endregion
 
     # region Commands
-    @checks.owner_only()
+    @checks.server_mod_only()
     @checks.tracking_world_only()
     @commands.command(name="addchar", aliases=["registerchar"], usage="<user>,<character>")
     async def add_char(self, ctx: NabCtx, *, params):
         """Register a character and optionally all other visible characters to a discord user.
+
+        This command can only be used by server moderators.
 
         If a character is hidden, only that character will be added. Characters in other worlds are skipped."""
         params = params.split(",")
@@ -819,44 +821,9 @@ class Tracking(CogUtils):
         self.bot.dispatch("character_change", ctx.author.id)
         self.bot.dispatch("character_unregistered", ctx.author, db_char)
 
-    @checks.server_mod_only()
-    @checks.tracking_world_only()
-    @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
-    async def remove_char(self, ctx: NabCtx, *, name):
-        """Removes a registered character from someone.
-
-        Note that you can only remove chars if they are from users exclusively in your server.
-        You can't remove any characters that would alter other servers NabBot is in."""
-        # This could be used to remove deleted chars so we don't need to check anything
-        # Except if the char exists in the database...
-        db_char = await DbChar.get_by_name(ctx.pool, name.strip())
-        if db_char is None or db_char.user_id == 0:
-            return await ctx.error("There's no character with that name registered.")
-        if db_char.world != ctx.world:
-            return await ctx.error(f"The character **{db_char.name}** is in a different world.")
-
-        user = self.bot.get_user(db_char.user_id)
-        if user is not None:
-            user_guilds = self.bot.get_user_guilds(user.id)
-            # Iterating every world where the user is, to check if it wouldn't affect other admins.
-            for guild in user_guilds:
-                if guild == ctx.guild:
-                    continue
-                if self.bot.tracked_worlds.get(guild.id, None) != ctx.world:
-                    continue
-                author: discord.Member = guild.get_member(ctx.author.id)
-                if author is None or not author.guild_permissions.manage_guild:
-                    await ctx.error(f"The user of this server is also in another server tracking "
-                                    f"**{ctx.world}**, where you are not an admin. You can't alter other servers.")
-                    return
-        username = "unknown" if user is None else user.display_name
-        await db_char.update_user(ctx.pool, 0)
-        await ctx.send("**{0}** was removed successfully from **@{1}**.".format(db_char.name, username))
-        self.bot.dispatch("character_unregistered", user, db_char, ctx.author)
-
-    @commands.command()
     @checks.can_embed()
     @checks.tracking_world_only()
+    @commands.command()
     async def online(self, ctx: NabCtx):
         """Tells you which users are online on Tibia.
 
@@ -1014,7 +981,44 @@ class Tracking(CogUtils):
 
     @checks.server_mod_only()
     @checks.tracking_world_only()
-    @commands.group(invoke_without_command=True, case_insensitive=True)
+    @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
+    async def remove_char(self, ctx: NabCtx, *, name):
+        """Removes a registered character from someone.
+
+        This can only be used by server moderators.
+
+        Note that you can only remove chars if they are from users exclusively in your server.
+        You can't remove any characters that would alter other servers NabBot is in."""
+        # This could be used to remove deleted chars so we don't need to check anything
+        # Except if the char exists in the database...
+        db_char = await DbChar.get_by_name(ctx.pool, name.strip())
+        if db_char is None or db_char.user_id == 0:
+            return await ctx.error("There's no character with that name registered.")
+        if db_char.world != ctx.world:
+            return await ctx.error(f"The character **{db_char.name}** is in a different world.")
+
+        user = self.bot.get_user(db_char.user_id)
+        if user is not None:
+            user_guilds = self.bot.get_user_guilds(user.id)
+            # Iterating every world where the user is, to check if it wouldn't affect other admins.
+            for guild in user_guilds:
+                if guild == ctx.guild:
+                    continue
+                if self.bot.tracked_worlds.get(guild.id, None) != ctx.world:
+                    continue
+                author: discord.Member = guild.get_member(ctx.author.id)
+                if author is None or not author.guild_permissions.manage_guild:
+                    await ctx.error(f"The user of this server is also in another server tracking "
+                                    f"**{ctx.world}**, where you are not an admin. You can't alter other servers.")
+                    return
+        username = "unknown" if user is None else user.display_name
+        await db_char.update_user(ctx.pool, 0)
+        await ctx.send("**{0}** was removed successfully from **@{1}**.".format(db_char.name, username))
+        self.bot.dispatch("character_unregistered", user, db_char, ctx.author)
+
+    @checks.server_mod_only()
+    @checks.tracking_world_only()
+    @commands.group(invoke_without_command=True, case_insensitive=True, aliases=["huntedlist"])
     async def watchlist(self, ctx: NabCtx):
         """Create or manage watchlists.
 
@@ -1055,20 +1059,65 @@ class Tracking(CogUtils):
             await ctx.error(f"This character is not in **{world}**.")
             return
 
-        message = await ctx.send(
-            f"Do you want to add **{char.name}** (Level {char.level} {char.vocation}) to this watchlist?")
-        confirm = await ctx.react_confirm(message)
+        message = await ctx.send(f"Do you want to add **{char.name}** (Level {char.level} {char.vocation}) "
+                                 f"to the watchlist {channel.mention}")
+        confirm = await ctx.react_confirm(message, delete_after=True)
         if confirm is None:
             await ctx.send("You took too long!")
             return
         if not confirm:
             await ctx.send("Ok then, guess you changed your mind.")
             return
-        entry = watchlist.add_entry(ctx.pool, char.name, False, ctx.author.id, reason)
+        entry = await watchlist.add_entry(ctx.pool, char.name, False, ctx.author.id, reason)
         if entry:
-            await ctx.success("Character added to the watchlist.")
+            await ctx.success(f"Character **{char.name}** added to the watchlist {channel.mention}.")
         else:
             await ctx.error(f"**{char.name}** is already registered in {channel.mention}")
+
+    @checks.tracking_world_only()
+    @checks.channel_mod_somewhere()
+    @watchlist.command(name="addguild", usage="<channel> <name>[,reason]")
+    async def watchlist_addguild(self, ctx: NabCtx, channel: discord.TextChannel, *, params):
+        """Adds an entire guild to a watchlist.
+
+        Guilds are displayed in the watchlist as a group."""
+        watchlist = await Watchlist.get_by_channel_id(ctx.pool, channel.id)
+
+        if not watchlist:
+            return await ctx.error(f"{channel.mention} is not a watchlist channel.")
+
+        if not channel.permissions_for(ctx.author).manage_channels:
+            return await ctx.error(f"You need `Manage Channel` permissions in {channel.mention} to add entries.")
+
+        params = params.split(",", 1)
+        name = params[0]
+        reason = None
+        if len(params) > 1:
+            reason = params[1]
+
+        guild = await get_guild(name)
+        if guild is None:
+            await ctx.error("There's no guild with that name.")
+            return
+
+        if guild.world != ctx.world:
+            await ctx.error(f"This guild is not in **{ctx.world}**.")
+            return
+
+        message = await ctx.send(f"Do you want to add the guild **{guild.name}** to the watchlist {channel.mention}?")
+        confirm = await ctx.react_confirm(message, delete_after=True)
+        if confirm is None:
+            await ctx.send("You took too long!")
+            return
+        if not confirm:
+            await ctx.send("Ok then, guess you changed your mind.")
+            return
+
+        entry = await watchlist.add_entry(ctx.pool, guild.name, True, ctx.author.id, reason)
+        if entry:
+            await ctx.success(f"Guild **{guild.name}** added to the watchlist {channel.mention}.")
+        else:
+            await ctx.error(f"**{guild.name}** is already registered in {channel.mention}")
 
     @checks.tracking_world_only()
     @checks.channel_mod_somewhere()
@@ -1117,54 +1166,10 @@ class Tracking(CogUtils):
             if entry:
                 results += f"\n• {char.name}"
         if results:
-            await ctx.success(f"I added the following characters to the list, duplicates where skipped:{results}")
+            await ctx.success(f"I added the following characters to the list {channel.mention}, "
+                              f"duplicates where skipped:{results}")
         else:
             await ctx.error("No characters where added, as they were all duplicates.")
-
-    @checks.tracking_world_only()
-    @checks.channel_mod_somewhere()
-    @watchlist.command(name="addguild", usage="<channel> <name>[,reason]")
-    async def watchlist_addguild(self, ctx: NabCtx, channel: discord.TextChannel, *, params):
-        """Adds an entire guild to a watchlist.
-
-        Guilds are displayed in the watchlist as a group."""
-        watchlist = await Watchlist.get_by_channel_id(ctx.pool, channel.id)
-
-        if not watchlist:
-            return await ctx.error(f"{channel.mention} is not a watchlist channel.")
-
-        if not channel.permissions_for(ctx.author).manage_channels:
-            return await ctx.error(f"You need `Manage Channel` permissions in {channel.mention} to add entries.")
-
-        params = params.split(",", 1)
-        name = params[0]
-        reason = None
-        if len(params) > 1:
-            reason = params[1]
-
-        guild = await get_guild(name)
-        if guild is None:
-            await ctx.error("There's no guild with that name.")
-            return
-
-        if guild.world != ctx.world:
-            await ctx.error(f"This guild is not in **{ctx.world}**.")
-            return
-
-        message = await ctx.send(f"Do you want to add the guild **{guild.name}** to this watchlist?")
-        confirm = await ctx.react_confirm(message)
-        if confirm is None:
-            await ctx.send("You took too long!")
-            return
-        if not confirm:
-            await ctx.send("Ok then, guess you changed your mind.")
-            return
-
-        entry = watchlist.add_entry(ctx.pool, guild.name, True, ctx.author.id, reason)
-        if entry:
-            await ctx.success("Guild added to the watchlist.")
-        else:
-            await ctx.error(f"**{guild.name}** is already registered in {channel.mention}")
 
     @checks.server_mod_only()
     @checks.tracking_world_only()
@@ -1229,11 +1234,12 @@ class Tracking(CogUtils):
         if not entry:
             return await ctx.error(f"There's no character with that name registered to {channel.mention}.")
 
-        embed = discord.Embed(title=entry.name, timestamp=entry.created,
+        embed = discord.Embed(title=entry.name, url=tibiapy.Character.get_url(entry.name), timestamp=entry.created,
                               description=f"**Reason:** {entry.reason}" if entry.reason else "No reason provided.")
+        embed.set_author(name=f"In #{channel}")
         author = ctx.guild.get_member(entry.user_id)
         if author:
-            embed.set_footer(text=f"{author.name}#{author.discriminator}",
+            embed.set_footer(text=f"Added by {author.name}#{author.discriminator}",
                              icon_url=get_user_avatar(author))
         await ctx.send(embed=embed)
 
@@ -1241,7 +1247,7 @@ class Tracking(CogUtils):
     @checks.tracking_world_only()
     @watchlist.command(name="infoguild", aliases=["detailsguild", "reasonguild"])
     async def watchlist_infoguild(self, ctx: NabCtx, channel: discord.TextChannel, *, name: str):
-        """"Shows details about a guild entry in the watchlist.
+        """"Shows details about a guild entry in a watchlist.
 
         This shows who added the player, when, and if there's a reason why they were added."""
         if not await Watchlist.get_by_channel_id(ctx.pool, channel.id):
@@ -1251,11 +1257,12 @@ class Tracking(CogUtils):
         if not entry:
             return await ctx.error(f"There's no guild with that name registered to {channel.mention}.")
 
-        embed = discord.Embed(title=entry.name, timestamp=entry.created,
+        embed = discord.Embed(title=entry.name, timestamp=entry.created, url=tibiapy.Guild.get_url(entry.name),
                               description=f"**Reason:** {entry.reason}" if entry.reason else "No reason provided.")
+        embed.set_author(name=f"In #{channel}")
         author = ctx.guild.get_member(entry.user_id)
         if author:
-            embed.set_footer(text=f"{author.name}#{author.discriminator}",
+            embed.set_footer(text=f"Added by {author.name}#{author.discriminator}",
                              icon_url=get_user_avatar(author))
         await ctx.send(embed=embed)
 
@@ -1276,7 +1283,7 @@ class Tracking(CogUtils):
             return await ctx.error(f"This watchlist has no registered characters.")
 
         pages = Pages(ctx, entries=[f"[{r.name}]({NabChar.get_url(r.name)})" for r in entries])
-        pages.embed.title = f"Watched Characters in {channel.name}"
+        pages.embed.title = f"Watched Characters in #{channel.name}"
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -1286,9 +1293,7 @@ class Tracking(CogUtils):
     @checks.tracking_world_only()
     @watchlist.command(name="listguilds", aliases=["guilds", "guildlist"])
     async def watchlist_list_guild(self, ctx: NabCtx, channel: discord.TextChannel):
-        """Shows a list of guilds in the watchlist
-
-        Note that this lists all characters, not just online characters."""
+        """Shows a list of guilds in the watchlist."""
         if not await Watchlist.get_by_channel_id(ctx.pool, channel.id):
             return await ctx.error(f"{channel.mention} is not a watchlist.")
 
@@ -1299,7 +1304,7 @@ class Tracking(CogUtils):
             return await ctx.error(f"This watchlist has no registered characters.")
 
         pages = Pages(ctx, entries=[f"[{r.name}]({Guild.get_url(r.name)})" for r in entries])
-        pages.embed.title = f"Watched Guilds in {channel.name}"
+        pages.embed.title = f"Watched Guilds in #{channel.name}"
         try:
             await pages.paginate()
         except CannotPaginate as e:
@@ -1353,16 +1358,16 @@ class Tracking(CogUtils):
 
     @checks.channel_mod_somewhere()
     @checks.tracking_world_only()
-    @watchlist.command(name="showcount", usage="<yes|no>")
+    @watchlist.command(name="showcount", usage="<channel> <yes|no>")
     async def watchlist_showcount(self, ctx: NabCtx, channel: discord.TextChannel, yes_no):
         """Changes whether the online count will be displayed in the watchlist's channel's name or not."""
         watchlist = await Watchlist.get_by_channel_id(ctx.pool, channel.id)
         if not watchlist:
             return await ctx.error(f"{channel.mention} is not a watchlist.")
-        if yes_no.lower().strip() == "yes":
+        if yes_no.lower().strip() == ["yes", "true"]:
             await watchlist.update_show_count(ctx.pool, True)
             await ctx.success("Showing online count is now enabled. The name will be updated on the next cycle.")
-        elif yes_no.lower().strip() == "no":
+        elif yes_no.lower().strip() == ["no", "false"]:
             await watchlist.update_show_count(ctx.pool, False)
             await ctx.success("Showing online count is now disabled. The name will be updated on the next cycle.")
         else:

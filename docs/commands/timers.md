@@ -26,7 +26,36 @@ Shows a list of all your active cooldowns.
 
 For privacy reasons, only characters matching the tracked world of the current server will be shown.
 To see all your characters, try it on a private message.
-    
+
+??? Summary "Examples"
+    **/boss list**  
+    ![image](../assets/images/commands/timers/boss_list.png)
+
+----
+
+### boss set
+**Syntax:** `boss set <boss>,<character>`
+
+Sets the cooldown for a boss.
+
+The cooldown is set as if you had just killed the boss.  
+You will receive a private message when the cooldown is over.
+
+??? Summary "Examples"
+    **/boss set kroazur,galarzaa fidera**  
+    ![image](../assets/images/commands/timers/boss_set.png)  
+    *When the cooldown is over*  
+    ![image](../assets/images/commands/timers/boss_timer.png)
+
+----
+
+### boss remove
+**Syntax:** `boss remove <boss>,<character>`  
+**Other aliases:** `boss clear`, `boss unset`
+
+Removes an active boss cooldown.
+
+----
 
 ## events
 **Other aliases:** `event` 
@@ -240,3 +269,16 @@ Unsubscribes you from an event.
 ??? Summary "Examples"
     **/event unsub 136**  
     ![image](../assets/images/commands/timers/event_unsub.png)
+
+----
+    
+## remindme
+**Syntax:** `remindme <when> <what>`
+
+Creates a personal reminder.
+
+You will be notified in the same channel when the time is over.
+
+??? Summary "Examples"
+    **/event remindme 2h check old fortress**  
+    ![image](../assets/images/commands/timers/remindme.png)

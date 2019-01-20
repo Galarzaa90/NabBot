@@ -69,8 +69,8 @@ nav:
       - Roles commands: commands/roles.md
       - Tibia commands: commands/tibia.md
       - TibiaWiki commands: commands/tibiawiki.md
-      - Tracking commands: commands/tracking.md
       - Timers commands: commands/timers.md
+      - Tracking commands: commands/tracking.md
     - Hosting:
       - Configuration: hosting/config.md
       - Messages: hosting/messages.md

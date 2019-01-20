@@ -12,8 +12,6 @@
 - ✔ Save character name history.
 - ✔ Save character world history.
 - ✔ Save character owner history.
-- ✔ Multiple watchlists per server (e.g. one for friends, one for enemies).
-- ✔ New subcommand /`watchlist create`.
 - ✔ Server growth stats
 - ✔ `/remindme` command, makes the bot remind you something, e.g remindme 1d conquer the world
 - ✔ `/boss` command to set boss cooldown timers, e.g.`/boss set heart of destruction,galarzaa fidera`
@@ -39,15 +37,22 @@
     - 🔧 Moved `/event` and subcommands here.
     - ✔ New `remindme` command, creates a custom reminder.
     - ✔ New `bosstimer` command, keep track of boss cooldowns and get notified when they are over.
+- 🔧 Improved event announcement task.
+- 🔧 Watchlist improvements
+    - 🔧 "Watched lists" are now named Watchlist.
+    - ✔ You can now have multiple watchlists per server (e.g. one for friends, one for enemies).
+    - ✔ New subcommand `/watchlist create`.
+    - ✔ New subcommand `/watchlist adduser`, adds a user's character to a list.
+    - 🔧 Improved watchlist task.
+    - 🔧 Better permission management. If you have `Manage Channel` permission on the list, you can add and remove entries.
+- 🔧 Moved `/addchar` and `/removechar` from Admin cog to Settings cog. Merged `/addaccount` and `/addchar`. 
 - ✔ New `/checkpm` command, to check if you can receive PMs from the bot.
 - ✔ Name changes for registered characters are now shown in server-log
 - ✔ World transfers for registered characters are now shown in server-log
 - 🔧 `/whois` now shows Account Status, Loyalty Title and Position if any.
 - 🔧 Improved performance of `/deaths`, `/levelups` and `/timeline` commands and their subcommands
 - 🔧 Death and level up tracking has been optimized, reducing unnecessary tibia.com calls and improving speed.
-- 🔧 Improved watchlist task
 - 🔧 Bots get a different embed color when joining.
-- 🔧 Watched list renamed to Watchlist
 - 🔧 Move server timezones to their own table.
 - 🔧 Improve internal logging system.
 - 🔧 Created classes to handle database data.
