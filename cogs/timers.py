@@ -619,7 +619,7 @@ class Timers(CogUtils):
 
         The cooldown is set as if you had just killed the boss.
         You will receive a private message when the cooldown is over."""
-        param = params.split(",", 2)
+        param = params.split(",", 1)
         if len(param) < 2:
             return await ctx.error("You must specify for which of your character is the cooldown for.\n"
                                    f"e.g. `{ctx.clean_prefix}{ctx.invoked_with} set Kroazur,Bubble`")
@@ -653,7 +653,7 @@ class Timers(CogUtils):
     @boss.command(name="remove", aliases=["unset", "clear"], usage="<boss>,<character>")
     async def boss_remove(self, ctx: NabCtx, *, params):
         """Removes an active boss cooldown."""
-        param = params.split(",", 2)
+        param = params.split(",", 1)
         if len(param) < 2:
             return await ctx.error("You must specify for which of your character is the cooldown for.\n"
                                    f"e.g. `{ctx.clean_prefix}{ctx.invoked_with} remove Kroazur,Bubble`")
