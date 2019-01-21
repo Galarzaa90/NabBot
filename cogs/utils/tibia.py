@@ -10,6 +10,7 @@ from html.parser import HTMLParser
 from typing import Dict, List, Optional, Union
 
 import aiohttp
+import asyncpg
 import bs4
 import cachetools
 import tibiapy
@@ -738,6 +739,42 @@ def get_voc_abb_and_emoji(vocation: str) -> str:
 
 # region Misc
 
+async def check_former_names(conn, bot, character):
+    for old_name in character.former_names:
+        # Check if a character with that name currently exists
+        former_char = await DbChar.get_by_name(conn, old_name)
+        if former_char:
+            try:
+                row = await conn.fetchrow('UPDATE "character" SET name = $1 WHERE id = $2 RETURNING id, user_id',
+                                          character.name, former_char.id)
+                # If we got here, it means there was no conflict
+                character.owner_id = row["user_id"]
+                character.id = row["id"]
+                log.info(f"get_character(): {old_name} renamed to {character.name}")
+                bot.dispatch("character_rename", character, old_name)
+            except asyncpg.UniqueViolationError:
+                # An exceptions means the character with the new name is registered as a duplicate.
+                new_char = await DbChar.get_by_name(conn, character.name)
+                newest_death = await conn.fetchval("SELECT date FROM character_death WHERE character_id = $1 "
+                                                   "ORDER BY date DESC", former_char.id)
+                # Migrate deaths older than the oldest death
+                await conn.execute("UPDATE character_death SET character_id = $3 WHERE character_id = $1 AND date > $2 ",
+                                   new_char.id, newest_death, former_char.id)
+                await conn.execute("UPDATE character_levelup SET character_id = $2 WHERE character_id = $1",
+                                   new_char.id, former_char.id)
+                await conn.execute("UPDATE character_levelup SET character_id = $2 WHERE character_id = $1",
+                                   new_char.id, former_char.id)
+                await conn.execute("UPDATE character_history SET character_id = $2 WHERE character_id = $1",
+                                   new_char.id, former_char.id)
+                await conn.execute('DELETE FROM "character" WHERE id = $1', new_char.id)
+                character.id = former_char.id
+                log.info(f"get_character(): {old_name} renamed to {character.name}, "
+                         f"duplicate character {new_char.id} deleted.")
+                bot.dispatch("character_rename", character, old_name)
+
+
+
+
 async def bind_database_character(bot, character: NabChar):
     """Binds a Tibia.com character with a saved database character
 
@@ -749,16 +786,7 @@ async def bind_database_character(bot, character: NabChar):
         character.highscores = {category: {'rank': rank, 'value': value} for category, rank, value in results}
 
         # Check if this user was recently renamed, and update old reference to this
-        for old_name in character.former_names:
-            char_id = await conn.fetchval('SELECT id FROM "character" WHERE name LIKE $1', old_name)
-            if char_id:
-                # TODO: Conflict handling is necessary now that name is a unique column
-                row = await conn.fetchrow('UPDATE "character" SET name = $1 WHERE id = $2 RETURNING id, user_id',
-                                          character.name, char_id)
-                character.owner_id = row["user_id"]
-                character.id = row["id"]
-                log.info(f"get_character(): {old_name} renamed to {character.name}")
-                bot.dispatch("character_rename", character, old_name)
+        await check_former_names(conn, bot, character)
 
         # Get character in database
         db_char = await DbChar.get_by_name(conn, character.name)

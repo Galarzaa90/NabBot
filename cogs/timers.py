@@ -1454,7 +1454,7 @@ class Timers(CogUtils):
         self._timer_available.clear()
         self._next_timer = None
         await self._timer_available.wait()
-        return await self.get_next_timer(connection=connection, days=7)
+        return await self.get_next_timer(connection=connection, days=days)
 
     async def await_next_event(self, connection=None, days=7) -> Event:
         """Finds the next upcoming event notification
@@ -1469,7 +1469,7 @@ class Timers(CogUtils):
         self._event_available.clear()
         self._next_event = None
         await self._event_available.wait()
-        return await self.get_next_event_notification(connection=connection, days=7)
+        return await self.get_next_event_notification(connection=connection, days=days)
 
     async def create_timer(self, created: dt.datetime, expires: dt.datetime, name: str, type: ReminderType,
                            user_id: int, extra, connection=None) -> Optional[Timer]:

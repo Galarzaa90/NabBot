@@ -111,7 +111,7 @@ tables = [
         level smallint,
         date timestamptz,
         PRIMARY KEY (id),
-        FOREIGN KEY (character_id) REFERENCES "character" (id),
+        FOREIGN KEY (character_id) REFERENCES "character" (id) ON DELETE CASCADE,
         UNIQUE(character_id, date)
     );
     """,
@@ -121,7 +121,7 @@ tables = [
         position smallint NOT NULL DEFAULT 0,
         name text NOT NULL,
         player boolean,
-        FOREIGN KEY (death_id) REFERENCES character_death (id)
+        FOREIGN KEY (death_id) REFERENCES character_death (id) ON DELETE CASCADE
     );
     """,
     """
@@ -129,7 +129,7 @@ tables = [
         death_id integer NOT NULL,
         position smallint NOT NULL DEFAULT 0,
         name text NOT NULL,
-        FOREIGN KEY (death_id) REFERENCES character_death (id)
+        FOREIGN KEY (death_id) REFERENCES character_death (id) ON DELETE CASCADE
     );
     """,
     """
@@ -139,7 +139,7 @@ tables = [
         level smallint,
         date timestamptz DEFAULT now(),
         PRIMARY KEY (id),
-        FOREIGN KEY (character_id) REFERENCES "character" (id)
+        FOREIGN KEY (character_id) REFERENCES "character" (id) ON DELETE CASCADE
     );
     """,
     """
@@ -150,7 +150,7 @@ tables = [
         after jsonb,
         user_id bigint,
         date timestamptz NOT NULL DEFAULT now(),
-        FOREIGN KEY (character_id) REFERENCES "character" (id)
+        FOREIGN KEY (character_id) REFERENCES "character" (id) ON DELETE CASCADE
     );
     """,
     """
@@ -175,7 +175,7 @@ tables = [
         event_id integer NOT NULL,
         character_id integer NOT NULL,
         FOREIGN KEY (event_id) REFERENCES event (id),
-        FOREIGN KEY (character_id) REFERENCES "character" (id),
+        FOREIGN KEY (character_id) REFERENCES "character" (id) ON DELETE CASCADE,
         UNIQUE(event_id, character_id)
     );
     """,
@@ -266,7 +266,7 @@ tables = [
     )
     """,
     """
-    CREATE TABLE command (
+    CREATE TABLE command_use (
         server_id bigint,
         channel_id bigint NOT NULL,
         user_id bigint NOT NULL,
@@ -455,9 +455,10 @@ async def import_server_properties(conn: asyncpg.Connection, c: sqlite3.Cursor):
             for entry in value:
                 times.append((server_id, entry["timezone"], entry["name"]))
             continue
-        elif key in ["events_channel", "levels_channel", "watched_channel", "news_channel", "welcome_channel",
-                     "ask_channel", "watched_message"]:
+        elif key in ["events_channel", "levels_channel", "news_channel", "welcome_channel", "ask_channel"]:
             value = int(value)
+        elif key in ["watched_message", "watched_channel"]:
+            continue
         elif key == "commandsonly":
             value = bool(value)
         properties.append((server_id, key, value))
