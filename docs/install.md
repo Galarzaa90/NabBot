@@ -21,7 +21,7 @@ python -m pip install -U -r requirements.txt
 Since v2.0.0, NabBot uses PostgreSQL instead of SQLite for data storage. This means you must be running a [PostgreSQL](https://www.postgresql.org/) service.
 It is recommended to run it on the same machine.
 
-Once it is installed and running, you must create a database and users for NabBot.
+Once it is installed and running, you must create a database and a user for NabBot to access.
 You can use the default `root` user, but this is not recommended.
 
 You can create them using any tool you want. Here's an example using `psql`:
@@ -46,9 +46,9 @@ In order to run a Discord bot, you need to create a new application.
     compromising your account if they break discord's Terms of Service
 
 ## Running your bot
-To run your but, you need to execute `launcher.py`.
+To run your bot, you need to execute `launcher.py`.
 The first time you run NabBot, you will be asked for your connection credentials to PostgreSQL.
-Here's where you will provide the information created early.
+Here's where you will provide the information created earlier.
 
 After that, you will be asked for your token. Here's where you will use the token given on the App page.
 
@@ -67,7 +67,7 @@ By default, it will look for the database in the path `data/users.db`, but you c
 python launcher.py migrate --path data/database-backup.db
 ```
 
-Depending on the size of your previous database, this may take a couple minutes.
+Depending on the size of your previous database, this may take a couple of minutes.
 
 !!! warning
     Doing this will delete all the data currently found in your **PostgreSQL** database.  
@@ -91,7 +91,7 @@ Depending on your privacy settings, you (or the owner of the server) should have
 In order for the bot to have access to most of its features, you must configure the world the server tracks.
 
 Use the command [settings world](commands/admin.md#settings-world), for example: `/settings world Gladera`. Then the bot will ask for confirmation.
-Once accepted, users can start registering their chars using `\im charName`.
+Once accepted, users can start registering their characters using `/im charName`.
 
 By default, events, level ups and deaths announcements are made on the highest channel available for the bot.
 In order to customize this, you can use the following commands: `/settings levelschannel`.

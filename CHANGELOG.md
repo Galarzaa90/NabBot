@@ -11,7 +11,6 @@
 - ✔ New `/commandstats` command to see command usage stats. Yes commands x4.
 - ✔ Character name, world and owner history is now saved.
 - ✔ Server growth stats are now saved.
-- ✔ `/remindme` command, makes the bot remind you something, e.g remindme 1d conquer the world
 - ✔ `/boss` command to set boss cooldown timers, e.g.`/boss set heart of destruction,galarzaa fidera`
 - ✔ New `/channelinfo` command.
 - 🔧 Improved and optimized TibiaWiki cog:
@@ -29,10 +28,10 @@
      target.
     - ✔ New command: `/distanceskill`, calculates the exercise weapons needed to reach a target.
     - ✔ New command: `/meleeskill`, calculates online and offline training time and exercise weapons. 
-    - ✔ New command: `/magicslevel`, calculates mana needed, offline training time and exercise weapons needed.
+    - ✔ New command: `/magiclevel`, calculates mana needed, offline training time and exercise weapons needed.
 - ✔ New Timers cog:
     - 🔧 Moved `/event` and subcommands here.
-    - ✔ New `remindme` command, creates a custom reminder.
+    - ✔ New `remindme` command, creates a custom reminder, e.g `/remindme 1d conquer the world`
     - ✔ New `bosstimer` command, keep track of boss cooldowns and get notified when they are over.
 - 🔧 Improved event announcement task.
 - 🔧 Watchlist improvements
