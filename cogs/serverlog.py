@@ -84,7 +84,7 @@ class ServerLog:
         embed = discord.Embed(colour=COLOUR_CHAR_UNREGISTERED)
         embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
         voc = get_voc_abb_and_emoji(char.vocation)
-        tibia_guild = char.guild if char.guild else "No guild"
+        tibia_guild = char.guild or "No guild"
         await self.add_character_history(char.id, ChangeType.OWNER, user.id, 0)
         if author is not None:
             embed.set_footer(text=f"{author.name}#{author.discriminator}", icon_url=get_user_avatar(author))

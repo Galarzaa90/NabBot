@@ -23,7 +23,7 @@ EMBED_LIMIT = 6000
 
 
 class CogUtils:
-
+    """Helper class for Cogs, defines a tag to use in logging."""
     @property
     def tag(self) -> str:
         """

@@ -47,6 +47,7 @@ class DeathMessageCondition(MessageCondition):
 last_messages = [""]*50
 WAVE_MONSTERS = ["dragon", "dragon lord", "undead dragon", "draken spellweaver", "hellhound", "hellfire fighter",
                  "frost dragon", "medusa", "serpent spawn", "hydra", "grim reaper"]
+ARROW_MONSTERS = ["hunter", "hero", "elf arcanist", "elf scout", "Omruc"]
 
 # Message list for announce_level
 # Parameters: {name}, {level} , {he_she}, {his_her}, {him_her}
@@ -76,6 +77,7 @@ level_messages = [
     [100, "**{name}** is level {level} now. Noice."],
     [100, "**{name}** has finally made it to level {level}, yay!"],
     [100, "**{name}**, you reached level {level}? Here, have a cookie 🍪"],
+    [100, "Congrats **{name}** on getting level {level}! I'm sure someone is proud of you. Not me though."],
     ####
     # EK Only
     ####
@@ -141,6 +143,8 @@ level_messages = [
     ####
     [20000, "**{name}** is level {level}! UMPs so good 🍷",
      lambda c: c.level == 130 and c.base_voc in ["druid", "sorcerer"]],
+    [20000, "Sniff Sniff... Can you smell that?... Is the smell of death... **{name}** just advanced to {level}!",
+     lambda c: c.level == 45 and c.base_voc in ["druid", "sorcerer"]],
     ####
     # No vocation - Level specific
     ####
@@ -160,7 +164,9 @@ level_messages = [
      lambda c: c.level % 100 == 0],
     [20000, "Congratulations on level {level} **{name}**! Now you can become an umbral master, but is your"
      " bank account ready?💸",
-     lambda c: c.level == 250]]
+     lambda c: c.level == 250],
+    [20000, "Congratulations on level {level} **{name}**! Now go get your ~~pokémon~~ summon!",
+     lambda c: c.level == 200]]
 
 # Message list for announce death.
 # Parameters: ({name},{level},{killer},{killer_article},{he_she}, {his_her},{him_her}
@@ -207,6 +213,10 @@ death_messages_monster = [
     [100, "Alas, poor **{name}** ({level}), I knew {him_her} Horatio; a fellow of infinite jest, of most "
      "excellent fancy; {he_she} hath borne me on {his_her} back a thousand times; and now, {he_she} got rekt "
      "by {killer_article}**{killer}**."],
+    [100, "**{name}** ({level}) dies to {killer_article}**{killer}**. I guess **{name}** left their hands at home."],
+    [100, "There's a thousand ways to die in Tibia. **{name}** ({level}) chose to die to {killer_article}**{killer}**."],
+    [100, "I'll always remember the last words of **{name}** ({level}): 'exur-'. "
+          "^That ^**{killer}** sure got {him_her}."],
     ###
     # General specific
     ###
@@ -271,6 +281,13 @@ death_messages_monster = [
      lambda c: c.killer in ["true frost flower asura", "frost flower asura", "frost giantess", "ice witch"]],
     [2500, "Asian chicks sure age well, don't you think so, **{name}** ({level})? 😍👵.",
      lambda c: "true" in c.killer and "asura" in c.killer],
+    [2000, "KABOOM! **{name}** ({level}) just found out that Outburst's favourite songs is TNT by AC/DC."
+           "He payed highest price for this discovery.",
+     lambda c: "outburst" in c.killer.lower()],
+    [2500, "**{name}** ({level}) died to {killer_article}**{killer}**. /{he_she}/ wasn't much of a reader anyway.",
+     lambda c: "book" in c.killer],
+    [2500, "**{name}** ({level}) took an arrow to the knee. ^That ^**{killer}** sure can aim!",
+     lambda c: c.killer in ARROW_MONSTERS],
     ###
     # Level and monster specific
     ###

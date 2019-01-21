@@ -6,7 +6,6 @@ from collections import defaultdict
 from contextlib import redirect_stdout
 from distutils.version import StrictVersion
 
-import asyncpg
 import pkg_resources
 
 # Exposing for /debug command

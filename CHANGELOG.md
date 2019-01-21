@@ -46,7 +46,7 @@
     - ✔ Name changes for registered characters are now shown.
     - ✔ World transfers for registered characters are now shown.
     - 🔧 Bots get a different embed color when joining.
-    - 🔧 When a member leaves or is kicked from the server, their registered characters are shown. 
+    - 🔧 When a member leaves or is kicked from the server, their registered characters are shown.
 - 🔧 Moved `/addchar` and `/removechar` from Admin cog to Settings cog. Merged `/addaccount` and `/addchar`. 
 - ✔ New `/checkpm` command, to check if you can receive PMs from the bot.
 - 🔧 `/whois` now shows Account Status, Loyalty Title and Position if any.

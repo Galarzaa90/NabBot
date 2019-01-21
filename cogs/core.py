@@ -5,7 +5,6 @@ import random
 import re
 from typing import Tuple
 
-import asyncpg
 import discord
 from discord.ext import commands
 
@@ -89,6 +88,9 @@ class Core(CogUtils):
             log.warning(f"Unhandled command error {error.__class__.__name__}: {error}")
 
     async def on_command(self, ctx: commands.Context):
+        """Called everytime a command is executed.
+
+        Saves the command use to the databse."""
         command = ctx.command.qualified_name
         guild_id = ctx.guild.id if ctx.guild is not None else None
         query = """INSERT INTO command_use(server_id, channel_id, user_id, date, prefix, command)
@@ -214,13 +216,20 @@ class Core(CogUtils):
         log.info(f"{self.tag} Unloading cog")
         self.game_update_task.cancel()
 
-    async def process_check_failure(self, ctx: context.NabCtx, error: commands.CheckFailure):
+    @classmethod
+    async def process_check_failure(cls, ctx: context.NabCtx, error: commands.CheckFailure):
+        """Handles CheckFailure errors.
+
+        These are exceptions that may be raised when executing command checks."""
         if isinstance(error, (commands.NoPrivateMessage, errors.NotTracking)):
             await ctx.error(error)
         elif isinstance(error, errors.CannotEmbed):
             await ctx.error(f"Sorry, `Embed Links` permission is required for this command.")
 
     async def process_user_input_error(self, ctx: context.NabCtx, error: commands.UserInputError):
+        """Handles UserInput errors.
+
+        These are exceptions raised due to the user providing invalid or incorrect input."""
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.error(f"The correct syntax is: `{ctx.clean_prefix}{ctx.command.qualified_name} {ctx.usage}`.\n"
                             f"Try `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
@@ -232,6 +241,9 @@ class Core(CogUtils):
             await ctx.error(f"{error}\nTry `{ctx.clean_prefix}help {ctx.command.qualified_name}` for more info.")
 
     async def process_command_invoke_error(self, ctx: context.NabCtx, error: commands.CommandInvokeError):
+        """Handles CommandInvokeError.
+
+        This exception is raised when an exception is raised during command execution."""
         error_name = error.original.__class__.__name__
         if isinstance(error.original, errors.NetworkError):
             log.error(f"{error_name} in command {ctx.clean_prefix}{ctx.command.qualified_name}: {error.original}")

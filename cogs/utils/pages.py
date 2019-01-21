@@ -21,12 +21,11 @@ class Pages:
     interface exits automatically.
 
     Based on Rapptz' Paginator: https://github.com/Rapptz/RoboDanny/blob/master/cogs/utils/paginator.py
-    Modified for Nab Bot's needs.
+    Modified for NabBot's needs.
 
     Changes made for NabBot:
     - Removed skip to first and last page, show help, and page select
-    - Added option to add a header before te list
-    -
+    - Added option to add a header before the list
 
     Parameters
     ------------

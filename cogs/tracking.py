@@ -221,7 +221,7 @@ class WatchlistEntry:
 
     @classmethod
     async def insert(cls, conn: PoolConn, channel_id: int, name: str, is_guild: bool, user_id: int, reason=None)\
-            -> 'WatchlistEntry':
+            -> Optional['WatchlistEntry']:
         """Inserts a watchlist entry into the database.
 
         :param conn: Connection to the database.

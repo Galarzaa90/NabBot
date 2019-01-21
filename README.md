@@ -1,9 +1,9 @@
 # NabBot
-Nab Bot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapptz/discord.py). It features commands related to the MMORPG [Tibia](http://www.tibia.com/news/?subtopic=latestnews).
+NabBot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rapptz/discord.py). It features commands related to the MMORPG [Tibia](http://www.tibia.com/news/?subtopic=latestnews).
 
-![Python version](https://img.shields.io/badge/python-3.6-yellow.svg)
-[![Build Status](https://travis-ci.org/Galarzaa90/NabBot.svg)](https://travis-ci.org/Galarzaa90/NabBot)
-[![GitHub release](https://img.shields.io/github/release/Galarzaa90/NabBot.svg)](https://github.com/Galarzaa90/NabBot/releases)
+![Python version](https://img.shields.io/badge/python-3.6+-yellow.svg)
+[![Build Status](https://travis-ci.org/NabDev/NabBot.svg)](https://travis-ci.org/NabDev/NabBot)
+[![GitHub release](https://img.shields.io/github/release/NabDev/NabBot.svg)](https://github.com/NabDev/NabBot/releases)
 [![Discord](https://img.shields.io/discord/441991938200305674.svg)](https://discord.gg/NmDvhpY)
 
 [![Discord Bots](https://discordbots.org/api/widget/178966653982212096.svg)](https://discordbots.org/bot/178966653982212096)
@@ -22,7 +22,12 @@ You can also host your own instance of NabBot.
     - pillow
     - BeautifulSoup
     - pyYAML
+    - asyncpg
+    - pytz
+    - tibia.py
+    - tibiawiki-sql
 - git
+- PostgreSQL
 
 ### Installing and running
 Follow the [install guide](https://nabdev.github.io/NabBot/install/) on the official documentation site.

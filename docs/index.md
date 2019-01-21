@@ -21,7 +21,7 @@ It features commands related to the MMORPG [Tibia](http://www.tibia.com/abouttib
 - Joinable roles, create roles that any member can join or leave.
 - Autoroles, create roles that are assigned to users automatically based on their registered characters.
 
-[More details](features/)
+[More details](features/index.md)
 
 !!! error "Note"
      This is not a cavebot, this bot does not interact with the client in any way, NabBot is a messaging bot. We're not interested in developing cavebots, do not contact us for such reasons.

@@ -254,14 +254,16 @@ class Mod:
             await ctx.send(e)
     # endregion
 
-    async def is_ignored(self, conn, ctx: NabCtx):
+    @classmethod
+    async def is_ignored(cls, conn, ctx: NabCtx):
         """Checks if the current context is ignored.
 
         A context could be ignored because either the channel or the user are in the ignored list."""
         query = "SELECT True FROM ingored_entry WHERE guild_id=$1 AND (entry_id=$2 OR entry_id=$3);"
         return await conn.fetchrow(query, ctx.guild.id, ctx.channel.id, ctx.author.id)
 
-    async def bulk_ignore(self, ctx: NabCtx, entries):
+    @classmethod
+    async def bulk_ignore(cls, ctx: NabCtx, entries):
         async with ctx.pool.acquire() as conn:
             async with conn.transaction():
                 query = "SELECT entry_id FROM ignored_entry WHERE server_id=$1;"

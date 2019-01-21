@@ -10,6 +10,14 @@ TIBIA_CASH_PATTERN = re.compile(r'(\d*\.?\d*)k*$')
 
 
 class InsensitiveMember(commands.IDConverter):
+    """Converts to a :class:`discord.Member` or :class:`discord.User` object.
+
+    This class replicates :class:`discord.ext.commands.MemberConverter`, but the lookup is case insensitive.
+
+    Lookup order:
+    1. By ID.
+    2. By mention.
+    3. By name (case insensitive)."""
     async def convert(self, ctx: NabCtx, argument):
         member = ctx.bot.get_member(argument, ctx.guild)
         if member is None:
@@ -18,6 +26,7 @@ class InsensitiveMember(commands.IDConverter):
 
 
 class ChannelOrMember(commands.Converter):
+    """Converts to a TextChannel or Member object."""
     async def convert(self, ctx, argument):
         try:
             return await commands.TextChannelConverter().convert(ctx, argument)

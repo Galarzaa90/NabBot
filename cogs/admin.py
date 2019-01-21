@@ -603,6 +603,9 @@ class Admin:
 
     @staticmethod
     async def show_info_embed(ctx: NabCtx, current_value, accepted_values, edit_params):
+        """Shows information about a settings value.
+
+        It shows the current value, possible values and how to edit it."""
         embed = discord.Embed(title=f"{SETTINGS[ctx.command.name]['title']} - Settings",
                               description=ctx.command.short_doc, color=discord.Color.blurple())
         embed.add_field(name="📄 Current value", value=current_value, inline=False)
@@ -610,7 +613,7 @@ class Admin:
                         value=f"`{ctx.clean_prefix}{ctx.command.full_parent_name} {ctx.invoked_with} [{edit_params}]`")
         embed.add_field(name="☑ Accepted values", value=accepted_values, inline=False)
         embed.set_footer(text=f'Use "{ctx.clean_prefix}help {ctx.command.full_parent_name} {ctx.invoked_with} '
-             f'for more info')
+                              f'for more info')
         await ctx.send(embed=embed)
 
 

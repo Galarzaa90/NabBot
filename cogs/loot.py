@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 import discord
-import tibiawikisql
 from PIL import Image
 from discord.ext import commands
 

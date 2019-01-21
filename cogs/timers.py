@@ -1488,8 +1488,8 @@ class Timers(CogUtils):
             self.bot.loop.create_task(self.run_short_timer(delta, timer))
             return timer
 
-        id = await conn.fetchval(query, name, type.value, extra, expires, created, user_id)
-        timer.id = id
+        timer_id = await conn.fetchval(query, name, type.value, extra, expires, created, user_id)
+        timer.id = timer_id
         log.debug(f"{self.tag} Timer created {timer}")
         if delta <= (86400 * 40):  # 40 days
             self._timer_available.set()

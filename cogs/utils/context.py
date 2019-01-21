@@ -135,6 +135,7 @@ class NabCtx(commands.Context):
 
     # endregion
     async def choose(self, matches: Sequence[Any], title="Suggestions", not_found=True):
+        """Shows a list of options and awaits for the user's answer."""
         if len(matches) == 0:
             raise ValueError('No results found.')
 

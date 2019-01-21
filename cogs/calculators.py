@@ -346,6 +346,7 @@ class Calculators:
 
     @classmethod
     def get_hits(cls, current, percentage, target, factor, loyalty=0):
+        """Gets the amount of hits needed from a skill level to other."""
         hits = 0
         if target - current > 2:
             hits = sum(cls.melee_formula(factor, s) for s in range(current + 1, target))
@@ -355,6 +356,7 @@ class Calculators:
 
     @classmethod
     def get_mana_spent(cls, current, percentage, target, factor, loyalty=0):
+        """Gets the amount of mana needed to use to advance from a magic level to other."""
         mana = 0
         if target - current > 2:
             mana = sum(cls.magic_formula(factor, s) for s in range(current + 1, target))
@@ -364,6 +366,9 @@ class Calculators:
 
     @classmethod
     def get_weapon_usage_string(cls, weapons):
+        """Gets a string with details about the use of excerscise weapons.
+
+        It includes number of weapons, cost in gold and cost in tibia coins as well as time needed."""
         content = f"You would need **{weapons:,}** exercise weapons.\n" \
             f"Costing **{EXERCISE_WEAPON_GP * weapons:,}** gold coins " \
             f"or **{EXERCISE_WEAPON_COIN * weapons:,}** tibia coins.\n"
@@ -376,10 +381,12 @@ class Calculators:
 
     @classmethod
     def magic_formula(cls, factor, skill):
+        """The magic level formula to calculate the mana needed for next magic level."""
         return int(1600 * factor ** skill)
 
     @classmethod
     def melee_formula(cls, factor, skill):
+        """The melee formula to calculate the number of hits for the next skill level."""
         return int((50 * factor**(skill-10)))
 
     # endregion
