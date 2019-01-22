@@ -3,8 +3,8 @@ NabBot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rappt
 It features commands related to the MMORPG [Tibia](http://www.tibia.com/abouttibia/?subtopic=whatistibia).
 
 ![Python version](https://img.shields.io/badge/python-3.6-yellow.svg)
-[![Build Status](https://travis-ci.org/Galarzaa90/NabBot.svg)](https://travis-ci.org/Galarzaa90/NabBot)
-[![GitHub release](https://img.shields.io/github/release/Galarzaa90/NabBot.svg)](https://github.com/Galarzaa90/NabBot/releases)
+[![Build Status](https://travis-ci.org/NabDev/NabBot.svg)](https://travis-ci.org/NabDev/NabBot)
+[![GitHub release](https://img.shields.io/github/release/NabDev/NabBot.svg)](https://github.com/NabDev/NabBot/releases)
 [![Discord](https://img.shields.io/discord/441991938200305674.svg)](https://discord.gg/NmDvhpY)
 
 [![Discord Bots](https://discordbots.org/api/widget/178966653982212096.svg)](https://discordbots.org/bot/178966653982212096)
