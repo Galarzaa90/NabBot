@@ -429,7 +429,7 @@ class Timers(CogUtils):
             log.exception(f"{tag} {e}")
 
     async def clean_events(self):
-        """Checks upcoming events and waits for notifications."""
+        """Cleans up past event notifications"""
         tag = f"{self.tag}[clean_events]"
         try:
             await self.bot.wait_until_ready()

@@ -120,7 +120,8 @@ tables = [
         death_id integer NOT NULL,
         position smallint NOT NULL DEFAULT 0,
         name text NOT NULL,
-        player boolean,
+        player boolean NOT NULL,
+        summon text,
         FOREIGN KEY (death_id) REFERENCES character_death (id) ON DELETE CASCADE
     );
     """,
@@ -129,6 +130,8 @@ tables = [
         death_id integer NOT NULL,
         position smallint NOT NULL DEFAULT 0,
         name text NOT NULL,
+        player boolean DEFAULT True,
+        summon text,
         FOREIGN KEY (death_id) REFERENCES character_death (id) ON DELETE CASCADE
     );
     """,

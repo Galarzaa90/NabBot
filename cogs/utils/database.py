@@ -159,11 +159,11 @@ class DbChar(tibiapy.abc.BaseCharacter):
         :return: An asynchronous generator containing the entries.
         """
         async with conn.transaction():
-            async for row in conn.cursor("""
+            async for row in conn.cursor(f"""
                     (
                         SELECT d.*, json_agg(k)::jsonb as killers, 'd' AS type
                         FROM character_death d
-                        LEFT JOIN character_death_killer k ON k.death_id = d.id
+                        LEFT JOIN {DbKiller.table} k ON k.death_id = d.id
                         WHERE d.character_id = $1
                         GROUP BY d.id
                     )
@@ -456,26 +456,18 @@ class DbLevelUp:
                 yield cls(**row)
 
 
-class DbKiller:
-    """Represents a killer from the database."""
+class BaseKiller:
+    table = None
+
     def __init__(self, **kwargs):
         self.death_id = kwargs.get("death_id")
         self.position = kwargs.get("position")
         self.name = kwargs.get("name")
-        self.player = kwargs.get("player")
+        self.summon = kwargs.get("summon")
+        self.player = kwargs.get("player", False)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} death_id={self.death_id} position={self.position} name={self.name!r} " \
-            f"player={self.player}>"
-
-    @classmethod
-    def from_tibiapy(cls, killer: tibiapy.Killer) -> 'DbKiller':
-        """Converts a Killer object from Tibia.py into a DbKiller object.
-
-        :param killer: A killer object
-        :return: The equivalent DbKiller object, without its positon and death_id set.
-        """
-        return cls(name=killer.name, player=killer.player)
+        return f"<{self.__class__.__name__} death_id={self.death_id} position={self.position} name={self.name!r}>"
 
     async def save(self, conn: PoolConn):
         """Saves the current killer to the database.
@@ -487,7 +479,16 @@ class DbKiller:
         await self.insert(conn, self.death_id, self.position, self.name, self.player)
 
     @classmethod
-    async def insert(cls, conn: PoolConn, death_id, position, name, player) -> 'DbKiller':
+    def from_tibiapy(cls, killer: tibiapy.Killer):
+        """Converts a Killer object from Tibia.py into a DbKiller object.
+
+        :param killer: A killer object
+        :return: The equivalent DbKiller object, without its position and death_id set.
+        """
+        return cls(name=killer.name, player=killer.player, summon=killer.summon)
+
+    @classmethod
+    async def insert(cls, conn: PoolConn, death_id, position, name, player, summon = None):
         """Inserts a killer into the database.
 
         :param conn: Connection to the database,
@@ -497,52 +498,19 @@ class DbKiller:
         :param player: Whether the killer is a player or not.
         :return: The inserted DbKiller object.
         """
-        await conn.execute("""INSERT INTO character_death_killer(death_id, position, name, player)
-                              VALUES($1, $2, $3, $4)""", death_id, position, name, player)
-        return cls(death_id=death_id, position=position, name=name, player=player)
+        await conn.execute(f"""INSERT INTO {cls.table}(death_id, position, name, player, summon)
+                              VALUES($1, $2, $3, $4, $5)""", death_id, position, name, player, summon)
+        return cls(death_id=death_id, position=position, name=name, player=player, summon=summon)
 
 
-class DbAssist:
+class DbKiller(BaseKiller):
+    """Represents a killer from the database."""
+    table = "character_death_killer"
+
+
+class DbAssist(BaseKiller):
     """Represents an assister from the database."""
-    def __init__(self, **kwargs):
-        self.death_id = kwargs.get("death_id")
-        self.position = kwargs.get("position")
-        self.name = kwargs.get("name")
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} death_id={self.death_id} position={self.position} name={self.name!r}>"
-
-    @classmethod
-    def from_tibiapy(cls, killer: tibiapy.Killer):
-        """Converts a Killer object from Tibia.py into a DbAssist object.
-
-        :param killer: A killer object
-        :return: The equivalent DbAssist object, without its positon and death_id set.
-        """
-        return cls(name=killer.name)
-
-    async def save(self, conn):
-        """Saves the current assister to the database.
-
-        An error will be returned if death_id has not been set.
-
-        :param conn: Connection to the database.
-        """
-        await self.insert(conn, self.death_id, self.position, self.name)
-
-    @classmethod
-    async def insert(cls, conn: PoolConn, death_id, position, name) -> 'DbAssist':
-        """Inserts an assister into the database.
-
-        :param conn: Connection to the database,
-        :param death_id: The id of the death the assister belongs to.
-        :param position: The position of the assisters in the death's list of assists.
-        :param name: The name of the assister.
-        :return: The inserted DbAssist object.
-        """
-        await conn.execute("""INSERT INTO character_death_assist(death_id, position, name)
-                              VALUES($1, $2, $3)""", death_id, position, name)
-        return cls(death_id=death_id, position=position, name=name)
+    table = "character_death_assist"
 
 
 class DbDeath:
@@ -607,8 +575,7 @@ class DbDeath:
         :param date: The date when the death happened.
         :return: True if it exists, False otherwise.
         """
-        _id = await conn.fetchval("""SELECT id FROM character_death d
-                 INNER JOIN character_death_killer dk ON dk.death_id = d.id
+        _id = await conn.fetchval(f"""SELECT id FROM character_death d
                  WHERE character_id = $1 AND date = $2 AND level = $3""", char_id, date, level)
         if _id:
             return True
@@ -623,10 +590,10 @@ class DbDeath:
         :return: An asynchronous generator containing the deaths.
         """
         async with conn.transaction():
-            async for row in conn.cursor("""
+            async for row in conn.cursor(f"""
                     SELECT d.*, json_agg(dk)::jsonb as killers, json_agg(da)::jsonb as assists FROM character_death d
-                    LEFT JOIN character_death_killer dk ON dk.death_id = d.id
-                    LEFT JOIN character_death_assist da ON da.death_id = d.id
+                    LEFT JOIN {DbKiller.table} dk ON dk.death_id = d.id
+                    LEFT JOIN {DbAssist.table} da ON da.death_id = d.id
                     WHERE character_id = $1
                     GROUP BY d.id
                     ORDER BY date DESC
@@ -648,12 +615,12 @@ class DbDeath:
         if not worlds:
             worlds = []
         async with conn.transaction():
-            async for row in conn.cursor("""
+            async for row in conn.cursor(f"""
                     SELECT (json_agg(c)->>0)::jsonb as char, d.*, 
                     json_agg(dk)::jsonb as killers, json_agg(da)::jsonb as assists
                     FROM character_death d
-                    LEFT JOIN character_death_killer dk ON dk.death_id = d.id
-                    LEFT JOIN character_death_assist da ON da.death_id = d.id
+                    LEFT JOIN {DbKiller.table} dk ON dk.death_id = d.id
+                    LEFT JOIN {DbAssist.table} da ON da.death_id = d.id
                     LEFT JOIN "character" c ON c.id = d.character_id
                     WHERE ($1::bigint = 0 OR c.user_id = $1) AND
                     (cardinality($2::text[]) = 0 OR c.world = any($2)) AND d.level >= $3
@@ -677,12 +644,12 @@ class DbDeath:
         if not worlds:
             worlds = []
         async with conn.transaction():
-            async for row in conn.cursor("""
+            async for row in conn.cursor(f"""
                         SELECT (json_agg(c)->>0)::jsonb as char, d.*, 
                         json_agg(dk)::jsonb as killers, json_agg(da)::jsonb as assists
                         FROM character_death d
-                        LEFT JOIN character_death_killer dk ON dk.death_id = d.id
-                        LEFT JOIN character_death_assist da ON da.death_id = d.id
+                        LEFT JOIN {DbKiller.table} dk ON dk.death_id = d.id
+                        LEFT JOIN {DbAssist.table} da ON da.death_id = d.id
                         LEFT JOIN "character" c ON c.id = d.character_id
                         WHERE lower(dk.name) SIMILAR TO $1 AND
                         (cardinality($2::text[]) = 0 OR c.world = any($2)) AND d.level >= $3
@@ -746,11 +713,11 @@ async def get_recent_timeline(conn: PoolConn, *, minimum_level=0, user_id=0, wor
     if not worlds:
         worlds = []
     async with conn.transaction():
-        async for row in conn.cursor("""
+        async for row in conn.cursor(f"""
                 (
                     SELECT d.*, (json_agg(c)->>0)::jsonb as char, json_agg(k)::jsonb as killers, 'd' AS type
                     FROM character_death d
-                    LEFT JOIN character_death_killer k ON k.death_id = d.id
+                    LEFT JOIN {DbKiller.table} k ON k.death_id = d.id
                     LEFT JOIN "character" c ON c.id = d.character_id
                     WHERE ($1::bigint = 0 OR c.user_id = $1) AND
                     (cardinality($2::text[]) = 0 OR c.world = any($2)) AND d.level >= $3

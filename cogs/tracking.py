@@ -262,9 +262,9 @@ class Tracking(CogUtils):
         #             Nezune's cave                     #
         # Do not touch anything, enter at your own risk #
         #################################################
-        task_tag = f"[{world}] Task: scan_deaths |"
+        tag = f"{self.tag}[{world}][scan_deaths]"
         await self.bot.wait_until_ready()
-        log.info(f"{self.tag}{task_tag} Started")
+        log.info(f"{tag} Started")
         while not self.bot.is_closed():
             try:
                 await asyncio.sleep(config.death_scan_interval)
@@ -292,8 +292,8 @@ class Tracking(CogUtils):
                 break
             except KeyError:
                 continue
-            except Exception:
-                log.exception(f"{self.tag}{task_tag} scan_deaths")
+            except Exception as e:
+                log.exception(f"{tag} Exception: {e}")
                 continue
 
     async def scan_highscores(self):
@@ -304,9 +304,9 @@ class Tracking(CogUtils):
         #             Nezune's cave                     #
         # Do not touch anything, enter at your own risk #
         #################################################
-        tag = f"{self.tag}(scan_highscores)"
+        tag = f"{self.tag}[scan_highscores]"
         await self.bot.wait_until_ready()
-        log.info(f"{tag} Task started")
+        log.info(f"{tag} Started")
         while not self.bot.is_closed():
             if len(self.bot.tracked_worlds_list) == 0:
                 # If no worlds are tracked, just sleep, worlds might get registered later
@@ -555,7 +555,7 @@ class Tracking(CogUtils):
                 watchlist.content += "\n*And more...*"
             fields = split_message(watchlist.content, FIELD_VALUE_LIMIT)
             for s, split_field in enumerate(fields):
-                name = "Watched List" if s == 0 else "\u200F"
+                name = "Watchlist" if s == 0 else "\u200F"
                 embed.add_field(name=name, value=split_field, inline=False)
         try:
             await self._watchlist_update_message(self.bot.pool, watchlist, channel, embed)
@@ -1276,6 +1276,9 @@ class Tracking(CogUtils):
         if not await Watchlist.get_by_channel_id(ctx.pool, channel.id):
             return await ctx.error(f"{channel.mention} is not a watchlist.")
 
+        if not channel.permissions_for(ctx.author).read_messages:
+            return await ctx.error("You can't see the list of a watchlist you can't see.")
+
         entries = await WatchlistEntry.get_entries_by_channel(ctx.pool, channel.id)
         entries = [entry for entry in entries if not entry.is_guild]
 
@@ -1299,6 +1302,9 @@ class Tracking(CogUtils):
 
         entries = await WatchlistEntry.get_entries_by_channel(ctx.pool, channel.id)
         entries = [entry for entry in entries if entry.is_guild]
+
+        if not channel.permissions_for(ctx.author).read_messages:
+            return await ctx.error("You can't see the list of a watchlist you can't see.")
 
         if not entries:
             return await ctx.error(f"This watchlist has no registered characters.")

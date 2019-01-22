@@ -57,6 +57,7 @@ nav:
       - Overview: features/index.md
       - Autoroles: features/autoroles.md
       - Groups: features/groups.md
+      - Watchlist: features/watchlist.md
     - Commands:
       - Overview: commands/index.md
       - Admin commands: commands/admin.md
