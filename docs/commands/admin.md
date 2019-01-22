@@ -111,7 +111,7 @@ To remove an existing prefix, use it as a parameter.
 If you want to have a space at the end, such as: `nabbot help`, you have to use double quotes "nabbot ".
 Multiple words also require using quotes.
 
-Mentioning the bot is always a valid command and can't be changed."
+Mentioning the bot is always a valid command and can't be changed.
 
 ----
 

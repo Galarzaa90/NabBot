@@ -106,10 +106,6 @@ online_scan_interval: 40
 # Delay in between player death checks in seconds
 death_scan_interval: 15
 
-# Delay between each tracked world's highscore check and delay between pages scan
-highscores_delay: 45
-highscores_page_delay: 10
-
 # Delay between retries when there's a network error in seconds
 network_retry_delay: 1
 ```
@@ -191,4 +187,5 @@ elemental_emojis:
   ice: ❄
   death: 💀
   holy: 🔱
+  poison: 🐍
 ```
