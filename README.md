@@ -27,7 +27,7 @@ You can also host your own instance of NabBot.
     - tibia.py
     - tibiawiki-sql
 - git
-- PostgreSQL
+- PostgreSQL 10 or higher
 
 ### Installing and running
 Follow the [install guide](https://nabdev.github.io/NabBot/install/) on the official documentation site.

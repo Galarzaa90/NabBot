@@ -5,7 +5,8 @@
     If you just invited NabBot to your server, you don't need to read this.
 
 ## Installing requirements
-In order to run NabBot, you need to install two things: [git](https://git-scm.com/) and [Python 3.6](https://www.python.org/).
+In order to run NabBot, you need to install three things:
+[git](https://git-scm.com/), [Python 3.6+](https://www.python.org/) and [PostgreSQL 10+](https://www.postgresql.org/)
 
 When installing on Windows, make sure that you select the option to add Python to `PATH`.
 
@@ -43,7 +44,8 @@ In order to run a Discord bot, you need to create a new application.
 
 !!! warning
     Your token is secret, never expose it to anyone. Anyone with access to your token can run a bot as you,
-    compromising your account if they break discord's Terms of Service
+    compromising your account.  
+    If Discord's Terms of Service are broken using your bot, your account will pay the consequences.
 
 ## Running your bot
 To run your bot, you need to execute `launcher.py`.

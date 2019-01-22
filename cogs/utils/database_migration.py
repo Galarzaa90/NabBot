@@ -49,7 +49,7 @@ async def drop_tables(pool: asyncpg.pool.Pool):
                     r RECORD;
                 BEGIN
                     FOR r IN (SELECT routine_name FROM information_schema.routines 
-                              WHERE routine_type='FUNCTION' AND specific_schema='public') LOOP
+                              WHERE routine_type='FUNCTION' AND specific_schema=current_schema()) LOOP
                         EXECUTE 'DROP FUNCTION ' || quote_ident(r.routine_name) || ' CASCADE';
                     END LOOP;
                 END $$;""")
