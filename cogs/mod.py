@@ -44,12 +44,18 @@ class Mod:
         self.bot = bot
 
     async def __global_check_once(self, ctx: NabCtx):
+        """Checks if the current channel or user is ignored.
+
+        Bot owners and guild managers can bypass this.
+        """
         if ctx.guild is None:
             return True
         if await checks.is_owner(ctx):
             return True
+        if ctx.author_permissions.manage_guild:
+            return True
 
-        return await self.is_ignored(ctx.pool, ctx)
+        return not await self.is_ignored(ctx.pool, ctx)
 
     # region Commands
     @commands.guild_only()
@@ -259,7 +265,7 @@ class Mod:
         """Checks if the current context is ignored.
 
         A context could be ignored because either the channel or the user are in the ignored list."""
-        query = "SELECT True FROM ingored_entry WHERE guild_id=$1 AND (entry_id=$2 OR entry_id=$3);"
+        query = "SELECT True FROM ignored_entry WHERE server_id=$1 AND (entry_id=$2 OR entry_id=$3);"
         return await conn.fetchrow(query, ctx.guild.id, ctx.channel.id, ctx.author.id)
 
     @classmethod
