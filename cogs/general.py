@@ -90,6 +90,7 @@ class General(CogUtils):
             for channel in channels:
                 bot_perm = ctx.bot_permissions
                 auth_perm = ctx.author_permissions
+                # Both bot and members must be able to read the channel.
                 if not(bot_perm.read_message_history and bot_perm.read_messages and
                        auth_perm.read_message_history and auth_perm.read_messages):
                     continue
@@ -102,7 +103,7 @@ class General(CogUtils):
         if message is None:
             await ctx.send("I can't find that message, or it is in a channel you can't access.")
             return
-        if not message.content:
+        if not message.content and not message.attachments:
             await ctx.send("I can't quote embed messages.")
             return
         embed = discord.Embed(description=message.content, timestamp=message.created_at)

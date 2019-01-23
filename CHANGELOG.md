@@ -1,7 +1,7 @@
 # Changelog
 - ✔ New feature
-- 🐛 Fixed bug
 - 🔧 Improvement
+- 🐛 Fixed bug
 - ❌ Removed feature
 
 ## Version 2.0.0 (Unreleased)
@@ -13,13 +13,8 @@
 - ✔ Server growth stats are now saved.
 - ✔ `/boss` command to set boss cooldown timers, e.g.`/boss set heart of destruction,galarzaa fidera`
 - ✔ New `/channelinfo` command.
-- 🔧 Improved and optimized TibiaWiki cog:
-    - ✔ Now uses [tibiawiki-sql](https://github.com/galarzaa90/tibiawiki-sql/)'s API.
-    - 🔧 Improved the display of all commands.
-    - ✔ New `/charms` command
-    - 🔧 `/spell` now shows the spell's effect.
-    - 🔧 `/achievement` now uses new discord spoiler feature.
 - ✔ New `/highscores global` subcommand, shows combined highscores from worlds.
+- ✔ New `/checkpm` command, to check if you can receive PMs from the bot.
 - ✔ New Calculators cog:
     - 🔧 Moved `/blessings`, `/stamina` and `/stats` here
     - 🔧 Improved command output of `/stats`.
@@ -33,6 +28,12 @@
     - 🔧 Moved `/event` and subcommands here.
     - ✔ New `remindme` command, creates a custom reminder, e.g `/remindme 1d conquer the world`
     - ✔ New `bosstimer` command, keep track of boss cooldowns and get notified when they are over.
+- 🔧 Improved and optimized TibiaWiki cog:
+    - ✔ Now uses [tibiawiki-sql](https://github.com/galarzaa90/tibiawiki-sql/)'s API.
+    - 🔧 Improved the display of all commands.
+    - ✔ New `/charms` command
+    - 🔧 `/spell` now shows the spell's effect.
+    - 🔧 `/achievement` now uses new discord spoiler feature.
 - 🔧 Improved event announcement task.
 - 🔧 Watchlist improvements
     - 🔧 "Watched lists" are now named Watchlist.
@@ -48,7 +49,6 @@
     - 🔧 Bots get a different embed color when joining.
     - 🔧 When a member leaves or is kicked from the server, their registered characters are shown.
 - 🔧 Moved `/addchar` and `/removechar` from Admin cog to Settings cog. Merged `/addaccount` and `/addchar`. 
-- ✔ New `/checkpm` command, to check if you can receive PMs from the bot.
 - 🔧 `/whois` now shows Account Status, Loyalty Title and Position if any.
 - 🔧 Improved performance of `/deaths`, `/levelups` and `/timeline` commands and their subcommands.
 - 🔧 Death and level up tracking has been optimized, reducing unnecessary tibia.com calls and improving speed.
@@ -62,31 +62,32 @@
 - 🔧 Highscores task has been optimized.
 - 🐛 Autorole * rule only applies to characters in the same world. This means members wont get a role for characters in a different world.
 - 🐛 Bots no longer receive welcome messages.
+- 🐛 `/quote` can be used on messages with only an attachment.
 
 ## Version 1.7.2 (2018-10-23)
 - 🐛 Deaths caused by arena creatures are no longer announced.
 
 ## Version 1.7.1 (2018-10-12)
-- 🐛 Fixed links in `/about` command.
-- 🔧 Combine walks through fields and walks around fields into a single embed field.
 - 🔧 Added user caching to `/deaths`, `/levels` and `/timeline` because it was causing connection timeouts.
+- 🔧 Combine walks through fields and walks around fields into a single embed field.
+- 🐛 Fixed links in `/about` command.
 
 ## Version 1.7.0 (2018-09-26)
+- ✔ `/monster` now shows fields monsters walk around or through
 - 🔧 Improved death scanning times
 - 🔧 Server admins can bypass event limit on their servers
-- ✔ `/monster` now shows fields monsters walk around or through
 - 🔧 Added `imbue` alias to `/imbuement` command.
 - 🔧 Event announcements are now made at: 1h, 30min, 10 minutes and 0 minutes before event.
 
 ## Version 1.6.1 (2018-09-06)
-- 🐛 Fixed bug with /worlds
 - 🔧 Unified missing argument error messages
 - 🔧 Commands in `/help` are now sorted alphabetically
+- 🐛 Fixed bug with /worlds
 
 ## Version 1.6.0 (2018-08-27)
 - ✔ New command: `/rashid`.
-- 🔧 `/time` no longer displays Mexico and Brazil's timezones.
 - ✔ Custom timezones can be added on a per-server basis using `/time add`. See `/time` subcommands for more info.
+- 🔧 `/time` no longer displays Mexico and Brazil's timezones.
 - 🔧 Now requires module `pytz`.
 - 🔧 `/watched` can now be used by Server Moderators instead of Administrators only.
 - 🐛 Fixed a bug with the global online list not having its levels updated.
@@ -104,34 +105,38 @@
 - 🔧 Updated TibiaWiki database to the state of August 7th 2018.
 
 ## Version 1.5.0 (2018-07-31)
-- 🔧 Small changes to `/userinfo`
-- 🐛 Fixed bug in `/monster` with creatures without a bestiary class defined.
-- 🔧 Added loading message to `/im`.
 - ✔ Bot owner can now use `/serverinfo` to see other server's info.
 - ✔ `/servers` now has pagination and sorting.
 - ✔ NabBot now responds to a mention with its command prefixes.
 - ✔ New `/emojiinfo` command
 - ✔ Created new cog `Info`, moved information commands from `General`
+- 🔧 Small changes to `/userinfo`
+- 🔧 Added loading message to `/im`.
 - 🔧 Level up and death messages now use lambdas for filtering.
 - 🔧 Server settings can now be changed with `Manage Server` permissions instead of `Administrator` permission.
 - 🔧 NabBot's initial message is now sent on a server channel instead of PMing the owner.  
+- 🐛 Fixed bug in `/monster` with creatures without a bestiary class defined.
 
 ## Version 1.4.0 (2018-07-24)
-- 🔧 `/loot` has been rewritten:
-    - Loot database remade from scratch with images extracted directly from the client, all images should now be pixel perfect matches to those taken from in-game screenshots
-    - Priority values for items were removed so database can be updated directly (no longer requires template database)
-    - Quality checks removed, now expects pixel perfect images (compressed images or screenshots taken using the software renderer won't be scanned at all).
-    - Number scan updated to properly handle stacks higher than three digits (mostly to be able to scan images taken from the stash, also recognizes the letter K in stack numbers)
-    - Now properly scans slots even if a few pixels at the bottom were cut off or blocked by the window border.
-    - Massive performance improvements.
 - ✔ Minimum announce level is now configurable per server (`/settings minlevel`).
-- 🔧 Event channel is now disabled by default.
 - ✔ New configurable emoji: `loading_emoji`
     - By default ⏳ is used.
-- 🔧 Improved world scanning speed to not be heavily affected by the number of tracked worlds.
 - ✔ New `/sql` command, executes a sql query and shows the results, only for the bot owner.
 - ✔ New `/wikistats` command, shows you information about the TibiaWiki database used.
+- 🔧 `/loot` has been rewritten:
+    - Loot database remade from scratch with images extracted directly from the client, all images should now be pixel
+     perfect matches to those taken from in-game screenshots
+    - Priority values for items were removed so database can be updated directly (no longer requires template database)
+    - Quality checks removed, now expects pixel perfect images (compressed images or screenshots taken using the 
+    software renderer won't be scanned at all).
+    - Number scan updated to properly handle stacks higher than three digits (mostly to be able to scan images taken 
+    from the stash, also recognizes the letter K in stack numbers)
+    - Now properly scans slots even if a few pixels at the bottom were cut off or blocked by the window border.
+    - Massive performance improvements.
+- 🔧 Event channel is now disabled by default.
+- 🔧 Improved world scanning speed to not be heavily affected by the number of tracked worlds.
 - 🔧 `/removechar` now only lets you remove chars from users that are only in servers you are an admin in.
+- 🔧 Command error now contains a link to the support server.
 - 🐛 Fixed bug in `/event make` showing failure icon on success.
 - 🐛 Fixed bug in `/addchar`, it was not working at all.
 - 🐛 Fixed bug in `/world` when query included spaces.
@@ -142,15 +147,14 @@
 - 🐛 Fixed bug in `/choose` when the command was used with no parameters.
 - 🐛 `/stamina` now considers the 10 minutes you have to be logged off to start regenerating stamina.
 - ❌ Removed `/restart` command as it was really system specific and not an universal solution, along with the autorestarting launchers.
-- 🔧 Command error now contains a link to the support server.
 
 ## Version 1.3.2 (2018-07-15)
-- 🐛 Monster's occurrence was being displayed incorrectly.
 - 🔧 Updated database to show better update information.
+- 🐛 Monster's occurrence was being displayed incorrectly.
 
 ## Version 1.3.1 (2018-07-14)
-- 🐛 Fixed some typos in config_template.yml
 - 🔧 Added suggested emojis for charms, occurrence and bestiary difficulty.
+- 🐛 Fixed some typos in config_template.yml
 
 ## Version 1.3.0 (2018-07-12)
 - ✔ Emoji changes are now displayed on server-log.
@@ -169,8 +173,6 @@
 - ✔ Added automatic roles
     - Roles are assigned based on the guilds of registered characters.
     - See `help autorole` for more information on commands.
-- 🔧 Increased /loot scanning speed.
-- 🔧 Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.
 - ✔ Welcome message can now be fully customized, including the welcome message channel. Available under `/settings`
 - ✔ Welcome messages are no longer enabled by default.
 - ✔ New `/imbuement` command, shows basic information about an imbuement and if prices are provided, it calculates costs.
@@ -179,48 +181,44 @@
 - ✔ New `/roll` command, rolls a die and shows the results.
 - ✔ New `/botinfo` command, shows advanced information about the bot.
 - ✔ New `/worlds` command, shows a list of worlds with their location, pvptype and online population, with filtering options.
+- ✔ `/monster` now shows occurrence, kills required and charm points given.
+- 🔧 Increased /loot scanning speed.
+- 🔧 Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.
 - 🔧 `/about` now shows less advanced information, and more general information.
 - 🔧 `/version` now checks if the required minimum commit version of discord.py is being used.
-- ✔ `/monster` now shows occurrence, kills required and charm points given.
-- 🐛 Fixed `/checkchannel` ignoring channel parameter.
-- 🐛 Fixed `/quote` failing when quoting users no longer in server.
 - 🔧 Tibia.com news announcement are now disabled by default, must be enabled per server.
 - 🔧 Command name and aliases changes:
     - `/debug`: renamed to `/eval`.
     - `/help`: Alias `/commands` added.
     - `/setwelcome`: Removed.
     - `/purge`: Removed.
+- 🐛 Fixed `/checkchannel` ignoring channel parameter.
+- 🐛 Fixed `/quote` failing when quoting users no longer in server.
 
 ## Version 1.2.3 (2018-06-19)
 - 🐛 Fixed a bug with `/whois` when a user was not found.
 
 ## Version 1.2.2 (2018-06-19)
 - 🔧 `/unregistered` no longer displays discord bots.
-- 🐛 Fixed display bug in `/settings askchannel`.
 - 🔧 Improved `/event make`, no longer aborts on failure, lets the user retry and cleans up messages after.
 - 🔧 Improved `/event` subcommands in general, they leave less messages behind.
-- 🐛 Fixed checks for `/watched` subcommands.
-- 🐛 Removed orphaned `utils/emoji.py`
 - 🔧 Minor improvements to `/debug` (now handles multiple lines), added `/eval`as alias.
 - 🔧 Documentation improvements.
+- 🐛 Fixed display bug in `/settings askchannel`.
+- 🐛 Fixed checks for `/watched` subcommands.
+- 🐛 Removed orphaned `utils/emoji.py`
 
 ## Version 1.2.1 (2018-06-14)
-- 🐛 Updated mentions of `/setworld` and similar to `/settings world`.
 - 🔧 If the server owner has PMs disabled when the bot joins, the bot will send the initial message in the server.
+- 🐛 Updated mentions of `/setworld` and similar to `/settings world`.
 
 ## Version 1.2.0 (2018-06-14)
-- 🔧 New `/help` style, with reaction pagination.
 - ✔ New `/quote` command, shows a message's content given an id.
 - ✔ New `/roleinfo` command, shows a role's detailed information.
 - ✔ New `/userinfo` command, shows a user's detailed information.
 - ✔ New `/ping` command, shows the bot's response times.
 - ✔ New `/bestiary` command, shows the bestiary classes or creatures that belong to a class.
 - ✔ Command prefix is now configurable per server
-- 🔧 Mention prefix command is now always enabled (e.g. `@NabBot help`)
-- 🔧 Improvements to the watched list task
-- 🔧 Made some visual changes to `/serverinfo`
-- 🔧 Moved role related commands to new Roles cog.
-- 🔧 `/roles` now sorts results by position and shows members with the role.
 - ✔ New command: `/settings`, to change all server specific settings:
     - `/setworld` moved to `/settings world`.
     - `/setleveldeathschannel` moved to `/settings levelschannel`.
@@ -228,6 +226,12 @@
     - News channel is now configured separately from Events channel: `/settings newschannel`
     - Command channel (ask-nabbot) is now configurable.
     - Tibia news announcements and Events announcements can be disabled entirely.
+- 🔧 New `/help` style, with reaction pagination.
+- 🔧 Mention prefix command is now always enabled (e.g. `@NabBot help`)
+- 🔧 Improvements to the watched list task
+- 🔧 Made some visual changes to `/serverinfo`
+- 🔧 Moved role related commands to new Roles cog.
+- 🔧 `/roles` now sorts results by position and shows members with the role.
 - 🔧 Many changes to command names and aliases:
     - `/item`: `checkprice` alias removed.
     - `/monster`: `mon` alias removed.
@@ -276,31 +280,31 @@
 
 
 ## Version 1.0.0 (2018-05-03)
-- 🔧 Now requires **Python 3.6**.
 - ✔ Now uses the "rewrite" version of `discord.py`, meaning there are tons of breaking changes, and there will be more until v1.0.0 is released for `discord.py`.
-- 🔧 Improved cogs organization, allowing to reload NabBot by modules.
 - ✔ Improved many commands to use pagination.
-- 🔧 Added better support for multiple discord servers.
 - ✔ Added watchlist feature, to keep track of the online status of certain characters or guilds (also known as "Hunted list").
-- 🔧 Improved `/whois` appearance.
 - ✔ New commands: `/ignore` and `/unignore`, to make it easier to control where NabBot can answer to commands.
-- 🔧 Improved the way events work and are displayed.
-- ✔ Added event participants, to keep track of which characters are assisting and events, good for organizing team based events like Heart of Destruction.
-- 🔧 Various changes to `/deaths`, `/levels` and `/timeline` display.
 - ✔ Items and monsters now show animated gifs.
+- ✔ Added event participants, to keep track of which characters are assisting and events, good for organizing team based events like Heart of Destruction.
 - ✔ Items now show imbuements slots and materials show for which imbuement they are for.
-- 🔧 Migrated many services from Tibia.com to TibiaData.com for better reliability.
 - ✔ TibiaWiki database is now more recent and is now a [separate project](https://github.com/Galarzaa90/tibiawiki-sql)
 - ✔ Added tons of new commands and rewrote many of them.
 - ✔ Added [documentation site](https://nabdev.github.io/NabBot/)
+- 🔧 Now requires **Python 3.6**.
+- 🔧 Improved cogs organization, allowing to reload NabBot by modules.
+- 🔧 Added better support for multiple discord servers.
+- 🔧 Improved `/whois` appearance.
+- 🔧 Improved the way events work and are displayed.
+- 🔧 Various changes to `/deaths`, `/levels` and `/timeline` display.
+- 🔧 Migrated many services from Tibia.com to TibiaData.com for better reliability.
 - ✔ And too many changes too list them here.
 
 ## Version 0.1.3 (2018-03-08)
-- ❌ Removed site feature.
 - 🔧 Adjustments to number positions for `/loot` detection.
 - 🔧 Updated world list.
-- 🐛 Fixed bug in encoding of spouse names.
 - 🔧 Updated TibiaWiki database.
+- 🐛 Fixed bug in encoding of spouse names.
+- ❌ Removed site feature.
 
 ## Version 0.1.2 (2017-06-09)
 - 🔧 Added Duna and Relembra to world list.
@@ -313,16 +317,16 @@
 ## Version 0.1.0 (2017-04-16)
 Initial release
 
-- Tibia character lookup
-- Item lookup
-- Spell lookup
-- Guild lookup
-- Monster lookup
-- Assigning Tibia characters to Discord Users
-- Level up announcements
-- Death announcements
-- Tibia.com highscores tracking
-- Loot screenshot analyzer
-- Event creation
+- ✔ Tibia character lookup
+- ✔ Item lookup
+- ✔ Spell lookup
+- ✔ Guild lookup
+- ✔ Monster lookup
+- ✔ Assigning Tibia characters to Discord Users
+- ✔ Level up announcements
+- ✔ Death announcements
+- ✔ Tibia.com highscores tracking
+- ✔ Loot screenshot analyzer
+- ✔ Event creation
 
 
