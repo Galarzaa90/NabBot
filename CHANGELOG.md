@@ -4,7 +4,7 @@
 - 🐛 Fixed bug
 - ❌ Removed feature
 
-## Version 2.0.0 (Unreleased)
+## Version 2.0.0 (2019-01-23)
 - ✔ Migrated user database from SQLite to PostgreSQL (Database migration available)
 - ✔ Users can now be ignored, so the bot doesn't respond to them.
 - ✔ Command usage is now saved.
