@@ -1266,7 +1266,6 @@ class Tracking(CogUtils):
                              icon_url=get_user_avatar(author))
         await ctx.send(embed=embed)
 
-    @checks.channel_mod_somewhere()
     @checks.tracking_world_only()
     @watchlist.command(name="list")
     async def watchlist_list(self, ctx: NabCtx, channel: discord.TextChannel):
@@ -1292,7 +1291,6 @@ class Tracking(CogUtils):
         except CannotPaginate as e:
             await ctx.error(e)
 
-    @checks.channel_mod_somewhere()
     @checks.tracking_world_only()
     @watchlist.command(name="listguilds", aliases=["guilds", "guildlist"])
     async def watchlist_list_guild(self, ctx: NabCtx, channel: discord.TextChannel):
