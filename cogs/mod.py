@@ -203,7 +203,6 @@ class Mod:
             if not ctx.author_permissions.manage_channels:
                 return await ctx.send(f"{ctx.tick(False)} You need `Manage Channel` permission to use this command.")
             await safe_delete_message(ctx.message)
-            await ctx.message.delete()
             await ctx.channel.send(message)
 
     @commands.guild_only()
