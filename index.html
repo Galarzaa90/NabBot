@@ -360,26 +360,6 @@
     Hosting NabBot
   </a>
   
-    <nav class="md-nav">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#requirements" title="Requirements" class="md-nav__link">
-    Requirements
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#installing-and-running" title="Installing and running" class="md-nav__link">
-    Installing and running
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -510,6 +490,18 @@
   </li>
 
         
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="features/watchlist/" title="Watchlist" class="md-nav__link">
+      Watchlist
+    </a>
+  </li>
+
+        
       </ul>
     </nav>
   </li>
@@ -554,6 +546,18 @@
   <li class="md-nav__item">
     <a href="commands/admin/" title="Admin commands" class="md-nav__link">
       Admin commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="commands/calculators/" title="Calculators commands" class="md-nav__link">
+      Calculators commands
     </a>
   </li>
 
@@ -636,18 +640,6 @@
 
 
   <li class="md-nav__item">
-    <a href="commands/settings/" title="Settings commands" class="md-nav__link">
-      Settings commands
-    </a>
-  </li>
-
-        
-          
-          
-          
-
-
-  <li class="md-nav__item">
     <a href="commands/tibia/" title="Tibia commands" class="md-nav__link">
       Tibia commands
     </a>
@@ -662,6 +654,18 @@
   <li class="md-nav__item">
     <a href="commands/tibiawiki/" title="TibiaWiki commands" class="md-nav__link">
       TibiaWiki commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="commands/timers/" title="Timers commands" class="md-nav__link">
+      Timers commands
     </a>
   </li>
 
@@ -782,26 +786,6 @@
     Hosting NabBot
   </a>
   
-    <nav class="md-nav">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#requirements" title="Requirements" class="md-nav__link">
-    Requirements
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#installing-and-running" title="Installing and running" class="md-nav__link">
-    Installing and running
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -839,8 +823,8 @@
 <p>NabBot is a discord bot that uses <a href="https://github.com/Rapptz/discord.py">Rapptz's discord.py</a>. 
 It features commands related to the MMORPG <a href="http://www.tibia.com/abouttibia/?subtopic=whatistibia">Tibia</a>.</p>
 <p><img alt="Python version" src="https://img.shields.io/badge/python-3.6-yellow.svg" />
-<a href="https://travis-ci.org/Galarzaa90/NabBot"><img alt="Build Status" src="https://travis-ci.org/Galarzaa90/NabBot.svg" /></a>
-<a href="https://github.com/Galarzaa90/NabBot/releases"><img alt="GitHub release" src="https://img.shields.io/github/release/Galarzaa90/NabBot.svg" /></a>
+<a href="https://travis-ci.org/NabDev/NabBot"><img alt="Build Status" src="https://travis-ci.org/NabDev/NabBot.svg" /></a>
+<a href="https://github.com/NabDev/NabBot/releases"><img alt="GitHub release" src="https://img.shields.io/github/release/NabDev/NabBot.svg" /></a>
 <a href="https://discord.gg/NmDvhpY"><img alt="Discord" src="https://img.shields.io/discord/441991938200305674.svg" /></a></p>
 <p><a href="https://discordbots.org/bot/178966653982212096"><img alt="Discord Bots" src="https://discordbots.org/api/widget/178966653982212096.svg" /></a></p>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">&para;</a></h2>
@@ -850,10 +834,11 @@ It features commands related to the MMORPG <a href="http://www.tibia.com/aboutti
 <li>Level up and deaths announcements.</li>
 <li>Event management, create timed events with announcements.</li>
 <li>Keeps track of registered character's deaths and level ups as a log.</li>
-<li>Watched list, add characters or guilds to check their online status all the time.</li>
+<li>Watchlists, add characters or guilds to check their online status all the time.</li>
 <li>Information commands, based on TibiaWiki articles. Items, monsters, NPCs, houses and more.</li>
 <li>Joinable roles, create roles that any member can join or leave.</li>
 <li>Autoroles, create roles that are assigned to users automatically based on their registered characters.</li>
+<li>Boss timers, get notifications when you a cooldown is over.</li>
 </ul>
 <p><a href="features/">More details</a></p>
 <div class="admonition error">
@@ -866,36 +851,7 @@ and click the <strong>Invite</strong> button. Also remember to <strong>Vote</str
 <p>Curious about its permissions? Check the <a href="permissions/">permission explanation</a>.</p>
 <h2 id="hosting-nabbot">Hosting NabBot<a class="headerlink" href="#hosting-nabbot" title="Permanent link">&para;</a></h2>
 <p>You can also host your own instance of NabBot.</p>
-<h3 id="requirements">Requirements<a class="headerlink" href="#requirements" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Python 3.6 and up.</li>
-<li>Python modules:<ul>
-<li><a href="https://github.com/Rapptz/discord.py/tree/rewrite">discord.py (rewrite branch)</a></li>
-<li>psutil</li>
-<li>pillow</li>
-<li>BeautifulSoup</li>
-<li>pyYAML</li>
-</ul>
-</li>
-<li>git</li>
-</ul>
-<h3 id="installing-and-running">Installing and running<a class="headerlink" href="#installing-and-running" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Install git</li>
-<li>Install the required python modules
-    <div class="codehilite"><pre><span></span>python -m pip install -U git+https://github.com/Rapptz/discord.py@rewrite
-python -m pip install pillow psutil beautifulsoup4 pyYAML
-</pre></div></li>
-<li><a href="https://discordapp.com/developers/applications/me">Create a bot token on Discord</a></li>
-<li>Start the bot by running the file <code class="codehilite">nabbot.py</code>, you will be prompted for a token. Insert the generated token.</li>
-<li>The console should show your bot is online now.</li>
-<li>Allow the bot to join your server.</li>
-<li>NabBot should now be online on your server now.</li>
-</ol>
-<div class="admonition info">
-<p class="admonition-title">Info</p>
 <p>For more details, check the <a href="install/">Install Guide</a></p>
-</div>
 <h2 id="support">Support<a class="headerlink" href="#support" title="Permanent link">&para;</a></h2>
 <p>Visit our support server</p>
 <p><a href="https://discord.gg/NmDvhpY"><img alt="Support Server" src="https://discordapp.com/api/guilds/441991938200305674/embed.png" /></a></p>

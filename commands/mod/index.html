@@ -426,6 +426,18 @@
   </li>
 
         
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/watchlist/" title="Watchlist" class="md-nav__link">
+      Watchlist
+    </a>
+  </li>
+
+        
       </ul>
     </nav>
   </li>
@@ -472,6 +484,18 @@
   <li class="md-nav__item">
     <a href="../admin/" title="Admin commands" class="md-nav__link">
       Admin commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../calculators/" title="Calculators commands" class="md-nav__link">
+      Calculators commands
     </a>
   </li>
 
@@ -633,18 +657,6 @@
 
 
   <li class="md-nav__item">
-    <a href="../settings/" title="Settings commands" class="md-nav__link">
-      Settings commands
-    </a>
-  </li>
-
-        
-          
-          
-          
-
-
-  <li class="md-nav__item">
     <a href="../tibia/" title="Tibia commands" class="md-nav__link">
       Tibia commands
     </a>
@@ -659,6 +671,18 @@
   <li class="md-nav__item">
     <a href="../tibiawiki/" title="TibiaWiki commands" class="md-nav__link">
       TibiaWiki commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../timers/" title="Timers commands" class="md-nav__link">
+      Timers commands
     </a>
   </li>
 
@@ -837,18 +861,25 @@ Optional parameters are enclosed in brackets <code class="codehilite">[]</code>.
 <p>Cleans the channel from bot commands.</p>
 <p>If the bot has <code class="codehilite">Manage Messages</code> permission, it will also delete command invocation messages.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/cleanup</strong><br />
-<img alt="image" src="../../assets/images/commands/cleanup.png" /></p>
+<img alt="image" src="../../assets/images/commands/mod/cleanup.png" /></p>
 </details>
 <hr />
 <h2 id="ignore">ignore<a class="headerlink" href="#ignore" title="Permanent link">&para;</a></h2>
-<p><strong>Syntax:</strong> <code class="codehilite">ignore [channel]</code></p>
-<p>Makes the bot ignore a channel</p>
-<p>Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.</p>
-<p>If the command is used with no parameters, it ignores the current channel.</p>
-<p>Note that server administrators can bypass this.</p>
+<p><strong>Syntax:</strong> <code class="codehilite">ignore [entries...]</code></p>
+<p>Makes the bot ignore a channel or user.</p>
+<p>Commands cannot be used in ignored channels or by ignored users.</p>
+<p>The command accepts a list of names, ids or mentions of users or channels.<br />
+If the command is used with no parameters, it ignores the current channel.</p>
+<p>Ignores are bypassed by users with the <code class="codehilite">Manage Server</code> permission.</p>
+<details class="summary"><summary>Example</summary><p><strong>/ignore #support #chat #feedback-and-reports #message-suggestions #levels-and-deaths Tschis</strong><br />
+<img alt="image" src="../../assets/images/commands/mod/ignore.png" /></p>
+</details>
 <hr />
 <h3 id="ignore-list">ignore list<a class="headerlink" href="#ignore-list" title="Permanent link">&para;</a></h3>
-<p>Shows a list of ignored channels.</p>
+<p>Shows a list of ignored channels and users.</p>
+<details class="summary"><summary>Example</summary><p><strong>/ignore list</strong><br />
+<img alt="image" src="../../assets/images/commands/mod/ignore list.png" /></p>
+</details>
 <hr />
 <h2 id="makesay">makesay<a class="headerlink" href="#makesay" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">makesay &lt;message&gt;</code></p>
@@ -860,15 +891,14 @@ Each channel in the list is numerated, by choosing a number, the message will be
 <hr />
 <h2 id="unignore">unignore<a class="headerlink" href="#unignore" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">unignore [channel]</code></p>
-<p>Unignores a channel.</p>
-<p>If no channel is provided, the current channel will be unignored.</p>
-<p>Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.</p>
+<p>Removes a channel or user from the ignored list.</p>
+<p>If no parameter is provided, the current channel will be unignored.</p>
 <p>If the command is used with no parameters, it unignores the current channel.</p>
 <hr />
 <h2 id="unregistered">unregistered<a class="headerlink" href="#unregistered" title="Permanent link">&para;</a></h2>
 <p>Shows a list of users with no registered characters.</p>
 <details class="summary"><summary>Example</summary><p><strong>/unregistered</strong><br />
-<img alt="image" src="../../assets/images/commands/unregistered.png" /></p>
+<img alt="image" src="../../assets/images/commands/mod/unregistered.png" /></p>
 </details>
 <hr />
                 

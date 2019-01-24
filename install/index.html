@@ -373,6 +373,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#installing-postgresql" title="Installing PostgreSQL" class="md-nav__link">
+    Installing PostgreSQL
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#creating-an-application" title="Creating an Application" class="md-nav__link">
     Creating an Application
   </a>
@@ -382,6 +389,13 @@
         <li class="md-nav__item">
   <a href="#running-your-bot" title="Running your bot" class="md-nav__link">
     Running your bot
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migrating-from-v1xx" title="Migrating from v1.x.x" class="md-nav__link">
+    Migrating from v1.x.x
   </a>
   
 </li>
@@ -490,6 +504,18 @@
   </li>
 
         
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../features/watchlist/" title="Watchlist" class="md-nav__link">
+      Watchlist
+    </a>
+  </li>
+
+        
       </ul>
     </nav>
   </li>
@@ -534,6 +560,18 @@
   <li class="md-nav__item">
     <a href="../commands/admin/" title="Admin commands" class="md-nav__link">
       Admin commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../commands/calculators/" title="Calculators commands" class="md-nav__link">
+      Calculators commands
     </a>
   </li>
 
@@ -616,18 +654,6 @@
 
 
   <li class="md-nav__item">
-    <a href="../commands/settings/" title="Settings commands" class="md-nav__link">
-      Settings commands
-    </a>
-  </li>
-
-        
-          
-          
-          
-
-
-  <li class="md-nav__item">
     <a href="../commands/tibia/" title="Tibia commands" class="md-nav__link">
       Tibia commands
     </a>
@@ -642,6 +668,18 @@
   <li class="md-nav__item">
     <a href="../commands/tibiawiki/" title="TibiaWiki commands" class="md-nav__link">
       TibiaWiki commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../commands/timers/" title="Timers commands" class="md-nav__link">
+      Timers commands
     </a>
   </li>
 
@@ -751,6 +789,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#installing-postgresql" title="Installing PostgreSQL" class="md-nav__link">
+    Installing PostgreSQL
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#creating-an-application" title="Creating an Application" class="md-nav__link">
     Creating an Application
   </a>
@@ -760,6 +805,13 @@
         <li class="md-nav__item">
   <a href="#running-your-bot" title="Running your bot" class="md-nav__link">
     Running your bot
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migrating-from-v1xx" title="Migrating from v1.x.x" class="md-nav__link">
+    Migrating from v1.x.x
   </a>
   
 </li>
@@ -796,12 +848,28 @@
                 
                 
                 <h1 id="installation-guide">Installation Guide<a class="headerlink" href="#installation-guide" title="Permanent link">&para;</a></h1>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>This information is only for users hosting NabBot on their own.
+If you just invited NabBot to your server, you don't need to read this.</p>
+</div>
 <h2 id="installing-requirements">Installing requirements<a class="headerlink" href="#installing-requirements" title="Permanent link">&para;</a></h2>
-<p>In order to run NabBot, you need to install two things: <a href="https://git-scm.com/">git</a> and <a href="https://www.python.org/">Python 3.6</a>.</p>
+<p>In order to run NabBot, you need to install three things:
+<a href="https://git-scm.com/">git</a>, <a href="https://www.python.org/">Python 3.6+</a> and <a href="https://www.postgresql.org/">PostgreSQL 10+</a></p>
 <p>When installing on Windows, make sure that you select the option to add Python to <code class="codehilite">PATH</code>.</p>
 <p>Once installed, you need to find what's the python's executable name, depending on the installation, it can be either <code class="codehilite">python</code>, <code class="codehilite">python3</code> or <code class="codehilite">py</code>.</p>
 <p>Once the correct command has been found, open a terminal window on NabBot's root directory and run the following:</p>
 <div class="codehilite"><pre><span></span>python -m pip install -U -r requirements.txt
+</pre></div>
+
+<h2 id="installing-postgresql">Installing PostgreSQL<a class="headerlink" href="#installing-postgresql" title="Permanent link">&para;</a></h2>
+<p>Since v2.0.0, NabBot uses PostgreSQL instead of SQLite for data storage. This means you must be running a <a href="https://www.postgresql.org/">PostgreSQL</a> service.
+It is recommended to run it on the same machine.</p>
+<p>Once it is installed and running, you must create a database and a user for NabBot to access.
+You can use the default <code class="codehilite">root</code> user, but this is not recommended.</p>
+<p>You can create them using any tool you want. Here's an example using <code class="codehilite">psql</code>:</p>
+<div class="codehilite"><pre><span></span><span class="k">CREATE</span> <span class="k">ROLE</span> <span class="n">nabbot</span> <span class="k">WITH</span> <span class="n">LOGIN</span> <span class="n">PASSWORD</span> <span class="s1">&#39;hunter2&#39;</span><span class="p">;</span>
+<span class="k">CREATE</span> <span class="k">DATABASE</span> <span class="n">nabbot</span> <span class="k">OWNER</span> <span class="n">nabbot</span><span class="p">;</span>
 </pre></div>
 
 <h2 id="creating-an-application">Creating an Application<a class="headerlink" href="#creating-an-application" title="Permanent link">&para;</a></h2>
@@ -817,11 +885,30 @@
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Your token is secret, never expose it to anyone. Anyone with access to your token can run a bot as you,
-compromising your account if they break discord's Terms of Service</p>
+compromising your account.<br />
+If Discord's Terms of Service are broken using your bot, your account will pay the consequences.</p>
 </div>
 <h2 id="running-your-bot">Running your bot<a class="headerlink" href="#running-your-bot" title="Permanent link">&para;</a></h2>
-<p>The first time you run <code class="codehilite">nabbot.py</code>, you will be asked for a token. Here's where you will use the token given on the App page.</p>
+<p>To run your bot, you need to execute <code class="codehilite">launcher.py</code>.
+The first time you run NabBot, you will be asked for your connection credentials to PostgreSQL.
+Here's where you will provide the information created earlier.</p>
+<p>After that, you will be asked for your token. Here's where you will use the token given on the App page.</p>
 <p>Once you entered the token, the bot will log in. You should see a dialog showing that the bot is now online.</p>
+<h2 id="migrating-from-v1xx">Migrating from v1.x.x<a class="headerlink" href="#migrating-from-v1xx" title="Permanent link">&para;</a></h2>
+<p>If you were running a previous version of NabBot before and you want to migrate your data, you need to run the migrate console command.</p>
+<div class="codehilite"><pre><span></span>python launcher.py migrate
+</pre></div>
+
+<p>By default, it will look for the database in the path <code class="codehilite">data/users.db</code>, but you can provide a different path using the <code class="codehilite">--path</code> argument:</p>
+<div class="codehilite"><pre><span></span>python launcher.py migrate --path data/database-backup.db
+</pre></div>
+
+<p>Depending on the size of your previous database, this may take a couple of minutes.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Doing this will delete all the data currently found in your <strong>PostgreSQL</strong> database.<br />
+Your <strong>SQLite</strong> data will be unaffected by this operation.</p>
+</div>
 <h2 id="inviting-your-bot">Inviting your bot<a class="headerlink" href="#inviting-your-bot" title="Permanent link">&para;</a></h2>
 <p>To invite your bot to your server, you need to use the authentication URL. Here's where your <strong>Client ID</strong> is used.</p>
 <div class="codehilite"><pre><span></span><span class="ss">https</span><span class="p">:</span><span class="sr">//</span><span class="n">discordapp</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">oauth2</span><span class="o">/</span><span class="n">authorize?scope</span><span class="o">=</span><span class="n">bot</span><span class="o">&amp;</span><span class="n">permissions</span><span class="o">=</span><span class="mi">268954832</span><span class="o">&amp;</span><span class="n">client_id</span><span class="o">=</span><span class="no">CLIENT_ID_HERE</span>
@@ -836,8 +923,8 @@ For detailed explanation on NabBot's permissions, see the <a href="../permission
 Depending on your privacy settings, you (or the owner of the server) should have received a DM by NabBot explaining how to do the inital configuration.</p>
 <h2 id="initial-configuration">Initial configuration<a class="headerlink" href="#initial-configuration" title="Permanent link">&para;</a></h2>
 <p>In order for the bot to have access to most of its features, you must configure the world the server tracks.</p>
-<p>Use the command <a href="../commands/settings/#settings-world">settings world</a>, for example: <code class="codehilite">/settings world Gladera</code>. Then the bot will ask for confirmation.
-Once accepted, users can start registering their chars using <code class="codehilite">\im charName</code>.</p>
+<p>Use the command <a href="../commands/admin/#settings-world">settings world</a>, for example: <code class="codehilite">/settings world Gladera</code>. Then the bot will ask for confirmation.
+Once accepted, users can start registering their characters using <code class="codehilite">/im charName</code>.</p>
 <p>By default, events, level ups and deaths announcements are made on the highest channel available for the bot.
 In order to customize this, you can use the following commands: <code class="codehilite">/settings levelschannel</code>.</p>
 <p>The bot usually shortens command replies on public channels to reduce spam a bit.
@@ -846,7 +933,7 @@ Alternatively, you can create a channel named <strong>#ask-nabbot</strong>.
 The bot will give longer responses here and it will delete any message that is not a command, leaving this as a channel dedicated to commands.</p>
 <p>Additionally, you can create a channel named <strong>#server-log</strong>. Whenever a user registers characters, they will be shown here, along with their levels and guilds.
 Other changes are shown here, such as users leaving, getting banned, changing display names and more.</p>
-<p>Further customization can be done on a per-server basis by using the command <a href="../commands/settings/#settings">settings</a>.</p>
+<p>Further customization can be done on a per-server basis by using the command <a href="../commands/admin/#settings">settings</a>.</p>
                 
                   
                 

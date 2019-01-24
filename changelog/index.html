@@ -354,6 +354,13 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#version-200-2019-01-23" title="Version 2.0.0 (2019-01-23)" class="md-nav__link">
+    Version 2.0.0 (2019-01-23)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#version-172-2018-10-23" title="Version 1.7.2 (2018-10-23)" class="md-nav__link">
     Version 1.7.2 (2018-10-23)
   </a>
@@ -616,6 +623,18 @@
   </li>
 
         
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../features/watchlist/" title="Watchlist" class="md-nav__link">
+      Watchlist
+    </a>
+  </li>
+
+        
       </ul>
     </nav>
   </li>
@@ -660,6 +679,18 @@
   <li class="md-nav__item">
     <a href="../commands/admin/" title="Admin commands" class="md-nav__link">
       Admin commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../commands/calculators/" title="Calculators commands" class="md-nav__link">
+      Calculators commands
     </a>
   </li>
 
@@ -742,18 +773,6 @@
 
 
   <li class="md-nav__item">
-    <a href="../commands/settings/" title="Settings commands" class="md-nav__link">
-      Settings commands
-    </a>
-  </li>
-
-        
-          
-          
-          
-
-
-  <li class="md-nav__item">
     <a href="../commands/tibia/" title="Tibia commands" class="md-nav__link">
       Tibia commands
     </a>
@@ -768,6 +787,18 @@
   <li class="md-nav__item">
     <a href="../commands/tibiawiki/" title="TibiaWiki commands" class="md-nav__link">
       TibiaWiki commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../commands/timers/" title="Timers commands" class="md-nav__link">
+      Timers commands
     </a>
   </li>
 
@@ -868,6 +899,13 @@
   
     <label class="md-nav__title" for="__toc">Table of contents</label>
     <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#version-200-2019-01-23" title="Version 2.0.0 (2019-01-23)" class="md-nav__link">
+    Version 2.0.0 (2019-01-23)
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#version-172-2018-10-23" title="Version 1.7.2 (2018-10-23)" class="md-nav__link">
@@ -1048,40 +1086,117 @@
                 
                 
                 <h1 id="changelog">Changelog<a class="headerlink" href="#changelog" title="Permanent link">&para;</a></h1>
+<ul>
+<li>✔ New feature</li>
+<li>🔧 Improvement</li>
+<li>🐛 Fixed bug</li>
+<li>❌ Removed feature</li>
+</ul>
+<h2 id="version-200-2019-01-23">Version 2.0.0 (2019-01-23)<a class="headerlink" href="#version-200-2019-01-23" title="Permanent link">&para;</a></h2>
+<ul>
+<li>✔ Migrated user database from SQLite to PostgreSQL (Database migration available)</li>
+<li>✔ Users can now be ignored, so the bot doesn't respond to them.</li>
+<li>✔ Command usage is now saved.</li>
+<li>✔ New <code class="codehilite">/commandstats</code> command to see command usage stats. Yes commands x4.</li>
+<li>✔ Character name, world and owner history is now saved.</li>
+<li>✔ Server growth stats are now saved.</li>
+<li>✔ <code class="codehilite">/boss</code> command to set boss cooldown timers, e.g.<code class="codehilite">/boss set heart of destruction,galarzaa fidera</code></li>
+<li>✔ New <code class="codehilite">/channelinfo</code> command.</li>
+<li>✔ New <code class="codehilite">/highscores global</code> subcommand, shows combined highscores from worlds.</li>
+<li>✔ New <code class="codehilite">/checkpm</code> command, to check if you can receive PMs from the bot.</li>
+<li>✔ New Calculators cog:<ul>
+<li>🔧 Moved <code class="codehilite">/blessings</code>, <code class="codehilite">/stamina</code> and <code class="codehilite">/stats</code> here</li>
+<li>🔧 Improved command output of <code class="codehilite">/stats</code>.</li>
+<li>✔ <code class="codehilite">/stamina</code> now accepts an optional target stamina.</li>
+<li>✔ New <code class="codehilite">/stats</code> subcommands: <code class="codehilite">hitpoints</code>, <code class="codehilite">mana</code> and <code class="codehilite">capacity</code>, to calculate the minimum level needed to reach the
+ target.</li>
+<li>✔ New command: <code class="codehilite">/distanceskill</code>, calculates the exercise weapons needed to reach a target.</li>
+<li>✔ New command: <code class="codehilite">/meleeskill</code>, calculates online and offline training time and exercise weapons. </li>
+<li>✔ New command: <code class="codehilite">/magiclevel</code>, calculates mana needed, offline training time and exercise weapons needed.</li>
+</ul>
+</li>
+<li>✔ New Timers cog:<ul>
+<li>🔧 Moved <code class="codehilite">/event</code> and subcommands here.</li>
+<li>✔ New <code class="codehilite">remindme</code> command, creates a custom reminder, e.g <code class="codehilite">/remindme 1d conquer the world</code></li>
+<li>✔ New <code class="codehilite">bosstimer</code> command, keep track of boss cooldowns and get notified when they are over.</li>
+</ul>
+</li>
+<li>🔧 Improved and optimized TibiaWiki cog:<ul>
+<li>✔ Now uses <a href="https://github.com/galarzaa90/tibiawiki-sql/">tibiawiki-sql</a>'s API.</li>
+<li>🔧 Improved the display of all commands.</li>
+<li>✔ New <code class="codehilite">/charms</code> command</li>
+<li>🔧 <code class="codehilite">/spell</code> now shows the spell's effect.</li>
+<li>🔧 <code class="codehilite">/achievement</code> now uses new discord spoiler feature.</li>
+</ul>
+</li>
+<li>🔧 Improved event announcement task.</li>
+<li>🔧 Watchlist improvements<ul>
+<li>🔧 "Watched lists" are now named Watchlist.</li>
+<li>✔ You can now have multiple watchlists per server (e.g. one for friends, one for enemies).</li>
+<li>✔ New subcommand <code class="codehilite">/watchlist create</code>.</li>
+<li>✔ New subcommand <code class="codehilite">/watchlist adduser</code>, adds a user's character to a list.</li>
+<li>🔧 Improved watchlist task.</li>
+<li>🔧 Better permission management. If you have <code class="codehilite">Manage Channel</code> permission on the list, you can add and remove entries.</li>
+</ul>
+</li>
+<li>🔧 Server Log improvements<ul>
+<li>🔧 Server log channel can no be configured (<code class="codehilite">/settings serverlog</code>).</li>
+<li>✔ Name changes for registered characters are now shown.</li>
+<li>✔ World transfers for registered characters are now shown.</li>
+<li>🔧 Bots get a different embed color when joining.</li>
+<li>🔧 When a member leaves or is kicked from the server, their registered characters are shown.</li>
+</ul>
+</li>
+<li>🔧 Moved <code class="codehilite">/addchar</code> and <code class="codehilite">/removechar</code> from Admin cog to Settings cog. Merged <code class="codehilite">/addaccount</code> and <code class="codehilite">/addchar</code>. </li>
+<li>🔧 <code class="codehilite">/whois</code> now shows Account Status, Loyalty Title and Position if any.</li>
+<li>🔧 Improved performance of <code class="codehilite">/deaths</code>, <code class="codehilite">/levelups</code> and <code class="codehilite">/timeline</code> commands and their subcommands.</li>
+<li>🔧 Death and level up tracking has been optimized, reducing unnecessary tibia.com calls and improving speed.</li>
+<li>🔧 Move server timezones to their own table.</li>
+<li>🔧 Improve internal logging system.</li>
+<li>🔧 Created classes to handle database data.</li>
+<li>🔧 Many improvements to the character tracking system.</li>
+<li>🔧 Reduced news tracking interval</li>
+<li>🔧 Moved <code class="codehilite">/settings</code> command and subcommands to Admin cog, removed Settings cog.</li>
+<li>🔧 Support for multiple killers (pvp deaths).</li>
+<li>🔧 Highscores task has been optimized.</li>
+<li>🐛 Autorole * rule only applies to characters in the same world. This means members wont get a role for characters in a different world.</li>
+<li>🐛 Bots no longer receive welcome messages.</li>
+<li>🐛 <code class="codehilite">/quote</code> can be used on messages with only an attachment.</li>
+</ul>
 <h2 id="version-172-2018-10-23">Version 1.7.2 (2018-10-23)<a class="headerlink" href="#version-172-2018-10-23" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Deaths caused by arena creatuers are no longer announced.</li>
+<li>🐛 Deaths caused by arena creatures are no longer announced.</li>
 </ul>
 <h2 id="version-171-2018-10-12">Version 1.7.1 (2018-10-12)<a class="headerlink" href="#version-171-2018-10-12" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Fixed links in <code class="codehilite">/about</code> command.</li>
-<li>Combine walks through fields and walks around fields into a single embed field.</li>
-<li>Added user caching to <code class="codehilite">/deaths</code>, <code class="codehilite">/levels</code> and <code class="codehilite">/timeline</code> because it was causing connection timeouts.</li>
+<li>🔧 Added user caching to <code class="codehilite">/deaths</code>, <code class="codehilite">/levels</code> and <code class="codehilite">/timeline</code> because it was causing connection timeouts.</li>
+<li>🔧 Combine walks through fields and walks around fields into a single embed field.</li>
+<li>🐛 Fixed links in <code class="codehilite">/about</code> command.</li>
 </ul>
 <h2 id="version-170-2018-09-26">Version 1.7.0 (2018-09-26)<a class="headerlink" href="#version-170-2018-09-26" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Improved death scanning times</li>
-<li>Server admins can bypass event limit on their servers</li>
-<li><code class="codehilite">/monster</code> now shows fields monsters walk around or through</li>
-<li>Added <code class="codehilite">imbue</code> alias to <code class="codehilite">/imbuement</code> command.</li>
-<li>Event announcements are now made at: 1h, 30min, 10 minutes and 0 minutes before event.</li>
+<li>✔ <code class="codehilite">/monster</code> now shows fields monsters walk around or through</li>
+<li>🔧 Improved death scanning times</li>
+<li>🔧 Server admins can bypass event limit on their servers</li>
+<li>🔧 Added <code class="codehilite">imbue</code> alias to <code class="codehilite">/imbuement</code> command.</li>
+<li>🔧 Event announcements are now made at: 1h, 30min, 10 minutes and 0 minutes before event.</li>
 </ul>
 <h2 id="version-161-2018-09-06">Version 1.6.1 (2018-09-06)<a class="headerlink" href="#version-161-2018-09-06" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Fixed bug with /worlds</li>
-<li>Unified missing argument error messages</li>
-<li>Commands in <code class="codehilite">/help</code> are now sorted alphabetically</li>
+<li>🔧 Unified missing argument error messages</li>
+<li>🔧 Commands in <code class="codehilite">/help</code> are now sorted alphabetically</li>
+<li>🐛 Fixed bug with /worlds</li>
 </ul>
 <h2 id="version-160-2018-08-27">Version 1.6.0 (2018-08-27)<a class="headerlink" href="#version-160-2018-08-27" title="Permanent link">&para;</a></h2>
 <ul>
-<li>New command: <code class="codehilite">/rashid</code>.</li>
-<li><code class="codehilite">/time</code> no longer displays Mexico and Brazil's timezones.</li>
-<li>Custom timezones can be added on a per-server basis using <code class="codehilite">/time add</code>. See <code class="codehilite">/time</code> subcommands for more info.</li>
-<li>Now requires module <code class="codehilite">pytz</code>.</li>
-<li><code class="codehilite">/watched</code> can now be used by Server Moderators instead of Administrators only.</li>
-<li>Fixed a bug with the global online list not having its levels updated.</li>
-<li>Fixed a bug with invalid characters when using <code class="codehilite">/whois</code>.</li>
-<li>Fixed a bug with <code class="codehilite">/whois</code> visibility.<ul>
+<li>✔ New command: <code class="codehilite">/rashid</code>.</li>
+<li>✔ Custom timezones can be added on a per-server basis using <code class="codehilite">/time add</code>. See <code class="codehilite">/time</code> subcommands for more info.</li>
+<li>🔧 <code class="codehilite">/time</code> no longer displays Mexico and Brazil's timezones.</li>
+<li>🔧 Now requires module <code class="codehilite">pytz</code>.</li>
+<li>🔧 <code class="codehilite">/watched</code> can now be used by Server Moderators instead of Administrators only.</li>
+<li>🐛 Fixed a bug with the global online list not having its levels updated.</li>
+<li>🐛 Fixed a bug with invalid characters when using <code class="codehilite">/whois</code>.</li>
+<li>🐛 Fixed a bug with <code class="codehilite">/whois</code> visibility.<ul>
 <li>You're no longer able to see the characters of people you can't see in discord when using on PM.</li>
 <li>When using on server channels, you can only see characters of people in that server. </li>
 </ul>
@@ -1089,75 +1204,77 @@
 </ul>
 <h2 id="version-151-2018-08-07">Version 1.5.1 (2018-08-07)<a class="headerlink" href="#version-151-2018-08-07" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Various <code class="codehilite">/event</code> subcommands were showing the member's nicknames from other servers</li>
-<li>Cleaner bad argument errors for commands in the General cog.</li>
-<li>Fixed bug with highscores not getting saved</li>
-<li>Fixed issue with <code class="codehilite">/house</code> being case sensitive with world names.</li>
-<li>Added caching for external requests, to reduce load on external services.</li>
-<li>Updated TibiaWiki database to the state of August 7th 2018.</li>
+<li>🐛 Various <code class="codehilite">/event</code> subcommands were showing the member's nicknames from other servers</li>
+<li>🔧 Cleaner bad argument errors for commands in the General cog.</li>
+<li>🐛 Fixed bug with highscores not getting saved</li>
+<li>🐛 Fixed issue with <code class="codehilite">/house</code> being case sensitive with world names.</li>
+<li>🔧 Added caching for external requests, to reduce load on external services.</li>
+<li>🔧 Updated TibiaWiki database to the state of August 7th 2018.</li>
 </ul>
 <h2 id="version-150-2018-07-31">Version 1.5.0 (2018-07-31)<a class="headerlink" href="#version-150-2018-07-31" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Small changes to <code class="codehilite">/userinfo</code></li>
-<li>Fixed bug in <code class="codehilite">/monster</code> with creatures without a bestiary class defined.</li>
-<li>Added loading message to <code class="codehilite">/im</code>.</li>
-<li>Bot owner can now use <code class="codehilite">/serverinfo</code> to see other server's info.</li>
-<li><code class="codehilite">/servers</code> now has pagination and sorting.</li>
-<li>NabBot now responds to a mention with its command prefixes.</li>
-<li>New <code class="codehilite">/emojiinfo</code> command</li>
-<li>Created new cog <code class="codehilite">Info</code>, moved information commands from <code class="codehilite">General</code></li>
-<li>Level up and death messages now use lambdas for filtering.</li>
-<li>Server settings can now be changed with <code class="codehilite">Manage Server</code> permissions instead of <code class="codehilite">Administrator</code> permission.</li>
-<li>NabBot's initial message is now sent on a server channel instead of PMing the owner.  </li>
+<li>✔ Bot owner can now use <code class="codehilite">/serverinfo</code> to see other server's info.</li>
+<li>✔ <code class="codehilite">/servers</code> now has pagination and sorting.</li>
+<li>✔ NabBot now responds to a mention with its command prefixes.</li>
+<li>✔ New <code class="codehilite">/emojiinfo</code> command</li>
+<li>✔ Created new cog <code class="codehilite">Info</code>, moved information commands from <code class="codehilite">General</code></li>
+<li>🔧 Small changes to <code class="codehilite">/userinfo</code></li>
+<li>🔧 Added loading message to <code class="codehilite">/im</code>.</li>
+<li>🔧 Level up and death messages now use lambdas for filtering.</li>
+<li>🔧 Server settings can now be changed with <code class="codehilite">Manage Server</code> permissions instead of <code class="codehilite">Administrator</code> permission.</li>
+<li>🔧 NabBot's initial message is now sent on a server channel instead of PMing the owner.  </li>
+<li>🐛 Fixed bug in <code class="codehilite">/monster</code> with creatures without a bestiary class defined.</li>
 </ul>
 <h2 id="version-140-2018-07-24">Version 1.4.0 (2018-07-24)<a class="headerlink" href="#version-140-2018-07-24" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code class="codehilite">/loot</code> has been rewritten:<ul>
-<li>Loot database remade from scratch with images extracted directly from the client, all images should now be pixel perfect matches to those taken from in-game screenshots</li>
+<li>✔ Minimum announce level is now configurable per server (<code class="codehilite">/settings minlevel</code>).</li>
+<li>✔ New configurable emoji: <code class="codehilite">loading_emoji</code><ul>
+<li>By default ⏳ is used.</li>
+</ul>
+</li>
+<li>✔ New <code class="codehilite">/sql</code> command, executes a sql query and shows the results, only for the bot owner.</li>
+<li>✔ New <code class="codehilite">/wikistats</code> command, shows you information about the TibiaWiki database used.</li>
+<li>🔧 <code class="codehilite">/loot</code> has been rewritten:<ul>
+<li>Loot database remade from scratch with images extracted directly from the client, all images should now be pixel
+ perfect matches to those taken from in-game screenshots</li>
 <li>Priority values for items were removed so database can be updated directly (no longer requires template database)</li>
-<li>Quality checks removed, now expects pixel perfect images (compressed images or screenshots taken using the software renderer won't be scanned at all).</li>
-<li>Number scan updated to properly handle stacks higher than three digits (mostly to be able to scan images taken from the stash, also recognizes the letter K in stack numbers)</li>
+<li>Quality checks removed, now expects pixel perfect images (compressed images or screenshots taken using the 
+software renderer won't be scanned at all).</li>
+<li>Number scan updated to properly handle stacks higher than three digits (mostly to be able to scan images taken 
+from the stash, also recognizes the letter K in stack numbers)</li>
 <li>Now properly scans slots even if a few pixels at the bottom were cut off or blocked by the window border.</li>
 <li>Massive performance improvements.</li>
 </ul>
 </li>
-<li>Minimum announce level is now configurable per server (<code class="codehilite">/settings minlevel</code>).</li>
-<li>Event channel is now disabled by default.</li>
-<li>New configurable emoji: <code class="codehilite">loading_emoji</code><ul>
-<li>By default ⏳ is used.</li>
-</ul>
-</li>
-<li>Removed restart scripts as they were outdated, very platform specific and bad practice.</li>
-<li>Improved world scanning speed to not be heavily affected by the number of tracked worlds.</li>
-<li>New <code class="codehilite">/sql</code> command, executes a sql query and shows the results, only for the bot owner.</li>
-<li>New <code class="codehilite">/wikistats</code> command, shows you information about the TibiaWiki database used.</li>
-<li><code class="codehilite">/removechar</code> now only lets you remove chars from users that are only in servers you are an admin in.</li>
-<li>Fixed bug in <code class="codehilite">/event make</code> showing failure icon on success.</li>
-<li>Fixed bug in <code class="codehilite">/addchar</code>, it was not working at all.</li>
-<li>Fixed bug in <code class="codehilite">/world</code> when query included spaces.</li>
-<li>Fixed bug in <code class="codehilite">/monster</code> failing if it was missing some bestiary data.</li>
-<li>Fixed bug in <code class="codehilite">/event addplayer</code> failing when the character was not registered.</li>
-<li>Fixed error when using <code class="codehilite">/share</code> with no parameters.</li>
-<li>Fixed bug in commands that offer you choices not working in commands channel.</li>
-<li>Fixed bug in <code class="codehilite">/choose</code> when the command was used with no parameters.</li>
-<li><code class="codehilite">/stamina</code> now considers the 10 minutes you have to be logged off to start regenerating stamina.</li>
-<li>Removed <code class="codehilite">/restart</code> command as it was really system specific and not an universal solution, along with the autorestarting launchers.</li>
-<li>Command error now contains a link to the support server.</li>
+<li>🔧 Event channel is now disabled by default.</li>
+<li>🔧 Improved world scanning speed to not be heavily affected by the number of tracked worlds.</li>
+<li>🔧 <code class="codehilite">/removechar</code> now only lets you remove chars from users that are only in servers you are an admin in.</li>
+<li>🔧 Command error now contains a link to the support server.</li>
+<li>🐛 Fixed bug in <code class="codehilite">/event make</code> showing failure icon on success.</li>
+<li>🐛 Fixed bug in <code class="codehilite">/addchar</code>, it was not working at all.</li>
+<li>🐛 Fixed bug in <code class="codehilite">/world</code> when query included spaces.</li>
+<li>🐛 Fixed bug in <code class="codehilite">/monster</code> failing if it was missing some bestiary data.</li>
+<li>🐛 Fixed bug in <code class="codehilite">/event addplayer</code> failing when the character was not registered.</li>
+<li>🐛 Fixed error when using <code class="codehilite">/share</code> with no parameters.</li>
+<li>🐛 Fixed bug in commands that offer you choices not working in commands channel.</li>
+<li>🐛 Fixed bug in <code class="codehilite">/choose</code> when the command was used with no parameters.</li>
+<li>🐛 <code class="codehilite">/stamina</code> now considers the 10 minutes you have to be logged off to start regenerating stamina.</li>
+<li>❌ Removed <code class="codehilite">/restart</code> command as it was really system specific and not an universal solution, along with the autorestarting launchers.</li>
 </ul>
 <h2 id="version-132-2018-07-15">Version 1.3.2 (2018-07-15)<a class="headerlink" href="#version-132-2018-07-15" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Monster's occurence was being displayed incorrectly.</li>
-<li>Updated database to show better update information.</li>
+<li>🔧 Updated database to show better update information.</li>
+<li>🐛 Monster's occurrence was being displayed incorrectly.</li>
 </ul>
 <h2 id="version-131-2018-07-14">Version 1.3.1 (2018-07-14)<a class="headerlink" href="#version-131-2018-07-14" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Fixed some typos in config_template.yml</li>
-<li>Added suggested emojis for charms, occurrence and bestiary difficulty.</li>
+<li>🔧 Added suggested emojis for charms, occurrence and bestiary difficulty.</li>
+<li>🐛 Fixed some typos in config_template.yml</li>
 </ul>
 <h2 id="version-130-2018-07-12">Version 1.3.0 (2018-07-12)<a class="headerlink" href="#version-130-2018-07-12" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Emoji changes are now displayed on server-log.</li>
-<li>Main emojis can be customized now, allowing custom discord emojis<ul>
+<li>✔ Emoji changes are now displayed on server-log.</li>
+<li>✔ Main emojis can be customized now, allowing custom discord emojis<ul>
 <li>Vocation emojis.</li>
 <li>Elemental resistance emojis in <code class="codehilite">/monster</code>.</li>
 <li>Discord presence emojis in <code class="codehilite">/serverinfo</code>.</li>
@@ -1166,78 +1283,71 @@
 <li>And more</li>
 </ul>
 </li>
-<li>Added joinable role feature, called groups:<ul>
+<li>✔ Added joinable role feature, called groups:<ul>
 <li>To create a group: <code class="codehilite">/group add &lt;name&gt;</code> (requires <code class="codehilite">Manage Roles</code> permission)</li>
 <li>To join/leave a group: <code class="codehilite">/group &lt;name</code></li>
 <li>To see available groups: <code class="codehilite">/group list</code></li>
 <li>To delete a group: <code class="codehilite">/group remove &lt;name&gt;</code></li>
 </ul>
 </li>
-<li>Added automatic roles<ul>
+<li>✔ Added automatic roles<ul>
 <li>Roles are assigned based on the guilds of registered characters.</li>
 <li>See <code class="codehilite">help autorole</code> for more information on commands.</li>
 </ul>
 </li>
-<li>Increased /loot scanning speed.</li>
-<li>Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.</li>
-<li>Welcome message can now be fully customized, including the welcome message channel. Available under <code class="codehilite">/settings</code></li>
-<li>Welcome messages are no longer enabled by default.</li>
-<li>New <code class="codehilite">/imbuement</code> command, shows basic information about an imbuement and if prices are provided, it calculates costs.</li>
-<li>New <code class="codehilite">/permissions</code> command, shows the permissions for a member in a channel.</li>
-<li>New <code class="codehilite">/cleanup</code> command, cleans bot messages and command invocations in the current channel.</li>
-<li>New <code class="codehilite">/roll</code> command, rolls a die and shows the results.</li>
-<li>New <code class="codehilite">/botinfo</code> command, shows advanced information about the bot.</li>
-<li>New <code class="codehilite">/worlds</code> command, shows a list of worlds with their location, pvptype and online population, with filtering options.</li>
-<li><code class="codehilite">/about</code> now shows less advanced information, and more general information.</li>
-<li><code class="codehilite">/version</code> now checks if the required minimum commit version of discord.py is being used.</li>
-<li><code class="codehilite">/monster</code> now shows occurrence, kills required and charm points given.</li>
-<li><code class="codehilite">/monster</code>, <code class="codehilite">/house</code>, <code class="codehilite">/spell</code>, <code class="codehilite">/npc</code>, <code class="codehilite">/item</code>, <code class="codehilite">/imbuement</code>, <code class="codehilite">/achievement</code></li>
-<li>Fixed <code class="codehilite">/checkchannel</code> ignoring channel parameter.</li>
-<li>Fixed <code class="codehilite">/quote</code> failing when quoting users no longer in server.</li>
-<li>Tibia.com news announcement are now disabled by default, must be enabled per server.</li>
-<li>Command name and aliases changes:<ul>
+<li>✔ Welcome message can now be fully customized, including the welcome message channel. Available under <code class="codehilite">/settings</code></li>
+<li>✔ Welcome messages are no longer enabled by default.</li>
+<li>✔ New <code class="codehilite">/imbuement</code> command, shows basic information about an imbuement and if prices are provided, it calculates costs.</li>
+<li>✔ New <code class="codehilite">/permissions</code> command, shows the permissions for a member in a channel.</li>
+<li>✔ New <code class="codehilite">/cleanup</code> command, cleans bot messages and command invocations in the current channel.</li>
+<li>✔ New <code class="codehilite">/roll</code> command, rolls a die and shows the results.</li>
+<li>✔ New <code class="codehilite">/botinfo</code> command, shows advanced information about the bot.</li>
+<li>✔ New <code class="codehilite">/worlds</code> command, shows a list of worlds with their location, pvptype and online population, with filtering options.</li>
+<li>✔ <code class="codehilite">/monster</code> now shows occurrence, kills required and charm points given.</li>
+<li>🔧 Increased /loot scanning speed.</li>
+<li>🔧 Simultaneous loot scans are now user-wide, not global. Each user can only have one image scanned at a time.</li>
+<li>🔧 <code class="codehilite">/about</code> now shows less advanced information, and more general information.</li>
+<li>🔧 <code class="codehilite">/version</code> now checks if the required minimum commit version of discord.py is being used.</li>
+<li>🔧 Tibia.com news announcement are now disabled by default, must be enabled per server.</li>
+<li>🔧 Command name and aliases changes:<ul>
 <li><code class="codehilite">/debug</code>: renamed to <code class="codehilite">/eval</code>.</li>
 <li><code class="codehilite">/help</code>: Alias <code class="codehilite">/commands</code> added.</li>
 <li><code class="codehilite">/setwelcome</code>: Removed.</li>
 <li><code class="codehilite">/purge</code>: Removed.</li>
 </ul>
 </li>
+<li>🐛 Fixed <code class="codehilite">/checkchannel</code> ignoring channel parameter.</li>
+<li>🐛 Fixed <code class="codehilite">/quote</code> failing when quoting users no longer in server.</li>
 </ul>
 <h2 id="version-123-2018-06-19">Version 1.2.3 (2018-06-19)<a class="headerlink" href="#version-123-2018-06-19" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Fixed a bug with <code class="codehilite">/whois</code> when a user was not found.</li>
+<li>🐛 Fixed a bug with <code class="codehilite">/whois</code> when a user was not found.</li>
 </ul>
 <h2 id="version-122-2018-06-19">Version 1.2.2 (2018-06-19)<a class="headerlink" href="#version-122-2018-06-19" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code class="codehilite">/unregistered</code> no longer displays discord bots.</li>
-<li>Fixed display bug in <code class="codehilite">/settings askchannel</code>.</li>
-<li>Improved <code class="codehilite">/event make</code>, no longer aborts on failure, lets the user retry and cleans up messages after.</li>
-<li>Improved <code class="codehilite">/event</code> subcommands in general, they leave less messages behind.</li>
-<li>Fixed checks for <code class="codehilite">/watched</code> subcommands.</li>
-<li>Removed orphaned <code class="codehilite">utils/emoji.py</code></li>
-<li>Minor improvements to <code class="codehilite">/debug</code> (now handles multiple lines), added <code class="codehilite">/eval</code>as alias.</li>
-<li>Documentation improvements.</li>
+<li>🔧 <code class="codehilite">/unregistered</code> no longer displays discord bots.</li>
+<li>🔧 Improved <code class="codehilite">/event make</code>, no longer aborts on failure, lets the user retry and cleans up messages after.</li>
+<li>🔧 Improved <code class="codehilite">/event</code> subcommands in general, they leave less messages behind.</li>
+<li>🔧 Minor improvements to <code class="codehilite">/debug</code> (now handles multiple lines), added <code class="codehilite">/eval</code>as alias.</li>
+<li>🔧 Documentation improvements.</li>
+<li>🐛 Fixed display bug in <code class="codehilite">/settings askchannel</code>.</li>
+<li>🐛 Fixed checks for <code class="codehilite">/watched</code> subcommands.</li>
+<li>🐛 Removed orphaned <code class="codehilite">utils/emoji.py</code></li>
 </ul>
 <h2 id="version-121-2018-06-14">Version 1.2.1 (2018-06-14)<a class="headerlink" href="#version-121-2018-06-14" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Updated mentions of <code class="codehilite">/setworld</code> and similar to <code class="codehilite">/settings world</code>.</li>
-<li>If the server owner has PMs disabled when the bot joins, the bot will send the initial message in the server.</li>
+<li>🔧 If the server owner has PMs disabled when the bot joins, the bot will send the initial message in the server.</li>
+<li>🐛 Updated mentions of <code class="codehilite">/setworld</code> and similar to <code class="codehilite">/settings world</code>.</li>
 </ul>
 <h2 id="version-120-2018-06-14">Version 1.2.0 (2018-06-14)<a class="headerlink" href="#version-120-2018-06-14" title="Permanent link">&para;</a></h2>
 <ul>
-<li>New <code class="codehilite">/help</code> style, with reaction pagination.</li>
-<li>New <code class="codehilite">/quote</code> command, shows a message's content given an id.</li>
-<li>New <code class="codehilite">/roleinfo</code> command, shows a role's detailed information.</li>
-<li>New <code class="codehilite">/userinfo</code> command, shows a user's detailed information.</li>
-<li>New <code class="codehilite">/ping</code> command, shows the bot's response times.</li>
-<li>New <code class="codehilite">/bestiary</code> command, shows the bestiary classes or creatures that belong to a class.</li>
-<li>Command prefix is now configurable per server</li>
-<li>Mention prefix command is now always enabled (e.g. <code class="codehilite">@NabBot help</code>)</li>
-<li>Improvements to the watched list task</li>
-<li>Made some visual changes to <code class="codehilite">/serverinfo</code></li>
-<li>Moved role related commands to new Roles cog.</li>
-<li><code class="codehilite">/roles</code> now sorts results by position and shows members with the role.</li>
-<li>New command: <code class="codehilite">/settings</code>, to change all server specific settings:<ul>
+<li>✔ New <code class="codehilite">/quote</code> command, shows a message's content given an id.</li>
+<li>✔ New <code class="codehilite">/roleinfo</code> command, shows a role's detailed information.</li>
+<li>✔ New <code class="codehilite">/userinfo</code> command, shows a user's detailed information.</li>
+<li>✔ New <code class="codehilite">/ping</code> command, shows the bot's response times.</li>
+<li>✔ New <code class="codehilite">/bestiary</code> command, shows the bestiary classes or creatures that belong to a class.</li>
+<li>✔ Command prefix is now configurable per server</li>
+<li>✔ New command: <code class="codehilite">/settings</code>, to change all server specific settings:<ul>
 <li><code class="codehilite">/setworld</code> moved to <code class="codehilite">/settings world</code>.</li>
 <li><code class="codehilite">/setleveldeathschannel</code> moved to <code class="codehilite">/settings levelschannel</code>.</li>
 <li><code class="codehilite">/seteventschannel</code> moved to <code class="codehilite">/settings eventschannel</code></li>
@@ -1246,7 +1356,13 @@
 <li>Tibia news announcements and Events announcements can be disabled entirely.</li>
 </ul>
 </li>
-<li>Many changes to command names and aliases:<ul>
+<li>🔧 New <code class="codehilite">/help</code> style, with reaction pagination.</li>
+<li>🔧 Mention prefix command is now always enabled (e.g. <code class="codehilite">@NabBot help</code>)</li>
+<li>🔧 Improvements to the watched list task</li>
+<li>🔧 Made some visual changes to <code class="codehilite">/serverinfo</code></li>
+<li>🔧 Moved role related commands to new Roles cog.</li>
+<li>🔧 <code class="codehilite">/roles</code> now sorts results by position and shows members with the role.</li>
+<li>🔧 Many changes to command names and aliases:<ul>
 <li><code class="codehilite">/item</code>: <code class="codehilite">checkprice</code> alias removed.</li>
 <li><code class="codehilite">/monster</code>: <code class="codehilite">mon</code> alias removed.</li>
 <li><code class="codehilite">/spell</code>: <code class="codehilite">spells</code> alias added.</li>
@@ -1269,87 +1385,87 @@
 </ul>
 <h2 id="version-111-2018-06-12">Version 1.1.1 (2018-06-12)<a class="headerlink" href="#version-111-2018-06-12" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Added missing items from the Feyrist area to the loot database</li>
-<li>Fixed an issue causing /loot update to only work the second time it was called</li>
+<li>🔧 Added missing items from the Feyrist area to the loot database</li>
+<li>🐛 Fixed an issue causing /loot update to only work the second time it was called</li>
 </ul>
 <h2 id="version-110-2018-05-24">Version 1.1.0 (2018-05-24)<a class="headerlink" href="#version-110-2018-05-24" title="Permanent link">&para;</a></h2>
 <ul>
-<li>New command: <code class="codehilite">/leave</code>, to make the bot leave a discord server.</li>
-<li>New command: <code class="codehilite">/versions</code>, shows the current version and the version of dependencies.</li>
-<li>New command: <code class="codehilite">/searchworld</code>, to show filterable list of players online in a server.</li>
-<li>New subcommand: <code class="codehilite">/watched info</code> and <code class="codehilite">/watched infoguild</code> to show details about a watched list entry.</li>
-<li><code class="codehilite">/monster</code> now shows monster's attributes and bestiary info.</li>
-<li><code class="codehilite">/diagnose</code> was renamed to <code class="codehilite">/checkchannel</code>, permissions were updated.</li>
-<li><code class="codehilite">/watched add</code> and <code class="codehilite">/watched addguild</code> now can take a reason as a parameter</li>
-<li><code class="codehilite">/online</code> is no longer usable in PMs</li>
-<li><code class="codehilite">/online</code> and <code class="codehilite">/searchteam</code> are hidden from <code class="codehilite">/help</code> when no world is tracked in the current server.</li>
-<li>Watched List now uses an embed, meaning the length is 3 times longer.</li>
-<li>Minor improvements to documentation site.</li>
-<li>Improvements to server-log to make them have a uniform style.</li>
-<li>Updated TibiaWiki database, fixed bug with potions price due to NPC Minzy.</li>
+<li>✔ New command: <code class="codehilite">/leave</code>, to make the bot leave a discord server.</li>
+<li>✔ New command: <code class="codehilite">/versions</code>, shows the current version and the version of dependencies.</li>
+<li>✔ New command: <code class="codehilite">/searchworld</code>, to show filterable list of players online in a server.</li>
+<li>✔ New subcommand: <code class="codehilite">/watched info</code> and <code class="codehilite">/watched infoguild</code> to show details about a watched list entry.</li>
+<li>✔ <code class="codehilite">/monster</code> now shows monster's attributes and bestiary info.</li>
+<li>🔧 <code class="codehilite">/diagnose</code> was renamed to <code class="codehilite">/checkchannel</code>, permissions were updated.</li>
+<li>✔ <code class="codehilite">/watched add</code> and <code class="codehilite">/watched addguild</code> now can take a reason as a parameter</li>
+<li>🔧 <code class="codehilite">/online</code> is no longer usable in PMs</li>
+<li>🔧 <code class="codehilite">/online</code> and <code class="codehilite">/searchteam</code> are hidden from <code class="codehilite">/help</code> when no world is tracked in the current server.</li>
+<li>🔧 Watched List now uses an embed, meaning the length is 3 times longer.</li>
+<li>🔧 Minor improvements to documentation site.</li>
+<li>🔧 Improvements to server-log to make them have a uniform style.</li>
+<li>🔧 Updated TibiaWiki database, fixed bug with potions price due to NPC Minzy.</li>
 </ul>
 <h2 id="version-101-2018-05-07">Version 1.0.1 (2018-05-07)<a class="headerlink" href="#version-101-2018-05-07" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Renamed characters are updated more effectively, preventing some cases of character duplication.</li>
-<li><code class="codehilite">/watched</code> no longer asks for <code class="codehilite">Manage Roles</code> permissions.</li>
-<li><code class="codehilite">/im</code> asks the user if he wants to add other visible characters if applicable, instead of just adding all.</li>
-<li>Changed format of server-log messages for <code class="codehilite">/im</code> and <code class="codehilite">/claim</code> to match the style of the rest of the messages.</li>
-<li>Fixed bug in <code class="codehilite">/namelock</code> command.</li>
-<li>Updated documentation.</li>
+<li>🔧 Renamed characters are updated more effectively, preventing some cases of character duplication.</li>
+<li>🐛 <code class="codehilite">/watched</code> no longer asks for <code class="codehilite">Manage Roles</code> permissions.</li>
+<li>🔧 <code class="codehilite">/im</code> asks the user if he wants to add other visible characters if applicable, instead of just adding all.</li>
+<li>🔧 Changed format of server-log messages for <code class="codehilite">/im</code> and <code class="codehilite">/claim</code> to match the style of the rest of the messages.</li>
+<li>🐛 Fixed bug in <code class="codehilite">/namelock</code> command.</li>
+<li>🐛 Updated documentation.</li>
 </ul>
 <h2 id="version-100-2018-05-03">Version 1.0.0 (2018-05-03)<a class="headerlink" href="#version-100-2018-05-03" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Now requires <strong>Python 3.6</strong>.</li>
-<li>Now uses the "rewrite" version of <code class="codehilite">discord.py</code>, meaning there are tons of breaking changes, and there will be more until v1.0.0 is released for <code class="codehilite">discord.py</code>.</li>
-<li>Improved cogs organization, allowing to reload NabBot by modules.</li>
-<li>Improved many commands to use pagination.</li>
-<li>Added better support for multiple discord servers.</li>
-<li>Added watchlist feature, to keep track of the online status of certain characters or guilds (also known as "Hunted list").</li>
-<li>Improved <code class="codehilite">/whois</code> appearance.</li>
-<li>New commands: <code class="codehilite">/ignore</code> and <code class="codehilite">/unignore</code>, to make it easier to control where NabBot can answer to commands.</li>
-<li>Improved the way events work and are displayed.</li>
-<li>Added event participants, to keep track of which characters are assisting and events, good for organizing team based events like Heart of Destruction.</li>
-<li>Various changes to <code class="codehilite">/deaths</code>, <code class="codehilite">/levels</code> and <code class="codehilite">/timeline</code> display.</li>
-<li>Items and monsters now show animated gifs.</li>
-<li>Items now show imbuements slots and materials show for which imbuement they are for.</li>
-<li>Migrated many services from Tibia.com to TibiaData.com for better reliability.</li>
-<li>TibiaWiki database is now more recent and is now a <a href="https://github.com/Galarzaa90/tibiawiki-sql">separate project</a></li>
-<li>Added tons of new commands and rewrote many of them.</li>
-<li>Added <a href="https://nabdev.github.io/NabBot/">documentation site</a></li>
-<li>And too many changes too list them here.</li>
+<li>✔ Now uses the "rewrite" version of <code class="codehilite">discord.py</code>, meaning there are tons of breaking changes, and there will be more until v1.0.0 is released for <code class="codehilite">discord.py</code>.</li>
+<li>✔ Improved many commands to use pagination.</li>
+<li>✔ Added watchlist feature, to keep track of the online status of certain characters or guilds (also known as "Hunted list").</li>
+<li>✔ New commands: <code class="codehilite">/ignore</code> and <code class="codehilite">/unignore</code>, to make it easier to control where NabBot can answer to commands.</li>
+<li>✔ Items and monsters now show animated gifs.</li>
+<li>✔ Added event participants, to keep track of which characters are assisting and events, good for organizing team based events like Heart of Destruction.</li>
+<li>✔ Items now show imbuements slots and materials show for which imbuement they are for.</li>
+<li>✔ TibiaWiki database is now more recent and is now a <a href="https://github.com/Galarzaa90/tibiawiki-sql">separate project</a></li>
+<li>✔ Added tons of new commands and rewrote many of them.</li>
+<li>✔ Added <a href="https://nabdev.github.io/NabBot/">documentation site</a></li>
+<li>🔧 Now requires <strong>Python 3.6</strong>.</li>
+<li>🔧 Improved cogs organization, allowing to reload NabBot by modules.</li>
+<li>🔧 Added better support for multiple discord servers.</li>
+<li>🔧 Improved <code class="codehilite">/whois</code> appearance.</li>
+<li>🔧 Improved the way events work and are displayed.</li>
+<li>🔧 Various changes to <code class="codehilite">/deaths</code>, <code class="codehilite">/levels</code> and <code class="codehilite">/timeline</code> display.</li>
+<li>🔧 Migrated many services from Tibia.com to TibiaData.com for better reliability.</li>
+<li>✔ And too many changes too list them here.</li>
 </ul>
 <h2 id="version-013-2018-03-08">Version 0.1.3 (2018-03-08)<a class="headerlink" href="#version-013-2018-03-08" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Removed site feature.</li>
-<li>Adjustments to number positions for <code class="codehilite">/loot</code> detection.</li>
-<li>Updated world list.</li>
-<li>Fixed bug in encoding of spouse names.</li>
-<li>Updated TibiaWiki database.</li>
+<li>🔧 Adjustments to number positions for <code class="codehilite">/loot</code> detection.</li>
+<li>🔧 Updated world list.</li>
+<li>🔧 Updated TibiaWiki database.</li>
+<li>🐛 Fixed bug in encoding of spouse names.</li>
+<li>❌ Removed site feature.</li>
 </ul>
 <h2 id="version-012-2017-06-09">Version 0.1.2 (2017-06-09)<a class="headerlink" href="#version-012-2017-06-09" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Added Duna and Relembra to world list.</li>
-<li>Added a database template for the loot database.</li>
-<li>Fixed bug with <code class="codehilite">/achiev</code> command not responding to unexistant achievements.</li>
+<li>🔧 Added Duna and Relembra to world list.</li>
+<li>🔧 Added a database template for the loot database.</li>
+<li>🐛 Fixed bug with <code class="codehilite">/achiev</code> command not responding to unexistant achievements.</li>
 </ul>
 <h2 id="version-011-2017-04-24">Version 0.1.1 (2017-04-24)<a class="headerlink" href="#version-011-2017-04-24" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Added Honbra, Noctera and Vita to world list.</li>
+<li>🔧 Added Honbra, Noctera and Vita to world list.</li>
 </ul>
 <h2 id="version-010-2017-04-16">Version 0.1.0 (2017-04-16)<a class="headerlink" href="#version-010-2017-04-16" title="Permanent link">&para;</a></h2>
 <p>Initial release</p>
 <ul>
-<li>Tibia character lookup</li>
-<li>Item lookup</li>
-<li>Spell lookup</li>
-<li>Guild lookup</li>
-<li>Monster lookup</li>
-<li>Assigning Tibia characters to Discord Users</li>
-<li>Level up announcements</li>
-<li>Death announcements</li>
-<li>Tibia.com highscores tracking</li>
-<li>Loot screenshot analyzer</li>
-<li>Event creation</li>
+<li>✔ Tibia character lookup</li>
+<li>✔ Item lookup</li>
+<li>✔ Spell lookup</li>
+<li>✔ Guild lookup</li>
+<li>✔ Monster lookup</li>
+<li>✔ Assigning Tibia characters to Discord Users</li>
+<li>✔ Level up announcements</li>
+<li>✔ Death announcements</li>
+<li>✔ Tibia.com highscores tracking</li>
+<li>✔ Loot screenshot analyzer</li>
+<li>✔ Event creation</li>
 </ul>
                 
                   

@@ -426,6 +426,18 @@
   </li>
 
         
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/watchlist/" title="Watchlist" class="md-nav__link">
+      Watchlist
+    </a>
+  </li>
+
+        
       </ul>
     </nav>
   </li>
@@ -472,6 +484,18 @@
   <li class="md-nav__item">
     <a href="../admin/" title="Admin commands" class="md-nav__link">
       Admin commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../calculators/" title="Calculators commands" class="md-nav__link">
+      Calculators commands
     </a>
   </li>
 
@@ -584,15 +608,15 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#autorole-refresh" title="autorole refresh" class="md-nav__link">
-    autorole refresh
+  <a href="#autorole-list" title="autorole list" class="md-nav__link">
+    autorole list
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#autorole-list" title="autorole list" class="md-nav__link">
-    autorole list
+  <a href="#autorole-refresh" title="autorole refresh" class="md-nav__link">
+    autorole refresh
   </a>
   
 </li>
@@ -688,18 +712,6 @@
 
 
   <li class="md-nav__item">
-    <a href="../settings/" title="Settings commands" class="md-nav__link">
-      Settings commands
-    </a>
-  </li>
-
-        
-          
-          
-          
-
-
-  <li class="md-nav__item">
     <a href="../tibia/" title="Tibia commands" class="md-nav__link">
       Tibia commands
     </a>
@@ -714,6 +726,18 @@
   <li class="md-nav__item">
     <a href="../tibiawiki/" title="TibiaWiki commands" class="md-nav__link">
       TibiaWiki commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../timers/" title="Timers commands" class="md-nav__link">
+      Timers commands
     </a>
   </li>
 
@@ -831,15 +855,15 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#autorole-refresh" title="autorole refresh" class="md-nav__link">
-    autorole refresh
+  <a href="#autorole-list" title="autorole list" class="md-nav__link">
+    autorole list
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#autorole-list" title="autorole list" class="md-nav__link">
-    autorole list
+  <a href="#autorole-refresh" title="autorole refresh" class="md-nav__link">
+    autorole refresh
   </a>
   
 </li>
@@ -956,9 +980,16 @@ If they stop having a character in the guild, the role is removed.</p>
 <p>Role names, role mentions or role ids are allowed. Role names with multiple words must be quoted.<br />
 Note that current members will be updated until their characters or guilds change.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/autorole add Allies Academy Junior</strong><br />
-<img alt="image" src="../../assets/images/commands/autorole_add_1.png" /><br />
+<img alt="image" src="../../assets/images/commands/roles/autorole_add_1.png" /><br />
 <strong>/autorole add Identified </strong>*<br />
-<img alt="image" src="../../assets/images/commands/autorole_add_2.png" /></p>
+<img alt="image" src="../../assets/images/commands/roles/autorole_add_2.png" /></p>
+</details>
+<hr />
+<h3 id="autorole-list">autorole list<a class="headerlink" href="#autorole-list" title="Permanent link">&para;</a></h3>
+<p><strong>Other aliases:</strong> <code class="codehilite">autorole rules</code></p>
+<p>Shows a list of autorole rules.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/autorole list</strong><br />
+<img alt="image" src="../../assets/images/commands/roles/autorole_list.png" /></p>
 </details>
 <hr />
 <h3 id="autorole-refresh">autorole refresh<a class="headerlink" href="#autorole-refresh" title="Permanent link">&para;</a></h3>
@@ -966,14 +997,7 @@ Note that current members will be updated until their characters or guilds chang
 <p>This will apply existing rules to all members.
 Note that guild changes from members that haven't been online won't be detected.
 Deleted rules won't have any effect.</p>
-<p>This command can only be used once per server every hour.</p>
-<hr />
-<h3 id="autorole-list">autorole list<a class="headerlink" href="#autorole-list" title="Permanent link">&para;</a></h3>
-<p><strong>Other aliases:</strong> <code class="codehilite">autorole rules</code></p>
-<p>Shows a list of autorole rules.</p>
-<details class="summary"><summary>Examples</summary><p><strong>/autorole list</strong><br />
-<img alt="image" src="../../assets/images/commands/autorole_list.png" /></p>
-</details>
+<p>This command can only be used once per server every day.</p>
 <hr />
 <h3 id="autorole-remove">autorole remove<a class="headerlink" href="#autorole-remove" title="Permanent link">&para;</a></h3>
 <p><strong>Syntax:</strong> <code class="codehilite">autorole remove &lt;role&gt; &lt;guild&gt;</code><br />
@@ -982,7 +1006,7 @@ Deleted rules won't have any effect.</p>
 <p>Role names, mentions and ids are accepted. Role names with multiple words need to be quoted.</p>
 <p>Note that members that currently have the role won't be affected.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/autorole remove "Redd Alliance" Redd Alliance</strong><br />
-<img alt="image" src="../../assets/images/commands/autorole_remove.png" /></p>
+<img alt="image" src="../../assets/images/commands/roles/autorole_remove.png" /></p>
 </details>
 <hr />
 <h2 id="group">group<a class="headerlink" href="#group" title="Permanent link">&para;</a></h2>
@@ -992,9 +1016,9 @@ Deleted rules won't have any effect.</p>
 If you're already in the group, you will be removed.</p>
 <p>To see a list of joinable groups, use <code class="codehilite">group list</code></p>
 <details class="summary"><summary>Examples</summary><p><strong>/group dev</strong><br />
-<img alt="image" src="../../assets/images/commands/group_1.png" /><br />
+<img alt="image" src="../../assets/images/commands/roles/group_1.png" /><br />
 <strong>/group dev</strong><br />
-<img alt="image" src="../../assets/images/commands/group_2.png" /></p>
+<img alt="image" src="../../assets/images/commands/roles/group_2.png" /></p>
 </details>
 <hr />
 <h3 id="group-add">group add<a class="headerlink" href="#group-add" title="Permanent link">&para;</a></h3>
@@ -1004,13 +1028,13 @@ If you're already in the group, you will be removed.</p>
 If the name matches an existent role, that role will become joinable.</p>
 <p>You need <code class="codehilite">Manage Roles</code> permissions to use this command.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/group add dev</strong><br />
-<img alt="image" src="../../assets/images/commands/group_add.png" />  </p>
+<img alt="image" src="../../assets/images/commands/roles/group_add.png" />  </p>
 </details>
 <hr />
 <h3 id="group-list">group list<a class="headerlink" href="#group-list" title="Permanent link">&para;</a></h3>
 <p>Shows a list of available groups.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/group list</strong><br />
-<img alt="image" src="../../assets/images/commands/group_list.png" /></p>
+<img alt="image" src="../../assets/images/commands/roles/group_list.png" /></p>
 </details>
 <hr />
 <h3 id="group-remove">group remove<a class="headerlink" href="#group-remove" title="Permanent link">&para;</a></h3>
@@ -1024,21 +1048,21 @@ When removing a group, you can optionally delete the role too.</p>
 <p><strong>Other aliases:</strong> <code class="codehilite">norole</code></p>
 <p>Shows a list of members that have no roles.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/noroles</strong><br />
-<img alt="image" src="../../assets/images/commands/noroles.png" /></p>
+<img alt="image" src="../../assets/images/commands/roles/noroles.png" /></p>
 </details>
 <hr />
 <h2 id="roleinfo">roleinfo<a class="headerlink" href="#roleinfo" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite"><span class="n">roleinfo</span> <span class="s">&lt;role&gt;</span></code></p>
 <p>Shows details about a role.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/roleinfo Redd Alliance</strong>
-<img alt="image" src="../../assets/images/commands/roleinfo.png" /></p>
+<img alt="image" src="../../assets/images/commands/roles/roleinfo.png" /></p>
 </details>
 <hr />
 <h2 id="rolemembers">rolemembers<a class="headerlink" href="#rolemembers" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite"><span class="n">rolemembers</span> <span class="s">&lt;role&gt;</span></code></p>
 <p>Shows a list of members with that role.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/rolemembers Vice Leader</strong><br />
-<img alt="image" src="../../assets/images/commands/rolemembers.png" /></p>
+<img alt="image" src="../../assets/images/commands/roles/rolemembers.png" /></p>
 </details>
 <hr />
 <h2 id="roles">roles<a class="headerlink" href="#roles" title="Permanent link">&para;</a></h2>
@@ -1047,9 +1071,9 @@ When removing a group, you can optionally delete the role too.</p>
 <p>If a user is specified, it will list their roles.
 If user is blank, I will list all the server's roles.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/roles</strong><br />
-<img alt="image" src="../../assets/images/commands/roles_1.png" /><br />
+<img alt="image" src="../../assets/images/commands/roles/roles_1.png" /><br />
 <strong>/roles Galarzaa</strong><br />
-<img alt="image" src="../../assets/images/commands/roles_2.png" /></p>
+<img alt="image" src="../../assets/images/commands/roles/roles_2.png" /></p>
 </details>
 <hr />
                 
@@ -1087,13 +1111,13 @@ If user is blank, I will list all the server's roles.</p>
           </a>
         
         
-          <a href="../settings/" title="Settings commands" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+          <a href="../tibia/" title="Tibia commands" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
             <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
               <span class="md-flex__ellipsis">
                 <span class="md-footer-nav__direction">
                   Next
                 </span>
-                Settings commands
+                Tibia commands
               </span>
             </div>
             <div class="md-flex__cell md-flex__cell--shrink">

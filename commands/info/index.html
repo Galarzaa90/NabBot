@@ -426,6 +426,18 @@
   </li>
 
         
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/watchlist/" title="Watchlist" class="md-nav__link">
+      Watchlist
+    </a>
+  </li>
+
+        
       </ul>
     </nav>
   </li>
@@ -472,6 +484,18 @@
   <li class="md-nav__item">
     <a href="../admin/" title="Admin commands" class="md-nav__link">
       Admin commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../calculators/" title="Calculators commands" class="md-nav__link">
+      Calculators commands
     </a>
   </li>
 
@@ -537,6 +561,33 @@
         <li class="md-nav__item">
   <a href="#commands" title="commands" class="md-nav__link">
     commands
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commandstats" title="commandstats" class="md-nav__link">
+    commandstats
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#commandsats-global" title="commandsats global" class="md-nav__link">
+    commandsats global
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#channelinfo" title="channelinfo" class="md-nav__link">
+    channelinfo
   </a>
   
 </li>
@@ -641,18 +692,6 @@
 
 
   <li class="md-nav__item">
-    <a href="../settings/" title="Settings commands" class="md-nav__link">
-      Settings commands
-    </a>
-  </li>
-
-        
-          
-          
-          
-
-
-  <li class="md-nav__item">
     <a href="../tibia/" title="Tibia commands" class="md-nav__link">
       Tibia commands
     </a>
@@ -667,6 +706,18 @@
   <li class="md-nav__item">
     <a href="../tibiawiki/" title="TibiaWiki commands" class="md-nav__link">
       TibiaWiki commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../timers/" title="Timers commands" class="md-nav__link">
+      Timers commands
     </a>
   </li>
 
@@ -790,6 +841,33 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#commandstats" title="commandstats" class="md-nav__link">
+    commandstats
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#commandsats-global" title="commandsats global" class="md-nav__link">
+    commandsats global
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#channelinfo" title="channelinfo" class="md-nav__link">
+    channelinfo
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#emojiinfo" title="emojiinfo" class="md-nav__link">
     emojiinfo
   </a>
@@ -850,13 +928,13 @@ Optional parameters are enclosed in brackets <code class="codehilite">[]</code>.
 <h2 id="about">about<a class="headerlink" href="#about" title="Permanent link">&para;</a></h2>
 <p>Shows basic information about the bot.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/about</strong><br />
-<img alt="image" src="../../assets/images/commands/about.png" /></p>
+<img alt="image" src="../../assets/images/commands/info/about.png" /></p>
 </details>
 <hr />
 <h2 id="botinfo">botinfo<a class="headerlink" href="#botinfo" title="Permanent link">&para;</a></h2>
 <p>Shows advanced information about the bot.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/botinfo</strong><br />
-<img alt="image" src="../../assets/images/commands/botinfo.png" /></p>
+<img alt="image" src="../../assets/images/commands/info/botinfo.png" /></p>
 </details>
 <hr />
 <h2 id="commands">commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
@@ -866,7 +944,21 @@ This displays all the commands you can use, with no description or subcommand in
 Note that different commands might show up in server channels and in private messages.</p>
 <p>For more details, use <code class="codehilite">help</code>.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/commands</strong><br />
-<img alt="image" src="../../assets/images/commands/commands.png" /></p>
+<img alt="image" src="../../assets/images/commands/info/commands.png" /></p>
+</details>
+<hr />
+<h2 id="commandstats">commandstats<a class="headerlink" href="#commandstats" title="Permanent link">&para;</a></h2>
+<p>Shows command statistics.</p>
+<hr />
+<h3 id="commandsats-global">commandsats global<a class="headerlink" href="#commandsats-global" title="Permanent link">&para;</a></h3>
+<p>Shows command statistics of all servers.</p>
+<hr />
+<h2 id="channelinfo">channelinfo<a class="headerlink" href="#channelinfo" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> <code class="codehilite">channelinfo [channel]</code></p>
+<p>Shows information about a channel.</p>
+<p>If no channel is specified, the information for the current channel is shown.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/channelinfo</strong><br />
+<img alt="image" src="../../assets/images/commands/info/commands.png" /></p>
 </details>
 <hr />
 <h2 id="emojiinfo">emojiinfo<a class="headerlink" href="#emojiinfo" title="Permanent link">&para;</a></h2>
@@ -876,9 +968,9 @@ Note that different commands might show up in server channels and in private mes
 <p>If an emoji, its ID or name is provided, it will show more information about it.</p>
 <p>Only emojis in the current servers can be checked.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/emojiinfo</strong><br />
-<img alt="image" src="../../assets/images/commands/emojiinfo_1.png" /><br />
+<img alt="image" src="../../assets/images/commands/info/emojiinfo_1.png" /><br />
 <strong>/emojiinfo :energyDamage:</strong><br />
-<img alt="image" src="../../assets/images/commands/emojiinfo_2.png" /></p>
+<img alt="image" src="../../assets/images/commands/info/emojiinfo_2.png" /></p>
 </details>
 <hr />
 <h2 id="help">help<a class="headerlink" href="#help" title="Permanent link">&para;</a></h2>
@@ -902,11 +994,11 @@ This means you can have <strong><strong>multiple arguments</strong></strong>.</p
 This means the command has subcommands.
 Check the command's help to see them. </p>
 <details class="summary"><summary>Examples</summary><p><strong>/help</strong><br />
-<img alt="image" src="../../assets/images/commands/help_1.png" /><br />
+<img alt="image" src="../../assets/images/commands/info/help_1.png" /><br />
 <strong>/help guild</strong><br />
-<img alt="image" src="../../assets/images/commands/help_2.png" /><br />
+<img alt="image" src="../../assets/images/commands/info/help_2.png" /><br />
 <strong>/help guild info</strong><br />
-<img alt="image" src="../../assets/images/commands/help_3.png" /></p>
+<img alt="image" src="../../assets/images/commands/info/help_3.png" /></p>
 </details>
 <hr />
 <h2 id="serverinfo">serverinfo<a class="headerlink" href="#serverinfo" title="Permanent link">&para;</a></h2>
@@ -914,13 +1006,13 @@ Check the command's help to see them. </p>
 <p>Shows the server's information.</p>
 <p>The bot owner can additionally check the information of a specific server where the bot is.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/serverinfo</strong><br />
-<img alt="image" src="../../assets/images/commands/serverinfo.png" /></p>
+<img alt="image" src="../../assets/images/commands/info/serverinfo.png" /></p>
 </details>
 <hr />
 <h2 id="uptime">uptime<a class="headerlink" href="#uptime" title="Permanent link">&para;</a></h2>
 <p>Shows how long the bot has been running.</p>
 <details class="summary"><summary>Examples</summary><p><strong>/uptime</strong><br />
-<img alt="image" src="../../assets/images/commands/uptime.png" /></p>
+<img alt="image" src="../../assets/images/commands/info/uptime.png" /></p>
 </details>
 <hr />
 <h2 id="userinfo">userinfo<a class="headerlink" href="#userinfo" title="Permanent link">&para;</a></h2>
@@ -936,7 +1028,7 @@ Check the command's help to see them. </p>
 <li>Channel Moderator: User with <code class="codehilite">Manage Channels</code> permissions in at least one channel.</li>
 </ul>
 <details class="summary"><summary>Examples</summary><p><strong>/userinfo</strong><br />
-<img alt="image" src="../../assets/images/commands/userinfo.png" /></p>
+<img alt="image" src="../../assets/images/commands/info/userinfo.png" /></p>
 </details>
                 
                   

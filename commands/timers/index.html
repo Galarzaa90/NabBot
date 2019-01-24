@@ -1,0 +1,1411 @@
+
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      
+        <meta name="description" content="A Discord bot for the MMO Tibia">
+      
+      
+      
+        <meta name="author" content="Allan Galarza">
+      
+      
+        <meta name="lang:clipboard.copy" content="Copy to clipboard">
+      
+        <meta name="lang:clipboard.copied" content="Copied to clipboard">
+      
+        <meta name="lang:search.language" content="en">
+      
+        <meta name="lang:search.pipeline.stopwords" content="True">
+      
+        <meta name="lang:search.pipeline.trimmer" content="True">
+      
+        <meta name="lang:search.result.none" content="No matching documents">
+      
+        <meta name="lang:search.result.one" content="1 matching document">
+      
+        <meta name="lang:search.result.other" content="# matching documents">
+      
+        <meta name="lang:search.tokenizer" content="[\s\-]+">
+      
+      <link rel="shortcut icon" href="../../assets/images/favicon.ico">
+      <meta name="generator" content="mkdocs-1.0.4, mkdocs-material-3.2.0">
+    
+    
+      
+        <title>Timers commands - NabBot</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/application.572ca0f0.css">
+      
+        <link rel="stylesheet" href="../../assets/stylesheets/application-palette.22915126.css">
+      
+      
+        
+        
+        <meta name="theme-color" content="#7e57c2">
+      
+    
+    
+      <script src="../../assets/javascripts/modernizr.8c900955.js"></script>
+    
+    
+      
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+        <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+      
+    
+    <link rel="stylesheet" href="../../assets/fonts/material-icons.css">
+    
+    
+      <link rel="stylesheet" href="../../assets/css/extra.css">
+    
+    
+  </head>
+  
+    
+    
+    <body dir="ltr" data-md-color-primary="deep-purple" data-md-color-accent="orange">
+  
+    <svg class="md-svg">
+      <defs>
+        
+        
+          <svg xmlns="http://www.w3.org/2000/svg" width="416" height="448"
+    viewBox="0 0 416 448" id="__github">
+  <path fill="currentColor" d="M160 304q0 10-3.125 20.5t-10.75 19-18.125
+        8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5
+        18.125 8.5 10.75 19 3.125 20.5zM320 304q0 10-3.125 20.5t-10.75
+        19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19
+        18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM360
+        304q0-30-17.25-51t-46.75-21q-10.25 0-48.75 5.25-17.75 2.75-39.25
+        2.75t-39.25-2.75q-38-5.25-48.75-5.25-29.5 0-46.75 21t-17.25 51q0 22 8
+        38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0
+        37.25-1.75t35-7.375 30.5-15 20.25-25.75 8-38.375zM416 260q0 51.75-15.25
+        82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5-41.75
+        1.125q-19.5 0-35.5-0.75t-36.875-3.125-38.125-7.5-34.25-12.875-30.25-20.25-21.5-28.75q-15.5-30.75-15.5-82.75
+        0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25
+        30.875q36.75-8.75 77.25-8.75 37 0 70 8 26.25-20.5
+        46.75-30.25t47.25-9.75q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34
+        99.5z" />
+</svg>
+        
+      </defs>
+    </svg>
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" data-md-component="overlay" for="__drawer"></label>
+    
+      <a href="#timers-commands" tabindex="1" class="md-skip">
+        Skip to content
+      </a>
+    
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid">
+    <div class="md-flex">
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <a href="../.." title="NabBot" class="md-header-nav__button md-logo">
+          
+            <img src="../../assets/images/icon.png" width="24" height="24">
+          
+        </a>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <label class="md-icon md-icon--menu md-header-nav__button" for="__drawer"></label>
+      </div>
+      <div class="md-flex__cell md-flex__cell--stretch">
+        <div class="md-flex__ellipsis md-header-nav__title" data-md-component="title">
+          
+            
+              <span class="md-header-nav__topic">
+                NabBot
+              </span>
+              <span class="md-header-nav__topic">
+                Timers commands
+              </span>
+            
+          
+        </div>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        
+          
+            <label class="md-icon md-icon--search md-header-nav__button" for="__search"></label>
+            
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="query" data-md-state="active">
+      <label class="md-icon md-search__icon" for="__search"></label>
+      <button type="reset" class="md-icon md-search__icon" data-md-component="reset" tabindex="-1">
+        &#xE5CD;
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="result">
+          <div class="md-search-result__meta">
+            Type to start searching
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+          
+        
+      </div>
+      
+        <div class="md-flex__cell md-flex__cell--shrink">
+          <div class="md-header-nav__source">
+            
+
+
+  
+
+
+  <a href="https://github.com/NabDev/NabBot" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#__github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+          </div>
+        </div>
+      
+    </div>
+  </nav>
+</header>
+    
+    <div class="md-container">
+      
+        
+      
+      
+        
+
+  
+
+<nav class="md-tabs md-tabs--active" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  <li class="md-tabs__item">
+    
+      <a href="../.." title="Home" class="md-tabs__link">
+        Home
+      </a>
+    
+  </li>
+
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../features/" title="Features" class="md-tabs__link">
+          Features
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../" title="Commands" class="md-tabs__link md-tabs__link--active">
+          Commands
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../hosting/config/" title="Hosting" class="md-tabs__link">
+          Hosting
+        </a>
+      
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+      
+      <main class="md-main">
+        <div class="md-main__inner md-grid" data-md-component="container">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    <nav class="md-nav md-nav--primary" data-md-level="0">
+  <label class="md-nav__title md-nav__title--site" for="__drawer">
+    <a href="../.." title="NabBot" class="md-nav__button md-logo">
+      
+        <img src="../../assets/images/icon.png" width="48" height="48">
+      
+    </a>
+    NabBot
+  </label>
+  
+    <div class="md-nav__source">
+      
+
+
+  
+
+
+  <a href="https://github.com/NabDev/NabBot" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#__github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../.." title="Home" class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../changelog/" title="Changelog" class="md-nav__link">
+      Changelog
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../install/" title="Install Guide" class="md-nav__link">
+      Install Guide
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../permissions/" title="Permissions" class="md-nav__link">
+      Permissions
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../faq/" title="FAQ" class="md-nav__link">
+      FAQ
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+    
+    <label class="md-nav__link" for="nav-6">
+      Features
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-6">
+        Features
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/" title="Overview" class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/autoroles/" title="Autoroles" class="md-nav__link">
+      Autoroles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/groups/" title="Groups" class="md-nav__link">
+      Groups
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../features/watchlist/" title="Watchlist" class="md-nav__link">
+      Watchlist
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7" checked>
+    
+    <label class="md-nav__link" for="nav-7">
+      Commands
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-7">
+        Commands
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../" title="Overview" class="md-nav__link">
+      Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../admin/" title="Admin commands" class="md-nav__link">
+      Admin commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../calculators/" title="Calculators commands" class="md-nav__link">
+      Calculators commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../general/" title="General commands" class="md-nav__link">
+      General commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../info/" title="Info commands" class="md-nav__link">
+      Info commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../loot/" title="Loot commands" class="md-nav__link">
+      Loot commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../mod/" title="Mod commands" class="md-nav__link">
+      Mod commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../owner/" title="Owner commands" class="md-nav__link">
+      Owner commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../roles/" title="Roles commands" class="md-nav__link">
+      Roles commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../tibia/" title="Tibia commands" class="md-nav__link">
+      Tibia commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../tibiawiki/" title="TibiaWiki commands" class="md-nav__link">
+      TibiaWiki commands
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+    
+      
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="__toc">
+        Timers commands
+      </label>
+    
+    <a href="./" title="Timers commands" class="md-nav__link md-nav__link--active">
+      Timers commands
+    </a>
+    
+      
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#boss" title="boss" class="md-nav__link">
+    boss
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#boss-bosslist" title="boss bosslist" class="md-nav__link">
+    boss bosslist
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boss-list" title="boss list" class="md-nav__link">
+    boss list
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boss-set" title="boss set" class="md-nav__link">
+    boss set
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boss-remove" title="boss remove" class="md-nav__link">
+    boss remove
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#events" title="events" class="md-nav__link">
+    events
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#events-add" title="events add" class="md-nav__link">
+    events add
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-addplayer" title="event addplayer" class="md-nav__link">
+    event addplayer
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-edit" title="event edit" class="md-nav__link">
+    event edit
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#event-edit-description" title="event edit description" class="md-nav__link">
+    event edit description
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-edit-joinable" title="event edit joinable" class="md-nav__link">
+    event edit joinable
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-edit-name" title="event edit name" class="md-nav__link">
+    event edit name
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-edit-slots" title="event edit slots" class="md-nav__link">
+    event edit slots
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-edit-time" title="event edit time" class="md-nav__link">
+    event edit time
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#events-info" title="events info" class="md-nav__link">
+    events info
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-join" title="event join" class="md-nav__link">
+    event join
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-leave" title="event leave" class="md-nav__link">
+    event leave
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-make" title="event make" class="md-nav__link">
+    event make
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-participants" title="event participants" class="md-nav__link">
+    event participants
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-remove" title="event remove" class="md-nav__link">
+    event remove
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-removeplayer" title="event removeplayer" class="md-nav__link">
+    event removeplayer
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-subscribe" title="event subscribe" class="md-nav__link">
+    event subscribe
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-unsubscribe" title="event unsubscribe" class="md-nav__link">
+    event unsubscribe
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#remindme" title="remindme" class="md-nav__link">
+    remindme
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+    
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../tracking/" title="Tracking commands" class="md-nav__link">
+      Tracking commands
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
+    
+    <label class="md-nav__link" for="nav-8">
+      Hosting
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-8">
+        Hosting
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../hosting/config/" title="Configuration" class="md-nav__link">
+      Configuration
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../hosting/messages/" title="Messages" class="md-nav__link">
+      Messages
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../hosting/cogs/" title="Cogs" class="md-nav__link">
+      Cogs
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#boss" title="boss" class="md-nav__link">
+    boss
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#boss-bosslist" title="boss bosslist" class="md-nav__link">
+    boss bosslist
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boss-list" title="boss list" class="md-nav__link">
+    boss list
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boss-set" title="boss set" class="md-nav__link">
+    boss set
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#boss-remove" title="boss remove" class="md-nav__link">
+    boss remove
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#events" title="events" class="md-nav__link">
+    events
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#events-add" title="events add" class="md-nav__link">
+    events add
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-addplayer" title="event addplayer" class="md-nav__link">
+    event addplayer
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-edit" title="event edit" class="md-nav__link">
+    event edit
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#event-edit-description" title="event edit description" class="md-nav__link">
+    event edit description
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-edit-joinable" title="event edit joinable" class="md-nav__link">
+    event edit joinable
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-edit-name" title="event edit name" class="md-nav__link">
+    event edit name
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-edit-slots" title="event edit slots" class="md-nav__link">
+    event edit slots
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-edit-time" title="event edit time" class="md-nav__link">
+    event edit time
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#events-info" title="events info" class="md-nav__link">
+    events info
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-join" title="event join" class="md-nav__link">
+    event join
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-leave" title="event leave" class="md-nav__link">
+    event leave
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-make" title="event make" class="md-nav__link">
+    event make
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-participants" title="event participants" class="md-nav__link">
+    event participants
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-remove" title="event remove" class="md-nav__link">
+    event remove
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-removeplayer" title="event removeplayer" class="md-nav__link">
+    event removeplayer
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-subscribe" title="event subscribe" class="md-nav__link">
+    event subscribe
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#event-unsubscribe" title="event unsubscribe" class="md-nav__link">
+    event unsubscribe
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#remindme" title="remindme" class="md-nav__link">
+    remindme
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                
+                <h1 id="timers-commands">Timers commands<a class="headerlink" href="#timers-commands" title="Permanent link">&para;</a></h1>
+<hr />
+<h2 id="boss">boss<a class="headerlink" href="#boss" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> <code class="codehilite">boss &lt;name&gt;</code> </p>
+<p>Shows the remaining cooldown time for a specific boss.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/boss lloyd</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/boss.png" /></p>
+</details>
+<hr />
+<h3 id="boss-bosslist">boss bosslist<a class="headerlink" href="#boss-bosslist" title="Permanent link">&para;</a></h3>
+<p>Shows a list of supported boss cooldowns.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/boss bosslist</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/boss_bosslist.png" /></p>
+</details>
+<hr />
+<h3 id="boss-list">boss list<a class="headerlink" href="#boss-list" title="Permanent link">&para;</a></h3>
+<p>Shows a list of all your active cooldowns.</p>
+<p>For privacy reasons, only characters matching the tracked world of the current server will be shown.
+To see all your characters, try it on a private message.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/boss list</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/boss_list.png" /></p>
+</details>
+<hr />
+<h3 id="boss-set">boss set<a class="headerlink" href="#boss-set" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">boss set &lt;boss&gt;,&lt;character&gt;</code></p>
+<p>Sets the cooldown for a boss.</p>
+<p>The cooldown is set as if you had just killed the boss.<br />
+You will receive a private message when the cooldown is over.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/boss set kroazur,galarzaa fidera</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/boss_set.png" /><br />
+<em>When the cooldown is over</em><br />
+<img alt="image" src="../../assets/images/commands/timers/boss_timer.png" /></p>
+</details>
+<hr />
+<h3 id="boss-remove">boss remove<a class="headerlink" href="#boss-remove" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">boss remove &lt;boss&gt;,&lt;character&gt;</code><br />
+<strong>Other aliases:</strong> <code class="codehilite">boss clear</code>, <code class="codehilite">boss unset</code></p>
+<p>Removes an active boss cooldown.</p>
+<hr />
+<h2 id="events">events<a class="headerlink" href="#events" title="Permanent link">&para;</a></h2>
+<p><strong>Other aliases:</strong> <code class="codehilite">event</code> </p>
+<p>Shows a list of upcoming and recent events.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/event</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/event.png" /></p>
+</details>
+<hr />
+<h3 id="events-add">events add<a class="headerlink" href="#events-add" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">events add &lt;starts in&gt; &lt;name&gt;[,description]</code></p>
+<p>Creates a new event.</p>
+<p><code class="codehilite">starts in</code> is in how much time the event will start from the moment of creation.
+This is done to avoid dealing with different timezones.
+Just say in how many days/hours/minutes the event is starting.</p>
+<p>The time can be set using units such as 'd' for days, 'h' for hours, 'm' for minutes and 'd' for seconds.
+Examples: 1d20h5m, 1d30m, 1h40m, 40m</p>
+<p>The event description is optional, you can also use links like: <code class="codehilite"><span class="p">[</span><span class="n">link</span> <span class="n">title</span><span class="p">](</span><span class="n">link</span> <span class="n">url</span><span class="p">)</span></code>.</p>
+<p>Once the event is created, the id of the event will be returned. This is used for further edits.</p>
+<details class="summary"><summary>Example</summary><p><strong>/event add 5h Inquisition Quest,Remember to bring holy water!</strong><br />
+<strong><code class="codehilite"><span class="p">[</span><span class="n">TibiaWiki</span> <span class="n">link</span><span class="p">](</span><span class="nl">http</span><span class="p">:</span><span class="c1">//tibia.wikia.com/wiki/Inquisition_quest)</span></code></strong><br />
+<img alt="image" src="../../assets/images/commands/timers/event_add.png" /></p>
+</details>
+<hr />
+<h3 id="event-addplayer">event addplayer<a class="headerlink" href="#event-addplayer" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">event addplayer &lt;id&gt; &lt;character&gt;</code><br />
+<strong>Other aliases:</strong> <code class="codehilite">event addchar</code></p>
+<p>Adds a character to an event.</p>
+<p>Only the creator can add characters to an event.
+If the event is joinable, anyone can join an event using <code class="codehilite">event join</code></p>
+<details class="summary"><summary>Examples</summary><p><strong>/event addplayer 136 Nezune</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/event_addchar.png" /></p>
+</details>
+<hr />
+<h3 id="event-edit">event edit<a class="headerlink" href="#event-edit" title="Permanent link">&para;</a></h3>
+<p>Use the subcommands to edit the event's properties.
+Only the creator of the event and mods can edit an event.
+Past events can't be edited.</p>
+<hr />
+<h4 id="event-edit-description">event edit description<a class="headerlink" href="#event-edit-description" title="Permanent link">&para;</a></h4>
+<p><strong>Syntax:</strong> <code class="codehilite"><span class="n">event</span> <span class="n">edit</span> <span class="n">description</span> <span class="o">&lt;</span><span class="kt">id</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">new</span> <span class="n">description</span><span class="p">]</span></code><br />
+<strong>Other aliases:</strong> <code class="codehilite">event edit desc</code>, <code class="codehilite">event edit details</code></p>
+<p>Edits an event's description.</p>
+<p>If no new description is provided initially, the bot will ask for one.<br />
+To remove the description, say <code class="codehilite">blank</code>.</p>
+<hr />
+<h4 id="event-edit-joinable">event edit joinable<a class="headerlink" href="#event-edit-joinable" title="Permanent link">&para;</a></h4>
+<p><strong>Syntax:</strong> <code class="codehilite">event edit joinable &lt;id&gt; [yes/no]</code><br />
+<strong>Other aliases:</strong> <code class="codehilite">event edit open</code></p>
+<p>Changes whether anyone can join an event or only the owner may add people.</p>
+<p>If an event is joinable, anyone can join using <code class="codehilite">event join</code>  .
+Otherwise, the event creator has to add people with <code class="codehilite">event addplayer</code>.</p>
+<hr />
+<h4 id="event-edit-name">event edit name<a class="headerlink" href="#event-edit-name" title="Permanent link">&para;</a></h4>
+<p><strong>Syntax:</strong> <code class="codehilite"><span class="n">event</span> <span class="n">edit</span> <span class="n">name</span> <span class="o">&lt;</span><span class="kt">id</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">new</span> <span class="n">name</span><span class="p">]</span></code><br />
+<strong>Other aliases:</strong> <code class="codehilite">event edit title</code></p>
+<p>Edit's an event's name.</p>
+<p>If no new name is provided initially, the bot will ask for one.</p>
+<hr />
+<h4 id="event-edit-slots">event edit slots<a class="headerlink" href="#event-edit-slots" title="Permanent link">&para;</a></h4>
+<p><strong>Syntax:</strong> <code class="codehilite"><span class="n">event</span> <span class="n">edit</span> <span class="n">slots</span> <span class="o">&lt;</span><span class="kt">id</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">new</span> <span class="n">slots</span><span class="p">]</span></code><br />
+<strong>Other aliases:</strong> <code class="codehilite">event edit size</code></p>
+<p>Edits an event's number of slots</p>
+<p>Slots is the number of characters an event can have. By default this is 0, which means no limit.</p>
+<hr />
+<h4 id="event-edit-time">event edit time<a class="headerlink" href="#event-edit-time" title="Permanent link">&para;</a></h4>
+<p><strong>Syntax:</strong> <code class="codehilite">event edit time &lt;id&gt; [new start time]</code></p>
+<p>Edit's an event's start time.</p>
+<p>If no new time is provided initially, the bot will ask for one.</p>
+<hr />
+<h3 id="events-info">events info<a class="headerlink" href="#events-info" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">events info &lt;id&gt;</code></p>
+<p>Displays an event's info.</p>
+<p>The start time shown in the footer is always displayed in your device's timezone.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/event info 136</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/event_info.png" /></p>
+</details>
+<hr />
+<h3 id="event-join">event join<a class="headerlink" href="#event-join" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">event join &lt;id&gt; &lt;char&gt;</code></p>
+<p>Join an event with a specific character</p>
+<p>You can only join an event with a character at a time.<br />
+Some events may not be joinable and require the creator to add characters themselves.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/event join 136 Galarzaa Fidera</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/event_join.png" /></p>
+</details>
+<hr />
+<h3 id="event-leave">event leave<a class="headerlink" href="#event-leave" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">event leave &lt;id&gt;</code></p>
+<p>Leave an event you were participating in.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/event leave 136</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/event_leave.png" /></p>
+</details>
+<hr />
+<h3 id="event-make">event make<a class="headerlink" href="#event-make" title="Permanent link">&para;</a></h3>
+<p>Creates an event guiding you step by step</p>
+<p>Instead of using confusing parameters, commas and spaces, this commands has the bot ask you step by step.</p>
+<hr />
+<h3 id="event-participants">event participants<a class="headerlink" href="#event-participants" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">event participants &lt;id&gt;</code></p>
+<p>Shows the list of characters participating in this event.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/event participants 190</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/event_participants.png" /></p>
+</details>
+<hr />
+<h3 id="event-remove">event remove<a class="headerlink" href="#event-remove" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">event &lt;id&gt;</code><br />
+<strong>Other aliases:</strong> <code class="codehilite">event delete</code>, <code class="codehilite">event cancel</code></p>
+<p>Deletes or cancels an event.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/event delete 136</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/event_remove.png" /></p>
+</details>
+<hr />
+<h3 id="event-removeplayer">event removeplayer<a class="headerlink" href="#event-removeplayer" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">event removeplayer &lt;id&gt; &lt;character&gt;</code><br />
+<strong>Other aliases:</strong> <code class="codehilite">event removechar</code></p>
+<p>Removes a player from an event.</p>
+<p>Players can remove themselves using <code class="codehilite">event leave</code></p>
+<details class="summary"><summary>Examples</summary><p><strong>/event addplayer 136 Nezune</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/event_removechar.png" /></p>
+</details>
+<hr />
+<h3 id="event-subscribe">event subscribe<a class="headerlink" href="#event-subscribe" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">event subscribe &lt;id&gt;</code><br />
+<strong>Other aliases:</strong> <code class="codehilite">event sub</code></p>
+<p>Subscribe to receive a PM when an event is happening.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/event sub 136</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/event_sub.png" /></p>
+</details>
+<hr />
+<h3 id="event-unsubscribe">event unsubscribe<a class="headerlink" href="#event-unsubscribe" title="Permanent link">&para;</a></h3>
+<p><strong>Syntax:</strong> <code class="codehilite">event unsubscribe id</code><br />
+<strong>Other aliases:</strong> <code class="codehilite">event unsub</code></p>
+<p>Unsubscribes you from an event.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/event unsub 136</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/event_unsub.png" /></p>
+</details>
+<hr />
+<h2 id="remindme">remindme<a class="headerlink" href="#remindme" title="Permanent link">&para;</a></h2>
+<p><strong>Syntax:</strong> <code class="codehilite">remindme &lt;when&gt; &lt;what&gt;</code></p>
+<p>Creates a personal reminder.</p>
+<p>You will be notified in the same channel when the time is over.</p>
+<details class="summary"><summary>Examples</summary><p><strong>/event remindme 2h check old fortress</strong><br />
+<img alt="image" src="../../assets/images/commands/timers/remindme.png" /><br />
+<em>Once the time has passed</em><br />
+<img alt="image" src="../../assets/images/commands/timers/remindme_response.png" />  </p>
+</details>
+                
+                  
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <div class="md-footer-nav">
+      <nav class="md-footer-nav__inner md-grid">
+        
+          <a href="../tibiawiki/" title="TibiaWiki commands" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-back md-footer-nav__button"></i>
+            </div>
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Previous
+                </span>
+                TibiaWiki commands
+              </span>
+            </div>
+          </a>
+        
+        
+          <a href="../tracking/" title="Tracking commands" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Next
+                </span>
+                Tracking commands
+              </span>
+            </div>
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-forward md-footer-nav__button"></i>
+            </div>
+          </a>
+        
+      </nav>
+    </div>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+          <div class="md-footer-copyright__highlight">
+            © Allan Galarza. All rights reserved.<br> <a href="https://www.tibia.com">Tibia</a> is made by <a href="https://www.cipsoft.com/">CipSoft</a>, all Tibia content is copyrighted by <a href="https://www.cipsoft.com/">CipSoft GmbH</a>.
+
+          </div>
+        
+        powered by
+        <a href="https://www.mkdocs.org">MkDocs</a>
+        and
+        <a href="https://squidfunk.github.io/mkdocs-material/">
+          Material for MkDocs</a>
+      </div>
+      
+        
+  <div class="md-footer-social">
+    <link rel="stylesheet" href="../../assets/fonts/font-awesome.css">
+    
+      <a href="https://github.com/NabDev" class="md-footer-social__link fa fa-github"></a>
+    
+      <a href="https://gitlab.com/NabBot" class="md-footer-social__link fa fa-gitlab"></a>
+    
+      <a href="https://discord.me/NabBot" class="md-footer-social__link fa fa-discord"></a>
+    
+  </div>
+
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../../assets/javascripts/application.b41f3d20.js"></script>
+      
+      <script>app.initialize({version:"1.0.4",url:{base:"../.."}})</script>
+      
+    
+    
+      
+        <script>window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)},ga.l=+new Date,ga("create","UA-111299710-2","auto"),ga("set","anonymizeIp",!0),ga("send","pageview");var links=document.getElementsByTagName("a");if(Array.prototype.map.call(links,function(a){a.host!=document.location.host&&a.addEventListener("click",function(){var e=a.getAttribute("data-md-action")||"follow";ga("send","event","outbound",e,a.href)})}),document.forms.search){var query=document.forms.search.query;query.addEventListener("blur",function(){if(this.value){var e=document.location.pathname;ga("send","pageview",e+"?q="+this.value)}})}</script>
+<script async src="https://www.google-analytics.com/analytics.js"></script>
+      
+    
+  </body>
+</html>
