@@ -1143,7 +1143,7 @@ class Tracking(CogUtils):
 
         user = ctx.bot.get_member(name, ctx.guild)
         if user is None:
-            await ctx.error("I don't see any users with that name.")
+            return await ctx.error("I don't see any users with that name.")
         characters = await DbChar.get_chars_by_user(ctx.pool, user.id, worlds=ctx.world)
         if not characters:
             await ctx.error(f"This user doesn't have any registered characters in {ctx.world}.")
