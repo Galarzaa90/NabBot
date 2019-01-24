@@ -17,6 +17,7 @@ log = logging.getLogger("nabbot")
 
 
 async def check_database(pool: asyncpg.pool.Pool):
+    """Checks the current database's version."""
     log.info("Checking database version...")
     try:
         async with pool.acquire() as con:
@@ -34,6 +35,7 @@ async def check_database(pool: asyncpg.pool.Pool):
 
 
 async def drop_tables(pool: asyncpg.pool.Pool):
+    """Drops all tables and functions from the database."""
     async with pool.acquire() as con:
         log.debug("Dropping tables")
         await con.execute("""
@@ -57,6 +59,7 @@ async def drop_tables(pool: asyncpg.pool.Pool):
 
 
 async def create_database(con: asyncpg.connection.Connection):
+    """Creates NabBot's tables and functions."""
     log.info("Creating tables...")
     for create_query in tables:
         await con.execute(create_query)
@@ -71,6 +74,7 @@ async def create_database(con: asyncpg.connection.Connection):
 
 
 async def set_version(con: asyncpg.connection.Connection, version):
+    """Sets the database's version."""
     await con.execute("""
         INSERT INTO global_property (key, value) VALUES ('db_version',$1)
         ON CONFLICT (key)
@@ -81,6 +85,7 @@ async def set_version(con: asyncpg.connection.Connection, version):
 
 
 async def get_version(con: asyncpg.connection.Connection):
+    """Gets the database's current version."""
     try:
         return await con.fetchval("SELECT value FROM global_property WHERE key = 'db_version'")
     except asyncpg.UndefinedTableError:
@@ -352,9 +357,10 @@ triggers = [
 ]
 
 
-# Legacy SQlite migration
+# Legacy SQLite migration
 # This may be removed in later versions or kept separate
 async def import_legacy_db(pool: asyncpg.pool.Pool, path):
+    """Imports a SQLite database into the PostgreSQL database."""
     if not os.path.isfile(path):
         log.error("Database file doesn't exist or path is invalid.")
         return

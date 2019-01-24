@@ -7,13 +7,16 @@ from logging.handlers import TimedRotatingFileHandler
 import asyncpg
 import click
 
-from cogs.utils.database_migration import check_database, import_legacy_db, drop_tables
+from cogs.utils.database_migration import check_database, drop_tables, import_legacy_db
 from nabbot import NabBot
+
+os.makedirs("logs", exist_ok=True)
 
 # Logging optimization
 logging.logThreads = 0
 logging.logProcesses = 0
 logging._srcfile = None
+
 logging_formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s')
 file_handler = TimedRotatingFileHandler('logs/nabbot', when='midnight')
 file_handler.suffix = "%Y_%m_%d.log"
@@ -56,6 +59,7 @@ def get_uri():
 
 
 async def create_pool(uri, **kwargs) -> asyncpg.pool.Pool:
+    """Creates a connection pool to the specified PostgreSQL server"""
     def _encode_jsonb(value):
         return b'\x01' + json.dumps(value).encode('utf-8')
 
@@ -82,6 +86,7 @@ async def create_pool(uri, **kwargs) -> asyncpg.pool.Pool:
 
 
 def run_bot():
+    """Launches the bot."""
     log.info("Launching bot...")
     loop = asyncio.get_event_loop()
 
@@ -117,6 +122,7 @@ def main(ctx, debug, quiet):
 
 
 async def get_db_name(pool):
+    """Gets the name of the current database."""
     return await pool.fetchval("SELECT current_database()")
 
 
@@ -124,7 +130,7 @@ async def get_db_name(pool):
 def empty():
     """Empties out the database.
 
-    Drops all tables and funcctions from the saved PostgreSQL database.
+    Drops all tables and functions from the saved PostgreSQL database.
     This action is irreversible, so use with caution."""
     loop = asyncio.get_event_loop()
     pool: asyncpg.pool.Pool = loop.run_until_complete(create_pool(get_uri(), command_timeout=60))
