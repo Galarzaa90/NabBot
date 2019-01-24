@@ -30,7 +30,7 @@ All the allied guilds would be added to the same role.
 
 The list of rules can be checked using *[autorole list](../commands/roles.md#autorole-list)*.
 
-![Example rule list](../assets/images/commands/autorole_list.png)
+![Example rule list](../assets/images/commands/roles/autorole_list.png)
 
 ## Applying rules
 Once the rules have been set, NabBot will start enforcing them whenever certain triggers are actioned:

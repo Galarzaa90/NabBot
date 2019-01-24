@@ -18,9 +18,9 @@ The message contains a signature to indicate who wrote the message.
 
 ??? Summary "Example"
     **/adminsmessage**  
-    ![image](../assets/images/commands/admins_message_1.png)  
+    ![image](../assets/images/commands/owner/admins_message_1.png)  
     **After typing the message.**  
-    ![image](../assets/images/commands/admins_message_2.png)
+    ![image](../assets/images/commands/owner/admins_message_2.png)
 
 ----
 
@@ -39,7 +39,7 @@ To show the results of the last command, use `#!py print(_)`.
 
 ??? Summary "Example"
     **/eval `#!py print(bot.get_member(162060569803751424))`**  
-    ![image](../assets/images/commands/eval.png)
+    ![image](../assets/images/commands/owner/eval.png)
 
 ----
 
@@ -54,7 +54,7 @@ Once the bot has left a server, only a server administrator can add it back.
 
 ??? Summary "Example"
     **/leave 159815897052086272**  
-    ![image](../assets/images/commands/leave.png)
+    ![image](../assets/images/commands/owner/leave.png)
 
 ----
 
@@ -71,7 +71,7 @@ For example, a cog found in `cogs/tibia.py` would be loaded as `cogs.tibia`.
 
 ??? Summary "Example"
     **/load cogs.tibia**  
-    ![image](../assets/images/commands/load.png)
+    ![image](../assets/images/commands/owner/load.png)
 
 ----
 
@@ -93,7 +93,7 @@ Example: `merge Fidera Gladera`
 
 ??? Summary "Example"
     **/merge Fidera Gladera**  
-    ![image](../assets/images/commands/merge.png)
+    ![image](../assets/images/commands/owner/merge.png)
 
 ----
 
@@ -122,7 +122,7 @@ Show's the bot's response times.
 
 ??? Summary "Example"
     **/ping**  
-    ![image](../assets/images/commands/ping.png)
+    ![image](../assets/images/commands/owner/ping.png)
 
 ----
 
@@ -131,7 +131,7 @@ Reloads a cog (module)
 
 ??? Summary "Example"
     **/reload cogs.tibia**  
-    ![image](../assets/images/commands/reload.png)
+    ![image](../assets/images/commands/owner/reload.png)
 
 ----
 
@@ -140,7 +140,7 @@ Reloads the configuration file.
 
 ??? Summary "Example"
     **/reloadconfig**  
-    ![image](../assets/images/commands/reloadconfig.png)
+    ![image](../assets/images/commands/owner/reloadconfig.png)
 
 ----
 
@@ -170,7 +170,7 @@ Values can be sorted by using one of the following values for sort:
 
 ??? Summary "Example"
     **/servers**  
-    ![image](../assets/images/commands/servers.png)
+    ![image](../assets/images/commands/owner/servers.png)
 
 ----
 
@@ -188,7 +188,7 @@ If the results are too long to display, a text file is generated and uploaded.
 
 ??? Summary "Example"
     **/sql SELECT * FROM chars WHERE user_id = 162060569803751424**  
-    ![image](../assets/images/commands/sql.png)
+    ![image](../assets/images/commands/owner/sql.png)
 
 ----
 
@@ -202,7 +202,7 @@ Unloads a cog.
 
 ??? Summary "Example"
     **/unload cogs.tibia**  
-    ![image](../assets/images/commands/unload.png)
+    ![image](../assets/images/commands/owner/unload.png)
 
 ----
 
@@ -223,4 +223,4 @@ For every dependency, an emoji indicates if the requirement is met:
 
 ??? Summary "Example"
     **/versions**  
-    ![image](../assets/images/commands/versions.png)
+    ![image](../assets/images/commands/owner/versions.png)

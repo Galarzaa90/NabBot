@@ -2,15 +2,14 @@
 .vscode
 __pycache__
 
-*.db-journal
-
 logs/
 loot/
 token.txt
+postgresql.txt
 
 /data/*
 !/data/loot.db
-!/data/tibia_database.db
+!/data/tibiawiki.db
 !/data/tibia_worlds.json
 !/data/config_template.yml
 /config.yml
@@ -27,3 +26,4 @@ site/
 
 # Virtual Environments
 venv/
+

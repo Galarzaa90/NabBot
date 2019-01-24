@@ -9,11 +9,8 @@ from discord.ext import commands
 from nabbot import NabBot
 from . import config
 from .context import NabCtx
-from .tibia import KNIGHT, DRUID, PALADIN, SORCERER
-
-
-class CannotPaginate(Exception):
-    pass
+from .errors import CannotPaginate
+from .tibia import normalize_vocation
 
 
 class Pages:
@@ -24,12 +21,11 @@ class Pages:
     interface exits automatically.
 
     Based on Rapptz' Paginator: https://github.com/Rapptz/RoboDanny/blob/master/cogs/utils/paginator.py
-    Modified for Nab Bot's needs.
+    Modified for NabBot's needs.
 
     Changes made for NabBot:
     - Removed skip to first and last page, show help, and page select
-    - Added option to add a header before te list
-    -
+    - Added option to add a header before the list
 
     Parameters
     ------------
@@ -75,6 +71,7 @@ class Pages:
 
         # Added for NabBot
         self.header = kwargs.get("header", "")
+        self.show_numbers = kwargs.get("show_numbers", True)
 
         self.current_page = 1
         if ctx.guild is not None:
@@ -104,7 +101,10 @@ class Pages:
         entries = self.get_page(page)
         p = []
         for index, entry in enumerate(entries, 1 + ((page - 1) * self.per_page)):
-            p.append(f'{index}. {entry}')
+            if self.show_numbers:
+                p.append(f'{index}. {entry}')
+            else:
+                p.append(f'{entry}')
 
         if self.maximum_pages > 1:
             if self.show_entry_count:
@@ -115,7 +115,8 @@ class Pages:
             self.embed.set_footer(text=text)
 
         if not self.paginating:
-            self.embed.description = '\n'.join(p)
+            # Added for NabBot
+            self.embed.description = self.header + "\n" + '\n'.join(p)
             return await self.channel.send(embed=self.embed)
 
         if not first:
@@ -123,7 +124,7 @@ class Pages:
             await self.message.edit(embed=self.embed)
             return
 
-        # Added for nabBot
+        # Added for NabBot
         self.embed.description = self.header + "\n" + '\n'.join(p)
         # Original
         # self.embed.description = '\n'.join(p)
@@ -216,17 +217,17 @@ class Pages:
 
 
 class VocationPages(Pages):
-    def __init__(self, ctx: commands.Context, *, entries, vocations, **kwargs):
+    def __init__(self, ctx: NabCtx, *, entries, vocations, **kwargs):
         super().__init__(ctx, entries=entries, **kwargs)
         present_vocations = []
         # Only add vocation filters for the vocations present
-        if any(v.lower() in DRUID for v in vocations):
+        if any(normalize_vocation(v) == "druid" for v in vocations):
             present_vocations.append((config.druid_emoji, self.filter_druids))
-        if any(v.lower() in SORCERER for v in vocations):
+        if any(normalize_vocation(v) == "sorcerer" for v in vocations):
             present_vocations.append((config.sorcerer_emoji, self.filter_sorcerers))
-        if any(v.lower() in PALADIN for v in vocations):
+        if any(normalize_vocation(v) == "paladin" for v in vocations):
             present_vocations.append((config.paladin_emoji, self.filter_paladins))
-        if any(v.lower() in KNIGHT for v in vocations):
+        if any(normalize_vocation(v) == "knight" for v in vocations):
             present_vocations.append((config.knight_emoji, self.filter_knights))
 
         # Only add filters if there's more than one different vocation
@@ -236,7 +237,7 @@ class VocationPages(Pages):
         # Copies the entry list without reference
         self.original_entries = entries[:]
         self.vocations = vocations
-        self.filters = [DRUID, SORCERER, PALADIN, KNIGHT]
+        self.filters = ["druid", "sorcerer", "paladin", "knight"]
         self.current_filter = -1
 
     async def filter_druids(self):
@@ -254,7 +255,7 @@ class VocationPages(Pages):
     async def filter_vocation(self, vocation):
         if vocation != self.current_filter:
             self.current_filter = vocation
-            self.entries = [c for c, v in zip(self.original_entries, self.vocations) if v.lower() in self.filters[vocation]]
+            self.entries = [c for c, v in zip(self.original_entries, self.vocations) if normalize_vocation(v) in self.filters[vocation]]
         else:
             self.current_filter = -1
             self.entries = self.original_entries[:]
@@ -310,6 +311,7 @@ class HelpPaginator(Pages):
         super().__init__(ctx, entries=entries, per_page=per_page)
         self.reaction_emojis.append(('\N{WHITE QUESTION MARK ORNAMENT}', self.show_bot_help))
         self.total = len(entries)
+        self.prefix = None
 
     @classmethod
     async def from_cog(cls, ctx, cog):

@@ -1,48 +1,18 @@
 import datetime as dt
 import io
-import logging
-import os
 import re
-import time
-from calendar import timegm
-from logging.handlers import TimedRotatingFileHandler
-from typing import Optional, List, Union, Tuple
+from typing import List, Optional, Tuple, Union, Dict
 
 import discord
+import tibiapy
 from PIL import Image
 from discord.ext import commands
 
 from .config import config
 
-# This is the global online list
+# This is the global online dictionary
 # don't look at it too closely or you'll go blind!
-# characters are added as servername_charactername
-# The list is updated periodically on think() using get_server_online()
-online_characters = {}
-
-# Start logging
-# Create logs folder
-os.makedirs('logs/', exist_ok=True)
-# discord.py log
-discord_log = logging.getLogger('discord')
-discord_log.setLevel(logging.INFO)
-handler = logging.FileHandler(filename='logs/discord.log', encoding='utf-8', mode='a')
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-discord_log.addHandler(handler)
-# NabBot log
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-# Save log to file (info level)
-fileHandler = TimedRotatingFileHandler('logs/nabbot', when='midnight')
-fileHandler.suffix = "%Y_%m_%d.log"
-fileHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
-fileHandler.setLevel(logging.INFO)
-log.addHandler(fileHandler)
-# Print output to console too (debug level)
-consoleHandler = logging.StreamHandler()
-consoleHandler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
-consoleHandler.setLevel(logging.DEBUG)
-log.addHandler(consoleHandler)
+online_characters = {}  # type: Dict[str, List[tibiapy.OnlineCharacter]]
 
 CONTENT_LIMIT = 2000
 DESCRIPTION_LIMIT = 2048
@@ -50,6 +20,23 @@ FIELD_NAME_LIMIT = 256
 FIELD_VALUE_LIMIT = 1024
 FIELD_AMOUNT = 25
 EMBED_LIMIT = 6000
+
+
+class CogUtils:
+    """Helper class for Cogs, defines a tag to use in logging."""
+    @property
+    def tag(self) -> str:
+        """
+        Gets the cog's logging tag, composed of the cog's name between brackets, e.g. [Tracking]
+        """
+        return self.get_tag()
+
+    @classmethod
+    def get_tag(cls) -> str:
+        """
+            Gets the cog's logging tag, composed of the cog's name between brackets, e.g. [Tracking]
+        """
+        return f"[{cls.__name__}]"
 
 
 def clean_string(ctx: commands.Context, string: str) -> str:
@@ -111,18 +98,6 @@ def get_region_string(region: discord.VoiceRegion) -> str:
                "vip-amsterdam": "🇳🇱Amsterdam (VIP)",
                }
     return regions.get(str(region), str(region))
-
-
-def get_local_timezone() -> int:
-    """Returns the server's local time zone
-
-    :return: The UTC offset of the host's timezone.
-    """
-    # Getting local time and GMT
-    t = time.localtime()
-    u = time.gmtime(time.mktime(t))
-    # UTC Offset
-    return (timegm(t) - timegm(u)) / 60 / 60
 
 
 def most_frequent_color(image: Union[Image.Image, bytes]) -> Tuple[int, int, int]:
@@ -256,8 +231,8 @@ def is_numeric(s: str) -> bool:
         return False
 
 
-def join_list(_list: List, separator: str, end_separator: str) -> str:
-    """Joins elements in a list, using a different sepaator for the last item.
+def join_list(_list: List, separator: str = ", ", end_separator: str = " and ") -> str:
+    """Joins elements in a list, using a different separator for the last item.
 
     :param _list: The list to join.
     :param separator: The string that will separate the items.
@@ -291,6 +266,23 @@ def parse_uptime(start_time, long=False) -> str:
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
 
+async def safe_delete_message(message: discord.Message) -> bool:
+    """Attempts to delete a message, failing silently if the bot couldn't delete it.
+
+    This is used as a shortcut to attempt to delete a message when failure is not critical.
+    The bot may fail to delete a message by another user if the bot lacks `Manage Messages` permission.
+    It might also fail if the message no longer exist.
+
+    Note that an exception will still be raised if something other than a message is passed.
+
+    :return: If the message was deleted or not."""
+    try:
+        await message.delete()
+        return True
+    except (discord.Forbidden, discord.NotFound):
+        return False
+
+
 def single_line(string: str) -> str:
     """Turns a multi-line string into a single.
 
@@ -301,38 +293,3 @@ def single_line(string: str) -> str:
     :return: The converted string.
     """
     return string.replace("\r\n", " ").replace("\n", " ")
-
-
-class BadTime(commands.BadArgument):
-    pass
-
-
-class TimeString:
-    def __init__(self, argument):
-        compiled = re.compile(r"(?:(?P<days>\d+)d)?(?:(?P<hours>\d+)h)?(?:(?P<minutes>\d+)m)?(?:(?P<seconds>\d+)s)?")
-        self.original = argument
-        match = compiled.match(argument)
-        if match is None or not match.group(0):
-            raise BadTime("That's not a valid time, try something like this: 1d7h or 4h20m")
-
-        self.seconds = 0
-        days = match.group('days')
-        if days is not None:
-            self.seconds += int(days) * 86400
-        hours = match.group('hours')
-        if hours is not None:
-            self.seconds += int(hours) * 3600
-        minutes = match.group('minutes')
-        if minutes is not None:
-            self.seconds += int(minutes) * 60
-        seconds = match.group('seconds')
-        if seconds is not None:
-            self.seconds += int(seconds)
-
-        if self.seconds < 0:
-            raise BadTime("I can't go back in time.")
-
-        if self.seconds > (60*60*24*30):
-            raise BadTime("That's a bit too far in the future... Try less than 30 days.")
-
-

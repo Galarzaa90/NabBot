@@ -22,22 +22,9 @@ The bot shows the total loot value and a list of the items detected, separated i
 
 ??? Summary "Example"
     **/loot** (attached image)  
-    ![image](../assets/images/commands/loot_input.png)  
-    ![image](../assets/images/commands/loot.png)  
+    ![image](../assets/images/commands/loot/loot_input.png)  
+    ![image](../assets/images/commands/loot/loot.png)  
 
----- 
-
-### loot add
-**Syntax:** `loot add <item>`
-
-Adds an image to an existing loot item in the database.
-
-----
-
-### loot new
-**Syntax:** `loot new <item>,<group>`
-
-Adds a new item to the loot database.
 
 ----
 
@@ -47,26 +34,6 @@ Shows the meaning of the overlayed icons.
 
 ??? Summary "Example"
     **/loot legend**   
-    ![image](../assets/images/commands/loot_legend.png)
-
-----
-
-### loot remove
-**Syntax:** `loot remove <item>`
-
-Adds an image to an existing loot item in the database.
-
-----
-
-### loot show
-**Syntax:** `loot show <item>`
-
-Shows item info from the loot database.
-
-----
-
-### loot update
-
-Updates the entire loot database.
+    ![image](../assets/images/commands/loot/loot_legend.png)
 
 ----

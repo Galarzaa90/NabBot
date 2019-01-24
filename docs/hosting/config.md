@@ -57,7 +57,7 @@ Note that the bot will always answering by being mentioned, e.g. `@NabBot help`,
 
 It's recommended to keep this list as short as possible, and to make sure it does not overlap with the command prefix of other bots.
 
-This setting can be overriden on a per-server basis by using the command [settings](../commands/settings.md#settings-prefix)
+This setting can be overriden on a per-server basis by using the command [settings](../commands/admin.md#settings-prefix)
     
 ## Extra cogs
 For more information, see [Cogs](cogs.md)
@@ -105,10 +105,6 @@ online_scan_interval: 40
 
 # Delay in between player death checks in seconds
 death_scan_interval: 15
-
-# Delay between each tracked world's highscore check and delay between pages scan
-highscores_delay: 45
-highscores_page_delay: 10
 
 # Delay between retries when there's a network error in seconds
 network_retry_delay: 1
@@ -191,4 +187,5 @@ elemental_emojis:
   ice: ❄
   death: 💀
   holy: 🔱
+  poison: 🐍
 ```

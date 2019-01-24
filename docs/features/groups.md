@@ -26,7 +26,7 @@ If the user is not in the group, he will join it. If the user is already in the 
 
 Users can see a list of available groups using [group list](../commands/roles.md#group-list):
 
-![Example group list](../assets/images/commands/group_list.png)
+![Example group list](../assets/images/commands/roles/group_list.png)
 
 ## Suggested uses
 Here are some example uses for groups:

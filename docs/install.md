@@ -1,6 +1,12 @@
 # Installation Guide
+
+!!! info
+    This information is only for users hosting NabBot on their own.
+    If you just invited NabBot to your server, you don't need to read this.
+
 ## Installing requirements
-In order to run NabBot, you need to install two things: [git](https://git-scm.com/) and [Python 3.6](https://www.python.org/).
+In order to run NabBot, you need to install three things:
+[git](https://git-scm.com/), [Python 3.6+](https://www.python.org/) and [PostgreSQL 10+](https://www.postgresql.org/)
 
 When installing on Windows, make sure that you select the option to add Python to `PATH`.
 
@@ -11,6 +17,20 @@ Once the correct command has been found, open a terminal window on NabBot's root
 ```shell
 python -m pip install -U -r requirements.txt
 ```
+
+## Installing PostgreSQL
+Since v2.0.0, NabBot uses PostgreSQL instead of SQLite for data storage. This means you must be running a [PostgreSQL](https://www.postgresql.org/) service.
+It is recommended to run it on the same machine.
+
+Once it is installed and running, you must create a database and a user for NabBot to access.
+You can use the default `root` user, but this is not recommended.
+
+You can create them using any tool you want. Here's an example using `psql`:
+
+```sql
+CREATE ROLE nabbot WITH LOGIN PASSWORD 'hunter2';
+CREATE DATABASE nabbot OWNER nabbot;
+``` 
 
 ## Creating an Application
 In order to run a Discord bot, you need to create a new application.
@@ -24,12 +44,36 @@ In order to run a Discord bot, you need to create a new application.
 
 !!! warning
     Your token is secret, never expose it to anyone. Anyone with access to your token can run a bot as you,
-    compromising your account if they break discord's Terms of Service
+    compromising your account.  
+    If Discord's Terms of Service are broken using your bot, your account will pay the consequences.
 
 ## Running your bot
-The first time you run `nabbot.py`, you will be asked for a token. Here's where you will use the token given on the App page.
+To run your bot, you need to execute `launcher.py`.
+The first time you run NabBot, you will be asked for your connection credentials to PostgreSQL.
+Here's where you will provide the information created earlier.
+
+After that, you will be asked for your token. Here's where you will use the token given on the App page.
 
 Once you entered the token, the bot will log in. You should see a dialog showing that the bot is now online.
+
+## Migrating from v1.x.x
+If you were running a previous version of NabBot before and you want to migrate your data, you need to run the migrate console command.
+
+```cmd
+python launcher.py migrate
+```
+
+By default, it will look for the database in the path `data/users.db`, but you can provide a different path using the `--path` argument:
+
+```cmd
+python launcher.py migrate --path data/database-backup.db
+```
+
+Depending on the size of your previous database, this may take a couple of minutes.
+
+!!! warning
+    Doing this will delete all the data currently found in your **PostgreSQL** database.  
+    Your **SQLite** data will be unaffected by this operation.
 
 ## Inviting your bot
 To invite your bot to your server, you need to use the authentication URL. Here's where your **Client ID** is used.
@@ -48,8 +92,8 @@ Depending on your privacy settings, you (or the owner of the server) should have
 ## Initial configuration
 In order for the bot to have access to most of its features, you must configure the world the server tracks.
 
-Use the command [settings world](commands/settings.md#settings-world), for example: `/settings world Gladera`. Then the bot will ask for confirmation.
-Once accepted, users can start registering their chars using `\im charName`.
+Use the command [settings world](commands/admin.md#settings-world), for example: `/settings world Gladera`. Then the bot will ask for confirmation.
+Once accepted, users can start registering their characters using `/im charName`.
 
 By default, events, level ups and deaths announcements are made on the highest channel available for the bot.
 In order to customize this, you can use the following commands: `/settings levelschannel`.
@@ -62,4 +106,4 @@ The bot will give longer responses here and it will delete any message that is n
 Additionally, you can create a channel named **#server-log**. Whenever a user registers characters, they will be shown here, along with their levels and guilds.
 Other changes are shown here, such as users leaving, getting banned, changing display names and more.
 
-Further customization can be done on a per-server basis by using the command [settings](commands/settings.md#settings).
+Further customization can be done on a per-server basis by using the command [settings](commands/admin.md#settings).

@@ -6,21 +6,6 @@ Commands related to Tibia, gathered from information present in Tibia.com
     Parameters are enclosed with `< >`.   
     Optional parameters are enclosed in brackets `[]`.
 
-## blessings
-**Usage:** `blessings <level>`  
-**Other aliases:** `bless`
-
-Calculates the price of blessings at a specific level.
-
-For players over level 100, it will also display the cost of the Blessing of the Inquisition.
-
-??? Summary "Examples"
-    **/bless 90**  
-    ![image](../assets/images/commands/bless_1.png)  
-    **/bless 140**  
-    ![image](../assets/images/commands/bless_2.png)
-
-----
 
 ## deaths
 **Syntax:** `deaths [player]`  
@@ -28,14 +13,17 @@ For players over level 100, it will also display the cost of the Blessing of the
 
 Shows a character's recent deaths.
 
-If this discord server is tracking a tibia world, it will show deaths registered to the character.
-Additionally, if no name is provided, all recent deaths will be shown.
+If this discord server is tracking a tibia world, it will also show previous registered deaths.
+
+Additionally, if no name is provided, relevant recent deaths will be shown.
 
 ??? Summary "Examples"
-    **/deaths Xzilla**  
-    ![image](../assets/images/commands/deaths_1.png)  
+    **/deaths Xzilla** (Character's owner is visible to command user)  
+    ![image](../assets/images/commands/tibia/deaths_1.png)  
     **/deaths**  
-    ![image](../assets/images/commands/deaths_2.png)
+    ![image](../assets/images/commands/tibia/deaths_2.png)  
+    **/deaths Robinsaurus Rex** (Character not registered or owner not visible)  
+    ![image](../assets/images/commands/tibia/deaths_3.png)
 
 ----
 
@@ -47,7 +35,7 @@ Shows the latest deaths caused by a specific monster.
 
 ??? Summary "Example"
     **/deaths mob Lloyd**  
-    ![image](../assets/images/commands/deaths_mob.png)
+    ![image](../assets/images/commands/tibia/deaths_mob.png)
 
 ----
 
@@ -58,7 +46,7 @@ Shows recent deaths by all characters registered to a user.
 
 ??? Summary "Example"
     **/deaths user Nezune**  
-    ![image](../assets/images/commands/deaths_stats.png)
+    ![image](../assets/images/commands/tibia/deaths_user.png)
 
 ----
 
@@ -73,7 +61,7 @@ To see a shorter period, use `week` or `month` as a parameter.
 
 ??? Summary "Example"
     **/deaths stats**  
-    ![image](../assets/images/commands/deaths_stats.png)
+    ![image](../assets/images/commands/tibia/deaths_stats.png)
 
 ----
 
@@ -86,7 +74,7 @@ It also shows whether the guild has a guildhall or not, and their funding date.
 
 ??? summary "Examples"
     **/guild Redd Alliance**  
-    ![image](../assets/images/commands/guild.png)
+    ![image](../assets/images/commands/tibia/guild.png)
 
 ----
 
@@ -100,7 +88,7 @@ It shows their description, homepage, guildhall, number of members and more.
 
 ??? summary "Examples"
     **/guild info Bald Dwarfs**  
-    ![image](../assets/images/commands/guildinfo.png)
+    ![image](../assets/images/commands/tibia/guild_info.png)
 
 ----
 
@@ -115,25 +103,46 @@ Online members have an icon next to their name.
 
 ??? summary "Examples"
     **/guild members Redd Alliance**  
-    ![image](../assets/images/commands/guildmembers.png)
+    ![image](../assets/images/commands/tibia/guild_members.png)
 
 ----
 
 ## highscores
-**Syntax**: `highscores [world,category[,vocation]]`
+**Syntax**: `highscores [world,][category][,vocation]`
 
 Shows the entries in the highscores.
-If the server is already tracking a world, there's no need to specify a world.
-Available categories are: experience, magic, shielding, distance, sword, club, axe, fist and fishing.
+
+If the server is already tracking a world, the tracked world will be used if no world is specified.
+
+Available categories are: experience, magic, shielding, distance, sword, club, axe, fist, fishing,
+achievements and loyalty.  
 Available vocations are: all, paladin, druid, sorcerer, knight.
 
 ??? summary "Examples"
     **/highscores**  
-    ![image](../assets/images/commands/highscores1.png)  
+    ![image](../assets/images/commands/tibia/highscores1.png)  
     **/highscores shielding**  
-    ![image](../assets/images/commands/highscores2.png)  
+    ![image](../assets/images/commands/tibia/highscores2.png)  
     **/highscores antica,magic,paladin**  
-    ![image](../assets/images/commands/highscores3.png)
+    ![image](../assets/images/commands/tibia/highscores3.png)
+
+----
+
+### highscores global
+**Syntax**: `highscores global [category]`
+
+Shows the combined highscores of all worlds.
+
+Ties are grouped under the same rank and ordered alphabetically.
+
+Only the following categories are available: experience, sword, axe, club, distance, shielding, fist, fishing,
+magic, magic_knights, magic_paladins, loyalty, achievements.
+
+??? summary "Examples"
+    **/highscores global**  
+    ![image](../assets/images/commands/tibia/highscores_global_1.png)  
+    **/highscores global magic**  
+    ![image](../assets/images/commands/tibia/highscores_global_2.png)  
 
 ----
 
@@ -150,9 +159,11 @@ To specify a world, add the world at the end separated with a comma.
 
 ??? Summary "Examples"
     **/house darashia 8, flat 03**  
-    ![image](../assets/images/commands/house_1.png)  
+    ![image](../assets/images/commands/tibia/house_1.png)  
     **/house caveman shelter,calmera**  
-    ![image](../assets/images/commands/house_2.png)
+    ![image](../assets/images/commands/tibia/house_2.png)
+    **/house the tibianic** (On PM or server not tracking world)  
+    ![image](../assets/images/commands/tibia/house_3.png)
 
 ----
 
@@ -170,9 +181,9 @@ by the users of this discord server.
 
 ??? Summary "Examples"
     **/levels**  
-    ![image](../assets/images/commands/levels_1.png)  
+    ![image](../assets/images/commands/tibia/levels_1.png)  
     **/levels Dre amz**  
-    ![image](../assets/images/commands/levels_2.png)
+    ![image](../assets/images/commands/tibia/levels_2.png)
 
 ----
 
@@ -183,7 +194,7 @@ Shows a user's recent level ups on their registered characters.
 
 ??? Summary "Examples"
     **/levels user Nezune**  
-    ![image](../assets/images/commands/levels_user.png)
+    ![image](../assets/images/commands/tibia/levels_user.png)
 
 ----
 
@@ -196,9 +207,9 @@ If no id is supplied, a list of recent articles is shown, otherwise, a snippet o
 
 ??? Summary "Examples"
     **/news**    
-    ![image](../assets/images/commands/news_1.png)  
+    ![image](../assets/images/commands/tibia/news_1.png)  
     **/news 4400**  
-    ![image](../assets/images/commands/news_2.png)
+    ![image](../assets/images/commands/tibia/news_2.png)
 
 ----
 
@@ -221,13 +232,13 @@ Example: `searchworld Cachero,Calmera`
 
 ??? Summary "Examples"
     **/searchworld Galarzaa Fidera**  
-    ![image](../assets/images/commands/searchworld_1.png)  
+    ![image](../assets/images/commands/tibia/searchworld_1.png)  
     **/searchworld Nezune,Calmera**  
-    ![image](../assets/images/commands/searchworld_2.png)  
+    ![image](../assets/images/commands/tibia/searchworld_2.png)  
     **/searchworld 600,700**  
-    ![image](../assets/images/commands/searchworld_3.png)  
+    ![image](../assets/images/commands/tibia/searchworld_3.png)  
     **/searchworld 70**  
-    ![image](../assets/images/commands/searchworld_4.png)
+    ![image](../assets/images/commands/tibia/searchworld_4.png)
 
 ----
 
@@ -245,51 +256,13 @@ This command can be used in three ways:
 
 ??? summary "Examples"
     **/share 300**  
-    ![image](../assets/images/commands/share_1.png)  
+    ![image](../assets/images/commands/tibia/share_1.png)  
     **/share Galarzaa Fidera**  
-    ![image](../assets/images/commands/share_2.png)  
+    ![image](../assets/images/commands/tibia/share_2.png)  
     **/share Galarzaa Fidera, Nezune, Xzilla**  
-    ![image](../assets/images/commands/share_3.png)  
+    ![image](../assets/images/commands/tibia/share_3.png)  
     **/share Galarzaa Fidera, Topheroo**  
-    ![image](../assets/images/commands/share_4.png)
-
-----
-
-## stamina
-**Syntax:** `stamina <current stamina>`
-
-Tells you the time you have to wait to restore stamina.
-
-To use it, you must provide your current stamina, in this format: `hh:mm`.
-The bot will show the time needed to reach full stamina if you were to start sleeping now.
-
-The footer text shows the time in your timezone where your stamina would be full.
-
-??? Summary "Examples"
-    **/stamina 39:00**  
-    ![image](../assets/images/commands/stamina_1.png)  
-    **/stamina 28:32**  
-    ![image](../assets/images/commands/stamina_2.png)
-
-----
-
-## stats
-**Syntax:** `stats <level>,<vocation` or `stats <character>`
-
-Calculates character stats based on vocation and level.
-        
-Shows hitpoints, mana, capacity, total experience and experience to next level.
-
-This command can be used in two ways:
-
-1. To calculate the stats for a certain level and vocation. (`stats <level>,<vocation>`)
-2. To calculate the stats of a character. (`stats <character>`)
-
-??? Summary "Examples"
-    **/stats 543,elder druid**  
-    ![image](../assets/images/commands/stats_1.png)  
-    **/stats Galarzaa Fidera**  
-    ![image](../assets/images/commands/stats_2.png)
+    ![image](../assets/images/commands/tibia/share_4.png)
 
 ----
 
@@ -308,9 +281,9 @@ Characters must be registered in order to see their timelines.
 
 ??? Summary "Examples"
     **/timeline**  
-    ![image](../assets/images/commands/timeline_1.png)  
+    ![image](../assets/images/commands/tibia/timeline_1.png)  
     **/timeline Fila Bro**  
-    ![image](../assets/images/commands/timeline_2.png)
+    ![image](../assets/images/commands/tibia/timeline_2.png)
 
 ----
 
@@ -321,7 +294,7 @@ Shows a users's recent level ups and deaths on their characters.
 
 ??? Summary "Examples"
     **/timeline user Pepyto 🍌**  
-    ![image](../assets/images/commands/timeline_user.png)
+    ![image](../assets/images/commands/tibia/timeline_user.png)
 
 ----
 
@@ -334,7 +307,7 @@ Server moderators can manage displayed timezones using the subcommands.
 
 ??? Summary "Examples" 
     **/time**  
-    ![image](../assets/images/commands/time.png)
+    ![image](../assets/images/commands/tibia/time.png)
 
 ----
 
@@ -350,7 +323,7 @@ Only Server Moderators can use this command.
 
 ??? Summary "Examples" 
     **/time add berlin**  
-    ![image](../assets/images/commands/time_add.png)
+    ![image](../assets/images/commands/tibia/time_add.png)
 
 ----
 
@@ -361,7 +334,7 @@ Only Server Moderators can use this command.
 
 ??? Summary "Examples" 
     **/time list**  
-    ![image](../assets/images/commands/time_list.png)
+    ![image](../assets/images/commands/tibia/time_list.png)
 
 ----
 
@@ -392,17 +365,17 @@ Additionally, if the character is in the highscores, their ranking will be shown
 
 ??? summary "Examples"
     **/whois Galarzaa Fidera**  
-    ![image](../assets/images/commands/whois_1.png)  
+    ![image](../assets/images/commands/tibia/whois_1.png)  
     In this case, it matched *Galarzaa Fidera* to a character, and that character is registered to user @Galarzaa  
     **/whois Galarzaa**  
-    ![image](../assets/images/commands/whois_2.png)  
+    ![image](../assets/images/commands/tibia/whois_2.png)  
     In this case, Galarzaa matches the discord user @Galarzaa, so a list of his registered characters is displayed.  
     However, it also matches the character *Galarzaa* which may not be necessarily related to the user.  
     **/whois Bichæo**  
-    ![image](../assets/images/commands/whois_3.png)  
+    ![image](../assets/images/commands/tibia/whois_3.png)  
     In this case, the name only matches a user, and since no character was matched, their highest level registered character is shown.  
     **/whois 115042985778872322**
-    ![image](../assets/images/commands/whois_4.png)      
+    ![image](../assets/images/commands/tibia/whois_4.png)      
     In this case, a user id was provided, and it searched for the user with that id.
 
 ----
@@ -416,10 +389,10 @@ Shows information like PvP type, online count, server location, vocation distrib
 
 ??? Summary "Examples"
     **/world Fidera**    
-    ![image](../assets/images/commands/world_1.png)  
+    ![image](../assets/images/commands/tibia/world_1.png)  
     **/world Ferobra**  
-    ![image](../assets/images/commands/world_2.png)
- 
+    ![image](../assets/images/commands/tibia/world_2.png)
+
 ----
 
 ## worlds
@@ -436,8 +409,8 @@ You can pass a list of parameters separated by commas to change the sorting or f
 
 ??? Summary "Examples"
     **/worlds**  
-    ![image](../assets/images/commands/worlds_1.png)  
+    ![image](../assets/images/commands/tibia/worlds_1.png)  
     **/worlds northamerica,online,descending**  
-    ![image](../assets/images/commands/worlds_2.png)  
+    ![image](../assets/images/commands/tibia/worlds_2.png)  
     **/worlds southamerica,openpvp,online,descending**  
-    ![image](../assets/images/commands/worlds_3.png)    
+    ![image](../assets/images/commands/tibia/worlds_3.png)    

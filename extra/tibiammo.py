@@ -3,8 +3,8 @@ from discord.ext import commands
 
 from nabbot import NabBot
 from cogs.utils.context import NabCtx
-from cogs.utils.tibia import get_guild, NetworkError, get_character_url
-
+from cogs.utils.tibia import get_guild
+from cogs.utils.errors import NetworkError
 
 # This cog has a specific use, and probably has no use for anyone else but me
 # This is part of the repository to serve as an example of custom cogs
@@ -35,7 +35,7 @@ class TibiaMMO:
         return role is not None
 
     @commands.command()
-    async def postguild(self, ctx: NabCtx, guild, invite=None, reddit=None, *, member: discord.Member=None):
+    async def postguild(self, ctx: NabCtx, guild, invite=None, reddit=None, *, member: discord.Member = None):
         """Creates an advertisement post on the reddit guilds channel
 
         Parameters:
@@ -49,11 +49,11 @@ class TibiaMMO:
             try:
                 guild = await get_guild(guild)
                 if guild is None:
-                    ctx.send(f"I couldn't find any guild named '**{guild}**'. "
-                             f"Please use quotes for names with multiple words.", delete_after=10)
+                    await ctx.send(f"I couldn't find any guild named '**{guild}**'. "
+                                   f"Please use quotes for names with multiple words.", delete_after=10)
                     return
             except NetworkError:
-                ctx.send("I'm having network issues, please try later.", delete_after=10)
+                await ctx.send("I'm having network issues, please try later.", delete_after=10)
                 return
 
         channel: discord.TextChannel = ctx.guild.get_channel(GUILDS_CHANNEL)
@@ -63,9 +63,9 @@ class TibiaMMO:
 
         embed = discord.Embed(title=f"{guild.name} ({guild.world})", description=guild.description,
                               colour=discord.Colour.blurple(), url=guild.url)
-        embed.set_thumbnail(url=guild.logo)
-        embed.add_field(name="In-game contact", value=f"[{guild.members[0]['name']}]"
-                                                      f"({get_character_url(guild.members[0]['name'])})")
+        embed.set_thumbnail(url=guild.logo_url)
+        embed.add_field(name="In-game contact", value=f"[{guild.members[0].name}]"
+                                                      f"({guild.members[0].url})")
         if member is not None:
             embed.add_field(name="Discord contact", value=member.mention)
         if not invite or invite != "-":

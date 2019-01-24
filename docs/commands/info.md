@@ -9,7 +9,7 @@ Shows basic information about the bot.
 
 ??? Summary "Examples"
     **/about**  
-    ![image](../assets/images/commands/about.png)
+    ![image](../assets/images/commands/info/about.png)
 
 ----
 
@@ -18,7 +18,7 @@ Shows advanced information about the bot.
 
 ??? Summary "Examples"
     **/botinfo**  
-    ![image](../assets/images/commands/botinfo.png)
+    ![image](../assets/images/commands/info/botinfo.png)
 
 ---
 
@@ -33,7 +33,32 @@ For more details, use `help`.
 
 ??? Summary "Examples"
     **/commands**  
-    ![image](../assets/images/commands/commands.png)
+    ![image](../assets/images/commands/info/commands.png)
+
+---
+
+## commandstats
+
+Shows command statistics.
+
+---
+
+### commandsats global
+
+Shows command statistics of all servers.
+
+---
+
+## channelinfo
+**Syntax:** `channelinfo [channel]`
+
+Shows information about a channel.
+
+If no channel is specified, the information for the current channel is shown.
+
+??? Summary "Examples"
+    **/channelinfo**  
+    ![image](../assets/images/commands/info/commands.png)
 
 ---
 
@@ -50,9 +75,9 @@ Only emojis in the current servers can be checked.
 
 ??? Summary "Examples"
     **/emojiinfo**  
-    ![image](../assets/images/commands/emojiinfo_1.png)  
+    ![image](../assets/images/commands/info/emojiinfo_1.png)  
     **/emojiinfo :energyDamage:**  
-    ![image](../assets/images/commands/emojiinfo_2.png)
+    ![image](../assets/images/commands/info/emojiinfo_2.png)
 
 ---
 
@@ -84,11 +109,11 @@ Check the command's help to see them.
 
 ??? Summary "Examples"
     **/help**  
-    ![image](../assets/images/commands/help_1.png)  
+    ![image](../assets/images/commands/info/help_1.png)  
     **/help guild**  
-    ![image](../assets/images/commands/help_2.png)  
+    ![image](../assets/images/commands/info/help_2.png)  
     **/help guild info**  
-    ![image](../assets/images/commands/help_3.png)
+    ![image](../assets/images/commands/info/help_3.png)
 
 ----
 
@@ -101,7 +126,7 @@ The bot owner can additionally check the information of a specific server where 
 
 ??? Summary "Examples"
     **/serverinfo**  
-    ![image](../assets/images/commands/serverinfo.png)
+    ![image](../assets/images/commands/info/serverinfo.png)
 
 ----
 
@@ -111,7 +136,7 @@ Shows how long the bot has been running.
 
 ??? Summary "Examples"
     **/uptime**  
-    ![image](../assets/images/commands/uptime.png)
+    ![image](../assets/images/commands/info/uptime.png)
 
 ---
 
@@ -132,4 +157,4 @@ About user statuses:
 
 ??? Summary "Examples"
     **/userinfo**  
-    ![image](../assets/images/commands/userinfo.png)
+    ![image](../assets/images/commands/info/userinfo.png)

@@ -1,30 +1,36 @@
 import asyncio
 import calendar
 import datetime as dt
+import logging
 import random
 import re
-import time
-import urllib.parse
+from collections import Counter, defaultdict
 from operator import attrgetter
 from typing import Optional
 
+import asyncpg
 import discord
 import pytz
+import tibiapy
+import tibiawikisql
 from discord.ext import commands
+from tibiapy import Category, GuildHouse, House, HouseStatus, Sex, TransferType, VocationFilter
+from tibiawikisql import models
 
 from nabbot import NabBot
-from .utils import checks
+from .utils import CogUtils, checks, config, errors, get_time_diff, get_user_avatar, is_numeric, \
+    join_list, online_characters, timing
 from .utils.context import NabCtx
-from .utils.database import get_server_property, userDatabase, set_server_property
-from .utils import get_time_diff, join_list, online_characters, get_local_timezone, log, \
-    is_numeric, get_user_avatar, config
-from .utils.messages import html_to_markdown, get_first_image, split_message
-from .utils.pages import Pages, CannotPaginate, VocationPages
-from .utils.tibia import NetworkError, get_character, tibia_logo, get_share_range, get_voc_emoji, get_voc_abb, get_guild, \
-    url_house, get_stats, get_map_area, get_tibia_time_zone, get_world, tibia_worlds, get_world_bosses, get_recent_news, \
-    get_news_article, Character, url_guild, highscore_format, get_character_url, url_character, get_house, \
-    get_voc_abb_and_emoji, get_world_list, get_highscores_tibiadata
-from .utils.tibiawiki import get_rashid_info
+from .utils.database import DbChar, DbDeath, DbLevelUp, get_global_property, get_recent_timeline, get_server_property, \
+    set_global_property
+from .utils.messages import get_first_image, html_to_markdown, split_message
+from .utils.pages import Pages, VocationPages
+from .utils.tibia import HIGHSCORES_FORMAT, HIGHSCORE_CATEGORIES, NabChar, TIBIACOM_ICON, TIBIA_URL, get_character, \
+    get_guild, get_highscores, get_house, get_house_id, get_level_by_experience, get_map_area, get_news_article, \
+    get_rashid_city, get_recent_news, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_abb_and_emoji, \
+    get_voc_emoji, get_world, get_world_bosses, get_world_list, normalize_vocation, tibia_worlds
+
+log = logging.getLogger("nabbot")
 
 
 FLAGS = {"North America": "🇺🇸", "South America": "🇧🇷", "Europe": "🇬🇧"}
@@ -33,42 +39,83 @@ PVP = {"Optional PvP": "🕊️", "Hardcore PvP": "💀", "Open PvP": "⚔",
 TRANSFERS = {"locked": "🔒", "blocked": "⛔"}
 
 
-class Tibia:
+class Tibia(CogUtils):
     """Commands related to Tibia, gathered from information present in Tibia.com"""
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.news_announcements_task = self.bot.loop.create_task(self.scan_news())
 
-    # Commands
-    @commands.command(aliases=['bless'])
-    async def blessings(self, ctx: NabCtx, level: int):
-        """Calculates the price of blessings for a specific level.
+    # region Events
 
-        For player over level 100, it will also display the cost of the Blessing of the Inquisition."""
-        if level < 1:
-            await ctx.send("Very funny... Now tell me a valid level.")
-            return
-        bless_price = max(2000, 200 * (min(level, 120) - 20))
-        mountain_bless_price = max(2000, 200 * (min(level, 150) - 20))
-        inquisition = ""
-        if level >= 100:
-            inquisition = f"\nBlessing of the Inquisition costs **{int(bless_price*5*1.1):,}** gold coins."
-        await ctx.send(f"At that level you will pay **{bless_price:,}** gold coins per blessing for a total of "
-                       f"**{bless_price*5:,}** gold coins.{inquisition}"
-                       f"\nMountain blessings cost **{mountain_bless_price:,}** each, for a total of "
-                       f"**{int(mountain_bless_price*2):,}**.")
+    async def scan_news(self):
+        tag = f"{self.tag}[scan_news]"
+        await self.bot.wait_until_ready()
+        log.info(f"{tag} Task started")
+        while not self.bot.is_closed():
+            try:
+                recent_news = await get_recent_news()
+                if recent_news is None:
+                    await asyncio.sleep(30)
+                    continue
+                log.debug(f"{tag} Checking recent news")
+                last_article = recent_news[0]["id"]
+                last_id = await get_global_property(self.bot.pool, "last_article")
+                await set_global_property(self.bot.pool, "last_article", last_article)
+                # Do not announce anything if this is the first time the task is executed.
+                if last_id is None:
+                    break
+                new_articles = []
+                for article in recent_news:
+                    # Do not post articles older than a week (in case bot was offline)
+                    if int(article["id"]) == last_id or (dt.date.today() - article["date"]).days > 7:
+                        break
+                    fetched_article = await get_news_article(int(article["id"]))
+                    if fetched_article is not None:
+                        new_articles.insert(0, fetched_article)
+                for article in new_articles:
+                    log.info(f"{tag} New article: {article['id']} - {article['title']}")
+                    for guild in self.bot.guilds:
+                        news_channel_id = await get_server_property(self.bot.pool, guild.id, "news_channel", default=0)
+                        if news_channel_id == 0:
+                            continue
+                        channel = self.bot.get_channel_or_top(guild, news_channel_id)
+                        try:
+                            await channel.send("New article posted on Tibia.com",
+                                               embed=self.get_article_embed(article, 1000))
+                        except discord.Forbidden:
+                            log.warning(f"{tag} Missing permissions.")
+                        except discord.HTTPException:
+                            log.warning(f"{tag} Malformed message.")
+                await asyncio.sleep(60 * 60 * 2)
+            except (IndexError, KeyError):
+                log.warning(f"{tag} Error getting recent news")
+                await asyncio.sleep(60*30)
+                continue
+            except errors.NetworkError:
+                await asyncio.sleep(30)
+                continue
+            except asyncio.CancelledError:
+                # Task was cancelled, so this is fine
+                break
+            except Exception as e:
+                log.exception(f"{tag} Exception: {e}")
 
+    # endregion
+
+    # region Commands
+    # TODO: Needs a revision
+    @checks.can_embed()
     @commands.command()
     async def bosses(self, ctx: NabCtx, world=None):
         """Shows predictions for bosses."""
         if world is None and not ctx.is_private and ctx.world:
             world = ctx.world
         elif world is None:
-            await ctx.send("You need to tell me a world's name.")
+            await ctx.error("You need to tell me a world's name.")
             return
         world = world.title()
         if world not in tibia_worlds:
-            await ctx.send("That world doesn't exist.")
+            await ctx.error("That world doesn't exist.")
             return
         bosses = await get_world_bosses(world)
         if type(bosses) is not dict:
@@ -87,13 +134,13 @@ class Tibia:
             embed.add_field(name="High Chance - Last seen", value=fields["High Chance"])
         if fields["Low Chance"]:
             embed.add_field(name="Low Chance - Last seen", value=fields["Low Chance"])
-        if ctx.long:
+        if await ctx.is_long():
             if fields["No Chance"]:
                 embed.add_field(name="No Chance - Expect in", value=fields["No Chance"])
             if fields["Unpredicted"]:
                 embed.add_field(name="Unpredicted - Last seen", value=fields["Unpredicted"])
         else:
-            ask_channel = ctx.ask_channel_name
+            ask_channel = await ctx.ask_channel_name()
             if ask_channel:
                 askchannel_string = " or use #" + ask_channel
             else:
@@ -101,246 +148,114 @@ class Tibia:
             embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
         await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.group(aliases=['deathlist'], invoke_without_command=True, case_insensitive=True)
     async def deaths(self, ctx: NabCtx, *, name: str = None):
         """Shows a character's recent deaths.
 
-        If this discord server is tracking a tibia world, it will show deaths registered to the character.
-        Additionally, if no name is provided, all recent deaths will be shown."""
+        If this discord server is tracking a tibia world, it will also show previous registered deaths.
+
+        Additionally, if no name is provided, relevant recent deaths will be shown."""
         if name is None and ctx.is_lite:
-            return
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
+            return await ctx.error("You must tell me the name of a character.")
 
-        if ctx.is_private:
-            user_servers = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_servers = [ctx.guild]
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None and name is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
+        if ctx.world is None and name is None and not ctx.is_private:
+            return await ctx.error("This server is not tracking any tibia worlds.")
 
-        c = userDatabase.cursor()
         entries = []
-        author = None
-        author_icon = discord.Embed.Empty
-        count = 0
-        now = time.time()
-        show_links = not ctx.long
-        per_page = 20 if ctx.long else 5
-        users_cache = dict()
-        try:
-            if name is None:
-                title = "Latest deaths"
-                c.execute("SELECT char_deaths.level, date, name, user_id, byplayer, killer, world, vocation "
-                          "FROM char_deaths, chars "
-                          "WHERE char_id = id AND char_deaths.level > ? "
-                          "ORDER BY date DESC", (config.announce_threshold,))
-                while True:
-                    row = c.fetchone()
-                    if row is None:
-                        break
-                    if row["world"] not in user_worlds:
-                        continue
-
-                    user = self._get_cached_user_(self, row["user_id"], users_cache, user_servers)
-                    if user is None:
-                        continue
-
-                    count += 1
-                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                    row["user"] = user.display_name
-                    row["emoji"] = get_voc_emoji(row["vocation"])
-                    entries.append("{emoji} {name} (**@{user}**) - At level **{level}** by {killer} - *{time} ago*"
-                                   .format(**row))
-                    if count >= 100:
-                        break
-            else:
-                try:
-                    char = await get_character(name)
-                    if char is None:
-                        await ctx.send("That character doesn't exist.")
-                        return
-                except NetworkError:
-                    await ctx.send("Sorry, I had trouble checking that character, try it again.")
-                    return
-                deaths = char.deaths
-                last_time = now
-                name = char.name
-                voc_emoji = get_voc_emoji(char.vocation)
-                title = "{1} {0} latest deaths:".format(name, voc_emoji)
-                if ctx.guild is not None and char.owner:
-                    owner: discord.Member = ctx.guild.get_member(char.owner)
-                    if owner is not None:
-                        author = owner.display_name
-                        author_icon = owner.avatar_url
-                for death in deaths:
-                    last_time = death.time.timestamp()
-                    death_time = get_time_diff(dt.datetime.now(tz=dt.timezone.utc) - death.time)
-                    if death.by_player and show_links:
-                        killer = f"[{death.killer}]({Character.get_url(death.killer)})"
-                    elif death.by_player:
-                        killer = f"**{death.killer}**"
-                    else:
-                        killer = f"{death.killer}"
-                    entries.append("At level **{0.level}** by {name} - *{time} ago*".format(death, time=death_time,
-                                                                                            name=killer))
-                    count += 1
-
-                c.execute("SELECT id, name FROM chars WHERE name LIKE ?", (name,))
-                result = c.fetchone()
-                if result is not None and not ctx.is_lite:
-                    id = result["id"]
-                    c.execute("SELECT char_deaths.level, date, byplayer, killer "
-                              "FROM char_deaths "
-                              "WHERE char_id = ? AND date < ? "
-                              "ORDER BY date DESC",
-                              (id, last_time))
-                    while True:
-                        row = c.fetchone()
-                        if row is None:
-                            break
-                        count += 1
-                        row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                        entries.append("At level **{level}** by {killer} - *{time} ago*".format(**row))
-                        if count >= 100:
-                            break
-
-            if count == 0:
-                await ctx.send("There are no registered deaths.")
-                return
-        finally:
-            c.close()
+        embed_info = defaultdict(lambda: discord.Embed.Empty)
+        per_page = 20 if await ctx.is_long() else 5
+        if name is None:
+            embed_info["title"] = "☠ Recent deaths"
+            entries = await self.get_recent_deaths(ctx)
+        else:
+            char = await get_character(self.bot, name)
+            if char is None:
+                return await ctx.error("That character doesn't exist.")
+            last_time = await self.get_recent_deaths_from_tibiacom(ctx, char, embed_info, entries)
+            await self.get_recent_deaths_from_database(ctx, name, embed_info, entries, last_time)
+        if not entries:
+            await ctx.send("There are no recent deaths.")
+            return
 
         pages = Pages(ctx, entries=entries, per_page=per_page)
-        pages.embed.title = title
-        pages.embed.set_author(name=author, icon_url=author_icon)
+        pages.embed.title = embed_info["title"]
+        pages.embed.url = embed_info["url"]
+        if embed_info["author"]:
+            pages.embed.set_author(name=embed_info["author"], icon_url=embed_info["author_icon"], url=embed_info["author_url"])
         try:
             await pages.paginate()
-        except CannotPaginate as e:
-            await ctx.send(e)
+        except errors.CannotPaginate as e:
+            await ctx.error(e)
 
+    @checks.tracking_world_only()
+    @checks.can_embed()
     @deaths.command(name="monster", aliases=["mob", "killer"])
-    @checks.is_in_tracking_world()
     async def deaths_monsters(self, ctx: NabCtx, *, name: str):
         """Shows the latest deaths caused by a specific monster."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        c = userDatabase.cursor()
-        count = 0
         entries = []
-        now = time.time()
-        per_page = 20 if ctx.long else 5
-
-        if name[:1] in ["a", "e", "i", "o", "u"]:
-            name_with_article = "an " + name
-        else:
-            name_with_article = "a " + name
-        try:
-            c.execute("SELECT char_deaths.level, date, name, user_id, byplayer, killer, vocation "
-                      "FROM char_deaths, chars "
-                      "WHERE char_id = id AND (killer LIKE ? OR killer LIKE ?) "
-                      "ORDER BY date DESC", (name, name_with_article))
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                user = self.bot.get_member(row["user_id"], ctx.guild)
+        now = dt.datetime.now(dt.timezone.utc)
+        per_page = 20 if await ctx.is_long() else 5
+        async with ctx.pool.acquire() as conn:
+            async for death in DbDeath.get_by_killer(conn, name, worlds=ctx.world):
+                user = ctx.guild.get_member(death.char.user_id)
                 if user is None:
                     continue
-                count += 1
-                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                row["user"] = user.display_name
-                row["emoji"] = get_voc_emoji(row["vocation"])
-                entries.append("{emoji} {name} (**@{user}**) - At level **{level}** - *{time} ago*".format(**row))
-                if count >= 100:
+                death_time = get_time_diff(now-death.date)
+                user_name = user.display_name
+                emoji = get_voc_emoji(death.char.vocation)
+                entries.append(f"{emoji} {death.char.name} (**@{user_name}**) - At level **{death.level}** - "
+                               f"*{death_time} ago*")
+                if len(entries) >= 100:
                     break
-            if count == 0:
-                await ctx.send("There are no registered deaths by that killer.")
-                return
-        finally:
-            c.close()
+        if not entries:
+            await ctx.send("There are no registered deaths by that killer.")
+            return
 
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = f"{name.title()} latest kills"
 
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @deaths.command(name="user")
-    @checks.is_in_tracking_world()
+    @checks.can_embed()
+    @checks.tracking_world_only()
     async def deaths_user(self, ctx: NabCtx, *, name: str):
         """Shows a user's recent deaths on his/her registered characters."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if ctx.is_private:
-            user_servers = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_servers = [ctx.guild]
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-
-        user = self.bot.get_member(name, user_servers)
+        user = self.bot.get_member(name, ctx.guild)
         if user is None:
             await ctx.send("I don't see any users with that name.")
             return
-
-        c = userDatabase.cursor()
-        count = 0
         entries = []
-        now = time.time()
-        per_page = 20 if ctx.long else 5
-
-        try:
-            c.execute("SELECT name, world, char_deaths.level, killer, byplayer, date, vocation "
-                      "FROM chars, char_deaths "
-                      "WHERE char_id = id AND user_id = ? "
-                      "ORDER BY date DESC", (user.id,))
-            while True:
-                row = c.fetchone()
-                if row is None:
+        now = dt.datetime.now(dt.timezone.utc)
+        per_page = 20 if await ctx.is_long() else 5
+        async with ctx.pool.acquire() as conn:
+            async for death in DbDeath.get_latest(conn, config.announce_threshold, user_id=user.id, worlds=ctx.world):
+                death_time = get_time_diff(now - death.date)
+                emoji = get_voc_emoji(death.char.vocation)
+                entries.append(f"{emoji} {death.char.name} - At level **{death.level}** by {death.killer.name} - "
+                               f"*{death_time} ago*")
+                if len(entries) >= 100:
                     break
-                if row["world"] not in user_worlds:
-                    continue
-                count += 1
-                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                row["emoji"] = get_voc_emoji(row["vocation"])
-                entries.append("{emoji} {name} - At level **{level}** by {killer} - *{time} ago*".format(**row))
+        if not entries:
+            await ctx.send("There are not registered deaths by this user.")
+            return
 
-                if count >= 100:
-                    break
-            if count == 0:
-                await ctx.send("There are not registered deaths by this user.")
-                return
-        finally:
-            c.close()
-
-        title = "{0} latest kills".format(user.display_name)
+        title = f"{user.display_name} latest deaths"
         icon_url = user.avatar_url
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.set_author(name=title, icon_url=icon_url)
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @deaths.command(name="stats", usage="[week/month]")
-    @checks.is_in_tracking_world()
+    @checks.tracking_world_only()
+    @checks.can_embed()
     async def deaths_stats(self, ctx: NabCtx, *, period: str = None):
         """Shows death statistics
 
@@ -348,88 +263,73 @@ class Tibia:
 
         To see a shorter period, use `week` or `month` as a parameter.
         """
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if ctx.is_private:
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-        placeholders = ", ".join("?" for w in user_worlds)
-        c = userDatabase.cursor()
-        now = time.time()
         embed = discord.Embed(title="Death statistics")
         if period in ["week", "weekly"]:
-            start_date = now - (1 * 60 * 60 * 24 * 7)
+            period = dt.timedelta(weeks=1)
             description_suffix = " in the last 7 days"
         elif period in ["month", "monthly"]:
-            start_date = now - (1 * 60 * 60 * 24 * 30)
+            period = dt.timedelta(days=30)
             description_suffix = " in the last 30 days"
         else:
-            start_date = 0
+            period = dt.timedelta(weeks=300)
             description_suffix = ""
             embed.set_footer(text=f"For a shorter period, try {ctx.clean_prefix}{ctx.command.qualified_name} week or "
                                   f"{ctx.clean_prefix}{ctx.command.qualified_name} month")
-        try:
-            c.execute("SELECT COUNT() AS total FROM char_deaths WHERE date >= ?", (start_date,))
-            total = c.fetchone()["total"]
+        async with ctx.pool.acquire() as conn:
+            total = await conn.fetchval("""SELECT count(*) FROM character_death WHERE CURRENT_TIMESTAMP-date < $1""",
+                                        period)
             embed.description = f"There are {total:,} deaths registered{description_suffix}."
-            c.execute("SELECT COUNT() as count, chars.name, chars.user_id FROM char_deaths, chars "
-                      f"WHERE id = char_id AND world IN ({placeholders}) AND date >= {start_date} "
-                      "GROUP BY char_id ORDER BY count DESC LIMIT 3", tuple(user_worlds))
-            content = ""
-            count = 0
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                user = self.bot.get_member(row["user_id"], ctx.guild)
-                if user is None:
-                    continue
-                count += 1
-                content += f"**{row['name']}** \U00002014 {row['count']}\n"
-                if count >= 3:
-                    break
+            async with conn.transaction():
+                count = 0
+                content = ""
+                async for row in conn.cursor("""
+                        SELECT COUNT(*), name, user_id
+                        FROM character_death d
+                        LEFT JOIN "character" c on c.id = d.character_id
+                        WHERE CURRENT_TIMESTAMP-date < $1 AND world = $2
+                        GROUP by name, user_id ORDER BY count DESC""", period, ctx.world):
+                    user = self.bot.get_member(row["user_id"], ctx.guild)
+                    if user is None:
+                        continue
+                    count += 1
+                    content += f"**{row['name']}** \U00002014 {row['count']}\n"
+                    if count >= 3:
+                        break
             if count > 0:
                 embed.add_field(name="Most deaths per character", value=content, inline=False)
-
-            c.execute("SELECT COUNT() as count, chars.user_id FROM char_deaths, chars "
-                      f"WHERE id = char_id AND world IN ({placeholders}) AND date >= {start_date} "
-                      "GROUP BY user_id ORDER BY count DESC", tuple(user_worlds))
-            content = ""
-            count = 0
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                user = self.bot.get_member(row["user_id"], ctx.guild)
-                if user is None:
-                    continue
-                count += 1
-                content += f"@**{user.display_name}** \U00002014 {row['count']}\n"
-                if count >= 3:
-                    break
+            async with conn.transaction():
+                count = 0
+                content = ""
+                async for row in conn.cursor("""SELECT COUNT(*), user_id
+                                                FROM character_death d
+                                                LEFT JOIN "character" c on c.id = d.character_id
+                                                WHERE CURRENT_TIMESTAMP-date < $1 AND world = $2
+                                                AND user_id != 0
+                                                GROUP by user_id
+                                                ORDER BY count DESC""", period, ctx.world):
+                    user = self.bot.get_member(row["user_id"], ctx.guild)
+                    if user is None:
+                        continue
+                    count += 1
+                    content += f"@**{user.display_name}** \U00002014 {row['count']}\n"
+                    if count >= 3:
+                        break
             if count > 0:
                 embed.add_field(name="Most deaths per user", value=content, inline=False)
-
-            c.execute("SELECT COUNT() as count, killer FROM char_deaths, chars "
-                      f"WHERE id = char_id and world IN ({placeholders}) AND date >= {start_date} "
-                      "GROUP BY killer ORDER BY count DESC LIMIT 3", tuple(user_worlds))
-            total_per_killer = c.fetchall()
+            rows = await conn.fetch("""SELECT COUNT(*), k.name
+                                       FROM character_death d
+                                       LEFT JOIN character_death_killer k on k.death_id = d.id
+                                       LEFT JOIN "character" c on c.id = d.character_id
+                                       WHERE CURRENT_TIMESTAMP-date < $1 AND world = $2
+                                       GROUP by k.name ORDER BY count DESC LIMIT 3""", period, ctx.world)
             content = ""
-            for row in total_per_killer:
-                killer = re.sub(r"(a|an)(\s+)", " ", row["killer"]).title().strip()
+            for row in rows:
+                killer = re.sub(r"(a|an)(\s+)", " ", row["name"]).title().strip()
                 content += f"**{killer}** \U00002014 {row['count']}\n"
             embed.add_field(name="Most deaths per killer", value=content, inline=False)
-            await ctx.send(embed=embed)
-        finally:
-            c.close()
+        await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.group(aliases=['checkguild'], invoke_without_command=True, case_insensitive=True)
     async def guild(self, ctx: NabCtx, *, name):
         """Shows online characters in a guild.
@@ -437,83 +337,64 @@ class Tibia:
         Show's the number of members the guild has and a list of their users.
         It also shows whether the guild has a guildhall or not, and their funding date.
         """
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
+        guild = await get_guild(name)
+        if guild is None:
+            return await ctx.error("The guild {0} doesn't exist.".format(name))
 
-        try:
-            guild = await get_guild(name)
-            if guild is None:
-                await ctx.send("The guild {0} doesn't exist.".format(name))
-                return
-        except NetworkError:
-            await ctx.send("Can you repeat that? I had some trouble communicating.")
-            return
-
-        embed = discord.Embed()
-        embed.set_author(name="{0.name} ({0.world})".format(guild), url=guild.url, icon_url=tibia_logo)
+        embed = self.get_tibia_embed(f"{guild.name} ({guild.world})", guild.url)
         embed.description = ""
-        embed.set_thumbnail(url=guild.logo)
+        embed.set_thumbnail(url=guild.logo_url)
         if guild.guildhall is not None:
-            embed.description += "They own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
-                                                                               url_house.format(id=guild.guildhall["id"],
-                                                                                                world=guild.world))
+            url = GuildHouse.get_url(get_house_id(guild.guildhall.name), guild.world)
+            embed.description += f"They own the guildhall [{guild.guildhall.name}]({url}).\n"
 
-        if len(guild.online) < 1:
-            embed.description += f"Nobody is online. It has **{len(guild.members)}** members."
+        if len(guild.online_members) < 1:
+            embed.description += f"Nobody is online. It has **{guild.member_count:,}** members."
             await ctx.send(embed=embed)
             return
 
         embed.set_footer(text=f"The guild was founded on {guild.founded}")
 
         plural = ""
-        if len(guild.online) > 1:
+        if len(guild.online_members) > 1:
             plural = "s"
-        embed.description += f"It has **{len(guild.online)}** player{plural} online out of **{len(guild.members)}**:"
+        embed.description += f"It has **{guild.online_count:,}** player{plural} online out of " \
+            f"**{guild.member_count:,}**:"
         current_field = ""
         result = ""
-        for member in guild.online:
+        for member in guild.online_members:
             if current_field == "":
-                current_field = member['rank']
-            elif member['rank'] != current_field and member["rank"] != "":
+                current_field = member.rank
+            elif member.rank != current_field and member.rank != "":
                 embed.add_field(name=current_field, value=result, inline=False)
                 result = ""
-                current_field = member['rank']
+                current_field = member.rank
+            title = '(*' + member.title + '*) ' if member.title else ''
+            vocation = get_voc_abb(member.vocation.value)
 
-            member["nick"] = '(*' + member['nick'] + '*) ' if member['nick'] != '' else ''
-            member["vocation"] = get_voc_abb(member["vocation"])
-
-            result += "{name} {nick}\u2192 {level} {vocation}\n".format(**member)
+            result += f"{member.name} {title}\u2192 {member.level:,} {vocation}\n"
         embed.add_field(name=current_field, value=result, inline=False)
         await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @guild.command(name="info", aliases=["stats"])
     async def guild_info(self, ctx: NabCtx, *, name: str):
         """Shows basic information and stats about a guild.
 
         It shows their description, homepage, guildhall, number of members and more."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        try:
-            guild = await get_guild(name)
-            if guild is None:
-                await ctx.send("The guild {0} doesn't exist.".format(name))
-                return
-        except NetworkError:
-            await ctx.send("Can you repeat that? I had some trouble communicating.")
-            return
-        embed = discord.Embed(title=f"{guild.name} ({guild.world})", description=guild.description, url=guild.url)
-        embed.set_thumbnail(url=guild.logo)
+        guild = await get_guild(name)
+        if guild is None:
+            return await ctx.send("The guild {0} doesn't exist.".format(name))
+        embed = self.get_tibia_embed(f"{guild.name} ({guild.world})", guild.url)
+        embed.description = ""
+        embed.set_thumbnail(url=guild.logo_url)
         embed.set_footer(text=f"The guild was founded on {guild.founded}")
+        if guild.description:
+            embed.description = guild.description
         if guild.guildhall is not None:
-            embed.description += "\nThey own the guildhall [{0}]({1}).\n".format(guild.guildhall["name"],
-                                                                               url_house.format(id=guild.guildhall["id"],
-                                                                                               world=guild.world))
-        applications = f"{ctx.tick(True)} Open" if guild.application else f"{ctx.tick(False)} Closed"
+            url = GuildHouse.get_url(get_house_id(guild.guildhall.name), guild.world)
+            embed.description += f"\nThey own the guildhall [{guild.guildhall.name}]({url}).\n"
+        applications = f"{ctx.tick(True)} Open" if guild.open_applications else f"{ctx.tick(False)} Closed"
         embed.add_field(name="Applications", value=applications)
         if guild.homepage is not None:
             embed.add_field(name="Homepage", value=f"[{guild.homepage}]({guild.homepage})")
@@ -523,28 +404,26 @@ class Tibia:
         druid = 0
         none = 0
         total_level = 0
-        highest_member = None
+        highest_member = guild.members[0]
         for member in guild.members:
-            if highest_member is None:
+            if highest_member.level < member.level:
                 highest_member = member
-            elif highest_member["level"] < member["level"]:
-                highest_member = member
-            total_level += member["level"]
-            if "knight" in member["vocation"].lower():
+            total_level += member.level
+            if "knight" in member.vocation.value.lower():
                 knight += 1
-            if "sorcerer" in member["vocation"].lower():
+            if "sorcerer" in member.vocation.value.lower():
                 sorcerer += 1
-            if "druid" in member["vocation"].lower():
+            if "druid" in member.vocation.value.lower():
                 druid += 1
-            if "paladin" in member["vocation"].lower():
+            if "paladin" in member.vocation.value.lower():
                 paladin += 1
-            if "none" in member["vocation"].lower():
+            if "none" in member.vocation.value.lower():
                 none += 1
 
-        embed.add_field(name="Members online", value=f"{len(guild.online)}/{len(guild.members)}")
-        embed.add_field(name="Average level", value=f"{total_level/len(guild.members):.0f}")
-        embed.add_field(name="Highest member", value="{name} - {level} {emoji}".
-                        format(**highest_member, emoji=get_voc_emoji(highest_member["vocation"])))
+        embed.add_field(name="Members online", value=f"{guild.online_count}/{guild.member_count}")
+        embed.add_field(name="Average level", value=f"{total_level/guild.member_count:.0f}")
+        embed.add_field(name="Highest member", value=f"{highest_member.name} - {highest_member.level:,}"
+                                                     f"{get_voc_emoji(highest_member.vocation)}")
         embed.add_field(name="Vocations distribution", value=f"{knight} {get_voc_emoji('knight')} | "
                                                              f"{druid} {get_voc_emoji('druid')} | "
                                                              f"{sorcerer} {get_voc_emoji('sorcerer')} | "
@@ -554,113 +433,142 @@ class Tibia:
 
         await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @guild.command(name="members", aliases=['list'])
     async def guild_members(self, ctx: NabCtx, *, name: str):
         """Shows a list of all guild members.
 
         Online members have an icon next to their name."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-        if name is None:
-            await ctx.send("Tell me the guild you want me to check.")
-            return
-
-        try:
-            guild = await get_guild(name)
-            if guild is None:
-                await ctx.send("The guild {0} doesn't exist.".format(name))
-                return
-        except NetworkError:
-            await ctx.send("Can you repeat that? I had some trouble communicating.")
-            return
+        guild = await get_guild(name)
+        if guild is None:
+            return await ctx.error(f"The guild {name} doesn't exist.")
         title = "{0.name} ({0.world})".format(guild)
         entries = []
         vocations = []
-        for member in guild.members:
-            member["nick"] = '(*' + member['nick'] + '*) ' if member['nick'] != '' else ''
-            vocations.append(member["vocation"])
-            member["emoji"] = get_voc_emoji(member["vocation"])
-            member["vocation"] = get_voc_abb(member["vocation"])
-            member["online"] = config.online_emoji if member["status"] == "online" else ""
-            entries.append("{rank}\u2014 {online}**{name}** {nick} (Lvl {level} {vocation}{emoji})".format(**member))
-        per_page = 20 if ctx.long else 5
+        for m in guild.members:
+            nick = f'(*{m.title}*) ' if m.title else ''
+            vocations.append(m.vocation.value)
+            emoji = get_voc_emoji(m.vocation.value)
+            voc_abb = get_voc_abb(m.vocation.value)
+            online = config.online_emoji if m.online else ""
+            entries.append(f"{m.rank} \u2014 {online}**{m.name}** {nick} (Lvl {m.level} {voc_abb}{emoji})")
+        per_page = 20 if await ctx.is_long() else 5
         pages = VocationPages(ctx, entries=entries, per_page=per_page, vocations=vocations)
-        pages.embed.set_author(name=title, icon_url=guild.logo, url=guild.url)
+        pages.embed.set_author(name=title, icon_url=guild.logo_url, url=guild.url)
         try:
             await pages.paginate()
-        except CannotPaginate as e:
-            await ctx.send(e)
+        except errors.CannotPaginate as e:
+            await ctx.error(e)
 
-    @commands.command(usage="[world,category[,vocation]]")
+    @checks.can_embed()
+    @commands.group(usage="[world,][category][,vocation]", invoke_without_command=True, case_insensitive=True)
     async def highscores(self, ctx: NabCtx, *, params=None):
         """Shows the entries in the highscores.
 
-        If the server is already tracking a world, there's no need to specify a world.
+        If the server is already tracking a world, the tracked world will be used if no world is specified.
 
-        Available categories are: experience, magic, shielding, distance, sword, club, axe, fist and fishing.
+        Available categories are: experience, magic, shielding, distance, sword, club, axe, fist, fishing,
+        achievements and loyalty.
         Available vocations are: all, paladin, druid, sorcerer, knight."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-        categories = ["experience", "magic", "shielding", "distance", "sword", "club", "axe", "fist", "fishing",
-                      "achievements","loyalty"]
-        vocations = ["all", "paladin", "druid", "knight", "sorcerer"]
         if params is None:
             params = []
         else:
             params = params.split(",")
-        world = None
+        world = ctx.world
         if params and params[0].strip().title() in tibia_worlds:
             world = params[0].strip().title()
             del params[0]
         if world is None:
-            world = ctx.world
-        if world is None:
-            return await ctx.send(f"{ctx.tick(False)} You have to specify a world.")
+            return await ctx.error("You have to specify a world.")
 
+        # Default parameters
         if not params:
-            category = "experience"
-            vocation = "all"
-
+            category = Category.EXPERIENCE
+            vocation = VocationFilter.ALL
         else:
-            if params[0].strip().lower() not in categories:
-                return await ctx.send(f"{ctx.tick(False)} Invalid category, valid categories are: "
-                                      f"`{','.join(categories)}`.")
-            category = params[0].strip().lower()
-            del params[0]
-            if not params:
-                vocation = "all"
-            elif params[0].strip().lower() not in vocations:
-                return await ctx.send(f"{ctx.tick(False)} Invalid vocation, valid vocations are: "
-                                      f"`{','.join(vocations)}`.")
-            else:
-                vocation = params[0].strip().lower()
-        with ctx.typing():
+            category = tibiapy.utils.try_enum(Category, params[0].strip().lower())
+            if category is None:
+                return await ctx.error(f"Invalid category, valid categories are: "
+                                       f"{join_list([f'`{c.value}`' for c in Category])}")
             try:
-                highscores = await get_highscores_tibiadata(world, category, vocation)
-                if highscores is None:
-                    return await ctx.send(f"{ctx.tick(False)} I couldn't find any highscores entries.")
-            except NetworkError:
-                return await ctx.send(f"{ctx.tick(False)} I couldn't fetch the highscores.")
+                vocation = VocationFilter.from_name(params[1].strip().lower())
+                if vocation is None:
+                    return await ctx.error(f"Invalid vocation, valid vocations are: "
+                                           f"`{join_list([f'`{v.name.lower()}`' for v in VocationFilter])}.")
+            except IndexError:
+                vocation = VocationFilter.ALL
+
+        with ctx.typing():
+            highscores = await get_highscores(world, category, vocation)
+            if highscores is None:
+                return await ctx.error("I couldn't find any highscores entries.")
         entries = []
-        for entry in highscores:
-            entry["voc"] = get_voc_emoji(entry["vocation"])
-            if category == "experience":
-                entries.append("**{name}**{voc} - Level {level} ({points:,} exp)".format(**entry))
+        for entry in highscores.entries:
+            name = f"[{entry.name}]({entry.url})" if not await ctx.is_long() else entry.name
+            emoji = get_voc_emoji(entry.vocation)
+            content = f"**{name}**{emoji} - "
+            if category == Category.EXPERIENCE:
+                content += f"Level {entry.level} ({entry.value:,} exp)"
+            elif category in [Category.LOYALTY_POINTS, Category.ACHIEVEMENTS]:
+                content += f"{entry.value:,} points"
             else:
-                entries.append("**{name}**{voc} - Level {level}".format(**entry))
-        pages = Pages(ctx, entries=entries, per_page=20 if ctx.long else 10)
-        pages.embed.title = f"🏆 {category.title()} highscores for {world}"
-        if vocation != "all":
-            pages.embed.title += f" ({vocation}s)"
+                content += f"Level {entry.value}"
+            entries.append(content)
+        pages = Pages(ctx, entries=entries, per_page=20 if await ctx.is_long() else 10)
+        pages.embed.url = highscores.url
+        pages.embed.set_author(name="Tibia.com", url=TIBIA_URL, icon_url=TIBIACOM_ICON)
+        pages.embed.title = f"🏆 {category.name.replace('_', ' ').title()} highscores for {world}"
+        if vocation != VocationFilter.ALL:
+            pages.embed.title += f" ({vocation.name.lower()})"
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
+    @checks.can_embed()
+    @highscores.command(name="global")
+    async def highscores_global(self, ctx: NabCtx, category="experience"):
+        """Shows the combined highscores of all worlds.
+
+        Ties are grouped under the same rank and ordered alphabetically.
+
+        Only the following categories are available: experience, sword, axe, club, distance, shielding, fist, fishing,
+        magic, magic_knights, magic_paladins, loyalty, achievements.
+        """
+        if category not in HIGHSCORE_CATEGORIES:
+            return await ctx.error(f"Invalid category, valid categories are: "
+                                   f"{join_list([f'`{k}`' for k,v in HIGHSCORE_CATEGORIES.items()])}")
+
+        _category, vocation = HIGHSCORE_CATEGORIES[category]
+        rows = await ctx.pool.fetch("""SELECT rank() OVER (ORDER BY value DESC), name, world, vocation, value 
+                                       FROM highscores_entry WHERE category = $1
+                                       ORDER BY value DESC, name ASC LIMIT 300""", category)
+        entries = []
+        for rank, name, world, voc, value in rows:
+            if not await ctx.is_long():
+                name = f"[{name}]({tibiapy.Character.get_url(name)})"
+
+            emoji = get_voc_emoji(voc)
+            content = f"{rank}. **{name}**{emoji} ({world}) - "
+            if _category == Category.EXPERIENCE:
+                level = get_level_by_experience(value)
+                content += f"Level {level} ({value:,} exp)"
+            elif _category in [Category.LOYALTY_POINTS, Category.ACHIEVEMENTS]:
+                content += f"{value:,} points"
+            else:
+                content += f"Level {value}"
+            entries.append(content)
+
+        pages = Pages(ctx, entries=entries, per_page=20 if await ctx.is_long() else 10, show_numbers=False)
+        pages.embed.title = f"🏆Global {_category.name.replace('_', ' ').title()} highscores"
+        if vocation != VocationFilter.ALL:
+            pages.embed.title += f" ({vocation.name.lower()})"
+        try:
+            await pages.paginate()
+        except errors.CannotPaginate as e:
+            await ctx.send(e)
+
+    @checks.can_embed()
     @commands.command(aliases=["guildhall"], usage="<name>[,world]")
     async def house(self, ctx: NabCtx, *, name: str):
         """Shows info for a house or guildhall.
@@ -670,11 +578,9 @@ class Tibia:
 
         To specify a world, add the world at the end separated with a comma.
         """
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
+        house = None
         params = name.split(",")
+        footer = ""
         if len(params) > 1:
             name = ",".join(params[:-1])
             world = params[-1]
@@ -689,31 +595,41 @@ class Tibia:
         name = name.strip()
         if world:
             world = world.title().strip()
-        house = await get_house(name, world)
-        if house is None:
-            await ctx.send(f"{ctx.tick(False)} I couldn't find a house named `{name}`.")
+
+        wiki_cog = self.bot.get_cog("TibiaWiki")
+        if wiki_cog is None:
+            return await ctx.error("TibiaWiki cog is unavailable for the moment, try again later.")
+
+        entries = wiki_cog.search_entry("house", name)
+        if not entries:
+            await ctx.send("I couldn't find a house with that name.")
             return
-
-        if type(house) is list:
-            name = await ctx.choose(house)
-            if name is None:
+        if len(entries) > 1:
+            title = await ctx.choose([e["title"] for e in entries])
+            if title is None:
                 return
-
-            house = await get_house(name, world)
-
-        # Attach image only if the bot has permissions
-        if permissions.attach_files:
-            filename = re.sub(r"[^A-Za-z0-9]", "", house["name"]) + ".png"
-            mapimage = get_map_area(house["x"], house["y"], house["z"])
-            embed = self.get_house_embed(ctx, house)
-            embed.set_image(url=f"attachment://{filename}")
-            await ctx.send(file=discord.File(mapimage, f"{filename}"), embed=embed)
         else:
-            await ctx.send(embed=self.get_house_embed(ctx, house))
+            title = entries[0]["title"]
+        wiki_house: models.House = wiki_cog.get_entry(title, models.House)
+
+        if world:
+            try:
+                house = await get_house(wiki_house.house_id, world)
+            except errors.NetworkError:
+                pass
+        # Attach image only if the bot has permissions
+        if ctx.bot_permissions.attach_files:
+            mapimage = get_map_area(wiki_house.x, wiki_house.y, wiki_house.z)
+            embed = self.get_house_embed(ctx, wiki_house, house)
+            embed.set_image(url="attachment://thumbnail.png")
+            await ctx.send(file=discord.File(mapimage, "thumbnail.png"), embed=embed)
+        else:
+            await ctx.send(embed=self.get_house_embed(ctx, wiki_house, house))
 
     @commands.group(aliases=['levelups'], invoke_without_command=True, case_insensitive=True)
-    @checks.is_in_tracking_world()
-    async def levels(self, ctx: NabCtx, *, name: str=None):
+    @checks.tracking_world_only()
+    @checks.can_embed()
+    async def levels(self, ctx: NabCtx, *, name: str = None):
         """Shows a character's or everyone's recent level ups.
 
         If a character is specified, it displays a list of its recent level ups.
@@ -721,173 +637,100 @@ class Tibia:
 
         This only works for characters registered in the bots database, which are the characters owned
         by the users of this discord server."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if ctx.is_private:
-            user_servers = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_servers = [ctx.guild]
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-
-        c = userDatabase.cursor()
         entries = []
         author = None
         author_icon = discord.Embed.Empty
-        count = 0
-        now = time.time()
-        per_page = 20 if ctx.long else 5
-        await ctx.channel.trigger_typing()
+        now = dt.datetime.now(dt.timezone.utc)
+        per_page = 20 if await ctx.is_long() else 5
         user_cache = dict()
-        try:
-            if name is None:
-                title = "Latest level ups"
-                c.execute("SELECT char_levelups.level, date, name, user_id, world, vocation "
-                          "FROM char_levelups, chars "
-                          "WHERE char_id = id AND char_levelups.level >= ? "
-                          "ORDER BY date DESC", (config.announce_threshold, ))
-                while True:
-                    row = c.fetchone()
-                    if row is None:
-                        break
-                    if row["world"] not in user_worlds:
-                        continue
-                        
-                    user = self._get_cached_user_(self, row["user_id"], user_cache, user_servers)
+        if name is None:
+            title = "Latest level ups"
+            async with ctx.pool.acquire() as conn:
+                async for lvl in DbLevelUp.get_latest(conn, minimum_level=config.announce_threshold, worlds=ctx.world):
+                    user = self.get_cached_user_(lvl.char.user_id, user_cache, ctx.guild)
                     if user is None:
                         continue
-
-                    count += 1
-                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                    row["user"] = user.display_name
-                    row["emoji"] = get_voc_emoji(row["vocation"])
-                    entries.append("{emoji} {name} - Level **{level}** - (**@{user}**) - *{time} ago*".format(**row))
-                    if count >= 100:
+                    diff = get_time_diff(now - lvl.date)
+                    emoji = get_voc_emoji(lvl.char.vocation)
+                    entries.append(f"{emoji} {lvl.char.name} - Level **{lvl.level}** - **@{user.display_name}** - "
+                                   f"*{diff} ago*")
+                    if len(entries) >= 100:
                         break
-            else:
-                c.execute("SELECT id, name, user_id, vocation FROM chars WHERE name LIKE ?", (name,))
-                result = c.fetchone()
-                if result is None:
-                    await ctx.send("I don't have a character with that name registered.")
-                    return
-                # If user doesn't share a server with the owner, don't display it
-                owner = self.bot.get_member(result["user_id"], user_servers)
-                if owner is None:
-                    await ctx.send("I don't have a character with that name registered.")
-                    return
+        else:
+            async with ctx.pool.acquire() as conn:
+                db_char = await DbChar.get_by_name(conn, name)
+                if not db_char:
+                    return await ctx.send("I don't have a character with that name registered.")
+                owner = ctx.guild.get_member(db_char.user_id)
+                if not owner:
+                    return await ctx.send("I don't have a character with that name registered.")
                 author = owner.display_name
                 author_icon = owner.avatar_url
-                name = result["name"]
-                emoji = get_voc_emoji(result["vocation"])
+                name = db_char.name
+                emoji = get_voc_emoji(db_char.vocation)
                 title = f"{emoji} {name} latest level ups"
-                c.execute("SELECT char_levelups.level, date FROM char_levelups, chars "
-                          "WHERE id = char_id AND name LIKE ? "
-                          "ORDER BY date DESC", (name,))
-                while True:
-                    row = c.fetchone()
-                    if row is None:
+                async for lvl in db_char.get_level_ups(conn):
+                    diff = get_time_diff(now - lvl.date)
+                    entries.append(f"Level **{lvl.level}** - *{diff} ago*")
+                    if len(entries) >= 100:
                         break
-                    count += 1
-                    row["time"] = get_time_diff(dt.timedelta(seconds=now-row["date"]))
-                    entries.append("Level **{level}** - *{time} ago*".format(**row))
-                    if count >= 100:
-                        break
-        finally:
-            c.close()
-
-        if count == 0:
+        if not entries:
             await ctx.send("There are no registered levels.")
             return
-
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
-        pages.embed.set_author(name=author, icon_url=author_icon)
+        if author is not None:
+            pages.embed.set_author(name=author, icon_url=author_icon)
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @levels.command(name="user")
-    @checks.is_in_tracking_world()
+    @checks.tracking_world_only()
+    @checks.can_embed()
     async def levels_user(self, ctx: NabCtx, *, name: str):
         """Shows a user's recent level ups on their registered characters."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if ctx.is_private:
-            user_servers = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_servers = [ctx.guild]
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-
-        user = self.bot.get_member(name, user_servers)
+        user = self.bot.get_member(name, ctx.guild)
         if user is None:
             await ctx.send("I don't see any users with that name.")
             return
 
-        c = userDatabase.cursor()
         count = 0
         entries = []
-        now = time.time()
-        per_page = 20 if ctx.long else 5
-
-        try:
-            c.execute("SELECT name, world, char_levelups.level, date, vocation "
-                      "FROM chars, char_levelups "
-                      "WHERE char_id = id AND user_id = ? "
-                      "ORDER BY date DESC", (user.id,))
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                if row["world"] not in user_worlds:
-                    continue
-                count += 1
-                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                row["emoji"] = get_voc_emoji(row["vocation"])
-                entries.append("{emoji} {name} - Level **{level}** - *{time} ago*".format(**row))
-                if count >= 100:
-                    break
-            if count == 0:
-                await ctx.send("There are not registered level ups by this user.")
-                return
-        finally:
-            c.close()
+        now = dt.datetime.now(dt.timezone.utc)
+        per_page = 20 if await ctx.is_long() else 5
+        async with ctx.pool.acquire() as conn:
+            async for l in DbLevelUp.get_latest(conn, user_id=ctx.author.id, worlds=ctx.world):
+                    count += 1
+                    level_time = get_time_diff(now - l.date)
+                    emoji = get_voc_emoji(l.char.vocation)
+                    entries.append(f"{emoji} {l.char.name} - Level **{l.level}** - *{level_time} ago*")
+                    if count >= 100:
+                        break
+        if count == 0:
+            await ctx.send("There are not registered level ups by this user.")
+            return
 
         title = f"{user.display_name} latest level ups"
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.set_author(name=title, icon_url=get_user_avatar(user))
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
+    @checks.can_embed()
     @commands.command(usage="[id]")
-    async def news(self, ctx: NabCtx, news_id: int=None):
+    async def news(self, ctx: NabCtx, news_id: int = None):
         """Shows the latest news articles from Tibia.com.
 
         If no id is supplied, a list of recent articles is shown, otherwise, a snippet of the article is shown."""
         if news_id is None:
-            try:
-                recent_news = await get_recent_news()
-                if recent_news is None:
-                    await ctx.send("Something went wrong getting recent news.")
-            except NetworkError:
-                await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
-                return
-            embed = discord.Embed(title="Recent news")
+            recent_news = await get_recent_news()
+            if recent_news is None:
+                await ctx.error("Something went wrong getting recent news.")
+            embed = self.get_tibia_embed("Recent news", "https://www.tibia.com/news/?subtopic=latestnews")
             embed.set_footer(text="To see a specific article, use the command /news <id>")
             news_format = "{emoji} `{id}`\t[{news}]({tibiaurl})"
             type_emojis = {
@@ -896,22 +739,20 @@ class Tibia:
             }
             for news in recent_news:
                 news["emoji"] = type_emojis.get(news["type"], "")
-            limit = 20 if ctx.long else 10
+            limit = 20 if await ctx.is_long() else 10
             embed.description = "\n".join([news_format.format(**n) for n in recent_news[:limit]])
-            await ctx.send(embed=embed)
-        else:
-            try:
-                article = await get_news_article(news_id)
-                if article is None:
-                    await ctx.send("There's no article with that id.")
-                    return
-            except NetworkError:
-                await ctx.send("I couldn't fetch the recent news, I'm having network problems.")
-                return
-            limit = 1900 if ctx.long else 600
-            embed = self.get_article_embed(article, limit)
-            await ctx.send(embed=embed)
+            return await ctx.send(embed=embed)
+        try:
+            article = await get_news_article(news_id)
+            if article is None:
+                return await ctx.error("There's no article with that id.")
+        except errors.NetworkError:
+            return await ctx.error("I couldn't fetch the recent news, I'm having network problems.")
+        limit = 1900 if await ctx.is_long() else 600
+        embed = self.get_article_embed(article, limit)
+        await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.command(name="searchworld", aliases=["whereworld", "findworld"], usage="<params>[,world]")
     async def search_world(self, ctx: NabCtx, *, params):
         """Searches for online characters that meet the criteria.
@@ -927,11 +768,6 @@ class Tibia:
         You can add the world where you want to look in by adding a comma, followed by the name of the world.
         Example: `searchworld Cachero,Calmera`
         """
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
         invalid_arguments = "Invalid arguments used, examples:\n" \
                             "```/searchworld charname[,world]\n" \
                             "/searchworld level[,world]\n" \
@@ -944,31 +780,24 @@ class Tibia:
             world_name = params[-1].capitalize().strip()
             del params[-1]
         if not (1 <= len(params) <= 2):
-            await ctx.send(invalid_arguments)
-            return
+            return await ctx.error(invalid_arguments)
 
         tracked_world = ctx.world
         if world_name is None:
             if tracked_world is None:
-                await ctx.send("You must specify the world where you want to look in.")
-                return
+                return await ctx.error("You must specify the world where you want to look in.")
             else:
                 world_name = tracked_world
 
-        try:
-            world = await get_world(world_name)
-            if world is None:
-                # This really shouldn't happen...
-                await ctx.send(f"There's no world named **{world_name}**.")
-                return
-        except NetworkError:
-            await ctx.send("I'm having 'network problems' as you humans say, please try again later.")
+        world = await get_world(world_name)
+        if world is None:
+            # This really shouldn't happen...
+            await ctx.error(f"There's no world named **{world_name}**.")
             return
 
-        online_list = world.players_online
-        if len(online_list) == 0:
-            await ctx.send(f"There is no one online in {world_name}.")
-            return
+        online_list = world.online_players
+        if not online_list:
+            return await ctx.error(f"There is no one online in {world_name}.")
 
         # Sort by level, descending
         online_list = sorted(online_list, key=lambda x: x.level, reverse=True)
@@ -976,7 +805,7 @@ class Tibia:
         entries = []
         vocations = []
         filter_name = ""
-        per_page = 20 if ctx.long else 5
+        per_page = 20 if await ctx.is_long() else 5
 
         content = ""
         # params[0] could be a character's name, a character's level or one of the level ranges
@@ -984,19 +813,14 @@ class Tibia:
         if not is_numeric(params[0]):
             # We shouldn't have another parameter if a character name was specified
             if len(params) == 2:
-                await ctx.send(invalid_arguments)
+                return await ctx.error(invalid_arguments)
+            char = await get_character(ctx.bot, params[0])
+            if char is None:
+                await ctx.error("I couldn't find a character with that name.")
                 return
-            try:
-                char = await get_character(params[0])
-                if char is None:
-                    await ctx.send("I couldn't find a character with that name.")
-                    return
-                filter_name = char.name
-                if char.world != world.name:
-                    content = f"**Note**: The character is in **{char.world}** and I'm searching **{world.name}**."
-            except NetworkError:
-                await ctx.send("I couldn't fetch that character.")
-                return
+            filter_name = char.name
+            if char.world != world.name:
+                content = f"**Note**: The character is in **{char.world}** and I'm searching **{world.name}**."
             low, high = get_share_range(char.level)
             title = "Characters online in share range with {0}({1}-{2}):".format(char.name, low, high)
             empty = "I didn't find anyone in share range with **{0}**({1}-{2})".format(char.name, low, high)
@@ -1007,10 +831,10 @@ class Tibia:
                     level1 = int(params[0])
                     level2 = int(params[1])
                 except ValueError:
-                    await ctx.send(invalid_arguments)
+                    await ctx.error(invalid_arguments)
                     return
                 if level1 <= 0 or level2 <= 0:
-                    await ctx.send("You entered an invalid level.")
+                    await ctx.error("You entered an invalid level.")
                     return
                 low = min(level1, level2)
                 high = max(level1, level2)
@@ -1019,7 +843,7 @@ class Tibia:
             # We only got a level, so we get the share range for it
             else:
                 if int(params[0]) <= 0:
-                    await ctx.send("You entered an invalid level.")
+                    await ctx.error("You entered an invalid level.")
                     return
                 low, high = get_share_range(int(params[0]))
                 title = "Characters online in share range with level {0} ({1}-{2})".format(params[0], low, high)
@@ -1042,8 +866,8 @@ class Tibia:
 
         try:
             await pages.paginate()
-        except CannotPaginate as e:
-            await ctx.send(e)
+        except errors.CannotPaginate as e:
+            await ctx.error(e)
 
     @commands.command(aliases=['expshare', 'party'])
     async def share(self, ctx: NabCtx, *, param):
@@ -1073,17 +897,12 @@ class Tibia:
         except ValueError:
             chars = param.split(",")
             if len(chars) > 5:
-                await ctx.send("I can only check up to 5 characters at a time.")
-                return
+                return await ctx.error("I can only check up to 5 characters at a time.")
             if len(chars) == 1:
                 with ctx.typing():
-                    try:
-                        char = await get_character(chars[0])
-                        if char is None:
-                            await ctx.send('There is no character with that name.')
-                            return
-                    except NetworkError:
-                        await ctx.send("I'm having connection issues right now, please try again.")
+                    char = await get_character(ctx.bot, chars[0])
+                    if char is None:
+                        await ctx.error('There is no character with that name.')
                         return
                     name = char.name
                     level = char.level
@@ -1093,17 +912,13 @@ class Tibia:
             char_data = []
             # Check if all characters are the same.
             if all(x.lower() == chars[0].lower() for x in chars):
-                await ctx.send("I'm not sure if sharing with yourself counts as sharing, but yes, you can share.")
+                await ctx.success("I'm not sure if sharing with yourself counts as sharing, but yes, you can share.")
                 return
             with ctx.typing():
                 for char in chars:
-                    try:
-                        fetched_char = await get_character(char)
-                        if fetched_char is None:
-                            await ctx.send(f"There is no character named **{char}**.")
-                            return
-                    except NetworkError:
-                        await ctx.send("I'm having connection issues, please try again in a bit.")
+                    fetched_char = await get_character(ctx.bot, char)
+                    if fetched_char is None:
+                        await ctx.error(f"There is no character named **{char}**.")
                         return
                     char_data.append(fetched_char)
                 # Sort character list by level ascending
@@ -1115,339 +930,127 @@ class Tibia:
                 highest_name = char_data[-1].name
                 highest_level = char_data[-1].level
                 if low > char_data[0].level:
-                    await ctx.send(f"**{lowest_name}** ({lowest_level}) needs {low-lowest_level} more level"
-                                   f"{'s' if low-lowest_level > 1 else ''} to share experience with **{highest_name}** "
-                                   f"({highest_level}).")
+                    await ctx.error(f"**{lowest_name}** ({lowest_level}) needs {low-lowest_level} more level"
+                                    f"{'s' if low-lowest_level > 1 else ''} to share experience "
+                                    f"with **{highest_name}** ({highest_level}).")
                     return
                 # If it's more than two, just say they can all share
-                reply = ""
                 if len(chars) > 2:
                     reply = f"They can all share experience with each other."
                 else:
                     reply = f"**{lowest_name}** ({lowest_level}) and **{highest_name}** ({highest_level}) can " \
                             f"share experience."
-                await ctx.send(reply+f"\nTheir share range is from level **{low}** to **{high}**.")
+                await ctx.success(f"{reply}\nTheir share range is from level **{low}** to **{high}**.")
 
-    @commands.command()
-    async def stamina(self, ctx: NabCtx, current_stamina: str):
-        """Tells you the time you have to wait to restore stamina.
-
-        To use it, you must provide your current stamina, in this format: `hh:mm`.
-        The bot will show the time needed to reach full stamina if you were to start sleeping now.
-
-        The footer text shows the time in your timezone where your stamina would be full."""
-
-        hour_pattern = re.compile(r"(\d{1,2}):(\d{1,2})")
-        match = hour_pattern.match(current_stamina.strip())
-        if not match:
-            await ctx.send("You need to tell me your current stamina, in this format: `34:03`.")
-            return
-        hours = int(match.group(1))
-        minutes = int(match.group(2))
-        if minutes >= 60:
-            await ctx.send("Invalid time, minutes can't be 60 or greater.")
-            return
-        current = dt.timedelta(hours=hours, minutes=minutes)
-        if hours > 42 or (hours == 42 and minutes > 0):
-            await ctx.send("You can't have more than 42 hours of stamina.")
-            return
-        elif hours == 42:
-            await ctx.send("Your stamina is full already.")
-            return
-        # Stamina takes 3 minutes to regenerate one minute until 40 hours.
-        resting_time = max((dt.timedelta(hours=40)-current).total_seconds(), 0)*3
-        # Last two hours of stamina take 10 minutes for a minute
-        resting_time += (dt.timedelta(hours=42)-max(dt.timedelta(hours=40), current)).total_seconds()*10
-        # You must be logged off 10 minutes before you start gaining stamina
-        resting_time += dt.timedelta(minutes=10).total_seconds()
-
-        hours, remainder = divmod(int(resting_time), 3600)
-        minutes, _ = divmod(remainder, 60)
-        if hours:
-            remaining = f'{hours} hours and {minutes} minutes'
-        else:
-            remaining = f'{minutes} minutes'
-
-        reply = f"You need to rest **{remaining}** to get back to full stamina."
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send(reply)
-            return
-
-        embed = discord.Embed(description=reply)
-        embed.set_footer(text="Full stamina")
-        embed.colour = discord.Color.green()
-        embed.timestamp = dt.datetime.utcnow()+dt.timedelta(seconds=resting_time)
-        await ctx.send(embed=embed)
-
-    @commands.command()
-    async def stats(self, ctx: NabCtx, *, params: str):
-        """Calculates character stats based on vocation and level.
-
-        Shows hitpoints, mana, capacity, total experience and experience to next level.
-
-        This command can be used in two ways:
-
-        1. To calculate the stats for a certain level and vocation. (`stats <level>,<vocation>`)
-        2. To calculate the stats of a character. (`stats <character>`)
-        """
-        invalid_arguments = "Invalid arguments, examples:\n" \
-                            f"```{ctx.clean_prefix}stats player\n" \
-                            f"{ctx.clean_prefix}stats level,vocation\n```"
-        params = params.split(",")
-        char = None
-        if len(params) == 1:
-            _digits = re.compile('\d')
-            if _digits.search(params[0]) is not None:
-                await ctx.send(invalid_arguments)
-                return
-            else:
-                try:
-                    char = await get_character(params[0])
-                    if char is None:
-                        await ctx.send("Sorry, can you try it again?")
-                        return
-                except NetworkError:
-                    await ctx.send("Character **{0}** doesn't exist!".format(params[0]))
-                    return
-                level = int(char.level)
-                vocation = char.vocation
-        elif len(params) == 2:
-            try:
-                level = int(params[0])
-                vocation = params[1]
-            except ValueError:
-                try:
-                    level = int(params[1])
-                    vocation = params[0]
-                except ValueError:
-                    await ctx.send(invalid_arguments)
-                    return
-        else:
-            await ctx.send(invalid_arguments)
-            return
-        if level <= 0:
-            await ctx.send("Not even *you* can go down so low!")
-            return
-        if level >= 2000:
-            await ctx.send("Why do you care? You will __**never**__ reach this level " + str(chr(0x1f644)))
-            return
-        try:
-            stats = get_stats(level, vocation)
-        except ValueError as e:
-            await ctx.send(e)
-            return
-
-        if stats["vocation"] == "no vocation":
-            stats["vocation"] = "with no vocation"
-        if char:
-            await ctx.send("**{5}** is a level **{0}** {1}, {6} has:"
-                           "\n\t**{2:,}** HP"
-                           "\n\t**{3:,}** MP"
-                           "\n\t**{4:,}** Capacity"
-                           "\n\t**{7:,}** Total experience"
-                           "\n\t**{8:,}** to next level"
-                           .format(level, char.vocation.lower(), stats["hp"], stats["mp"], stats["cap"],
-                                   char.name, char.he_she.lower(), stats["exp"], stats["exp_tnl"]))
-        else:
-            await ctx.send("A level **{0}** {1} has:"
-                           "\n\t**{2:,}** HP"
-                           "\n\t**{3:,}** MP"
-                           "\n\t**{4:,}** Capacity"
-                           "\n\t**{5:,}** Experience"
-                           "\n\t**{6:,}** to next level"
-                           .format(level, stats["vocation"], stats["hp"], stats["mp"], stats["cap"],
-                                   stats["exp"], stats["exp_tnl"]))
-
+    @checks.tracking_world_only()
+    @checks.can_embed()
     @commands.group(aliases=["story"], invoke_without_command=True, case_insensitive=True)
-    @checks.is_in_tracking_world()
     async def timeline(self, ctx: NabCtx, *, name: str = None):
         """Shows a character's recent level ups and deaths.
 
         If no character is provided, the timeline of all registered characters in the server will be shown.
 
-        Characters must be registered in order to see their timelines.
+        Characters must be registered in order to have a timeline.
 
         - 🌟 Indicates level ups
         - 💀 Indicates deaths
         """
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if ctx.is_private:
-            user_servers = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_servers = [ctx.guild]
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-
-        c = userDatabase.cursor()
         entries = []
         author = None
         author_icon = discord.Embed.Empty
         count = 0
-        now = time.time()
-        per_page = 20 if ctx.long else 5
+        now = dt.datetime.now(dt.timezone.utc)
+        per_page = 20 if await ctx.is_long() else 5
         await ctx.channel.trigger_typing()
         user_cache = dict()
-        try:
-            if name is None:
-                title = "Timeline"
-                c.execute("SELECT name, user_id, world, char_deaths.level as level, killer, 'death' AS `type`, date, "
-                          "vocation "
-                          "FROM char_deaths, chars WHERE char_id = id AND char_deaths.level >= ? "
-                          "UNION "
-                          "SELECT name, user_id, world, char_levelups.level as level, null, 'levelup' AS `type`, date, "
-                          "vocation "
-                          "FROM char_levelups, chars WHERE char_id = id AND char_levelups.level >= ? "
-                          "ORDER BY date DESC", (config.announce_threshold, config.announce_threshold))
-                while True:
-                    row = c.fetchone()
-                    if row is None:
-                        break
-                    if row["world"] not in user_worlds:
-                        continue
-
-                    user = self._get_cached_user_(self, row["user_id"], user_cache, user_servers)
+        if name is None:
+            title = "Timeline"
+            async with ctx.pool.acquire() as conn:
+                async for entry in get_recent_timeline(conn, minimum_level=config.announce_threshold, worlds=ctx.world):
+                    user = self.get_cached_user_(entry.char.user_id, user_cache, ctx.guild)
                     if user is None:
                         continue
-
                     count += 1
-                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                    row["user"] = user.display_name
-                    row["voc_emoji"] = get_voc_emoji(row["vocation"])
-                    if row["type"] == "death":
-                        row["emoji"] = config.death_emoji
-                        entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - At level **{level}** by {killer} - "
-                                       "*{time} ago*".format(**row))
+                    entry_time = get_time_diff(now - entry.date)
+                    user_name = user.display_name
+                    voc_emoji = get_voc_emoji(entry.char.vocation)
+                    if isinstance(entry, DbDeath):
+                        emoji = config.death_emoji
+                        entries.append(f"{emoji}{voc_emoji} {entry.char.name} (**@{user_name}**) - "
+                                       f"At level **{entry.level}** by {entry.killer.name} - *{entry_time} ago*")
                     else:
-                        row["emoji"] = config.levelup_emoji
-                        entries.append("{emoji}{voc_emoji} {name} (**@{user}**) - Level **{level}** - *{time} ago*"
-                                       .format(**row))
-                    if count >= 200:
+                        emoji = config.levelup_emoji
+                        entries.append(f"{emoji}{voc_emoji} {entry.char.name} (**@{user_name}**) -"
+                                       f" Level **{entry.level}** - *{entry_time} ago*")
+                    if count >= 100:
                         break
-            else:
-                c.execute("SELECT id, name, user_id, vocation FROM chars WHERE name LIKE ?", (name,))
-                result = c.fetchone()
-                if result is None:
-                    await ctx.send("I don't have a character with that name registered.")
-                    return
-                # If user doesn't share a server with the owner, don't display it
-                owner = self.bot.get_member(result["user_id"], user_servers)
+        else:
+            async with ctx.pool.acquire() as conn:
+                db_char = await DbChar.get_by_name(conn, name)
+                if db_char is None or db_char.world != ctx.world:
+                    return await ctx.send("I don't have a character with that name registered.")
+                owner = ctx.guild.get_member(db_char.user_id)
                 if owner is None:
-                    await ctx.send("I don't have a character with that name registered.")
-                    return
+                    return await ctx.send("I don't have a character with that name registered.")
                 author = owner.display_name
                 author_icon = owner.avatar_url
-                name = result["name"]
-                emoji = get_voc_emoji(result["vocation"])
+                name = db_char.name
+                emoji = get_voc_emoji(db_char.vocation)
                 title = f"{emoji} {name} timeline"
-                c.execute("SELECT level, killer, 'death' AS `type`, date "
-                          "FROM char_deaths WHERE char_id = ? AND level >= ? "
-                          "UNION "
-                          "SELECT level, null, 'levelup' AS `type`, date "
-                          "FROM char_levelups WHERE char_id = ? AND level >= ? "
-                          "ORDER BY date DESC", (result["id"], config.announce_threshold, result["id"], config.announce_threshold))
-                while True:
-                    row = c.fetchone()
-                    if row is None:
-                        break
+                async for entry in db_char.get_timeline(conn):
                     count += 1
-                    row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                    if row["type"] == "death":
-                        row["emoji"] = config.death_emoji
-                        entries.append("{emoji} At level **{level}** by {killer} - *{time} ago*"
-                                       .format(**row)
-                                       )
+                    entry_time = get_time_diff(now - entry.date)
+                    if isinstance(entry, DbDeath):
+                        emoji = config.death_emoji
+                        entries.append(f"{emoji} At level **{entry.level}** by {entry.killer.name} - "
+                                       f"*{entry_time} ago*")
                     else:
-                        row["emoji"] = config.levelup_emoji
-                        entries.append("{emoji} Level **{level}** - *{time} ago*".format(**row))
-                    if count >= 200:
+                        emoji = config.levelup_emoji
+                        entries.append(f"{emoji} Level **{entry.level}** - *{entry_time} ago*")
+                    if count >= 100:
                         break
-        finally:
-            c.close()
-
         if count == 0:
             await ctx.send("There are no registered events.")
             return
 
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
-        pages.embed.set_author(name=author, icon_url=author_icon)
+        if author is not None:
+            pages.embed.set_author(name=author, icon_url=author_icon)
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @timeline.command(name="user")
-    @checks.is_in_tracking_world()
+    @checks.tracking_world_somewhere()
     async def timeline_user(self, ctx: NabCtx, *, name: str):
         """Shows a users's recent level ups and deaths on their characters."""
-        permissions = ctx.bot_permissions
-        if not permissions.embed_links:
-            await ctx.send("Sorry, I need `Embed Links` permission for this command.")
-            return
-
-        if name is None:
-            await ctx.send("You must tell me a user's name to look for his/her story.")
-            return
-
-        if ctx.is_private:
-            user_servers = self.bot.get_user_guilds(ctx.author.id)
-            user_worlds = self.bot.get_user_worlds(ctx.author.id)
-        else:
-            user_servers = [ctx.guild]
-            user_worlds = [self.bot.tracked_worlds.get(ctx.guild.id)]
-            if user_worlds[0] is None:
-                await ctx.send("This server is not tracking any tibia worlds.")
-                return
-
-        user = self.bot.get_member(name, user_servers)
+        user = self.bot.get_member(name, ctx.guild)
         if user is None:
             await ctx.send("I don't see any users with that name.")
             return
 
-        c = userDatabase.cursor()
         entries = []
         count = 0
-        now = time.time()
-        per_page = 20 if ctx.long else 5
+        now = dt.datetime.now(dt.timezone.utc)
+        per_page = 20 if await ctx.is_long() else 5
 
-        await ctx.channel.trigger_typing()
-        try:
+        async with ctx.pool.acquire() as conn:
             title = f"{user.display_name} timeline"
-            c.execute("SELECT name, user_id, world, char_deaths.level AS level, killer, 'death' AS `type`, date, vocation "
-                      "FROM char_deaths, chars WHERE char_id = id AND char_deaths.level >= ? AND user_id = ? "
-                      "UNION "
-                      "SELECT name, user_id, world, char_levelups.level as level, null, 'levelup' AS `type`, date, vocation "
-                      "FROM char_levelups, chars WHERE char_id = id AND char_levelups.level >= ? AND user_id = ? "
-                      "ORDER BY date DESC", (config.announce_threshold, user.id, config.announce_threshold, user.id))
-            while True:
-                row = c.fetchone()
-                if row is None:
-                    break
-                if row["world"] not in user_worlds:
-                    continue
+            async for entry in get_recent_timeline(conn, worlds=ctx.world, user_id=user.id):
                 count += 1
-                row["time"] = get_time_diff(dt.timedelta(seconds=now - row["date"]))
-                row["voc_emoji"] = get_voc_emoji(row["vocation"])
-                if row["type"] == "death":
-                    row["emoji"] = config.death_emoji
-                    entries.append("{emoji}{voc_emoji} {name} - At level **{level}** by {killer} - *{time} ago*"
-                                   .format(**row)
-                                   )
+                entry_time = get_time_diff(now - entry.date)
+                voc_emoji = get_voc_emoji(entry.char.vocation)
+                if isinstance(entry, DbDeath):
+                    emoji = config.death_emoji
+                    entries.append(f"{emoji}{voc_emoji} {entry.char.name} - At level **{entry.level}** "
+                                   f"by {entry.killer.name} - *{entry_time} ago*")
                 else:
-                    row["emoji"] = config.levelup_emoji
-                    entries.append("{emoji}{voc_emoji} {name} - Level **{level}** - *{time} ago*".format(**row))
+                    emoji = config.levelup_emoji
+                    entries.append(f"{emoji}{voc_emoji} {entry.char.name} Level **{entry.level}** - *{entry_time} ago*")
                 if count >= 200:
                     break
-        finally:
-            c.close()
 
         if count == 0:
             await ctx.send("There are no registered events.")
@@ -1457,7 +1060,7 @@ class Tibia:
         pages.embed.set_author(name=title, icon_url=author_icon)
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
     @commands.group(aliases=['serversave'], invoke_without_command=True)
@@ -1469,7 +1072,7 @@ class Tibia:
         tibia_timezone = get_tibia_time_zone()
         timezone_name = "CET" if tibia_timezone == 1 else "CEST"
 
-        offset = tibia_timezone - get_local_timezone()
+        offset = tibia_timezone - timing.get_local_timezone()
         tibia_time = now+dt.timedelta(hours=offset)
         server_save = tibia_time
         if tibia_time.hour >= 10:
@@ -1482,23 +1085,22 @@ class Tibia:
         server_save_str = '{h} hours and {m} minutes'.format(h=hours, m=minutes)
 
         reply = f"It's currently **{tibia_time.strftime('%H:%M')}** in Tibia's website ({timezone_name}).\n" \
-                f"Server save is in {server_save_str}.\n" \
-                f"Rashid is in **{get_rashid_info()['city']}** today."
+                f"Server save is in **{server_save_str}**.\n" \
+                f"Rashid is in **{get_rashid_city()}** today."
         if ctx.is_private:
             return await ctx.send(reply)
 
-        saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        saved_times = await self.get_timezones(ctx.guild.id)
         if not saved_times:
             return await ctx.send(reply)
-        time_entries = sorted(saved_times, key=lambda k: now.astimezone(pytz.timezone(k["timezone"])).utcoffset())
+        time_entries = sorted(saved_times, key=lambda k: now.astimezone(pytz.timezone(k["zone"])).utcoffset())
         reply += "\n\n"
         for entry in time_entries:
-            timezone_time = now.astimezone(pytz.timezone(entry["timezone"]))
+            timezone_time = now.astimezone(pytz.timezone(entry["zone"]))
             reply += f"**{timezone_time.strftime('%H:%M')}** in {entry['name']}\n"
         await ctx.send(reply)
 
-    @checks.is_mod()
-    @commands.guild_only()
+    @checks.server_mod_only()
     @time.command(name="add", usage="<timezone>")
     async def time_add(self, ctx: NabCtx, *, _timezone):
         """Adds a new timezone to display.
@@ -1531,52 +1133,51 @@ class Tibia:
         if len(display_name) > 40:
             return await ctx.send(f"{ctx.tick(False)} The display name can't be longer than 40 characters.")
 
-        saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
-        if any(e["name"].lower() == display_name.lower() for e in saved_times):
-            return await ctx.send(f"{ctx.tick(False)} There's already a saved timezone with that display name,"
-                                  f"please use the command again.")
-
-        saved_times.append({"name": display_name.strip(), "timezone": _timezone})
-        set_server_property(ctx.guild.id, "times", saved_times, serialize=True)
+        try:
+            await ctx.pool.execute("INSERT INTO server_timezone(server_id, zone, name) VALUES($1, $2, $3)",
+                                   ctx.guild.id, _timezone, display_name.strip())
+        except asyncpg.UniqueViolationError:
+            return await ctx.error("That timezone already exists.")
         await ctx.send(f"{ctx.tick()} Timezone `{_timezone}` saved successfully as `{display_name.strip()}`.")
 
-    @checks.is_mod()
+    @checks.server_mod_only()
     @checks.can_embed()
-    @commands.guild_only()
     @time.command(name="list")
     async def time_list(self, ctx: NabCtx):
         """Shows a list of all the currently added timezones.
 
         Only Server Moderators can use this command."""
-        saved_times = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        saved_times = await self.get_timezones(ctx.guild.id)
         if not saved_times:
-            return await ctx.send(f"{ctx.tick(False)} There are no saved times for this server.")
+            return await ctx.error(f"This server doesn't have any timezones saved yet.")
 
-        pages = Pages(ctx, entries=[f"**{e['name']}** — *{e['timezone']}*" for e in saved_times], per_page=10)
+        pages = Pages(ctx, entries=[f"**{e['name']}** — *{e['zone']}*" for e in saved_times], per_page=10)
         pages.embed.title = "Saved times"
         try:
             await pages.paginate()
-        except CannotPaginate as e:
-            await ctx.send(e)
+        except errors.CannotPaginate as e:
+            await ctx.error(e)
 
-    @checks.is_mod()
-    @commands.guild_only()
+    @checks.server_mod_only()
     @time.command(name="remove", aliases=["delete"], usage="<timezone>")
     async def time_remove(self, ctx: NabCtx, *, _timezone):
         """Removes a timezone from the list.
 
         Only Server Moderators can use this command."""
-        _timezone = _timezone.strip()
-        saved_times: list = get_server_property(ctx.guild.id, "times", default=[], deserialize=True)
+        saved_times = await self.get_timezones(ctx.guild.id)
         if not saved_times:
-            return await ctx.send(f"{ctx.tick(False)} There are no saved times for this server.")
+            return await ctx.error(f"This server doesn't have any timezones saved yet.")
 
-        for entry in saved_times:
-            if entry["name"].lower() == _timezone.lower():
-                saved_times.remove(entry)
-                set_server_property(ctx.guild.id, "times", saved_times, serialize=True)
-                return await ctx.send(f"{ctx.tick()} Timezone `{entry['name']}` removed succesfully.")
-        await ctx.send(f"{ctx.tick(False)} There's no timezone named `{_timezone}`.")
+        timezone = await ctx.pool.fetchrow("""SELECT zone, name FROM server_timezone
+                                              WHERE lower(zone) = $1 AND server_id = $2""",
+                                           _timezone.lower(), ctx.guild.id)
+        if not timezone:
+            return await ctx.error("There's no timezone saved with that name.\n"
+                                   "Remember to use the timezone's real name, not the display name.\n")
+
+        await ctx.pool.execute("DELETE FROM server_timezone WHERE server_id = $1 AND zone = $2",
+                               ctx.guild.id, timezone["zone"])
+        await ctx.success(f"Timezone {timezone['zone']} ({timezone['name']}) removed successfully.")
 
     @checks.can_embed()
     @commands.command(aliases=['check', 'char', 'character'])
@@ -1592,191 +1193,139 @@ class Tibia:
 
         Additionally, if the character is in the highscores, their ranking will be shown.
         """
-        if ctx.is_lite:
-            try:
-                char = await get_character(name)
-                if char is None:
-                    await ctx.send("I couldn't find a character with that name")
-                    return
-            except NetworkError:
-                await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
-                return
-            embed = discord.Embed(description=self.get_char_string(char))
-            embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
-            await ctx.send(embed=embed)
-            return
-
         if name.lower() == ctx.me.display_name.lower():
             await ctx.invoke(self.bot.all_commands.get('about'))
             return
 
-        try:
-            char = await get_character(name, bot=self.bot)
-        except NetworkError:
-            await ctx.send("Sorry, I couldn't fetch the character's info, maybe you should try again...")
-            return
-        char_string = self.get_char_string(char)
+        char = await get_character(ctx.bot, name)
+
+        if ctx.is_lite or (not ctx.is_private and not ctx.world):
+            if char is None:
+                return await ctx.error("I couldn't find a character with that name.")
+            log.debug("{self.tag} Found character, lite mode")
+            return await ctx.send(embed=self.get_char_embed(char))
         # If the command is used on a DM, only search users in the servers the author is in
         # Otherwise, just search on the current server
         if ctx.is_private:
             guild_filter = self.bot.get_user_guilds(ctx.author.id)
+            user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if
+                                 server in [s.id for s in guild_filter]]
         else:
             guild_filter = ctx.guild
+            user_tibia_worlds = [ctx.world] if ctx.world else []
         # If the user is a bot, then don't, just don't
         user = self.bot.get_member(name, guild_filter)
-        if user is not None and user.bot:
+        if user and user.bot:
             user = None
-        embed = self.get_user_embed(ctx, user)
 
         # No user or char with that name
         if char is None and user is None:
-            await ctx.send("I don't see any user or character with that name.")
-            return
+            return await ctx.error("I don't see any user or character with that name.")
         # We found a user
-        if embed is not None:
+        if user is not None:
+            user_embed = await self.get_user_embed(ctx, user)
             # Check if we found a char too
             if char is not None:
+                char_embed = self.get_char_embed(char)
                 # If it's owned by the user, we append it to the same embed.
-                if char.owner == int(user.id):
-                    embed.add_field(name="Character", value=char_string, inline=False)
-                    if char.last_login is not None:
-                        embed.set_footer(text="Last login")
-                        embed.timestamp = char.last_login
-                    await ctx.send(embed=embed)
-                    return
+                if char.owner_id == int(user.id):
+                    if char_embed.fields:
+                        highscores = char_embed.fields[0]
+                        char_embed.add_field(name=highscores.name, value=highscores.value, inline=False)
+                        char_embed.set_field_at(0, name="Character", value=char_embed.description, inline=False)
+                    else:
+                        char_embed.add_field(name="Character", value=char_embed.description, inline=False)
+                    char_embed.description = user_embed.description
+                    char_embed.colour = user_embed.colour
+                    char_embed.set_thumbnail(url=user_embed.thumbnail.url)
+                    log.debug(f"{self.tag} Matches user and char, same name.")
+                    return await ctx.send(embed=char_embed)
                 # Not owned by same user, we display a separate embed
                 else:
-                    char_embed = discord.Embed(description=char_string)
-                    char_embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
-                    if char.last_login is not None:
-                        char_embed.set_footer(text="Last login")
-                        char_embed.timestamp = char.last_login
-                    await ctx.send(embed=embed)
+                    log.debug(f"{self.tag} Matches user and char, different owner")
+                    await ctx.send(embed=user_embed)
                     await ctx.send(embed=char_embed)
                     return
-            else:
-                # Tries to display user's highest level character since there is no character match
-                if ctx.is_private:
-                    display_name = '@'+user.name
-                    user_guilds = self.bot.get_user_guilds(ctx.author.id)
-                    user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if
-                                         server in [s.id for s in user_guilds]]
-                else:
-                    if self.bot.tracked_worlds.get(ctx.guild.id) is None:
-                        user_tibia_worlds = []
-                    else:
-                        user_tibia_worlds = [self.bot.tracked_worlds[ctx.guild.id]]
-                if len(user_tibia_worlds) != 0:
-                    placeholders = ", ".join("?" for w in user_tibia_worlds)
-                    c = userDatabase.cursor()
+            # Tries to display user's highest level character since there is no character match
+            if user_tibia_worlds:
+                chars = await DbChar.get_chars_by_user(ctx.pool, user.id, worlds=user_tibia_worlds)
+                if chars:
+                    chars.sort(key=lambda c: c.level, reverse=True)
+                    character = chars[0]
                     try:
-                        c.execute("SELECT name, ABS(level) as level "
-                                  "FROM chars "
-                                  "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
-                                  tuple(user_tibia_worlds))
-                        character = c.fetchone()
-                    finally:
-                        c.close()
-                    if character:
-                        char = await get_character(character["name"])
-                        char_string = self.get_char_string(char)
+                        char = await get_character(ctx.bot, character["name"])
+                    except errors.NetworkError:
+                        pass
+                    else:
                         if char is not None:
-                            char_embed = discord.Embed(description=char_string)
-                            char_embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
-                            embed.add_field(name="Highest character", value=char_string, inline=False)
+                            char_embed = self.get_char_embed(char)
+                            user_embed.add_field(name="Highest character", value=char_embed.description, inline=False)
                             if char.last_login is not None:
-                                embed.set_footer(text="Last login")
-                                embed.timestamp = char.last_login
-                await ctx.send(embed=embed)
-        else:
-            embed = discord.Embed(description="")
-            if char is not None:
-                owner = None if char.owner == 0 else self.bot.get_member(char.owner, guild_filter)
-                if owner is not None:
-                    # Char is owned by a discord user
-                    embed = self.get_user_embed(ctx, owner)
-                    if embed is None:
-                        embed = discord.Embed(description="")
-                    embed.add_field(name="Character", value=char_string, inline=False)
-                    if char.last_login is not None:
-                        embed.set_footer(text="Last login")
-                        embed.timestamp = char.last_login
-                    await ctx.send(embed=embed)
-                    return
-                else:
-                    embed.set_author(name=char.name, url=char.url, icon_url=tibia_logo)
-                    embed.description += char_string
-                    if char.last_login:
-                        embed.set_footer(text="Last login")
-                        embed.timestamp = char.last_login
-
-            await ctx.send(embed=embed)
+                                user_embed.set_footer(text="Last login")
+                                user_embed.timestamp = char.last_login
+            log.debug(f"{self.tag} Found user only, no char")
+            return await ctx.send(embed=user_embed)
+        owner = self.bot.get_member(char.owner_id, guild_filter) if char.owner_id else None
+        if owner is not None and char.world in user_tibia_worlds:
+            # Char is owned by a discord user
+            user_embed = await self.get_user_embed(ctx, owner)
+            char_embed = self.get_char_embed(char)
+            if char_embed.fields:
+                highscores = char_embed.fields[0]
+                char_embed.add_field(name=highscores.name, value=highscores.value, inline=False)
+                char_embed.set_field_at(0, name="Character", value=char_embed.description, inline=False)
+            else:
+                char_embed.add_field(name="Character", value=char_embed.description, inline=False)
+            char_embed.description = user_embed.description
+            char_embed.set_thumbnail(url=user_embed.thumbnail.url)
+            log.debug(f"{self.tag} Found char only, owner is in same server")
+            await ctx.send(embed=char_embed)
+            return
+        log.debug(f"{self.tag} Found char only")
+        await ctx.send(embed=self.get_char_embed(char))
 
     @commands.command(name="world")
     async def world_info(self, ctx: NabCtx, name: str):
         """Shows basic information about a Tibia world.
 
         Shows information like PvP type, online count, server location, vocation distribution, and more."""
-        try:
-            world = await get_world(name)
-            if world is None:
-                await ctx.send("There's no world with that name.")
-                return
-        except NetworkError:
-            await ctx.send("I'm having connection issues right now.")
+        world = await get_world(name)
+        if world is None:
+            await ctx.send("There's no world with that name.")
             return
 
-        url = 'https://secure.tibia.com/community/?subtopic=worlds&world=' + name.capitalize()
-        embed = discord.Embed(url=url, title=name.capitalize())
-        if world.online == 0:
+        embed = self.get_tibia_embed(world.name, url=world.url)
+        if world.status != "Online":
             embed.description = "This world is offline."
             embed.colour = discord.Colour.red()
         else:
             embed.colour = discord.Colour.green()
-        embed.add_field(name="Players online", value=str(world.online))
-        embed.set_footer(text=f"The players online record is {world.record_online}")
+        embed.add_field(name="Players online", value=str(world.online_count))
+        embed.set_footer(text=f"The players online record is {world.record_count}")
         embed.timestamp = world.record_date
-        created = world.creation.split("-")
-        try:
-            month = calendar.month_name[int(created[1])]
-            year = int(created[0])
-            embed.add_field(name="Created", value=f"{month} {year}")
-        except (IndexError, ValueError):
-            pass
+        month = calendar.month_name[world.creation_month]
+        embed.add_field(name="Created", value=f"{month} {world.creation_year}")
 
-        embed.add_field(name="Location", value=f"{FLAGS.get(world.location,'')} {world.location}")
-        embed.add_field(name="PvP Type", value=f"{PVP.get(world.pvp_type,'')} {world.pvp_type}")
-        if world.premium_type is not None:
+        embed.add_field(name="Location", value=f"{FLAGS.get(world.location.value,'')} {world.location.value}")
+        embed.add_field(name="PvP Type", value=f"{PVP.get(world.pvp_type.value,'')} {world.pvp_type.value}")
+        if world.premium_only:
             embed.add_field(name="Premium restricted", value=ctx.tick(True))
-        if world.transfer_type is not None:
-            embed.add_field(name="Transfers", value=f"{TRANSFERS.get(world.transfer_type,'')} {world.transfer_type}")
+        if world.transfer_type != TransferType.REGULAR:
+            embed.add_field(name="Transfers",
+                            value=f"{TRANSFERS.get(world.transfer_type.value,'')} {world.transfer_type.value}")
 
-        knight = 0
-        paladin = 0
-        sorcerer = 0
-        druid = 0
-        none = 0
-        for character in world.players_online:
-            if "knight" in character.vocation.lower():
-                knight += 1
-            if "sorcerer" in character.vocation.lower():
-                sorcerer += 1
-            if "druid" in character.vocation.lower():
-                druid += 1
-            if "paladin" in character.vocation.lower():
-                paladin += 1
-            if "none" in character.vocation.lower():
-                none += 1
-
-        embed.add_field(name="Vocations distribution", value=f"{knight} {get_voc_emoji('knight')} | "
-                                                             f"{druid} {get_voc_emoji('druid')} | "
-                                                             f"{sorcerer} {get_voc_emoji('sorcerer')} | "
-                                                             f"{paladin} {get_voc_emoji('paladin')} | "
-                                                             f"{none} {get_voc_emoji('none')}",
+        voc_counter = Counter(normalize_vocation(char.vocation) for char in world.online_players)
+        embed.add_field(name="Vocations distribution",
+                        value=f"{voc_counter.get('knight', 0)} {get_voc_emoji('knight')} | "
+                              f"{voc_counter.get('druid', 0)} {get_voc_emoji('druid')} | "
+                              f"{voc_counter.get('sorcerer', 0)} {get_voc_emoji('sorcerer')} | "
+                              f"{voc_counter.get('paladin', 0)} {get_voc_emoji('paladin')} | "
+                              f"{voc_counter.get('none', 0)} {get_voc_emoji('none')}",
                         inline=False)
 
         await ctx.send(embed=embed)
 
+    @checks.can_embed()
     @commands.command(usage="[query]")
     async def worlds(self, ctx: NabCtx, *, query=None):
         """Shows a list of worlds.
@@ -1787,12 +1336,7 @@ class Tibia:
         `descending` to reverse the order.
         `europe`, `south america` or `north america` to filter by location.
         `optional pvp`, `open pvp`, `retro open pvp`, `hardcore pvp` or `retro hardcore pvp` to filter by pvp type."""
-        try:
-            worlds = await get_world_list()
-            if worlds is None:
-                return await ctx.send(f"{ctx.tick(False)} Something went wrong...")
-        except NetworkError:
-            return await ctx.send(f"{ctx.tick(False)} I'm having network errors, please try again later.")
+        worlds = await get_world_list()
         if query is None:
             params = []
         else:
@@ -1833,29 +1377,33 @@ class Tibia:
             title = f"{pvp_filter} {title}"
 
         if region_filter:
-            worlds = filter(lambda w: w.location == region_filter, worlds)
+            worlds = filter(lambda w: w.location.value == region_filter, worlds)
         if pvp_filter:
-            worlds = filter(lambda w: w.pvp_type == pvp_filter, worlds)
+            worlds = filter(lambda w: w.pvp_type.value == pvp_filter, worlds)
 
         worlds = sorted(worlds, key=attrgetter(sort), reverse=reverse)
         if not worlds:
             return await ctx.send("There's no worlds matching the query.")
 
-        entries = [f"{w.name} {FLAGS[w.location]}{PVP[w.pvp_type]} - `{w.online_count:,} online`" for w in worlds]
-        per_page = 20 if ctx.long else 5
+        entries = [f"{w.name} {FLAGS[w.location.value]}{PVP[w.pvp_type.value]} - `{w.online_count:,} online`" for w in worlds]
+        per_page = 20 if await ctx.is_long() else 5
         pages = Pages(ctx, entries=entries, per_page=per_page)
         pages.embed.title = title
         pages.embed.colour = discord.Colour.blurple()
+        pages.embed.set_author(name="Tibia.com", icon_url=TIBIACOM_ICON, url=TIBIA_URL)
+        pages.embed.url = tibiapy.WorldOverview.get_url()
         try:
             await pages.paginate()
-        except CannotPaginate as e:
+        except errors.CannotPaginate as e:
             await ctx.send(e)
 
-    # Utilities
-    @staticmethod
-    def get_article_embed(article, limit):
+    # endregion
+
+    # region Auxiliary methods
+    @classmethod
+    def get_article_embed(cls, article, limit):
         url = f"http://www.tibia.com/news/?subtopic=newsarchive&id={article['id']}"
-        embed = discord.Embed(title=article["title"], url=url)
+        embed = cls.get_tibia_embed(article["title"], url=url)
         content = html_to_markdown(article["content"])
         thumbnail = get_first_image(article["content"])
         if thumbnail is not None:
@@ -1863,211 +1411,227 @@ class Tibia:
 
         messages = split_message(content, limit)
         embed.description = messages[0]
-        embed.set_author(name="Tibia.com", url="http://www.tibia.com/news/?subtopic=latestnews", icon_url=tibia_logo)
         embed.set_footer(text=f"ID: {article['id']} | Posted on {article['date']:%A, %B %d, %Y}")
         if len(messages) > 1:
             embed.description += f"\n*[Read more...]({url})*"
         return embed
 
-    @staticmethod
-    def get_char_string(char: Character) -> str:
+    @classmethod
+    def get_char_embed(cls, char: NabChar) -> discord.Embed:
         """Returns a formatted string containing a character's info."""
-        if char is None:
-            return None
-        reply = "[{0.name}]({0.url}) is a level {0.level} __{0.vocation}__. " \
-                "{0.he_she} resides in __{0.residence}__ in the world of __{0.world}__".format(char)
-        if char.former_world is not None:
-            reply += " (formerly __{0.former_world}__)".format(char)
-        reply += ". {0.he_she} has {0.achievement_points:,} achievement points.".format(char)
+        embed = cls.get_tibia_embed()
 
-        if char.guild is not None:
-            guild_url = url_guild+urllib.parse.quote(char.guild_name)
-            reply += "\n{0.he_she} is __{1}__ of the [{2}]({3}).".format(char,
-                                                                         char.guild_rank,
-                                                                         char.guild_name,
-                                                                         guild_url)
+        description = f"[{char.name}]({char.url}) is a level {char.level} __{char.vocation}__." \
+                      f" {char.he_she} resides in __{char.residence}__ in the world of __{char.world}__"
+        if char.former_world is not None:
+            description += f" (formerly __{char.former_world}__)"
+        description += f". {char.he_she} has {char.achievement_points:,} achievement points."
+
+        if char.guild_membership is not None:
+            description += f"\n{char.he_she} is __{char.guild_rank}__ of the [{char.guild_name}]({char.guild_url})."
         if char.married_to is not None:
-            married_url = Character.get_url(char.married_to)
-            reply += "\n{0.he_she} is married to [{0.married_to}]({1}).".format(char, married_url)
+            description += f"\n{char.he_she} is married to [{char.married_to}]({char.married_to_url})."
         if char.house is not None:
-            house_url = url_house.format(id=char.house["houseid"], world=char.world)
-            reply += "\n{0.he_she} owns [{1}]({2}) in {3}.".format(char,
-                                                                   char.house["name"],
-                                                                   house_url,
-                                                                   char.house["town"])
-        if char.last_login is not None:
-            now = dt.datetime.utcnow()
-            now = now.replace(tzinfo=dt.timezone.utc)
-            time_diff = now - char.last_login
-            if time_diff.days > 7:
-                reply += "\n{1.he_she} hasn't logged in for **{0}**.".format(get_time_diff(time_diff), char)
+            description += f"\n{char.he_she} owns [{char.house.name}]({char.house.url}) in {char.house.town}."
+        if char.last_login:
+            embed.set_footer(text="Last login")
+            embed.timestamp = char.last_login
         else:
-            reply += "\n{0.he_she} has never logged in.".format(char)
+            embed.set_footer(text=f"{char.he_she} has never logged in.")
+
+        extra = [f"**{char.account_status.value}**"]
+        if char.hidden:
+            extra.append("**Hidden**")
+        if char.account_information:
+            if char.account_information.loyalty_title:
+                extra.append(f"**{char.account_information.loyalty_title}**")
+            if char.account_information.position:
+                extra.append(f"**{char.account_information.position}**")
+        description += f"\n{' | '.join(extra)}"
 
         # Insert any highscores this character holds
-        for highscore in char.highscores:
-            highscore_string = highscore_format[highscore["category"]].format(char.his_her,
-                                                                              highscore["value"],
-                                                                              highscore['rank'])
-            reply += "\n🏆 {0}".format(highscore_string)
+        highscores_field = ""
+        for category, highscore in char.highscores.items():
+            highscore_string = HIGHSCORES_FORMAT[category].format(char.he_she.lower(),
+                                                                  highscore["value"], highscore["rank"])
+            highscores_field += "\n🏆 {0}".format(highscore_string)
+        if highscores_field:
+            embed.add_field(name="Highscores entries", value=highscores_field, inline=False)
+        embed.description = description
+        return embed
 
-        return reply
-
-    def get_user_embed(self, ctx: NabCtx, user: discord.Member) -> Optional[discord.Embed]:
-        if user is None:
-            return None
+    @classmethod
+    async def get_user_embed(cls, ctx: NabCtx, user: discord.Member) -> Optional[discord.Embed]:
         embed = discord.Embed()
+        user_tibia_worlds = []
         if ctx.is_private:
-            display_name = '@'+user.name
-            user_guilds = self.bot.get_user_guilds(ctx.author.id)
-            user_tibia_worlds = [world for server, world in self.bot.tracked_worlds.items() if
+            display_name = f'@{user.name}'
+            user_guilds = ctx.bot.get_user_guilds(ctx.author.id)
+            user_tibia_worlds = [world for server, world in ctx.bot.tracked_worlds.items() if
                                  server in [s.id for s in user_guilds]]
         else:
-            display_name = '@'+user.display_name
+            display_name = f'@{user.display_name}'
             embed.colour = user.colour
-            if self.bot.tracked_worlds.get(ctx.guild.id) is None:
-                user_tibia_worlds = []
-            else:
-                user_tibia_worlds = [self.bot.tracked_worlds[ctx.guild.id]]
-        if len(user_tibia_worlds) == 0:
-            return None
+            if ctx.world:
+                user_tibia_worlds = [ctx.world]
         embed.set_thumbnail(url=user.avatar_url)
-
-        placeholders = ", ".join("?" for w in user_tibia_worlds)
-        c = userDatabase.cursor()
-        try:
-            c.execute("SELECT name, ABS(level) as level, vocation "
-                      "FROM chars "
-                      "WHERE user_id = {0} AND world IN ({1}) ORDER BY level DESC".format(user.id, placeholders),
-                      tuple(user_tibia_worlds))
-            characters = c.fetchall()
-            if not characters:
-                embed.description = f"I don't know who **{display_name}** is..."
-                return embed
-            online_list = [x.name for v in online_characters.values() for x in v]
-            char_list = []
-            for char in characters:
-                char["online"] = config.online_emoji if char["name"] in online_list else ""
-                char["vocation"] = get_voc_abb(char["vocation"])
-                char["url"] = url_character + urllib.parse.quote(char["name"].encode('iso-8859-1'))
-                if len(characters) <= 10:
-                    char_list.append("[{name}]({url}){online} (Lvl {level} {vocation})".format(**char))
-                else:
-                    char_list.append("**{name}**{online} (Lvl {level} {vocation})".format(**char))
-                char_string = "@**{0.display_name}**'s character{1}: {2}"
-                plural = "s are" if len(char_list) > 1 else " is"
-                embed.description = char_string.format(user, plural, join_list(char_list, ", ", " and "))
-        finally:
-            c.close()
+        characters = await DbChar.get_chars_by_user(ctx.pool, user.id, worlds=user_tibia_worlds)
+        if not characters:
+            embed.description = f"**{display_name}** has no registered characters here."
+            return embed
+        characters.sort(key=lambda c: c.level, reverse=True)
+        online_list = [x.name for k, v in online_characters.items() if k in user_tibia_worlds for x in v]
+        char_list = []
+        for char in characters:
+            online = config.online_emoji if char.name in online_list else ""
+            voc_abb = get_voc_abb(char.vocation)
+            if len(characters) <= 10:
+                char_list.append(f"[{char.name}]({char.url}){online} (Lvl {abs(char.level)} {voc_abb})")
+            else:
+                char_list.append(f"**{char.name}**{online} (Lvl {abs(char.level)} {voc_abb})")
+            plural = "s are" if len(char_list) > 1 else " is"
+            embed.description = f"**{display_name}**'s character{plural}: {join_list(char_list, ', ', ' and ')}"
         return embed
 
-    @staticmethod
-    def get_house_embed(ctx: NabCtx, house):
+    @classmethod
+    def get_house_embed(cls, ctx: NabCtx, wiki_house: models.House, house: House):
         """Gets the embed to show in /house command"""
-        if type(house) is not dict:
-            return
-        embed = discord.Embed(title=house["name"])
-        house["type"] = "house" if house["guildhall"] == 0 else "guildhall"
-        house["_beds"] = "bed" if house["beds"] == 1 else "beds"
-        description = "This {type} has **{beds}** {_beds} and a size of **{size}** sqm." \
-                      " This {type} is in **{city}**.".format(**house)
-        # House was fetched correctly
-        if house["fetch"]:
-            embed.url = house["url"]
-            description += " The rent is **{rent:,}** gold per month.".format(**house)
-            if house["status"] == "empty":
-                description += "\nIn **{world}**, this {type} is unoccupied.".format(**house)
-            elif house["status"] in ["rented", "moving", "transfering"]:
-                house["owner_url"] = get_character_url(house["owner"])
-                description += "\nIn **{world}**, this {type} is rented by [{owner}]({owner_url}).".format(**house)
-                if house["status"] == "moving":
-                    description += "\n{owner_pronoun} is moving out on **{move_date}**."
-                if house["status"] == "transfering":
-                    house["transferee_url"] = get_character_url(house["transferee"])
-                    description += "\nIt will be transferred to [{transferee}]({transferee_url}) for **{transfer_price:,}** " \
-                                   "gold on **{move_date}**.".format(**house)
-                    if not house["accepted"]:
-                        description += "\nThe transfer hasn't been accepted."
-            elif house["status"] == "auctioned":
-                house["bidder_url"] = get_character_url(house["top_bidder"])
-                description += "\nIn **{world}**, this {type} is being auctioned. " \
-                               "The top bid is **{top_bid:,}** gold, by [{top_bidder}]({bidder_url}).\n" \
-                               "The auction ends at **{auction_end}**".format(**house)
+        embed = discord.Embed(title=wiki_house.name, url=wiki_house.url)
+        WIKI_ICON = "https://vignette.wikia.nocookie.net/tibia/images/b/bc/Wiki.png/revision/latest?path-prefix=en"
+        embed.set_author(name="TibiaWiki", url=tibiawikisql.api.BASE_URL, icon_url=WIKI_ICON)
 
-        description += f"\n*[TibiaWiki article](https://tibia.wikia.com/wiki/{urllib.parse.quote(house['name'])})*"
-        embed.description = description
-        if "world" not in house:
+        house_type = "house" if not wiki_house.guildhall else "guildhall"
+        beds = "bed" if wiki_house.beds == 1 else "beds"
+        description = f"This {house_type} has **{wiki_house.beds}** {beds} and a size of **{wiki_house.size}** sqm." \
+            f" This {house_type} is in **{wiki_house.city}**. The rent is **{wiki_house.rent:,}** gold per month."
+        # Only TibiaWiki Information
+        if not house:
+            embed.description = description
             embed.set_footer(text=f"To check a specific world, try: '{ctx.clean_prefix}{ctx.invoked_with} "
-                                  f"{house['name']},{random.choice(tibia_worlds)}'")
+                                  f"{wiki_house.name},{random.choice(tibia_worlds)}'")
+            return embed
+        # Update embed
+        embed.url = house.url
+        embed.set_author(name="Tibia.com", url=TIBIA_URL, icon_url=TIBIACOM_ICON)
+
+        description += f"\nIn **{house.world}**, this {house_type} is "
+        embed.url = house.url
+        verb = "wants to" if not house.transfer_accepted else "will"
+        # House is rented
+        if house.status == HouseStatus.RENTED:
+            pronoun = "He" if house.owner_sex == Sex.MALE else "She"
+            description += f"rented by [{house.owner}]({house.owner_url})." \
+                f" The rent is paid until **{house.paid_until:%d %b %Y %H:%M %Z}**"
+            # Owner is moving out
+            if house.transfer_date:
+                description += f".\n {pronoun} will move out on **{house.transfer_date:%d %b %Y %H:%M %Z}**"
+            # Owner is transferring
+            if house.transferee:
+                description += f" and {verb} pass the house to [{house.transferee}]({house.transferee_url}) " \
+                    f"for **{house.transfer_price:,}** gold"
+            description += "."
+        else:
+            description += "on auction."
+            # House is on auction, auction started
+            if house.auction_end:
+                description += f" The highest bid is **{house.highest_bid:,}** gold, by " \
+                    f"[{house.highest_bidder}]({house.highest_bidder_url})." \
+                    f" The auction ends on **{house.auction_end:%d %b %Y %H:%M %Z}**"
+            # House is on auction, auction hasn't started
+            else:
+                description += " The auction has not started yet."
+        description += f"\n*🌐[TibiaWiki article]({wiki_house.url})*"
+        embed.description = description
         return embed
 
-    async def scan_news(self):
-        await self.bot.wait_until_ready()
-        while not self.bot.is_closed():
-            try:
-                recent_news = await get_recent_news()
-                if recent_news is None:
-                    await asyncio.sleep(30)
+    @classmethod
+    async def get_recent_deaths_from_database(cls, ctx: NabCtx, name, embed_info, entries, last_time):
+        # Do not show database deaths if author is not in any servers tracking worlds.
+        if ctx.is_lite:
+            return None
+        user_servers = ctx.bot.get_user_guilds(ctx.author.id) if ctx.is_private else [ctx.guild]
+        user_worlds = ctx.bot.get_guilds_worlds(user_servers) if ctx.is_private else [ctx.world]
+        now = dt.datetime.now(dt.timezone.utc)
+        async with ctx.pool.acquire() as conn:
+            db_char = await DbChar.get_by_name(conn, name)
+            # Character is not registered
+            if db_char is None:
+                return None
+            owner = ctx.bot.get_member(db_char.user_id, user_servers)
+            # Owner is not visible to the command caller
+            if owner is None:
+                return None
+            # Character is not in a world visible by the command caller
+            if db_char.world not in user_worlds:
+                return None
+            async for death in db_char.get_deaths(conn):
+                # Do not show deaths that are already displayed from Tibia.com
+                if death.date > last_time:
                     continue
-                try:
-                    last_article = recent_news[0]["id"]
-                    with open("data/last_article.txt", 'r') as f:
-                        last_id = int(f.read())
-                except (ValueError, FileNotFoundError):
-                    log.info("scan_news: No last article id saved")
-                    last_id = 0
-                except (IndexError, KeyError):
-                    log.warning("scan_news: Error getting recent news")
-                    await asyncio.sleep(60*30)
-                    continue
-                if last_id == 0:
-                    with open("data/last_article.txt", 'w+') as f:
-                        f.write(str(last_article))
-                    await asyncio.sleep(60 * 60 * 2)
-                    continue
-                new_articles = []
-                for article in recent_news:
-                    if int(article["id"]) == last_id:
-                        break
-                    # Do not post articles older than a week (in case bot was offline)
-                    if (dt.date.today() - article["date"]).days > 7:
-                        break
-                    fetched_article = await get_news_article(int(article["id"]))
-                    if fetched_article is not None:
-                        new_articles.insert(0, fetched_article)
-                with open("data/last_article.txt", 'w+') as f:
-                    f.write(str(last_article))
-                if len(new_articles) == 0:
-                    await asyncio.sleep(60 * 60 * 2)
-                    continue
-                for article in new_articles:
-                    log.info("Announcing new article: {id} - {title}".format(**article))
-                    for guild in self.bot.guilds:
-                        news_channel_id = get_server_property(guild.id, "news_channel", is_int=True, default=0)
-                        if news_channel_id == 0:
-                            continue
-                        channel = self.bot.get_channel_or_top(guild, news_channel_id)
-                        try:
-                            await channel.send("New article posted on Tibia.com",
-                                               embed=self.get_article_embed(article, 1000))
-                        except discord.Forbidden:
-                            log.warning("scan_news: Missing permissions.")
-                        except discord.HTTPException:
-                            log.warning("scan_news: Malformed message.")
-                        except AttributeError:
-                            pass
-                await asyncio.sleep(60 * 30)
-            except NetworkError:
-                await asyncio.sleep(30)
-                continue
-            except asyncio.CancelledError:
-                # Task was cancelled, so this is fine
-                break
-            except Exception:
-                log.exception("Task: scan_news")
+                death_time = get_time_diff(now - death.date)
+                entries.append(f"At level **{death.level}** by {death.killer.name} - *{death_time} ago*")
+                if len(entries) >= 100:
+                    break
+        embed_info["author"] = f"{owner if ctx.is_private else owner.display_name}"
+        embed_info["author_url"] = discord.Embed.Empty
+        embed_info["author_icon"] = get_user_avatar(owner)
+        embed_info["embed_url"] = discord.Embed.Empty
 
-    @staticmethod
-    def _get_cached_user_(self, user_id, users_cache, user_servers):
+    @classmethod
+    async def get_recent_deaths_from_tibiacom(cls, ctx, char, embed_info, entries):
+        show_links = not await ctx.is_long()
+        embed_info["author"] = "Tibia.com"
+        embed_info["author_url"] = TIBIA_URL
+        embed_info["author_icon"] = TIBIACOM_ICON
+        embed_info["url"] = char.url
+        last_time = dt.datetime.now(dt.timezone.utc) if not char.deaths else char.deaths[-1].time
+        embed_info["title"] = f"{get_voc_emoji(char.vocation)} {char.name} latest deaths"
+        for death in char.deaths:
+            death_time = get_time_diff(dt.datetime.now(tz=dt.timezone.utc) - death.time)
+            if death.by_player and show_links:
+                killer = f"[{death.killer.name}]({NabChar.get_url(death.killer.name)})"
+            elif death.by_player:
+                killer = f"**{death.killer.name}**"
+            else:
+                killer = f"{death.killer.name}"
+            entries.append(f"At level **{death.level}** by {killer} - *{death_time} ago*")
+        return last_time
+
+    async def get_recent_deaths(self, ctx: NabCtx):
+        now = dt.datetime.now(dt.timezone.utc)
+        entries = []
+        cache = dict()
+        min_level = config.announce_threshold
+        user_servers = self.bot.get_user_guilds(ctx.author.id) if ctx.is_private else [ctx.guild]
+        user_worlds = self.bot.get_user_worlds(ctx.author.id) if ctx.is_private else [ctx.world]
+        async with ctx.pool.acquire() as conn:
+            if ctx.guild:
+                min_level = await get_server_property(conn, ctx.guild.id, "announce_level", min_level)
+            async for death in DbDeath.get_latest(conn, min_level, worlds=user_worlds):
+                if ctx.is_private:
+                    user = self.get_cached_user_(death.char.user_id, cache, user_servers)
+                else:
+                    user = ctx.guild.get_member(death.char.user_id)
+                if user is None:
+                    continue
+                user_name = user.name if ctx.is_private else user.display_name
+                if death.char.world not in user_worlds:
+                    continue
+                time_diff = get_time_diff(now - death.date)
+                emoji = get_voc_emoji(death.char.vocation)
+                entries.append(f"{emoji} {death.char.name} (**@{user_name}**) - "
+                               f"At level **{death.char.level}** by {death.killer.name} - *{time_diff} ago*")
+                if len(entries) >= 100:
+                    break
+        return entries
+
+    @classmethod
+    def get_tibia_embed(cls, title=None, url=None):
+        embed = discord.Embed(title=title, url=url)
+        embed.set_author(name="Tibia.com", url=TIBIA_URL, icon_url=TIBIACOM_ICON)
+        return embed
+
+    def get_cached_user_(self, user_id, users_cache, user_servers):
         if user_id in users_cache:
             return users_cache.get(user_id)
         else:
@@ -2075,8 +1639,15 @@ class Tibia:
             users_cache[user_id] = member_user
             return member_user
 
+    async def get_timezones(self, server_id: int):
+        async with self.bot.pool.acquire() as conn:
+            results = await conn.fetch("SELECT zone, name FROM server_timezone WHERE server_id = $1", server_id)
+            return results
+
+    # endregion
+
     def __unload(self):
-        print("cogs.tibia: Cancelling pending tasks...")
+        log.info(f"{self.tag} Unloading cog")
         self.news_announcements_task.cancel()
 
 

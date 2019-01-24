@@ -2,7 +2,7 @@
 One of the main features of discord bots is being able to respond to commands.
 All commands require a prefix in order to be recognized and to avoid command triggering accidentally.
 
-By default, the command prefix is `/` and `@NabBot `, this can be changed in the main file by changing `command_prefix`, or per server using the command [settings prefix](settings.md#settings-prefix).
+By default, the command prefix is `/` and `@NabBot `, this can be changed in the main file by changing `command_prefix`, or per server using the command [settings prefix](admin.md#settings-prefix).
 
 Commands can be used on any channel where the bot can read and write.
 Some commands may require extra permissions such as `Embed Links` or `Attach Files`, or might not be allowed in private messages.
@@ -10,7 +10,7 @@ Some commands can show longer responses if used in `ask-channel` (by default, #a
 
 For descriptions of each command check the different commands sections in the sidebar.
 
-In discord, you can use the command [help](general.md#help) to see a list of commands. Only commands that you are allowed to use will be shown.
+In discord, you can use the command [help](info.md#help) to see a list of commands. Only commands that you are allowed to use will be shown.
 
 ## Paginator
 
@@ -18,7 +18,7 @@ Some commands responses feature a *paginator* ([based on RoboDany's paginator cl
 These can be easily spotted by the reactions automatically added to the reply (◀️▶️⏹️).
 These reactions act as buttons, letting you scroll through the results.
 
-![Command with pagination](https://cloud.githubusercontent.com/assets/12865379/25454641/12eeba9a-2a82-11e7-8338-6a58d923b6c5.png)
+![Command with pagination](../assets/images/commands/tibia/deaths_1.png)
 
 When you click on one of the arrow reactions, the page is scrolled in that direction and your reaction is removed so you can use it again.
 Using the stop reaction removes the paginating interface. 
@@ -40,5 +40,4 @@ Additionally, they may have up to 4 vocation emojis to filter:
 When a vocation is filtered, the list is updated to only show those. Clicking another vocation filter will now show only
 that vocation. Clicking the current filtered vocation again will show all vocations again.
 
-![Command with vocation filter](../assets/images/commands/searchteam_1.png)
-
+![Command with vocation filter](../assets/images/commands/tracking/searchteam_1.png)

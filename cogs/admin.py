@@ -1,256 +1,62 @@
-from contextlib import closing
-from typing import List
+import logging
 
 import discord
 from discord.ext import commands
 
-from cogs.utils.database import userDatabase
 from nabbot import NabBot
-from .utils import checks, join_list, log, get_user_avatar
+from .utils import checks
 from .utils.config import config
 from .utils.context import NabCtx
-from .utils.tibia import get_character, NetworkError, Character, get_voc_abb_and_emoji
+from .utils.database import get_prefixes, get_server_property, set_prefixes, set_server_property
+from .utils.tibia import tibia_worlds
+
+log = logging.getLogger("nabbot")
+
+SETTINGS = {
+    "world": {"title": "🌐 World", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
+    "newschannel": {"title": "📰 News channel"},
+    "eventschannel": {"title": "📣 Events channel"},
+    "serverlog": {"title": "📒 Server Log channel"},
+    "levelschannel": {"title": "🌟☠ Tracking channel", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
+    "minlevel": {"title": "📏 Min Announce Level", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
+    "prefix": {"title": "❗ Prefix"},
+    "welcome": {"title": "👋 Welcome message"},
+    "welcomechannel": {"title": "💬 Welcome channel"},
+    "askchannel": {"title": "🤖 Command channel"},
+    "commandsonly": {"title": "🗑 Command channel - Delete other"},
+}
+
+
+class PrefixConverter(commands.Converter):
+    """Custom converter to validate prefix input for the settings subcommand."""
+
+    async def convert(self, ctx, argument):
+        user_id = ctx.bot.user.id
+        if argument.startswith((f'<@{user_id}>', f'<@!{user_id}>')):
+            raise commands.BadArgument("You can't remove this prefix.")
+        if len(argument) > 20:
+            raise commands.BadArgument("The prefix can't be longer than 20 characters.")
+        return argument
+
+
+def setting_command():
+    """Local check that provides a custom message when used on PMs."""
+    async def predicate(ctx):
+        if ctx.guild is None:
+            raise commands.NoPrivateMessage("Settings can't be modified on private messages.")
+        return True
+    return commands.check(predicate)
 
 
 class Admin:
-    """Commands for server owners and admins.
+    """Commands for server administrators and mods.
 
-    Admins are members with the `Administrator` permission."""
+    `Manage Server` permission is needed to use these commands."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    @checks.is_owner()
-    @checks.is_tracking_world()
-    @commands.command(name="addaccount", aliases=["addacc"], usage="<user>,<character>")
-    async def add_account(self, ctx: NabCtx, *, params):
-        """Register a character and all other visible characters to a discord user.
-
-        If a character is hidden, only that character will be added. Characters in other worlds are skipped."""
-        params = params.split(",")
-        if len(params) != 2:
-            raise commands.BadArgument()
-        target_name, char_name = params
-
-        user = ctx.author
-        world = ctx.world
-
-        target = self.bot.get_member(target_name, ctx.guild)
-        if target is None:
-            return await ctx.send(f"{ctx.tick(False)} I couldn't find any users named @{target_name}")
-        if target.bot:
-            return await ctx.send(f"{ctx.tick(False)} You can't register characters to discord bots!")
-
-        # Get list of the user's shared servers with the bot
-        target_guilds = self.bot.get_user_guilds(target.id)
-        # Filter only the servers that follow the same as the current context
-        target_guilds = list(filter(lambda x: self.bot.tracked_worlds.get(x.id) == world, target_guilds))
-
-        msg = await ctx.send(f"{config.loading_emoji} Fetching characters...")
-        try:
-            char = await get_character(char_name)
-            if char is None:
-                return await msg.edit(content="That character doesn't exist.")
-        except NetworkError:
-            return await msg.edit(content="I couldn't fetch the character, please try again.")
-        chars = char.other_characters
-        # If the char is hidden,we still add the searched character, if we have just one, we replace it with the
-        # searched char, so we don't have to look him up again
-        if len(chars) == 0 or len(chars) == 1:
-            chars = [char]
-        skipped = []
-        updated = []
-        added: List[Character] = []
-        existent = []
-        for char in chars:
-            # Skip chars in non-tracked worlds
-            if char.world != world:
-                skipped.append(char)
-                continue
-            with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT name, guild, user_id as owner, abs(level) as level "
-                          "FROM chars "
-                          "WHERE name LIKE ?",
-                          (char.name,))
-                db_char = c.fetchone()
-            if db_char is not None:
-                owner = self.bot.get_member(db_char["owner"])
-                # Previous owner doesn't exist anymore
-                if owner is None:
-                    updated.append({'name': char.name, 'world': char.world, 'prevowner': db_char["owner"],
-                                    'vocation': db_char["vocation"], 'level': db_char['level'],
-                                    'guild': db_char['guild']
-                                    })
-                    continue
-                # Char already registered to this user
-                elif owner.id == target.id:
-                    existent.append("{0.name} ({0.world})".format(char))
-                    continue
-                # Character is registered to another user, we stop the whole process
-                else:
-                    reply = "A character in that account ({0}) is already registered to **{1.display_name}**"
-                    await ctx.send(reply.format(db_char["name"], owner))
-                    return
-            # If we only have one char, it already contains full data
-            if len(chars) > 1:
-                try:
-                    await ctx.channel.trigger_typing()
-                    char = await get_character(char.name)
-                except NetworkError:
-                    await ctx.send("I'm having network troubles, please try again.")
-                    return
-            if char.deleted is not None:
-                skipped.append(char)
-                continue
-            added.append(char)
-
-        if len(skipped) == len(chars):
-            await ctx.send(f"Sorry, I couldn't find any characters in **{world}**.")
-            return
-
-        reply = ""
-        log_reply = dict().fromkeys([server.id for server in target_guilds], "")
-        if len(existent) > 0:
-            reply += "\nThe following characters were already registered to @{1}: {0}" \
-                .format(join_list(existent, ", ", " and "), target.display_name)
-
-        if len(added) > 0:
-            reply += "\nThe following characters were added to @{1.display_name}: {0}" \
-                .format(join_list(["{0.name} ({0.world})".format(c) for c in added], ", ", " and "), target)
-            for char in added:
-                log.info("{2.display_name} registered character {0} was assigned to {1.display_name} (ID: {1.id})"
-                         .format(char.name, target, user))
-                # Announce on server log of each server
-                for guild in target_guilds:
-                    _guild = "No guild" if char.guild is None else char.guild_name
-                    voc = get_voc_abb_and_emoji(char.vocation)
-                    log_reply[guild.id] += "\n\u2023 {1.name} - Level {1.level} {2} - **{0}**" \
-                        .format(_guild, char, voc)
-
-        if len(updated) > 0:
-            reply += "\nThe following characters were reassigned to @{1.display_name}: {0}" \
-                .format(join_list(["{name} ({world})".format(**c) for c in updated], ", ", " and "), target)
-            for char in updated:
-                log.info("{2.display_name} reassigned character {0} to {1.display_name} (ID: {1.id})"
-                         .format(char['name'], target, user))
-                # Announce on server log of each server
-                for guild in target_guilds:
-                    char["voc"] = get_voc_abb_and_emoji(char["vocation"])
-                    if char["guild"] is None:
-                        char["guild"] = "No guild"
-                    log_reply[guild.id] += "\n\u2023 {name} - Level {level} {voc} - **{guild}** (Reassigned)". \
-                        format(**char)
-
-        for char in updated:
-            with userDatabase as conn:
-                conn.execute("UPDATE chars SET user_id = ? WHERE name LIKE ?", (target.id, char['name']))
-        for char in added:
-            with userDatabase as conn:
-                conn.execute("INSERT INTO chars (name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
-                             (char.name, char.level * -1, char.vocation, target.id, char.world,
-                              char.guild_name)
-                             )
-
-        with userDatabase as conn:
-            conn.execute("INSERT OR IGNORE INTO users (id, name) VALUES (?, ?)", (target.id, target.display_name,))
-            conn.execute("UPDATE users SET name = ? WHERE id = ?", (target.display_name, target.id,))
-
-        await ctx.send(reply)
-        for server_id, message in log_reply.items():
-            if message:
-                message = f"{target.mention} registered:" + message
-                embed = discord.Embed(description=message)
-                embed.set_author(name=f"{target.name}#{target.discriminator}", icon_url=get_user_avatar(target))
-                embed.colour = discord.Colour.dark_teal()
-                icon_url = get_user_avatar(user)
-                embed.set_footer(text="{0.name}#{0.discriminator}".format(user), icon_url=icon_url)
-                await self.bot.send_log_message(self.bot.get_guild(server_id), embed=embed)
-
-    @checks.is_admin()
-    @checks.is_tracking_world()
-    @commands.command(name="addchar", aliases=["registerchar"], usage="<user>,<character>")
-    async def add_char(self, ctx: NabCtx, *, params):
-        """Registers a character to a user.
-
-        The character must be in the world you're tracking.
-        If the desired character is already assigned to someone else, the user must use `claim`."""
-        params = params.split(",")
-        if len(params) != 2:
-            raise commands.BadArgument()
-
-        user = self.bot.get_member(params[0], ctx.guild)
-        if user is None:
-            return await ctx.send(f"{ctx.tick(False)} I don't see any user named **{params[0]}** in this server.")
-        if user.bot:
-            return await ctx.send(f"{ctx.tick(False)} You can't register characters to discord bots!")
-        user_servers = self.bot.get_user_guilds(user.id)
-
-        with ctx.typing():
-            try:
-                char = await get_character(params[1])
-                if char is None:
-                    await ctx.send("That character doesn't exist")
-                    return
-            except NetworkError:
-                await ctx.send("I couldn't fetch the character, please try again.")
-                return
-            if char.world != ctx.world:
-                await ctx.send("**{0.name}** ({0.world}) is not in a world you can manage.".format(char))
-                return
-            if char.deleted is not None:
-                await ctx.send("**{0.name}** ({0.world}) is scheduled for deletion and can't be added.".format(char))
-                return
-            embed = discord.Embed()
-            embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-            embed.colour = discord.Colour.dark_teal()
-            icon_url = get_user_avatar(ctx.author)
-            embed.set_footer(text="{0.name}#{0.discriminator}".format(ctx.author), icon_url=icon_url)
-
-            with closing(userDatabase.cursor()) as c:
-                c.execute("SELECT id, name, user_id FROM chars WHERE name LIKE ?", (char.name,))
-                result = c.fetchone()
-                if result is not None:
-                    # Registered to a different user
-                    if result["user_id"] != user.id:
-                        current_user = self.bot.get_member(result["user_id"])
-                        # User registered to someone else
-                        if current_user is not None:
-                            await ctx.send("This character is already registered to  **{0.name}#{0.discriminator}**"
-                                           .format(current_user))
-                            return
-                        # User no longer in any servers
-                        c.execute("UPDATE chars SET user_id = ? WHERE id = ?", (user.id, result["id"],))
-                        await ctx.send("This character was reassigned to this user successfully.")
-                        userDatabase.commit()
-                        for server in user_servers:
-                            world = self.bot.tracked_worlds.get(server.id, None)
-                            if world == char.world:
-                                guild = "No guild" if char.guild is None else char.guild_name
-                                embed.description = "{0.mention} registered:\n\u2023 {1} - Level {2} {3} - **{4}**"\
-                                    .format(user, char.name, char.level, get_voc_abb_and_emoji(char.vocation), guild)
-                                await self.bot.send_log_message(server, embed=embed)
-                    else:
-                        await ctx.send("This character is already registered to this user.")
-                    return
-                c.execute("INSERT INTO chars (name,level,vocation,user_id, world, guild) VALUES (?,?,?,?,?,?)",
-                          (char.name, char.level * -1, char.vocation, user.id, char.world, char.guild_name))
-                # Check if user is already registered
-                c.execute("SELECT id from users WHERE id = ?", (user.id,))
-                result = c.fetchone()
-                if result is None:
-                    c.execute("INSERT INTO users(id,name) VALUES (?,?)", (user.id, user.display_name,))
-                await ctx.send("**{0}** was registered successfully to this user.".format(char.name))
-                # Log on relevant servers
-                for server in user_servers:
-                    world = self.bot.tracked_worlds.get(server.id, None)
-                    if world == char.world:
-                        guild = "No guild" if char.guild is None else char.guild_name
-                        embed.description = "{0.mention} registered:\n\u2023 {1}  - Level {2} {3} - **{4}**"\
-                            .format(user, char.name, char.level, get_voc_abb_and_emoji(char.vocation), guild)
-                        await self.bot.send_log_message(server, embed=embed)
-                userDatabase.commit()
-
-    @checks.is_admin()
-    @commands.guild_only()
+    # region Commands
+    @checks.server_mod_only()
     @commands.command()
     async def checkchannel(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
         """Checks the channel's permissions.
@@ -284,69 +90,531 @@ class Admin:
                 ok = False
                 perm_name = k.replace("_", " ").title()
                 icon = ctx.tick(False) if level == "error" else config.warn_emoji
-                content += f"\nMissing `{perm_name}` permission"
-                content += f"\n\t{icon} {explain}"
+                content += f"\nMissing `{perm_name}` permission\n\t{icon} {explain}"
         if ok:
             content += f"\n{ctx.tick(True)} All permissions are correct!"
         await ctx.send(content)
 
-    @checks.is_admin()
-    @checks.is_tracking_world()
-    @commands.command(name="removechar", aliases=["deletechar", "unregisterchar"])
-    async def remove_char(self, ctx: NabCtx, *, name):
-        """Removes a registered character.
+    @checks.server_mod_only()
+    @setting_command()
+    @commands.group(case_insensitive=True, aliases=["config"])
+    async def settings(self, ctx: NabCtx):
+        """Checks or sets various server-specific settings."""
+        if ctx.invoked_subcommand is not None:
+            return
+        embed = discord.Embed(title=f"{ctx.me.display_name} settings", colour=discord.Color.blurple(),
+                              description="Use the subcommands to change the settings for this server.")
+        for name, info in SETTINGS.items():
+            if "check" in info and not info["check"](ctx):
+                continue
+            embed.add_field(name=info["title"], value=f"`{ctx.clean_prefix}{ctx.invoked_with} {name}`")
+        await ctx.send(embed=embed)
 
-        Note that you can only remove chars if they are from users exclusively in your server.
-        You can't remove any characters that would alter other servers NabBot is in."""
-        # This could be used to remove deleted chars so we don't need to check anything
-        # Except if the char exists in the database...
-        c = userDatabase.cursor()
-        try:
-            c.execute("SELECT name, user_id, world, guild, abs(level) as level, vocation "
-                      "FROM chars WHERE name LIKE ?", (name,))
-            result = c.fetchone()
-            if result is None or result["user_id"] == 0:
-                return await ctx.send("There's no character with that name registered.")
-            if result["world"] != ctx.world:
-                return await ctx.send(f"{ctx.tick(False)} The character **{result['name']}** is in a different world.")
+    @checks.server_mod_only()
+    @settings.command(name="askchannel", aliases=["commandchannel"])
+    async def settings_askchannel(self, ctx: NabCtx, channel: str = None):
+        """Changes the channel where longer replies for commands are given.
 
-            user = self.bot.get_member(result["user_id"])
-            user_guilds: List[discord.Guild] = []
-            if user is not None:
-                user_guilds = self.bot.get_user_guilds(user.id)
-                for guild in user_guilds:
-                    if guild == ctx.guild:
-                        continue
-                    if self.bot.tracked_worlds.get(guild.id, None) != ctx.world:
-                        continue
-                    member: discord.Member = guild.get_member(ctx.author.id)
-                    if member is None or member.guild_permissions.administrator:
-                        await ctx.send(f"{ctx.tick(False)} The user of this server is also in another server tracking "
-                                       f"**{ctx.world}**, where you are not an admin. You can't alter other servers.")
-                        return
-            username = "unknown" if user is None else user.display_name
-            c.execute("UPDATE chars SET user_id = 0 WHERE name LIKE ?", (name,))
-            await ctx.send("**{0}** was removed successfully from **@{1}**.".format(result["name"], username))
-            for server in user_guilds:
-                world = self.bot.tracked_worlds.get(server.id, None)
-                if world != result["world"]:
-                    continue
-                if result["guild"] is None:
-                    result["guild"] = "No guild"
-                log_msg = "{0.mention} unregistered:\n\u2023 {1} - Level {2} {3} - **{4}**". \
-                    format(user, result["name"], result["level"], get_voc_abb_and_emoji(result["vocation"]),
-                           result["guild"])
+        In this channel, pagination commands show more entries at once and command replies in general are longer."""
+        current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "ask_channel")
+        if channel is None:
+            current_value = self.get_current_channel(ctx, current_channel_id, default_name=config.ask_channel_name)
+            await self.show_info_embed(ctx, current_value, "A channel's name or id, or `none`.", "channel/none")
+            return
 
-                embed = discord.Embed(description=log_msg)
-                embed.set_author(name=f"{user.name}#{user.discriminator}", icon_url=get_user_avatar(user))
-                embed.set_footer(text="{0.name}#{0.discriminator}".format(ctx.author),
-                                 icon_url=get_user_avatar(ctx.author))
-                embed.colour = discord.Colour.dark_teal()
+        if channel.lower() == "none":
+            if current_channel_id is None:
+                await ctx.send("There's no command channel set.")
+                return
+            message = await ctx.send(f"Are you sure you want to delete the set command channel?")
+            new_value = 0
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new commands channel?")
+            new_value = new_channel.id
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
 
-                await self.bot.send_log_message(server, embed=embed)
-        finally:
-            c.close()
-            userDatabase.commit()
+        await set_server_property(ctx.pool, ctx.guild.id, "ask_channel", new_value)
+        if new_value is 0:
+            await ctx.send(f"{ctx.tick(True)} The command channel was deleted."
+                           f"I will still use any channel named **{config.ask_channel_name}**.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used as a command channel.")
+
+    @checks.server_mod_only()
+    @settings.command(name="commandsonly")
+    async def settings_commandsonly(self, ctx: NabCtx, option: str = None):
+        """Sets whether only commands are allowed in the command channel.
+
+        If this is enabled, everything that is not a message will be deleted from the command channel.
+        This allows the channel to be used exclusively for commands.
+
+        If the channel is shared with other command bots, this should be off.
+
+        Note that the bot needs `Manage Messages` permission to delete messages."""
+
+        def yes_no(choice: bool):
+            return "Yes" if choice else "No"
+
+        if option is None:
+            current = await get_server_property(ctx.pool, ctx.guild.id, "commandsonly")
+            if current is None:
+                current_value = f"{yes_no(config.ask_channel_delete)} (Global default)"
+            else:
+                current_value = yes_no(current)
+            await self.show_info_embed(ctx, current_value, "yes/no", "yes/no")
+            return
+        if option.lower() == "yes":
+            await set_server_property(ctx.pool, ctx.guild.id, "commandsonly", True)
+            await ctx.send(f"{ctx.tick(True)} I will delete non-commands in the command channel from now on.")
+        elif option.lower() == "no":
+            await set_server_property(ctx.pool, ctx.guild.id, "commandsonly", False)
+            await ctx.send(f"{ctx.tick(True)} I won't delete non-commands in the command channel from now on.")
+        else:
+            await ctx.send("That's not a valid option, try **yes** or **no**.")
+
+    @checks.server_mod_only()
+    @settings.command(name="eventschannel")
+    async def settings_eventschannel(self, ctx: NabCtx, channel: str = None):
+        """Changes the channel where upcoming events are announced.
+
+        This is where announcements of events about to happen will be made.
+        If the assigned channel is deleted or forbidden, the top channel will be used.
+
+        If this is disabled, users that subscribed to the event will still receive notifications via PM.
+        """
+        current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "events_channel", default=0)
+        if channel is None:
+            current_value = self.get_current_channel(ctx, current_channel_id)
+            await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")
+            return
+        if channel.lower() == "disable":
+            if current_channel_id is 0:
+                await ctx.send("Event announcements are already disabled.")
+                return
+            message = await ctx.send(f"Are you sure you want to disable events announcements?")
+            new_value = 0
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new events channel?")
+            new_value = new_channel.id
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        await set_server_property(ctx.pool, ctx.guild.id, "events_channel", new_value)
+        if new_value is 0:
+            await ctx.send(f"{ctx.tick(True)} The events channel has been disabled.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for events.")
+
+    @checks.server_mod_only()
+    @settings.command(name="levelschannel", aliases=["deathschannel", "trackingchannel"])
+    async def settings_levelschannel(self, ctx: NabCtx, channel: str = None):
+        """Changes the channel where levelup and deaths are announced.
+
+        This is were all level ups and deaths of registered characters will be announced.
+        By default, the highest channel on the list where the bot can send messages will be used.
+        If the assigned channel is deleted or forbidden, the top channel will be used again.
+
+        If this is disabled, Announcements won't be made, but there will still be tracking.
+        """
+        current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "levels_channel")
+        if channel is None:
+            current_value = self.get_current_channel(ctx, current_channel_id)
+            await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")
+            return
+        if channel.lower() == "disable":
+            if current_channel_id is 0:
+                await ctx.send("Level and deaths announcements are already disabled.")
+                return
+            message = await ctx.send(f"Are you sure you want to disable the level & deaths channel?")
+            new_value = 0
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new level & deaths channel?")
+            new_value = new_channel.id
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        await set_server_property(ctx.pool, ctx.guild.id, "levels_channel", new_value)
+        if new_value is 0:
+            await ctx.send(f"{ctx.tick(True)} The level & deaths channel has been disabled.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used.")
+
+    @checks.server_mod_only()
+    @settings.command(name="minlevel", aliases=["announcelevel"])
+    async def settings_minlevel(self, ctx: NabCtx, level: int = None):
+        """Sets the minimum level for death and level up announcements.
+
+        Level ups and deaths under the minimum level are still and can be seen by checking the character directly."""
+        current_level = await get_server_property(ctx.pool, ctx.guild.id, "announce_level")
+        if level is None:
+            if current_level is None:
+                current_value = f"`{config.announce_threshold}` (global default)"
+            else:
+                current_value = f"`{current_level}`"
+            return await self.show_info_embed(ctx, current_value, "Any number greater than 1", "level")
+        if level < 1:
+            return await ctx.send(f"{ctx.tick(False)} Level can't be lower than 1.")
+
+        await set_server_property(ctx.pool, ctx.guild.id, "announce_level", level)
+        await ctx.send(f"{ctx.tick()} Minimum announce level has been set to `{level}`.")
+
+    @checks.server_mod_only()
+    @settings.command(name="newschannel")
+    async def settings_newschannel(self, ctx: NabCtx, channel: str = None):
+        """Changes the channel where Tibia news are announced.
+
+        This is where all news and articles posted in Tibia.com will be announced.
+        If the assigned channel is deleted or forbidden, the top channel will be used.
+        """
+        current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "news_channel", default=0)
+        if channel is None:
+            current_value = self.get_current_channel(ctx, current_channel_id)
+            await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `disable`.", "channel/disable")
+            return
+        if channel.lower() == "disable":
+            if current_channel_id is 0:
+                await ctx.send("News announcements are already disabled.")
+                return
+            message = await ctx.send(f"Are you sure you want to disable news announcements?")
+            new_value = 0
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new news channel?")
+            new_value = new_channel.id
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        await set_server_property(ctx.pool, ctx.guild.id, "news_channel", new_value)
+        if new_value is 0:
+            await ctx.send(f"{ctx.tick(True)} The news channel has been disabled.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for Tibia news.")
+
+    @checks.server_mod_only()
+    @settings.command(name="prefix")
+    async def settings_prefix(self, ctx: NabCtx, prefix: PrefixConverter = None):
+        """Changes the command prefix for this server.
+
+        The prefix are the characters that go before a command's name, in order for the bot to recognize the command.
+        A maximum of 5 prefixes can be set per server.
+
+        To remove an existing prefix, use it as a parameter.
+
+        If you want to have a space at the end, such as: `nabbot help`, you have to use double quotes "nabbot ".
+        Multiple words also require using quotes.
+
+        Mentioning the bot is always a valid command and can't be changed."""
+        prefixes = await get_prefixes(ctx.pool, ctx.guild.id)
+        if prefixes is None:
+            prefixes = list(config.command_prefix)
+        if prefix is None:
+            current_value = ", ".join(f"`{p}`" for p in prefixes) if len(prefixes) > 0 else "Mentions only"
+            await self.show_info_embed(ctx, current_value, "Any text", "prefix")
+            return
+        remove = False
+        if prefix in prefixes:
+            message = await ctx.send(f"Do you want to remove `{prefix}` as a prefix?")
+            remove = True
+        else:
+            if len(prefixes) >= 5:
+                await ctx.send("You can't have more than 5 command prefixes.")
+                return
+            message = await ctx.send(f"Do you want to add `{prefix}` as a prefix?")
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        if remove:
+            prefixes.remove(prefix)
+            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was removed.")
+        else:
+            prefixes.append(prefix)
+            await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
+        await set_prefixes(ctx.pool, ctx.guild.id, sorted(prefixes, reverse=True))
+
+    @settings_prefix.error
+    async def settings_prefix_error(self, ctx: NabCtx, error):
+        if isinstance(error, commands.BadArgument):
+            await ctx.send(str(error))
+
+    @checks.server_mod_only()
+    @settings.command(name="serverlog")
+    async def settings_serverlog(self, ctx: NabCtx, channel: str = None):
+        """Changes the channel used as the server log.
+
+        By default, a channel named server-log will be used.
+
+        In this channel, character registrations and server changes are announced."""
+        current_channel_id = await get_server_property(ctx.pool, ctx.guild.id, "serverlog")
+        if channel is None:
+            current_value = self.get_current_channel(ctx, current_channel_id, default_name=config.log_channel_name)
+            await self.show_info_embed(ctx, current_value, "A channel's name or id, or `none`.", "channel/none")
+            return
+        if channel.lower() == "none":
+            if current_channel_id is None:
+                await ctx.send("There's no command channel set.")
+                return
+            message = await ctx.send(f"Are you sure you want to delete the set serverlog channel?")
+            new_value = 0
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new commands channel?")
+            new_value = new_channel.id
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        await set_server_property(ctx.pool, ctx.guild.id, "serverlog", new_value)
+        if new_value is 0:
+            await ctx.send(f"{ctx.tick(True)} The server log channel was deleted."
+                           f"I will still use any channel named **{config.ask_channel_name}**.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used as the server log.")
+
+    @checks.server_mod_only()
+    @settings.command(name="welcome")
+    async def settings_welcome(self, ctx: NabCtx, *, message: str = None):
+        """Changes the message new members receive when joining.
+
+        This is initially disabled.
+
+        You can use formatting to show dynamic values:
+        - {server} -> The server's name.
+        - {server.owner} -> The server's owner name
+        - {server.owner.mention} -> Mention to the server's owner.
+        - {owner} -> The name of the server owner
+        - {owner.mention} -> Mention the server owner.
+        - {user} -> The name of the user that joined.
+        - {user.mention} -> Mention the user that joined.
+        - {bot} -> The name of the bot
+        - {bot.mention} -> Mention the bot.
+
+        Be sure to change the welcome channel too."""
+        current_message = await get_server_property(ctx.pool, ctx.guild.id, "welcome")
+        if message is None:
+            await self.show_info_embed(ctx, current_message, "Any text", "message/disable")
+            return
+        if message.lower() == "disable":
+            if current_message is None:
+                await ctx.send("Welcome messages are already disabled.")
+                return
+            msg = await ctx.send("Are you sure you want to disable welcome messages?")
+            new_value = None
+        else:
+            try:
+                if len(message) > 1000:
+                    await ctx.send(f"{ctx.tick(False)} This message is too long! {len(message):,}/1000 characters.")
+                    return
+                formatted = message.format(server=ctx.guild, bot=self.bot, owner=ctx.guild.owner, user=ctx.author)
+                msg = await ctx.send("Do you want to set this as the new message?\n"
+                                     "*This is how your message would look if **you** joined.*",
+                                     embed=discord.Embed(title="Message Preview", colour=discord.Colour.blurple(),
+                                                         description=formatted))
+                new_value = message
+            except KeyError as e:
+                await ctx.send(f"{ctx.tick(False)} Unknown keyword {e}.")
+                return
+        confirm = await ctx.react_confirm(msg, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+        await set_server_property(ctx.pool, ctx.guild.id, "welcome", new_value)
+        if new_value is None:
+            await ctx.send(f"{ctx.tick(True)} The welcome message has been disabled.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} Welcome message updated.")
+
+    @checks.server_mod_only()
+    @settings.command(name="welcomechannel")
+    async def settings_welcomechannel(self, ctx: NabCtx, channel: str = None):
+        """Changes the channel where new members are welcomed.
+
+        A welcome message must be set for this setting to work.
+        If the channel becomes unavailable, private messages will be used.
+
+        Note that private messages are not reliable since new users can have them disabled before joining.
+        To disable this, you must disable welcome messages using `settings welcome`.
+        """
+        current_channel_id = get_server_property(ctx.pool, ctx.guild.id, "welcome_channel")
+        if channel is None:
+            current_value = self.get_current_channel(ctx, current_channel_id, pm_fallback=True)
+            await self.show_info_embed(ctx, current_value, "A channel's name or ID, or `private`.", "channel/private")
+            return
+        if channel.lower() == "private":
+            if current_channel_id is None:
+                await ctx.send("Welcome messages are already private.")
+                return
+            message = await ctx.send(f"Are you sure you want to make welcome messages private?")
+            new_value = None
+        else:
+            try:
+                new_channel = await commands.TextChannelConverter().convert(ctx, channel)
+            except commands.BadArgument:
+                await ctx.send("I couldn't find that channel, are you sure it exists?")
+                return
+            perms = new_channel.permissions_for(ctx.me)
+            if not perms.read_messages or not perms.send_messages:
+                await ctx.send(f"I don't have permission to use {new_channel.mention}.")
+                return
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new welcome channel?")
+            new_value = new_channel.id
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        await set_server_property(ctx.pool, ctx.guild.id, "welcome_channel", new_value)
+        if new_value is None:
+            await ctx.send(f"{ctx.tick(True)} Welcome messages will be sent privately.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for welcome messages.")
+
+    @checks.server_mod_only()
+    @checks.not_lite_only()
+    @settings.command(name="world")
+    async def settings_world(self, ctx: NabCtx, world: str = None):
+        """Changes the world this discord server tracks.
+
+        The tracked world is the Tibia world that this discord server is following.
+        Only characters in that world will be registered."""
+        if world is None:
+            await self.show_info_embed(ctx, ctx.world, "Any Tibia world or `none` to disable.", "world/none")
+            return
+        world = world.strip().capitalize()
+        if world == "None":
+            if ctx.world is None:
+                await ctx.send("This server is already not tracking any world.")
+                return
+            message = await ctx.send(f"Are you sure you want to unassign **{ctx.world}** from this server?")
+            world = None
+        else:
+            if world not in tibia_worlds:
+                await ctx.send("There's no world with that name.")
+                return
+            message = await ctx.send(f"Are you sure you want to assign **{world}** to this server?")
+        confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
+        if not confirm:
+            await ctx.message.delete()
+            return
+
+        await set_server_property(ctx.pool, ctx.guild.id, "world", world)
+        await self.bot.reload_worlds()
+        if world is None:
+            await ctx.send(f"{ctx.tick(True)} This server is no longer tracking any world.")
+        else:
+            await ctx.send(f"{ctx.tick(True)} This server is now tracking **{world}**")
+
+    # endregion
+
+    @staticmethod
+    def get_current_channel(ctx: NabCtx, current_channel_id, *, pm_fallback=False, default_name=None):
+        """Displays information about the current stored channel.
+
+        :param ctx: The command context where this is called from.
+        :param current_channel_id: The currently saved id.
+        :param pm_fallback: Whether this falls back to PMs if the channel is invalid.
+        :param default_name: Whether this falls back to a channel with a certain name.
+        :return: A string representing the current state.
+        """
+        top_channel = ctx.bot.get_top_channel(ctx.guild)
+        current_channel = ctx.guild.get_channel(current_channel_id)
+        if current_channel:
+            perms = current_channel.permissions_for(ctx.me)
+        else:
+            perms = discord.Permissions()
+        if current_channel_id is None and pm_fallback:
+            return "Private Messages"
+        elif current_channel_id == 0:
+            return "Disabled."
+        elif current_channel_id is None:
+            current_value = "None."
+        elif current_channel is None:
+            current_value = "None, previous channel was deleted."
+        elif not perms.read_messages or not perms.send_messages:
+            current_value = f"{current_channel.mention}, but I can't use the channel."
+        else:
+            return f"{current_channel.mention}"
+
+        if pm_fallback:
+            current_value += " I will send direct messages meanwhile."
+        # This condition should be impossible to meet, because if the bot can't send messages on any channel,
+        # it wouldn't be able to reply to this command in the first place ¯\_(ツ)_/¯
+        elif top_channel is None:
+            current_value += " I have no channel to use."
+        elif default_name:
+            current_value += f" By default I will use any channel named {default_name}."
+        else:
+            current_value += f" I will use {top_channel.mention} meanwhile."
+        return current_value
+
+    @staticmethod
+    async def show_info_embed(ctx: NabCtx, current_value, accepted_values, edit_params):
+        """Shows information about a settings value.
+
+        It shows the current value, possible values and how to edit it."""
+        embed = discord.Embed(title=f"{SETTINGS[ctx.command.name]['title']} - Settings",
+                              description=ctx.command.short_doc, color=discord.Color.blurple())
+        embed.add_field(name="📄 Current value", value=current_value, inline=False)
+        embed.add_field(name="📝 Edit", inline=False,
+                        value=f"`{ctx.clean_prefix}{ctx.command.full_parent_name} {ctx.invoked_with} [{edit_params}]`")
+        embed.add_field(name="☑ Accepted values", value=accepted_values, inline=False)
+        embed.set_footer(text=f'Use "{ctx.clean_prefix}help {ctx.command.full_parent_name} {ctx.invoked_with} '
+                              f'for more info')
+        await ctx.send(embed=embed)
 
 
 def setup(bot):

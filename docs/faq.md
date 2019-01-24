@@ -1,6 +1,6 @@
 # FAQ
-
-### `im` command is not working
+## General
+### Why is `im` not working? NabBot gives no answer.
 In order for `im` to work, you need to first configure a world for yor server. This can be done using the command `settings world`.
 
 For the moment, only one world can be configured per server.
@@ -12,6 +12,15 @@ Also, if you like NabBot, don't forget to vote for us!
 ### \_\_\_\_\_\_\_\_\_\_ doesn't look well or doesn't work on mobile
 The Android and iOS versions of Discord are really behind the web or standalone client, so NabBot is focused on desktop users.
 If we limit ourselves to the mobile versions we would be slowing down the development of NabBot.
+
+### Why does \_\_\_\_\_\_\_\_ command shows scrambled text when switching pages?
+This is a discord bug that has been present for a while. Only happens on desktop.
+If text looks scrambled, you can switch to another channel and switch back and the content will be fixed.
+
+### Why am I not seeing deaths and level ups for characters in the watched list?
+Only characters registered through im get their level ups and deaths tracked.
+
+For the moment, the watch list is only to display their online status in the game.
 
 ## Self Hosting
 
@@ -45,7 +54,6 @@ If new name was already registered again, this will merge both character entries
 Otherwise, it will just rename Oldname to new name.
 
 Since there's no way to check this, this should be done with care. The only thing that NabBot can verify is that their vocations match.
-
 
 
 ```

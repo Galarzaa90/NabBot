@@ -1,39 +1,73 @@
 import asyncio
-from contextlib import closing
-from typing import List, Dict
+import logging
+from typing import Union
 
 import discord
 from discord.ext import commands
 
+from cogs.utils import converter
 from nabbot import NabBot
-from .utils import checks, config
+from .utils import checks, config, safe_delete_message
 from .utils.context import NabCtx
-from .utils.database import userDatabase, get_server_property
-from .utils.pages import Pages, CannotPaginate
+from .utils.database import get_server_property
+from .utils.errors import CannotPaginate
+from .utils.pages import Pages
+
+log = logging.getLogger("nabbot")
+
+
+class LazyEntry:
+    __slots__ = ('entity_id', 'guild', '_cache')
+
+    def __init__(self, guild, entity_id):
+        self.entity_id = entity_id
+        self.guild = guild
+        self._cache = None
+
+    def __str__(self):
+        if self._cache:
+            return self._cache
+
+        e = self.entity_id
+        g = self.guild
+        resolved = g.get_channel(e) or g.get_member(e)
+        if resolved is None:
+            self._cache = f'<Not Found: {e}>'
+        else:
+            self._cache = resolved.mention
+        return self._cache
 
 
 class Mod:
-    """Commands server moderators."""
+    """Moderating related commands."""
     def __init__(self, bot: NabBot):
         self.bot = bot
-        self.ignored = {}
-        self.reload_ignored()
 
-    def __global_check(self, ctx: NabCtx):
-        return ctx.is_private or ctx.channel.id not in self.ignored.get(ctx.guild.id, []) or checks.is_owner_check(ctx) \
-               or checks.check_guild_permissions(ctx, {'manage_channels': True})
+    async def __global_check_once(self, ctx: NabCtx):
+        """Checks if the current channel or user is ignored.
 
-    # Commands
+        Bot owners and guild managers can bypass this.
+        """
+        if ctx.guild is None:
+            return True
+        if await checks.is_owner(ctx):
+            return True
+        if ctx.author_permissions.manage_guild:
+            return True
+
+        return not await self.is_ignored(ctx.pool, ctx)
+
+    # region Commands
     @commands.guild_only()
-    @checks.is_channel_mod()
+    @checks.channel_mod_only()
     @commands.command()
-    async def cleanup(self, ctx: NabCtx, limit: int=50):
+    async def cleanup(self, ctx: NabCtx, limit: int = 50):
         """Cleans the channel from bot commands.
 
         If the bot has `Manage Messages` permission, it will also delete command invocation messages."""
         count = 0
-        prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=config.command_prefix)
-        # Also skip death and levelup messages from cleanup
+        prefixes = await get_server_property(ctx.pool, ctx.guild.id, "prefixes", default=config.command_prefix)
+        # Also skip death and level up messages from cleanup
         announce_prefix = (config.levelup_emoji, config.death_emoji, config.pvpdeath_emoji)
         if ctx.bot_permissions.manage_messages:
             def check(m: discord.Message):
@@ -51,50 +85,59 @@ class Mod:
         if not count:
             return await ctx.send("There are no messages to clean.", delete_after=10)
 
-        await ctx.send(f"{ctx.tick()} Deleted {count:,} messages.", delete_after=20)
+        await ctx.success(f"Deleted {count:,} messages.", delete_after=20)
 
-    @commands.guild_only()
-    @checks.is_channel_mod()
+    @checks.server_mod_only()
     @commands.group(invoke_without_command=True, case_insensitive=True)
-    async def ignore(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
-        """Makes the bot ignore a channel.
+    async def ignore(self, ctx: NabCtx, *entries: converter.ChannelOrMember):
+        """Makes the bot ignore a channel or user.
 
-        Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
+        Commands cannot be used in ignored channels or by ignored users.
 
-        If the command   is used with no parameters, it ignores the current channel.
+        The command accepts a list of names, ids or mentions of users or channels.
+        If the command is used with no parameters, it ignores the current channel.
 
-        Note that server administrators can bypass this."""
-        if channel is None:
-            channel = ctx.channel
+        Ignores are bypassed by users with the `Manage Server` permission."""
+        if len(entries) == 0:
+            entries = [ctx.channel]
+        if len(entries) == 1:
+            entry: Union[discord.Member, discord.TextChannel] = entries[0]
+            query = "INSERT INTO ignored_entry(server_id, entry_id) VALUES($1, $2) ON CONFLICT DO NOTHING RETURNING 1"
+            ret = await ctx.pool.fetchval(query, ctx.guild.id, entry.id)
+            rep = entry.mention if isinstance(entry, discord.TextChannel) else entry.display_name
+            if ret:
+                return await ctx.success(f"I'm now ignoring **{rep}**")
+            return await ctx.error(f"{rep} is already ignored.")
 
-        if channel.id in self.ignored.get(ctx.guild.id, []):
-            await ctx.send(f"{channel.mention} is already ignored.")
-            return
+        inserted = await self.bulk_ignore(ctx, entries)
+        if inserted:
+            if inserted != len(entries):
+                await ctx.success(f"{inserted} entries are now ignored. The rest was already ignored.")
+            else:
+                await ctx.success(f"All {inserted} entries are now ignored.")
+        else:
+            await ctx.error("No entries were ignored. They were all already ignored.")
 
-        with userDatabase:
-            userDatabase.execute("INSERT INTO ignored_channels(server_id, channel_id) VALUES(?, ?)",
-                                 (ctx.guild.id, channel.id))
-            await ctx.send(f"{channel.mention} is now ignored.")
-            self.reload_ignored()
-
-    @commands.guild_only()
-    @checks.is_channel_mod()
+    @checks.server_mod_only()
     @ignore.command(name="list")
     async def ignore_list(self, ctx: NabCtx):
-        """Shows a list of ignored channels."""
-        entries = [ctx.guild.get_channel(c).name for c in self.ignored.get(ctx.guild.id, []) if ctx.guild.get_channel(c) is not None]
+        """Shows a list of ignored channels and users."""
+        query = "SELECT entry_id FROM ignored_entry WHERE server_id = $1"
+        rows = await ctx.pool.fetch(query, ctx.guild.id)
+
+        entries = [LazyEntry(ctx.guild, e[0]) for e in rows]
         if not entries:
-            await ctx.send("There are no ignored channels in this server.")
+            await ctx.send("There are no ignored entries in this server.")
             return
         pages = Pages(ctx, entries=entries)
-        pages.embed.title = "Ignored channels"
+        pages.embed.title = "Ignored entries"
         try:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
 
     @commands.command()
-    @checks.is_channel_mod_somewhere()
+    @checks.channel_mod_somewhere()
     async def makesay(self, ctx: NabCtx, *, message: str):
         """Makes the bot say a message.
 
@@ -159,35 +202,35 @@ class Mod:
                 return await ctx.send(f"{ctx.tick(False)} I need `Manage Messages` permission to use this command.")
             if not ctx.author_permissions.manage_channels:
                 return await ctx.send(f"{ctx.tick(False)} You need `Manage Channel` permission to use this command.")
+            await safe_delete_message(ctx.message)
             await ctx.message.delete()
             await ctx.channel.send(message)
 
     @commands.guild_only()
-    @checks.is_channel_mod()
+    @checks.channel_mod_only()
     @commands.command()
-    async def unignore(self, ctx: NabCtx, *, channel: discord.TextChannel = None):
-        """Unignores a channel.
+    async def unignore(self, ctx: NabCtx, *entries: converter.ChannelOrMember):
+        """Removes a channel or user from the ignored list.
 
-        If no channel is provided, the current channel will be unignored.
-
-        Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
+        If no parameter is provided, the current channel will be unignored.
 
         If the command is used with no parameters, it unignores the current channel."""
-        if channel is None:
-            channel = ctx.channel
+        if len(entries) == 0:
+            query = "DELETE FROM ignored_entry WHERE server_id=$1 AND entry_id=$2 RETURNING true"
+            res = await ctx.pool.fetchval(query, ctx.guild.id, ctx.channel.id)
+            if res:
+                return await ctx.success(f"{ctx.channel.mention} is no longer ignored.")
+            return await ctx.error(f"{ctx.channel.mention} wasn't ignored.")
+        query = "DELETE FROM ignored_entry WHERE server_id=$1 AND entry_id = ANY($2::bigint[]) RETURNING entry_id"
+        # noinspection PyUnresolvedReferences
+        entries = [c.id for c in entries]
+        rows = await ctx.pool.fetch(query, ctx.guild.id, entries)
+        if rows:
+            return await ctx.success(f"{len(rows)} are now unignored.")
+        await ctx.error("No entries were unignored.")
 
-        if channel.id not in self.ignored.get(ctx.guild.id, []):
-            await ctx.send(f"{channel.mention} is not ignored.")
-            return
-
-        with userDatabase:
-            userDatabase.execute("DELETE FROM ignored_channels WHERE channel_id = ?", (channel.id,))
-            await ctx.send(f"{channel.mention} is not ignored anymore.")
-            self.reload_ignored()
-
-    @checks.is_channel_mod()
-    @commands.guild_only()
-    @checks.is_tracking_world()
+    @checks.channel_mod_only()
+    @checks.tracking_world_only()
     @commands.command()
     async def unregistered(self, ctx: NabCtx):
         """Shows a list of users with no registered characters."""
@@ -196,13 +239,9 @@ class Mod:
             await ctx.send("This server is not tracking any worlds.")
             return
 
-        with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT user_id FROM chars WHERE world LIKE ? GROUP BY user_id", (ctx.world,))
-            result = c.fetchall()
-            if len(result) <= 0:
-                await ctx.send("There are no unregistered users.")
-                return
-            users = [i["user_id"] for i in result]
+        results = await ctx.pool.fetch('SELECT user_id FROM "character" WHERE world = $1 GROUP BY user_id', ctx.world)
+        # Flatten list
+        users = [i["user_id"] for i in results]
         for member in ctx.guild.members:  # type: discord.Member
             # Skip bots
             if member.bot:
@@ -219,28 +258,30 @@ class Mod:
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
+    # endregion
 
-    def reload_ignored(self):
-        """Refresh the world list from the database
+    @classmethod
+    async def is_ignored(cls, conn, ctx: NabCtx):
+        """Checks if the current context is ignored.
 
-        This is used to avoid reading the database every time the world list is needed.
-        A global variable holding the world list is loaded on startup and refreshed only when worlds are modified"""
-        c = userDatabase.cursor()
-        ignored_dict_temp: Dict[int, List[int]] = {}
-        try:
-            c.execute("SELECT server_id, channel_id FROM ignored_channels")
-            result: Dict = c.fetchall()
-            if len(result) > 0:
-                for row in result:
-                    if not ignored_dict_temp.get(row["server_id"]):
-                        ignored_dict_temp[row["server_id"]] = []
+        A context could be ignored because either the channel or the user are in the ignored list."""
+        query = "SELECT True FROM ignored_entry WHERE server_id=$1 AND (entry_id=$2 OR entry_id=$3);"
+        return await conn.fetchrow(query, ctx.guild.id, ctx.channel.id, ctx.author.id)
 
-                    ignored_dict_temp[row["server_id"]].append(row["channel_id"])
+    @classmethod
+    async def bulk_ignore(cls, ctx: NabCtx, entries):
+        async with ctx.pool.acquire() as conn:
+            async with conn.transaction():
+                query = "SELECT entry_id FROM ignored_entry WHERE server_id=$1;"
+                records = await conn.fetch(query, ctx.guild.id)
 
-            self.ignored.clear()
-            self.ignored.update(ignored_dict_temp)
-        finally:
-            c.close()
+                # Removing duplicates
+                current_entries = {r[0] for r in records}
+                records = [(ctx.guild.id, e.id) for e in entries if e.id not in current_entries]
+
+                # do a bulk COPY
+                await conn.copy_records_to_table('ignored_entry', columns=['server_id', 'entry_id'], records=records)
+                return len(records)
 
 
 def setup(bot):

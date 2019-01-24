@@ -1,8 +1,7 @@
+import logging
 import platform
-import re
 import time
 from collections import Counter
-from contextlib import closing
 from typing import List
 
 import discord
@@ -10,19 +9,23 @@ import psutil
 from discord.ext import commands
 
 from nabbot import NabBot
+from .utils import FIELD_VALUE_LIMIT, config, get_region_string, get_user_avatar, parse_uptime
 from .utils import checks
 from .utils.context import NabCtx
-from .utils.database import get_server_property, userDatabase
-from .utils import parse_uptime, FIELD_VALUE_LIMIT, get_region_string, get_user_avatar, config
+from .utils.database import get_server_property
 from .utils.messages import split_message
 from .utils.pages import HelpPaginator, _can_run
 from .utils.tibia import tibia_worlds
 
+log = logging.getLogger("nabbot")
+
 
 class Info:
+    """Commands that disploy general information."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
+    # region Commands
     @checks.can_embed()
     @commands.command()
     async def about(self, ctx: NabCtx):
@@ -32,7 +35,7 @@ class Info:
                          icon_url="https://github.com/fluidicon.png")
         prefixes = list(config.command_prefix)
         if ctx.guild:
-            prefixes = get_server_property(ctx.guild.id, "prefixes", deserialize=True, default=prefixes)
+            prefixes = await get_server_property(ctx.pool, ctx.guild.id, "prefixes", prefixes)
         prefixes_str = "\n".join(f"- `{p}`" for p in prefixes)
         embed.add_field(name="Prefixes", value=prefixes_str, inline=False)
         embed.add_field(name="Authors", value="\u2023 [Galarzaa90](https://github.com/Galarzaa90)\n"
@@ -44,10 +47,10 @@ class Info:
         embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
         embed.add_field(name="Users", value=f"{len(self.bot.users):,}")
         embed.add_field(name="Links", inline=False,
-                        value=f"[Add to your server](https://dbl.nabbot.xyz/)  |  "
-                              f"[Support Server](https://support.nabbot.xyz/)  |  "
-                              f"[Docs](https://docs.nabbot.xyz/)  |  "
-                              f"[Donate](https://donate.nabbot.xyz/)")
+                        value="[Add to your server](https://dbl.nabbot.xyz/)  |  "
+                              "[Support Server](https://support.nabbot.xyz/)  |  "
+                              "[Docs](https://docs.nabbot.xyz/)  |  "
+                              "[Donate](https://donate.nabbot.xyz/)")
         embed.set_footer(text=f"Uptime | {parse_uptime(self.bot.start_time, True)}")
         await ctx.send(embed=embed)
 
@@ -55,22 +58,10 @@ class Info:
     @commands.command(name="botinfo")
     async def bot_info(self, ctx: NabCtx):
         """Shows advanced information about the bot."""
-        char_count = 0
-        deaths_count = 0
-        levels_count = 0
-        with closing(userDatabase.cursor()) as c:
-            c.execute("SELECT COUNT(*) as count FROM chars")
-            result = c.fetchone()
-            if result is not None:
-                char_count = result["count"]
-            c.execute("SELECT COUNT(*) as count FROM char_deaths")
-            result = c.fetchone()
-            if result is not None:
-                deaths_count = result["count"]
-            c.execute("SELECT COUNT(*) as count FROM char_levelups")
-            result = c.fetchone()
-            if result is not None:
-                levels_count = result["count"]
+        async with ctx.pool.acquire() as conn:
+            char_count = await conn.fetchval('SELECT COUNT(*) FROM "character" WHERE user_id != 0')
+            deaths_count = await conn.fetchval('SELECT COUNT(*) FROM character_death')
+            levels_count = await conn.fetchval('SELECT COUNT(*) FROM character_levelup')
 
         used_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
         total_ram = psutil.virtual_memory().total / 1024 ** 2
@@ -92,11 +83,11 @@ class Info:
         embed.set_author(name="NabBot", url="https://github.com/Galarzaa90/NabBot",
                          icon_url="https://github.com/fluidicon.png")
         embed.description = f"🔰 Version: **{self.bot.__version__}**\n" \
-                            f"⏱ ️Uptime **{parse_uptime(self.bot.start_time)}**\n" \
+                            f"⏱ Uptime **{parse_uptime(self.bot.start_time)}**\n" \
                             f"🖥️ OS: **{platform.system()} {platform.release()}**\n" \
                             f"📉 RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n"
         try:
-            embed.description += f"⚙️ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n"
+            embed.description += f"⚙ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n"
         except AttributeError:
             pass
         embed.description += f"🏓 Ping: **{ping} ms**\n" \
@@ -107,6 +98,27 @@ class Info:
                              f"🌐 Tracked worlds: **{len(self.bot.tracked_worlds_list)}/{len(tibia_worlds)}**\n" \
                              f"{config.levelup_emoji} Level ups: **{levels_count:,}**\n" \
                              f"{config.death_emoji} Deaths: **{deaths_count:,}**"
+        await ctx.send(embed=embed)
+
+    @checks.can_embed()
+    @commands.guild_only()
+    @commands.command()
+    async def channelinfo(self, ctx: NabCtx, channel: discord.TextChannel = None):
+        """Shows information about a channel.
+
+        If no channel is specified, the information for the current channel is shown."""
+        if channel is None:
+            channel = ctx.channel
+        if not channel.permissions_for(ctx.author).read_messages:
+            return await ctx.error("You are not supposed to see that channel, so I can't show you anything.")
+        embed = discord.Embed(title=f"#{channel}", description=f"**ID** {channel.id}", colour=discord.Colour.blurple(),
+                              timestamp=channel.created_at)
+        if channel.topic:
+            embed.description += f"\n{channel.topic}"
+        embed.add_field(name="Visible by", value=f"{len(channel.members):,} members")
+        embed.add_field(name="Mention", value=f"`{channel.mention}`")
+        embed.add_field(name="NSFW", value=ctx.tick(channel.nsfw))
+        embed.set_footer(text="Created on")
         await ctx.send(embed=embed)
 
     @checks.can_embed()
@@ -132,9 +144,88 @@ class Info:
             embed.add_field(name=k, value=", ".join(f"`{c}`" for c in sorted(categories[k])), inline=False)
         await ctx.send(embed=embed)
 
+    @checks.can_embed()
+    @commands.guild_only()
+    @commands.group(invoke_without_command=True, case_insensitive=True)
+    async def commandstats(self, ctx: NabCtx):
+        """Shows command statistics."""
+        async with ctx.pool.acquire() as conn:
+            stats = await conn.fetchrow("""SELECT COUNT(*) as count, MIN(date) as start
+                                           FROM command_use WHERE server_id = $1""", ctx.guild.id)
+
+            _commands = await conn.fetch("""SELECT COUNT(*) as count, command 
+                                            FROM command_use WHERE server_id = $1
+                                            GROUP BY command ORDER BY count DESC LIMIT 5""", ctx.guild.id)
+
+            users = await conn.fetch("""SELECT COUNT(*) as count, user_id 
+                                        FROM command_use WHERE server_id = $1
+                                        GROUP BY user_id ORDER BY count DESC LIMIT 5""", ctx.guild.id)
+
+        embed = discord.Embed(colour=discord.Colour.blurple(), title="Command Stats",
+                              description=f"{stats['count']:,} command uses")
+        embed.set_footer(text="Tracking usage since")
+
+        entries = []
+        for i, row in enumerate(_commands, 1):
+            entries.append(f"{i}. {row['command']} - {row['count']:,} uses")
+        embed.add_field(name="Top commands", value="\n".join(entries), inline=False)
+
+        entries = []
+        for i, row in enumerate(users, 1):
+            user = ctx.guild.get_member(row["user_id"])
+            user_str = user.mention if user else f"<User {row['user_id']}>"
+            entries.append(f"{i}. {user_str} - {row['count']:,} uses")
+        embed.add_field(name="Top users", value="\n".join(entries), inline=False)
+
+        embed.timestamp = stats['start']
+        await ctx.send(embed=embed)
+
+    @checks.can_embed()
+    @commandstats.group(name="global", case_insensitive=True)
+    async def commandstats_global(self, ctx: NabCtx):
+        """Shows command statistics of all servers."""
+        async with ctx.pool.acquire() as conn:
+            stats = await conn.fetchrow("SELECT COUNT(*) as count, MIN(date) as start FROM command_use")
+
+            _commands = await conn.fetch("""SELECT COUNT(*) as count, command FROM command_use 
+                                            GROUP BY command ORDER BY count DESC LIMIT 5""")
+
+            users = await conn.fetch("""SELECT COUNT(*) as count, user_id FROM command_use 
+                                        GROUP BY user_id ORDER BY count DESC LIMIT 5""")
+
+            guilds = await conn.fetch("""SELECT COUNT(*) as count, server_id FROM command_use 
+                                        GROUP BY server_id ORDER BY count DESC LIMIT 5""")
+
+        embed = discord.Embed(colour=discord.Colour.blurple(), title="Global Command Stats",
+                              description=f"{stats['count']:,} command uses")
+        embed.set_footer(text="Tracking usage since")
+
+        entries = []
+        for i, row in enumerate(_commands, 1):
+            entries.append(f"{i}. {row['command']} - {row['count']:,} uses")
+        embed.add_field(name="Top commands", value="\n".join(entries), inline=False)
+
+        entries = []
+        for i, row in enumerate(guilds, 1):
+            if row["server_id"] is None:
+                guild = "Private Message"
+            else:
+                guild = self.bot.get_guild(row["server_id"]) or f"<Guild {row['guild']}>"
+            entries.append(f"{i}. {guild} - {row['count']:,} uses")
+        embed.add_field(name="Top servers", value="\n".join(entries), inline=False)
+
+        entries = []
+        for i, row in enumerate(users, 1):
+            user = self.bot.get_user(row['user_id']) or f"<User {row['user_id']}>"
+            entries.append(f"{i}. {user} - {row['count']:,} uses")
+        embed.add_field(name="Top users", value="\n".join(entries), inline=False)
+
+        embed.timestamp = stats['start']
+        await ctx.send(embed=embed)
+
     @commands.guild_only()
     @commands.command(name="emojiinfo")
-    async def emoji_info(self, ctx: NabCtx, *, emoji: discord.Emoji=None):
+    async def emoji_info(self, ctx: NabCtx, *, emoji: discord.Emoji = None):
         """Shows information about an emoji, or shows all emojis.
 
         If the command is used with no arguments, all the server emojis are shown.
@@ -152,31 +243,32 @@ class Info:
                             value=f"{ctx.tick(emoji.managed)} Twitch managed\n"
                                   f"{ctx.tick(emoji.require_colons)} Requires colons\n"
                                   f"{ctx.tick(len(emoji.roles) > 0)} Role limited")
-        else:
-            emojis: List[discord.Emoji] = ctx.guild.emojis
-            if not emojis:
-                return await ctx.send("This server has no custom emojis.")
-            normal = [str(e) for e in emojis if not e.animated]
-            animated = [str(e) for e in emojis if e.animated]
-            embed = discord.Embed(title="Custom Emojis", color=discord.Color.blurple())
-            if normal:
-                emojis_str = "\n".join(normal)
-                fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
-                for i, value in enumerate(fields):
-                    if i == 0:
-                        name = f"Regular ({len(normal)})"
-                    else:
-                        name = "\u200F"
-                    embed.add_field(name=name, value=value.replace("\n", ""))
-            if animated:
-                emojis_str = "\n".join(animated)
-                fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
-                for i, value in enumerate(fields):
-                    if i == 0:
-                        name = f"Animated (Nitro required) ({len(animated)})"
-                    else:
-                        name = "\u200F"
-                    embed.add_field(name=name, value=value.replace("\n", ""))
+            return await ctx.send(embed=embed)
+
+        emojis: List[discord.Emoji] = ctx.guild.emojis
+        if not emojis:
+            return await ctx.send("This server has no custom emojis.")
+        normal = [str(e) for e in emojis if not e.animated]
+        animated = [str(e) for e in emojis if e.animated]
+        embed = discord.Embed(title="Custom Emojis", color=discord.Color.blurple())
+        if normal:
+            emojis_str = "\n".join(normal)
+            fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
+            for i, value in enumerate(fields):
+                if i == 0:
+                    name = f"Regular ({len(normal)})"
+                else:
+                    name = "\u200F"
+                embed.add_field(name=name, value=value.replace("\n", ""))
+        if animated:
+            emojis_str = "\n".join(animated)
+            fields = split_message(emojis_str, FIELD_VALUE_LIMIT)
+            for i, value in enumerate(fields):
+                if i == 0:
+                    name = f"Animated (Nitro required) ({len(animated)})"
+                else:
+                    name = "\u200F"
+                embed.add_field(name=name, value=value.replace("\n", ""))
         await ctx.send(embed=embed)
 
     @checks.can_embed()
@@ -221,69 +313,13 @@ class Info:
         except Exception as e:
             await ctx.send(e)
 
-    @commands.command(name="oldhelp", hidden=True)
-    async def oldhelp(self, ctx, *commands: str):
-        """Shows this message."""
-        _mentions_transforms = {
-            '@everyone': '@\u200beveryone',
-            '@here': '@\u200bhere'
-        }
-        _mention_pattern = re.compile('|'.join(_mentions_transforms.keys()))
-
-        bot = ctx.bot
-        destination = ctx.channel if ctx.long else ctx.author
-
-        def repl(obj):
-            return _mentions_transforms.get(obj.group(0), '')
-
-        # help by itself just lists our own commands.
-        if len(commands) == 0:
-            pages = await bot.formatter.format_help_for(ctx, bot)
-        elif len(commands) == 1:
-            # try to see if it is a cog name
-            name = _mention_pattern.sub(repl, commands[0])
-            command = None
-            if name in bot.cogs:
-                command = bot.cogs[name]
-            else:
-                command = bot.all_commands.get(name)
-                destination = ctx.channel
-                if command is None:
-                    await destination.send(bot.command_not_found.format(name))
-                    return
-
-            pages = await bot.formatter.format_help_for(ctx, command)
-        else:
-            name = _mention_pattern.sub(repl, commands[0])
-            command = bot.all_commands.get(name)
-            destination = ctx.channel
-            if command is None:
-                await destination.send(bot.command_not_found.format(name))
-                return
-
-            for key in commands[1:]:
-                try:
-                    key = _mention_pattern.sub(repl, key)
-                    command = command.all_commands.get(key)
-                    if command is None:
-                        await destination.send(bot.command_not_found.format(key))
-                        return
-                except AttributeError:
-                    await destination.send(bot.command_has_no_subcommands.format(command, key))
-                    return
-
-            pages = await bot.formatter.format_help_for(ctx, command)
-
-        for page in pages:
-            await destination.send(page)
-
     @commands.guild_only()
     @checks.can_embed()
     @commands.command(usage=" ")
     async def serverinfo(self, ctx: NabCtx, server=None):
         """Shows the server's information.
         """
-        if await checks.is_owner_check(ctx) and server is not None:
+        if await checks.is_owner(ctx) and server is not None:
             try:
                 guild = self.bot.get_guild(int(server))
                 if guild is None:
@@ -388,6 +424,8 @@ class Info:
         embed.add_field(name="Highest role", value=f"{user.top_role.mention}")
 
         await ctx.send(embed=embed)
+    # endregion
+
 
 def setup(bot):
     bot.add_cog(Info(bot))

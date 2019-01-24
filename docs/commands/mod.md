@@ -15,25 +15,34 @@ If the bot has `Manage Messages` permission, it will also delete command invocat
 
 ??? summary "Examples"
     **/cleanup**  
-    ![image](../assets/images/commands/cleanup.png)
-    
+    ![image](../assets/images/commands/mod/cleanup.png)
+
 ----
 
 ## ignore
-**Syntax:** `ignore [channel]`
+**Syntax:** `ignore [entries...]`
 
-Makes the bot ignore a channel
+Makes the bot ignore a channel or user.
 
-Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
+Commands cannot be used in ignored channels or by ignored users.
 
+The command accepts a list of names, ids or mentions of users or channels.  
 If the command is used with no parameters, it ignores the current channel.
 
-Note that server administrators can bypass this.
+Ignores are bypassed by users with the `Manage Server` permission.
+
+??? Summary "Example"
+    **/ignore #support #chat #feedback-and-reports #message-suggestions #levels-and-deaths Tschis**  
+    ![image](../assets/images/commands/mod/ignore.png)
 
 ----
 
 ### ignore list
-Shows a list of ignored channels.
+Shows a list of ignored channels and users.
+
+??? Summary "Example"
+    **/ignore list**  
+    ![image](../assets/images/commands/mod/ignore list.png)
 
 ----
 
@@ -53,11 +62,9 @@ Each channel in the list is numerated, by choosing a number, the message will be
 ## unignore
 **Syntax:** `unignore [channel]`
 
-Unignores a channel.
+Removes a channel or user from the ignored list.
 
-If no channel is provided, the current channel will be unignored.
-
-Ignored channels don't process commands. However, the bot may still announce deaths and level ups if needed.
+If no parameter is provided, the current channel will be unignored.
 
 If the command is used with no parameters, it unignores the current channel.
 
@@ -68,6 +75,6 @@ Shows a list of users with no registered characters.
 
 ??? Summary "Example"
     **/unregistered**  
-    ![image](../assets/images/commands/unregistered.png)
+    ![image](../assets/images/commands/mod/unregistered.png)
 
 ----
