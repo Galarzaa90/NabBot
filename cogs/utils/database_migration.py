@@ -464,7 +464,8 @@ async def import_server_properties(conn: asyncpg.Connection, c: sqlite3.Cursor):
             for entry in value:
                 times.append((server_id, entry["timezone"], entry["name"]))
             continue
-        elif key in ["events_channel", "levels_channel", "news_channel", "welcome_channel", "ask_channel"]:
+        elif key in ["events_channel", "levels_channel", "news_channel", "welcome_channel", "ask_channel",
+                     "announce_channel", "announce_level"]:
             value = int(value)
         elif key in ["watched_message", "watched_channel"]:
             continue
