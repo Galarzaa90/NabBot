@@ -295,7 +295,7 @@ class Event:
         :param only_active: Whether to only show current events or not.
         :return: The event if found.
         """
-        row = await conn.fetchrow("SELECT * FROM event WHERE id = $1 AND status", event_id)
+        row = await conn.fetchrow("SELECT * FROM event WHERE id = $1 AND active", event_id)
         if row is None:
             return None
         event = cls(**row)
