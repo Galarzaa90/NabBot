@@ -4,6 +4,13 @@
 - 🐛 Fixed bug
 - ❌ Removed feature
 
+## Version 2.0.1 (2019-01-24)
+- 🔧 Added `heart of destruction` as an alias for `World Devourer` in boss timers.
+- 🐛 Fixed database migration importing some numeric values as strings (`announce_channel` and `announce_level`)
+- 🐛 Fixed error when using `/watchlist adduser` on a user that doesn't exist.
+- 🐛 Fixed bug in `/watchlist showcount` not accepting any answers.
+- 🐛 Fixed incorrect hint on `/boss set`
+
 ## Version 2.0.0 (2019-01-23)
 - ✔ Migrated user database from SQLite to PostgreSQL (Database migration available)
 - ✔ Users can now be ignored, so the bot doesn't respond to them.

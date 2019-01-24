@@ -1143,7 +1143,7 @@ class Tracking(CogUtils):
 
         user = ctx.bot.get_member(name, ctx.guild)
         if user is None:
-            return await ctx.error("I don't see any users with that name.")
+            return await ctx.error("I don't see any users with that name or id.")
         characters = await DbChar.get_chars_by_user(ctx.pool, user.id, worlds=ctx.world)
         if not characters:
             await ctx.error(f"This user doesn't have any registered characters in {ctx.world}.")
@@ -1368,10 +1368,10 @@ class Tracking(CogUtils):
         watchlist = await Watchlist.get_by_channel_id(ctx.pool, channel.id)
         if not watchlist:
             return await ctx.error(f"{channel.mention} is not a watchlist.")
-        if yes_no.lower().strip() == ["yes", "true"]:
+        if yes_no.lower().strip() in ["yes", "true"]:
             await watchlist.update_show_count(ctx.pool, True)
             await ctx.success("Showing online count is now enabled. The name will be updated on the next cycle.")
-        elif yes_no.lower().strip() == ["no", "false"]:
+        elif yes_no.lower().strip() in ["no", "false"]:
             await watchlist.update_show_count(ctx.pool, False)
             await ctx.success("Showing online count is now disabled. The name will be updated on the next cycle.")
         else:

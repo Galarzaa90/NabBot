@@ -59,6 +59,7 @@ BOSS_ALIASES = {
     "eradicator": "Eradicator",
     "outburst": "Outburst",
     "world devourer": "World Devourer",
+    "heart of destruction": "World Devourer",
     "ravennous hunger": "ravennous hunger",
     "the souldespoiler": "The Souldespoiler",
     "souldespoiler": "The Souldespoiler",
@@ -630,7 +631,7 @@ class Timers(CogUtils):
             cooldown = BOSS_COOLDOWNS[name]
         else:
             return await ctx.error(f"There's no boss with that name.\nFor a list of supported bosses, "
-                                   f"try: `{ctx.clean_prefix}{ctx.invoked_with} bosslist`")
+                                   f"try: `{ctx.clean_prefix}boss bosslist`")
 
         db_char = await DbChar.get_by_name(ctx.pool, char)
         if db_char is None:
