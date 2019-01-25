@@ -561,18 +561,21 @@ class Tracking(CogUtils):
             await self._watchlist_update_message(self.bot.pool, watchlist, channel, embed)
             await self._watchlist_update_name(watchlist, channel)
         except discord.HTTPException:
-            log.exception("wathchlist")
+            log.exception(f"{self.tag}[_watchlist_update_content] {watchlist}")
 
     @staticmethod
     async def _watchlist_update_name(watchlist: Watchlist, channel: discord.TextChannel):
-        original_name = channel.name.split(WATCHLIST_SEPARATOR, 1)[0]
-        if original_name != channel.name and not watchlist.show_count:
-            await channel.edit(name=original_name, reason="Removing online count")
-        elif watchlist.show_count:
-            new_name = f"{original_name}{WATCHLIST_SEPARATOR}{watchlist.online_count}"
-            # Reduce unnecessary API calls and Audit log spam
-            if new_name != channel.name:
-                await channel.edit(name=new_name, reason="Online count changed")
+        try:
+            original_name = channel.name.split(WATCHLIST_SEPARATOR, 1)[0]
+            if original_name != channel.name and not watchlist.show_count:
+                await channel.edit(name=original_name, reason="Removing online count")
+            elif watchlist.show_count:
+                new_name = f"{original_name}{WATCHLIST_SEPARATOR}{watchlist.online_count}"
+                # Reduce unnecessary API calls and Audit log spam
+                if new_name != channel.name:
+                    await channel.edit(name=new_name, reason="Online count changed")
+        except discord.Forbidden:
+            pass
 
     @staticmethod
     async def _watchlist_update_message(conn, watchlist, channel, embed):
@@ -1198,7 +1201,8 @@ class Tracking(CogUtils):
         try:
             overwrites = {
                 ctx.guild.default_role: discord.PermissionOverwrite(send_messages=False, read_messages=True),
-                ctx.guild.me: discord.PermissionOverwrite(send_messages=True, read_messages=True)
+                ctx.guild.me: discord.PermissionOverwrite(send_messages=True, read_messages=True, manage_channels=True,
+                                                          manage_messages=True)
             }
             channel = await ctx.guild.create_text_channel(name, overwrites=overwrites, category=ctx.channel.category)
         except discord.Forbidden:

@@ -411,7 +411,7 @@ class Admin:
             if not perms.read_messages or not perms.send_messages:
                 await ctx.send(f"I don't have permission to use {new_channel.mention}.")
                 return
-            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new commands channel?")
+            message = await ctx.send(f"Are you sure you want {new_channel.mention} as the new serverlog channel?")
             new_value = new_channel.id
         confirm = await ctx.react_confirm(message, timeout=60, delete_after=True)
         if not confirm:
