@@ -101,10 +101,13 @@ class General(CogUtils):
                 if message is not None:
                     break
         if message is None:
-            await ctx.send("I can't find that message, or it is in a channel you can't access.")
+            await ctx.error("I can't find that message, or it is in a channel you can't access.")
             return
         if not message.content and not message.attachments:
-            await ctx.send("I can't quote embed messages.")
+            await ctx.error("I can't quote embed messages.")
+            return
+        if message.channel.nsfw and not ctx.channel.nsfw:
+            await ctx.error("I can't quote messages from NSFW channels in SFW channels.")
             return
         embed = discord.Embed(description=message.content, timestamp=message.created_at)
         try:
