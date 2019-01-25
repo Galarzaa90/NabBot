@@ -625,7 +625,7 @@ class Tracking(CogUtils):
         if len(params) != 2:
             raise commands.BadArgument()
         target_name, char_name = params
-
+        target_name = target_name.strip()
         target = self.bot.get_member(target_name, ctx.guild)
         if target is None:
             return await ctx.error(f"I couldn't find any users named `{target_name}`")
