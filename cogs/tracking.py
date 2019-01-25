@@ -1679,6 +1679,8 @@ class Tracking(CogUtils):
         log.info(f"{self.tag} Unloading cog")
         self.scan_highscores_task.cancel()
         self.scan_online_chars_task.cancel()
+        for k,v in self.world_tasks.items():
+            v.cancel()
 
 
 def setup(bot):
