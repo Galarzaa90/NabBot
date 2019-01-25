@@ -208,15 +208,18 @@ class NabBot(commands.Bot):
         If the channel doesn't exist, it doesn't send anything or give of any warnings as it meant to be an optional
         feature."""
         ask_channel_id = await get_server_property(self.pool, guild.id, "serverlog")
-        channel = guild.get_channel(ask_channel_id)
+        channel = None
+        if ask_channel_id:
+            channel = guild.get_channel(ask_channel_id)
         if channel is None:
             channel = self.get_channel_by_name(self.config.log_channel_name, guild)
         if channel is None:
             return
         try:
             await channel.send(content=content, embed=embed)
+            return True
         except discord.HTTPException:
-            pass
+            return False
 
     def get_channel_by_name(self, name: str, guild: discord.Guild) -> discord.TextChannel:
         """Finds a channel by name on all the servers the bot is in.

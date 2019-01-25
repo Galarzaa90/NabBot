@@ -64,9 +64,33 @@ class Owner(CogUtils):
             await admin.send("{0}\n\t-{1.mention}".format(content, ctx.author))
         await ctx.send("Message sent to "+join_list(["@"+a.name for a in guild_admins], ", ", " and "))
 
-    # noinspection PyBroadException
-    @commands.command(name="eval")
     @checks.owner_only()
+    @commands.command()
+    async def announcement(self, ctx: NabCtx, *, message):
+        """Sends an announcement to all servers with a sererlog."""
+        embed = discord.Embed(title="📣 Owner Announcement", colour=discord.Colour.blurple(),
+                              timestamp=dt.datetime.now())
+        embed.set_author(name="Support Server", url="https://discord.gg/NmDvhpY", icon_url=self.bot.user.avatar_url)
+        embed.set_footer(text=f"By {ctx.author}", icon_url=get_user_avatar(ctx.author))
+        embed.description = message
+
+        msg = await ctx.send("This message will be sent to all serverlogs. Do you want to send it?", embed=embed)
+        confirm = await ctx.react_confirm(msg, delete_after=True)
+        if not confirm:
+            await ctx.send("Ok then.")
+            return
+        count = 0
+        msg = await ctx.send(f"{config.loading_emoji} Sending messages...")
+        for guild in self.bot.guilds:
+            success = await self.bot.send_log_message(guild, embed=embed)
+            if success:
+                count += 1
+        await safe_delete_message(msg)
+        await ctx.success(f"Message sent to {count:,} servers.")
+
+    # noinspection PyBroadException
+    @checks.owner_only()
+    @commands.command(name="eval")
     async def _eval(self, ctx: NabCtx, *, body: str):
         """Evaluates Python code.
 
