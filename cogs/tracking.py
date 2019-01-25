@@ -1201,8 +1201,7 @@ class Tracking(CogUtils):
         try:
             overwrites = {
                 ctx.guild.default_role: discord.PermissionOverwrite(send_messages=False, read_messages=True),
-                ctx.guild.me: discord.PermissionOverwrite(send_messages=True, read_messages=True, manage_channels=True,
-                                                          manage_messages=True)
+                ctx.guild.me: discord.PermissionOverwrite(send_messages=True, read_messages=True, manage_channels=True)
             }
             channel = await ctx.guild.create_text_channel(name, overwrites=overwrites, category=ctx.channel.category)
         except discord.Forbidden:

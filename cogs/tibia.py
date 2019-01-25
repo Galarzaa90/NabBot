@@ -83,9 +83,11 @@ class Tibia(CogUtils):
                             await channel.send("New article posted on Tibia.com",
                                                embed=self.get_article_embed(article, 1000))
                         except discord.Forbidden:
-                            log.warning(f"{tag} Missing permissions.")
+                            log.warning(f"{tag} Missing permissions | Server: {guild.id}")
                         except discord.HTTPException:
-                            log.warning(f"{tag} Malformed message.")
+                            log.warning(f"{tag} Malformed message | Server: {guild.id}")
+                        except AttributeError:
+                            log.warning(f"{tag} No channel found | Server: {guild.id}")
                 await asyncio.sleep(60 * 60 * 2)
             except (IndexError, KeyError):
                 log.warning(f"{tag} Error getting recent news")
