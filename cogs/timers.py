@@ -192,7 +192,7 @@ class Event:
         self.created: dt.datetime = kwargs.get("created")
         # Populated
         self.subscribers:  List[int] = kwargs.get("subscribers", [])
-        self.participants: List[DbChar] = kwargs.get("participants")
+        self.participants: List[DbChar] = kwargs.get("participants", [])
         # Not a SQL row
         self.notification: dt.datetime = kwargs.get("notification")
 
@@ -299,7 +299,7 @@ class Event:
         if row is None:
             return None
         event = cls(**row)
-        if only_active and (not event.active or event.start > dt.datetime.now(event.start.tzinfo)):
+        if only_active and (not event.active or event.start < dt.datetime.now(event.start.tzinfo)):
             return None
         rows = await conn.fetch('SELECT character_id FROM event_participant WHERE event_id = $1', event_id)
         for row in rows:
@@ -318,7 +318,13 @@ class Event:
         return cls(**row)
 
     @classmethod
-    async def get_recent_by_server_id(cls, conn: PoolConn, server_id):
+    async def get_recent_by_server_id(cls, conn: PoolConn, server_id) -> List['Event']:
+        """Gets the recent events of a server.
+
+        :param conn: Connection to the database.
+        :param server_id: The server's id.
+        :return: A list of recent events in the server.
+        """
         rows = await conn.fetch("""SELECT * FROM event
                                    WHERE active AND server_id = $1 AND start < now() AND now()-start < $2
                                    ORDER BY start ASC""", server_id, RECENT_THRESHOLD)
@@ -328,7 +334,13 @@ class Event:
         return events
 
     @classmethod
-    async def get_upcoming_by_server_id(cls, conn: PoolConn, server_id):
+    async def get_upcoming_by_server_id(cls, conn: PoolConn, server_id) -> List['Event']:
+        """Gets the upcoming events in the server.
+
+        :param conn: Connection to the database.
+        :param server_id: The server's id.
+        :return: A list of upcoming events in the server.
+        """
         rows = await conn.fetch("""SELECT * FROM event
                                    WHERE active AND server_id = $1 AND start > now()
                                    ORDER BY start ASC""", server_id)
