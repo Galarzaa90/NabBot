@@ -553,7 +553,7 @@ class Owner(CogUtils):
         table.add_rows(list(r.values()) for r in results)
         render = table.render()
 
-        fmt = f'```\n{render}\n```\n*Returned {rows} rows in {dt:.2f}ms*'
+        fmt = f'```\n{render}\n```\n*Returned {rows} rows in {delta:2f}ms*'
         if len(fmt) > 2000:
             fp = io.BytesIO(fmt.encode('utf-8'))
             await ctx.send('Too many results to display here', file=discord.File(fp, 'results.txt'))
