@@ -34,7 +34,7 @@
 - ✔ New `/checkpm` command, to check if you can receive PMs from the bot.
 - ✔ New Calculators cog:
     - 🔧 Moved `/blessings`, `/stamina` and `/stats` here
-    - 🔧 Improved command output of `/stats`.
+    - 🔧 Improved command output of `/stats`.wa
     - ✔ `/stamina` now accepts an optional target stamina.
     - ✔ New `/stats` subcommands: `hitpoints`, `mana` and `capacity`, to calculate the minimum level needed to reach the
      target.

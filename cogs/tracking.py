@@ -1190,8 +1190,8 @@ class Tracking(CogUtils):
             await ctx.error(f"Channel name cannot contain the special character **{WATCHLIST_SEPARATOR}**")
             return
 
-        if not ctx.bot_permissions.manage_channels:
-            return await ctx.error(f"I need `Manage Channels` permission to use this command.")
+        if not ctx.me.guild_permissions.manage_channels:
+            return await ctx.error(f"I need `Manage Channels` permission in the server to use this command.")
 
         message = await ctx.send(f"Do you want to create a new watchlist named `{name}`?")
         confirm = await ctx.react_confirm(message, delete_after=True)
