@@ -635,7 +635,7 @@ class Timers(CogUtils):
         param = params.split(",", 1)
         if len(param) < 2:
             return await ctx.error("You must specify for which of your character is the cooldown for.\n"
-                                   f"e.g. `{ctx.clean_prefix}{ctx.invoked_with} set Kroazur,Bubble`")
+                                   f"e.g. `{ctx.clean_prefix}boss {ctx.invoked_with} Kroazur,Bubble`")
         name, char = param
         if name.lower() in BOSS_ALIASES:
             name = BOSS_ALIASES[name.lower()]
@@ -672,7 +672,7 @@ class Timers(CogUtils):
                                    f"e.g. `{ctx.clean_prefix}{ctx.invoked_with} remove Kroazur,Bubble`")
         name, char = param
         if name.lower() in BOSS_ALIASES:
-            name = BOSS_ALIASES[name]
+            name = BOSS_ALIASES[name.lower()]
         if name not in BOSS_COOLDOWNS:
             return await ctx.error(f"There's no boss with that name.\nFor a list of supported bosses, "
                                    f"try: `{ctx.clean_prefix}{ctx.invoked_with} bosslist`")
