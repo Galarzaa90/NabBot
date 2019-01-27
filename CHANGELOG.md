@@ -4,6 +4,16 @@
 - 🐛 Fixed bug
 - ❌ Removed feature
 
+##Version 2.1.0 (Unreleased)
+- ✔ New `/announce` command for owners.
+- 🐛 Fixed bug with `/makesay`
+- 🐛 Fixed bug `/boss clear`
+- 🐛 Fixed bugs with event editing
+- 🐛 You can no longer quote messages from NSFW channels in regular ones.
+- 🐛 Created watchlist channels now get proper permissions.
+- 🐛 Fixed bug with `/addchar` not working with extra spaces.
+- 🐛 Fixed format error in `/sql` command.
+
 ## Version 2.0.1 (2019-01-24)
 - 🔧 Added `heart of destruction` as an alias for `World Devourer` in boss timers.
 - 🐛 Fixed database migration importing some numeric values as strings (`announce_channel` and `announce_level`)
