@@ -6,6 +6,10 @@ class NabError(Exception):
     pass
 
 
+class UnathorizedUser(commands.CheckFailure, NabError):
+    pass
+
+
 class CannotEmbed(commands.CheckFailure, NabError):
     pass
 

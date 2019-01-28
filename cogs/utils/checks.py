@@ -8,21 +8,30 @@ from . import config, context, errors
 def owner_only():
     """Command can only be executed by the bot owner."""
     async def predicate(ctx):
-        return await is_owner(ctx)
+        res = await is_owner(ctx)
+        if not res:
+            raise errors.UnathorizedUser("You are not allowed to use this command.")
+        return True
     return commands.check(predicate)
 
 
 def server_admin_only():
     """Command can only be executed by a server administrator."""
     async def predicate(ctx):
-        return await check_guild_permissions(ctx, {'administrator': True}) or await is_owner(ctx)
+        res = await check_guild_permissions(ctx, {'administrator': True}) or await is_owner(ctx)
+        if res:
+            return True
+        raise errors.UnathorizedUser("You need Administrator permission to use this command.")
     return commands.check(predicate)
 
 
 def server_mod_only():
     """Command can only be used by users with manage guild permissions."""
     async def predicate(ctx):
-        return await check_guild_permissions(ctx, {'manage_guild': True}) or await is_owner(ctx)
+        res = await check_guild_permissions(ctx, {'manage_guild': True}) or await is_owner(ctx)
+        if res:
+            return True
+        raise errors.UnathorizedUser("You need Manage Server permissions to use this command.")
     return commands.check(predicate)
 
 
@@ -46,8 +55,12 @@ def server_mod_somewhere():
 def channel_mod_only():
     """Command can only be used by users with manage channel permissions."""
     async def predicate(ctx):
-        return await is_owner(ctx) or (await check_permissions(ctx, {'manage_channels': True}) and
-                                       ctx.guild is not None)
+        if ctx.guild is None:
+            raise commands.NoPrivateMessage("This command cannot be used in private messages.")
+        res = await is_owner(ctx) or (await check_permissions(ctx, {'manage_channels': True}) and
+                                      ctx.guild is not None)
+        if not res:
+            raise errors.UnathorizedUser("You need Manage Channel permissions to use this command.")
     return commands.check(predicate)
 
 
@@ -64,6 +77,8 @@ def channel_mod_somewhere():
             permissions = member.guild_permissions
             if permissions.administrator or permissions.manage_channels:
                 return True
+            else:
+                raise errors.UnathorizedUser("You need Manage Channel permissions to use this command.")
         return False
     return commands.check(predicate)
 
@@ -117,7 +132,7 @@ def not_lite_only():
 
 
 def has_permissions(*, check=all, **perms):
-    """Command can only be used if both the user and bot have the permissions."""
+    """Command can only be used if the user has the provided permissions."""
     async def pred(ctx):
         return await check_permissions(ctx, perms, check=check)
     return commands.check(pred)

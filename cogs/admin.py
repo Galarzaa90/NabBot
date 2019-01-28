@@ -81,7 +81,9 @@ class Admin:
             "manage_messages": ["warn", "Command pagination won't work well and I won't be able to delete messages "
                                         "in the ask channel."],
             "embed_links": ["error", "I won't be able to show many of my commands."],
-            "attach_files": ["warn", "I won't be able to show images in some of my commands."]
+            "attach_files": ["warn", "I won't be able to show images in some of my commands."],
+            "manage_roles": ["warn", "I only need this to manage auto roles and joinable roles."],
+            "manage_channels": ["warn", "I only need this to create watchlists."]
         }
         ok = True
         for k, v in check_permissions.items():

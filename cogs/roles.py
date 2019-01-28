@@ -107,6 +107,7 @@ class Roles(CogUtils):
     # region Commands
 
     @checks.has_guild_permissions(manage_roles=True)
+    @checks.bot_guild_permissions(manage_roles=True)
     @commands.group(case_insensitive=True)
     async def autorole(self, ctx: NabCtx):
         """Autorole commands.

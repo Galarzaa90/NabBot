@@ -221,7 +221,8 @@ class Core(CogUtils):
         """Handles CheckFailure errors.
 
         These are exceptions that may be raised when executing command checks."""
-        if isinstance(error, (commands.NoPrivateMessage, errors.NotTracking)):
+        if isinstance(error, (commands.NoPrivateMessage, errors.NotTracking, errors.UnathorizedUser,
+                              commands.MissingPermissions)):
             await ctx.error(error)
         elif isinstance(error, errors.CannotEmbed):
             await ctx.error(f"Sorry, `Embed Links` permission is required for this command.")
