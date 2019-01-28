@@ -359,7 +359,8 @@ class Tracking(CogUtils):
         # Do not touch anything, enter at your own risk #
         #################################################
         await self.bot.wait_until_ready()
-        log.info(f"{self.tag} scan_online_chars task started")
+        tag = f"{self.tag}[scan_online_chars]"
+        log.info(f"{tag} Task started")
         try:
             with open("data/online_list.dat", "rb") as f:
                 saved_list, timestamp = pickle.load(f)
@@ -367,13 +368,13 @@ class Tracking(CogUtils):
                     online_characters.clear()
                     online_characters.update(saved_list)
                     count = len([c for v in online_characters.values() for c in v])
-                    log.info(f"{self.tag} Loaded cached online list | {count:,} players")
+                    log.info(f"{tag} Loaded cached online list | {count:,} players")
                 else:
-                    log.info(f"{self.tag} Cached online list is too old, discarding")
+                    log.info(f"{tag} Cached online list is too old, discarding")
         except FileNotFoundError:
             pass
         except (ValueError, pickle.PickleError):
-            log.info(f"{self.tag} Couldn't read cached online list.")
+            log.info(f"{tag} Couldn't read cached online list.")
         while not self.bot.is_closed():
             try:
                 # Pop last server in queue, reinsert it at the beginning
@@ -387,13 +388,15 @@ class Tracking(CogUtils):
                 if time.time() - self.world_times.get(current_world.capitalize(), 0) < config.online_scan_interval:
                     await asyncio.sleep(0.2)
                     continue
-
+                tag = f"{self.tag}[{current_world}][scan_online_chars]"
+                log.debug(f"{tag} Checking online list")
                 # Get online list for this server
                 try:
                     world = await get_world(current_world)
                     if world is None:
                         await asyncio.sleep(0.1)
                         continue
+                    log.debug(f"{tag} {world.online_count} players online")
                 except NetworkError:
                     await asyncio.sleep(0.1)
                     continue
@@ -401,8 +404,6 @@ class Tracking(CogUtils):
                 if len(current_world_online) == 0:
                     await asyncio.sleep(0.1)
                     continue
-                log_msg = f"{self.tag}[{world.name}]"
-                log.debug(f"{log_msg} Scanning online players")
                 self.world_times[world.name] = time.time()
                 self.bot.dispatch("world_scanned", world)
                 # Save the online list in file
@@ -415,7 +416,7 @@ class Tracking(CogUtils):
                 offline_list = [c for c in online_characters[current_world] if c not in current_world_online]
                 for offline_char in offline_list:
                     # Check if characters got level ups when they went offline
-                    log.debug(f"{log_msg} Character no longer online | {offline_char.name}")
+                    log.debug(f"{tag} Character no longer online | {offline_char.name}")
                     online_characters[current_world].remove(offline_char)
                     try:
                         _char = await get_character(self.bot, offline_char.name)
@@ -427,18 +428,19 @@ class Tracking(CogUtils):
                 for server_char in current_world_online:
                     db_char = await DbChar.get_by_name(self.bot.pool, server_char.name)
                     if db_char:
-                        if server_char not in online_characters[current_world]:
-                            # If the character wasn't in the online list we add them
-                            # (We insert them at the beginning of the list to avoid messing with the death checks order)
-                            server_char.last_check = time.time()
-                            log.debug(f"{log_msg} Character added to online list | {server_char.name}")
-                            online_characters[current_world].insert(0, server_char)
-                            _char = await get_character(self.bot, server_char.name)
-                            await self.compare_deaths(_char)
-                        else:
-                            # Do not check levels for characters that were just added.
-                            await self.compare_levels(server_char)
                         try:
+                            if server_char not in online_characters[current_world]:
+                                # If the character wasn't in the online list we add them
+                                # (We insert them at the beginning of the list to avoid messing with the checks order)
+                                server_char.last_check = time.time()
+                                log.debug(f"{tag} Character added to online list | {server_char.name}")
+                                online_characters[current_world].insert(0, server_char)
+                                _char = await get_character(self.bot, server_char.name)
+                                await self.compare_deaths(_char)
+                                # Only update level up, but don't count it as a level up
+                                await self.compare_levels(_char, True)
+                            else:
+                                await self.compare_levels(server_char)
                             # Update character in the list
                             _char_index = online_characters[current_world].index(server_char)
                             online_characters[current_world][_char_index].level = server_char.level
@@ -1474,39 +1476,6 @@ class Tracking(CogUtils):
             except discord.HTTPException:
                 log.exception(f"{log_msg}")
 
-    async def compare_deaths(self, char: NabChar):
-        """Checks if the player has new deaths.
-
-        New deaths are announced if they are not older than 30 minutes."""
-        if char is None:
-            return
-        async with self.bot.pool.acquire() as conn:
-            db_char = await DbChar.get_by_name(conn, char.name)
-            if db_char is None:
-                return
-            pending_deaths = []
-            for death in char.deaths:
-                # Check if we have a death that matches the time
-                exists = await DbDeath.exists(conn, db_char.id, death.level, death.time)
-                if exists:
-                    # We already have this death, we're assuming we already have older deaths
-                    break
-                pending_deaths.append(death)
-            # Announce and save deaths from older to new
-            for death in reversed(pending_deaths):
-                db_death = DbDeath.from_tibiapy(death)
-                db_death.character_id = db_char.id
-                await db_death.save(conn)
-                log_msg = f"{self.tag}[{char.world}] Death detected: {char.name} | {death.level} |" \
-                    f" {death.killer.name}"
-                if (dt.datetime.now(dt.timezone.utc)- death.time) >= dt.timedelta(minutes=30):
-                    log.info(f"{log_msg} | Too old to announce.")
-                # Only try to announce if character has an owner
-                elif char.owner_id:
-                    log.info(log_msg)
-                    await self.announce_death(char, death, max(death.level - char.level, 0))
-
-
     @staticmethod
     async def cached_get_guild(guild_name: str, world: str) -> Optional[Guild]:
         """
@@ -1517,6 +1486,7 @@ class Tracking(CogUtils):
         guild = await get_guild(guild_name)
         GUILD_CACHE[world][guild_name] = guild
         return guild
+
 
     @classmethod
     async def check_char_availability(cls, ctx: NabCtx, user_id: int, char: NabChar, worlds: List[str],
@@ -1567,6 +1537,68 @@ class Tracking(CogUtils):
             unregistered.append(char)
         return CharactersResult._make((skipped, no_user, same_owner, different_user, unregistered,
                                        len(skipped) == len(chars)))
+
+    async def compare_deaths(self, char: NabChar):
+        """Checks if the player has new deaths.
+
+        New deaths are announced if they are not older than 30 minutes."""
+        if char is None:
+            return
+        async with self.bot.pool.acquire() as conn:
+            db_char = await DbChar.get_by_name(conn, char.name)
+            if db_char is None:
+                return
+            pending_deaths = []
+            for death in char.deaths:
+                # Check if we have a death that matches the time
+                exists = await DbDeath.exists(conn, db_char.id, death.level, death.time)
+                if exists:
+                    # We already have this death, we're assuming we already have older deaths
+                    break
+                pending_deaths.append(death)
+            # Announce and save deaths from older to new
+            for death in reversed(pending_deaths):
+                db_death = DbDeath.from_tibiapy(death)
+                db_death.character_id = db_char.id
+                await db_death.save(conn)
+                log_msg = f"{self.tag}[{char.world}] Death detected: {char.name} | {death.level} |" \
+                    f" {death.killer.name}"
+                if (dt.datetime.now(dt.timezone.utc)- death.time) >= dt.timedelta(minutes=30):
+                    log.info(f"{log_msg} | Too old to announce.")
+                # Only try to announce if character has an owner
+                elif char.owner_id:
+                    log.info(log_msg)
+                    await self.announce_death(char, death, max(death.level - char.level, 0))
+
+    async def compare_levels(self, char: Union[NabChar, OnlineCharacter], update_only=False):
+        """Compares the character's level with the stored level in database.
+
+        This should only be used on online characters or characters that just became offline."""
+        if char is None:
+            return
+        async with self.bot.pool.acquire() as conn:
+            db_char = await DbChar.get_by_name(conn, char.name)
+            if not db_char:
+                return
+            # OnlineCharacter has no sex attribute, so we get it from database and convert to NabChar
+            if isinstance(char, OnlineCharacter):
+                char = NabChar.from_online(char, db_char.sex, db_char.user_id)
+            level_before = db_char.level
+            if level_before != char.level:
+                await db_char.update_level(conn, char.level)
+                log.debug(f"{self.tag}[{char.world}][compare_level] {char.name}'s level updated:"
+                          f" {level_before} -> {char.level}")
+            if not (char.level > level_before > 0) or update_only:
+                return
+            # Saving level up date in database
+            await DbLevelUp.insert(conn, db_char.id, char.level)
+        # Announce the level up
+        log.info(f"{self.tag}[{char.world}] Level up detected: {char.name} | {char.level}")
+        # Only try to announce level if char has an owner.
+        if char.owner_id:
+            await self.announce_level(char, char.level)
+        else:
+            log.debug(f"{self.tag}[{char.world}] Character has no owner, skipping")
 
     @classmethod
     async def process_character_assignment(cls, ctx: NabCtx, results: CharactersResult, user: discord.User,
@@ -1625,32 +1657,6 @@ class Tracking(CogUtils):
         ctx.bot.dispatch("characters_registered", user, results.new, results.no_user, author)
         ctx.bot.dispatch("character_change", user.id)
         return reply
-
-    async def compare_levels(self, char: Union[NabChar, OnlineCharacter]):
-        """Compares the character's level with the stored level in database.
-
-        This should only be used on online characters or characters that just became offline."""
-        if char is None:
-            return
-        async with self.bot.pool.acquire() as conn:
-            db_char = await DbChar.get_by_name(conn, char.name)
-            if not db_char:
-                return
-            # OnlineCharacter has no sex attribute, so we get it from database and convert to NabChar
-            if isinstance(char, OnlineCharacter):
-                char = NabChar.from_online(char, db_char.sex, db_char.user_id)
-            await db_char.update_level(conn, char.level, False)
-            if not (char.level > db_char.level > 0):
-                return
-            # Saving level up date in database
-            await DbLevelUp.insert(conn, db_char.id, char.level)
-        # Announce the level up
-        log.info(f"{self.tag}[{char.world}] Level up detected: {char.name} | {char.level}")
-        # Only try to announce level if char has an owner.
-        if char.owner_id:
-            await self.announce_level(char, char.level)
-        else:
-            log.debug(f"{self.tag}[{char.world}] Character has no owner, skipping")
 
     async def save_highscores(self, world: str, key: str, highscores: tibiapy.Highscores) -> int:
         """Saves the highscores of a world and category to the database."""
