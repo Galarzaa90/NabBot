@@ -61,6 +61,7 @@ def channel_mod_only():
                                       ctx.guild is not None)
         if not res:
             raise errors.UnathorizedUser("You need Manage Channel permissions to use this command.")
+        return True
     return commands.check(predicate)
 
 
