@@ -274,7 +274,7 @@ class Calculators:
             except ValueError:
                 try:
                     level = int(params[1])
-                    vocation = params[0]
+                    vocation = params[0].strip()
                 except ValueError:
                     await ctx.send(invalid_arguments)
                     return
