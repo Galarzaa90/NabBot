@@ -270,7 +270,7 @@ class Calculators:
         elif len(params) == 2:
             try:
                 level = int(params[0])
-                vocation = params[1]
+                vocation = params[1].strip()
             except ValueError:
                 try:
                     level = int(params[1])
