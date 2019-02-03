@@ -14,7 +14,7 @@ from tibiawikisql import models
 
 from cogs.utils.converter import TibiaNumber
 from nabbot import NabBot
-from .utils import FIELD_VALUE_LIMIT, average_color, checks, config, join_list
+from .utils import FIELD_VALUE_LIMIT, average_color, checks, config, join_list, split_params
 from .utils.context import NabCtx
 from .utils.database import wiki_db
 from .utils.errors import CannotPaginate
@@ -125,7 +125,7 @@ class TibiaWiki:
 
         It can also accept prices using the 'k' suffix, e.g. 1.5k
         """
-        params = params.split(",")
+        params = split_params(params)
         if len(params) > 5:
             await ctx.send(f"{ctx.tick(False)} Invalid syntax. The correct syntax is: `{ctx.usage}`.")
             return
