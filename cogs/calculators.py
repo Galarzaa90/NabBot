@@ -5,7 +5,7 @@ import math
 import discord
 from discord.ext import commands
 
-from cogs.utils import config, timing
+from cogs.utils import config, timing, split_params
 from nabbot import NabBot
 from .utils import tibia
 from .utils.context import NabCtx
@@ -258,8 +258,8 @@ class Calculators:
         """
         invalid_arguments = "Invalid arguments, examples:\n" \
                             f"```{ctx.clean_prefix}stats player\n" \
-                            f"{ctx.clean_prefix}stats level,vocation\n```"
-        params = params.split(",")
+                            f"{ctx.clean_prefix}stats level, vocation\n```"
+        params = split_params(params)
         char = None
         if len(params) == 1:
             char = await get_character(ctx.bot, params[0])

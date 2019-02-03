@@ -19,7 +19,7 @@ from tibiawikisql import models
 
 from nabbot import NabBot
 from .utils import CogUtils, checks, config, errors, get_time_diff, get_user_avatar, is_numeric, \
-    join_list, online_characters, timing
+    join_list, online_characters, timing, split_params
 from .utils.context import NabCtx
 from .utils.database import DbChar, DbDeath, DbLevelUp, get_global_property, get_recent_timeline, get_server_property, \
     set_global_property
@@ -475,7 +475,7 @@ class Tibia(CogUtils):
         if params is None:
             params = []
         else:
-            params = params.split(",")
+            params = split_params(params)
         world = ctx.world
         if params and params[0].strip().title() in tibia_worlds:
             world = params[0].strip().title()
@@ -897,7 +897,7 @@ class Tibia(CogUtils):
             await ctx.send(f"A level {level} can share experience with levels **{low}** to **{high}**.")
             return
         except ValueError:
-            chars = param.split(",")
+            chars = split_params(param)
             if len(chars) > 5:
                 return await ctx.error("I can only check up to 5 characters at a time.")
             if len(chars) == 1:

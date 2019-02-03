@@ -283,6 +283,20 @@ async def safe_delete_message(message: discord.Message) -> bool:
         return False
 
 
+def split_params(param: str, delimiter=",", maxsplit=-1) -> List[str]:
+    """Splits the string parameter of a function and removes trailing/leading empty spaces from each resulting string.
+
+    :param param: The string to be split.
+    :param delimiter: The delimiter to be used for the split.
+    :param maxsplit Maximum amount of splits to be done.
+    :return: The list containing all stripped strings resulting from the split."""
+    split = param.split(delimiter, maxsplit)
+    params = []
+    for s in split:
+        params.append(s.strip())
+    return params
+
+
 def single_line(string: str) -> str:
     """Turns a multi-line string into a single.
 

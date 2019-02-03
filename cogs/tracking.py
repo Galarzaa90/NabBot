@@ -15,7 +15,7 @@ from tibiapy import Death, Guild, OnlineCharacter, OtherCharacter, World
 
 from nabbot import NabBot
 from .utils import CogUtils, EMBED_LIMIT, FIELD_VALUE_LIMIT, checks, config, get_user_avatar, is_numeric, join_list, \
-    online_characters, safe_delete_message
+    online_characters, safe_delete_message, split_params
 from .utils.context import NabCtx
 from .utils.database import DbChar, DbDeath, DbLevelUp, get_affected_count, get_server_property, PoolConn
 from .utils.errors import CannotPaginate, NetworkError
@@ -908,7 +908,7 @@ class Tracking(CogUtils):
         per_page = 20 if await ctx.is_long() else 5
 
         char = None
-        params = params.split(",")
+        params = split_params(params)
         if len(params) < 1 or len(params) > 2:
             await ctx.send(invalid_arguments)
             return
