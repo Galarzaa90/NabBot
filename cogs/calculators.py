@@ -270,11 +270,11 @@ class Calculators:
         elif len(params) == 2:
             try:
                 level = int(params[0])
-                vocation = params[1].strip()
+                vocation = params[1]
             except ValueError:
                 try:
                     level = int(params[1])
-                    vocation = params[0].strip()
+                    vocation = params[0]
                 except ValueError:
                     await ctx.send(invalid_arguments)
                     return
