@@ -7,6 +7,7 @@ import discord
 
 from nabbot import NabBot
 from .utils import get_region_string, get_user_avatar
+from .utils import timing
 from .utils.database import DbChar
 from .utils.tibia import NabChar, get_voc_abb_and_emoji
 
@@ -260,9 +261,11 @@ class ServerLog:
 
     async def on_member_join(self, member: discord.Member):
         """ Called when a member joins a guild (server) the bot is in."""
-        embed = discord.Embed(description=f"{member.mention} joined.", colour=COLOUR_MEMBER_JOINED)
+        embed = discord.Embed(description=f"{member.mention} joined.", colour=COLOUR_MEMBER_JOINED,
+                              timestamp=member.created_at)
         embed.set_author(name=f"{member.name}#{member.discriminator} (ID: {member.id})",
                          icon_url=get_user_avatar(member))
+        embed.set_footer(text="Discord user since")
         if member.bot:
             embed.colour = COLOUR_MEMBER_JOINED_BOT
             embed.description = f"Bot {member.mention} added."
