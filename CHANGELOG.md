@@ -4,8 +4,11 @@
 - 🐛 Fixed bug
 - ❌ Removed feature
 
-##Version 2.1.0 (Unreleased)
+##Version 2.1.0 (2019-02-04)
 - ✔ New `/announce` command for owners.
+- 🔧 Server log now shows the discord user's creation date when a member joins.
+- 🔧 The bot now responds if you try to use a command you don't have enough permission to use.
+- 🐛 Fixed bug causing duplicate level ups.
 - 🐛 Fixed bug with `/makesay`
 - 🐛 Fixed bug `/boss clear`
 - 🐛 Fixed bugs with event editing
@@ -13,6 +16,7 @@
 - 🐛 Created watchlist channels now get proper permissions.
 - 🐛 Fixed bug with `/addchar` not working with extra spaces.
 - 🐛 Fixed format error in `/sql` command.
+- 🐛 Fixed many parameters failing because of whitespaces around commas.
 
 ## Version 2.0.1 (2019-01-24)
 - 🔧 Added `heart of destruction` as an alias for `World Devourer` in boss timers.
