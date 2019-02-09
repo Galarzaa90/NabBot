@@ -132,10 +132,14 @@ def not_lite_only():
     return commands.check(predicate)
 
 
-def has_permissions(*, check=all, **perms):
+def has_permissions(**perms):
     """Command can only be used if the user has the provided permissions."""
     async def pred(ctx):
-        return await check_permissions(ctx, perms, check=check)
+        ret = await check_permissions(ctx, perms)
+        if not ret:
+            raise commands.MissingPermissions(perms)
+        return True
+
     return commands.check(pred)
 
 
@@ -159,13 +163,13 @@ def has_guild_permissions(**perms):
 
 
 # region Auxiliary functions (Not valid decorators)
-async def check_permissions(ctx, perms, *, check=all):
+async def check_permissions(ctx, perms):
     """Checks if the user has the specified permissions in the current channel."""
     if await ctx.bot.is_owner(ctx.author):
         return True
 
     permissions = ctx.channel.permissions_for(ctx.author)
-    return check(getattr(permissions, name, None) == value for name, value in perms.items())
+    return all(getattr(permissions, name, None) == value for name, value in perms.items())
 
 
 async def check_guild_permissions(ctx, perms, *, check=all):

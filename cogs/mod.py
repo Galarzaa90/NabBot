@@ -137,73 +137,22 @@ class Mod:
             await ctx.send(e)
 
     @commands.command()
-    @checks.channel_mod_somewhere()
+    @commands.guild_only()
+    @checks.has_permissions(**{"manage_messages": True})
     async def makesay(self, ctx: NabCtx, *, message: str):
         """Makes the bot say a message.
 
-        If it's used directly on a text channel, the bot will delete the command's message and repeat it itself.
-        Note that deleting the message requires `Manage Messages` permissions in the channel.
-
-        If it's used on a private message, the bot will ask on which channel he should say the message.
-        Each channel in the list is numerated, by choosing a number, the message will be sent in the chosen channel.
-        You can only send messages on channels where you have `Manage Channel` permissions.
+        If the user using the command doesn't have mention everyone permissions, the message will be cleaned of
+        mass mentions.
         """
-        if ctx.is_private:
-            description_list = []
-            channel_list = []
-            prev_server = None
-            num = 1
-            for server in self.bot.guilds:
-                author = server.get_member(ctx.author.id)
-                bot_member = self.bot.get_member(self.bot.user.id, server)
-                # Skip servers where the command user is not in
-                if author is None:
-                    continue
-                # Check for every channel
-                for channel in server.text_channels:
-                    author_permissions = author.permissions_in(channel)
-                    bot_permissions = bot_member.permissions_in(channel)
-                    # Check if both the author and the bot have permissions to send messages and add channel to list
-                    if author_permissions.send_messages and bot_permissions.send_messages \
-                            and author_permissions.manage_channels:
-                        separator = ""
-                        if prev_server is not server:
-                            separator = "---------------\n\t"
-                        description_list.append("{2}{3}: **#{0}** in **{1}**".format(channel.name, server.name,
-                                                                                     separator, num))
-                        channel_list.append(channel)
-                        prev_server = server
-                        num += 1
-            if len(description_list) < 1:
-                await ctx.send("We don't have any channels where we both can send messages and that you manage.")
-                return
-            await ctx.send("Choose a channel for me to send your message (number only): \n\t0: *Cancel*\n\t" +
-                           "\n\t".join(["{0}".format(i) for i in description_list]))
+        if not ctx.bot_permissions.manage_messages:
+            return await ctx.error("I need `Manage Messages` permissions here to use the command.")
+        # If bot or user don't have mention everyone permissions, clean @everyone and @here
+        if not ctx.bot_permissions.mention_everyone or not ctx.author_permissions.mention_everyone:
+            message = message.replace("@everyone", "@\u200beveryone").replace("@here", "@\u200bhere")
 
-            def check(m):
-                return m.author == ctx.author and m.channel == ctx.channel
-            try:
-                answer = await self.bot.wait_for("message", timeout=60.0, check=check)
-                answer = int(answer.content)
-                if answer == 0:
-                    await ctx.send("Changed your mind? Typical human.")
-                    return
-                await channel_list[answer-1].send(message)
-                await ctx.send("Message sent on {0} ({1})".format(channel_list[answer-1].mention,
-                                                                  channel_list[answer-1].guild))
-            except IndexError:
-                await ctx.send("That wasn't in the choices, you ruined it. Start from the beginning.")
-            except ValueError:
-                await ctx.send("That's not a valid answer!")
-            except asyncio.TimeoutError:
-                await ctx.send("... are you there? Fine, nevermind!")
-        else:
-            if not ctx.bot_permissions.manage_messages:
-                return await ctx.send(f"{ctx.tick(False)} I need `Manage Messages` permission to use this command.")
-            if not ctx.author_permissions.manage_channels:
-                return await ctx.send(f"{ctx.tick(False)} You need `Manage Channel` permission to use this command.")
-            await safe_delete_message(ctx.message)
-            await ctx.channel.send(message)
+        await safe_delete_message(ctx.message)
+        await ctx.send(message)
 
     @commands.guild_only()
     @checks.channel_mod_only()
