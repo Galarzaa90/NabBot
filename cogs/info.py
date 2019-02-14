@@ -210,7 +210,7 @@ class Info:
             if row["server_id"] is None:
                 guild = "Private Message"
             else:
-                guild = self.bot.get_guild(row["server_id"]) or f"<Guild {row['guild']}>"
+                guild = self.bot.get_guild(row["server_id"]) or f"<Guild {row['server_id']}>"
             entries.append(f"{i}. {guild} - {row['count']:,} uses")
         embed.add_field(name="Top servers", value="\n".join(entries), inline=False)
 
