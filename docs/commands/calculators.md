@@ -47,7 +47,7 @@ It shows the needed mana, offline training time and excercise weapons needed.
 
 ----
 ## meleeskill
-**Usage:** `magiclevel <current> <percentage> <target> <vocation> [loyalty]`  
+**Usage:** `meleeskill <current> <percentage> <target> <vocation> [loyalty]`  
 
 Calculates the training time required to reach a target skill level.
 
