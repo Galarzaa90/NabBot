@@ -380,7 +380,7 @@ class Timer:
         return f'<Timer id={self.id} name={self.name} expires={self.expires} type={self.type}>'
 
 
-class Timers(CogUtils):
+class Timers(commands.Cog, CogUtils):
     def __init__(self, bot: NabBot):
         self.bot = bot
         # Timers
@@ -471,6 +471,7 @@ class Timers(CogUtils):
     # endregion
 
     # task Custom Events
+    @commands.Cog.listener()
     async def on_event_notification(self, event: Event, reminder):
         """Announces upcoming events"""
         log.info(f"{self.tag} Sending event notification | Event '{event.name}' | ID: {event.id}")
@@ -493,6 +494,7 @@ class Timers(CogUtils):
                           f"| Channel {announce_channel.id} | Server {announce_channel.guild.id}")
         await self.notify_subscribers(event, message)
 
+    @commands.Cog.listener()
     async def on_custom_timer_complete(self, timer: Timer):
         try:
             channel = self.bot.get_channel(timer.extra["channel"])
@@ -513,6 +515,7 @@ class Timers(CogUtils):
         except KeyError:
             log.debug(f"{self.tag} Corrupt custom timer.")
 
+    @commands.Cog.listener()
     async def on_boss_timer_complete(self, timer: Timer):
         author: discord.User = self.bot.get_user(timer.user_id)
         char = await DbChar.get_by_id(self.bot.pool, timer.extra["char_id"])
@@ -1622,7 +1625,7 @@ class Timers(CogUtils):
 
     # endregion
 
-    def __unload(self):
+    def cog_unload(self):
         log.info(f"{self.tag} Unloading cog")
         self.timers_task.cancel()
         self.events_announce_task.cancel()

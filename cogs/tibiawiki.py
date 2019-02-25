@@ -28,7 +28,7 @@ WIKI_CHARMS_ARTICLE = "Cyclopedia#List_of_Charms"
 WIKI_ICON = "https://vignette.wikia.nocookie.net/tibia/images/b/bc/Wiki.png/revision/latest?path-prefix=en"
 
 
-class TibiaWiki:
+class TibiaWiki(commands.Cog):
     """Commands that show information about Tibia, provided by TibiaWiki.
 
     The information is read generated using [tibiawiki-sql](https://github.com/Galarzaa90/tibiawiki-sql)."""

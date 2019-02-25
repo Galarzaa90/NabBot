@@ -27,7 +27,7 @@ req_pattern = re.compile(r"([\w.]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")
 
 
-class Owner(CogUtils):
+class Owner(commands.Cog, CogUtils):
     """Commands exclusive to bot owners"""
     def __init__(self, bot: NabBot):
         self.bot = bot

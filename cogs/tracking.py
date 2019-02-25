@@ -241,7 +241,7 @@ class WatchlistEntry:
 # endregion
 
 
-class Tracking(CogUtils):
+class Tracking(commands.Cog, CogUtils):
     """Commands related to NabBot's tracking system."""
 
     def __init__(self, bot: NabBot):
@@ -457,6 +457,7 @@ class Tracking(CogUtils):
     # endregion
 
     # region Custom Events
+    @commands.Cog.listener()
     async def on_world_scanned(self, scanned_world: World):
         """Event called each time a world is checked.
 
@@ -1680,7 +1681,7 @@ class Tracking(CogUtils):
                 return len(rows)
     # endregion
 
-    def __unload(self):
+    def cog_unload(self):
         log.info(f"{self.tag} Unloading cog")
         self.scan_highscores_task.cancel()
         self.scan_online_chars_task.cancel()

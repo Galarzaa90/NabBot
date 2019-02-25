@@ -11,19 +11,19 @@ class Example:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    def __unload(self):
+    def cog_unload(self):
         """This will be called every time this cog is unloaded
 
         Used for cleaning up tasks and other stuff"""
         pass
 
-    def __global_check(self, ctx):
+    def bot_check(self, ctx):
         """This check is called for ANY command, in any cog
 
         Use this with caution as this will affect all the other commands."""
         return True
 
-    async def __local_check(self, ctx):
+    async def cog_check(self, ctx):
         """This check is called before running any command from this cog.
 
         If this returns true, the command can be run, otherwise it can't.

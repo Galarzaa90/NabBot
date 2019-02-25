@@ -48,7 +48,7 @@ def setting_command():
     return commands.check(predicate)
 
 
-class Admin:
+class Admin(commands.Cog):
     """Commands for server administrators and mods.
 
     `Manage Server` permission is needed to use these commands."""

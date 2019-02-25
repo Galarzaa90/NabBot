@@ -76,7 +76,7 @@ class LootScanException(commands.CommandError):
     pass
 
 
-class Loot(CogUtils):
+class Loot(commands.Cog, CogUtils):
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.processing_users = []

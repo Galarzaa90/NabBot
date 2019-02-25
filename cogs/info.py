@@ -20,7 +20,7 @@ from .utils.tibia import tibia_worlds
 log = logging.getLogger("nabbot")
 
 
-class Info:
+class Info(commands.Cog):
     """Commands that disploy general information."""
     def __init__(self, bot: NabBot):
         self.bot = bot

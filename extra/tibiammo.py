@@ -26,7 +26,7 @@ class TibiaMMO:
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    async def __local_check(self, ctx: NabCtx):
+    async def cog_check(self, ctx: NabCtx):
         if ctx.is_private:
             return False
         if ctx.guild.id != GUILD_ID:

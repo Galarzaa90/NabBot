@@ -39,7 +39,7 @@ PVP = {"Optional PvP": "🕊️", "Hardcore PvP": "💀", "Open PvP": "⚔",
 TRANSFERS = {"locked": "🔒", "blocked": "⛔"}
 
 
-class Tibia(CogUtils):
+class Tibia(commands.Cog, CogUtils):
     """Commands related to Tibia, gathered from information present in Tibia.com"""
     def __init__(self, bot: NabBot):
         self.bot = bot
@@ -1648,7 +1648,7 @@ class Tibia(CogUtils):
 
     # endregion
 
-    def __unload(self):
+    def cog_unload(self):
         log.info(f"{self.tag} Unloading cog")
         self.news_announcements_task.cancel()
 

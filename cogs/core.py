@@ -17,7 +17,7 @@ log = logging.getLogger("nabbot")
 bad_argument_pattern = re.compile(r'Converting to \"([^\"]+)\" failed for parameter \"([^\"]+)\"\.')
 
 
-class Core(CogUtils):
+class Core(commands.Cog, CogUtils):
     """Cog with NabBot's main functions."""
 
     def __init__(self, bot: NabBot):
@@ -71,6 +71,7 @@ class Core(CogUtils):
                 continue
             await asyncio.sleep(60*20)  # Change game every 20 minutes
 
+    @commands.Cog.listener()
     async def on_command_error(self, ctx: context.NabCtx, error: commands.CommandError):
         """Handles command errors"""
         if isinstance(error, commands.errors.CommandNotFound):
@@ -87,6 +88,7 @@ class Core(CogUtils):
         else:
             log.warning(f"Unhandled command error {error.__class__.__name__}: {error}")
 
+    @commands.Cog.listener()
     async def on_command(self, ctx: commands.Context):
         """Called everytime a command is executed.
 
@@ -100,6 +102,7 @@ class Core(CogUtils):
         await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
                                     ctx.message.created_at.replace(tzinfo=dt.timezone.utc), ctx.prefix, command)
 
+    @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
         log.info(f"{self.tag} Bot added | Guild {guild} ({guild.id})")
@@ -136,6 +139,7 @@ class Core(CogUtils):
         except discord.HTTPException:
             log.exception(f"{self.tag} Could not send join message on server: {guild.name}.")
 
+    @commands.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild):
         """Called when the bot leaves a guild (server)."""
         log.info(f"{self.tag} Bot removed | Guild {guild} ({guild.id})")
@@ -146,10 +150,12 @@ class Core(CogUtils):
         await self.bot.pool.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1,$2,$3)",
                                     guild.id, len(self.bot.guilds), "remove")
 
+    @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
         log.info(f"{self.tag} Member banned | Member {user} ({user.id}) | Guild {guild.id}")
 
+    @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         """Called when a member joins a guild (server) the bot is in."""
         log.info(f"{self.tag} Member joined | Member {member} ({member.id}) | Guild {member.guild.id}")
@@ -194,6 +200,7 @@ class Core(CogUtils):
             except discord.Forbidden:
                 pass
 
+    @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
         log.info(f"{self.tag} Member left/kicked | Member {member} ({member.id}) | Guild {member.guild.id}")
@@ -201,6 +208,7 @@ class Core(CogUtils):
         await self.bot.pool.execute("DELETE FROM user_server WHERE user_id = $1 AND server_id = $2",
                                     member.id, member.guild.id)
 
+    @commands.Cog.listener()
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
         log.info(f"{self.tag} Member unbanned | Member {user} ({user.id}) | Guild {guild.id}")
@@ -212,9 +220,6 @@ class Core(CogUtils):
             return None, None
         return m.group(1), m.group(2)
 
-    def __unload(self):
-        log.info(f"{self.tag} Unloading cog")
-        self.game_update_task.cancel()
 
     @classmethod
     async def process_check_failure(cls, ctx: context.NabCtx, error: commands.CheckFailure):
@@ -264,6 +269,10 @@ class Core(CogUtils):
                 await ctx.send(embed=embed)
             else:
                 await ctx.error(f'Command error:\n```py\n{error_name}: {error.original}```')
+
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
+        self.game_update_task.cancel()
 
 
 def setup(bot):

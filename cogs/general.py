@@ -12,7 +12,7 @@ from .utils.context import NabCtx
 log = logging.getLogger("nabbot")
 
 
-class General(CogUtils):
+class General(commands.Cog, CogUtils):
     """General use commands."""
     def __init__(self, bot: NabBot):
         self.bot = bot
@@ -167,7 +167,7 @@ class General(CogUtils):
             result += "\nWho would have thought? 🙄"
         await ctx.send(result)
 
-    def __unload(self):
+    def cog_unload(self):
         log.info(f"{self.tag} Unloading cog")
 
 
