@@ -597,6 +597,7 @@ class Tracking(commands.Cog, CogUtils):
     # endregion
 
     # region Discord Events
+    @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
         """Called when a guild channel is deleted.
 
