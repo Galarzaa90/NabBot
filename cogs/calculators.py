@@ -49,7 +49,7 @@ VOC_ITER = (
 )
 
 
-class Calculators:
+class Calculators(commands.Cog):
     """Commands to calculate various Tibia values."""
     def __init__(self, bot: NabBot):
         self.bot = bot

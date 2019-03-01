@@ -27,7 +27,7 @@ req_pattern = re.compile(r"([\w.]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
 dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")
 
 
-class Owner(CogUtils):
+class Owner(commands.Cog, CogUtils):
     """Commands exclusive to bot owners"""
     def __init__(self, bot: NabBot):
         self.bot = bot
@@ -656,7 +656,6 @@ class Owner(CogUtils):
 
         dependencies = req_pattern.findall(requirements)
         for package in dependencies:
-            print(package)
             version = pkg_resources.get_distribution(package[0]).version
             if not comp(package[1], StrictVersion(version), StrictVersion(package[2])):
                 value = f"{ctx.tick(False)}v{version}\n`At least v{package[2]} expected`"

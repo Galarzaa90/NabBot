@@ -17,12 +17,13 @@ from .utils.tibia import get_guild
 log = logging.getLogger("nabbot")
 
 
-class Roles(CogUtils):
+class Roles(commands.Cog, CogUtils):
     """Commands related to role management."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
     # region Discord Events
+    @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role):
         """Called when a role is deleted.
 
@@ -41,6 +42,7 @@ class Roles(CogUtils):
 
     # region Custom Events
     # Todo: Requires optimization
+    @commands.Cog.listener()
     async def on_character_change(self, user_id: int):
         """Event occurs everytime a character changes guild or owner.
 

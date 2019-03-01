@@ -38,12 +38,12 @@ class LazyEntry:
         return self._cache
 
 
-class Mod:
+class Mod(commands.Cog):
     """Moderating related commands."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    async def __global_check_once(self, ctx: NabCtx):
+    async def bot_check_once(self, ctx: NabCtx):
         """Checks if the current channel or user is ignored.
 
         Bot owners and guild managers can bypass this.

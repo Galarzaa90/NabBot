@@ -4,10 +4,10 @@ from enum import Enum
 from typing import Any, List, Optional
 
 import discord
+from discord.ext import commands
 
 from nabbot import NabBot
 from .utils import get_region_string, get_user_avatar
-from .utils import timing
 from .utils.database import DbChar
 from .utils.tibia import NabChar, get_voc_abb_and_emoji
 
@@ -38,11 +38,12 @@ class ChangeType(Enum):
     NAME = "name"
 
 
-class ServerLog:
+class ServerLog(commands.Cog):
     def __init__(self, bot: NabBot):
         self.bot = bot
 
     # region Custom Events
+    @commands.Cog.listener()
     async def on_characters_registered(self, user: discord.User, added: List[NabChar], updated: List[DbChar],
                                        author: discord.User = None):
         """Called when a user registers new characters
@@ -77,6 +78,7 @@ class ServerLog:
             embed.description = description
             await self.bot.send_log_message(guild, embed=embed)
 
+    @commands.Cog.listener()
     async def on_character_unregistered(self, user: discord.user, char: DbChar, author: discord.User = None):
         """Called when a user unregisters a character.
 
@@ -97,6 +99,7 @@ class ServerLog:
                                 f"\n‣ {char.name} - Level {abs(char.level)} {voc} - **{tibia_guild}**"
             await self.bot.send_log_message(guild, embed=embed)
 
+    @commands.Cog.listener()
     async def on_character_rename(self, char: NabChar, old_name: str):
         """Called when a character is renamed.
 
@@ -118,6 +121,7 @@ class ServerLog:
             embed.set_author(name=f"{member.name}#{member.discriminator}", icon_url=get_user_avatar(member))
             await self.bot.send_log_message(guild, embed=embed)
 
+    @commands.Cog.listener()
     async def on_character_transferred(self, char: NabChar, old_world: str):
         """Called when a character switches world.
 
@@ -140,12 +144,14 @@ class ServerLog:
             embed.set_author(name=f"{member.name}#{member.discriminator}", icon_url=get_user_avatar(member))
             await self.bot.send_log_message(guild, embed=embed)
 
+    @commands.Cog.listener()
     async def on_character_guild_change(self, char: NabChar, old_guild: str):
         """Called when a character is renamed.
 
         Adds an entry to the character's history."""
         await self.add_character_history(char.id, ChangeType.GUILD, old_guild, char.guild_name)
 
+    @commands.Cog.listener()
     async def on_role_auto_deleted(self, role: discord.Role):
         embed = discord.Embed(title="Automatic role deleted", colour=COLOUR_AUTOROLE_DELETE,
                               description=f"Automatic role **{role.name}** deleted.")
@@ -154,6 +160,7 @@ class ServerLog:
             embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=get_user_avatar(entry.user))
         await self.bot.send_log_message(role.guild, embed=embed)
 
+    @commands.Cog.listener()
     async def on_role_joinable_deleted(self, role: discord.Role):
         embed = discord.Embed(title="Group deleted", colour=COLOUR_JOINABLEROLE_DELETE,
                               description=f"Joinable role **{role.name}** deleted.")
@@ -162,6 +169,7 @@ class ServerLog:
             embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=get_user_avatar(entry.user))
         await self.bot.send_log_message(role.guild, embed=embed)
 
+    @commands.Cog.listener()
     async def on_watchlist_deleted(self, channel: discord.TextChannel, count: int):
         """Called when a watchlist channel is deleted.
 
@@ -176,6 +184,7 @@ class ServerLog:
     # endregion
 
     # region Discord Events
+    @commands.Cog.listener()
     async def on_guild_emojis_update(self, guild: discord.Guild, before: List[discord.Emoji],
                                      after: List[discord.Emoji]):
         """Called every time an emoji is created, deleted or updated."""
@@ -220,6 +229,7 @@ class ServerLog:
                                  icon_url=get_user_avatar(entry.user))
             await self.bot.send_log_message(guild, embed=embed)
 
+    @commands.Cog.listener()
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
         """Called every time a guild is updated"""
         embed = discord.Embed(colour=COLOUR_GUILD_UPDATE)
@@ -245,6 +255,7 @@ class ServerLog:
                 embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
             await self.bot.send_log_message(after, embed=embed)
 
+    @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
         embed = discord.Embed(description="Banned", colour=COLOUR_MEMBER_BAN)
@@ -259,6 +270,7 @@ class ServerLog:
                 embed.description += f"\n**Reason:** {entry.reason}"
         await self.bot.send_log_message(guild, embed=embed)
 
+    @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         """ Called when a member joins a guild (server) the bot is in."""
         embed = discord.Embed(description=f"{member.mention} joined.", colour=COLOUR_MEMBER_JOINED,
@@ -290,6 +302,7 @@ class ServerLog:
             embed.add_field(name="Registered characters", value=characters)
         await self.bot.send_log_message(member.guild, embed=embed)
 
+    @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
         bot_member: discord.Member = member.guild.me
@@ -325,6 +338,7 @@ class ServerLog:
         # Otherwise, we are not certain
         await self.bot.send_log_message(member.guild, embed=embed)
 
+    @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         """Called every time a member is updated"""
         embed = discord.Embed(description=f"{after.mention}: ", colour=COLOUR_MEMBER_UPDATE)
@@ -349,6 +363,7 @@ class ServerLog:
         if changes:
             await self.bot.send_log_message(after.guild, embed=embed)
 
+    @commands.Cog.listener()
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
         embed = discord.Embed(description="Unbanned", colour=COLOUR_MEMBER_UNBAN)

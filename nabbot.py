@@ -55,8 +55,8 @@ class NabBot(commands.Bot):
                          description="Discord bot with functions for the MMORPG Tibia.")
         self.remove_command("help")
         self.users_servers = {}
-        self.config = None  # type: config.Config
-        self.pool = None  # type: asyncpg.pool.Pool
+        self.config: config.Config = None
+        self.pool: asyncpg.pool.Pool = None
         self.start_time = dt.datetime.utcnow()
         self.session = aiohttp.ClientSession(loop=self.loop)
         # Dictionary of worlds tracked by nabbot, key:value = server_id:world
@@ -65,7 +65,7 @@ class NabBot(commands.Bot):
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
         self.__version__ = "2.1.0"
-        self.__min_discord__ = 1580
+        self.__min_discord__ = 1700
 
     async def on_ready(self):
         """Called when the bot is ready."""

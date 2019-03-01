@@ -21,12 +21,12 @@ MOD_ROLE = 191848397072891905
 # MOD_ROLE = 442005462611656725
 
 
-class TibiaMMO:
+class TibiaMMO(commands.Cog):
     """Utilities for /r/TibiaMMO discord server."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    async def __local_check(self, ctx: NabCtx):
+    async def cog_check(self, ctx: NabCtx):
         if ctx.is_private:
             return False
         if ctx.guild.id != GUILD_ID:
