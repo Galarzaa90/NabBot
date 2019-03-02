@@ -74,7 +74,7 @@ class TimeString:
         self.original = argument
         match = compiled.match(argument)
         if match is None or not match.group(0):
-            raise BadTime("That's not a valid time, try something like this: 1d7h or 4h20m")
+            raise BadTime("That's not a valid time, try something like this: `1d7h` or `4h20m`")
 
         self.seconds = 0
         days = match.group('days')
