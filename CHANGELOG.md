@@ -4,7 +4,10 @@
 - 🐛 Fixed bug
 - ❌ Removed feature
 
-##Version 2.1.0 (2019-02-04)
+### Version 2.2.0 (Unreleased)
+- 🔧 `/boss set` now takes an additional optional parameter to specify how long ago the boss was killed. 
+
+## Version 2.1.0 (2019-02-04)
 - ✔ New `/announce` command for owners.
 - 🔧 Server log now shows the discord user's creation date when a member joins.
 - 🔧 The bot now responds if you try to use a command you don't have enough permission to use.

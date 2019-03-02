@@ -6,7 +6,7 @@ from cogs.utils.config import config
 from cogs.utils.tibia import get_share_range
 
 
-class Example:
+class Example(commands.Cog):
     """Example cog"""
     def __init__(self, bot: NabBot):
         self.bot = bot
