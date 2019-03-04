@@ -49,6 +49,11 @@ WAVE_MONSTERS = ["dragon", "dragon lord", "undead dragon", "draken spellweaver",
                  "frost dragon", "medusa", "serpent spawn", "hydra", "grim reaper"]
 ARROW_MONSTERS = ["hunter", "hero", "elf arcanist", "elf scout", "Omruc"]
 
+# Simple level messages
+SIMPLE_LEVEL = "**{name}** advanced to level {level}."
+SIMPLE_DEATH = "**{name}** ({level}) died to {killer_article}**{killer}**."
+SIMPLE_PVP_DEATH = "**{name}** ({level}) was killed by **{killer}**."
+
 # Message list for announce_level
 # Parameters: {name}, {level} , {he_she}, {his_her}, {him_her}
 # Values in each list element are:
