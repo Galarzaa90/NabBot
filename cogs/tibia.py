@@ -490,7 +490,7 @@ class Tibia(commands.Cog, CogUtils):
         else:
             category = tibiapy.utils.try_enum(Category, params[0].strip().lower())
             if category is None:
-                return await ctx.error(f"Invalid category, valid categories are: "
+                return await ctx.error(f"Invalid category or world.\nValid categories are: "
                                        f"{join_list([f'`{c.value}`' for c in Category])}")
             try:
                 vocation = VocationFilter.from_name(params[1].strip().lower())
