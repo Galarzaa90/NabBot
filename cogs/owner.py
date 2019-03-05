@@ -404,6 +404,38 @@ class Owner(commands.Cog, CogUtils):
                                 f'Socket latency is {1000*self.bot.latency:.1f}ms')
 
     @checks.owner_only()
+    @commands.command()
+    async def purge(self, ctx: NabCtx):
+        """Cleans the database from entries of servers that no longer contain NabBot."""
+        guilds = [g.id for g in ctx.bot.guilds]
+        msg = await ctx.send("This action will delete configuration of all servers I'm not in.\n"
+                             "This action is irreversible. Make sure you're connected to the correct database and "
+                             f"the correct bot instance. I'm currently in **{len(guilds)}** servers.\n"
+                             "**Are you sure you want to continue?**")
+        confirm = await ctx.react_confirm(msg, delete_after=True)
+        if confirm is not True:
+            await ctx.send("Database purge cancelled.")
+            return
+        output = ""
+        async with ctx.typing():
+            async with ctx.pool.acquire() as conn:  # type: asyncpg.Connection
+                result = await conn.execute("DELETE FROM server_property WHERE NOT (server_id = ANY($1))", guilds)
+                output += f"Deleted {get_affected_count(result)} server property rows.\n"
+                result = await conn.execute("DELETE FROM server_prefixes WHERE NOT (server_id = ANY($1))", guilds)
+                output += f"Deleted {get_affected_count(result)} server prefixes rows.\n"
+                result = await conn.execute("DELETE FROM server_timezone WHERE NOT (server_id = ANY($1))", guilds)
+                output += f"Deleted {get_affected_count(result)} server timezones rows.\n"
+                result = await conn.execute("DELETE FROM ignored_entry WHERE NOT (server_id = ANY($1))", guilds)
+                output += f"Deleted {get_affected_count(result)} ignored entries.\n"
+                result = await conn.execute("DELETE FROM role_auto WHERE NOT (server_id = ANY($1))", guilds)
+                output += f"Deleted {get_affected_count(result)} automatic roles.\n"
+                result = await conn.execute("DELETE FROM role_joinable WHERE NOT (server_id = ANY($1))", guilds)
+                output += f"Deleted {get_affected_count(result)} joinable roles.\n"
+                result = await conn.execute("DELETE FROM watchlist WHERE NOT (server_id = ANY($1))", guilds)
+                output += f"Deleted {get_affected_count(result)} watchlists and their entries."
+        await ctx.success(output)
+
+    @checks.owner_only()
     @commands.command(name="reload")
     async def reload_cog(self, ctx: NabCtx, *, cog):
         """Reloads a cog (module)"""
