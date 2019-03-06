@@ -52,6 +52,17 @@ Note that the bot needs `Manage Messages` permission to delete messages.
 
 ----
 
+
+### settings defaultannouncements
+**Syntax:** `settings defaultannouncements [yes/no]`  
+**Other aliases:** `settings simpleannouncements`
+
+Sets whether simple level/death messages will be used instead of random custom messages.
+
+When enabled, all level up and death messages will be the same, a simple and short message.
+
+----
+
 ### settings eventschannel
 **Syntax:** `settings eventschannel [channel]`
 

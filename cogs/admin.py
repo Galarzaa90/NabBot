@@ -24,7 +24,7 @@ SETTINGS = {
     "welcomechannel": {"title": "💬 Welcome channel"},
     "askchannel": {"title": "🤖 Command channel"},
     "commandsonly": {"title": "🗑 Command channel - Delete other"},
-    "simpleannouncements": {"title": "🗨 Simple Announcements"},
+    "defaultannouncements": {"title": "🗨 Default Announcements"},
 }
 
 
@@ -184,6 +184,32 @@ class Admin(commands.Cog):
         elif option.lower() == "no":
             await set_server_property(ctx.pool, ctx.guild.id, "commandsonly", False)
             await ctx.send(f"{ctx.tick(True)} I won't delete non-commands in the command channel from now on.")
+        else:
+            await ctx.send("That's not a valid option, try **yes** or **no**.")
+
+    @checks.server_mod_only()
+    @settings.command(name="defaultannouncements", aliases=["simpleannouncements"])
+    async def settings_default_announcements(self, ctx: NabCtx, option: str = None):
+        """Sets whether simple level/death messages will be used instead of random custom messages.
+
+        When enabled, all level up and death messages will be the same, a simple and short message."""
+        def yes_no(choice: bool):
+            return "Yes" if choice else "No"
+
+        if option is None:
+            current = await get_server_property(ctx.pool, ctx.guild.id, "simple_messages")
+            if current is None:
+                current_value = f"{yes_no(False)} (Global default)"
+            else:
+                current_value = yes_no(current)
+            await self.show_info_embed(ctx, current_value, "yes/no", "yes/no")
+            return
+        if option.lower() == "yes":
+            await set_server_property(ctx.pool, ctx.guild.id, "simple_messages", True)
+            await ctx.send(f"{ctx.tick(True)} I will use simple messages from now on.")
+        elif option.lower() == "no":
+            await set_server_property(ctx.pool, ctx.guild.id, "simple_messages", False)
+            await ctx.send(f"{ctx.tick(True)} I will use randomized custom messages from now on.")
         else:
             await ctx.send("That's not a valid option, try **yes** or **no**.")
 
@@ -384,32 +410,6 @@ class Admin(commands.Cog):
     async def settings_prefix_error(self, ctx: NabCtx, error):
         if isinstance(error, commands.BadArgument):
             await ctx.send(str(error))
-
-    @checks.server_mod_only()
-    @settings.command(name="simpleannouncements")
-    async def settings_simpleannouncements(self, ctx: NabCtx, option: str = None):
-        """Sets whether simple level/death messages will be used instead of random custom messages.
-
-        When enabled, all level up and death messages will be the same, a simple and short message."""
-        def yes_no(choice: bool):
-            return "Yes" if choice else "No"
-
-        if option is None:
-            current = await get_server_property(ctx.pool, ctx.guild.id, "simple_messages")
-            if current is None:
-                current_value = f"{yes_no(False)} (Global default)"
-            else:
-                current_value = yes_no(current)
-            await self.show_info_embed(ctx, current_value, "yes/no", "yes/no")
-            return
-        if option.lower() == "yes":
-            await set_server_property(ctx.pool, ctx.guild.id, "simple_messages", True)
-            await ctx.send(f"{ctx.tick(True)} I will use simple messages from now on.")
-        elif option.lower() == "no":
-            await set_server_property(ctx.pool, ctx.guild.id, "simple_messages", False)
-            await ctx.send(f"{ctx.tick(True)} I will use randomized custom messages from now on.")
-        else:
-            await ctx.send("That's not a valid option, try **yes** or **no**.")
 
     @checks.server_mod_only()
     @settings.command(name="serverlog")

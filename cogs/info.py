@@ -50,7 +50,8 @@ class Info(commands.Cog):
                         value="[Add to your server](https://dbl.nabbot.xyz/)  |  "
                               "[Support Server](https://support.nabbot.xyz/)  |  "
                               "[Docs](https://docs.nabbot.xyz/)  |  "
-                              "[Donate](https://donate.nabbot.xyz/)")
+                              "[Donate](https://donate.nabbot.xyz/) | "
+                              "[Patreon](https://www.patreon.com/nabbot)")
         embed.set_footer(text=f"Uptime | {parse_uptime(self.bot.start_time, True)}")
         await ctx.send(embed=embed)
 
@@ -230,7 +231,7 @@ class Info(commands.Cog):
 
         If the command is used with no arguments, all the server emojis are shown.
 
-        If a emoji, its id or name is provided, it will show more information about it.
+        If an emoji, its id or name is provided, it will show more information about it.
 
         Only emojis in the current servers can be checked."""
         if emoji is not None:

@@ -106,8 +106,7 @@ class Core(commands.Cog, CogUtils):
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
         log.info(f"{self.tag} Bot added | Guild {guild} ({guild.id})")
-        message = f"**I've been added to this server.**\n" \
-            f"Some things you should know:\n" \
+        message = f"Hi, I've been added to this server. Some things you should know:\n" \
             f"‣ My command prefix is: `{config.command_prefix[0]}` (it is customizable)\n" \
             f"‣ You can see all my commands with: `{config.command_prefix[0]}help` or " \
             f"`{config.command_prefix[0]}commands`\n" \
