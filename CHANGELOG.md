@@ -4,7 +4,7 @@
 - 🐛 Fixed bug
 - ❌ Removed feature
 
-### Version 2.2.0 (Unreleased)
+### Version 2.2.0 (2019-03-07)
 - ✔ Added option to disable custom messages for deaths and level ups. `/settings simpleannouncements`
 - ✔ New `/purge` owner command, cleans settings for servers where the bot is no longer in.
 - ✔ Added option to set how long ago was killed, to reduce that from the cooldown timer. e.g. `/boss set Lloyd,Tschas,1h30m`.
