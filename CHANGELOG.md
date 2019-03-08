@@ -9,7 +9,8 @@
 - ✔ New `/purge` owner command, cleans settings for servers where the bot is no longer in.
 - ✔ Added option to set how long ago was killed, to reduce that from the cooldown timer. e.g. `/boss set Lloyd,Tschas,1h30m`.
 - 🔧 `/boss set` now takes an additional optional parameter to specify how long ago the boss was killed.
-- 🔧 `/highscores` error message is more general now. 
+- 🔧 `/highscores` error message is more general now.
+- 🐛 Deaths no longer show the character killing himself (unless they actually did).
 
 ## Version 2.1.0 (2019-02-04)
 - ✔ New `/announce` command for owners.
