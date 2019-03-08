@@ -36,7 +36,7 @@
         <meta name="lang:search.tokenizer" content="[\s\-]+">
       
       <link rel="shortcut icon" href="../../assets/images/favicon.ico">
-      <meta name="generator" content="mkdocs-1.0.4, mkdocs-material-4.0.1">
+      <meta name="generator" content="mkdocs-1.0.4, mkdocs-material-4.0.2">
     
     
       
@@ -904,10 +904,8 @@ If the command is used with no parameters, it ignores the current channel.</p>
 <h2 id="makesay">makesay<a class="headerlink" href="#makesay" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">makesay &lt;message&gt;</code></p>
 <p>Makes the bot say a message.</p>
-<p>If it's used directly on a text channel, the bot will delete the command's message and repeat it itself.<br />
-Note that deleting the message requires <code class="codehilite">Manage Messages</code> permissions in the channel.</p>
-<p>If it's used on a private message, the bot will ask on which channel he should say the message.<br />
-Each channel in the list is numerated, by choosing a number, the message will be sent in the chosen channel.</p>
+<p>If the user using the command doesn't have mention everyone permissions, the message will be cleaned of
+mass mentions.</p>
 <hr />
 <h2 id="unignore">unignore<a class="headerlink" href="#unignore" title="Permanent link">&para;</a></h2>
 <p><strong>Syntax:</strong> <code class="codehilite">unignore [channel]</code></p>
@@ -1006,7 +1004,7 @@ Each channel in the list is numerated, by choosing a number, the message will be
       
     </div>
     
-      <script src="../../assets/javascripts/application.b806dc00.js"></script>
+      <script src="../../assets/javascripts/application.d9aa80ab.js"></script>
       
       <script>app.initialize({version:"1.0.4",url:{base:"../.."}})</script>
       
