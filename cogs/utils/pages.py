@@ -318,7 +318,7 @@ class HelpPaginator(Pages):
         cog_name = cog.__class__.__name__
 
         # get the commands
-        entries = sorted(ctx.bot.get_cog_commands(cog_name), key=lambda c: c.name)
+        entries = sorted(cog.get_commands(), key=lambda c: c.name)
 
         # remove the ones we can't run
         entries = [cmd for cmd in entries if (await _can_run(cmd, ctx)) and not cmd.hidden]

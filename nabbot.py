@@ -53,10 +53,12 @@ class NabBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix=_prefix_callable, case_insensitive=True,
                          description="Discord bot with functions for the MMORPG Tibia.")
+        # Remove default help command to implement custom one
         self.remove_command("help")
-        self.users_servers = {}
-        self.config = None  # type: config.Config
-        self.pool = None  # type: asyncpg.pool.Pool
+
+        self.users_servers = defaultdict(list)
+        self.config: config.Config = None
+        self.pool: asyncpg.pool.Pool = None
         self.start_time = dt.datetime.utcnow()
         self.session = aiohttp.ClientSession(loop=self.loop)
         # Dictionary of worlds tracked by nabbot, key:value = server_id:world
@@ -64,8 +66,9 @@ class NabBot(commands.Bot):
         # A list version is created from the dictionary
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
-        self.__version__ = "2.1.0"
-        self.__min_discord__ = 1580
+
+        self.__version__ = "2.2.0"
+        self.__min_discord__ = 1700
 
     async def on_ready(self):
         """Called when the bot is ready."""
@@ -75,7 +78,6 @@ class NabBot(commands.Bot):
         print(f"Version {self.__version__}")
         print('------')
         # Populating members's guild list
-        self.users_servers = defaultdict(list)
         for guild in self.guilds:
             for member in guild.members:
                 self.users_servers[member.id].append(guild.id)

@@ -163,224 +163,12 @@ BOSS_COOLDOWNS = {
     "The Count of The Core": dt.timedelta(hours=4),
     "Ancient Spawn Of Morgathla": dt.timedelta(hours=4)
 }
-
+"""Contains a mapping of bosses to cooldown times."""
 
 log = logging.getLogger("nabbot")
 
 
-class ReminderType(Enum):
-    CUSTOM = 0
-    BOSS = 1
-    TASK = 2
-    EVENT = 3
-
-
-class Event:
-    """Represents a user created event."""
-    def __init__(self, **kwargs):
-        self.id: int = kwargs.get("id", 0)
-        self.user_id: int = kwargs.get("user_id")
-        self.server_id: int = kwargs.get("server_id")
-        self.name: str = kwargs.get("name")
-        self.description: Optional[str] = kwargs.get("description")
-        self.start: dt.datetime = kwargs.get("start")
-        self.active: bool = kwargs.get("active")
-        self.reminder: int = kwargs.get("reminder")
-        self.joinable: bool = kwargs.get("joinable")
-        self.slots: int = kwargs.get("slots", 0)
-        self.modified: dt.datetime = kwargs.get("modified")
-        self.created: dt.datetime = kwargs.get("created")
-        # Populated
-        self.subscribers:  List[int] = kwargs.get("subscribers", [])
-        self.participants: List[DbChar] = kwargs.get("participants", [])
-        # Not a SQL row
-        self.notification: dt.datetime = kwargs.get("notification")
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} id={self.id} name={self.name!r} user_id={self.user_id} " \
-            f"server_id={self.server_id} reminder={self.reminder} start='{self.start}'>"
-
-    @property
-    def participant_users(self) -> List[int]:
-        """A list of the owners of currently registered participants."""
-        return [c.user_id for c in self.participants]
-
-    async def add_participant(self, conn: PoolConn, char: DbChar):
-        """Adds a character to the participants list."""
-        await conn.execute("INSERT INTO event_participant(event_id, character_id) VALUES($1,$2)",
-                           self.id, char.id)
-        self.participants.append(char)
-
-    async def remove_participant(self, conn: PoolConn, char: DbChar):
-        """Removes a character from the participant list."""
-        await conn.execute("DELETE FROM event_participant WHERE event_id = $1 AND character_id = $2",
-                           self.id, char.id)
-        try:
-            self.participants.remove(char)
-        except ValueError:
-            pass
-
-    async def add_subscriber(self, conn: PoolConn, user_id: int):
-        """Adds a user to the event's subscribers"""
-        await conn.execute("INSERT INTO event_subscriber(event_id, user_id) VALUES($1,$2)",
-                           self.id, user_id)
-        self.subscribers.append(user_id)
-
-    async def remove_subscriber(self, conn: PoolConn, user_id: int):
-        """Removes a user from the event's subscribers"""
-        await conn.execute("DELETE FROM event_subscriber WHERE event_id = $1 AND user_id = $2",
-                           self.id, user_id)
-        try:
-            self.subscribers.remove(user_id)
-        except ValueError:
-            pass
-
-    async def edit_name(self, conn: PoolConn, name: str):
-        """Edits the event's name in the database."""
-        await conn.execute("UPDATE event SET name = $1 WHERE id = $2", name, self.id)
-        self.name = name
-        
-    async def edit_description(self, conn: PoolConn, description: Optional[str]):
-        """Edits the event's description in the database."""
-        await conn.execute("UPDATE event SET description = $1 WHERE id = $2", description, self.id)
-        self.description = description
-
-    async def edit_joinable(self, conn: PoolConn, joinable: bool):
-        """Edits the event's joinable in the database."""
-        await conn.execute("UPDATE event SET joinable = $1 WHERE id = $2", joinable, self.id)
-        self.joinable = joinable
-
-    async def edit_slots(self, conn: PoolConn, slots: int):
-        """Edits the event's slots in the database."""
-        await conn.execute("UPDATE event SET slots = $1 WHERE id = $2", slots, self.id)
-        self.slots = slots
-
-    async def edit_active(self, conn: PoolConn, active: bool):
-        """Edits the event's active status in the database."""
-        await conn.execute("UPDATE event SET active = $1 WHERE id = $2", active, self.id)
-        self.active = active
-
-    async def edit_reminder(self, conn: PoolConn, reminder: int):
-        """Edits the event's reminder status in the database."""
-        await conn.execute("UPDATE event SET reminder = $1 WHERE id = $2", reminder, self.id)
-        self.reminder = reminder
-
-    async def edit_start(self, conn: PoolConn, start: dt.datetime):
-        """Edits the event's start time in the database."""
-        new_reminder = self._get_reminder(start)
-        await conn.execute("UPDATE event SET start = $1 reminder = $3 WHERE id = $2", start, self.id, new_reminder)
-        self.start = start
-
-    async def save(self, conn: PoolConn):
-        """Saves the current event to the database."""
-        event = await self.insert(conn, self.user_id, self.server_id, self.start, self.name, self.description)
-        self.id = event.id
-
-    @classmethod
-    def _get_reminder(cls, start: dt.datetime):
-        now = dt.datetime.now(dt.timezone.utc)
-        reminder = 0
-        for i, notification in enumerate(NOTIFICATIONS, 1):
-            if (start-now) > notification:
-                return reminder
-            reminder = i
-        return reminder
-
-    @classmethod
-    async def get_by_id(cls, conn: PoolConn, event_id: int, only_active=False) -> Optional['Event']:
-        """Gets a event by a specified id
-
-        :param conn: Connection to the database.
-        :param event_id: The event's id.
-        :param only_active: Whether to only show current events or not.
-        :return: The event if found.
-        """
-        row = await conn.fetchrow("SELECT * FROM event WHERE id = $1 AND active", event_id)
-        if row is None:
-            return None
-        event = cls(**row)
-        if only_active and (not event.active or event.start < dt.datetime.now(event.start.tzinfo)):
-            return None
-        rows = await conn.fetch('SELECT character_id FROM event_participant WHERE event_id = $1', event_id)
-        for row in rows:
-            event.participants.append(await DbChar.get_by_id(conn, row[0]))
-        rows = await conn.fetch('SELECT user_id FROM event_subscriber WHERE event_id = $1', event_id)
-        for row in rows:
-            event.subscribers.append(row[0])
-        return event
-
-    @classmethod
-    async def insert(cls, conn: PoolConn, user_id, server_id, start, name, description=None):
-        reminder = cls._get_reminder(start)
-        row = await conn.fetchrow("""INSERT INTO event(user_id, server_id, start, name, description, reminder)
-                                     VALUES($1, $2, $3, $4, $5, $6) RETURNING *""",
-                                  user_id, server_id, start, name, description, reminder)
-        return cls(**row)
-
-    @classmethod
-    async def get_recent_by_server_id(cls, conn: PoolConn, server_id) -> List['Event']:
-        """Gets the recent events of a server.
-
-        :param conn: Connection to the database.
-        :param server_id: The server's id.
-        :return: A list of recent events in the server.
-        """
-        rows = await conn.fetch("""SELECT * FROM event
-                                   WHERE active AND server_id = $1 AND start < now() AND now()-start < $2
-                                   ORDER BY start ASC""", server_id, RECENT_THRESHOLD)
-        events = []
-        for row in rows:
-            events.append(cls(**row))
-        return events
-
-    @classmethod
-    async def get_upcoming_by_server_id(cls, conn: PoolConn, server_id) -> List['Event']:
-        """Gets the upcoming events in the server.
-
-        :param conn: Connection to the database.
-        :param server_id: The server's id.
-        :return: A list of upcoming events in the server.
-        """
-        rows = await conn.fetch("""SELECT * FROM event
-                                   WHERE active AND server_id = $1 AND start > now()
-                                   ORDER BY start ASC""", server_id)
-        events = []
-        for row in rows:
-            events.append(cls(**row))
-        return events
-
-
-class Timer:
-    def __init__(self, **kwargs):
-        self.id = kwargs.get("id")
-        self.name = kwargs.get("name")
-        self.type = kwargs.get("type")
-        self.user_id = kwargs.get("user_id")
-        if isinstance(self.type, int):
-            self.type = ReminderType(self.type)
-        self.extra = kwargs.get("extra")
-        self.expires = kwargs.get("expires")
-        self.created = kwargs.get("created")
-
-    @classmethod
-    def build(cls, **kwargs):
-        kwargs["id"] = None
-        return cls(**kwargs)
-
-    def __eq__(self, other):
-        try:
-            return self.id == other.id
-        except AttributeError:
-            return False
-
-    def __hash__(self):
-        return hash(self.id)
-
-    def __repr__(self):
-        return f'<Timer id={self.id} name={self.name} expires={self.expires} type={self.type}>'
-
-
-class Timers(CogUtils):
+class Timers(commands.Cog, CogUtils):
     def __init__(self, bot: NabBot):
         self.bot = bot
         # Timers
@@ -394,6 +182,11 @@ class Timers(CogUtils):
 
         self.bot.loop.create_task(self.clean_events())
 
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
+        self.timers_task.cancel()
+        self.events_announce_task.cancel()
+
     # region Tasks
     async def check_timers(self):
         """Checks the first upcoming time and waits for it."""
@@ -406,7 +199,7 @@ class Timers(CogUtils):
                 log.debug(f"{tag} Next timer: {timer}")
                 now = dt.datetime.now(tz=dt.timezone.utc)
                 if timer.expires >= now:
-                    wait_time = (timer.expires-now)
+                    wait_time = (timer.expires - now)
                     log.debug(f"{tag} Sleeping for {wait_time}")
                     await asyncio.sleep(wait_time.total_seconds())
                 await self.run_timer(timer)
@@ -429,7 +222,7 @@ class Timers(CogUtils):
                 log.debug(f"{tag} Next event: {event}")
                 now = dt.datetime.now(tz=dt.timezone.utc)
                 if event.notification >= now:
-                    wait_time = (event.notification-now)
+                    wait_time = (event.notification - now)
                     log.debug(f"{tag} Sleeping for {wait_time}")
                     await asyncio.sleep(wait_time.total_seconds())
                 await self.run_event(event)
@@ -468,10 +261,12 @@ class Timers(CogUtils):
             pass
         except Exception as e:
             log.exception(f"{tag} {e}")
+
     # endregion
 
     # task Custom Events
-    async def on_event_notification(self, event: Event, reminder):
+    @commands.Cog.listener()
+    async def on_event_notification(self, event: 'Event', reminder):
         """Announces upcoming events"""
         log.info(f"{self.tag} Sending event notification | Event '{event.name}' | ID: {event.id}")
         guild: Optional[discord.Guild] = self.bot.get_guild(event.server_id)
@@ -493,7 +288,8 @@ class Timers(CogUtils):
                           f"| Channel {announce_channel.id} | Server {announce_channel.guild.id}")
         await self.notify_subscribers(event, message)
 
-    async def on_custom_timer_complete(self, timer: Timer):
+    @commands.Cog.listener()
+    async def on_custom_timer_complete(self, timer: 'Timer'):
         try:
             channel = self.bot.get_channel(timer.extra["channel"])
             user: discord.User = self.bot.get_user(timer.user_id)
@@ -513,7 +309,8 @@ class Timers(CogUtils):
         except KeyError:
             log.debug(f"{self.tag} Corrupt custom timer.")
 
-    async def on_boss_timer_complete(self, timer: Timer):
+    @commands.Cog.listener()
+    async def on_boss_timer_complete(self, timer: 'Timer'):
         author: discord.User = self.bot.get_user(timer.user_id)
         char = await DbChar.get_by_id(self.bot.pool, timer.extra["char_id"])
         if author is None or char is None:
@@ -561,7 +358,7 @@ class Timers(CogUtils):
             if not record:
                 return await ctx.send(f"**{db_char.name}** doesn't have any active cooldowns for **{name}**.")
             timer = Timer(**record)
-            return await ctx.send(f"Your cooldown for **{name}** will be over in {timer.expires-now}.")
+            return await ctx.send(f"Your cooldown for **{name}** will be over in {timer.expires - now}.")
         rows = await ctx.pool.fetch("""SELECT timer.*, "character".name AS char_name, "character".world FROM timer
                                        JOIN "character" ON "character".id = (extra->>'char_id')::int
                                        WHERE type = $1 AND timer.name = $2 AND timer.user_id = $3
@@ -573,7 +370,7 @@ class Timers(CogUtils):
             if ctx.world and ctx.world != row["world"]:
                 world_skipped = True
                 continue
-            entries.append(f"**{row['char_name']}** - Expires {HumanDelta(row['expires']-now).long(2)}")
+            entries.append(f"**{row['char_name']}** - Expires {HumanDelta(row['expires'] - now).long(2)}")
         if not entries:
             return await ctx.send(f"You don't have any active cooldowns for **{name}**.")
         header = f"Only characters in {ctx.world} are show. Use on PM to see more." if world_skipped else ""
@@ -626,17 +423,22 @@ class Timers(CogUtils):
         except CannotPaginate as e:
             await ctx.error(e)
 
-    @boss.command(name="set", usage="<boss>,<character>")
+    @boss.command(name="set", usage="<boss>,<character>[,time_ago]")
     async def boss_set(self, ctx: NabCtx, *, params):
         """Sets the cooldown for a boss.
 
         The cooldown is set as if you had just killed the boss.
-        You will receive a private message when the cooldown is over."""
-        param = params.split(",", 1)
+        You will receive a private message when the cooldown is over.
+
+        You can also specify how long ago the boss was killed, so the time is considered in the cooldown."""
+        param = params.split(",", 2)
         if len(param) < 2:
             return await ctx.error("You must specify for which of your character is the cooldown for.\n"
-                                   f"e.g. `{ctx.clean_prefix}boss {ctx.invoked_with} Kroazur,Bubble`")
-        name, char = param
+                                   f"e.g. `{ctx.clean_prefix}boss {ctx.invoked_with} Kroazur,Bubble`\n"
+                                   f"You can also specify how long ago you killed: "
+                                   f"`{ctx.clean_prefix}boss {ctx.invoked_with} Kroazur,Bubble,3h10m`")
+        name, char, time_ago = (param + [None])[:3]
+        print(name, char, time_ago)
         if name.lower() in BOSS_ALIASES:
             name = BOSS_ALIASES[name.lower()]
         if name in BOSS_COOLDOWNS:
@@ -644,6 +446,13 @@ class Timers(CogUtils):
         else:
             return await ctx.error(f"There's no boss with that name.\nFor a list of supported bosses, "
                                    f"try: `{ctx.clean_prefix}boss bosslist`")
+
+        if time_ago:
+            time_ago = dt.timedelta(seconds=TimeString(time_ago).seconds)
+
+            if time_ago >= cooldown:
+                return await ctx.error("Cooldown is less than how long ago you said you killed the boss.")
+            cooldown -= time_ago
 
         db_char = await DbChar.get_by_name(ctx.pool, char)
         if db_char is None:
@@ -660,8 +469,12 @@ class Timers(CogUtils):
                                    f"You can delete it using `{ctx.clean_prefix}{ctx.command.full_parent_name} clear "
                                    f"{name},{db_char.name}`")
         await self.create_timer(now, expires, name, ReminderType.BOSS, ctx.author.id, {"char_id": db_char.id})
-        await ctx.success(f"Timer saved for `{name}`, I will let you know when the cooldown is over via pm.\n"
-                          f"Use `{ctx.clean_prefix}checkdm` to make sure you can receive PMs by me.")
+        description = f"I will let you know when the cooldown is over via pm.\n" \
+            f"Use `{ctx.clean_prefix}checkdm` to make sure you can receive PMs by me."
+        embed = discord.Embed(title=f"Timer saved for {name}", description=description, timestamp=expires,
+                              colour=discord.Colour.green())
+        embed.set_footer(text="Cooldown expiration time")
+        await ctx.send(embed=embed)
 
     @boss.command(name="remove", aliases=["unset", "clear"], usage="<boss>,<character>")
     async def boss_remove(self, ctx: NabCtx, *, params):
@@ -1445,7 +1258,7 @@ class Timers(CogUtils):
 
         You will be notified in the same channel when the time is over."""
         now = dt.datetime.now(tz=dt.timezone.utc)
-        expires = now+dt.timedelta(seconds=when.seconds)
+        expires = now + dt.timedelta(seconds=when.seconds)
         await self.create_timer(now, expires, what, ReminderType.CUSTOM, ctx.author.id, {"message": ctx.message.id,
                                                                                          "channel": ctx.channel.id})
         await ctx.success(f"Ok, I will remind you in {when.original} about: {what}")
@@ -1454,7 +1267,7 @@ class Timers(CogUtils):
 
     # Auxiliary functions
 
-    async def await_next_timer(self, connection=None, days=7) -> Timer:
+    async def await_next_timer(self, connection=None, days=7) -> 'Timer':
         """Finds the next upcoming timer
 
         If there's no upcoming timer in the specified days, it will keep waiting until there's one.
@@ -1469,7 +1282,7 @@ class Timers(CogUtils):
         await self._timer_available.wait()
         return await self.get_next_timer(connection=connection, days=days)
 
-    async def await_next_event(self, connection=None, days=7) -> Event:
+    async def await_next_event(self, connection=None, days=7) -> 'Event':
         """Finds the next upcoming event notification
 
         If there's no upcoming notification in the specified days, it will keep waiting until there's one.
@@ -1484,8 +1297,8 @@ class Timers(CogUtils):
         await self._event_available.wait()
         return await self.get_next_event_notification(connection=connection, days=days)
 
-    async def create_timer(self, created: dt.datetime, expires: dt.datetime, name: str, type: ReminderType,
-                           user_id: int, extra, connection=None) -> Optional[Timer]:
+    async def create_timer(self, created: dt.datetime, expires: dt.datetime, name: str, type: 'ReminderType',
+                           user_id: int, extra, connection=None) -> Optional['Timer']:
         """Creates a new timer.
 
         If the created timer is the upcoming timer, it restarts the tasks."""
@@ -1513,9 +1326,9 @@ class Timers(CogUtils):
             self.timers_task = self.bot.loop.create_task(self.check_timers())
         return timer
 
-    def event_time_changed(self, event: Event):
+    def event_time_changed(self, event: 'Event'):
         """When an event's time changes, it checks if the tasks should be restarted or not."""
-        if (event.start-dt.datetime.now(event.start.tzinfo)) <= dt.timedelta(days=40):  # 40 days
+        if (event.start - dt.datetime.now(event.start.tzinfo)) <= dt.timedelta(days=40):  # 40 days
             self._event_available.set()
 
         if self._next_event and event.start - FIRST_NOTIFICATION < self._next_event.notification:
@@ -1535,7 +1348,7 @@ class Timers(CogUtils):
             self.timers_task.cancel()
             self.timers_task = self.bot.loop.create_task(self.check_timers())
 
-    async def get_next_timer(self, connection=None, days=7) -> Optional[Timer]:
+    async def get_next_timer(self, connection=None, days=7) -> Optional['Timer']:
         """Gets the first upcoming timer, if any."""
         query = "SELECT * FROM timer WHERE expires < (CURRENT_DATE + $1::interval) ORDER BY expires ASC"
         conn = connection or self.bot.pool
@@ -1546,7 +1359,7 @@ class Timers(CogUtils):
         timer = Timer(**record)
         return timer
 
-    async def get_next_event_notification(self, connection=None, days=7) -> Optional[Event]:
+    async def get_next_event_notification(self, connection=None, days=7) -> Optional['Event']:
         """Gets the first upcoming event, if any."""
         query = """SELECT *, 
                        CASE
@@ -1564,12 +1377,12 @@ class Timers(CogUtils):
             return None
 
         event = Event(**row)
-        if event.notification-dt.datetime.now(dt.timezone.utc) < dt.timedelta(days=days):
+        if event.notification - dt.datetime.now(dt.timezone.utc) < dt.timedelta(days=days):
             return event
         return None
 
     @classmethod
-    async def get_editable_event(cls, ctx: NabCtx, event_id) -> Event:
+    async def get_editable_event(cls, ctx: NabCtx, event_id) -> 'Event':
         """Gets an events by its ID and checks if the event can be edited by the author."""
         event = await Event.get_by_id(ctx.pool, event_id, True)
         if event is None:
@@ -1580,7 +1393,7 @@ class Timers(CogUtils):
             raise errors.NabError("That event is not from this server.")
         return event
 
-    async def notify_subscribers(self, event: Event, content, *, embed: discord.Embed = None, include_owner=False):
+    async def notify_subscribers(self, event: 'Event', content, *, embed: discord.Embed = None, include_owner=False):
         """Sends a message to all users subscribed to an event"""
         subscribers = event.subscribers[:]
         if include_owner:
@@ -1595,7 +1408,7 @@ class Timers(CogUtils):
             except discord.HTTPException:
                 log.debug(f"{self.tag} Could not send event notification | Event: {event.id} | User: {member.id}")
 
-    async def run_event(self, event: Event):
+    async def run_event(self, event: 'Event'):
         """Runs an event notification.
 
         The announcing of the event is dispatched to make this as quick as possible and avoid delaying the task"""
@@ -1615,18 +1428,226 @@ class Timers(CogUtils):
         if timer.type == ReminderType.BOSS:
             self.bot.dispatch("boss_timer_complete", timer)
 
-    async def run_short_timer(self, seconds, timer: Timer):
+    async def run_short_timer(self, seconds, timer: 'Timer'):
         """For short timers, waits for the timer to be ready."""
         await asyncio.sleep(seconds)
         await self.run_timer(timer, True)
 
     # endregion
 
-    def __unload(self):
-        log.info(f"{self.tag} Unloading cog")
-        self.timers_task.cancel()
-        self.events_announce_task.cancel()
-
 
 def setup(bot):
     bot.add_cog(Timers(bot))
+
+
+class ReminderType(Enum):
+    CUSTOM = 0
+    BOSS = 1
+    TASK = 2
+    EVENT = 3
+
+
+class Event:
+    """Represents a user created event."""
+
+    def __init__(self, **kwargs):
+        self.id: int = kwargs.get("id", 0)
+        self.user_id: int = kwargs.get("user_id")
+        self.server_id: int = kwargs.get("server_id")
+        self.name: str = kwargs.get("name")
+        self.description: Optional[str] = kwargs.get("description")
+        self.start: dt.datetime = kwargs.get("start")
+        self.active: bool = kwargs.get("active")
+        self.reminder: int = kwargs.get("reminder")
+        self.joinable: bool = kwargs.get("joinable")
+        self.slots: int = kwargs.get("slots", 0)
+        self.modified: dt.datetime = kwargs.get("modified")
+        self.created: dt.datetime = kwargs.get("created")
+        # Populated
+        self.subscribers: List[int] = kwargs.get("subscribers", [])
+        self.participants: List[DbChar] = kwargs.get("participants", [])
+        # Not a SQL row
+        self.notification: dt.datetime = kwargs.get("notification")
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} id={self.id} name={self.name!r} user_id={self.user_id} " \
+            f"server_id={self.server_id} reminder={self.reminder} start='{self.start}'>"
+
+    @property
+    def participant_users(self) -> List[int]:
+        """A list of the owners of currently registered participants."""
+        return [c.user_id for c in self.participants]
+
+    async def add_participant(self, conn: PoolConn, char: DbChar):
+        """Adds a character to the participants list."""
+        await conn.execute("INSERT INTO event_participant(event_id, character_id) VALUES($1,$2)",
+                           self.id, char.id)
+        self.participants.append(char)
+
+    async def remove_participant(self, conn: PoolConn, char: DbChar):
+        """Removes a character from the participant list."""
+        await conn.execute("DELETE FROM event_participant WHERE event_id = $1 AND character_id = $2",
+                           self.id, char.id)
+        try:
+            self.participants.remove(char)
+        except ValueError:
+            pass
+
+    async def add_subscriber(self, conn: PoolConn, user_id: int):
+        """Adds a user to the event's subscribers"""
+        await conn.execute("INSERT INTO event_subscriber(event_id, user_id) VALUES($1,$2)",
+                           self.id, user_id)
+        self.subscribers.append(user_id)
+
+    async def remove_subscriber(self, conn: PoolConn, user_id: int):
+        """Removes a user from the event's subscribers"""
+        await conn.execute("DELETE FROM event_subscriber WHERE event_id = $1 AND user_id = $2",
+                           self.id, user_id)
+        try:
+            self.subscribers.remove(user_id)
+        except ValueError:
+            pass
+
+    async def edit_name(self, conn: PoolConn, name: str):
+        """Edits the event's name in the database."""
+        await conn.execute("UPDATE event SET name = $1 WHERE id = $2", name, self.id)
+        self.name = name
+
+    async def edit_description(self, conn: PoolConn, description: Optional[str]):
+        """Edits the event's description in the database."""
+        await conn.execute("UPDATE event SET description = $1 WHERE id = $2", description, self.id)
+        self.description = description
+
+    async def edit_joinable(self, conn: PoolConn, joinable: bool):
+        """Edits the event's joinable in the database."""
+        await conn.execute("UPDATE event SET joinable = $1 WHERE id = $2", joinable, self.id)
+        self.joinable = joinable
+
+    async def edit_slots(self, conn: PoolConn, slots: int):
+        """Edits the event's slots in the database."""
+        await conn.execute("UPDATE event SET slots = $1 WHERE id = $2", slots, self.id)
+        self.slots = slots
+
+    async def edit_active(self, conn: PoolConn, active: bool):
+        """Edits the event's active status in the database."""
+        await conn.execute("UPDATE event SET active = $1 WHERE id = $2", active, self.id)
+        self.active = active
+
+    async def edit_reminder(self, conn: PoolConn, reminder: int):
+        """Edits the event's reminder status in the database."""
+        await conn.execute("UPDATE event SET reminder = $1 WHERE id = $2", reminder, self.id)
+        self.reminder = reminder
+
+    async def edit_start(self, conn: PoolConn, start: dt.datetime):
+        """Edits the event's start time in the database."""
+        new_reminder = self._get_reminder(start)
+        await conn.execute("UPDATE event SET start = $1 reminder = $3 WHERE id = $2", start, self.id, new_reminder)
+        self.start = start
+
+    async def save(self, conn: PoolConn):
+        """Saves the current event to the database."""
+        event = await self.insert(conn, self.user_id, self.server_id, self.start, self.name, self.description)
+        self.id = event.id
+
+    @classmethod
+    def _get_reminder(cls, start: dt.datetime):
+        now = dt.datetime.now(dt.timezone.utc)
+        reminder = 0
+        for i, notification in enumerate(NOTIFICATIONS, 1):
+            if (start - now) > notification:
+                return reminder
+            reminder = i
+        return reminder
+
+    @classmethod
+    async def get_by_id(cls, conn: PoolConn, event_id: int, only_active=False) -> Optional['Event']:
+        """Gets a event by a specified id
+
+        :param conn: Connection to the database.
+        :param event_id: The event's id.
+        :param only_active: Whether to only show current events or not.
+        :return: The event if found.
+        """
+        row = await conn.fetchrow("SELECT * FROM event WHERE id = $1 AND active", event_id)
+        if row is None:
+            return None
+        event = cls(**row)
+        if only_active and (not event.active or event.start < dt.datetime.now(event.start.tzinfo)):
+            return None
+        rows = await conn.fetch('SELECT character_id FROM event_participant WHERE event_id = $1', event_id)
+        for row in rows:
+            event.participants.append(await DbChar.get_by_id(conn, row[0]))
+        rows = await conn.fetch('SELECT user_id FROM event_subscriber WHERE event_id = $1', event_id)
+        for row in rows:
+            event.subscribers.append(row[0])
+        return event
+
+    @classmethod
+    async def insert(cls, conn: PoolConn, user_id, server_id, start, name, description=None):
+        reminder = cls._get_reminder(start)
+        row = await conn.fetchrow("""INSERT INTO event(user_id, server_id, start, name, description, reminder)
+                                     VALUES($1, $2, $3, $4, $5, $6) RETURNING *""",
+                                  user_id, server_id, start, name, description, reminder)
+        return cls(**row)
+
+    @classmethod
+    async def get_recent_by_server_id(cls, conn: PoolConn, server_id) -> List['Event']:
+        """Gets the recent events of a server.
+
+        :param conn: Connection to the database.
+        :param server_id: The server's id.
+        :return: A list of recent events in the server.
+        """
+        rows = await conn.fetch("""SELECT * FROM event
+                                   WHERE active AND server_id = $1 AND start < now() AND now()-start < $2
+                                   ORDER BY start ASC""", server_id, RECENT_THRESHOLD)
+        events = []
+        for row in rows:
+            events.append(cls(**row))
+        return events
+
+    @classmethod
+    async def get_upcoming_by_server_id(cls, conn: PoolConn, server_id) -> List['Event']:
+        """Gets the upcoming events in the server.
+
+        :param conn: Connection to the database.
+        :param server_id: The server's id.
+        :return: A list of upcoming events in the server.
+        """
+        rows = await conn.fetch("""SELECT * FROM event
+                                   WHERE active AND server_id = $1 AND start > now()
+                                   ORDER BY start ASC""", server_id)
+        events = []
+        for row in rows:
+            events.append(cls(**row))
+        return events
+
+
+class Timer:
+    def __init__(self, **kwargs):
+        self.id = kwargs.get("id")
+        self.name = kwargs.get("name")
+        self.type = kwargs.get("type")
+        self.user_id = kwargs.get("user_id")
+        if isinstance(self.type, int):
+            self.type = ReminderType(self.type)
+        self.extra = kwargs.get("extra")
+        self.expires = kwargs.get("expires")
+        self.created = kwargs.get("created")
+
+    @classmethod
+    def build(cls, **kwargs):
+        kwargs["id"] = None
+        return cls(**kwargs)
+
+    def __eq__(self, other):
+        try:
+            return self.id == other.id
+        except AttributeError:
+            return False
+
+    def __hash__(self):
+        return hash(self.id)
+
+    def __repr__(self):
+        return f'<Timer id={self.id} name={self.name} expires={self.expires} type={self.type}>'

@@ -76,7 +76,7 @@ class LootScanException(commands.CommandError):
     pass
 
 
-class Loot(CogUtils):
+class Loot(commands.Cog, CogUtils):
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.processing_users = []
@@ -123,11 +123,10 @@ class Loot(CogUtils):
             return
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(attachment.url) as resp:
+            async with ctx.bot.session.get(attachment.url) as resp:
                     loot_image = await resp.read()
         except aiohttp.ClientError:
-            log.exception(f"{self.tag} Couldn't parse image")
+            log.exception(f"{self.tag} Couldn't download image.")
             await ctx.error("I failed to load your image. Please try again.")
             return
 

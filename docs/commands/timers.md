@@ -34,12 +34,14 @@ To see all your characters, try it on a private message.
 ----
 
 ### boss set
-**Syntax:** `boss set <boss>,<character>`
+**Syntax:** `boss set <boss>,<character>[,time_ago]`
 
 Sets the cooldown for a boss.
 
 The cooldown is set as if you had just killed the boss.  
 You will receive a private message when the cooldown is over.
+
+You can also specify how long ago the boss was killed, so the time is considered in the cooldown.
 
 ??? Summary "Examples"
     **/boss set kroazur,galarzaa fidera**  

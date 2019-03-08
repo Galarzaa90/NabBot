@@ -39,11 +39,15 @@ PVP = {"Optional PvP": "🕊️", "Hardcore PvP": "💀", "Open PvP": "⚔",
 TRANSFERS = {"locked": "🔒", "blocked": "⛔"}
 
 
-class Tibia(CogUtils):
+class Tibia(commands.Cog, CogUtils):
     """Commands related to Tibia, gathered from information present in Tibia.com"""
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.news_announcements_task = self.bot.loop.create_task(self.scan_news())
+
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
+        self.news_announcements_task.cancel()
 
     # region Events
 
@@ -490,7 +494,7 @@ class Tibia(CogUtils):
         else:
             category = tibiapy.utils.try_enum(Category, params[0].strip().lower())
             if category is None:
-                return await ctx.error(f"Invalid category, valid categories are: "
+                return await ctx.error(f"Invalid category or world.\nValid categories are: "
                                        f"{join_list([f'`{c.value}`' for c in Category])}")
             try:
                 vocation = VocationFilter.from_name(params[1].strip().lower())
@@ -1647,10 +1651,6 @@ class Tibia(CogUtils):
             return results
 
     # endregion
-
-    def __unload(self):
-        log.info(f"{self.tag} Unloading cog")
-        self.news_announcements_task.cancel()
 
 
 def setup(bot):

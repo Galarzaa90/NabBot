@@ -20,7 +20,7 @@ from .utils.context import NabCtx
 from .utils.database import DbChar, DbDeath, DbLevelUp, get_affected_count, get_server_property, PoolConn
 from .utils.errors import CannotPaginate, NetworkError
 from .utils.messages import death_messages_monster, death_messages_player, format_message, level_messages, \
-    split_message, weighed_choice, DeathMessageCondition, LevelCondition
+    split_message, weighed_choice, DeathMessageCondition, LevelCondition, SIMPLE_LEVEL, SIMPLE_DEATH, SIMPLE_PVP_DEATH
 from .utils.pages import Pages, VocationPages
 from .utils.tibia import HIGHSCORE_CATEGORIES, NabChar, get_character, get_current_server_save_time, get_guild, \
     get_highscores, get_share_range, get_voc_abb, get_voc_emoji, get_world, tibia_worlds, normalize_vocation
@@ -241,7 +241,7 @@ class WatchlistEntry:
 # endregion
 
 
-class Tracking(CogUtils):
+class Tracking(commands.Cog, CogUtils):
     """Commands related to NabBot's tracking system."""
 
     def __init__(self, bot: NabBot):
@@ -457,6 +457,7 @@ class Tracking(CogUtils):
     # endregion
 
     # region Custom Events
+    @commands.Cog.listener()
     async def on_world_scanned(self, scanned_world: World):
         """Event called each time a world is checked.
 
@@ -596,6 +597,7 @@ class Tracking(CogUtils):
     # endregion
 
     # region Discord Events
+    @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
         """Called when a guild channel is deleted.
 
@@ -1420,17 +1422,17 @@ class Tracking(CogUtils):
             if guild.get_member(char.owner_id) is None:
                 log.debug(f"{log_msg} | Guild skipped  {guild_id} | Owner not in server")
                 continue
+            simple_messages = await get_server_property(self.bot.pool, guild_id, "simple_messages", False)
             condition = DeathMessageCondition(char=char, death=death, levels_lost=levels_lost, min_level=min_level)
             # Select a message
             if death.by_player:
-                message = weighed_choice(death_messages_player, condition)
+                message = weighed_choice(death_messages_player, condition) if not simple_messages else SIMPLE_DEATH
             else:
-                message = weighed_choice(death_messages_monster, condition)
+                message = weighed_choice(death_messages_monster, condition) if not simple_messages else SIMPLE_PVP_DEATH
             # Format message with death information
-            death_info = {'name': char.name, 'level': death.level, 'killer': death.killer.name,
-                          'killer_article': killer_article, 'he_she': char.he_she.lower(),
-                          'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
-            message = message.format(**death_info)
+            message = message.format(**{'name': char.name, 'level': death.level, 'killer': death.killer.name,
+                                        'killer_article': killer_article, 'he_she': char.he_she.lower(),
+                                        'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()})
             # Format extra stylization
             message = f"{config.pvpdeath_emoji if death.by_player else config.death_emoji} {format_message(message)}"
             channel_id = await get_server_property(self.bot.pool, guild.id, "levels_channel")
@@ -1459,14 +1461,18 @@ class Tracking(CogUtils):
                 log.debug(f"{log_msg} | Guild skipped  {guild_id} | Owner not in server")
                 continue
             channel_id = await get_server_property(self.bot.pool, guild.id, "levels_channel")
+            simple_messages = await get_server_property(self.bot.pool, guild_id, "simple_messages", False)
             channel = self.bot.get_channel_or_top(guild, channel_id)
             try:
                 # Select a message
-                message = weighed_choice(level_messages, LevelCondition(char=char, level=level, min_level=min_level))
-                level_info = {'name': char.name, 'level': level, 'he_she': char.he_she.lower(),
-                              'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()}
+                if not simple_messages:
+                    message = weighed_choice(level_messages, LevelCondition(char=char, level=level,
+                                                                            min_level=min_level))
+                else:
+                    message = SIMPLE_LEVEL
                 # Format message with level information
-                message = message.format(**level_info)
+                message = message.format(**{'name': char.name, 'level': level, 'he_she': char.he_she.lower(),
+                                            'his_her': char.his_her.lower(), 'him_her': char.him_her.lower()})
                 # Format extra stylization
                 message = f"{config.levelup_emoji} {format_message(message)}"
                 await channel.send(message)
@@ -1486,7 +1492,6 @@ class Tracking(CogUtils):
         guild = await get_guild(guild_name)
         GUILD_CACHE[world][guild_name] = guild
         return guild
-
 
     @classmethod
     async def check_char_availability(cls, ctx: NabCtx, user_id: int, char: NabChar, worlds: List[str],
@@ -1680,11 +1685,11 @@ class Tracking(CogUtils):
                 return len(rows)
     # endregion
 
-    def __unload(self):
+    def cog_unload(self):
         log.info(f"{self.tag} Unloading cog")
         self.scan_highscores_task.cancel()
         self.scan_online_chars_task.cancel()
-        for k,v in self.world_tasks.items():
+        for k, v in self.world_tasks.items():
             v.cancel()
 
 

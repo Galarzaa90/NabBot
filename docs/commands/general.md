@@ -56,7 +56,8 @@ In order to get a message's id, you need to enable Developer Mode.
 Developer mode is found in `User Settings > Appearance`.  
 Once enabled, you can right click a message and select **Copy ID**.
 
-Note that the bot won't attempt to search in channels you can't read.
+Note that the bot won't attempt to search in channels you can't read.  
+Additionally, messages in NSFW channels can't be quoted in regular channels.
 
 ??? Summary "Examples"
     **/quote 343259808889044992**  

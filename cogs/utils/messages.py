@@ -1,12 +1,14 @@
 import random
 import re
 
+import tibiapy
+
 from cogs.utils.tibia import normalize_vocation
 
 
 class MessageCondition:
     def __init__(self, **kwargs):
-        self.char = kwargs.get("char")
+        self.char: tibiapy.Character = kwargs.get("char")
         self.min_level = kwargs.get("min_level")
 
     @property
@@ -31,7 +33,7 @@ class LevelCondition(MessageCondition):
 class DeathMessageCondition(MessageCondition):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.death = kwargs.get("death")
+        self.death: tibiapy.Death = kwargs.get("death")
         self.levels_lost = kwargs.get("levels_lost")
 
     @property
@@ -40,7 +42,9 @@ class DeathMessageCondition(MessageCondition):
 
     @property
     def killer(self):
-        return self.death.killer.name
+        if len(self.death.killers) == 1:
+            return self.death.killer.name
+        return next((k.name for k in self.death.killers if k.name != self.char.name), self.death.killer.name)
 
 
 # We save the last messages so they are not repeated so often
@@ -48,6 +52,11 @@ last_messages = [""]*50
 WAVE_MONSTERS = ["dragon", "dragon lord", "undead dragon", "draken spellweaver", "hellhound", "hellfire fighter",
                  "frost dragon", "medusa", "serpent spawn", "hydra", "grim reaper"]
 ARROW_MONSTERS = ["hunter", "hero", "elf arcanist", "elf scout", "Omruc"]
+
+# Simple level messages
+SIMPLE_LEVEL = "**{name}** advanced to level {level}."
+SIMPLE_DEATH = "**{name}** ({level}) died to {killer_article}**{killer}**."
+SIMPLE_PVP_DEATH = "**{name}** ({level}) was killed by **{killer}**."
 
 # Message list for announce_level
 # Parameters: {name}, {level} , {he_she}, {his_her}, {him_her}

@@ -12,12 +12,15 @@ from .utils.context import NabCtx
 log = logging.getLogger("nabbot")
 
 
-class General(CogUtils):
+class General(commands.Cog, CogUtils):
     """General use commands."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
-    # Commands
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
+
+    # region Commands
     @commands.command(aliases=["checkdm"])
     async def checkpm(self, ctx: NabCtx):
         """Checks if you can receive PMs from the bot.
@@ -30,7 +33,8 @@ class General(CogUtils):
             await ctx.author.send("Testing PMs...")
             await ctx.success("You can receive PMs.")
         except discord.Forbidden:
-            await ctx.error("You can't receive my PMs.\nTo enable, go to ")
+            await ctx.error("You can't receive my PMs.\n"
+                            "To enable, go to Server > Privacy Settings and enable the checkbox in any server I'm in.")
 
     @commands.command(usage="<choices...>")
     async def choose(self, ctx, *choices: str):
@@ -40,7 +44,7 @@ class General(CogUtils):
         e.g. "Choice A" ChoiceB "Choice C"
         """
         if not choices:
-            await ctx.send(f"{ctx.tick(False)} I can't tell you what to choose if you don't give me choices")
+            await ctx.error(f"I can't tell you what to choose if you don't give me choices")
             return
         user = ctx.author
         await ctx.send('Alright, **@{0}**, I choose: "{1}"'.format(user.display_name, random.choice(choices)))
@@ -83,7 +87,8 @@ class General(CogUtils):
         Developer mode is found in `User Settings > Appearance`.
         Once enabled, you can right click a message and select **Copy ID**.
 
-        Note that the bot won't attempt to search in channels you can't read."""
+        Note that the bot won't attempt to search in channels you can't read.
+        Additionally, messages in NSFW channels can't be quoted in regular channels."""
         channels: List[discord.TextChannel] = ctx.guild.text_channels
         message: discord.Message = None
         with ctx.typing():
@@ -107,7 +112,7 @@ class General(CogUtils):
             await ctx.error("I can't quote embed messages.")
             return
         if message.channel.nsfw and not ctx.channel.nsfw:
-            await ctx.error("I can't quote messages from NSFW channels in SFW channels.")
+            await ctx.error("I can't quote messages from NSFW channels in regular channels.")
             return
         embed = discord.Embed(description=message.content, timestamp=message.created_at)
         try:
@@ -143,22 +148,22 @@ class General(CogUtils):
             try:
                 times, sides = map(int, params.split('d'))
             except ValueError:
-                await ctx.send(f"{ctx.tick(False)} Invalid parameter! I'm expecting `<times>d<rolls>`.")
+                await ctx.error("Invalid parameter! I'm expecting `<times>d<rolls>`.")
                 return
         if times == 0:
             await ctx.send("You want me to roll the die zero times? Ok... There, done.")
             return
         if times < 0:
-            await ctx.send(f"{ctx.tick(False)} It's impossible to roll negative times!")
+            await ctx.error("It's impossible to roll negative times!")
             return
         if sides <= 0:
-            await ctx.send(f"{ctx.tick(False)} There's no dice with zero or less sides!")
+            await ctx.error("There's no dice with zero or less sides!")
             return
         if times > 20:
-            await ctx.send(f"{ctx.tick(False)} I can't roll the die that many times. Only up to 20.")
+            await ctx.error("I can't roll the die that many times. Only up to 20.")
             return
         if sides > 100:
-            await ctx.send(f"{ctx.tick(False)} I don't have dice with more than 100 sides.")
+            await ctx.error("I don't have dice with more than 100 sides.")
             return
         time_plural = "times" if times > 1 else "time"
         results = [str(random.randint(1, sides)) for _ in range(times)]
@@ -166,10 +171,7 @@ class General(CogUtils):
         if sides == 1:
             result += "\nWho would have thought? 🙄"
         await ctx.send(result)
-
-    def __unload(self):
-        log.info(f"{self.tag} Unloading cog")
-
+    # endregion
 
 def setup(bot):
     bot.add_cog(General(bot))

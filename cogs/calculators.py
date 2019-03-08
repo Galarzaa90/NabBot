@@ -5,7 +5,7 @@ import math
 import discord
 from discord.ext import commands
 
-from cogs.utils import config, timing, split_params
+from cogs.utils import config, timing, split_params, CogUtils
 from nabbot import NabBot
 from .utils import tibia
 from .utils.context import NabCtx
@@ -49,10 +49,13 @@ VOC_ITER = (
 )
 
 
-class Calculators:
+class Calculators(commands.Cog, CogUtils):
     """Commands to calculate various Tibia values."""
     def __init__(self, bot: NabBot):
         self.bot = bot
+
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
 
     # region Commands
     @commands.command(aliases=['bless'])

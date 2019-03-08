@@ -50,12 +50,9 @@ Shows a list of ignored channels and users.
 **Syntax:** `makesay <message>`
 
 Makes the bot say a message.
- 
-If it's used directly on a text channel, the bot will delete the command's message and repeat it itself.  
-Note that deleting the message requires `Manage Messages` permissions in the channel.
 
-If it's used on a private message, the bot will ask on which channel he should say the message.  
-Each channel in the list is numerated, by choosing a number, the message will be sent in the chosen channel.
+If the user using the command doesn't have mention everyone permissions, the message will be cleaned of
+mass mentions.
 
 ----
 

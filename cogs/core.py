@@ -17,12 +17,16 @@ log = logging.getLogger("nabbot")
 bad_argument_pattern = re.compile(r'Converting to \"([^\"]+)\" failed for parameter \"([^\"]+)\"\.')
 
 
-class Core(CogUtils):
+class Core(commands.Cog, CogUtils):
     """Cog with NabBot's main functions."""
 
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.game_update_task = self.bot.loop.create_task(self.game_update())
+
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
+        self.game_update_task.cancel()
 
     async def game_update(self):
         """Updates the bot's status.
@@ -71,6 +75,9 @@ class Core(CogUtils):
                 continue
             await asyncio.sleep(60*20)  # Change game every 20 minutes
 
+    # region Discord events
+
+    @commands.Cog.listener()
     async def on_command_error(self, ctx: context.NabCtx, error: commands.CommandError):
         """Handles command errors"""
         if isinstance(error, commands.errors.CommandNotFound):
@@ -87,10 +94,11 @@ class Core(CogUtils):
         else:
             log.warning(f"Unhandled command error {error.__class__.__name__}: {error}")
 
+    @commands.Cog.listener()
     async def on_command(self, ctx: commands.Context):
-        """Called everytime a command is executed.
+        """Called every time a command is executed.
 
-        Saves the command use to the databse."""
+        Saves the command use to the database."""
         command = ctx.command.qualified_name
         guild_id = ctx.guild.id if ctx.guild is not None else None
         query = """INSERT INTO command_use(server_id, channel_id, user_id, date, prefix, command)
@@ -100,24 +108,17 @@ class Core(CogUtils):
         await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
                                     ctx.message.created_at.replace(tzinfo=dt.timezone.utc), ctx.prefix, command)
 
+    @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
         log.info(f"{self.tag} Bot added | Guild {guild} ({guild.id})")
-        message = f"**I've been added to this server.**\n" \
-            f"Some things you should know:\n" \
-            f"‣ My command prefix is: `{config.command_prefix[0]}` (it is customizable)\n" \
-            f"‣ You can see all my commands with: `{config.command_prefix[0]}help` or " \
-            f"`{config.command_prefix[0]}commands`\n" \
-            f"‣ You can configure me using: `{config.command_prefix[0]}settings`\n" \
-            f"‣ You can set a world for me to track by using `{config.command_prefix[0]}settings world`\n" \
-            f"‣ If you want a logging channel, create a channel named `{config.log_channel_name}`\n" \
-            f"‣ If you need help, join my support server: **<https://support.nabbot.xyz>**\n" \
-            f"‣ For more information and links in: `{config.command_prefix[0]}about`"
+        # Update in-memory member list
         for member in guild.members:
             if member.id in self.bot.users_servers:
                 self.bot.users_servers[member.id].append(guild.id)
             else:
                 self.bot.users_servers[member.id] = [guild.id]
+        # Update database member list
         async with self.bot.pool.acquire() as conn:
             async with conn.transaction():
                 # Make sure there's no leftover data that will make the copy query fail
@@ -126,6 +127,16 @@ class Core(CogUtils):
                 await conn.copy_records_to_table("user_server", columns=["user_id", "server_id"], records=records)
                 await conn.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1, $2, $3)",
                                    guild.id, len(self.bot.guilds), "add")
+        # Show opening message
+        message = f"Hi, I've been added to this server. Some things you should know:\n" \
+            f"‣ My command prefix is: `{config.command_prefix[0]}` (it is customizable)\n" \
+            f"‣ You can see all my commands with: `{config.command_prefix[0]}help` or " \
+            f"`{config.command_prefix[0]}commands`\n" \
+            f"‣ You can configure me using: `{config.command_prefix[0]}settings`\n" \
+            f"‣ You can set a world for me to track by using `{config.command_prefix[0]}settings world`\n" \
+            f"‣ If you want a logging channel, create a channel named `{config.log_channel_name}`\n" \
+            f"‣ If you need help, join my support server: **<https://support.nabbot.xyz>**\n" \
+            f"‣ For more information and links in: `{config.command_prefix[0]}about`"
         try:
             channel = self.bot.get_top_channel(guild)
             if channel is None:
@@ -136,6 +147,7 @@ class Core(CogUtils):
         except discord.HTTPException:
             log.exception(f"{self.tag} Could not send join message on server: {guild.name}.")
 
+    @commands.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild):
         """Called when the bot leaves a guild (server)."""
         log.info(f"{self.tag} Bot removed | Guild {guild} ({guild.id})")
@@ -146,10 +158,12 @@ class Core(CogUtils):
         await self.bot.pool.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1,$2,$3)",
                                     guild.id, len(self.bot.guilds), "remove")
 
+    @commands.Cog.listener()
     async def on_member_ban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is banned from a guild."""
         log.info(f"{self.tag} Member banned | Member {user} ({user.id}) | Guild {guild.id}")
 
+    @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         """Called when a member joins a guild (server) the bot is in."""
         log.info(f"{self.tag} Member joined | Member {member} ({member.id}) | Guild {member.guild.id}")
@@ -194,6 +208,7 @@ class Core(CogUtils):
             except discord.Forbidden:
                 pass
 
+    @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member):
         """Called when a member leaves or is kicked from a guild."""
         log.info(f"{self.tag} Member left/kicked | Member {member} ({member.id}) | Guild {member.guild.id}")
@@ -201,9 +216,12 @@ class Core(CogUtils):
         await self.bot.pool.execute("DELETE FROM user_server WHERE user_id = $1 AND server_id = $2",
                                     member.id, member.guild.id)
 
+    @commands.Cog.listener()
     async def on_member_unban(self, guild: discord.Guild, user: discord.User):
         """Called when a member is unbanned from a guild"""
         log.info(f"{self.tag} Member unbanned | Member {user} ({user.id}) | Guild {guild.id}")
+
+    # endregion
 
     @classmethod
     def parse_bad_argument(cls, content: str) -> Tuple:
@@ -211,10 +229,6 @@ class Core(CogUtils):
         if not m:
             return None, None
         return m.group(1), m.group(2)
-
-    def __unload(self):
-        log.info(f"{self.tag} Unloading cog")
-        self.game_update_task.cancel()
 
     @classmethod
     async def process_check_failure(cls, ctx: context.NabCtx, error: commands.CheckFailure):
