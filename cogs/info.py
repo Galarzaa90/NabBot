@@ -8,9 +8,9 @@ import discord
 import psutil
 from discord.ext import commands
 
+from cogs import utils
 from nabbot import NabBot
-from .utils import FIELD_VALUE_LIMIT, config, get_region_string, get_user_avatar, parse_uptime
-from .utils import checks
+from .utils import FIELD_VALUE_LIMIT, checks, config, get_region_string, get_user_avatar, parse_uptime
 from .utils.context import NabCtx
 from .utils.database import get_server_property
 from .utils.messages import split_message
@@ -20,10 +20,13 @@ from .utils.tibia import tibia_worlds
 log = logging.getLogger("nabbot")
 
 
-class Info(commands.Cog):
+class Info(commands.Cog, utils.CogUtils):
     """Commands that disploy general information."""
     def __init__(self, bot: NabBot):
         self.bot = bot
+
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
 
     # region Commands
     @checks.can_embed()
@@ -47,11 +50,11 @@ class Info(commands.Cog):
         embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
         embed.add_field(name="Users", value=f"{len(self.bot.users):,}")
         embed.add_field(name="Links", inline=False,
-                        value="[Add to your server](https://dbl.nabbot.xyz/)  |  "
+                        value="[Invite NabBot](https://dbl.nabbot.xyz/)  |  "
                               "[Support Server](https://support.nabbot.xyz/)  |  "
                               "[Docs](https://docs.nabbot.xyz/)  |  "
                               "[Donate](https://donate.nabbot.xyz/) | "
-                              "[Patreon](https://www.patreon.com/nabbot)")
+                              "[Patreon](https://patreon.nabbot.xyz)")
         embed.set_footer(text=f"Uptime | {parse_uptime(self.bot.start_time, True)}")
         await ctx.send(embed=embed)
 
@@ -318,15 +321,14 @@ class Info(commands.Cog):
     @checks.can_embed()
     @commands.command(usage=" ")
     async def serverinfo(self, ctx: NabCtx, server=None):
-        """Shows the server's information.
-        """
+        """Shows the server's information."""
         if await checks.is_owner(ctx) and server is not None:
             try:
                 guild = self.bot.get_guild(int(server))
                 if guild is None:
-                    return await ctx.send(f"{ctx.tick(False)} I'm not in any server with ID {server}.")
+                    return await ctx.error(f"I'm not in any server with ID {server}.")
             except ValueError:
-                return await ctx.send(f"{ctx.tick(False)} That is not a valid id.")
+                return await ctx.error("That is not a valid id.")
         else:
             guild = ctx.guild
         embed = discord.Embed(title=guild.name, timestamp=guild.created_at, color=discord.Color.blurple())

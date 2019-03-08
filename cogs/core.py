@@ -24,6 +24,10 @@ class Core(commands.Cog, CogUtils):
         self.bot = bot
         self.game_update_task = self.bot.loop.create_task(self.game_update())
 
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
+        self.game_update_task.cancel()
+
     async def game_update(self):
         """Updates the bot's status.
 
@@ -71,6 +75,8 @@ class Core(commands.Cog, CogUtils):
                 continue
             await asyncio.sleep(60*20)  # Change game every 20 minutes
 
+    # region Discord events
+
     @commands.Cog.listener()
     async def on_command_error(self, ctx: context.NabCtx, error: commands.CommandError):
         """Handles command errors"""
@@ -90,9 +96,9 @@ class Core(commands.Cog, CogUtils):
 
     @commands.Cog.listener()
     async def on_command(self, ctx: commands.Context):
-        """Called everytime a command is executed.
+        """Called every time a command is executed.
 
-        Saves the command use to the databse."""
+        Saves the command use to the database."""
         command = ctx.command.qualified_name
         guild_id = ctx.guild.id if ctx.guild is not None else None
         query = """INSERT INTO command_use(server_id, channel_id, user_id, date, prefix, command)
@@ -106,6 +112,22 @@ class Core(commands.Cog, CogUtils):
     async def on_guild_join(self, guild: discord.Guild):
         """Called when the bot joins a guild (server)."""
         log.info(f"{self.tag} Bot added | Guild {guild} ({guild.id})")
+        # Update in-memory member list
+        for member in guild.members:
+            if member.id in self.bot.users_servers:
+                self.bot.users_servers[member.id].append(guild.id)
+            else:
+                self.bot.users_servers[member.id] = [guild.id]
+        # Update database member list
+        async with self.bot.pool.acquire() as conn:
+            async with conn.transaction():
+                # Make sure there's no leftover data that will make the copy query fail
+                await conn.execute("DELETE FROM user_server WHERE server_id = $1", guild.id)
+                records = [(user.id, guild.id) for user in guild.members]
+                await conn.copy_records_to_table("user_server", columns=["user_id", "server_id"], records=records)
+                await conn.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1, $2, $3)",
+                                   guild.id, len(self.bot.guilds), "add")
+        # Show opening message
         message = f"Hi, I've been added to this server. Some things you should know:\n" \
             f"‣ My command prefix is: `{config.command_prefix[0]}` (it is customizable)\n" \
             f"‣ You can see all my commands with: `{config.command_prefix[0]}help` or " \
@@ -115,19 +137,6 @@ class Core(commands.Cog, CogUtils):
             f"‣ If you want a logging channel, create a channel named `{config.log_channel_name}`\n" \
             f"‣ If you need help, join my support server: **<https://support.nabbot.xyz>**\n" \
             f"‣ For more information and links in: `{config.command_prefix[0]}about`"
-        for member in guild.members:
-            if member.id in self.bot.users_servers:
-                self.bot.users_servers[member.id].append(guild.id)
-            else:
-                self.bot.users_servers[member.id] = [guild.id]
-        async with self.bot.pool.acquire() as conn:
-            async with conn.transaction():
-                # Make sure there's no leftover data that will make the copy query fail
-                await conn.execute("DELETE FROM user_server WHERE server_id = $1", guild.id)
-                records = [(user.id, guild.id) for user in guild.members]
-                await conn.copy_records_to_table("user_server", columns=["user_id", "server_id"], records=records)
-                await conn.execute("INSERT INTO server_history(server_id, server_count, event_type) VALUES($1, $2, $3)",
-                                   guild.id, len(self.bot.guilds), "add")
         try:
             channel = self.bot.get_top_channel(guild)
             if channel is None:
@@ -212,13 +221,14 @@ class Core(commands.Cog, CogUtils):
         """Called when a member is unbanned from a guild"""
         log.info(f"{self.tag} Member unbanned | Member {user} ({user.id}) | Guild {guild.id}")
 
+    # endregion
+
     @classmethod
     def parse_bad_argument(cls, content: str) -> Tuple:
         m = bad_argument_pattern.match(content)
         if not m:
             return None, None
         return m.group(1), m.group(2)
-
 
     @classmethod
     async def process_check_failure(cls, ctx: context.NabCtx, error: commands.CheckFailure):
@@ -268,10 +278,6 @@ class Core(commands.Cog, CogUtils):
                 await ctx.send(embed=embed)
             else:
                 await ctx.error(f'Command error:\n```py\n{error_name}: {error.original}```')
-
-    def cog_unload(self):
-        log.info(f"{self.tag} Unloading cog")
-        self.game_update_task.cancel()
 
 
 def setup(bot):

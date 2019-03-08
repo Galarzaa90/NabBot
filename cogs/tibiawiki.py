@@ -12,6 +12,7 @@ import tibiawikisql
 from discord.ext import commands
 from tibiawikisql import models
 
+from cogs import utils
 from cogs.utils.converter import TibiaNumber
 from nabbot import NabBot
 from .utils import FIELD_VALUE_LIMIT, average_color, checks, config, join_list, split_params
@@ -28,13 +29,16 @@ WIKI_CHARMS_ARTICLE = "Cyclopedia#List_of_Charms"
 WIKI_ICON = "https://vignette.wikia.nocookie.net/tibia/images/b/bc/Wiki.png/revision/latest?path-prefix=en"
 
 
-class TibiaWiki(commands.Cog):
+class TibiaWiki(commands.Cog, utils.CogUtils):
     """Commands that show information about Tibia, provided by TibiaWiki.
 
     The information is read generated using [tibiawiki-sql](https://github.com/Galarzaa90/tibiawiki-sql)."""
 
     def __init__(self, bot: NabBot):
         self.bot = bot
+
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
 
     # region Commands
     @checks.can_embed()

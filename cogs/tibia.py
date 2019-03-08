@@ -45,6 +45,10 @@ class Tibia(commands.Cog, CogUtils):
         self.bot = bot
         self.news_announcements_task = self.bot.loop.create_task(self.scan_news())
 
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
+        self.news_announcements_task.cancel()
+
     # region Events
 
     async def scan_news(self):
@@ -1647,10 +1651,6 @@ class Tibia(commands.Cog, CogUtils):
             return results
 
     # endregion
-
-    def cog_unload(self):
-        log.info(f"{self.tag} Unloading cog")
-        self.news_announcements_task.cancel()
 
 
 def setup(bot):

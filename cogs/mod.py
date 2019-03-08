@@ -5,6 +5,7 @@ from typing import Union
 import discord
 from discord.ext import commands
 
+from cogs import utils
 from cogs.utils import converter
 from nabbot import NabBot
 from .utils import checks, config, safe_delete_message
@@ -38,10 +39,13 @@ class LazyEntry:
         return self._cache
 
 
-class Mod(commands.Cog):
+class Mod(commands.Cog, utils.CogUtils):
     """Moderating related commands."""
     def __init__(self, bot: NabBot):
         self.bot = bot
+
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
 
     async def bot_check_once(self, ctx: NabCtx):
         """Checks if the current channel or user is ignored.

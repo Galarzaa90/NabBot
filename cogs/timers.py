@@ -182,6 +182,11 @@ class Timers(commands.Cog, CogUtils):
 
         self.bot.loop.create_task(self.clean_events())
 
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
+        self.timers_task.cancel()
+        self.events_announce_task.cancel()
+
     # region Tasks
     async def check_timers(self):
         """Checks the first upcoming time and waits for it."""
@@ -423,7 +428,9 @@ class Timers(commands.Cog, CogUtils):
         """Sets the cooldown for a boss.
 
         The cooldown is set as if you had just killed the boss.
-        You will receive a private message when the cooldown is over."""
+        You will receive a private message when the cooldown is over.
+
+        You can also specify how long ago the boss was killed, so the time is considered in the cooldown."""
         param = params.split(",", 2)
         if len(param) < 2:
             return await ctx.error("You must specify for which of your character is the cooldown for.\n"
@@ -1427,11 +1434,6 @@ class Timers(commands.Cog, CogUtils):
         await self.run_timer(timer, True)
 
     # endregion
-
-    def cog_unload(self):
-        log.info(f"{self.tag} Unloading cog")
-        self.timers_task.cancel()
-        self.events_announce_task.cancel()
 
 
 def setup(bot):

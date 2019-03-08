@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import get_region_string, get_user_avatar
+from .utils import get_region_string, get_user_avatar, CogUtils
 from .utils.database import DbChar
 from .utils.tibia import NabChar, get_voc_abb_and_emoji
 
@@ -38,9 +38,12 @@ class ChangeType(Enum):
     NAME = "name"
 
 
-class ServerLog(commands.Cog):
+class ServerLog(commands.Cog, CogUtils):
     def __init__(self, bot: NabBot):
         self.bot = bot
+
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
 
     # region Custom Events
     @commands.Cog.listener()

@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import checks
+from .utils import checks, CogUtils
 from .utils.config import config
 from .utils.context import NabCtx
 from .utils.database import get_prefixes, get_server_property, set_prefixes, set_server_property
@@ -49,12 +49,15 @@ def setting_command():
     return commands.check(predicate)
 
 
-class Admin(commands.Cog):
+class Admin(commands.Cog, CogUtils):
     """Commands for server administrators and mods.
 
     `Manage Server` permission is needed to use these commands."""
     def __init__(self, bot: NabBot):
         self.bot = bot
+
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
 
     # region Commands
     @checks.server_mod_only()

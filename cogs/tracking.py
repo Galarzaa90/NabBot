@@ -1493,7 +1493,6 @@ class Tracking(commands.Cog, CogUtils):
         GUILD_CACHE[world][guild_name] = guild
         return guild
 
-
     @classmethod
     async def check_char_availability(cls, ctx: NabCtx, user_id: int, char: NabChar, worlds: List[str],
                                       check_other=False):
@@ -1690,7 +1689,7 @@ class Tracking(commands.Cog, CogUtils):
         log.info(f"{self.tag} Unloading cog")
         self.scan_highscores_task.cancel()
         self.scan_online_chars_task.cancel()
-        for k,v in self.world_tasks.items():
+        for k, v in self.world_tasks.items():
             v.cancel()
 
 

@@ -34,6 +34,9 @@ class Owner(commands.Cog, CogUtils):
         self._last_result = None
         self.sessions = set()
 
+    def cog_unload(self):
+        log.info(f"{self.tag} Unloading cog")
+
     # region Commands
     @commands.command(aliases=["notifyadmins"])
     @checks.owner_only()
