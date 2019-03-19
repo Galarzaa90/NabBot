@@ -295,6 +295,8 @@ class Owner(commands.Cog, CogUtils):
                 await ctx.send("Here's your log file", file=discord.File(f, log_name))
         except FileNotFoundError:
             return await ctx.error("There's no log file with that name.")
+        except discord.HTTPException:
+            return await ctx.error("Error uploading file. It is currently not possible to read the current log file.")
 
 
     @commands.command(usage="<old world> <new world>")
