@@ -585,7 +585,7 @@ class Tracking(commands.Cog, CogUtils):
         # We try to get the watched message, if the bot can't find it, we just create a new one
         # This may be because the old message was deleted or this is the first time the list is checked
         try:
-            message = await channel.get_message(watchlist.message_id)
+            message = await channel.fetch_message(watchlist.message_id)
         except discord.HTTPException:
             message = None
         if message is None:

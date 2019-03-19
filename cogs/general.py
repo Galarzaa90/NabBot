@@ -100,7 +100,7 @@ class General(commands.Cog, CogUtils):
                        auth_perm.read_message_history and auth_perm.read_messages):
                     continue
                 try:
-                    message = await channel.get_message(message_id)
+                    message = await channel.fetch_message(message_id)
                 except discord.HTTPException:
                     continue
                 if message is not None:

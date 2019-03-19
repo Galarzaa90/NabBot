@@ -1,4 +1,5 @@
 import datetime as dt
+import io
 import logging
 import random
 import re
@@ -338,7 +339,7 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
             if npc.image is not None:
                 filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + ".gif"
                 embed.set_thumbnail(url=f"attachment://{filename}")
-                files.append(discord.File(npc.image, filename))
+                files.append(discord.File(io.BytesIO(npc.image), filename))
             if None not in [rashid.x, rashid.y, rashid.z]:
                 map_filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + "-map.png"
                 map_image = get_map_area(rashid.x, rashid.y, rashid.z)
@@ -346,7 +347,7 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
                 embed.add_field(name="Location", value=f"[Mapper link]"
                                                        f"({self.get_mapper_link(rashid.x,rashid.y,rashid.z)})",
                                 inline=False)
-                files.append(discord.File(map_image, map_filename))
+                files.append(discord.File(io.BytesIO(map_image), map_filename))
             return await ctx.send(files=files, embed=embed)
         await ctx.send(embed=embed)
 
@@ -453,7 +454,7 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
             if apply_color:
                 main_color = await ctx.execute_async(average_color, entity.image)
                 embed.color = discord.Color.from_rgb(*main_color)
-            await ctx.send(file=discord.File(entity.image, f"{filename}"), embed=embed)
+            await ctx.send(file=discord.File(io.BytesIO(entity.image), f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
