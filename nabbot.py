@@ -68,7 +68,7 @@ class NabBot(commands.Bot):
         self.tracked_worlds_list = []
 
         self.__version__ = "2.2.0"
-        self.__min_discord__ = 1773
+        self.__min_discord__ = 1775
 
     async def on_ready(self):
         """Called when the bot is ready."""

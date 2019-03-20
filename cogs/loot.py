@@ -223,10 +223,10 @@ class Loot(commands.Cog, CogUtils):
 
         # Send on ask_channel or PM
         if await ctx.is_long():
-            await ctx.send(short_message, embed=embed, file=discord.File(loot_image_overlay, "results.png"))
+            await ctx.send(short_message, embed=embed, file=discord.File(io.BytesIO(loot_image_overlay), "results.png"))
         else:
             try:
-                await ctx.author.send(file=discord.File(loot_image_overlay, "results.png"), embed=embed)
+                await ctx.author.send(file=discord.File(io.BytesIO(loot_image_overlay), "results.png"), embed=embed)
             except discord.Forbidden:
                 await ctx.error(f"{ctx.author.mention}, I tried pming you to send you the results, "
                                 f"but you don't allow private messages from this server.\n"
@@ -239,7 +239,6 @@ class Loot(commands.Cog, CogUtils):
         """Shows the meaning of the overlayed icons."""
         with open("./images/legend.png", "r+b") as f:
             await ctx.send(file=discord.File(f))
-            f.close()
 
     @checks.owner_only()
     @loot.command(name="show")
@@ -265,7 +264,7 @@ class Loot(commands.Cog, CogUtils):
         if len(fields) > 5:
             embed.set_footer(text="Too many frames to display all information.")
         embed.set_image(url="attachment://results.png")
-        await ctx.send(embed=embed, file=discord.File(result, "results.png"))
+        await ctx.send(embed=embed, file=discord.File(io.BytesIO(result), "results.png"))
 
     @classmethod
     def load_image(cls, image_bytes: bytes) -> Image.Image:

@@ -1,6 +1,7 @@
 import asyncio
 import calendar
 import datetime as dt
+import io
 import logging
 import random
 import re
@@ -625,7 +626,7 @@ class Tibia(commands.Cog, CogUtils):
                 pass
         # Attach image only if the bot has permissions
         if ctx.bot_permissions.attach_files:
-            mapimage = get_map_area(wiki_house.x, wiki_house.y, wiki_house.z)
+            mapimage = io.BytesIO(get_map_area(wiki_house.x, wiki_house.y, wiki_house.z))
             embed = self.get_house_embed(ctx, wiki_house, house)
             embed.set_image(url="attachment://thumbnail.png")
             await ctx.send(file=discord.File(mapimage, "thumbnail.png"), embed=embed)

@@ -322,12 +322,13 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
         if ctx.bot_permissions.attach_files:
             files = []
             if npc.image is not None:
+                thumbnail = io.BytesIO(npc.image)
                 filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + ".gif"
                 embed.set_thumbnail(url=f"attachment://{filename}")
-                files.append(discord.File(npc.image, filename))
+                files.append(discord.File(thumbnail, filename))
             if None not in [npc.x, npc.y, npc.z]:
                 map_filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + "-map.png"
-                map_image = get_map_area(npc.x, npc.y, npc.z)
+                map_image = io.BytesIO(get_map_area(npc.x, npc.y, npc.z))
                 embed.set_image(url=f"attachment://{map_filename}")
                 embed.add_field(name="Location", value=f"[Mapper link]({self.get_mapper_link(npc.x, npc.y, npc.z)})",
                                 inline=False)
@@ -351,17 +352,18 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
         if ctx.bot_permissions.attach_files:
             files = []
             if npc.image is not None:
+                thumbnail = io.BytesIO(npc.image)
                 filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + ".gif"
                 embed.set_thumbnail(url=f"attachment://{filename}")
-                files.append(discord.File(io.BytesIO(npc.image), filename))
+                files.append(discord.File(thumbnail, filename))
             if None not in [rashid.x, rashid.y, rashid.z]:
                 map_filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + "-map.png"
-                map_image = get_map_area(rashid.x, rashid.y, rashid.z)
+                map_image = io.BytesIO(get_map_area(rashid.x, rashid.y, rashid.z))
                 embed.set_image(url=f"attachment://{map_filename}")
                 embed.add_field(name="Location", value=f"[Mapper link]"
                                                        f"({self.get_mapper_link(rashid.x,rashid.y,rashid.z)})",
                                 inline=False)
-                files.append(discord.File(io.BytesIO(map_image), map_filename))
+                files.append(discord.File(map_image, map_filename))
             return await ctx.send(files=files, embed=embed)
         await ctx.send(embed=embed)
 
@@ -463,12 +465,13 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
     @classmethod
     async def send_embed_with_image(cls, entity, ctx, embed, apply_color=False, extension="gif"):
         if ctx.bot_permissions.attach_files and entity.image:
+            thumbnail = io.BytesIO(entity.image)
             filename = f"thumbnail.{extension}"
             embed.set_thumbnail(url=f"attachment://{filename}")
             if apply_color:
                 main_color = await ctx.execute_async(average_color, entity.image)
                 embed.color = discord.Color.from_rgb(*main_color)
-            await ctx.send(file=discord.File(io.BytesIO(entity.image), f"{filename}"), embed=embed)
+            await ctx.send(file=discord.File(thumbnail, f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 

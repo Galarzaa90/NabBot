@@ -1,5 +1,6 @@
 import asyncio
 import datetime as dt
+import io
 import logging
 from enum import Enum
 from typing import List, Optional
@@ -235,27 +236,24 @@ class Timers(commands.Cog, CogUtils):
             log.exception(f"{tag} {e}")
 
     async def clean_events(self):
-        """Cleans up past event notifications"""
+        """Cleans up past event notifications.
+        """
         tag = f"{self.tag}[clean_events]"
         try:
             await self.bot.wait_until_ready()
             log.debug(f"{tag} Started")
             async with self.bot.pool.acquire() as conn:
-                res = await conn.execute("UPDATE event SET reminder = 1 "
-                                         "WHERE (start-($1::interval))-($2::interval) < now() AND reminder < 1",
-                                         FIRST_NOTIFICATION, TIME_MARGIN)
-                log.debug(res)
-                res = await conn.execute("UPDATE event SET reminder = 2 "
-                                         "WHERE (start-($1::interval))-($2::interval) < now() AND reminder < 2",
-                                         SECOND_NOTIFICATION, TIME_MARGIN)
-                log.debug(res)
-                res = await conn.execute("UPDATE event SET reminder = 3 "
-                                         "WHERE (start-($1::interval))-($2::interval) < now() AND reminder < 3",
-                                         THIRD_NOTIFICATION, TIME_MARGIN)
-                log.debug(res)
-                res = await conn.execute("UPDATE event SET reminder = 4 "
-                                         "WHERE (start-($1::interval)) < now()  AND reminder < 4", TIME_MARGIN)
-                log.debug(res)
+                await conn.execute("UPDATE event SET reminder = 1 "
+                                   "WHERE (start-($1::interval))-($2::interval) < now() AND reminder < 1",
+                                   FIRST_NOTIFICATION, TIME_MARGIN)
+                await conn.execute("UPDATE event SET reminder = 2 "
+                                   "WHERE (start-($1::interval))-($2::interval) < now() AND reminder < 2",
+                                   SECOND_NOTIFICATION, TIME_MARGIN)
+                await conn.execute("UPDATE event SET reminder = 3 "
+                                   "WHERE (start-($1::interval))-($2::interval) < now() AND reminder < 3",
+                                   THIRD_NOTIFICATION, TIME_MARGIN)
+                await conn.execute("UPDATE event SET reminder = 4 "
+                                   "WHERE (start-($1::interval)) < now()  AND reminder < 4", TIME_MARGIN)
             self.events_announce_task = self.bot.loop.create_task(self.check_events())
         except asyncio.CancelledError:
             pass
@@ -320,9 +318,10 @@ class Timers(commands.Cog, CogUtils):
         monster = tibiawikisql.models.Creature.get_by_field(wiki_db, "name", timer.name)
         try:
             if monster:
+                thumbnail = io.BytesIO(monster.image)
                 filename = f"thumbnail.gif"
                 embed.set_thumbnail(url=f"attachment://{filename}")
-                await author.send(file=discord.File(monster.image, f"{filename}"), embed=embed)
+                await author.send(file=discord.File(thumbnail, f"{filename}"), embed=embed)
             else:
                 await author.send(embed=embed)
         except discord.Forbidden:
