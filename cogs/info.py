@@ -21,7 +21,7 @@ log = logging.getLogger("nabbot")
 
 
 class Info(commands.Cog, utils.CogUtils):
-    """Commands that disploy general information."""
+    """Commands that display general information."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
