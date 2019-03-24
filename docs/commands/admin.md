@@ -90,12 +90,12 @@ If this is disabled, Announcements won't be made, but there will still be tracki
 ----
 
 ### settings minlevel
-**Syntax:** `settings minlevel [channel]`  
+**Syntax:** `settings minlevel [level]`  
 **Other aliases:** `settings announcelevel`
 
-Changes the channel where levelup and deaths are announced.
+Changes the minimum level from which NabBot starts to announce level ups and deaths.
 
-Level ups and deaths under the minimum level are still and can be seen by checking the character directly.
+Level ups and deaths under the minimum level are still tracked and can be seen by checking the character directly.
 
 ----
 
