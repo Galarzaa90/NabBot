@@ -338,7 +338,7 @@ def get_token():
         return token
     else:
         with open("token.txt") as f:
-            return f.read()
+            return f.read().strip()
 
 
 if __name__ == "__main__":
