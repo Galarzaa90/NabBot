@@ -1226,7 +1226,7 @@ class Timers(commands.Cog, CogUtils):
             await ctx.send("Ok then.")
             return
 
-        await event.add_subscriber(ctx.pool, ctx.author)
+        await event.add_subscriber(ctx.pool, ctx.author.id)
         await ctx.success("You have subscribed successfully to this event. "
                           "I'll let you know when it's happening.")
 
