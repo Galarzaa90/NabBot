@@ -42,7 +42,7 @@ MAGE = DRUID + SORCERER + ["mage"]
 NO_VOCATION = ["no vocation", "no voc", "novoc", "nv", "n v", "none", "no", "n", "noob", "noobñie", "rook", "rookie",
                Vocation.NONE]
 
-invalid_name = re.compile(r"[^\sA-Za-zÀ-ÖØ-öø-ÿ'\-]")
+invalid_name = re.compile(r"[^\sA-Za-zÀ-ÖØ-öø-ÿ'\-.]")
 """Regex used to validate names to avoid doing unnecessary fetches"""
 
 boss_pattern = re.compile(r'<i style=\"color:\w+;\">(?:<br\s*/>)?\s*([^<]+)\s*</i>\s*<a href=\"([^\"]+)\">'
