@@ -5,8 +5,8 @@
     If you just invited NabBot to your server, you don't need to read this.
 
 ## Installing requirements
-In order to run NabBot, you need to install three things:
-[git](https://git-scm.com/), [Python 3.6+](https://www.python.org/) and [PostgreSQL 10+](https://www.postgresql.org/)
+In order to run NabBot, you need to install two things:
+[Python 3.6+](https://www.python.org/) and [PostgreSQL 10+](https://www.postgresql.org/)
 
 When installing on Windows, make sure that you select the option to add Python to `PATH`.
 

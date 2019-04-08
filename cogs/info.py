@@ -60,7 +60,7 @@ class Info(commands.Cog, utils.CogUtils):
 
     @checks.can_embed()
     @commands.command(name="botinfo")
-    async def bot_info(self, ctx: NabCtx):
+    async def _bot_info(self, ctx: NabCtx):
         """Shows advanced information about the bot."""
         async with ctx.pool.acquire() as conn:
             char_count = await conn.fetchval('SELECT COUNT(*) FROM "character" WHERE user_id != 0')

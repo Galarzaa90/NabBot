@@ -25,7 +25,6 @@ from .utils.tibia import *
 log = logging.getLogger("nabbot")
 
 req_pattern = re.compile(r"([\w.]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
-dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")
 
 
 class Owner(commands.Cog, CogUtils):
@@ -708,19 +707,7 @@ class Owner(commands.Cog, CogUtils):
             elif operator == "<=":
                 return object1 <= object2
 
-        discordpy_version = pkg_resources.get_distribution("discord.py").version
-        m = dpy_commit.search(discordpy_version)
-        dpy = f"v{discordpy_version}"
-        if m:
-            revision, commit = m.groups()
-            is_valid = int(revision) >= self.bot.__min_discord__
-            discordpy_url = f"https://github.com/Rapptz/discord.py/commit/{commit}"
-            dpy = f"{ctx.tick(is_valid)}[v{discordpy_version}]({discordpy_url})"
-            if not is_valid:
-                dpy += f"\n`{self.bot.__min_discord__ - int(revision)} commits behind`"
-
         embed = discord.Embed(title="NabBot", description="v"+self.bot.__version__)
-        embed.add_field(name="discord.py", value=dpy)
         embed.set_footer(text=f"Python v{platform.python_version()} on {platform.platform()}",
                          icon_url="https://www.python.org/static/apple-touch-icon-precomposed.png")
 
