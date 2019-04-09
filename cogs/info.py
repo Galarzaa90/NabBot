@@ -275,6 +275,7 @@ class Info(commands.Cog, utils.CogUtils):
                 embed.add_field(name=name, value=value.replace("\n", ""))
         await ctx.send(embed=embed)
 
+    # TODO: Implement this command the proper discord.py way
     @checks.can_embed()
     @commands.command(name='help')
     async def _help(self, ctx, *, command: str = None):
