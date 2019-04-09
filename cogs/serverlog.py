@@ -344,13 +344,10 @@ class ServerLog(commands.Cog, CogUtils):
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         """Called every time a member is updated"""
-        embed = discord.Embed(description=f"{after.mention}: ", colour=COLOUR_MEMBER_UPDATE)
-        embed.set_author(name=f"{after.name}#{after.discriminator} (ID: {after.id})", icon_url=get_user_avatar(after))
-        changes = True
-        if f"{before.name}#{before.discriminator}" != f"{after.name}#{after.discriminator}":
-            embed.description += "Name changed from **{0.name}#{0.discriminator}** to **{1.name}#{1.discriminator}**." \
-                .format(before, after)
-        elif before.nick != after.nick:
+        if before.nick != after.nick:
+            embed = discord.Embed(description=f"{after.mention}: ", colour=COLOUR_MEMBER_UPDATE)
+            embed.set_author(name=f"{after.name}#{after.discriminator} (ID: {after.id})",
+                             icon_url=get_user_avatar(after))
             if before.nick is None:
                 embed.description += f"Nickname set to **{after.nick}**"
             elif after.nick is None:
@@ -361,9 +358,6 @@ class ServerLog(commands.Cog, CogUtils):
             if entry and entry.user.id != after.id:
                 icon_url = get_user_avatar(entry.user)
                 embed.set_footer(text=f"{entry.user.name}#{entry.user.discriminator}", icon_url=icon_url)
-        else:
-            changes = False
-        if changes:
             await self.bot.send_log_message(after.guild, embed=embed)
 
     @commands.Cog.listener()
@@ -377,7 +371,6 @@ class ServerLog(commands.Cog, CogUtils):
             embed.set_footer(text="{0.name}#{0.discriminator}".format(entry.user),
                              icon_url=get_user_avatar(entry.user))
         await self.bot.send_log_message(guild, embed=embed)
-
     # endregion
 
     @staticmethod
@@ -396,7 +389,7 @@ class ServerLog(commands.Cog, CogUtils):
             return
         now = dt.datetime.utcnow()
         after = now - dt.timedelta(0, 5)
-        async for entry in guild.audit_logs(limit=10, reverse=False, action=action, after=after):
+        async for entry in guild.audit_logs(limit=10, oldest_first=False, action=action, after=after):
             if abs((entry.created_at - now)) >= dt.timedelta(seconds=5):
                 break
             if target is not None and entry.target.id == target.id:
