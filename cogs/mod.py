@@ -208,6 +208,8 @@ class Mod(commands.Cog, utils.CogUtils):
         except CannotPaginate as e:
             await ctx.send(e)
 
+    @checks.channel_mod_only()
+    @checks.tracking_world_only()
     @unregistered.command(name="guild")
     async def unregistered_guild(self, ctx: NabCtx, *, name: str):
         """Shows a list of unregistered guild members.
