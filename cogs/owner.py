@@ -70,7 +70,7 @@ class Owner(commands.Cog, CogUtils):
     @checks.owner_only()
     @commands.command()
     async def announcement(self, ctx: NabCtx, *, message):
-        """Sends an announcement to all servers with a sererlog."""
+        """Sends an announcement to all servers with a serverlog."""
         embed = discord.Embed(title="📣 Owner Announcement", colour=discord.Colour.blurple(),
                               timestamp=dt.datetime.now())
         embed.set_author(name="Support Server", url="https://discord.gg/NmDvhpY", icon_url=self.bot.user.avatar_url)
