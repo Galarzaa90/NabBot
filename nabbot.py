@@ -51,7 +51,7 @@ async def _prefix_callable(bot, msg):
 
 class NabBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=_prefix_callable, case_insensitive=True,
+        super().__init__(command_prefix=_prefix_callable, case_insensitive=True, fetch_offline_members=True,
                          description="Discord bot with functions for the MMORPG Tibia.")
         # Remove default help command to implement custom one
         self.remove_command("help")
@@ -77,6 +77,7 @@ class NabBot(commands.Bot):
         print(f"Version {self.__version__}")
         print('------')
         # Populating members's guild list
+        self.users_servers.clear()
         for guild in self.guilds:
             for member in guild.members:
                 self.users_servers[member.id].append(guild.id)

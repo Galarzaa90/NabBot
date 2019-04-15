@@ -564,7 +564,8 @@ class Tracking(commands.Cog, CogUtils):
             await self._watchlist_update_message(self.bot.pool, watchlist, channel, embed)
             await self._watchlist_update_name(watchlist, channel)
         except discord.HTTPException:
-            log.exception(f"{self.tag}[_watchlist_update_content] {watchlist}")
+            # log.exception(f"{self.tag}[_watchlist_update_content] {watchlist}")
+            pass
 
     @staticmethod
     async def _watchlist_update_name(watchlist: Watchlist, channel: discord.TextChannel):
