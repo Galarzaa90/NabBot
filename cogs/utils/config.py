@@ -126,7 +126,7 @@ class Config:
             print("\tconfig.yml not found, copying from template...")
             shutil.copyfile(TEMPLATE_PATH, CONFIG_PATH)
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            _config = yaml.load(f)
+            _config = yaml.safe_load(f)
             if _config is None:
                 _config = {}
         self._assign_keys(_config)

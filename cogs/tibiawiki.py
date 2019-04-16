@@ -876,7 +876,8 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
                         content += f"\n{value:+}% {element.title()}"
                 except KeyError:
                     pass
-            embed.add_field(name="Elemental modifiers", value=content)
+            if content:
+                embed.add_field(name="Elemental modifiers", value=content)
 
     @classmethod
     def get_monster_embed_attributes(cls, embed, monster, ctx):
