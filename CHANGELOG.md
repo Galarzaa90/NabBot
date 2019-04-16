@@ -7,6 +7,8 @@
 ### Version 2.3.0 (Unreleased)
 - ✔ New subcommand `/unregistered guild`, checks which members of a guild are not registered in the server.
 - ✔ New owner command `/logs` to upload log files.
+- ✔ New subcommand `/news ticker`, displays recent news ticker messages.
+- ✔ New ticker messages are now announced along with news articles and featured articles.
 - 🔧 `/quote` now shows a link to the original message.
 - 🔧 No longer using a development version of `discord.py`, now using version v1.0.0
 - 🐛 Fixed error in `/event subscribe`.

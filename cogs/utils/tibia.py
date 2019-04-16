@@ -358,7 +358,7 @@ async def get_news_article(article_id: int, *, tries=5) -> Optional[Dict[str, Un
                 content = await resp.text(encoding='ISO-8859-1')
     except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
         await asyncio.sleep(config.network_retry_delay)
-        return await get_recent_news(tries=tries - 1)
+        return await get_news_article(tries=tries - 1)
 
     content_json = json.loads(content)
     try:
@@ -376,10 +376,8 @@ async def get_news_article(article_id: int, *, tries=5) -> Optional[Dict[str, Un
 async def get_recent_news(*, tries=5):
     if tries == 0:
         raise errors.NetworkError(f"get_recent_news()")
-    try:
-        url = f"https://api.tibiadata.com/v2/latestnews.json"
-    except UnicodeEncodeError:
-        return None
+
+    url = f"https://api.tibiadata.com/v2/latestnews.json"
     # Fetch website
     try:
         news = CACHE_NEWS["recent"]
@@ -401,7 +399,38 @@ async def get_recent_news(*, tries=5):
         return None
     for article in newslist["data"]:
         article["date"] = parse_tibiadata_time(article["date"]).date()
+        article["news"] = article["news"].replace("\u00a0", " ")
     CACHE_NEWS["recent"] = newslist["data"]
+    return newslist["data"]
+
+
+async def get_recent_news_tickers(*, tries=5):
+    if tries == 0:
+        raise errors.NetworkError(f"get_recent_newstickers()")
+    url = f"https://api.tibiadata.com/v2/newstickers.json"
+    # Fetch website
+    try:
+        news = CACHE_NEWS["recent_tickers"]
+        return news
+    except KeyError:
+        pass
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                content = await resp.text()
+    except (aiohttp.ClientError, asyncio.TimeoutError, tibiapy.TibiapyException):
+        await asyncio.sleep(config.network_retry_delay)
+        return await get_recent_news_tickers(tries=tries - 1)
+
+    content_json = json.loads(content)
+    try:
+        newslist = content_json["newslist"]
+    except KeyError:
+        return None
+    for article in newslist["data"]:
+        article["date"] = parse_tibiadata_time(article["date"]).date()
+        article["news"] = article["news"].replace("\u00a0", " ")
+    CACHE_NEWS["recent_tickers"] = newslist["data"]
     return newslist["data"]
 
 

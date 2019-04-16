@@ -29,7 +29,8 @@ from .utils.pages import Pages, VocationPages
 from .utils.tibia import HIGHSCORES_FORMAT, HIGHSCORE_CATEGORIES, NabChar, TIBIACOM_ICON, TIBIA_URL, get_character, \
     get_guild, get_highscores, get_house, get_house_id, get_level_by_experience, get_map_area, get_news_article, \
     get_rashid_city, get_recent_news, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_abb_and_emoji, \
-    get_voc_emoji, get_world, get_world_bosses, get_world_list, normalize_vocation, tibia_worlds
+    get_voc_emoji, get_world, get_world_bosses, get_world_list, normalize_vocation, tibia_worlds, \
+    get_recent_news_tickers
 
 log = logging.getLogger("nabbot")
 
@@ -45,10 +46,12 @@ class Tibia(commands.Cog, CogUtils):
     def __init__(self, bot: NabBot):
         self.bot = bot
         self.news_announcements_task = self.bot.loop.create_task(self.scan_news())
+        self.news_ticker_task = self.bot.loop.create_task(self.scan_tickers())
 
     def cog_unload(self):
         log.info(f"{self.tag} Unloading cog")
         self.news_announcements_task.cancel()
+        self.news_ticker_task.cancel()
 
     # region Events
 
@@ -58,11 +61,11 @@ class Tibia(commands.Cog, CogUtils):
         log.info(f"{tag} Task started")
         while not self.bot.is_closed():
             try:
+                log.debug(f"{tag} Checking recent news")
                 recent_news = await get_recent_news()
                 if recent_news is None:
                     await asyncio.sleep(30)
                     continue
-                log.debug(f"{tag} Checking recent news")
                 last_article = recent_news[0]["id"]
                 last_id = await get_global_property(self.bot.pool, "last_article")
                 await set_global_property(self.bot.pool, "last_article", last_article)
@@ -86,6 +89,61 @@ class Tibia(commands.Cog, CogUtils):
                         channel = self.bot.get_channel_or_top(guild, news_channel_id)
                         try:
                             await channel.send("New article posted on Tibia.com",
+                                               embed=self.get_article_embed(article, 1000))
+                        except discord.Forbidden:
+                            log.warning(f"{tag} Missing permissions | Server: {guild.id}")
+                        except discord.HTTPException:
+                            log.warning(f"{tag} Malformed message | Server: {guild.id}")
+                        except AttributeError:
+                            log.warning(f"{tag} No channel found | Server: {guild.id}")
+                await asyncio.sleep(60 * 60 * 2)
+            except (IndexError, KeyError):
+                log.warning(f"{tag} Error getting recent news")
+                await asyncio.sleep(60*30)
+                continue
+            except errors.NetworkError:
+                await asyncio.sleep(30)
+                continue
+            except asyncio.CancelledError:
+                # Task was cancelled, so this is fine
+                break
+            except Exception as e:
+                log.exception(f"{tag} Exception: {e}")
+
+    async def scan_tickers(self):
+        tag = f"{self.tag}[scan_tickers]"
+        await self.bot.wait_until_ready()
+        log.info(f"{tag} Task started")
+        while not self.bot.is_closed():
+            try:
+                log.debug(f"{tag} Checking recent news tickers")
+                recent_news = await get_recent_news_tickers()
+                if recent_news is None:
+                    await asyncio.sleep(30)
+                    continue
+                last_article = recent_news[0]["id"]
+                last_id = await get_global_property(self.bot.pool, "last_ticker")
+                await set_global_property(self.bot.pool, "last_ticker", last_article)
+                # Do not announce anything if this is the first time the task is executed.
+                if last_id is None:
+                    break
+                new_articles = []
+                for article in recent_news:
+                    # Do not post articles older than a week (in case bot was offline)
+                    if int(article["id"]) == last_id or (dt.date.today() - article["date"]).days > 7:
+                        break
+                    fetched_article = await get_news_article(int(article["id"]))
+                    if fetched_article is not None:
+                        new_articles.insert(0, fetched_article)
+                for article in new_articles:
+                    log.info(f"{tag} New news ticker: {article['id']} - {article['title']}")
+                    for guild in self.bot.guilds:
+                        news_channel_id = await get_server_property(self.bot.pool, guild.id, "news_channel", default=0)
+                        if news_channel_id == 0:
+                            continue
+                        channel = self.bot.get_channel_or_top(guild, news_channel_id)
+                        try:
+                            await channel.send("New ticker message posted on Tibia.com",
                                                embed=self.get_article_embed(article, 1000))
                         except discord.Forbidden:
                             log.warning(f"{tag} Missing permissions | Server: {guild.id}")
@@ -728,7 +786,7 @@ class Tibia(commands.Cog, CogUtils):
             await ctx.send(e)
 
     @checks.can_embed()
-    @commands.command(usage="[id]")
+    @commands.group(usage="[id]", invoke_without_command=True, case_insensitive=True)
     async def news(self, ctx: NabCtx, news_id: int = None):
         """Shows the latest news articles from Tibia.com.
 
@@ -736,9 +794,9 @@ class Tibia(commands.Cog, CogUtils):
         if news_id is None:
             recent_news = await get_recent_news()
             if recent_news is None:
-                await ctx.error("Something went wrong getting recent news.")
+                return await ctx.error("Something went wrong getting recent news.")
             embed = self.get_tibia_embed("Recent news", "https://www.tibia.com/news/?subtopic=latestnews")
-            embed.set_footer(text="To see a specific article, use the command /news <id>")
+            embed.set_footer(text=f"To see a specific article, use the command {ctx.clean_prefix}news <id>")
             news_format = "{emoji} `{id}`\t[{news}]({tibiaurl})"
             type_emojis = {
                 "Featured Article": "📑",
@@ -758,6 +816,19 @@ class Tibia(commands.Cog, CogUtils):
         limit = 1900 if await ctx.is_long() else 600
         embed = self.get_article_embed(article, limit)
         await ctx.send(embed=embed)
+
+    @news.command(name="ticker", aliases=["newsticker"])
+    async def news_ticker(self, ctx: NabCtx):
+        """Shows the latest news tickers from Tibia.com"""
+        recent_tickers = await get_recent_news_tickers()
+        if recent_tickers is None:
+            return await ctx.error("Something went wrong getting recent news tickers.")
+        embed = self.get_tibia_embed("Recent news tickers", "https://www.tibia.com/news/?subtopic=latestnews")
+        embed.set_footer(text=f"To see a specific article, use the command {ctx.clean_prefix}news <id>")
+        news_format = "📍 `{id}`\t[{news}]({tibiaurl})"
+        limit = 20 if await ctx.is_long() else 10
+        embed.description = "\n".join([news_format.format(**n) for n in recent_tickers[:limit]])
+        return await ctx.send(embed=embed)
 
     @checks.can_embed()
     @commands.command(name="searchworld", aliases=["whereworld", "findworld"], usage="<params>[,world]")
