@@ -49,7 +49,7 @@ async def _prefix_callable(bot, msg):
     return base
 
 
-class NabBot(commands.Bot):
+class NabBot(commands.AutoShardedBot):
     def __init__(self):
         super().__init__(command_prefix=_prefix_callable, case_insensitive=True, fetch_offline_members=True,
                          description="Discord bot with functions for the MMORPG Tibia.")

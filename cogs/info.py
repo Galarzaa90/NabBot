@@ -67,9 +67,11 @@ class Info(commands.Cog, utils.CogUtils):
             deaths_count = await conn.fetchval('SELECT COUNT(*) FROM character_death')
             levels_count = await conn.fetchval('SELECT COUNT(*) FROM character_levelup')
 
-        used_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
+        bot_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
+        bot_percentage_ram = psutil.Process().memory_percent()
+        used_ram = psutil.virtual_memory().used / 1024 ** 2
+        percentage_ram = psutil.virtual_memory().percent
         total_ram = psutil.virtual_memory().total / 1024 ** 2
-        percentage_ram = psutil.Process().memory_percent()
 
         def ram(value):
             if value >= 1024:
@@ -89,13 +91,14 @@ class Info(commands.Cog, utils.CogUtils):
         embed.description = f"🔰 Version: **{self.bot.__version__}**\n" \
                             f"⏱ Uptime **{parse_uptime(self.bot.start_time)}**\n" \
                             f"🖥️ OS: **{platform.system()} {platform.release()}**\n" \
-                            f"📉 RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n"
+                            f"📉 RAM: **{ram(bot_ram)} ({bot_percentage_ram:.2f}%)**\n" \
+                            f"📈 Total RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n"
         try:
             embed.description += f"⚙ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n"
         except AttributeError:
             pass
         embed.description += f"🏓 Ping: **{ping} ms**\n" \
-                             f"👾 Servers: **{len(self.bot.guilds):,}**\n" \
+                             f"👾 Servers: **{len(self.bot.guilds):,}** (**{self.bot.shard_count}** shards)\n" \
                              f"💬 Channels: **{len(list(self.bot.get_all_channels())):,}**\n" \
                              f"👨 Users: **{len(self.bot.users):,}** \n" \
                              f"👤 Characters: **{char_count:,}**\n" \
