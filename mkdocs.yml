@@ -42,8 +42,8 @@ extra:
       link: 'https://github.com/NabDev'
     - type: 'gitlab'
       link: 'https://gitlab.com/NabBot'
-    - type: 'discord'
-      link: 'https://discord.me/NabBot'
+    - type: 'globe'
+      link: 'https://nabbot.xyz'
 
 repo_url: https://github.com/NabDev/NabBot
 edit_uri: ""
