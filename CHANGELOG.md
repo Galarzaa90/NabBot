@@ -10,10 +10,12 @@
 - ✔ New subcommand `/news ticker`, displays recent news ticker messages.
 - ✔ New ticker messages are now announced along with news articles and featured articles.
 - 🔧 `/quote` now shows a link to the original message.
+- 🔧 Added auto sharding.
 - 🔧 No longer using a development version of `discord.py`, now using version v1.0.0
 - 🐛 Fixed error in `/event subscribe`.
 - 🐛 Fixed bug not allowing to check characters with `.` in their names.
 - 🐛 Fixed bug that duplicates certain server-log messages.
+- 🐛 Fixed with time strings (`2d`, `1d4h`, etc) not working with spaces around them.
 - 🐛 Updated TibiaWiki database.
 
 ### Version 2.2.0 (2019-03-07)

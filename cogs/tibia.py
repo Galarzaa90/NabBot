@@ -819,7 +819,7 @@ class Tibia(commands.Cog, CogUtils):
 
     @news.command(name="ticker", aliases=["newsticker"])
     async def news_ticker(self, ctx: NabCtx):
-        """Shows the latest news tickers from Tibia.com"""
+        """Shows the latest news tickers from Tibia.com."""
         recent_tickers = await get_recent_news_tickers()
         if recent_tickers is None:
             return await ctx.error("Something went wrong getting recent news tickers.")
