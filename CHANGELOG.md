@@ -4,7 +4,7 @@
 - 🐛 Fixed bug
 - ❌ Removed feature
 
-### Version 2.3.0 (2019-04-19)
+## Version 2.3.0 (2019-04-19)
 - ✔ New subcommand `/unregistered guild`, checks which members of a guild are not registered in the server.
 - ✔ New owner command `/logs` to upload log files.
 - ✔ New subcommand `/news ticker`, displays recent news ticker messages.
@@ -18,7 +18,7 @@
 - 🐛 Fixed with time strings (`2d`, `1d4h`, etc) not working with spaces around them.
 - 🐛 Updated TibiaWiki database.
 
-### Version 2.2.0 (2019-03-07)
+## Version 2.2.0 (2019-03-07)
 - ✔ Added option to disable custom messages for deaths and level ups. `/settings simpleannouncements`
 - ✔ New `/purge` owner command, cleans settings for servers where the bot is no longer in.
 - ✔ Added option to set how long ago was killed, to reduce that from the cooldown timer. e.g. `/boss set Lloyd,Tschas,1h30m`.
