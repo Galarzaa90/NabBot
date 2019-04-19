@@ -4,7 +4,7 @@
 - 🐛 Fixed bug
 - ❌ Removed feature
 
-### Version 2.3.0 (Unreleased)
+### Version 2.3.0 (2019-04-19)
 - ✔ New subcommand `/unregistered guild`, checks which members of a guild are not registered in the server.
 - ✔ New owner command `/logs` to upload log files.
 - ✔ New subcommand `/news ticker`, displays recent news ticker messages.
