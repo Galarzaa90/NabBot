@@ -1,4 +1,5 @@
 import datetime as dt
+import io
 import logging
 import random
 import re
@@ -27,6 +28,20 @@ log = logging.getLogger("nabbot")
 
 WIKI_CHARMS_ARTICLE = "Cyclopedia#List_of_Charms"
 WIKI_ICON = "https://vignette.wikia.nocookie.net/tibia/images/b/bc/Wiki.png/revision/latest?path-prefix=en"
+
+DIFFICULTIES = {
+    "Harmless": config.difficulty_off_emoji * 4,
+    "Trivial": config.difficulty_on_emoji + config.difficulty_off_emoji * 3,
+    "Easy": config.difficulty_on_emoji * 2 + config.difficulty_off_emoji * 2,
+    "Medium": config.difficulty_on_emoji * 3 + config.difficulty_off_emoji,
+    "Hard": config.difficulty_on_emoji * 4
+}
+OCCURRENCES = {
+    "Common": config.occurrence_on_emoji * 1 + config.occurrence_off_emoji * 3,
+    "Uncommon": config.occurrence_on_emoji * 2 + config.occurrence_off_emoji * 2,
+    "Rare": config.occurrence_on_emoji * 3 + config.occurrence_off_emoji * 1,
+    "Very Rare": config.occurrence_on_emoji * 4,
+}
 
 
 class TibiaWiki(commands.Cog, utils.CogUtils):
@@ -307,12 +322,13 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
         if ctx.bot_permissions.attach_files:
             files = []
             if npc.image is not None:
+                thumbnail = io.BytesIO(npc.image)
                 filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + ".gif"
                 embed.set_thumbnail(url=f"attachment://{filename}")
-                files.append(discord.File(npc.image, filename))
+                files.append(discord.File(thumbnail, filename))
             if None not in [npc.x, npc.y, npc.z]:
                 map_filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + "-map.png"
-                map_image = get_map_area(npc.x, npc.y, npc.z)
+                map_image = io.BytesIO(get_map_area(npc.x, npc.y, npc.z))
                 embed.set_image(url=f"attachment://{map_filename}")
                 embed.add_field(name="Location", value=f"[Mapper link]({self.get_mapper_link(npc.x, npc.y, npc.z)})",
                                 inline=False)
@@ -336,12 +352,13 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
         if ctx.bot_permissions.attach_files:
             files = []
             if npc.image is not None:
+                thumbnail = io.BytesIO(npc.image)
                 filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + ".gif"
                 embed.set_thumbnail(url=f"attachment://{filename}")
-                files.append(discord.File(npc.image, filename))
+                files.append(discord.File(thumbnail, filename))
             if None not in [rashid.x, rashid.y, rashid.z]:
                 map_filename = re.sub(r"[^A-Za-z0-9]", "", npc.name) + "-map.png"
-                map_image = get_map_area(rashid.x, rashid.y, rashid.z)
+                map_image = io.BytesIO(get_map_area(rashid.x, rashid.y, rashid.z))
                 embed.set_image(url=f"attachment://{map_filename}")
                 embed.add_field(name="Location", value=f"[Mapper link]"
                                                        f"({self.get_mapper_link(rashid.x,rashid.y,rashid.z)})",
@@ -448,12 +465,13 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
     @classmethod
     async def send_embed_with_image(cls, entity, ctx, embed, apply_color=False, extension="gif"):
         if ctx.bot_permissions.attach_files and entity.image:
+            thumbnail = io.BytesIO(entity.image)
             filename = f"thumbnail.{extension}"
             embed.set_thumbnail(url=f"attachment://{filename}")
             if apply_color:
                 main_color = await ctx.execute_async(average_color, entity.image)
                 embed.color = discord.Color.from_rgb(*main_color)
-            await ctx.send(file=discord.File(entity.image, f"{filename}"), embed=embed)
+            await ctx.send(file=discord.File(thumbnail, f"{filename}"), embed=embed)
         else:
             await ctx.send(embed=embed)
 
@@ -636,7 +654,7 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
 
     # region Item Embed Submethods
     @classmethod
-    async def get_item_embed_parse_properties(cls, embed, item):
+    async def get_item_embed_parse_properties(cls, embed, item: models.Item):
         properties = f"Weight: {item.weight} oz"
         for attribute in item.attributes:  # type: models.ItemAttribute
             value = attribute.value
@@ -830,69 +848,36 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
         return split_message(loot_string, FIELD_VALUE_LIMIT - 20)
 
     @classmethod
-    def get_monster_embed_bestiary_info(cls, embed, monster):
+    def get_monster_embed_bestiary_info(cls, embed, monster: models.Creature):
         if monster.bestiary_class:
-            difficulties = {
-                "Harmless": config.difficulty_off_emoji * 4,
-                "Trivial": config.difficulty_on_emoji + config.difficulty_off_emoji * 3,
-                "Easy": config.difficulty_on_emoji * 2 + config.difficulty_off_emoji * 2,
-                "Medium": config.difficulty_on_emoji * 3 + config.difficulty_off_emoji,
-                "Hard": config.difficulty_on_emoji * 4
-            }
-            occurrences = {
-                "Common": config.occurrence_on_emoji * 1 + config.occurrence_off_emoji * 3,
-                "Uncommon": config.occurrence_on_emoji * 2 + config.occurrence_off_emoji * 2,
-                "Rare": config.occurrence_on_emoji * 3 + config.occurrence_off_emoji * 1,
-                "Very Rare": config.occurrence_on_emoji * 4,
-            }
-            kills = {
-                "Harmless": 25,
-                "Trivial": 250,
-                "Easy": 500,
-                "Medium": 1000,
-                "Hard": 2500
-            }
-            points = {
-                "Harmless": 1,
-                "Trivial": 5,
-                "Easy": 15,
-                "Medium": 25,
-                "Hard": 50
-            }
             bestiary_info = monster.bestiary_class
             if monster.bestiary_level:
-                difficulty = difficulties.get(monster.bestiary_level, f"({monster.bestiary_level})")
-                required_kills = kills[monster.bestiary_level]
-                given_points = points[monster.bestiary_level]
+                difficulty = DIFFICULTIES.get(monster.bestiary_level, f"({monster.bestiary_level})")
                 bestiary_info += f"\n{difficulty}"
                 if monster.bestiary_occurrence is not None:
-                    occurrence = occurrences.get(monster.bestiary_occurrence, f"")
-                    if monster.bestiary_occurrence == 'Very Rare':
-                        required_kills = 5
-                        given_points = max(points[monster.bestiary_level] * 2, 5)
-                    bestiary_info += f"\n{occurrence}"
-                bestiary_info += f"\n{required_kills:,} kills | {given_points}{config.charms_emoji}"
+                    bestiary_info += f"\n{OCCURRENCES.get(monster.bestiary_occurrence, monster.bestiary_occurrence)}"
+                bestiary_info += f"\n{monster.bestiary_kills:,} kills | {monster.charm_points}{config.charms_emoji}"
             embed.add_field(name="Bestiary Class", value=bestiary_info)
 
     @classmethod
-    def get_monster_embed_elemental_modifiers(cls, embed, monster):
+    def get_monster_embed_elemental_modifiers(cls, embed, monster: models.Creature):
         # Iterate through elemental types
-        elemental_modifiers = {}
-        elements = ["physical", "holy", "death", "fire", "ice", "energy", "earth"]
-        for element in elements:
-            value = getattr(monster, f"modifier_{element}", None)
-            if value is None or value == 100:
-                continue
-            elemental_modifiers[element] = value - 100
-        elemental_modifiers = dict(sorted(elemental_modifiers.items(), key=lambda x: x[1]))
-        if elemental_modifiers:
+        if monster:
             content = ""
-            for element, value in elemental_modifiers.items():
-                if config.use_elemental_emojis:
-                    content += f"\n{config.elemental_emojis[element]} {value:+}%"
-                else:
-                    content += f"\n{value:+}% {element.title()}"
-            embed.add_field(name="Elemental modifiers", value=content)
+            for element, value in monster.elemental_modifiers.items():
+                # TODO: Find icon for drown damage
+                try:
+                    if value is None or value == 100:
+                        continue
+                    value -= 100
+                    if config.use_elemental_emojis:
+                        content += f"\n{config.elemental_emojis[element]} {value:+}%"
+                    else:
+                        content += f"\n{value:+}% {element.title()}"
+                except KeyError:
+                    pass
+            if content:
+                embed.add_field(name="Elemental modifiers", value=content)
 
     @classmethod
     def get_monster_embed_attributes(cls, embed, monster, ctx):

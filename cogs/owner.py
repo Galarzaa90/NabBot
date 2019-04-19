@@ -1,4 +1,5 @@
 import inspect
+import os
 import platform
 import textwrap
 import traceback
@@ -24,7 +25,6 @@ from .utils.tibia import *
 log = logging.getLogger("nabbot")
 
 req_pattern = re.compile(r"([\w.]+)([><=]+)([\d.]+),([><=]+)([\d.]+)")
-dpy_commit = re.compile(r"a(\d+)\+g([\w]+)")
 
 
 class Owner(commands.Cog, CogUtils):
@@ -70,7 +70,7 @@ class Owner(commands.Cog, CogUtils):
     @checks.owner_only()
     @commands.command()
     async def announcement(self, ctx: NabCtx, *, message):
-        """Sends an announcement to all servers with a sererlog."""
+        """Sends an announcement to all servers with a serverlog."""
         embed = discord.Embed(title="📣 Owner Announcement", colour=discord.Colour.blurple(),
                               timestamp=dt.datetime.now())
         embed.set_author(name="Support Server", url="https://discord.gg/NmDvhpY", icon_url=self.bot.user.avatar_url)
@@ -255,6 +255,48 @@ class Owner(commands.Cog, CogUtils):
             await ctx.send(f"{ctx.tick()} Cog loaded successfully.")
         except Exception as e:
             await ctx.send('{}: {}'.format(type(e).__name__, e))
+
+    @commands.command(name="logs")
+    @checks.owner_only()
+    async def logs(self, ctx: NabCtx, log_name: str = None):
+        base_dir = "logs"
+        if log_name is None:
+            def file_size(size):
+                if size < 1024:
+                    return f"{size:,} B"
+                size /= 1024
+                if size < 1024:
+                    return f"{size:,.2f} kB"
+                size /= 1024
+                if size < 1024:
+                    return f"{size:,.2f} mB"
+
+            entries = []
+            for log_file in os.listdir(base_dir):
+                path = os.path.join(base_dir, log_file)
+                if os.path.isfile(path):
+                    entries.append(f"{log_file} (*{file_size(os.path.getsize(path))}*)")
+            entries[1:] = sorted(entries[1:], reverse=True)
+            pages = Pages(ctx, entries=entries, per_page=10)
+            pages.embed.title = f"Log files"
+            try:
+                await pages.paginate()
+            except CannotPaginate as e:
+                await ctx.error(e)
+            return
+
+        if log_name and ctx.guild:
+            return await ctx.error("For security reasons, I can only upload logs on private channels.")
+        if ".." in log_name:
+            return await ctx.error("You're not allowed to get files from outside the log folder.")
+        try:
+            with open(os.path.join("logs", log_name), "rb") as f:
+                await ctx.send("Here's your log file", file=discord.File(f, log_name))
+        except FileNotFoundError:
+            return await ctx.error("There's no log file with that name.")
+        except discord.HTTPException:
+            return await ctx.error("Error uploading file. It is currently not possible to read the current log file.")
+
 
     @commands.command(usage="<old world> <new world>")
     @checks.owner_only()
@@ -665,19 +707,7 @@ class Owner(commands.Cog, CogUtils):
             elif operator == "<=":
                 return object1 <= object2
 
-        discordpy_version = pkg_resources.get_distribution("discord.py").version
-        m = dpy_commit.search(discordpy_version)
-        dpy = f"v{discordpy_version}"
-        if m:
-            revision, commit = m.groups()
-            is_valid = int(revision) >= self.bot.__min_discord__
-            discordpy_url = f"https://github.com/Rapptz/discord.py/commit/{commit}"
-            dpy = f"{ctx.tick(is_valid)}[v{discordpy_version}]({discordpy_url})"
-            if not is_valid:
-                dpy += f"\n`{self.bot.__min_discord__ - int(revision)} commits behind`"
-
         embed = discord.Embed(title="NabBot", description="v"+self.bot.__version__)
-        embed.add_field(name="discord.py", value=dpy)
         embed.set_footer(text=f"Python v{platform.python_version()} on {platform.platform()}",
                          icon_url="https://www.python.org/static/apple-touch-icon-precomposed.png")
 

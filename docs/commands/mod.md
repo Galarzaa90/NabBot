@@ -75,3 +75,14 @@ Shows a list of users with no registered characters.
     ![image](../assets/images/commands/mod/unregistered.png)
 
 ----
+
+### unregistered guild <name>
+Shows a list of unregistered guild members.
+
+Unregistered guild members can be either characters not registered to NabBot or registered to users not in the server.
+
+??? Summary "Example"
+    **/unregistered guild Redd Alliance**  
+    ![image](../assets/images/commands/mod/unregistered_guild.png)
+
+----

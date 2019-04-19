@@ -49,9 +49,9 @@ async def _prefix_callable(bot, msg):
     return base
 
 
-class NabBot(commands.Bot):
+class NabBot(commands.AutoShardedBot):
     def __init__(self):
-        super().__init__(command_prefix=_prefix_callable, case_insensitive=True,
+        super().__init__(command_prefix=_prefix_callable, case_insensitive=True, fetch_offline_members=True,
                          description="Discord bot with functions for the MMORPG Tibia.")
         # Remove default help command to implement custom one
         self.remove_command("help")
@@ -67,8 +67,7 @@ class NabBot(commands.Bot):
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
 
-        self.__version__ = "2.2.0"
-        self.__min_discord__ = 1700
+        self.__version__ = "2.3.0"
 
     async def on_ready(self):
         """Called when the bot is ready."""
@@ -78,6 +77,7 @@ class NabBot(commands.Bot):
         print(f"Version {self.__version__}")
         print('------')
         # Populating members's guild list
+        self.users_servers.clear()
         for guild in self.guilds:
             for member in guild.members:
                 self.users_servers[member.id].append(guild.id)
@@ -338,7 +338,7 @@ def get_token():
         return token
     else:
         with open("token.txt") as f:
-            return f.read()
+            return f.read().strip()
 
 
 if __name__ == "__main__":

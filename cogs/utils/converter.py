@@ -69,10 +69,10 @@ class BadStamina(commands.BadArgument):
 
 
 class TimeString:
-    def __init__(self, argument):
+    def __init__(self, argument: str):
         compiled = re.compile(r"(?:(?P<days>\d+)d)?(?:(?P<hours>\d+)h)?(?:(?P<minutes>\d+)m)?(?:(?P<seconds>\d+)s)?")
-        self.original = argument
-        match = compiled.match(argument)
+        self.original = argument.strip()
+        match = compiled.match(self.original)
         if match is None or not match.group(0):
             raise BadTime("That's not a valid time, try something like this: `1d7h` or `4h20m`")
 

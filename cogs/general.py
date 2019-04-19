@@ -1,6 +1,6 @@
 import logging
 import random
-from typing import List
+from typing import List, Optional
 
 import discord
 from discord.ext import commands
@@ -90,7 +90,7 @@ class General(commands.Cog, CogUtils):
         Note that the bot won't attempt to search in channels you can't read.
         Additionally, messages in NSFW channels can't be quoted in regular channels."""
         channels: List[discord.TextChannel] = ctx.guild.text_channels
-        message: discord.Message = None
+        message: Optional[discord.Message] = None
         with ctx.typing():
             for channel in channels:
                 bot_perm = ctx.bot_permissions
@@ -100,7 +100,7 @@ class General(commands.Cog, CogUtils):
                        auth_perm.read_message_history and auth_perm.read_messages):
                     continue
                 try:
-                    message = await channel.get_message(message_id)
+                    message = await channel.fetch_message(message_id)
                 except discord.HTTPException:
                     continue
                 if message is not None:
@@ -114,13 +114,13 @@ class General(commands.Cog, CogUtils):
         if message.channel.nsfw and not ctx.channel.nsfw:
             await ctx.error("I can't quote messages from NSFW channels in regular channels.")
             return
-        embed = discord.Embed(description=message.content, timestamp=message.created_at)
+        embed = discord.Embed(description=f"{message.content}\n\n[Jump to original]({message.jump_url})",
+                              timestamp=message.created_at)
         try:
             embed.colour = message.author.colour
         except AttributeError:
             pass
-        embed.set_author(name=message.author.display_name, icon_url=get_user_avatar(message.author),
-                         url=message.jump_url)
+        embed.set_author(name=message.author.display_name, icon_url=get_user_avatar(message.author))
         embed.set_footer(text=f"In #{message.channel.name}")
         if len(message.attachments) >= 1:
             attachment: discord.Attachment = message.attachments[0]

@@ -53,7 +53,7 @@ def get_uri():
             return uri
         else:
             with open(file_name) as f:
-                return f.read()
+                return f.read().strip()
     except KeyboardInterrupt:
         exit()
 

@@ -39,7 +39,7 @@ class Core(commands.Cog, CogUtils):
         # Entries starting with "l:" are prefixed with "Listening to "
         presence_list = [
             # Playing _____
-            "Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2018", "Russian roulette",
+            "Half-Life 3", "Tibia on Steam", "DOTA 3", "Human Simulator 2019", "Russian roulette",
             "with my toy humans", "with fire🔥", "God", "innocent", "the part", "hard to get",
             "with my human minions", "Singularity", "Portal 3", "Dank Souls", "you", "01101110", "dumb",
             "with GLaDOS 💙", "with myself", "with your heart", "League of Dota", "my cards right",

@@ -7,6 +7,7 @@ from discord.ext import commands
 
 from cogs import utils
 from cogs.utils import converter
+from cogs.utils.tibia import get_guild, get_voc_emoji, get_voc_abb
 from nabbot import NabBot
 from .utils import checks, config, safe_delete_message
 from .utils.context import NabCtx
@@ -183,14 +184,10 @@ class Mod(commands.Cog, utils.CogUtils):
 
     @checks.channel_mod_only()
     @checks.tracking_world_only()
-    @commands.command()
+    @commands.group(invoke_without_command=True, case_insensitive=True)
     async def unregistered(self, ctx: NabCtx):
         """Shows a list of users with no registered characters."""
         entries = []
-        if ctx.world is None:
-            await ctx.send("This server is not tracking any worlds.")
-            return
-
         results = await ctx.pool.fetch('SELECT user_id FROM "character" WHERE world = $1 GROUP BY user_id', ctx.world)
         # Flatten list
         users = [i["user_id"] for i in results]
@@ -210,6 +207,45 @@ class Mod(commands.Cog, utils.CogUtils):
             await pages.paginate()
         except CannotPaginate as e:
             await ctx.send(e)
+
+    @checks.channel_mod_only()
+    @checks.tracking_world_only()
+    @unregistered.command(name="guild")
+    async def unregistered_guild(self, ctx: NabCtx, *, name: str):
+        """Shows a list of unregistered guild members.
+
+        Unregistered guild members can be either characters not registered to NabBot or
+        registered to users not in the server."""
+        guild = await get_guild(name)
+        if guild is None:
+            return await ctx.error("There's no guild with that name.")
+        if guild.world != ctx.world:
+            return await ctx.error(f"**{guild.name}** is not in **{ctx.world}**")
+
+        names = [m.name for m in guild.members]
+        registered = await ctx.pool.fetch("""SELECT name FROM "character" T0
+                                             INNER JOIN user_server T1 ON T0.user_id = T1.user_id
+                                             WHERE name = any($1) AND server_id = $2""", names, ctx.guild.id)
+        registered_names = [m['name'] for m in registered]
+
+        entries = []
+        for member in guild.members:
+            if member.name in registered_names:
+                continue
+            emoji = get_voc_emoji(member.vocation.value)
+            voc_abb = get_voc_abb(member.vocation.value)
+            entries.append(f'{member.rank} — **{member.name}** (Lvl {member.level} {voc_abb} {emoji})')
+        if len(entries) == 0:
+            await ctx.send("There are no unregistered users.")
+            return
+
+        pages = Pages(ctx, entries=entries, per_page=10)
+        pages.embed.set_author(name=f"Unregistered members from {guild.name}", icon_url=guild.logo_url)
+        try:
+            await pages.paginate()
+        except CannotPaginate as e:
+            await ctx.send(e)
+
     # endregion
 
     @classmethod

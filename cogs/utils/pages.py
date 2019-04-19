@@ -306,6 +306,19 @@ def _command_signature(cmd):
     return ' '.join(result)
 
 
+def get_command_signature(command):
+    parent = command.full_parent_name
+    if len(command.aliases) > 0:
+        aliases = '|'.join(command.aliases)
+        fmt = f'[{command.name}|{aliases}]'
+        if parent:
+            fmt = f'{parent} {fmt}'
+        alias = fmt
+    else:
+        alias = command.name if not parent else f'{parent} {command.name}'
+    return f'{alias} {command.signature}'
+
+
 class HelpPaginator(Pages):
     def __init__(self, ctx, entries, *, per_page=4):
         super().__init__(ctx, entries=entries, per_page=per_page)
@@ -340,7 +353,7 @@ class HelpPaginator(Pages):
             entries = [cmd for cmd in entries if (await _can_run(cmd, ctx)) and not cmd.hidden]
 
         self = cls(ctx, entries)
-        self.title = command.signature
+        self.title = get_command_signature(command)
 
         if command.description:
             self.description = f'{command.description}\n\n{command.help}'

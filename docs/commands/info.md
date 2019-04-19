@@ -118,7 +118,7 @@ Check the command's help to see them.
 ----
 
 ## serverinfo
-**Syntax:** `sererinfo [server]`
+**Syntax:** `serverinfo [server]`
 
 Shows the server's information.
 

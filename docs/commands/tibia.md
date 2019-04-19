@@ -213,6 +213,17 @@ If no id is supplied, a list of recent articles is shown, otherwise, a snippet o
 
 ----
 
+### news ticker
+**Other aliases:** `news newsticker`
+
+Shows the latest news tickers from Tibia.com.
+
+??? Summary "Examples"
+    **/news ticker**    
+    ![image](../assets/images/commands/tibia/news_ticker.png)
+
+----
+
 ## searchworld
 **Syntax:** `searchworld <name>[,world]` or `searchworld <level>[,world]` or `searchworld <min>,<max>[,world]`  
 **Other aliases:** `whereworld`, `findworld`

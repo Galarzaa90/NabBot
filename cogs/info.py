@@ -21,7 +21,7 @@ log = logging.getLogger("nabbot")
 
 
 class Info(commands.Cog, utils.CogUtils):
-    """Commands that disploy general information."""
+    """Commands that display general information."""
     def __init__(self, bot: NabBot):
         self.bot = bot
 
@@ -60,16 +60,18 @@ class Info(commands.Cog, utils.CogUtils):
 
     @checks.can_embed()
     @commands.command(name="botinfo")
-    async def bot_info(self, ctx: NabCtx):
+    async def _bot_info(self, ctx: NabCtx):
         """Shows advanced information about the bot."""
         async with ctx.pool.acquire() as conn:
             char_count = await conn.fetchval('SELECT COUNT(*) FROM "character" WHERE user_id != 0')
             deaths_count = await conn.fetchval('SELECT COUNT(*) FROM character_death')
             levels_count = await conn.fetchval('SELECT COUNT(*) FROM character_levelup')
 
-        used_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
+        bot_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
+        bot_percentage_ram = psutil.Process().memory_percent()
+        used_ram = psutil.virtual_memory().used / 1024 ** 2
+        percentage_ram = psutil.virtual_memory().percent
         total_ram = psutil.virtual_memory().total / 1024 ** 2
-        percentage_ram = psutil.Process().memory_percent()
 
         def ram(value):
             if value >= 1024:
@@ -89,13 +91,14 @@ class Info(commands.Cog, utils.CogUtils):
         embed.description = f"🔰 Version: **{self.bot.__version__}**\n" \
                             f"⏱ Uptime **{parse_uptime(self.bot.start_time)}**\n" \
                             f"🖥️ OS: **{platform.system()} {platform.release()}**\n" \
-                            f"📉 RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n"
+                            f"📉 RAM: **{ram(bot_ram)} ({bot_percentage_ram:.2f}%)**\n" \
+                            f"📈 Total RAM: **{ram(used_ram)}/{ram(total_ram)} ({percentage_ram:.2f}%)**\n"
         try:
             embed.description += f"⚙ CPU: **{psutil.cpu_count()} @ {psutil.cpu_freq().max} MHz**\n"
         except AttributeError:
             pass
         embed.description += f"🏓 Ping: **{ping} ms**\n" \
-                             f"👾 Servers: **{len(self.bot.guilds):,}**\n" \
+                             f"👾 Servers: **{len(self.bot.guilds):,}** (**{self.bot.shard_count}** shards)\n" \
                              f"💬 Channels: **{len(list(self.bot.get_all_channels())):,}**\n" \
                              f"👨 Users: **{len(self.bot.users):,}** \n" \
                              f"👤 Characters: **{char_count:,}**\n" \
@@ -275,6 +278,7 @@ class Info(commands.Cog, utils.CogUtils):
                 embed.add_field(name=name, value=value.replace("\n", ""))
         await ctx.send(embed=embed)
 
+    # TODO: Implement this command the proper discord.py way
     @checks.can_embed()
     @commands.command(name='help')
     async def _help(self, ctx, *, command: str = None):
