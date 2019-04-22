@@ -50,7 +50,7 @@ class Info(commands.Cog, utils.CogUtils):
         embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
         embed.add_field(name="Users", value=f"{len(self.bot.users):,}")
         embed.add_field(name="Links", inline=False,
-                        value="[Invite NabBot](https://dbl.nabbot.xyz/)  |  "
+                        value="[Invite NabBot](https://nabbot.xyz/)  |  "
                               "[Support Server](https://support.nabbot.xyz/)  |  "
                               "[Docs](https://docs.nabbot.xyz/)  |  "
                               "[Donate](https://donate.nabbot.xyz/) | "
