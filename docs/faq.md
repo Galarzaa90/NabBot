@@ -5,10 +5,6 @@ In order for `im` to work, you need to first configure a world for yor server. T
 
 For the moment, only one world can be configured per server.
 
-### How do I invite NabBot to my server?
-For an always up to date invite link, go to [Discord Bots](https://discordbots.org/bot/178966653982212096) and click **Invite**.  
-Also, if you like NabBot, don't forget to vote for us!
-
 ### \_\_\_\_\_\_\_\_\_\_ doesn't look well or doesn't work on mobile
 The Android and iOS versions of Discord are really behind the web or standalone client, so NabBot is focused on desktop users.
 If we limit ourselves to the mobile versions we would be slowing down the development of NabBot.
