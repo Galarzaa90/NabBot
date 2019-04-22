@@ -28,16 +28,6 @@ def get_affected_count(result: str) -> int:
     return int(m.group(1))
 
 
-async def get_prefixes(pool: PoolConn, guild_id: int):
-    """Gets the list of prefixes for a given server.
-
-    :param pool: An asyncpg Pool or Connection.
-    :param guild_id: The id of the guild.
-    :return: The list of prefixes the guild has.
-    """
-    return await pool.fetchval("SELECT prefixes FROM server_prefixes WHERE server_id = $1", guild_id)
-
-
 async def set_prefixes(pool: PoolConn, guild_id: int, prefixes: List[str]):
     """Sets the new server prefixes.
 

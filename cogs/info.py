@@ -69,9 +69,12 @@ class Info(commands.Cog, utils.CogUtils):
 
         bot_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
         bot_percentage_ram = psutil.Process().memory_percent()
-        used_ram = psutil.virtual_memory().used / 1024 ** 2
+
+        available = psutil.virtual_memory().available
+        total = psutil.virtual_memory().total
+        used_ram = (total-available) / 1024 ** 2
         percentage_ram = psutil.virtual_memory().percent
-        total_ram = psutil.virtual_memory().total / 1024 ** 2
+        total_ram = total / 1024 ** 2
 
         def ram(value):
             if value >= 1024:

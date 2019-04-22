@@ -7,7 +7,7 @@ from nabbot import NabBot
 from .utils import checks, CogUtils
 from .utils.config import config
 from .utils.context import NabCtx
-from .utils.database import get_prefixes, get_server_property, set_prefixes, set_server_property
+from .utils.database import get_server_property, set_prefixes, set_server_property
 from .utils.tibia import tibia_worlds
 
 log = logging.getLogger("nabbot")
@@ -380,10 +380,9 @@ class Admin(commands.Cog, CogUtils):
         Multiple words also require using quotes.
 
         Mentioning the bot is always a valid command and can't be changed."""
-        prefixes = await get_prefixes(ctx.pool, ctx.guild.id)
-        if prefixes is None:
-            prefixes = list(config.command_prefix)
-        if prefix is None:
+        # Make a copy to prevent abuse of race conditions to duplicate prefixes.
+        prefixes = ctx.bot.prefixes[ctx.guild.id][:]
+        if not prefix:
             current_value = ", ".join(f"`{p}`" for p in prefixes) if len(prefixes) > 0 else "Mentions only"
             await self.show_info_embed(ctx, current_value, "Any text", "prefix")
             return
@@ -407,6 +406,7 @@ class Admin(commands.Cog, CogUtils):
         else:
             prefixes.append(prefix)
             await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
+        ctx.bot.prefixes[ctx.guild.id] = prefixes
         await set_prefixes(ctx.pool, ctx.guild.id, sorted(prefixes, reverse=True))
 
     @settings_prefix.error
