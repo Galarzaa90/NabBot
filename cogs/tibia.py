@@ -141,6 +141,9 @@ class Tibia(commands.Cog, CogUtils):
                         news_channel_id = await get_server_property(self.bot.pool, guild.id, "news_channel", default=0)
                         if news_channel_id == 0:
                             continue
+                        enabled = await get_server_property(self.bot.pool, guild.id, "news_ticker", True)
+                        if not enabled:
+                            continue
                         channel = self.bot.get_channel_or_top(guild, news_channel_id)
                         try:
                             await channel.send("New ticker message posted on Tibia.com",

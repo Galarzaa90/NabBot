@@ -45,7 +45,6 @@ async def _prefix_callable(bot, msg):
     else:
         prefixes = bot.prefixes[msg.guild.id]
         base.extend(prefixes)
-    print(base)
     base = sorted(base, reverse=True)
     return base
 
@@ -70,7 +69,7 @@ class NabBot(commands.AutoShardedBot):
 
         self.prefixes = defaultdict()
 
-        self.__version__ = "2.3.0"
+        self.__version__ = "2.3.1a"
 
     async def on_ready(self):
         """Called when the bot is ready."""

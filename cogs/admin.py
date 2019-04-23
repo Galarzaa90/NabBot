@@ -15,6 +15,7 @@ log = logging.getLogger("nabbot")
 SETTINGS = {
     "world": {"title": "🌐 World", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "newschannel": {"title": "📰 News channel"},
+    "newstickers": {"title": "📍 News tickers"},
     "eventschannel": {"title": "📣 Events channel"},
     "serverlog": {"title": "📒 Server Log channel"},
     "levelschannel": {"title": "🌟☠ Tracking channel", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
@@ -365,6 +366,34 @@ class Admin(commands.Cog, CogUtils):
             await ctx.send(f"{ctx.tick(True)} The news channel has been disabled.")
         else:
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for Tibia news.")
+
+    @checks.server_mod_only()
+    @settings.command(name="newstickers")
+    async def settings_newstickers(self, ctx: NabCtx, option: str = None):
+        """Enables or disables news tickers from Tibia.com in this server.
+
+        Disabling this will make NabBot only announce news and featured articles.
+        For news tickers to be announced, news announcement must be enabled.
+        """
+        def yes_no(choice: bool):
+            return "Yes" if choice else "No"
+
+        if option is None:
+            current = await get_server_property(ctx.pool, ctx.guild.id, "news_ticker")
+            if current is None:
+                current_value = "True (Global default)"
+            else:
+                current_value = yes_no(current)
+            return await self.show_info_embed(ctx, current_value, "yes/no", "yes/no")
+        if option.lower() == "yes":
+            await set_server_property(ctx.pool, ctx.guild.id, "news_ticker", True)
+            await ctx.success("I will announce news ticker along news and featured articles from now on.")
+        elif option.lower() == "no":
+            await set_server_property(ctx.pool, ctx.guild.id, "news_ticker", False)
+            await ctx.success("I won't announce news ticker from now on.")
+        else:
+            await ctx.send("That's not a valid option, try **yes** or **no**.")
+
 
     @checks.server_mod_only()
     @settings.command(name="prefix")
