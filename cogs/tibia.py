@@ -198,6 +198,8 @@ class Tibia(commands.Cog, CogUtils):
             except KeyError:
                 continue
         embed = discord.Embed(title=f"Bosses for {world}")
+        embed.set_author(name="TibiaBosses", url="https://www.tibiabosses.com/",
+                         icon_url="https://www.tibiabosses.com/wp-content/uploads/2017/04/yetijajo-e1522384582919.png")
         if fields["High Chance"]:
             embed.add_field(name="High Chance - Last seen", value=fields["High Chance"])
         if fields["Low Chance"]:

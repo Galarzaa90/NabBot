@@ -293,7 +293,7 @@ async def get_highscores(world, category=Category.EXPERIENCE, vocation=VocationF
     """Gets all the highscores entries of a world, category and vocation."""
     # TODO: Add caching
     if tries == 0:
-        raise errors.NetworkError(f"get_highscores_tibiadata({world},{category},{vocation})")
+        raise errors.NetworkError(f"get_highscores({world},{category},{vocation})")
 
     try:
         async with aiohttp.ClientSession() as session:
