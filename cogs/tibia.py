@@ -29,8 +29,8 @@ from .utils.pages import Pages, VocationPages
 from .utils.tibia import HIGHSCORES_FORMAT, HIGHSCORE_CATEGORIES, NabChar, TIBIACOM_ICON, TIBIA_URL, get_character, \
     get_guild, get_highscores, get_house, get_house_id, get_level_by_experience, get_map_area, get_news_article, \
     get_rashid_city, get_recent_news, get_share_range, get_tibia_time_zone, get_voc_abb, get_voc_abb_and_emoji, \
-    get_voc_emoji, get_world, get_world_bosses, get_world_list, normalize_vocation, tibia_worlds, \
-    get_recent_news_tickers
+    get_voc_emoji, get_world, get_world_list, normalize_vocation, tibia_worlds, \
+    get_recent_news_tickers, fetch_tibia_bosses_world
 
 log = logging.getLogger("nabbot")
 
@@ -171,52 +171,51 @@ class Tibia(commands.Cog, CogUtils):
     # endregion
 
     # region Commands
-    # TODO: Needs a revision
     @checks.can_embed()
     @commands.command()
-    async def bosses(self, ctx: NabCtx, world=None):
-        """Shows predictions for bosses."""
-        if world is None and not ctx.is_private and ctx.world:
-            world = ctx.world
-        elif world is None:
-            await ctx.error("You need to tell me a world's name.")
-            return
-        world = world.title()
+    async def bosses(self, ctx: NabCtx, world: str):
+        """Shows the a world's bosses predictions.
+
+        Shows the chances of boss respawning, the last time a boss was seen or the expected time to see the boss.
+        Data is provided by TibiaBosses.com.
+        """
+        world = world.strip().title()
         if world not in tibia_worlds:
-            await ctx.error("That world doesn't exist.")
-            return
-        bosses = await get_world_bosses(world)
-        if type(bosses) is not dict:
-            await ctx.send("Something went wrong")
-        fields = {"High Chance": "", "Low Chance": "", "No Chance": "", "Unpredicted": ""}
-        for boss, info in bosses.items():
-            try:
-                if info["days"] > 1000:
+            return await ctx.error("There is no world with that name.")
+        with ctx.typing():
+            predictions = await fetch_tibia_bosses_world(world)
+        if not predictions:
+            return await ctx.error("Could not fetch boss predictions.")
+        entries = []
+        for category, bosses in predictions.items():
+            content = f"**{category}**\n"
+            for boss in bosses:
+                if boss["days"] > 1000:
                     continue
-                info["name"] = boss.title()
-                fields[info["chance"]] += "{name} - {days:,} days.\n".format(**info)
-            except KeyError:
-                continue
-        embed = discord.Embed(title=f"Bosses for {world}")
-        embed.set_author(name="TibiaBosses", url="https://www.tibiabosses.com/",
-                         icon_url="https://www.tibiabosses.com/wp-content/uploads/2017/04/yetijajo-e1522384582919.png")
-        if fields["High Chance"]:
-            embed.add_field(name="High Chance - Last seen", value=fields["High Chance"])
-        if fields["Low Chance"]:
-            embed.add_field(name="Low Chance - Last seen", value=fields["Low Chance"])
-        if await ctx.is_long():
-            if fields["No Chance"]:
-                embed.add_field(name="No Chance - Expect in", value=fields["No Chance"])
-            if fields["Unpredicted"]:
-                embed.add_field(name="Unpredicted - Last seen", value=fields["Unpredicted"])
-        else:
-            ask_channel = await ctx.ask_channel_name()
-            if ask_channel:
-                askchannel_string = " or use #" + ask_channel
-            else:
-                askchannel_string = ""
-            embed.set_footer(text="To see more, PM me{0}.".format(askchannel_string))
-        await ctx.send(embed=embed)
+                boss["name"] = boss["name"].title()
+                days = boss['days']
+                days_plural = "days" if days != 1 else "day"
+                if boss['type'] == "Last seen":
+                    boss["days_str"] = f"Last seen **{days:,}** {days_plural} ago"
+                if boss['type'] == "Expect in":
+                    boss["days_str"] = f"Expect in **{days:,}** {days_plural}"
+                if category == "Without prediction":
+                    content += "[{name}]({url}) - {days_str}.\n".format(**boss)
+                else:
+                    content += "[{name}]({url}) - *{chance}* - {days_str}.\n".format(**boss)
+            entries.append(content)
+        pages = Pages(ctx, entries=entries, per_page=1, show_numbers=False,
+                      header="For premium predictions, check out "
+                             "[TibiaBosses.com](https://www.tibiabosses.com/premium/)")
+        pages.embed.title = f"Boss predictions for {world}"
+        pages.embed.set_author(name="TibiaBosses", url="https://www.tibiabosses.com/",
+                               icon_url="https://www.tibiabosses.com/wp-content/uploads/2017/04/"
+                                        "yetijajo-e1522384582919.png")
+        try:
+            await pages.paginate()
+        except errors.CannotPaginate as e:
+            await ctx.error(e)
+
 
     @checks.can_embed()
     @commands.group(aliases=['deathlist'], invoke_without_command=True, case_insensitive=True)
