@@ -66,7 +66,8 @@ _DEFAULT_ELEMENTAL_EMOJIS = {
     "ice": "❄",
     "death": "💀",
     "holy": "🔱",
-    "poison": "🐍"
+    "poison": "🐍",
+    "drown": "💧"
 }
 
 
