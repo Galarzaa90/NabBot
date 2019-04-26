@@ -466,10 +466,12 @@ class Owner(commands.Cog, CogUtils):
             return await ctx.error("Content is not a valid json string.")
 
         content = data.get("content")
-        if "embed" in data and "timestamp" in data["embed"] and isinstance(data["embed"]["timestamp"], str):
-            data["embed"]["timestamp"] = data["embed"]["timestamp"].replace('Z', '')
+        embed = None
+        if "embed" in data:
+            if "timestamp" in data["embed"] and isinstance(data["embed"]["timestamp"], str):
+                data["embed"]["timestamp"] = data["embed"]["timestamp"].replace('Z', '')
+            embed = discord.Embed.from_dict(data["embed"])
 
-        embed = discord.Embed.from_dict(data.get("embed"))
         try:
             await channel.send(content, embed=embed)
             await ctx.message.add_reaction("✅")
