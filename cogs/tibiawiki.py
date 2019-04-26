@@ -1136,7 +1136,7 @@ class TibiaWiki(commands.Cog, utils.CogUtils):
         def convert_pos(pos):
             return f"{(pos&0xFF00)>>8}.{pos&0x00FF}"
 
-        return f"http://tibia.wikia.com/wiki/Mapper?coords={convert_pos(x)}-{convert_pos(y)}-{z}-4-1-1"
+        return f"http://tibia.fandom.com/wiki/Mapper?coords={convert_pos(x)}-{convert_pos(y)}-{z}-4-1-1"
     # endregion
 
 
