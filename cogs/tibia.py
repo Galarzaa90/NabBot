@@ -189,6 +189,9 @@ class Tibia(commands.Cog, CogUtils):
         entries = []
         for category, bosses in predictions.items():
             content = f"**{category}**\n"
+            line_format = "[{name}]({url}) - *{chance}* - {days_str}.\n"
+            if category == "Without prediction":
+                line_format = "[{name}]({url}) - {days_str}.\n"
             for boss in bosses:
                 if boss["days"] > 1000:
                     continue
@@ -199,12 +202,10 @@ class Tibia(commands.Cog, CogUtils):
                     boss["days_str"] = f"Last seen **{days:,}** {days_plural} ago"
                 if boss['type'] == "Expect in":
                     boss["days_str"] = f"Expect in **{days:,}** {days_plural}"
-                if category == "Without prediction":
-                    content += "[{name}]({url}) - {days_str}.\n".format(**boss)
-                else:
-                    content += "[{name}]({url}) - *{chance}* - {days_str}.\n".format(**boss)
+                content += line_format.format(**boss)
             entries.append(content)
-        pages = Pages(ctx, entries=entries, per_page=1, show_numbers=False,
+
+        pages = Pages(ctx, entries=entries, per_page=1, show_numbers=False, show_entry_count=False,
                       header="For premium predictions, check out "
                              "[TibiaBosses.com](https://www.tibiabosses.com/premium/)")
         pages.embed.title = f"Boss predictions for {world}"
@@ -215,7 +216,6 @@ class Tibia(commands.Cog, CogUtils):
             await pages.paginate()
         except errors.CannotPaginate as e:
             await ctx.error(e)
-
 
     @checks.can_embed()
     @commands.group(aliases=['deathlist'], invoke_without_command=True, case_insensitive=True)
