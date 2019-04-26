@@ -21,6 +21,9 @@ FIELD_VALUE_LIMIT = 1024
 FIELD_AMOUNT = 25
 EMBED_LIMIT = 6000
 
+# RegExp pattern to extract ids from message link
+msg_link_pattern = re.compile(r"(?:\w+.)?discordapp\.com/channels/(\d{16,20}|@me)/(\d{16,20})/(\d{16,20})")
+
 
 class CogUtils:
     """Helper class for Cogs, defines a tag to use in logging."""
@@ -208,11 +211,11 @@ def get_time_diff(time_diff: dt.timedelta) -> Optional[str]:
         return "moments"
 
 
+# TODO: User.avatar_url now does this by default, this can be removed
 def get_user_avatar(user: Union[discord.User, discord.Member]) -> str:
     """Gets the user's avatar url
 
     If they don't have an avatar set, the default avatar is returned.
-x
     :param user: The user to get the avatar of
     :return: The avatar's url."""
     return user.avatar_url if user.avatar_url is not None else user.default_avatar_url
@@ -264,6 +267,23 @@ def parse_uptime(start_time, long=False) -> str:
         fmt = '{h}h {m}m {s}s' if not long else '{h} hours, {m} minutes, and {s} seconds'
 
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
+
+
+def parse_message_link(message_url) -> Tuple[Optional[int], Optional[int], Optional[int]]:
+    """Parses a discord message link and extracts its components.
+
+    If the link is not a valid message link, all elements of the tuple will be None.
+    If the link belongs to a private message, the first element will be None.
+
+    The tuple elements represent guild_id, channel_id and message_id in that order."""
+    match = msg_link_pattern.search(message_url)
+    if match is None:
+        return None, None, None
+    try:
+        guild = None if not is_numeric(match.group(1)) else int(match.group(1))
+        return guild, int(match.group(2)), int(match.group(3))
+    except ValueError:
+        return None, None, None
 
 
 async def safe_delete_message(message: discord.Message) -> bool:

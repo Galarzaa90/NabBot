@@ -3,7 +3,6 @@ import os
 import platform
 import textwrap
 import traceback
-from collections import defaultdict
 from contextlib import redirect_stdout
 from distutils.version import StrictVersion
 
@@ -66,6 +65,53 @@ class Owner(commands.Cog, CogUtils):
         for admin in guild_admins:
             await admin.send("{0}\n\t-{1.mention}".format(content, ctx.author))
         await ctx.send("Message sent to "+join_list(["@"+a.name for a in guild_admins], ", ", " and "))
+
+    @checks.owner_only()
+    @commands.command()
+    async def editmessage(self, ctx: NabCtx, message_link: str, *, new_content: str):
+        """Edits a bot message with new content based on its JSON representation.
+
+        JSON based on the [Discord API](https://discordapp.com/developers/docs/resources/channel#embed-object) format.
+        A visualizer can be seen [here](https://leovoel.github.io/embed-visualizer/).
+        """
+        try:
+            data = json.loads(self.cleanup_code(new_content))
+        except json.JSONDecodeError:
+            return await ctx.error("New content is not a valid json string.")
+
+        if not isinstance(data, dict):
+            return await ctx.error("New content is not a valid json string.")
+
+        content = data.get("content")
+        embed = None
+        if "embed" in data:
+            if "timestamp" in data["embed"] and isinstance(data["embed"]["timestamp"], str):
+                data["embed"]["timestamp"] = data["embed"]["timestamp"].replace('Z', '')
+            embed = discord.Embed.from_dict(data["embed"])
+
+        guild_id, channel_id, message_id = parse_message_link(message_link)
+        if channel_id is None or message_id is None:
+            return await ctx.error("That's not a valid message link.")
+        if guild_id is None:
+            return await ctx.error("I can't edit private messages.")
+        guild: discord.Guild = ctx.bot.get_guild(guild_id)
+        if guild is None:
+            return await ctx.error("I'm not in the guild the message belongs to.")
+        channel: discord.TextChannel = guild.get_channel(channel_id)
+        if channel_id is None:
+            return await ctx.error("I can't find the channel the message belongs to.")
+        try:
+            message: discord.Message = await channel.fetch_message(message_id)
+        except discord.HTTPException:
+            return await ctx.error("I couldn't find the message.")
+        if message.author != ctx.me:
+            return await ctx.error("I can only edit my own messages.")
+
+        try:
+            await message.edit(content=content, embed=embed)
+            await ctx.message.add_reaction("✅")
+        except discord.HTTPException:
+            return await ctx.error("I could edit the message. Maybe the content is malformed or exceeds limits.")
 
     @checks.owner_only()
     @commands.command()
@@ -440,6 +486,42 @@ class Owner(commands.Cog, CogUtils):
 
     @checks.owner_only()
     @commands.command()
+    async def messagejson(self, ctx: NabCtx, message_link: str):
+        """Shows the json representation of a message.
+
+        JSON based on the [Discord API](https://discordapp.com/developers/docs/resources/channel#embed-object) format.
+        A visualizer can be seen [here](https://leovoel.github.io/embed-visualizer/).
+        """
+        guild_id, channel_id, message_id = parse_message_link(message_link)
+        if channel_id is None or message_id is None:
+            return await ctx.error("That's not a valid message link.")
+        if guild_id is None:
+            return await ctx.error("I can't check private messages.")
+        guild: discord.Guild = ctx.bot.get_guild(guild_id)
+        if guild is None:
+            return await ctx.error("I'm not in the guild the message belongs to.")
+        channel: discord.TextChannel = guild.get_channel(channel_id)
+        if channel_id is None:
+            return await ctx.error("I can't find the channel the message belongs to.")
+        try:
+            message: discord.Message = await channel.fetch_message(message_id)
+        except discord.HTTPException:
+            return await ctx.error("I couldn't find the message.")
+
+        data = dict()
+        if message.content:
+            data["content"] = message.content
+        if message.embeds:
+            # We only care about the first, regular embed.
+            embed: discord.Embed = message.embeds[0]
+            if embed.type == "rich":
+                data["embed"] = embed.to_dict()
+                del data["embed"]["type"]
+
+        await ctx.send(f"```json\n{json.dumps(data, indent=1)}```")
+
+    @checks.owner_only()
+    @commands.command()
     async def ping(self, ctx: NabCtx):
         """Shows the bot's response times."""
         resp = await ctx.send('Pong! Loading...')
@@ -452,7 +534,7 @@ class Owner(commands.Cog, CogUtils):
     async def sendmessage(self, ctx: NabCtx, channel: Optional[discord.TextChannel] = None, *, json_content: str):
         """Sends a message based on its JSON representation.
 
-        Based on the [Discord API](https://discordapp.com/developers/docs/resources/channel#embed-object) format.
+        JSON based on the [Discord API](https://discordapp.com/developers/docs/resources/channel#embed-object) format.
         A visualizer can be seen [here](https://leovoel.github.io/embed-visualizer/)."""
         if channel is None:
             channel = ctx.channel
@@ -479,7 +561,6 @@ class Owner(commands.Cog, CogUtils):
             await ctx.error("I don't have the right permissions to send a message there.")
         except discord.HTTPException:
             await ctx.error("I couldn't send your message, the content might be malformed or exceed limits.")
-
 
     @checks.owner_only()
     @commands.command()
