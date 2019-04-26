@@ -297,7 +297,6 @@ class Owner(commands.Cog, CogUtils):
         except discord.HTTPException:
             return await ctx.error("Error uploading file. It is currently not possible to read the current log file.")
 
-
     @commands.command(usage="<old world> <new world>")
     @checks.owner_only()
     async def merge(self, ctx: NabCtx, old_world: str, new_world: str):
@@ -447,6 +446,38 @@ class Owner(commands.Cog, CogUtils):
         diff = resp.created_at - ctx.message.created_at
         await resp.edit(content=f'Pong! That took {1000*diff.total_seconds():.1f}ms.\n'
                                 f'Socket latency is {1000*self.bot.latency:.1f}ms')
+
+    @checks.owner_only()
+    @commands.command()
+    async def sendmessage(self, ctx: NabCtx, channel: Optional[discord.TextChannel] = None, *, json_content: str):
+        """Sends a message based on its JSON representation.
+
+        Based on the [Discord API](https://discordapp.com/developers/docs/resources/channel#embed-object) format.
+        A visualizer can be seen [here](https://leovoel.github.io/embed-visualizer/)."""
+        if channel is None:
+            channel = ctx.channel
+
+        try:
+            data = json.loads(self.cleanup_code(json_content))
+        except json.JSONDecodeError:
+            return await ctx.error("Content is not a valid json string.")
+
+        if not isinstance(data, dict):
+            return await ctx.error("Content is not a valid json string.")
+
+        content = data.get("content")
+        if "embed" in data and "timestamp" in data["embed"] and isinstance(data["embed"]["timestamp"], str):
+            data["embed"]["timestamp"] = data["embed"]["timestamp"].replace('Z', '')
+
+        embed = discord.Embed.from_dict(data.get("embed"))
+        try:
+            await channel.send(content, embed=embed)
+            await ctx.message.add_reaction("✅")
+        except discord.Forbidden:
+            await ctx.error("I don't have the right permissions to send a message there.")
+        except discord.HTTPException:
+            await ctx.error("I couldn't send your message, the content might be malformed or exceed limits.")
+
 
     @checks.owner_only()
     @commands.command()
