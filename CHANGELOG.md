@@ -5,6 +5,10 @@
 - ❌ Removed feature
 
 ## Version 2.3.1 (Unreleased)
+- ✔ New owner command `/sendmessage` to send a message based on its JSON representation.
+- ✔ New owner command `/editmessage` to edit a bot's message's content based on its json representation.
+- ✔ New owner command `/jsonmessage` to see the JSON representation of any message.
+- 🔧 `/quote` now accepts message links for faster quoting.
 - 🔧 Updated TibiaWiki database to reflect new rent prices and article updates.
 - 🔧 News tickers can now be disabled using `/settings newstickers`.
 - 🔧 Memory optimizations, prefixes are now read from memory instead of the database.
