@@ -1,8 +1,24 @@
+#  Copyright 2019 Allan Galarza
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 import asyncio
 import datetime as dt
 import io
 import json
 import logging
+from collections import defaultdict
+
 import math
 import re
 import urllib.parse
@@ -121,6 +137,7 @@ CACHE_GUILDS = cachetools.TTLCache(1000, 120)
 CACHE_WORLDS = cachetools.TTLCache(100, 50)
 CACHE_NEWS = cachetools.TTLCache(100, 1800)
 CACHE_WORLD_LIST = cachetools.TTLCache(1, 120)
+CACHE_BOSSES = cachetools.TTLCache(100, 3600)
 
 
 class NabChar(Character):
@@ -293,7 +310,7 @@ async def get_highscores(world, category=Category.EXPERIENCE, vocation=VocationF
     """Gets all the highscores entries of a world, category and vocation."""
     # TODO: Add caching
     if tries == 0:
-        raise errors.NetworkError(f"get_highscores_tibiadata({world},{category},{vocation})")
+        raise errors.NetworkError(f"get_highscores({world},{category},{vocation})")
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -455,37 +472,47 @@ async def get_world(name, *, tries=5) -> Optional[World]:
     return world
 
 
-async def get_world_bosses(world):
-    url = f"http://www.tibiabosses.com/{world}/"
+async def fetch_tibia_bosses_world(world: str):
+    url = f"https://www.tibiabosses.com/{world}/"
+
+    try:
+        bosses = CACHE_BOSSES[world]
+        return bosses
+    except KeyError:
+        bosses = defaultdict(list)
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
-                content = await resp.text(encoding='ISO-8859-1')
-    except Exception:
+                content = await resp.text()
+    except (aiohttp.ClientError, asyncio.TimeoutError):
         raise errors.NetworkError(f"get_world_bosses({world})")
 
     try:
-        soup = bs4.BeautifulSoup(content, 'html.parser')
-        sections = soup.find_all('div', class_="execphpwidget")
-    except HTMLParser.HTMLParseError:
-        return
-    if sections is None:
-        return
-    bosses = {}
-    for section in sections:
-        m = boss_pattern.findall(str(section))
-        if m:
-            for (chance, link, image, expect_last, days) in m:
-                name = link.split("/")[-1].replace("-", " ").lower()
-                bosses[name] = {"chance": chance.strip(), "url": link, "image": image, "type": expect_last,
-                                "days": int(days)}
-        else:
-            # This regex is for bosses without prediction
-            m = unpredicted_pattern.findall(str(section))
-            for (link, image, expect_last, days) in m:
-                name = link.split("/")[-1].replace("-", " ").lower()
-                bosses[name] = {"chance": "Unpredicted", "url": link, "image": image, "type": expect_last,
-                                "days": int(days)}
+        parsed_content = bs4.BeautifulSoup(content, "lxml", parse_only=bs4.SoupStrainer("div", class_="panel-layout"))
+        _sections = parsed_content.find_all('div', class_="widget_execphp")
+        for section in _sections:
+            heading = section.find('h3')
+            if heading is None:
+                continue
+            title = heading.text
+            section_content = section.find('div', class_="execphpwidget")
+            m = boss_pattern.findall(str(section_content))
+            if m:
+                for (chance, link, image, expect_last, days) in m:
+                    name = link.split("/")[-1].replace("-", " ").lower()
+                    bosses[title].append(dict(name=name, chance=chance.strip(), url=link, image=image, type=expect_last,
+                                              days=int(days)))
+            else:
+                # This regex is for bosses without prediction
+                m = unpredicted_pattern.findall(str(section_content))
+                for (link, image, expect_last, days) in m:
+                    name = link.split("/")[-1].replace("-", " ").lower()
+                    bosses[title].append(dict(name=name, chance="Unpredicted", url=link, image=image, type=expect_last,
+                                              days=int(days)))
+    except:
+        pass
+    CACHE_BOSSES[world] = bosses
     return bosses
 
 

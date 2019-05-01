@@ -1,3 +1,17 @@
+#  Copyright 2019 Allan Galarza
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 import datetime as dt
 import logging
 import os
@@ -14,7 +28,7 @@ from discord.ext import commands
 import cogs.utils.context
 from cogs.utils import config
 from cogs.utils import safe_delete_message
-from cogs.utils.database import get_prefixes, get_server_property
+from cogs.utils.database import get_server_property
 from cogs.utils.tibia import populate_worlds, tibia_worlds
 
 initial_cogs = {
@@ -43,8 +57,8 @@ async def _prefix_callable(bot, msg):
     if msg.guild is None:
         base.extend(bot.config.command_prefix)
     else:
-        prefixes = await get_prefixes(bot.pool, msg.guild.id)
-        base.extend(prefixes if prefixes is not None else bot.config.command_prefix)
+        prefixes = bot.prefixes[msg.guild.id]
+        base.extend(prefixes)
     base = sorted(base, reverse=True)
     return base
 
@@ -67,7 +81,9 @@ class NabBot(commands.AutoShardedBot):
         self.tracked_worlds = {}
         self.tracked_worlds_list = []
 
-        self.__version__ = "2.3.0"
+        self.prefixes = defaultdict()
+
+        self.__version__ = "2.3.1a"
 
     async def on_ready(self):
         """Called when the bot is ready."""
@@ -103,7 +119,7 @@ class NabBot(commands.AutoShardedBot):
         if message.content.strip() == f"<@{self.user.id}>":
             prefixes = list(self.config.command_prefix)
             if ctx.guild:
-                prefixes = await get_server_property(ctx.pool, ctx.guild.id, "prefixes", prefixes)
+                prefixes = self.prefixes[message.guild.id]
             if prefixes:
                 prefixes_str = ", ".join(f"`{p}`" for p in prefixes)
                 return await ctx.send(f"My command prefixes are: {prefixes_str}, and mentions. "
@@ -273,15 +289,24 @@ class NabBot(commands.AutoShardedBot):
         self.tracked_worlds.clear()
         self.tracked_worlds.update(tibia_servers_dict_temp)
 
+    async def load_prefixes(self):
+        """Populates the prefix mapping."""
+        rows = await self.pool.fetch("SELECT server_id, prefixes FROM server_prefixes")
+        for row in rows:
+            self.prefixes[row['server_id']] = row['prefixes']
+
     def run(self):
         print("Loading config...")
         config.parse()
         self.config = config
+        self.prefixes = defaultdict(lambda: list(config.command_prefix))
 
         # List of tracked worlds for NabBot
         self.loop.run_until_complete(self.reload_worlds())
         # List of all Tibia worlds
         self.loop.run_until_complete(populate_worlds())
+        # Load prefixes
+        self.loop.run_until_complete(self.load_prefixes())
 
         if len(tibia_worlds) == 0:
             print("Critical information was not available: NabBot can not start without the World List.")

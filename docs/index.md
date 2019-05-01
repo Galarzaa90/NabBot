@@ -7,7 +7,7 @@ It features commands related to the MMORPG [Tibia](http://www.tibia.com/abouttib
 [![GitHub release](https://img.shields.io/github/release/NabDev/NabBot.svg)](https://github.com/NabDev/NabBot/releases)
 [![Discord](https://img.shields.io/discord/441991938200305674.svg)](https://discord.gg/NmDvhpY)
 
-[![Discord Bots](https://discordbots.org/api/widget/178966653982212096.svg)](https://discordbots.org/bot/178966653982212096)
+[![Discord Bots](assets/images/invite.png)](https://discordapp.com/oauth2/authorize?client_id=168155574725246976&scope=bot&permissions=268954832)
 
 
 ## Features
@@ -28,8 +28,7 @@ It features commands related to the MMORPG [Tibia](http://www.tibia.com/abouttib
      This is not a cavebot, this bot does not interact with the client in any way, NabBot is a messaging bot. We're not interested in developing cavebots, do not contact us for such reasons.
 
 ## Adding NabBot
-To add NabBot to your server, check out its page at [Discord Bots](https://discordbots.org/bot/178966653982212096)
-and click the **Invite** button. Also remember to **Vote**.
+To invite NabBot to your server, simply click the **Invite** button above and select the desired server. You must have `Manage Server` permission in order to be able to invite a bot.
  
 Curious about its permissions? Check the [permission explanation](permissions.md).
  
@@ -48,4 +47,5 @@ Visit our support server
 If you like NabBot, you can donate to this project. NabBot and the developers will appreciate it :)
 
 
-[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=B33DCPZ9D3GMJ)
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://donate.nabbot.xyz)
+<a href="https://www.patreon.com/bePatron?u=13109697" data-patreon-widget-type="become-patron-button">Become a Patron!</a><script async src="https://c6.patreon.com/becomePatronButton.bundle.js"></script>

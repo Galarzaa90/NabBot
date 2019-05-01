@@ -1,3 +1,17 @@
+#  Copyright 2019 Allan Galarza
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 import logging
 import platform
 import time
@@ -50,7 +64,7 @@ class Info(commands.Cog, utils.CogUtils):
         embed.add_field(name="Servers", value=f"{len(self.bot.guilds):,}")
         embed.add_field(name="Users", value=f"{len(self.bot.users):,}")
         embed.add_field(name="Links", inline=False,
-                        value="[Invite NabBot](https://dbl.nabbot.xyz/)  |  "
+                        value="[Invite NabBot](https://nabbot.xyz/)  |  "
                               "[Support Server](https://support.nabbot.xyz/)  |  "
                               "[Docs](https://docs.nabbot.xyz/)  |  "
                               "[Donate](https://donate.nabbot.xyz/) | "
@@ -69,9 +83,12 @@ class Info(commands.Cog, utils.CogUtils):
 
         bot_ram = psutil.Process().memory_full_info().uss / 1024 ** 2
         bot_percentage_ram = psutil.Process().memory_percent()
-        used_ram = psutil.virtual_memory().used / 1024 ** 2
+
+        available = psutil.virtual_memory().available
+        total = psutil.virtual_memory().total
+        used_ram = (total-available) / 1024 ** 2
         percentage_ram = psutil.virtual_memory().percent
-        total_ram = psutil.virtual_memory().total / 1024 ** 2
+        total_ram = total / 1024 ** 2
 
         def ram(value):
             if value >= 1024:

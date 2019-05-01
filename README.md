@@ -6,11 +6,10 @@ NabBot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rappt
 [![GitHub release](https://img.shields.io/github/release/NabDev/NabBot.svg)](https://github.com/NabDev/NabBot/releases)
 [![Discord](https://img.shields.io/discord/441991938200305674.svg)](https://discord.gg/NmDvhpY)
 
-[![Discord Bots](https://discordbots.org/api/widget/178966653982212096.svg)](https://discordbots.org/bot/178966653982212096)
+[![Discord Bots](docs/assets/images/invite.png)](https://discordapp.com/oauth2/authorize?client_id=168155574725246976&scope=bot&permissions=268954832)
 
 ## Adding NabBot
-To add NabBot to your server, check out its page at [Discord Bots](https://discordbots.org/bot/178966653982212096)
-and click the **Invite** button. Also remember to **Vote**.
+To invite NabBot to your server, simply click the **Invite** button above and select the desired server. You must have `Manage Server` permission in order to be able to invite a bot.
 
 ## Hosting NabBot
 You can also host your own instance of NabBot.
@@ -26,7 +25,6 @@ You can also host your own instance of NabBot.
     - pytz
     - tibia.py
     - tibiawiki-sql
-- git
 - PostgreSQL 10 or higher
 
 ### Installing and running
