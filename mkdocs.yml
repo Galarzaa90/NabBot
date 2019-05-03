@@ -40,8 +40,6 @@ extra:
   social:
     - type: 'github'
       link: 'https://github.com/NabDev'
-    - type: 'gitlab'
-      link: 'https://gitlab.com/NabBot'
     - type: 'globe'
       link: 'https://nabbot.xyz'
 
