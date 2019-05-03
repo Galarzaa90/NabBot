@@ -10,6 +10,7 @@
 - ✔ New owner command `/jsonmessage` to see the JSON representation of any message.
 - 🔧 `/quote` now accepts message links for faster quoting.
 - 🔧 Updated TibiaWiki database to reflect new rent prices and article updates.
+- 🔧 Updated Loot database to add items added in recent updates, for the `/loot` command.
 - 🔧 Reworked `/bosses` command.
 - 🔧 News tickers can now be disabled using `/settings newstickers`.
 - 🔧 Memory optimizations, prefixes are now read from memory instead of the database.
