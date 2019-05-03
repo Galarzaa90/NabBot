@@ -1,3 +1,17 @@
+#  Copyright 2019 Allan Galarza
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 import logging
 
 import discord
@@ -7,7 +21,7 @@ from nabbot import NabBot
 from .utils import checks, CogUtils
 from .utils.config import config
 from .utils.context import NabCtx
-from .utils.database import get_prefixes, get_server_property, set_prefixes, set_server_property
+from .utils.database import get_server_property, set_prefixes, set_server_property
 from .utils.tibia import tibia_worlds
 
 log = logging.getLogger("nabbot")
@@ -15,6 +29,7 @@ log = logging.getLogger("nabbot")
 SETTINGS = {
     "world": {"title": "🌐 World", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
     "newschannel": {"title": "📰 News channel"},
+    "newstickers": {"title": "📍 News tickers"},
     "eventschannel": {"title": "📣 Events channel"},
     "serverlog": {"title": "📒 Server Log channel"},
     "levelschannel": {"title": "🌟☠ Tracking channel", "check": lambda ctx: ctx.guild.id not in config.lite_servers},
@@ -367,6 +382,34 @@ class Admin(commands.Cog, CogUtils):
             await ctx.send(f"{ctx.tick(True)} <#{new_value}> will now be used for Tibia news.")
 
     @checks.server_mod_only()
+    @settings.command(name="newstickers")
+    async def settings_newstickers(self, ctx: NabCtx, option: str = None):
+        """Enables or disables news tickers from Tibia.com in this server.
+
+        Disabling this will make NabBot only announce news and featured articles.
+        For news tickers to be announced, news announcement must be enabled.
+        """
+        def yes_no(choice: bool):
+            return "Yes" if choice else "No"
+
+        if option is None:
+            current = await get_server_property(ctx.pool, ctx.guild.id, "news_ticker")
+            if current is None:
+                current_value = "True (Global default)"
+            else:
+                current_value = yes_no(current)
+            return await self.show_info_embed(ctx, current_value, "yes/no", "yes/no")
+        if option.lower() == "yes":
+            await set_server_property(ctx.pool, ctx.guild.id, "news_ticker", True)
+            await ctx.success("I will announce news ticker along news and featured articles from now on.")
+        elif option.lower() == "no":
+            await set_server_property(ctx.pool, ctx.guild.id, "news_ticker", False)
+            await ctx.success("I won't announce news ticker from now on.")
+        else:
+            await ctx.send("That's not a valid option, try **yes** or **no**.")
+
+
+    @checks.server_mod_only()
     @settings.command(name="prefix")
     async def settings_prefix(self, ctx: NabCtx, prefix: PrefixConverter = None):
         """Changes the command prefix for this server.
@@ -380,10 +423,9 @@ class Admin(commands.Cog, CogUtils):
         Multiple words also require using quotes.
 
         Mentioning the bot is always a valid command and can't be changed."""
-        prefixes = await get_prefixes(ctx.pool, ctx.guild.id)
-        if prefixes is None:
-            prefixes = list(config.command_prefix)
-        if prefix is None:
+        # Make a copy to prevent abuse of race conditions to duplicate prefixes.
+        prefixes = ctx.bot.prefixes[ctx.guild.id][:]
+        if not prefix:
             current_value = ", ".join(f"`{p}`" for p in prefixes) if len(prefixes) > 0 else "Mentions only"
             await self.show_info_embed(ctx, current_value, "Any text", "prefix")
             return
@@ -407,6 +449,7 @@ class Admin(commands.Cog, CogUtils):
         else:
             prefixes.append(prefix)
             await ctx.send(f"{ctx.tick(True)} The prefix `{prefix}` was added.")
+        ctx.bot.prefixes[ctx.guild.id] = prefixes
         await set_prefixes(ctx.pool, ctx.guild.id, sorted(prefixes, reverse=True))
 
     @settings_prefix.error

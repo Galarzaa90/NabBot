@@ -1,3 +1,17 @@
+#  Copyright 2019 Allan Galarza
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 import logging
 import random
 from typing import List, Optional
@@ -6,7 +20,7 @@ import discord
 from discord.ext import commands
 
 from nabbot import NabBot
-from .utils import CogUtils, checks, get_user_avatar, is_numeric
+from .utils import CogUtils, checks, get_user_avatar, is_numeric, parse_message_link
 from .utils.context import NabCtx
 
 log = logging.getLogger("nabbot")
@@ -79,32 +93,41 @@ class General(commands.Cog, CogUtils):
 
     @commands.guild_only()
     @checks.can_embed()
-    @commands.command()
-    async def quote(self, ctx: NabCtx, message_id: int):
-        """Shows a messages by its ID.
+    @commands.command(usage="<message>")
+    async def quote(self, ctx: NabCtx, message_id: str):
+        """Shows a messages by its ID or link.
+
+        In order to get the message's link, you can right click and select **Copy Link**.
 
         In order to get a message's id, you need to enable Developer Mode.
         Developer mode is found in `User Settings > Appearance`.
         Once enabled, you can right click a message and select **Copy ID**.
 
+        Using a message link is faster than using an Id.
+
         Note that the bot won't attempt to search in channels you can't read.
         Additionally, messages in NSFW channels can't be quoted in regular channels."""
-        channels: List[discord.TextChannel] = ctx.guild.text_channels
-        message: Optional[discord.Message] = None
-        with ctx.typing():
-            for channel in channels:
-                bot_perm = ctx.bot_permissions
-                auth_perm = ctx.author_permissions
-                # Both bot and members must be able to read the channel.
-                if not(bot_perm.read_message_history and bot_perm.read_messages and
-                       auth_perm.read_message_history and auth_perm.read_messages):
-                    continue
+        message = None
+        if is_numeric(message_id):
+            message = await self.search_message(ctx, int(message_id))
+        else:
+            guild_id, channel_id, message_id = parse_message_link(message_id)
+            if message_id is None or channel_id is None:
+                return await ctx.error("That's not a valid message link or message id.")
+            if guild_id is None:
+                return await ctx.error("I can't quote private messages.")
+            if guild_id != ctx.guild.id:
+                return await ctx.error("I can't quote messages from other servers.")
+            channel: discord.TextChannel = ctx.guild.get_channel(channel_id)
+            bot_perm = channel.permissions_for(ctx.me)
+            auth_perm = channel.permissions_for(ctx.author)
+            # Both bot and members must be able to read the channel.
+            if channel is not None and bot_perm.read_message_history and bot_perm.read_messages and \
+                    auth_perm.read_message_history and auth_perm.read_messages:
                 try:
                     message = await channel.fetch_message(message_id)
                 except discord.HTTPException:
-                    continue
-                if message is not None:
-                    break
+                    pass
         if message is None:
             await ctx.error("I can't find that message, or it is in a channel you can't access.")
             return
@@ -171,6 +194,29 @@ class General(commands.Cog, CogUtils):
         if sides == 1:
             result += "\nWho would have thought? 🙄"
         await ctx.send(result)
+    # endregion
+
+    # region Auxiliary methods
+    @classmethod
+    async def search_message(cls, ctx: NabCtx, message_id: int):
+        """Searches for a message with a specific id in the current context."""
+        channels: List[discord.TextChannel] = ctx.guild.text_channels
+        message: Optional[discord.Message] = None
+        with ctx.typing():
+            for channel in channels:
+                bot_perm = ctx.bot_permissions
+                auth_perm = ctx.author_permissions
+                # Both bot and members must be able to read the channel.
+                if not (bot_perm.read_message_history and bot_perm.read_messages and
+                        auth_perm.read_message_history and auth_perm.read_messages):
+                    continue
+                try:
+                    message = await channel.fetch_message(message_id)
+                except discord.HTTPException:
+                    continue
+                if message is not None:
+                    break
+        return message
     # endregion
 
 def setup(bot):

@@ -88,7 +88,7 @@ Once the event is created, the id of the event will be returned. This is used fo
 
 ??? Summary "Example"
     **/event add 5h Inquisition Quest,Remember to bring holy water!**  
-    **`[TibiaWiki link](http://tibia.wikia.com/wiki/Inquisition_quest)`**  
+    **`[TibiaWiki link](http://tibia.fandom.com/wiki/Inquisition_quest)`**  
     ![image](../assets/images/commands/timers/event_add.png)
 
 ----
