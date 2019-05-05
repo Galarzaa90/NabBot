@@ -83,7 +83,7 @@ class NabBot(commands.AutoShardedBot):
 
         self.prefixes = defaultdict()
 
-        self.__version__ = "2.3.1a"
+        self.__version__ = "2.4.0"
 
     async def on_ready(self):
         """Called when the bot is ready."""

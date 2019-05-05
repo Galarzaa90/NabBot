@@ -4,7 +4,7 @@
 - 🐛 Fixed bug
 - ❌ Removed feature
 
-## Version 2.4.0 (Unreleased)
+## Version 2.4.0 (2019-05-05)
 - ✔ New owner command `/sendmessage` to send a message based on its JSON representation.
 - ✔ New owner command `/editmessage` to edit a bot's message's content based on its json representation.
 - ✔ New owner command `/jsonmessage` to see the JSON representation of any message.
