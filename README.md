@@ -8,6 +8,8 @@ NabBot is a discord bot that uses [Rapptz's discord.py](https://github.com/Rappt
 
 [![Discord Bots](docs/assets/images/invite.png)](https://discordapp.com/oauth2/authorize?client_id=168155574725246976&scope=bot&permissions=268954832)
 
+***This repository is no longer being maintained, and it will most likely won't receive any more updates. For the latest version, invite the bot to your server.***
+
 ## Adding NabBot
 To invite NabBot to your server, simply click the **Invite** button above and select the desired server. You must have `Manage Server` permission in order to be able to invite a bot.
 
